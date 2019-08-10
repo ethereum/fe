@@ -1,0 +1,13 @@
+[package]
+name = "rust-vyper-parser"
+version = "0.1.0"
+authors = ["David Sanders <david@ethereum.org>"]
+edition = "2018"
+license = "MIT"
+repository = "https://github.com/davesque/rust-vyper"
+description = "Parser lib for rust-vyper."
+
+[dependencies]
+num-bigint = "0.2"
+num-traits = "0.2"
+nom = "5"

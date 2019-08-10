@@ -1,0 +1,19 @@
+[package]
+name = "rust-vyper"
+version = "0.1.0"
+authors = ["David Sanders <david@ethereum.org>"]
+edition = "2018"
+license = "MIT"
+repository = "https://github.com/davesque/rust-vyper"
+description = "An implementation of the Vyper smart contract language"
+keywords = ["ethereum", "vyper", "yul", "smart", "contract"]
+categories = ["cryptography::cryptocurrencies", "command-line-utilities", "development-tools"]
+readme = "README.md"
+
+[workspace]
+members = [".", "parser"]
+
+[dependencies]
+rust-vyper-parser = {path = "parser", version = "0.1.0"}
+num-bigint = "0.2"
+num-traits = "0.2"
