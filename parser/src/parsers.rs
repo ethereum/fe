@@ -20,18 +20,6 @@ pub fn symbol(i: &str) -> IResult<&str, &str> {
     take_while1(is_symbol_char)(i)
 }
 
-pub fn symbol_token(i: &str) -> IResult<&str, &str> {
-    terminated(symbol, space0)(i)
-}
-
-pub fn char_token(c: char) -> impl Fn(&str) -> IResult<&str, char> {
-    move |i: &str| terminated(char(c), space0)(i)
-}
-
-pub fn tag_token(t: &'static str) -> impl Fn(&str) -> IResult<&str, &str> {
-    move |i: &str| terminated(tag(t), space0)(i)
-}
-
 pub fn parse_module(i: &str) -> IResult<&str, Module> {
     let (i, _) = multispace0(i)?;
     let (i, body) = many0(parse_module_stmt)(i)?;
@@ -40,9 +28,9 @@ pub fn parse_module(i: &str) -> IResult<&str, Module> {
 }
 
 pub fn parse_module_stmt(i: &str) -> IResult<&str, ModuleStmt> {
-    let (i, event_def) = parse_event_def(i)?;
+    let (i, module_stmt) = parse_event_def(i)?;
 
-    Ok((i, event_def))
+    Ok((i, module_stmt))
 }
 
 pub fn parse_event_def(i: &str) -> IResult<&str, ModuleStmt> {
