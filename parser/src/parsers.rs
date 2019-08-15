@@ -55,10 +55,10 @@ pub fn parse_module<'a, E>(inp: &'a str) -> IResult<&'a str, Module, E>
 where
     E: ParseError<&'a str>,
 {
-    let (i, _) = multispace0(inp)?;
-    let (i, body) = many0(parse_module_stmt)(i)?;
+    // (ws module_stmt)*
+    let (i, body) = many0(preceded(multispace0, parse_module_stmt))(inp)?;
 
-    Ok((i, Module { body }))
+    Ok((i, Module { body: body }))
 }
 
 pub fn parse_module_stmt<'a, E>(inp: &'a str) -> IResult<&'a str, ModuleStmt, E>
