@@ -67,17 +67,24 @@ where
     let (i_, _) = opt(ws_nl)(i)?;
     i = i_;
 
+    let mut body = vec![];
+
+    // Exit early if no more content
     if i.len() == 0 {
-        // Exit early if no more content
-        return Ok((i, Module { body: vec![] }));
+        return Ok((i, Module { body }));
+    }
+    // Exit early if only remaining content is whitespace
+    if let Ok((i_, _)) = multispace1::<&'a str, E>(i) {
+        if i_.len() == 0 {
+            return Ok((i_, Module { body }));
+        }
     }
 
     // Parse first module statement.  This will and should fail if any whitespace is present before
     // the statement on the same line.
     let (i_, first_stmt) = parse_module_stmt(i)?;
     i = i_;
-
-    let mut body = vec![first_stmt];
+    body.push(first_stmt);
 
     while i.len() != 0 {
         // Eat any whitespace before next statement.  At least one newline is *required* in this
@@ -158,7 +165,7 @@ where
 mod tests {
     use super::*;
 
-    use nom::error::{ErrorKind, ErrorKind::*, VerboseError};
+    use nom::error::{ErrorKind, ErrorKind::*};
 
     use crate::errors::make_error;
 
@@ -221,18 +228,26 @@ mod tests {
 
     #[test]
     fn test_parse_file() {
+        // Empty file
+        let examples = vec!["", "  \t ", " \n\n   \t \n \t "];
+        let expected: IResult<&str, Module, SimpleError> = Ok(("", Module { body: vec![] }));
+        for inp in examples {
+            let actual = parse_file::<SimpleError>(inp);
+            assert_eq!(actual, expected);
+        }
+
         // Test one stmt
         let examples = vec![
-            // No leading or trailing whitespace, one stmt
+            // No leading or trailing whitespace
             r"event Greet:
     name: bytes32
     age: uint8",
-            // Leading whitespace, one stmt
+            // Leading whitespace
             r"
 event Greet:
     name: bytes32
     age: uint8",
-            // Leading and trailing whitespace, one stmt
+            // Leading and trailing whitespace
             r"
 event Greet:
     name: bytes32
@@ -264,38 +279,72 @@ event Greet:
 
         // More than one stmt
         let examples = vec![
-            // No leading or trailing whitespace, one stmt
+            // No leading, mid, or trailing whitespace
             r"event Greet:
     name: bytes32
-    age: uint8",
-            // Leading whitespace, one stmt
-            r"
-event Greet:
-    name: bytes32
-    age: uint8",
-            // Leading and trailing whitespace, one stmt
+    age: uint8
+event Other:
+    info1: uint256
+    info2: bool",
+            // Leading whitespace
             r"
 event Greet:
     name: bytes32
     age: uint8
+event Other:
+    info1: uint256
+    info2: bool",
+            // Leading and trailing whitespace
+            r"
+event Greet:
+    name: bytes32
+    age: uint8
+event Other:
+    info1: uint256
+    info2: bool
+",
+            // Leading, mid, and trailing whitespace
+            r"
+event Greet:
+    name: bytes32
+    age: uint8
+
+event Other:
+    info1: uint256
+    info2: bool
 ",
         ];
         let expected: IResult<&str, Module, SimpleError> = Ok((
             "",
             Module {
-                body: vec![EventDef {
-                    name: "Greet".to_string(),
-                    fields: vec![
-                        EventField {
-                            name: "name".to_string(),
-                            typ: "bytes32".to_string(),
-                        },
-                        EventField {
-                            name: "age".to_string(),
-                            typ: "uint8".to_string(),
-                        },
-                    ],
-                }],
+                body: vec![
+                    EventDef {
+                        name: "Greet".to_string(),
+                        fields: vec![
+                            EventField {
+                                name: "name".to_string(),
+                                typ: "bytes32".to_string(),
+                            },
+                            EventField {
+                                name: "age".to_string(),
+                                typ: "uint8".to_string(),
+                            },
+                        ],
+                    },
+                    EventDef {
+                        name: "Other".to_string(),
+                        fields: vec![
+                            EventField {
+                                name: "info1".to_string(),
+                                typ: "uint256".to_string(),
+                            },
+                            EventField {
+                                name: "info2".to_string(),
+                                typ: "bool".to_string(),
+                            },
+                        ],
+                    },
+                ],
             },
         ));
         for inp in examples {
