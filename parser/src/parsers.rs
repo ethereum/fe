@@ -1,9 +1,9 @@
 use nom::bytes::complete::{tag, take_while1};
-use nom::character::complete::{char, multispace0, space0, space1};
+use nom::character::complete::{char, multispace0, multispace1, space0, space1};
 use nom::combinator::verify;
 use nom::error::{context, ParseError};
 use nom::sequence::{preceded, terminated};
-use nom::{Err as NomErr, IResult};
+use nom::{Err as NomErr, IResult, InputTake};
 
 use crate::ast::ModuleStmt::*;
 use crate::ast::*;
@@ -23,24 +23,20 @@ where
     })(inp)
 }
 
-/// Parse a sequence of whitespace characters that must end with a newline.  If no whitespace is
-/// present, succeed without advancing.
+/// Parse a sequence of whitespace characters that must contain at least one newline.  Remaining
+/// parser input begins just after the last parsed newline.  Parser output includes all whitespace
+/// chars parsed up to the last newline.
 pub fn ws_nl<'a, E>(inp: &'a str) -> IResult<&'a str, &'a str, E>
 where
     E: ParseError<&'a str>,
 {
-    let (rest, out) = multispace0(inp)?;
-    let len = out.len();
+    let (_, out) = multispace1(inp)?;
+    let last_newline_i = out.char_indices().rev().find(|i| i.1 == '\n');
 
-    if len == 0 {
-        Ok((rest, out))
+    if let Some((i, _)) = last_newline_i {
+        Ok(inp.take_split(i + 1))
     } else {
-        let c = &out[len - 1..].chars().next().unwrap();
-        if *c == '\n' {
-            Ok((rest, out))
-        } else {
-            Err(NomErr::Error(E::from_char(inp, '\n')))
-        }
+        Err(NomErr::Error(E::from_char(inp, '\n')))
     }
 }
 
@@ -162,11 +158,12 @@ mod tests {
     fn test_ws_nl() {
         // Success
         let examples = vec![
-            ("", Ok(("", ""))),
             ("\n", Ok(("", "\n"))),
-            (" \n", Ok(("", " \n"))),
             ("\n \n", Ok(("", "\n \n"))),
+            (" \n    ", Ok(("    ", " \n"))),
+            (" \n \n ", Ok((" ", " \n \n"))),
             ("  \n   \n", Ok(("", "  \n   \n"))),
+            ("  \n   \n     ", Ok(("     ", "  \n   \n"))),
         ];
         for (inp, expected) in examples {
             let actual = ws_nl::<SimpleError>(inp);
@@ -175,9 +172,9 @@ mod tests {
 
         // Error
         let examples = vec![
+            ("", make_error("", MultiSpace)),
             ("  ", make_error("  ", Char)),
             ("  foo", make_error("  foo", Char)),
-            (" \n \n ", make_error(" \n \n ", Char)),
         ];
         for (inp, expected) in examples {
             let actual = ws_nl::<SimpleError>(inp);
