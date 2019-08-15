@@ -44,7 +44,10 @@ where
 
 /// Return a parser that requires the specific sequence of indentation characters in `indent` to be
 /// present before the parsed content.
-pub fn indented<'a, F, O, E>(indent: &'a str, parser: F) -> impl Fn(&'a str) -> IResult<&'a str, O, E>
+pub fn indented<'a, F, O, E>(
+    indent: &'a str,
+    parser: F,
+) -> impl Fn(&'a str) -> IResult<&'a str, O, E>
 where
     F: Fn(&'a str) -> IResult<&'a str, O, E>,
     E: ParseError<&'a str>,
