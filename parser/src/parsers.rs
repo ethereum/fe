@@ -20,9 +20,17 @@ pub fn identifier<'a, E>(inp: &'a str) -> IResult<&'a str, &'a str, E>
 where
     E: ParseError<&'a str>,
 {
-    verify(take_while1(is_identifier_char), |s: &str| {
-        !s.chars().next().unwrap().is_digit(10)
-    })(inp)
+    let ident_chars = context(
+        "identifier characters ([a-zA-Z0-9_]+)",
+        take_while1(is_identifier_char),
+    );
+    let ident = context(
+        "identifier ([a-zA-Z_][a-zA-Z0-9_]*)",
+        verify(ident_chars, |out: &str| {
+            !out.chars().next().unwrap().is_digit(10)
+        }),
+    );
+    ident(inp)
 }
 
 /// Parse a sequence of whitespace characters that must contain at least one newline.  Remaining
