@@ -81,11 +81,11 @@ where
 
     // Determine indentation level
     let (_, indent) = space1(i)?;
-    let ind_event_field = indented(indent, parse_event_field);
 
     // <indent> event_field (ws_nl event_field)*
-    let (i, first_field) = ind_event_field(i)?;
-    let (i, mut other_fields) = many0(preceded(ws_nl, ind_event_field))(i)?;
+    let event_field = indented(indent, parse_event_field);
+    let (i, first_field) = event_field(i)?;
+    let (i, mut other_fields) = many0(preceded(ws_nl, event_field))(i)?;
 
     let mut fields = vec![first_field];
     fields.append(&mut other_fields);
@@ -120,8 +120,7 @@ where
 mod tests {
     use super::*;
 
-    use nom::error::{convert_error, ErrorKind, ErrorKind::*, VerboseError};
-    use nom::Err as NomErr;
+    use nom::error::{ErrorKind, ErrorKind::*, VerboseError};
 
     use crate::errors::make_error;
 
@@ -152,13 +151,6 @@ mod tests {
             let actual = symbol::<SimpleError>(inp);
             assert_eq!(actual, expected);
         }
-    }
-
-    #[test]
-    fn scratch() {
-        let s = "asfasdf".to_string();
-        let len = s.len();
-        println!("{:?}", &s[len - 1..].chars().next().unwrap());
     }
 
     #[test]
