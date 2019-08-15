@@ -58,9 +58,9 @@ where
 {
     let mut i = inp;
 
-    // Eat any leading whitespace.  Any whitespace on the same line as and preceding the first
-    // statement must remain unparsed after this step.  Otherwise, we could end up parsing invalid
-    // syntax such as this:
+    // Eat leading whitespace except whitespace on the same line as and preceding the first module
+    // statement.  This edge case must be handled we or could end up parsing invalid syntax like
+    // this:
     //
     //   event Greeter:  # first line of event decl is indented (bad)
     //     name: bytes32
@@ -69,38 +69,29 @@ where
 
     let mut body = vec![];
 
-    // Exit early if no more content
-    if i.len() == 0 {
-        return Ok((i, Module { body }));
-    }
-    // Exit early if only remaining content is whitespace
-    if let Ok((i_, _)) = multispace1::<&'a str, E>(i) {
-        if i_.len() == 0 {
-            return Ok((i_, Module { body }));
-        }
-    }
-
-    // Parse first module statement.  This will and should fail if any whitespace is present before
-    // the statement on the same line.
-    let (i_, first_stmt) = parse_module_stmt(i)?;
-    i = i_;
-    body.push(first_stmt);
-
     while i.len() != 0 {
-        // Eat any whitespace before next statement.  At least one newline is *required* in this
-        // case.  Preceding whitespace on the same line as the next statement should similary be
-        // left unparsed.
-        let (i_, _) = ws_nl(i)?;
-        i = i_;
-
         // Exit early if no more content
         if i.len() == 0 {
             break;
         }
+        // Also exit early if only remaining content is whitespace
+        if let Ok((i_, _)) = multispace1::<&'a str, E>(i) {
+            if i_.len() == 0 {
+                i = i_;
+                break;
+            }
+        }
 
+        // Parse next module statement.  This will and should fail if any whitespace is present before
+        // the statement on the same line.
         let (i_, next_stmt) = parse_module_stmt(i)?;
         i = i_;
         body.push(next_stmt);
+
+        // Eat any whitespace before next statement.  Similar rules apply about preceding
+        // whitespace on same line as next statement.
+        let (i_, _) = opt(ws_nl)(i)?;
+        i = i_;
     }
 
     Ok((i, Module { body }))
