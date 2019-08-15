@@ -51,30 +51,30 @@ where
     preceded(context("indentation", tag(indent)), parser)
 }
 
-pub fn parse_module<'a, E>(i: &'a str) -> IResult<&'a str, Module, E>
+pub fn parse_module<'a, E>(inp: &'a str) -> IResult<&'a str, Module, E>
 where
     E: ParseError<&'a str>,
 {
-    let (i, _) = multispace0(i)?;
+    let (i, _) = multispace0(inp)?;
     let (i, body) = many0(parse_module_stmt)(i)?;
 
     Ok((i, Module { body }))
 }
 
-pub fn parse_module_stmt<'a, E>(i: &'a str) -> IResult<&'a str, ModuleStmt, E>
+pub fn parse_module_stmt<'a, E>(inp: &'a str) -> IResult<&'a str, ModuleStmt, E>
 where
     E: ParseError<&'a str>,
 {
-    let (i, module_stmt) = context("event definition", parse_event_def)(i)?;
+    let (i, module_stmt) = context("event definition", parse_event_def)(inp)?;
 
     Ok((i, module_stmt))
 }
 
-pub fn parse_event_def<'a, E>(i: &'a str) -> IResult<&'a str, ModuleStmt, E>
+pub fn parse_event_def<'a, E>(inp: &'a str) -> IResult<&'a str, ModuleStmt, E>
 where
     E: ParseError<&'a str>,
 {
-    let (i, _) = terminated(tag("event"), space1)(i)?;
+    let (i, _) = terminated(tag("event"), space1)(inp)?;
     let (i, name) = terminated(symbol, space0)(i)?;
     let (i, _) = char(':')(i)?;
     let (i, _) = ws_nl(i)?;
@@ -93,11 +93,11 @@ where
     ))
 }
 
-pub fn parse_event_field<'a, E>(i: &'a str) -> IResult<&'a str, EventField, E>
+pub fn parse_event_field<'a, E>(inp: &'a str) -> IResult<&'a str, EventField, E>
 where
     E: ParseError<&'a str>,
 {
-    let (i, name) = terminated(symbol, space0)(i)?;
+    let (i, name) = terminated(symbol, space0)(inp)?;
     let (i, _) = terminated(char(':'), space0)(i)?;
     let (i, typ) = terminated(symbol, space0)(i)?;
 
