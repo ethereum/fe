@@ -120,7 +120,7 @@ where
     // Determine indentation level
     let (_, indent) = space1(i)?;
 
-    // <indent> event_field (ws_nl event_field)*
+    // <indent> event_field (ws_nl <indent> event_field)*
     let event_field = indented(indent, parse_event_field);
     let (i, first_field) = event_field(i)?;
     let (i, mut other_fields) = many0(preceded(ws_nl, event_field))(i)?;
