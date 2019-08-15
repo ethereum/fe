@@ -74,21 +74,27 @@ pub fn parse_event_def<'a, E>(inp: &'a str) -> IResult<&'a str, ModuleStmt, E>
 where
     E: ParseError<&'a str>,
 {
+    // "event" symbol ":" ws_nl
     let (i, _) = terminated(tag("event"), space1)(inp)?;
     let (i, name) = terminated(symbol, space0)(i)?;
-    let (i, _) = char(':')(i)?;
-    let (i, _) = ws_nl(i)?;
+    let (i, _) = terminated(char(':'), ws_nl)(i)?;
+
+    // Determine indentation level
     let (_, indent) = space1(i)?;
+    let ind_event_field = indented(indent, parse_event_field);
 
-    let indented_event_field = indented(indent, parse_event_field);
+    // <indent> event_field (ws_nl event_field)*
+    let (i, first_field) = ind_event_field(i)?;
+    let (i, mut other_fields) = many0(preceded(ws_nl, ind_event_field))(i)?;
 
-    let (i, field) = indented_event_field(i)?;
+    let mut fields = vec![first_field];
+    fields.append(&mut other_fields);
 
     Ok((
         i,
         EventDef {
             name: name.to_string(),
-            fields: vec![field],
+            fields: fields,
         },
     ))
 }
@@ -99,7 +105,7 @@ where
 {
     let (i, name) = terminated(symbol, space0)(inp)?;
     let (i, _) = terminated(char(':'), space0)(i)?;
-    let (i, typ) = terminated(symbol, space0)(i)?;
+    let (i, typ) = symbol(i)?;
 
     Ok((
         i,
@@ -185,11 +191,10 @@ mod tests {
 
     #[test]
     fn test_module() {
-        let input = r###"
+        let input = r"
 event Greet:
     name: bytes32
-    age: uint8
-"###;
+    age: uint8";
         let res = parse_module::<VerboseError<&str>>(input);
 
         assert_eq!(
@@ -199,10 +204,16 @@ event Greet:
                 Module {
                     body: vec![EventDef {
                         name: "Greet".to_string(),
-                        fields: vec![EventField {
-                            name: "name".to_string(),
-                            typ: "bytes32".to_string(),
-                        }],
+                        fields: vec![
+                            EventField {
+                                name: "name".to_string(),
+                                typ: "bytes32".to_string(),
+                            },
+                            EventField {
+                                name: "age".to_string(),
+                                typ: "uint8".to_string(),
+                            },
+                        ],
                     }]
                 }
             )),
