@@ -9,17 +9,18 @@ use nom::{Err as NomErr, IResult, InputTake};
 use crate::ast::ModuleStmt::*;
 use crate::ast::*;
 
-/// Return true if the char `c` is a valid symbol character.
-pub fn is_symbol(c: char) -> bool {
+/// Return true if the char `c` is a valid identifier character.
+pub fn is_identifier_char(c: char) -> bool {
     c == '_' || c.is_ascii_alphabetic() || c.is_digit(10)
 }
 
-/// Parse a symbol i.e. `_foo`, `Foo`, `foo_Bar_1`, etc.  Symbols may not begin with numbers.
-pub fn symbol<'a, E>(inp: &'a str) -> IResult<&'a str, &'a str, E>
+/// Parse an identifier i.e. `_foo`, `Foo`, `foo_Bar_1`, etc.  Identifiers may not begin with
+/// numbers.
+pub fn identifier<'a, E>(inp: &'a str) -> IResult<&'a str, &'a str, E>
 where
     E: ParseError<&'a str>,
 {
-    verify(take_while1(is_symbol), |s: &str| {
+    verify(take_while1(is_identifier_char), |s: &str| {
         !s.chars().next().unwrap().is_digit(10)
     })(inp)
 }
@@ -110,9 +111,9 @@ pub fn parse_event_def<'a, E>(inp: &'a str) -> IResult<&'a str, ModuleStmt, E>
 where
     E: ParseError<&'a str>,
 {
-    // "event" symbol ":" ws_nl
+    // "event" identifier ":" ws_nl
     let (i, _) = terminated(tag("event"), space1)(inp)?;
-    let (i, name) = terminated(symbol, space0)(i)?;
+    let (i, name) = terminated(identifier, space0)(i)?;
     let (i, _) = terminated(char(':'), ws_nl)(i)?;
 
     // Determine indentation level
@@ -139,9 +140,9 @@ pub fn parse_event_field<'a, E>(inp: &'a str) -> IResult<&'a str, EventField, E>
 where
     E: ParseError<&'a str>,
 {
-    let (i, name) = terminated(symbol, space0)(inp)?;
+    let (i, name) = terminated(identifier, space0)(inp)?;
     let (i, _) = terminated(char(':'), space0)(i)?;
-    let (i, typ) = symbol(i)?;
+    let (i, typ) = identifier(i)?;
 
     Ok((
         i,
@@ -160,10 +161,10 @@ mod tests {
 
     use crate::errors::make_error;
 
-    type SimpleError<'a> = (&'a str, ErrorKind);
+    type SimpleError<I> = (I, ErrorKind);
 
     #[test]
-    fn test_symbol() {
+    fn test_identifier() {
         // Success
         let examples = vec![
             ("Foo", Ok(("", "Foo"))),
@@ -173,7 +174,7 @@ mod tests {
             ("_foo123  ", Ok(("  ", "_foo123"))),
         ];
         for (inp, expected) in examples {
-            let actual = symbol::<SimpleError>(inp);
+            let actual = identifier::<SimpleError<_>>(inp);
             assert_eq!(actual, expected);
         }
 
@@ -184,7 +185,7 @@ mod tests {
             ("", make_error("", TakeWhile1)),
         ];
         for (inp, expected) in examples {
-            let actual = symbol::<SimpleError>(inp);
+            let actual = identifier::<SimpleError<_>>(inp);
             assert_eq!(actual, expected);
         }
     }
@@ -201,7 +202,7 @@ mod tests {
             ("  \n   \n     ", Ok(("     ", "  \n   \n"))),
         ];
         for (inp, expected) in examples {
-            let actual = ws_nl::<SimpleError>(inp);
+            let actual = ws_nl::<SimpleError<_>>(inp);
             assert_eq!(actual, expected);
         }
 
@@ -212,7 +213,7 @@ mod tests {
             ("  foo", make_error("  foo", Char)),
         ];
         for (inp, expected) in examples {
-            let actual = ws_nl::<SimpleError>(inp);
+            let actual = ws_nl::<SimpleError<_>>(inp);
             assert_eq!(actual, expected);
         }
     }
@@ -221,9 +222,9 @@ mod tests {
     fn test_parse_file() {
         // Empty file
         let examples = vec!["", "  \t ", " \n\n   \t \n \t "];
-        let expected: IResult<&str, Module, SimpleError> = Ok(("", Module { body: vec![] }));
+        let expected: IResult<_, _, SimpleError<_>> = Ok(("", Module { body: vec![] }));
         for inp in examples {
-            let actual = parse_file::<SimpleError>(inp);
+            let actual = parse_file::<SimpleError<_>>(inp);
             assert_eq!(actual, expected);
         }
 
@@ -245,7 +246,7 @@ event Greet:
     age: uint8
 ",
         ];
-        let expected: IResult<&str, Module, SimpleError> = Ok((
+        let expected: IResult<_, _, SimpleError<_>> = Ok((
             "",
             Module {
                 body: vec![EventDef {
@@ -264,7 +265,7 @@ event Greet:
             },
         ));
         for inp in examples {
-            let actual = parse_file::<SimpleError>(inp);
+            let actual = parse_file::<SimpleError<_>>(inp);
             assert_eq!(actual, expected);
         }
 
@@ -305,7 +306,7 @@ event Other:
     info2: bool
 ",
         ];
-        let expected: IResult<&str, Module, SimpleError> = Ok((
+        let expected: IResult<_, _, SimpleError<_>> = Ok((
             "",
             Module {
                 body: vec![
@@ -339,7 +340,7 @@ event Other:
             },
         ));
         for inp in examples {
-            let actual = parse_file::<SimpleError>(inp);
+            let actual = parse_file::<SimpleError<_>>(inp);
             assert_eq!(actual, expected);
         }
     }
