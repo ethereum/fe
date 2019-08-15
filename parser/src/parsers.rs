@@ -1,6 +1,6 @@
 use nom::bytes::complete::{tag, take_while1};
-use nom::character::complete::{char, multispace0, multispace1, space0, space1};
-use nom::combinator::verify;
+use nom::character::complete::{char, multispace1, space0, space1};
+use nom::combinator::{opt, verify};
 use nom::error::{context, ParseError};
 use nom::multi::many0;
 use nom::sequence::{preceded, terminated};
@@ -51,14 +51,52 @@ where
     preceded(context("indentation", tag(indent)), parser)
 }
 
-pub fn parse_module<'a, E>(inp: &'a str) -> IResult<&'a str, Module, E>
+/// Parse a vyper source file into a `Module` AST object.
+pub fn parse_file<'a, E>(inp: &'a str) -> IResult<&'a str, Module, E>
 where
     E: ParseError<&'a str>,
 {
-    // (ws module_stmt)*
-    let (i, body) = many0(preceded(multispace0, parse_module_stmt))(inp)?;
+    let mut i = inp;
 
-    Ok((i, Module { body: body }))
+    // Eat any leading whitespace.  Any whitespace on the same line as and preceding the first
+    // statement must remain unparsed after this step.  Otherwise, we could end up parsing invalid
+    // syntax such as this:
+    //
+    //   event Greeter:  # first line of event decl is indented (bad)
+    //     name: bytes32
+    let (i_, _) = opt(ws_nl)(i)?;
+    i = i_;
+
+    if i.len() == 0 {
+        // Exit early if no more content
+        return Ok((i, Module { body: vec![] }));
+    }
+
+    // Parse first module statement.  This will and should fail if any whitespace is present before
+    // the statement on the same line.
+    let (i_, first_stmt) = parse_module_stmt(i)?;
+    i = i_;
+
+    let mut body = vec![first_stmt];
+
+    while i.len() != 0 {
+        // Eat any whitespace before next statement.  At least one newline is *required* in this
+        // case.  Preceding whitespace on the same line as the next statement should similary be
+        // left unparsed.
+        let (i_, _) = ws_nl(i)?;
+        i = i_;
+
+        // Exit early if no more content
+        if i.len() == 0 {
+            break;
+        }
+
+        let (i_, next_stmt) = parse_module_stmt(i)?;
+        i = i_;
+        body.push(next_stmt);
+    }
+
+    Ok((i, Module { body }))
 }
 
 pub fn parse_module_stmt<'a, E>(inp: &'a str) -> IResult<&'a str, ModuleStmt, E>
@@ -182,33 +220,87 @@ mod tests {
     }
 
     #[test]
-    fn test_module() {
-        let input = r"
+    fn test_parse_file() {
+        // Test one stmt
+        let examples = vec![
+            // No leading or trailing whitespace, one stmt
+            r"event Greet:
+    name: bytes32
+    age: uint8",
+            // Leading whitespace, one stmt
+            r"
 event Greet:
     name: bytes32
-    age: uint8";
-        let res = parse_module::<VerboseError<&str>>(input);
+    age: uint8",
+            // Leading and trailing whitespace, one stmt
+            r"
+event Greet:
+    name: bytes32
+    age: uint8
+",
+        ];
+        let expected: IResult<&str, Module, SimpleError> = Ok((
+            "",
+            Module {
+                body: vec![EventDef {
+                    name: "Greet".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "name".to_string(),
+                            typ: "bytes32".to_string(),
+                        },
+                        EventField {
+                            name: "age".to_string(),
+                            typ: "uint8".to_string(),
+                        },
+                    ],
+                }],
+            },
+        ));
+        for inp in examples {
+            let actual = parse_file::<SimpleError>(inp);
+            assert_eq!(actual, expected);
+        }
 
-        assert_eq!(
-            res,
-            Ok((
-                "",
-                Module {
-                    body: vec![EventDef {
-                        name: "Greet".to_string(),
-                        fields: vec![
-                            EventField {
-                                name: "name".to_string(),
-                                typ: "bytes32".to_string(),
-                            },
-                            EventField {
-                                name: "age".to_string(),
-                                typ: "uint8".to_string(),
-                            },
-                        ],
-                    }]
-                }
-            )),
-        );
+        // More than one stmt
+        let examples = vec![
+            // No leading or trailing whitespace, one stmt
+            r"event Greet:
+    name: bytes32
+    age: uint8",
+            // Leading whitespace, one stmt
+            r"
+event Greet:
+    name: bytes32
+    age: uint8",
+            // Leading and trailing whitespace, one stmt
+            r"
+event Greet:
+    name: bytes32
+    age: uint8
+",
+        ];
+        let expected: IResult<&str, Module, SimpleError> = Ok((
+            "",
+            Module {
+                body: vec![EventDef {
+                    name: "Greet".to_string(),
+                    fields: vec![
+                        EventField {
+                            name: "name".to_string(),
+                            typ: "bytes32".to_string(),
+                        },
+                        EventField {
+                            name: "age".to_string(),
+                            typ: "uint8".to_string(),
+                        },
+                    ],
+                }],
+            },
+        ));
+        for inp in examples {
+            let actual = parse_file::<SimpleError>(inp);
+            assert_eq!(actual, expected);
+        }
     }
 }
