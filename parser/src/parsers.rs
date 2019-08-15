@@ -20,13 +20,9 @@ pub fn identifier<'a, E>(inp: &'a str) -> IResult<&'a str, &'a str, E>
 where
     E: ParseError<&'a str>,
 {
-    let ident_chars = context(
-        r"expected identifier characters /[a-zA-Z0-9_]+/",
-        take_while1(is_identifier_char),
-    );
     let ident = context(
         r"expected identifier /[a-zA-Z_][a-zA-Z0-9_]*/",
-        verify(ident_chars, |out: &str| {
+        verify(take_while1(is_identifier_char), |out: &str| {
             !out.chars().next().unwrap().is_digit(10)
         }),
     );
