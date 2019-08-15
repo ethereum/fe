@@ -27,7 +27,7 @@ where
 
 /// Parse a sequence of whitespace characters that must contain at least one newline.  Remaining
 /// parser input begins just after the last parsed newline.  Parser output includes all whitespace
-/// chars parsed up to the last newline.
+/// chars parsed up to and including the last newline.
 pub fn ws_nl<'a, E>(inp: &'a str) -> IResult<&'a str, &'a str, E>
 where
     E: ParseError<&'a str>,
@@ -71,11 +71,10 @@ where
     let mut body = vec![];
 
     while i.len() != 0 {
-        // Exit early if no more content
+        // Exit if no more content or if only remaining content is whitespace
         if i.len() == 0 {
             break;
         }
-        // Also exit early if only remaining content is whitespace
         if let Ok((i_, _)) = multispace1::<&'a str, E>(i) {
             if i_.len() == 0 {
                 i = i_;
@@ -83,14 +82,13 @@ where
             }
         }
 
-        // Parse next module statement.  This will and should fail if any whitespace is present before
-        // the statement on the same line.
+        // Parse next module statement.  This will and should fail if any whitespace is present on
+        // the same line as the next statement.
         let (i_, next_stmt) = parse_module_stmt(i)?;
         i = i_;
         body.push(next_stmt);
 
-        // Eat any whitespace before next statement.  Similar rules apply about preceding
-        // whitespace on same line as next statement.
+        // Eat whitespace before next statement
         let (i_, _) = opt(ws_nl)(i)?;
         i = i_;
     }
@@ -98,6 +96,7 @@ where
     Ok((i, Module { body }))
 }
 
+/// Parse a module statement, such as an event or contract definition, into a `ModuleStmt` object.
 pub fn parse_module_stmt<'a, E>(inp: &'a str) -> IResult<&'a str, ModuleStmt, E>
 where
     E: ParseError<&'a str>,
@@ -107,6 +106,7 @@ where
     Ok((i, module_stmt))
 }
 
+/// Parse an event definition statement into a `ModuleStmt::EventDef` object.
 pub fn parse_event_def<'a, E>(inp: &'a str) -> IResult<&'a str, ModuleStmt, E>
 where
     E: ParseError<&'a str>,
@@ -136,6 +136,7 @@ where
     ))
 }
 
+/// Parse an event field definition into an `EventField` object.
 pub fn parse_event_field<'a, E>(inp: &'a str) -> IResult<&'a str, EventField, E>
 where
     E: ParseError<&'a str>,
