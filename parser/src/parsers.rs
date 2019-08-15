@@ -21,11 +21,11 @@ where
     E: ParseError<&'a str>,
 {
     let ident_chars = context(
-        "identifier characters ([a-zA-Z0-9_]+)",
+        r"expected identifier characters /[a-zA-Z0-9_]+/",
         take_while1(is_identifier_char),
     );
     let ident = context(
-        "identifier ([a-zA-Z_][a-zA-Z0-9_]*)",
+        r"expected identifier /[a-zA-Z_][a-zA-Z0-9_]*/",
         verify(ident_chars, |out: &str| {
             !out.chars().next().unwrap().is_digit(10)
         }),
@@ -46,7 +46,10 @@ where
     if let Some((i, _)) = last_newline_i {
         Ok(inp.take_split(i + 1))
     } else {
-        Err(NomErr::Error(E::from_char(inp, '\n')))
+        let mut err = E::from_char(inp, '\n');
+        err = E::add_context(inp, "expected at least one newline", err);
+
+        Err(NomErr::Error(err))
     }
 }
 
@@ -60,7 +63,10 @@ where
     F: Fn(&'a str) -> IResult<&'a str, O, E>,
     E: ParseError<&'a str>,
 {
-    preceded(context("indentation", tag(indent)), parser)
+    preceded(
+        context(r"expected indentation /[ \t]+/", tag(indent)),
+        parser,
+    )
 }
 
 /// Parse a vyper source file into a `Module` AST object.
@@ -112,7 +118,7 @@ pub fn parse_module_stmt<'a, E>(inp: &'a str) -> IResult<&'a str, ModuleStmt, E>
 where
     E: ParseError<&'a str>,
 {
-    let (i, module_stmt) = context("event definition", parse_event_def)(inp)?;
+    let (i, module_stmt) = context("expected event definition", parse_event_def)(inp)?;
 
     Ok((i, module_stmt))
 }
