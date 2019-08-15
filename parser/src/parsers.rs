@@ -237,6 +237,7 @@ mod tests {
         // Empty file
         let examples = vec!["", "  \t ", " \n\n   \t \n \t "];
         let expected: IResult<_, _, SimpleError<_>> = Ok(("", Module { body: vec![] }));
+
         for inp in examples {
             let actual = parse_file::<SimpleError<_>>(inp);
             assert_eq!(actual, expected);
