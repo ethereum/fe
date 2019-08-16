@@ -49,22 +49,6 @@ where
     }
 }
 
-/// Return a parser that requires the specific sequence of indentation characters in `indent` to be
-/// present before the parsed content.
-pub fn indented<'a, F, O, E>(
-    indent: &'a str,
-    parser: F,
-) -> impl Fn(&'a str) -> IResult<&'a str, O, E>
-where
-    F: Fn(&'a str) -> IResult<&'a str, O, E>,
-    E: ParseError<&'a str>,
-{
-    preceded(
-        context(r"expected indentation /[ \t]+/", tag(indent)),
-        parser,
-    )
-}
-
 /// Parse a vyper source file into a `Module` AST object.
 pub fn parse_file<'a, E>(inp: &'a str) -> IResult<&'a str, Module, E>
 where
@@ -133,9 +117,9 @@ where
     let (_, indent) = space1(i)?;
 
     // <indent> event_field (ws_nl <indent> event_field)*
-    let event_field = indented(indent, parse_event_field);
-    let (i, first_field) = event_field(i)?;
-    let (i, mut other_fields) = many0(preceded(ws_nl, event_field))(i)?;
+    let indented_field = parse_event_field(indent);
+    let (i, first_field) = indented_field(i)?;
+    let (i, mut other_fields) = many0(preceded(ws_nl, indented_field))(i)?;
 
     let mut fields = vec![first_field];
     fields.append(&mut other_fields);
@@ -150,21 +134,26 @@ where
 }
 
 /// Parse an event field definition into an `EventField` object.
-pub fn parse_event_field<'a, E>(inp: &'a str) -> IResult<&'a str, EventField, E>
+pub fn parse_event_field<'a, E>(
+    indent: &'a str,
+) -> impl Fn(&'a str) -> IResult<&'a str, EventField, E>
 where
     E: ParseError<&'a str>,
 {
-    let (i, name) = terminated(identifier, space0)(inp)?;
-    let (i, _) = terminated(char(':'), space0)(i)?;
-    let (i, typ) = identifier(i)?;
+    move |inp: &'a str| {
+        let (i, _) = context(r"expected indentation /[ \t]+/", tag(indent))(inp)?;
+        let (i, name) = terminated(identifier, space0)(i)?;
+        let (i, _) = terminated(char(':'), space0)(i)?;
+        let (i, typ) = identifier(i)?;
 
-    Ok((
-        i,
-        EventField {
-            name: name.to_string(),
-            typ: typ.to_string(),
-        },
-    ))
+        Ok((
+            i,
+            EventField {
+                name: name.to_string(),
+                typ: typ.to_string(),
+            },
+        ))
+    }
 }
 
 #[cfg(test)]
