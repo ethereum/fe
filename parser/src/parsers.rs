@@ -57,7 +57,7 @@ where
     let mut i = inp;
 
     // Eat leading whitespace except whitespace on the same line as and preceding the first module
-    // statement.  This edge case must be handled we or could end up parsing invalid syntax like
+    // statement.  This edge case must be handled or we could end up parsing invalid syntax like
     // this:
     //
     //   event Greeter:  # first line of event decl is indented (bad)
