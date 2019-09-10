@@ -8,7 +8,7 @@ repository = "https://github.com/davesque/rust-vyper"
 description = "Parser lib for rust-vyper."
 
 [dependencies]
+nom = "5"
 num-bigint = "0.2"
 num-traits = "0.2"
-nom = "5"
 str-concat = "0.1.4"
