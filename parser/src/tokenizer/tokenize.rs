@@ -402,8 +402,6 @@ test = 'foo'
 
         let serialized = serde_json::to_string_pretty(&tokens).unwrap();
 
-        //println!("{}", serialized);
-
         //assert_eq!(
         //    vec![TokenInfo {
         //        typ: TokenType::Comment,
