@@ -479,6 +479,8 @@ fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                     line: line,
                 });
             }
+        } else {
+            continued = false;
         }
 
         last_line = Some(line);
