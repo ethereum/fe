@@ -42,11 +42,11 @@ pub const EXPONENT: &str = r"[eE][-+]?[0-9](?:_?[0-9])*";
 /// ) + maybe(EXPONENT)
 pub fn get_pointfloat_pattern() -> String {
     [
-        &group(&[
+        group(&[
             r"[0-9](?:_?[0-9])*\.(?:[0-9](?:_?[0-9])*)?",
             r"\.[0-9](?:_?[0-9])*",
-        ])[..],
-        &maybe(&[EXPONENT])[..],
+        ]),
+        maybe(&[EXPONENT]),
     ]
     .concat()
 }
