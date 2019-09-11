@@ -232,15 +232,15 @@ pub struct TokenInfo<'a> {
 }
 
 fn group(choices: &[&str]) -> String {
-    ["(".to_string(), choices.join("|"), ")".to_string()].concat()
+    ["(", &choices.join("|"), ")"].concat()
 }
 
 fn any(choices: &[&str]) -> String {
-    [group(choices), "*".to_string()].concat()
+    [&group(choices), "*"].concat()
 }
 
 fn maybe(choices: &[&str]) -> String {
-    [group(choices), "?".to_string()].concat()
+    [&group(choices), "?"].concat()
 }
 
 const WHITESPACE: &str = r"[ \f\t]*";
@@ -248,9 +248,9 @@ const COMMENT: &str = r"#[^\r\n]*";
 
 /// Whitespace + any(r"\\\r?\n" + Whitespace) + maybe(Comment)
 fn get_ignore_pattern() -> String {
-    let any_part = &[r"\\\r?\n", WHITESPACE].concat()[..];
+    let any_part = &[r"\\\r?\n", WHITESPACE].concat();
 
-    [WHITESPACE, &any(&[any_part])[..], &maybe(&[COMMENT])[..]].concat()
+    [WHITESPACE, &any(&[any_part]), &maybe(&[COMMENT])].concat()
 }
 
 const NAME: &str = r"\w+";
@@ -289,23 +289,23 @@ fn get_expfloat_pattern() -> String {
 
 /// FLOATNUMBER = group(POINTFLOAT, EXPFLOAT)
 fn get_floatnumber_pattern() -> String {
-    group(&[&get_pointfloat_pattern()[..], &get_expfloat_pattern()[..]])
+    group(&[&get_pointfloat_pattern(), &get_expfloat_pattern()])
 }
 
 /// IMAGNUMBER = group(r"[0-9](?:_?[0-9])*[jJ]", FLOATNUMBER + r"[jJ]")
 fn get_imagnumber_pattern() -> String {
     group(&[
         r"[0-9](?:_?[0-9])*[jJ]",
-        &[&get_floatnumber_pattern()[..], r"[jJ]"].concat()[..],
+        &[&get_floatnumber_pattern(), r"[jJ]"].concat(),
     ])
 }
 
 /// NUMBER = group(IMAGNUMBER, FLOATNUMBER, INTNUMBER)
 fn get_number_pattern() -> String {
     group(&[
-        &get_imagnumber_pattern()[..],
-        &get_floatnumber_pattern()[..],
-        &get_intnumber_pattern()[..],
+        &get_imagnumber_pattern(),
+        &get_floatnumber_pattern(),
+        &get_intnumber_pattern(),
     ])
 }
 
