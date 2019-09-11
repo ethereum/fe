@@ -231,6 +231,84 @@ pub struct TokenInfo<'a> {
     pub line: &'a str,
 }
 
+fn group(choices: &[&str]) -> String {
+    ["(".to_string(), choices.join("|"), ")".to_string()].concat()
+}
+
+fn any(choices: &[&str]) -> String {
+    [group(choices), "*".to_string()].concat()
+}
+
+fn maybe(choices: &[&str]) -> String {
+    [group(choices), "?".to_string()].concat()
+}
+
+const WHITESPACE: &str = r"[ \f\t]*";
+const COMMENT: &str = r"#[^\r\n]*";
+
+/// Whitespace + any(r"\\\r?\n" + Whitespace) + maybe(Comment)
+fn get_ignore_pattern() -> String {
+    let any_part = &[r"\\\r?\n", WHITESPACE].concat()[..];
+
+    [WHITESPACE, &any(&[any_part])[..], &maybe(&[COMMENT])[..]].concat()
+}
+
+const NAME: &str = r"\w+";
+
+const HEXNUMBER: &str = r"0[xX](?:_?[0-9a-fA-F])+";
+const BINNUMBER: &str = r"0[bB](?:_?[01])+";
+const OCTNUMBER: &str = r"0[oO](?:_?[0-7])+";
+const DECNUMBER: &str = r"(?:0(?:_?0)*|[1-9](?:_?[0-9])*)";
+
+/// INTNUMBER = group(Hexnumber, Binnumber, Octnumber, Decnumber)
+fn get_intnumber_pattern() -> String {
+    group(&[HEXNUMBER, BINNUMBER, OCTNUMBER, DECNUMBER])
+}
+
+const EXPONENT: &str = r"[eE][-+]?[0-9](?:_?[0-9])*";
+
+/// POINTFLOAT = group(
+///     r"[0-9](?:_?[0-9])*\.(?:[0-9](?:_?[0-9])*)?",
+///     r"\.[0-9](?:_?[0-9])*",
+/// ) + maybe(EXPONENT)
+fn get_pointfloat_pattern() -> String {
+    [
+        &group(&[
+            r"[0-9](?:_?[0-9])*\.(?:[0-9](?:_?[0-9])*)?",
+            r"\.[0-9](?:_?[0-9])*",
+        ])[..],
+        &maybe(&[EXPONENT])[..],
+    ]
+    .concat()
+}
+
+/// EXPFLOAT = r"[0-9](?:_?[0-9])*" + EXPONENT
+fn get_expfloat_pattern() -> String {
+    [r"[0-9](?:_?[0-9])*", EXPONENT].concat()
+}
+
+/// FLOATNUMBER = group(POINTFLOAT, EXPFLOAT)
+fn get_floatnumber_pattern() -> String {
+    group(&[&get_pointfloat_pattern()[..], &get_expfloat_pattern()[..]])
+}
+
+/// IMAGNUMBER = group(r"[0-9](?:_?[0-9])*[jJ]", FLOATNUMBER + r"[jJ]")
+fn get_imagnumber_pattern() -> String {
+    group(&[
+        r"[0-9](?:_?[0-9])*[jJ]",
+        &[&get_floatnumber_pattern()[..], r"[jJ]"].concat()[..],
+    ])
+}
+
+/// NUMBER = group(IMAGNUMBER, FLOATNUMBER, INTNUMBER)
+fn get_number_pattern() -> String {
+    group(&[
+        &get_imagnumber_pattern()[..],
+        &get_floatnumber_pattern()[..],
+        &get_intnumber_pattern()[..],
+    ])
+}
+
 // Tail end of ' string
 const SINGLE: &str = r###"
 [^'\\]*(?:\\.[^'\\]*)*'
@@ -416,6 +494,38 @@ fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_regex_patterns() {
+        assert_eq!(
+            get_ignore_pattern(),
+            "[ \\f\\t]*(\\\\\\r?\\n[ \\f\\t]*)*(#[^\\r\\n]*)?",
+        );
+        assert_eq!(
+            get_intnumber_pattern(),
+            "(0[xX](?:_?[0-9a-fA-F])+|0[bB](?:_?[01])+|0[oO](?:_?[0-7])+|(?:0(?:_?0)*|[1-9](?:_?[0-9])*))",
+        );
+        assert_eq!(
+            get_pointfloat_pattern(),
+            "([0-9](?:_?[0-9])*\\.(?:[0-9](?:_?[0-9])*)?|\\.[0-9](?:_?[0-9])*)([eE][-+]?[0-9](?:_?[0-9])*)?",
+        );
+        assert_eq!(
+            get_expfloat_pattern(),
+            "[0-9](?:_?[0-9])*[eE][-+]?[0-9](?:_?[0-9])*",
+        );
+        assert_eq!(
+            get_floatnumber_pattern(),
+            "(([0-9](?:_?[0-9])*\\.(?:[0-9](?:_?[0-9])*)?|\\.[0-9](?:_?[0-9])*)([eE][-+]?[0-9](?:_?[0-9])*)?|[0-9](?:_?[0-9])*[eE][-+]?[0-9](?:_?[0-9])*)",
+        );
+        assert_eq!(
+            get_imagnumber_pattern(),
+            "([0-9](?:_?[0-9])*[jJ]|(([0-9](?:_?[0-9])*\\.(?:[0-9](?:_?[0-9])*)?|\\.[0-9](?:_?[0-9])*)([eE][-+]?[0-9](?:_?[0-9])*)?|[0-9](?:_?[0-9])*[eE][-+]?[0-9](?:_?[0-9])*)[jJ])",
+        );
+        assert_eq!(
+            get_number_pattern(),
+            "(([0-9](?:_?[0-9])*[jJ]|(([0-9](?:_?[0-9])*\\.(?:[0-9](?:_?[0-9])*)?|\\.[0-9](?:_?[0-9])*)([eE][-+]?[0-9](?:_?[0-9])*)?|[0-9](?:_?[0-9])*[eE][-+]?[0-9](?:_?[0-9])*)[jJ])|(([0-9](?:_?[0-9])*\\.(?:[0-9](?:_?[0-9])*)?|\\.[0-9](?:_?[0-9])*)([eE][-+]?[0-9](?:_?[0-9])*)?|[0-9](?:_?[0-9])*[eE][-+]?[0-9](?:_?[0-9])*)|(0[xX](?:_?[0-9a-fA-F])+|0[bB](?:_?[01])+|0[oO](?:_?[0-7])+|(?:0(?:_?0)*|[1-9](?:_?[0-9])*)))",
+        );
+    }
 
     #[test]
     fn test_tokenize() {
