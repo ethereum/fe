@@ -339,6 +339,113 @@ const DOUBLE3: &str = r###"
 [^"\\]*(?:(?:\\.|"(?!""))[^"\\]*)*"""
 "###;
 
+/// TRIPLE = group(STRINGPREFIX + "'''", STRINGPREFIX + '"""')
+fn get_triple_pattern() -> String {
+    let stringprefix = &get_stringprefix_pattern();
+    group(&[
+        &[stringprefix, "'''"].concat(),
+        &[stringprefix, "\"\"\""].concat(),
+    ])
+}
+/// Single-line ' or " string.
+/// STRING = group(STRINGPREFIX + r"'[^\n'\\]*(?:\\.[^\n'\\]*)*'",
+///                STRINGPREFIX + r'"[^\n"\\]*(?:\\.[^\n"\\]*)*"')
+fn get_string_pattern() -> String {
+    let stringprefix = &get_stringprefix_pattern();
+    group(&[
+        &[stringprefix, r###"'[^\n'\\]*(?:\\.[^\n'\\]*)*'"###].concat(),
+        &[stringprefix, r###""[^\n"\\]*(?:\\.[^\n"\\]*)*""###].concat(),
+    ])
+}
+
+/// Because of leftmost-then-longest match semantics, be sure to put the longest operators first
+/// (e.g., if = came before ==, == would get recognized as two instances of =).
+/// OPERATOR = group(r"\*\*=?", r">>=?", r"<<=?", r"!=",
+///                 r"//=?", r"->",
+///                 r"[+\-*/%&@|^=<>]=?",
+///                 r"~")
+fn get_operator_pattern() -> String {
+    group(&[
+        r"\*\*=?",
+        r">>=?",
+        r"<<=?",
+        r"!=",
+        r"//=?",
+        r"->",
+        r"[+\-*/%&@|^=<>]=?",
+        r"~",
+    ])
+}
+
+const BRACKET: &str = r"[][(){}]";
+
+/// SPECIAL = group(r'\r?\n', r'\.\.\.', r'[:;.,@]')
+fn get_special_pattern() -> String {
+    group(&[r"\r?\n", r"\.\.\.", r"[:;.,@]"])
+}
+
+/// FUNNY = group(OPERATOR, BRACKET, SPECIAL)
+fn get_funny_pattern() -> String {
+    group(&[&get_operator_pattern(), BRACKET, &get_special_pattern()])
+}
+
+/// PLAINTOKEN = group(NUMBER, FUNNY, STRING, NAME)
+fn get_plaintoken_pattern() -> String {
+    group(&[
+        &get_number_pattern(),
+        &get_funny_pattern(),
+        &get_string_pattern(),
+        NAME,
+    ])
+}
+
+/// TOKEN = IGNORE + PLAINTOKEN
+fn get_token_pattern() -> String {
+    [get_ignore_pattern(), get_plaintoken_pattern()].concat()
+}
+
+/// First (or only) line of ' or " string.
+/// ContStr = group(StringPrefix + r"'[^\n'\\]*(?:\\.[^\n'\\]*)*" +
+///                 group("'", r'\\\r?\n'),
+///                 StringPrefix + r'"[^\n"\\]*(?:\\.[^\n"\\]*)*' +
+///                 group('"', r'\\\r?\n'))
+fn get_contstr_pattern() -> String {
+    let stringprefix_pattern = &get_stringprefix_pattern();
+    group(&[
+        &[
+            stringprefix_pattern,
+            r###"'[^\n'\\]*(?:\\.[^\n'\\]*)*"###,
+            &group(&["'", r"\\\r?\n"]),
+        ]
+        .concat(),
+        &[
+            stringprefix_pattern,
+            r###""[^\n"\\]*(?:\\.[^\n"\\]*)*"###,
+            &group(&["\"", r"\\\r?\n"]),
+        ]
+        .concat(),
+    ])
+}
+/// PSEUDOEXTRAS = group(r'\\\r?\n|\Z', COMMENT, TRIPLE)
+fn get_pseudoextras_pattern() -> String {
+    group(&[r"\\\r?\n|\Z", COMMENT, &get_triple_pattern()])
+}
+
+/// PSEUDOTOKEN = WHITESPACE + group(PSEUDOEXTRAS, NUMBER, FUNNY, CONTSTR, NAME)
+fn get_pseudotoken_pattern() -> String {
+    [
+        WHITESPACE,
+        &group(&[
+            &get_pseudoextras_pattern(),
+            &get_number_pattern(),
+            &get_funny_pattern(),
+            &get_contstr_pattern(),
+            NAME,
+        ]),
+    ]
+    .concat()
+}
+
 fn get_string_end_regex(token: &str) -> Regex {
     if token.ends_with("\"\"\"") {
         Regex::new(DOUBLE3).unwrap()
@@ -540,6 +647,43 @@ mod tests {
         assert_eq!(
             get_stringprefix_pattern(),
             "(b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)",
+        );
+        assert_eq!(
+            get_triple_pattern(),
+            "((b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)\'\'\'|(b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)\"\"\")",
+        );
+        assert_eq!(
+            get_string_pattern(),
+            "((b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)\'[^\\n\'\\\\]*(?:\\\\.[^\\n\'\\\\]*)*\'|(b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)\"[^\\n\"\\\\]*(?:\\\\.[^\\n\"\\\\]*)*\")",
+        );
+        assert_eq!(
+            get_operator_pattern(),
+            "(\\*\\*=?|>>=?|<<=?|!=|//=?|->|[+\\-*/%&@|^=<>]=?|~)",
+        );
+        assert_eq!(get_special_pattern(), "(\\r?\\n|\\.\\.\\.|[:;.,@])",);
+        assert_eq!(
+            get_funny_pattern(),
+            "((\\*\\*=?|>>=?|<<=?|!=|//=?|->|[+\\-*/%&@|^=<>]=?|~)|[][(){}]|(\\r?\\n|\\.\\.\\.|[:;.,@]))",
+        );
+        assert_eq!(
+            get_plaintoken_pattern(),
+            "((([0-9](?:_?[0-9])*[jJ]|(([0-9](?:_?[0-9])*\\.(?:[0-9](?:_?[0-9])*)?|\\.[0-9](?:_?[0-9])*)([eE][-+]?[0-9](?:_?[0-9])*)?|[0-9](?:_?[0-9])*[eE][-+]?[0-9](?:_?[0-9])*)[jJ])|(([0-9](?:_?[0-9])*\\.(?:[0-9](?:_?[0-9])*)?|\\.[0-9](?:_?[0-9])*)([eE][-+]?[0-9](?:_?[0-9])*)?|[0-9](?:_?[0-9])*[eE][-+]?[0-9](?:_?[0-9])*)|(0[xX](?:_?[0-9a-fA-F])+|0[bB](?:_?[01])+|0[oO](?:_?[0-7])+|(?:0(?:_?0)*|[1-9](?:_?[0-9])*)))|((\\*\\*=?|>>=?|<<=?|!=|//=?|->|[+\\-*/%&@|^=<>]=?|~)|[][(){}]|(\\r?\\n|\\.\\.\\.|[:;.,@]))|((b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)\'[^\\n\'\\\\]*(?:\\\\.[^\\n\'\\\\]*)*\'|(b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)\"[^\\n\"\\\\]*(?:\\\\.[^\\n\"\\\\]*)*\")|\\w+)",
+        );
+        assert_eq!(
+            get_token_pattern(),
+            "[ \\f\\t]*(\\\\\\r?\\n[ \\f\\t]*)*(#[^\\r\\n]*)?((([0-9](?:_?[0-9])*[jJ]|(([0-9](?:_?[0-9])*\\.(?:[0-9](?:_?[0-9])*)?|\\.[0-9](?:_?[0-9])*)([eE][-+]?[0-9](?:_?[0-9])*)?|[0-9](?:_?[0-9])*[eE][-+]?[0-9](?:_?[0-9])*)[jJ])|(([0-9](?:_?[0-9])*\\.(?:[0-9](?:_?[0-9])*)?|\\.[0-9](?:_?[0-9])*)([eE][-+]?[0-9](?:_?[0-9])*)?|[0-9](?:_?[0-9])*[eE][-+]?[0-9](?:_?[0-9])*)|(0[xX](?:_?[0-9a-fA-F])+|0[bB](?:_?[01])+|0[oO](?:_?[0-7])+|(?:0(?:_?0)*|[1-9](?:_?[0-9])*)))|((\\*\\*=?|>>=?|<<=?|!=|//=?|->|[+\\-*/%&@|^=<>]=?|~)|[][(){}]|(\\r?\\n|\\.\\.\\.|[:;.,@]))|((b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)\'[^\\n\'\\\\]*(?:\\\\.[^\\n\'\\\\]*)*\'|(b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)\"[^\\n\"\\\\]*(?:\\\\.[^\\n\"\\\\]*)*\")|\\w+)",
+        );
+        assert_eq!(
+            get_contstr_pattern(),
+            "((b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)\'[^\\n\'\\\\]*(?:\\\\.[^\\n\'\\\\]*)*(\'|\\\\\\r?\\n)|(b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)\"[^\\n\"\\\\]*(?:\\\\.[^\\n\"\\\\]*)*(\"|\\\\\\r?\\n))",
+        );
+        assert_eq!(
+            get_pseudoextras_pattern(),
+            "(\\\\\\r?\\n|\\Z|#[^\\r\\n]*|((b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)\'\'\'|(b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)\"\"\"))",
+        );
+        assert_eq!(
+            get_pseudotoken_pattern(),
+            "[ \\f\\t]*((\\\\\\r?\\n|\\Z|#[^\\r\\n]*|((b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)\'\'\'|(b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)\"\"\"))|(([0-9](?:_?[0-9])*[jJ]|(([0-9](?:_?[0-9])*\\.(?:[0-9](?:_?[0-9])*)?|\\.[0-9](?:_?[0-9])*)([eE][-+]?[0-9](?:_?[0-9])*)?|[0-9](?:_?[0-9])*[eE][-+]?[0-9](?:_?[0-9])*)[jJ])|(([0-9](?:_?[0-9])*\\.(?:[0-9](?:_?[0-9])*)?|\\.[0-9](?:_?[0-9])*)([eE][-+]?[0-9](?:_?[0-9])*)?|[0-9](?:_?[0-9])*[eE][-+]?[0-9](?:_?[0-9])*)|(0[xX](?:_?[0-9a-fA-F])+|0[bB](?:_?[01])+|0[oO](?:_?[0-7])+|(?:0(?:_?0)*|[1-9](?:_?[0-9])*)))|((\\*\\*=?|>>=?|<<=?|!=|//=?|->|[+\\-*/%&@|^=<>]=?|~)|[][(){}]|(\\r?\\n|\\.\\.\\.|[:;.,@]))|((b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)\'[^\\n\'\\\\]*(?:\\\\.[^\\n\'\\\\]*)*(\'|\\\\\\r?\\n)|(b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)\"[^\\n\"\\\\]*(?:\\\\.[^\\n\"\\\\]*)*(\"|\\\\\\r?\\n))|\\w+)",
         );
     }
 
