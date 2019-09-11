@@ -539,17 +539,14 @@ class TestClassDefinition(WithParent1, WithParent2):
 
     def foo():
         return 'bar'
+
+test = 'foo'
 ",
         );
 
         let serialized = serde_json::to_string_pretty(&tokens).unwrap();
 
-        println!("{}", serialized);
-
-        let s = "testing\\n";
-        let v = "tesving\\n";
-
-        println!("{:?}", &s[..4] == &v[..4]);
+        //println!("{}", serialized);
 
         //assert_eq!(
         //    vec![TokenInfo {
