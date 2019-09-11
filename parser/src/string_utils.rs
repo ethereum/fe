@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 /// Iterate over the lines in `input` and include line endings in the results.
 pub fn lines_with_endings<'a>(input: &'a str) -> impl Iterator<Item = &'a str> {
     let mut rest = input;
@@ -16,6 +18,29 @@ pub fn lines_with_endings<'a>(input: &'a str) -> impl Iterator<Item = &'a str> {
         }
         None => None,
     })
+}
+
+/// Strip the characters in the static string `strip` from the right side of the string slice
+/// `input`.
+pub fn rstrip_slice<'a>(input: &'a str, strip: &'static str) -> &'a str {
+    let strip: HashSet<_> = strip.chars().collect();
+
+    let mut end = input.len();
+
+    if let Some(last_val) = input.chars().last() {
+        let mut last = last_val;
+
+        while strip.contains(&last) {
+            end -= last.len_utf8();
+            if let Some(last_val) = input[..end].chars().last() {
+                last = last_val;
+            } else {
+                break;
+            }
+        }
+    }
+
+    &input[..end]
 }
 
 #[cfg(test)]
@@ -89,5 +114,20 @@ here
             "\n",
         ];
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_rstrip_slice() {
+        let examples = vec![
+            (("asdfasdf\r\n", "\r\n"), "asdfasdf"),
+            (("asdfasdf\r\n", "\n"), "asdfasdf\r"),
+            (("asdfasdf\r\n", ""), "asdfasdf\r\n"),
+            (("asdfasdf", "\r\n"), "asdfasdf"),
+            (("", "\r\n"), ""),
+        ];
+        for ((input, strip), expected) in examples {
+            let actual = rstrip_slice(input, strip);
+            assert_eq!(actual, expected);
+        }
     }
 }
