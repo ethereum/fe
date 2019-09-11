@@ -389,7 +389,7 @@ fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
             }
 
             while column < *indents.last().unwrap() {
-                if indents.contains(&column) {
+                if !indents.contains(&column) {
                     return Err("Unindent does not match any outer indentation level".to_string());
                 }
                 indents.pop();
