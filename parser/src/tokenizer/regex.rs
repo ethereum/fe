@@ -119,24 +119,13 @@ pub fn get_stringprefix_pattern() -> String {
 }
 
 // Tail end of ' string
-pub const SINGLE: &str = r###"
-[^'\\]*(?:\\.[^'\\]*)*'
-"###;
-
+pub const SINGLE: &str = "'";
 // Tail end of " string
-pub const DOUBLE: &str = r###"
-[^"\\]*(?:\\.[^"\\]*)*"
-"###;
-
+pub const DOUBLE: &str = "\"";
 // Tail end of ''' string
-pub const SINGLE3: &str = r###"
-[^'\\]*(?:(?:\\.|'(?!''))[^'\\]*)*'''
-"###;
-
+pub const SINGLE3: &str = "'''";
 // Tail end of """ string
-pub const DOUBLE3: &str = r###"
-[^"\\]*(?:(?:\\.|"(?!""))[^"\\]*)*"""
-"###;
+pub const DOUBLE3: &str = "\"\"\"";
 
 /// TRIPLE = group(STRINGPREFIX + "'''", STRINGPREFIX + '"""')
 pub fn get_triple_pattern() -> String {
