@@ -53,8 +53,8 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
     let mut contline: Option<&'a str> = None;
     let mut endprog: Option<&Regex> = None;
 
-    // Token generation loop.  We use the `loop` keyword here so we can hold onto the iterator vars
-    // after the loop finishes.
+    // Token generation loop.  We use the `loop` keyword here (instead of `for (line, lnum) in
+    // ...`) so we can hold onto the iterator vars after the loop finishes.
     let mut line = &input[..1];
     let mut lnum = 0;
     let mut numbered_lines = lines_with_endings(input).zip(1..);
