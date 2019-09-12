@@ -79,7 +79,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                     let end = endmatch.end();
                     pos = end;
                     result.push(TokenInfo {
-                        typ: TokenType::String,
+                        typ: TokenType::STRING,
                         string: concat(contstr.unwrap(), &line[..end]).unwrap(),
                         start: strstart.unwrap(),
                         end: (lnum, end),
@@ -91,7 +91,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                 }
             } else if needcont && !line.ends_with("\\\n") && !line.ends_with("\\\r\n") {
                 result.push(TokenInfo {
-                    typ: TokenType::ErrorToken,
+                    typ: TokenType::ERRORTOKEN,
                     string: concat(contstr_val, line).unwrap(),
                     start: strstart.unwrap(),
                     end: (lnum, line_len),
@@ -143,7 +143,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                         let comment_token_len = comment_token.len();
 
                         result.push(TokenInfo {
-                            typ: TokenType::Comment,
+                            typ: TokenType::COMMENT,
                             string: comment_token,
                             start: (lnum, pos),
                             end: (lnum, pos + comment_token_len),
@@ -168,7 +168,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
             if column > *indents.last().unwrap() {
                 indents.push(column);
                 result.push(TokenInfo {
-                    typ: TokenType::Indent,
+                    typ: TokenType::INDENT,
                     string: &line[..pos],
                     start: (lnum, 0),
                     end: (lnum, pos),
@@ -182,7 +182,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                 }
                 indents.pop();
                 result.push(TokenInfo {
-                    typ: TokenType::Dedent,
+                    typ: TokenType::DEDENT,
                     string: &line[line_len..],
                     start: (lnum, pos),
                     end: (lnum, pos),
@@ -211,7 +211,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
 
                 if initial.is_ascii_digit() || (initial == '.' && token != "." && token != "...") {
                     result.push(TokenInfo {
-                        typ: TokenType::Number,
+                        typ: TokenType::NUMBER,
                         string: token,
                         start: spos,
                         end: epos,
@@ -228,7 +228,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                         });
                     } else {
                         result.push(TokenInfo {
-                            typ: TokenType::Newline,
+                            typ: TokenType::NEWLINE,
                             string: token,
                             start: spos,
                             end: epos,
@@ -237,7 +237,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                     }
                 } else if initial == '#' {
                     result.push(TokenInfo {
-                        typ: TokenType::Comment,
+                        typ: TokenType::COMMENT,
                         string: token,
                         start: spos,
                         end: epos,
@@ -251,7 +251,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                         let token = &line[start..pos];
 
                         result.push(TokenInfo {
-                            typ: TokenType::String,
+                            typ: TokenType::STRING,
                             string: token,
                             start: spos,
                             end: (lnum, pos),
@@ -276,7 +276,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                         needcont = true;
                     } else {
                         result.push(TokenInfo {
-                            typ: TokenType::String,
+                            typ: TokenType::STRING,
                             string: token,
                             start: spos,
                             end: epos,
@@ -285,7 +285,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                     }
                 } else if is_identifier_char(initial) {
                     result.push(TokenInfo {
-                        typ: TokenType::Name,
+                        typ: TokenType::NAME,
                         string: token,
                         start: spos,
                         end: epos,
@@ -300,7 +300,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                         parenlev -= 1;
                     }
                     result.push(TokenInfo {
-                        typ: TokenType::Op,
+                        typ: TokenType::OP,
                         string: token,
                         start: spos,
                         end: epos,
@@ -309,7 +309,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                 }
             } else {
                 result.push(TokenInfo {
-                    typ: TokenType::ErrorToken,
+                    typ: TokenType::ERRORTOKEN,
                     string: &line[pos..pos + 1],
                     start: (lnum, pos),
                     end: (lnum, pos + 1),
@@ -332,7 +332,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
         let last_char = line.chars().last().unwrap();
         if last_char != '\r' && last_char != '\n' {
             result.push(TokenInfo {
-                typ: TokenType::Newline,
+                typ: TokenType::NEWLINE,
                 string: empty_end_slice,
                 start: (lnum - 1, line.len()),
                 end: (lnum - 1, line.len() + 1),
@@ -342,7 +342,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
     }
     for _ in indents.iter().skip(1) {
         result.push(TokenInfo {
-            typ: TokenType::Dedent,
+            typ: TokenType::DEDENT,
             string: empty_end_slice,
             start: (lnum, 0),
             end: (lnum, 0),
@@ -350,7 +350,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
         });
     }
     result.push(TokenInfo {
-        typ: TokenType::EndMarker,
+        typ: TokenType::ENDMARKER,
         string: empty_end_slice,
         start: (lnum, 0),
         end: (lnum, 0),
