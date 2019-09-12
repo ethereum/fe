@@ -53,8 +53,22 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
     let mut contline: Option<&'a str> = None;
     let mut endprog: Option<&Regex> = None;
 
-    // Token generation loop
-    for (line, lnum) in lines_with_endings(input).zip(1..) {
+    // Token generation loop.  We use the `loop` keyword here so we can hold onto the iterator vars
+    // after the loop finishes.
+    let mut line = &input[..1];
+    let mut lnum = 0;
+    let mut numbered_lines = lines_with_endings(input).zip(1..);
+    loop {
+        let next = numbered_lines.next();
+        // We use this guard style of exiting to avoid indenting the entire loop body
+        if next.is_none() {
+            break;
+        }
+        let next_val = next.unwrap();
+
+        line = next_val.0;
+        lnum = next_val.1;
+
         let mut pos: usize = 0;
         let line_len: usize = line.len();
 
@@ -309,6 +323,39 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
     if let Some(_) = contstr {
         return Err("EOF in multi-line string".to_string());
     }
+
+    // We use this zero-length slice as the ending content for remaining tokens.  This is *just in
+    // case* anyone actually cares that the location of the pointer makes any kind of sense.
+    let empty_end_slice = &input[input.len()..];
+
+    if !line.is_empty() {
+        let last_char = line.chars().last().unwrap();
+        if last_char != '\r' && last_char != '\n' {
+            result.push(TokenInfo {
+                typ: TokenType::Newline,
+                string: empty_end_slice,
+                start: (lnum - 1, line.len()),
+                end: (lnum - 1, line.len() + 1),
+                line: empty_end_slice,
+            });
+        }
+    }
+    for _ in indents.iter().skip(1) {
+        result.push(TokenInfo {
+            typ: TokenType::Dedent,
+            string: empty_end_slice,
+            start: (lnum, 0),
+            end: (lnum, 0),
+            line: empty_end_slice,
+        });
+    }
+    result.push(TokenInfo {
+        typ: TokenType::EndMarker,
+        string: empty_end_slice,
+        start: (lnum, 0),
+        end: (lnum, 0),
+        line: empty_end_slice,
+    });
 
     Ok(result)
 }
