@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet};
+
 use regex::Regex;
 
 fn group(choices: &[&str]) -> String {
@@ -82,6 +84,34 @@ pub const VALID_STRING_PREFIXES: &[&str] = &[
     "b", "B", "r", "R", "u", "U", "f", "F", "br", "BR", "bR", "Br", "fr", "FR", "fR", "Fr", "rb",
     "RB", "Rb", "rB", "rf", "RF", "Rf", "rF",
 ];
+
+/// Get a hash set containing all possible initial single-quoted string delimiters.
+pub fn get_single_quote_set() -> HashSet<String> {
+    let mut set = HashSet::new();
+
+    set.insert("\"".to_string());
+    set.insert("'".to_string());
+    for prefix in VALID_STRING_PREFIXES {
+        set.insert([*prefix, "\""].concat());
+        set.insert([*prefix, "'"].concat());
+    }
+
+    set
+}
+
+/// Get a hash set containing all possible initial triple-quoted string delimiters.
+pub fn get_triple_quote_set() -> HashSet<String> {
+    let mut set = HashSet::new();
+
+    set.insert("\"\"\"".to_string());
+    set.insert("'''".to_string());
+    for prefix in VALID_STRING_PREFIXES {
+        set.insert([*prefix, "\"\"\""].concat());
+        set.insert([*prefix, "'''"].concat());
+    }
+
+    set
+}
 
 /// STRINGPREFIX = group(VALID_STRING_PREFIXES)
 pub fn get_stringprefix_pattern() -> String {
