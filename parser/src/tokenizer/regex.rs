@@ -1,6 +1,4 @@
-use std::collections::{HashMap, HashSet};
-
-use regex::Regex;
+use std::collections::HashSet;
 
 fn group(choices: &[&str]) -> String {
     ["(", &choices.join("|"), ")"].concat()
@@ -237,6 +235,8 @@ pub fn get_pseudotoken_pattern() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use regex::Regex;
 
     #[test]
     fn test_get_regex_patterns() {

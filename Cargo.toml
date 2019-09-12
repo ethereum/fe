@@ -15,5 +15,3 @@ members = [".", "parser"]
 
 [dependencies]
 rust-vyper-parser = {path = "parser", version = "0.1.0"}
-num-bigint = "0.2"
-num-traits = "0.2"
