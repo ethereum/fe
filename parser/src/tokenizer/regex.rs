@@ -234,20 +234,6 @@ pub fn get_pseudotoken_pattern() -> String {
     .concat()
 }
 
-pub fn get_string_end_regex(token: &str) -> Regex {
-    if token.ends_with("\"\"\"") {
-        Regex::new(DOUBLE3).unwrap()
-    } else if token.ends_with("'''") {
-        Regex::new(SINGLE3).unwrap()
-    } else if token.ends_with("\"") {
-        Regex::new(DOUBLE).unwrap()
-    } else if token.ends_with("'") {
-        Regex::new(SINGLE).unwrap()
-    } else {
-        panic!("Unrecognized quote style");
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
