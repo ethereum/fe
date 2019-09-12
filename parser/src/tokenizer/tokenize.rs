@@ -377,18 +377,11 @@ class TestClassDefinition(WithParent1, WithParent2):
 
 test = 'foo'
 ",
-        );
+        )
+        .unwrap();
 
         let serialized = serde_json::to_string_pretty(&tokens).unwrap();
 
-        //assert_eq!(
-        //    vec![TokenInfo {
-        //        typ: TokenType::Comment,
-        //        string: "Test",
-        //        start: 0,
-        //        end: 4,
-        //        line: 0,
-        //    }]
-        //);
+        println!("{}", serialized);
     }
 }
