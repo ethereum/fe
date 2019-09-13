@@ -22,7 +22,7 @@ pub fn lines_with_endings<'a>(input: &'a str) -> impl Iterator<Item = &'a str> {
 
 /// Strip the characters in the static string `strip` from the right side of the string slice
 /// `input`.
-pub fn rstrip_slice<'a>(input: &'a str, strip: &'static str) -> &'a str {
+pub fn rstrip_slice<'a>(input: &'a str, strip: &str) -> &'a str {
     let strip: HashSet<_> = strip.chars().collect();
 
     let mut end = input.len();
