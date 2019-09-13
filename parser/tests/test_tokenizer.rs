@@ -128,17 +128,15 @@ fn get_rust_token_json(input: &str) -> String {
 
 #[test]
 fn test_tokenize() {
+    // Load test python file
     let test_py = include_str!("fixtures/tokenizer/test.py");
 
-    // Generate token serialization using rust
-    let actual = get_rust_token_json(test_py);
-
-    // Generate known-good token serialization using python
+    // Load python token helpers
     let gil = Python::acquire_gil();
     let py = gil.python();
     let token_helpers = TokenHelpers::new(py);
 
+    let actual = get_rust_token_json(test_py);
     let expected = token_helpers.get_token_json(test_py);
-
     assert_strings_eq!(actual, expected);
 }
