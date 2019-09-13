@@ -1,15 +1,15 @@
 from collections import OrderedDict
+from io import BytesIO
 import json
 from tokenize import tokenize
 from token import tok_name, ENCODING
 
 
-def file_tokens(path):
+def tokens(source_code: bytes):
     """
-    Return an iterator over the tokens in a python source file.
+    Return an iterator over the tokens in a python source string.
     """
-    with open(path, 'rb') as f:
-        return tokenize(f.readline)
+    return tokenize(BytesIO(source_code).readline)
 
 
 def get_token_dict(tok):
@@ -25,18 +25,17 @@ def get_token_dict(tok):
     ))
 
 
-def get_token_json(path):
+def get_token_json(source_code: bytes) -> str:
     """
-    Return a JSON representation of the tokens in the python source file at
-    ``path``.
+    Return a JSON representation of the tokens in a python source string.
     """
-    tokens = file_tokens(path)
+    toks = tokens(source_code)
 
     # Discard the initial ENCODING token
-    tok = next(tokens)
+    tok = next(toks)
     assert tok.type == ENCODING
 
     return json.dumps(
-        map(get_token_dict, tokens),
+        [get_token_dict(tok) for tok in toks],
         indent=2,
     )
