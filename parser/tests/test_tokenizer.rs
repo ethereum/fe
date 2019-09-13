@@ -17,36 +17,26 @@ impl Diff {
     }
 }
 
+fn prefix_lines(prefix: &str, lines: &str) -> String {
+    lines
+        .lines()
+        .map(|i| [prefix, i].concat())
+        .collect::<Vec<String>>()
+        .join("\n")
+}
+
 impl fmt::Display for Diff {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for d in &self.0.diffs {
             match *d {
                 Difference::Same(ref x) => {
-                    let lines = x
-                        .lines()
-                        .map(|i| [" ", i].concat())
-                        .collect::<Vec<String>>()
-                        .join("\n");
-
-                    write!(f, "{}{}", lines, self.0.split)?;
+                    write!(f, "{}{}", prefix_lines(" ", x), self.0.split)?;
                 }
                 Difference::Add(ref x) => {
-                    let lines = x
-                        .lines()
-                        .map(|i| ["+", i].concat())
-                        .collect::<Vec<String>>()
-                        .join("\n");
-
-                    write!(f, "\x1b[92m{}\x1b[0m{}", lines, self.0.split)?;
+                    write!(f, "\x1b[92m{}\x1b[0m{}", prefix_lines("+", x), self.0.split)?;
                 }
                 Difference::Rem(ref x) => {
-                    let lines = x
-                        .lines()
-                        .map(|i| ["-", i].concat())
-                        .collect::<Vec<String>>()
-                        .join("\n");
-
-                    write!(f, "\x1b[91m{}\x1b[0m{}", lines, self.0.split)?;
+                    write!(f, "\x1b[91m{}\x1b[0m{}", prefix_lines("-", x), self.0.split)?;
                 }
             }
         }
@@ -61,7 +51,7 @@ macro_rules! assert_strings_eq {
     ($left:expr , $right:expr) => ({
         match (&($left), &($right)) {
             (left_val, right_val) => {
-                if !(*left_val == *right_val) {
+                if *left_val != *right_val {
                     panic!(
                         "assertion failed: `(left == right)`\ndiff:\n{}",
                         Diff::new(left_val, right_val),
@@ -73,7 +63,7 @@ macro_rules! assert_strings_eq {
     ($left:expr , $right:expr, $($arg:tt)*) => ({
         match (&($left), &($right)) {
             (left_val, right_val) => {
-                if !(*left_val == *right_val) {
+                if *left_val != *right_val {
                     panic!(
                         "assertion failed: `(left == right)`: {}\ndiff:\n{}",
                         format_args!($($arg)*),
