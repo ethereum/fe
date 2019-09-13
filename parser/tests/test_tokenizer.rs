@@ -77,37 +77,68 @@ macro_rules! assert_strings_eq {
     });
 }
 
-/// Load the `token_helpers.py` module for generating tokenizations using the python std lib
-/// `tokenize` module.
-fn get_token_helpers<'p>(py: Python<'p>) -> PyResult<&'p PyModule> {
-    PyModule::from_code(
-        py,
-        include_str!("token_helpers.py"),
-        "token_helpers.py",
-        "token_helpers",
-    )
+pub struct TokenHelpers<'a> {
+    py: Python<'a>,
+    module: &'a PyModule,
+}
+
+impl<'a> TokenHelpers<'a> {
+    fn new(py: Python<'a>) -> Self {
+        let result = PyModule::from_code(
+            py,
+            include_str!("token_helpers.py"),
+            "token_helpers.py",
+            "token_helpers",
+        );
+
+        match result {
+            Err(e) => {
+                e.print(py);
+                panic!("Python exception when loading token_helpers.py");
+            }
+            Ok(module) => Self { py, module },
+        }
+    }
+
+    fn get_token_json(&self, source: &str) -> String {
+        let bytes = PyBytes::new(self.py, source.as_bytes());
+        let result = self.module.call("get_token_json", (bytes,), None);
+
+        match result {
+            Err(e) => {
+                e.print(self.py);
+                panic!("Python exception when calling get_token_json");
+            }
+            Ok(any) => match any.extract() {
+                Err(e) => {
+                    e.print(self.py);
+                    panic!("Python exception when converting result to string");
+                }
+                Ok(string) => string,
+            },
+        }
+    }
+}
+
+fn get_rust_tokenization(input: &str) -> String {
+    let tokens = tokenize(input).unwrap();
+    let serialized = serde_json::to_string_pretty(&tokens).unwrap();
+    serialized
 }
 
 #[test]
 fn test_tokenize() {
-    // Generate tokenization using rust
     let test_py = include_str!("fixtures/tokenizer/test.py");
-    let test_py_tokens = tokenize(test_py).unwrap();
-    let actual_token_json = serde_json::to_string_pretty(&test_py_tokens).unwrap();
 
-    // Generate known-good tokenization using python
+    // Generate token serialization using rust
+    let actual = get_rust_tokenization(test_py);
+
+    // Generate known-good token serialization using python
     let gil = Python::acquire_gil();
     let py = gil.python();
-    let token_helpers = get_token_helpers(py).unwrap();
+    let token_helpers = TokenHelpers::new(py);
 
-    let source = PyBytes::new(py, test_py.as_bytes());
-    let result = token_helpers.call("get_token_json", (source,), None);
+    let expected = token_helpers.get_token_json(test_py);
 
-    match result {
-        Ok(py_string) => {
-            let expected_token_json: String = py_string.extract().unwrap();
-            assert_strings_eq!(actual_token_json, expected_token_json);
-        }
-        Err(py_err) => py_err.print(py),
-    }
+    assert_strings_eq!(actual, expected);
 }
