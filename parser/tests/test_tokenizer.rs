@@ -120,7 +120,7 @@ impl<'a> TokenHelpers<'a> {
     }
 }
 
-fn get_rust_tokenization(input: &str) -> String {
+fn get_rust_token_json(input: &str) -> String {
     let tokens = tokenize(input).unwrap();
     let serialized = serde_json::to_string_pretty(&tokens).unwrap();
     serialized
@@ -131,7 +131,7 @@ fn test_tokenize() {
     let test_py = include_str!("fixtures/tokenizer/test.py");
 
     // Generate token serialization using rust
-    let actual = get_rust_tokenization(test_py);
+    let actual = get_rust_token_json(test_py);
 
     // Generate known-good token serialization using python
     let gil = Python::acquire_gil();
