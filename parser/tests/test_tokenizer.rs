@@ -129,7 +129,7 @@ fn get_rust_token_json(input: &str) -> String {
 #[test]
 fn test_tokenize() {
     let examples = &[
-        ("test.py", include_str!("fixtures/tokenizer/test.py")),
+        ("basic.py", include_str!("fixtures/tokenizer/basic.py")),
         (
             "triple_quote_strings.py",
             include_str!("fixtures/tokenizer/triple_quote_strings.py"),
