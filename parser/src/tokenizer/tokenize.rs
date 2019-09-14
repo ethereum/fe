@@ -77,21 +77,20 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
 
         if let Some(contstr_val) = contstr {
             // Continued string
-            if let Some(engprog_val) = endprog {
-                if let Some(endmatch) = engprog_val.find(line) {
-                    let tok_end = endmatch.end();
-                    pos = tok_end;
-                    result.push(TokenInfo {
-                        typ: STRING,
-                        string: &input[contstr_val..line_start + tok_end],
-                        start: strstart.unwrap(),
-                        end: (lnum, tok_end),
-                        line: &input[contline.unwrap()..line_end],
-                    });
-                    contstr = None;
-                    needcont = false;
-                    contline = None;
-                }
+            let endprog_val = endprog.unwrap();
+            if let Some(endmatch) = endprog_val.find(line) {
+                let tok_end = endmatch.end();
+                pos = tok_end;
+                result.push(TokenInfo {
+                    typ: STRING,
+                    string: &input[contstr_val..line_start + tok_end],
+                    start: strstart.unwrap(),
+                    end: (lnum, tok_end),
+                    line: &input[contline.unwrap()..line_end],
+                });
+                contstr = None;
+                needcont = false;
+                contline = None;
             } else if needcont && !line.ends_with("\\\n") && !line.ends_with("\\\r\n") {
                 result.push(TokenInfo {
                     typ: ERRORTOKEN,
