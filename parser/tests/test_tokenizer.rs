@@ -48,7 +48,7 @@ impl fmt::Display for Diff {
 /// Compare the given strings and panic when not equal with a colorized line diff.
 macro_rules! assert_strings_eq {
     ($left:expr , $right:expr,) => ({
-        assert_eq!($left, $right)
+        assert_strings_eq!($left, $right)
     });
     ($left:expr , $right:expr) => ({
         match (&($left), &($right)) {
