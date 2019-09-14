@@ -52,14 +52,14 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
     let mut contline_start: Option<usize> = None;
     let mut contstr_end_re: Option<&Regex> = None;
 
-    // Token generation loop.  We use the `loop` keyword here (instead of `for (line, lnum) in
+    // Token generation loop.  We use the `loop` keyword here (instead of `for (line, line_num) in
     // ...`) so we can hold onto the iterator vars after the loop finishes.
     let mut line = &input[..1];
-    let mut lnum = 0;
+    let mut line_num = 0;
     let mut lines = lines_with_endings(input);
     loop {
         let next = lines.next();
-        lnum += 1;
+        line_num += 1;
         // We use this guard style of exiting to avoid indenting the entire loop body
         if next.is_none() {
             break;
@@ -80,13 +80,15 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
             if let Some(endmatch) = contstr_end_re.unwrap().find(line) {
                 let tok_end = endmatch.end();
                 line_pos = tok_end;
+
                 result.push(TokenInfo {
                     typ: STRING,
                     string: &input[contstr_start_val..line_start + tok_end],
                     start: contstr_start_pos.unwrap(),
-                    end: (lnum, tok_end),
+                    end: (line_num, tok_end),
                     line: &input[contline_start.unwrap()..line_end],
                 });
+
                 contstr_start = None;
                 needcont = false;
                 contline_start = None;
@@ -95,11 +97,13 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                     typ: ERRORTOKEN,
                     string: &input[contstr_start_val..line_end],
                     start: contstr_start_pos.unwrap(),
-                    end: (lnum, line_len),
+                    end: (line_num, line_len),
                     line: &input[contline_start.unwrap()..line_start],
                 });
+
                 contstr_start = None;
                 contline_start = None;
+
                 continue;
             } else {
                 continue;
@@ -145,8 +149,8 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                         result.push(TokenInfo {
                             typ: COMMENT,
                             string: comment_token,
-                            start: (lnum, line_pos),
-                            end: (lnum, line_pos + comment_token_len),
+                            start: (line_num, line_pos),
+                            end: (line_num, line_pos + comment_token_len),
                             line: line,
                         });
 
@@ -156,8 +160,8 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                     result.push(TokenInfo {
                         typ: NL,
                         string: &line[line_pos..],
-                        start: (lnum, line_pos),
-                        end: (lnum, line_len),
+                        start: (line_num, line_pos),
+                        end: (line_num, line_len),
                         line: line,
                     });
 
@@ -170,8 +174,8 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                 result.push(TokenInfo {
                     typ: INDENT,
                     string: &line[..line_pos],
-                    start: (lnum, 0),
-                    end: (lnum, line_pos),
+                    start: (line_num, 0),
+                    end: (line_num, line_pos),
                     line: line,
                 });
             }
@@ -184,8 +188,8 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                 result.push(TokenInfo {
                     typ: DEDENT,
                     string: &line[line_len..],
-                    start: (lnum, line_pos),
-                    end: (lnum, line_pos),
+                    start: (line_num, line_pos),
+                    end: (line_num, line_pos),
                     line: line,
                 });
             }
@@ -199,8 +203,8 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                 let tok_start = line_pos + capture.start();
                 let tok_end = line_pos + capture.end();
 
-                let spos = (lnum, tok_start);
-                let epos = (lnum, tok_end);
+                let spos = (line_num, tok_start);
+                let epos = (line_num, tok_end);
                 line_pos = tok_end;
 
                 if tok_start == tok_end {
@@ -255,11 +259,11 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                             typ: STRING,
                             string: token,
                             start: spos,
-                            end: (lnum, line_pos),
+                            end: (line_num, line_pos),
                             line: line,
                         });
                     } else {
-                        contstr_start_pos = Some((lnum, tok_start));
+                        contstr_start_pos = Some((line_num, tok_start));
                         contstr_start = Some(line_start + tok_start);
                         contline_start = Some(line_start);
                         break;
@@ -271,7 +275,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                     if token.chars().last().unwrap() == '\n' {
                         contstr_end_re = Some(get_contstr_end_re(token));
 
-                        contstr_start_pos = Some((lnum, tok_start));
+                        contstr_start_pos = Some((line_num, tok_start));
                         contstr_start = Some(line_start + tok_start);
                         contline_start = Some(line_start);
                         needcont = true;
@@ -312,8 +316,8 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                 result.push(TokenInfo {
                     typ: ERRORTOKEN,
                     string: &line[line_pos..line_pos + 1],
-                    start: (lnum, line_pos),
-                    end: (lnum, line_pos + 1),
+                    start: (line_num, line_pos),
+                    end: (line_num, line_pos + 1),
                     line: line,
                 });
                 line_pos += 1;
@@ -335,8 +339,8 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
             result.push(TokenInfo {
                 typ: NEWLINE,
                 string: empty_end_slice,
-                start: (lnum - 1, line.len()),
-                end: (lnum - 1, line.len() + 1),
+                start: (line_num - 1, line.len()),
+                end: (line_num - 1, line.len() + 1),
                 line: empty_end_slice,
             });
         }
@@ -345,16 +349,16 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
         result.push(TokenInfo {
             typ: DEDENT,
             string: empty_end_slice,
-            start: (lnum, 0),
-            end: (lnum, 0),
+            start: (line_num, 0),
+            end: (line_num, 0),
             line: empty_end_slice,
         });
     }
     result.push(TokenInfo {
         typ: ENDMARKER,
         string: empty_end_slice,
-        start: (lnum, 0),
-        end: (lnum, 0),
+        start: (line_num, 0),
+        end: (line_num, 0),
         line: empty_end_slice,
     });
 
