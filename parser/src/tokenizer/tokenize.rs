@@ -46,19 +46,20 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
     // State vars
     let mut parenlev: usize = 0;
     let mut continued: bool = false;
-    let mut needcont: bool = false;
     let mut indents: Vec<usize> = vec![0];
 
     let mut contstr_start_pos: Option<Position> = None;
     let mut contstr_start: Option<usize> = None;
     let mut contline_start: Option<usize> = None;
     let mut contstr_end_re: Option<&Regex> = None;
+    let mut needcont: bool = false;
 
     // Token generation loop.  We use the `loop` keyword here (instead of `for (line, line_num) in
     // ...`) so we can hold onto the iterator vars after the loop finishes.
     let mut line = &input[..1];
     let mut line_num = 0;
     let mut lines = lines_with_endings(input);
+
     loop {
         let next = lines.next();
         line_num += 1;
@@ -92,8 +93,9 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                 });
 
                 contstr_start = None;
-                needcont = false;
                 contline_start = None;
+
+                needcont = false;
             } else if needcont && !line.ends_with("\\\n") && !line.ends_with("\\\r\n") {
                 result.push(TokenInfo {
                     typ: ERRORTOKEN,
@@ -280,6 +282,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                         contstr_start_pos = Some((line_num, tok_start));
                         contstr_start = Some(line_start + tok_start);
                         contline_start = Some(line_start);
+
                         needcont = true;
                     } else {
                         result.push(TokenInfo {
