@@ -3,8 +3,8 @@ use regex::Regex;
 use crate::parsers::is_identifier_char;
 use crate::string_utils::{lines_with_endings, lstrip_slice, rstrip_slice};
 use crate::tokenizer::regex::{
-    get_pseudotoken_pattern, get_single_quote_set, get_triple_quote_set, DOUBLE, DOUBLE3, SINGLE,
-    SINGLE3,
+    compile_anchored, get_pseudotoken_pattern, get_single_quote_set, get_triple_quote_set, DOUBLE,
+    DOUBLE3, SINGLE, SINGLE3,
 };
 use crate::tokenizer::types::{Position, TokenInfo, TokenType::*};
 
@@ -12,7 +12,7 @@ pub const TABSIZE: usize = 8;
 
 pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
     // Static values/helpers
-    let pseudo_token_re = Regex::new(&get_pseudotoken_pattern()).unwrap();
+    let pseudo_token_re = compile_anchored(&get_pseudotoken_pattern());
 
     let triple_quoted = get_triple_quote_set();
     let single_quoted = get_single_quote_set();

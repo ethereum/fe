@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use regex::Regex;
+
 fn group(choices: &[&str]) -> String {
     ["(", &choices.join("|"), ")"].concat()
 }
@@ -230,6 +232,13 @@ pub fn get_pseudotoken_pattern() -> String {
         ]),
     ]
     .concat()
+}
+
+/// Compile the given regex with the "beginning of text" anchor prepended.  This forces the regex
+/// to match at the *beginning of a string* (as in python's re.match method) instead of anywhere in
+/// the string.
+pub fn compile_anchored(re: &str) -> Regex {
+    Regex::new(&[r"\A", re].concat()).unwrap()
 }
 
 #[cfg(test)]
