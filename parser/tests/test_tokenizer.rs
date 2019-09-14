@@ -142,6 +142,10 @@ fn test_tokenize() {
             "validator_registration.v.py",
             include_str!("fixtures/tokenizer/validator_registration.v.py"),
         ),
+        (
+            "tokenize.py",
+            include_str!("fixtures/tokenizer/tokenize.py"),
+        ),
     ];
 
     // Load python token helpers
