@@ -23,7 +23,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
     let single_re = Regex::new(SINGLE).unwrap();
 
     // The ordering of checks matters here.  We need to eliminate the possibility of triple quote
-    // endings before looking for single quote endings.
+    // delimiters before looking for single quote delimiters.
     let get_contstr_end_re = |token: &str| {
         if token.starts_with("\"\"\"") {
             &double3_re
