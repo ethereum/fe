@@ -142,12 +142,12 @@ fn test_tokenize() {
     let token_helpers = TokenHelpers::new(py);
 
     for (filename, content) in examples {
-        let actual = get_rust_token_json(content);
         let expected = token_helpers.get_token_json(content);
+        let actual = get_rust_token_json(content);
 
         assert_strings_eq!(
-            actual,
             expected,
+            actual,
             "Tokenizations didn't match for {}",
             filename
         );
