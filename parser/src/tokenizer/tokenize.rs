@@ -84,8 +84,8 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                         line: concat(contline.unwrap(), line).unwrap(),
                     });
                     contstr = None;
-                    contline = None;
                     needcont = false;
+                    contline = None;
                 }
             } else if needcont && !line.ends_with("\\\n") && !line.ends_with("\\\r\n") {
                 result.push(TokenInfo {
@@ -134,7 +134,8 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                 break;
             }
 
-            if let Some(c) = line[pos..].chars().next() {
+            {
+                let c = line[pos..].chars().next().unwrap();
                 if c == '#' || c == '\r' || c == '\n' {
                     if c == '#' {
                         let comment_token = rstrip_slice(&line[pos..], "\r\n");
