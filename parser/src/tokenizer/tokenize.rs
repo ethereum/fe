@@ -329,6 +329,10 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
         return Err("EOF in multi-line string".to_string());
     }
 
+    if continued {
+        return Err("EOF in multi-line statement".to_string());
+    }
+
     // We use this zero-length slice as the ending content for remaining tokens.  This is *just in
     // case* anyone actually cares that the location of the pointer makes any kind of sense.
     let empty_end_slice = &input[input.len()..];
