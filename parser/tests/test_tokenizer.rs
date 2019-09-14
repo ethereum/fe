@@ -128,15 +128,28 @@ fn get_rust_token_json(input: &str) -> String {
 
 #[test]
 fn test_tokenize() {
-    // Load test python file
-    let test_py = include_str!("fixtures/tokenizer/test.py");
+    let examples = &[
+        ("test.py", include_str!("fixtures/tokenizer/test.py")),
+        (
+            "triple_quote_strings.py",
+            include_str!("fixtures/tokenizer/triple_quote_strings.py"),
+        ),
+    ];
 
     // Load python token helpers
     let gil = Python::acquire_gil();
     let py = gil.python();
     let token_helpers = TokenHelpers::new(py);
 
-    let actual = get_rust_token_json(test_py);
-    let expected = token_helpers.get_token_json(test_py);
-    assert_strings_eq!(actual, expected);
+    for (filename, content) in examples {
+        let actual = get_rust_token_json(content);
+        let expected = token_helpers.get_token_json(content);
+
+        assert_strings_eq!(
+            actual,
+            expected,
+            "Tokenizations didn't match for {}",
+            filename
+        );
+    }
 }
