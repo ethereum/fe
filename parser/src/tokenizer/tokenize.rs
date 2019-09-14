@@ -1,5 +1,4 @@
 use regex::Regex;
-use str_concat::concat;
 
 use crate::parsers::is_identifier_char;
 use crate::string_utils::{lines_with_endings, rstrip_slice};
@@ -49,8 +48,8 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
     let mut indents: Vec<usize> = vec![0];
 
     let mut strstart: Option<Position> = None;
-    let mut contstr: Option<&'a str> = None;
-    let mut contline: Option<&'a str> = None;
+    let mut contstr: Option<usize> = None;
+    let mut contline: Option<usize> = None;
     let mut endprog: Option<&Regex> = None;
 
     // Token generation loop.  We use the `loop` keyword here (instead of `for (line, lnum) in
@@ -65,8 +64,14 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
         if next.is_none() {
             break;
         }
-        line = next.unwrap().0;
 
+        // Get current line and line offsets
+        let next_unwrap = next.unwrap();
+        line = next_unwrap.0;
+        let line_start = next_unwrap.1;
+        let line_end = next_unwrap.2;
+
+        // Set parsing position relative to this line
         let mut pos: usize = 0;
         let line_len: usize = line.len();
 
@@ -74,14 +79,14 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
             // Continued string
             if let Some(engprog_val) = endprog {
                 if let Some(endmatch) = engprog_val.find(line) {
-                    let end = endmatch.end();
-                    pos = end;
+                    let tok_end = endmatch.end();
+                    pos = tok_end;
                     result.push(TokenInfo {
                         typ: STRING,
-                        string: concat(contstr.unwrap(), &line[..end]).unwrap(),
+                        string: &input[contstr_val..line_start + tok_end],
                         start: strstart.unwrap(),
-                        end: (lnum, end),
-                        line: concat(contline.unwrap(), line).unwrap(),
+                        end: (lnum, tok_end),
+                        line: &input[contline.unwrap()..line_end],
                     });
                     contstr = None;
                     needcont = false;
@@ -90,17 +95,15 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
             } else if needcont && !line.ends_with("\\\n") && !line.ends_with("\\\r\n") {
                 result.push(TokenInfo {
                     typ: ERRORTOKEN,
-                    string: concat(contstr_val, line).unwrap(),
+                    string: &input[contstr_val..line_end],
                     start: strstart.unwrap(),
                     end: (lnum, line_len),
-                    line: contline.unwrap(),
+                    line: &input[contline.unwrap()..line_start],
                 });
                 contstr = None;
                 contline = None;
                 continue;
             } else {
-                contstr = Some(concat(contstr_val, line).unwrap());
-                contline = Some(concat(contline.unwrap(), line).unwrap());
                 continue;
             }
         } else if parenlev == 0 && !continued {
@@ -259,8 +262,8 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                         });
                     } else {
                         strstart = Some((lnum, tok_start));
-                        contstr = Some(&line[tok_start..]);
-                        contline = Some(line);
+                        contstr = Some(line_start + tok_start);
+                        contline = Some(line_start);
                         break;
                     }
                 } else if single_quoted.contains(&initial.to_string())
@@ -271,8 +274,8 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                         endprog = Some(get_endprog(token));
 
                         strstart = Some((lnum, tok_start));
-                        contstr = Some(&line[tok_start..]);
-                        contline = Some(&line);
+                        contstr = Some(line_start + tok_start);
+                        contline = Some(line_start);
                         needcont = true;
                     } else {
                         result.push(TokenInfo {
