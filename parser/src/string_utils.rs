@@ -1,20 +1,31 @@
 use std::collections::HashSet;
 
-/// Iterate over the lines in `input` and include line endings in the results.
-pub fn lines_with_endings<'a>(input: &'a str) -> impl Iterator<Item = &'a str> {
-    let mut rest = input;
+/// Iterate over the lines in `buf` and include line endings in the results.  Also, provide byte
+/// offsets of line beginnings and endings.
+pub fn lines_with_endings<'a>(buf: &'a str) -> impl Iterator<Item = (&'a str, usize, usize)> {
+    let mut rest = buf;
+    let mut rest_offset = 0;
 
     std::iter::from_fn(move || match rest.find('\n') {
         Some(i) => {
+            let start = rest_offset;
             let end = i + 1;
             let line = &rest[..end];
+
             rest = &rest[end..];
-            Some(line)
+            rest_offset += end;
+
+            Some((line, start, rest_offset))
         }
         None if !rest.is_empty() => {
+            let start = rest_offset;
+            let end = rest.len();
             let line = rest;
-            rest = &rest[rest.len()..];
-            Some(line)
+
+            rest = &rest[end..];
+            rest_offset += end;
+
+            Some((line, start, rest_offset))
         }
         None => None,
     })
@@ -52,13 +63,13 @@ mod tests {
         // Empty string
         let input = r"";
         let actual: Vec<_> = lines_with_endings(input).collect();
-        let expected: Vec<&'static str> = Vec::new();
+        let expected: Vec<(&'static str, usize, usize)> = Vec::new();
         assert_eq!(actual, expected);
 
         // Single line
         let input = r"testing";
         let actual: Vec<_> = lines_with_endings(input).collect();
-        let expected = vec!["testing"];
+        let expected = vec![("testing", 0, 7)];
         assert_eq!(actual, expected);
 
         // No newline at start or end
@@ -67,7 +78,12 @@ the
 lines 
 here";
         let actual: Vec<_> = lines_with_endings(input).collect();
-        let expected = vec!["testing\n", "the\n", "lines \n", "here"];
+        let expected = vec![
+            ("testing\n", 0, 8),
+            ("the\n", 8, 12),
+            ("lines \n", 12, 19),
+            ("here", 19, 23),
+        ];
         assert_eq!(actual, expected);
 
         // Newline at start only
@@ -77,7 +93,13 @@ the
 lines 
 here";
         let actual: Vec<_> = lines_with_endings(input).collect();
-        let expected = vec!["\n", "testing\n", "the\n", "lines \n", "here"];
+        let expected = vec![
+            ("\n", 0, 1),
+            ("testing\n", 1, 9),
+            ("the\n", 9, 13),
+            ("lines \n", 13, 20),
+            ("here", 20, 24),
+        ];
         assert_eq!(actual, expected);
 
         // Newline at end only
@@ -87,7 +109,12 @@ lines
 here
 ";
         let actual: Vec<_> = lines_with_endings(input).collect();
-        let expected = vec!["testing\n", "the\n", "lines \n", "here\n"];
+        let expected = vec![
+            ("testing\n", 0, 8),
+            ("the\n", 8, 12),
+            ("lines \n", 12, 19),
+            ("here\n", 19, 24),
+        ];
         assert_eq!(actual, expected);
 
         // Newline at start and end
@@ -103,15 +130,15 @@ here
 ";
         let actual: Vec<_> = lines_with_endings(input).collect();
         let expected = vec![
-            "\n",
-            "\n",
-            "testing\n",
-            "\n",
-            "the\n",
-            "lines \n",
-            "here\n",
-            "\n",
-            "\n",
+            ("\n", 0, 1),
+            ("\n", 1, 2),
+            ("testing\n", 2, 10),
+            ("\n", 10, 11),
+            ("the\n", 11, 15),
+            ("lines \n", 15, 22),
+            ("here\n", 22, 27),
+            ("\n", 27, 28),
+            ("\n", 28, 29),
         ];
         assert_eq!(actual, expected);
     }

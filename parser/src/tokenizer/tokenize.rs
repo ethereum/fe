@@ -65,7 +65,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
         if next.is_none() {
             break;
         }
-        line = next.unwrap();
+        line = next.unwrap().0;
 
         let mut pos: usize = 0;
         let line_len: usize = line.len();
