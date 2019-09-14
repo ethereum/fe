@@ -25,16 +25,16 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
     // The ordering of checks matters here.  We need to eliminate the possibility of triple quote
     // endings before looking for single quote endings.
     let get_contstr_end_re = |token: &str| {
-        if token.ends_with("\"\"\"") {
+        if token.starts_with("\"\"\"") {
             &double3_re
-        } else if token.ends_with("'''") {
+        } else if token.starts_with("'''") {
             &single3_re
-        } else if token.ends_with("\"") {
+        } else if token.starts_with("\"") {
             &double_re
-        } else if token.ends_with("'") {
+        } else if token.starts_with("'") {
             &single_re
         } else {
-            panic!("Unrecognized quote style");
+            panic!("Unrecognized quote style {:?}", token);
         }
     };
 
