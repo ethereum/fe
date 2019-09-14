@@ -138,6 +138,10 @@ fn test_tokenize() {
             "single_quote_strings.py",
             include_str!("fixtures/tokenizer/single_quote_strings.py"),
         ),
+        (
+            "validator_registration.v.py",
+            include_str!("fixtures/tokenizer/validator_registration.v.py"),
+        ),
     ];
 
     // Load python token helpers
