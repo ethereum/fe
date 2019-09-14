@@ -1,5 +1,5 @@
 [package]
-name = "rust-vyper"
+name = "vyper"
 version = "0.1.0"
 authors = ["David Sanders <david@ethereum.org>"]
 edition = "2018"
@@ -14,4 +14,4 @@ readme = "README.md"
 members = [".", "parser"]
 
 [dependencies]
-rust-vyper-parser = {path = "parser", version = "0.1.0"}
+vyper-parser = {path = "parser", version = "0.1.0"}

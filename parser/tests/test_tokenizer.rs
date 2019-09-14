@@ -1,12 +1,12 @@
 extern crate difference;
 extern crate pyo3;
-extern crate rust_vyper_parser;
+extern crate vyper_parser;
 
 use std::fmt;
 
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
-use rust_vyper_parser::tokenizer::*;
+use vyper_parser::tokenizer::*;
 
 /// Return the lines in `lines` prefixed with the prefix in `prefix.
 fn prefix_lines(prefix: &str, lines: &str) -> String {
