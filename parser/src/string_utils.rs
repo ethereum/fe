@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 /// Iterate over the lines in `buf` and include line endings in the results.  Also, provide byte
 /// offsets of line beginnings and endings.
 pub fn lines_with_endings<'a>(buf: &'a str) -> impl Iterator<Item = (&'a str, usize, usize)> {
@@ -33,20 +31,13 @@ pub fn lines_with_endings<'a>(buf: &'a str) -> impl Iterator<Item = (&'a str, us
 
 /// Strip the characters in the string `strip` from the right side of the string slice `input`.
 pub fn rstrip_slice<'a>(input: &'a str, strip: &str) -> &'a str {
-    let strip: HashSet<_> = strip.chars().collect();
-
     let mut end = input.len();
 
-    if let Some(last_val) = input.chars().last() {
-        let mut last = last_val;
-
-        while strip.contains(&last) {
-            end -= last.len_utf8();
-            if let Some(last_val) = input[..end].chars().last() {
-                last = last_val;
-            } else {
-                break;
-            }
+    for (i, c) in input.char_indices().rev() {
+        if strip.contains(c) {
+            end = i;
+        } else {
+            break;
         }
     }
 
