@@ -195,19 +195,19 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
         while pos < line_len {
             if let Some(pseudomatch) = pseudo_token_re.captures(&line[pos..]) {
                 let capture = pseudomatch.get(1).unwrap();
-                let start = pos + capture.start();
-                let end = pos + capture.end();
+                let tok_start = pos + capture.start();
+                let tok_end = pos + capture.end();
 
-                let spos = (lnum, start);
-                let epos = (lnum, end);
-                pos = end;
+                let spos = (lnum, tok_start);
+                let epos = (lnum, tok_end);
+                pos = tok_end;
 
-                if start == end {
+                if tok_start == tok_end {
                     continue;
                 }
 
-                let token = &line[start..end];
-                let initial = line[start..].chars().next().unwrap();
+                let token = &line[tok_start..tok_end];
+                let initial = line[tok_start..].chars().next().unwrap();
 
                 if initial.is_ascii_digit() || (initial == '.' && token != "." && token != "...") {
                     result.push(TokenInfo {
@@ -248,7 +248,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
 
                     if let Some(endmatch) = endprog.unwrap().find_at(line, pos) {
                         pos = endmatch.end();
-                        let token = &line[start..pos];
+                        let token = &line[tok_start..pos];
 
                         result.push(TokenInfo {
                             typ: STRING,
@@ -258,8 +258,8 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                             line: line,
                         });
                     } else {
-                        strstart = Some((lnum, start));
-                        contstr = Some(&line[start..]);
+                        strstart = Some((lnum, tok_start));
+                        contstr = Some(&line[tok_start..]);
                         contline = Some(line);
                         break;
                     }
@@ -270,8 +270,8 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                     if token.chars().last().unwrap() == '\n' {
                         endprog = Some(get_endprog(token));
 
-                        strstart = Some((lnum, start));
-                        contstr = Some(&line[start..]);
+                        strstart = Some((lnum, tok_start));
+                        contstr = Some(&line[tok_start..]);
                         contline = Some(&line);
                         needcont = true;
                     } else {
