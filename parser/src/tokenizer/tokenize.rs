@@ -57,17 +57,15 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
     // ...`) so we can hold onto the iterator vars after the loop finishes.
     let mut line = &input[..1];
     let mut lnum = 0;
-    let mut numbered_lines = lines_with_endings(input).zip(1..);
+    let mut lines = lines_with_endings(input);
     loop {
-        let next = numbered_lines.next();
+        let next = lines.next();
+        lnum += 1;
         // We use this guard style of exiting to avoid indenting the entire loop body
         if next.is_none() {
             break;
         }
-        let next_val = next.unwrap();
-
-        line = next_val.0;
-        lnum = next_val.1;
+        line = next.unwrap();
 
         let mut pos: usize = 0;
         let line_len: usize = line.len();
