@@ -193,9 +193,10 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
         }
 
         while pos < line_len {
-            if let Some(pseudomatch) = pseudo_token_re.find_at(line, pos) {
-                let start = pseudomatch.start();
-                let end = pseudomatch.end();
+            if let Some(pseudomatch) = pseudo_token_re.captures(&line[pos..]) {
+                let capture = pseudomatch.get(1).unwrap();
+                let start = pos + capture.start();
+                let end = pos + capture.end();
 
                 let spos = (lnum, start);
                 let epos = (lnum, end);
