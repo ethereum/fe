@@ -29,6 +29,21 @@ pub fn lines_with_endings<'a>(buf: &'a str) -> impl Iterator<Item = (&'a str, us
     })
 }
 
+/// Strip the characters in the string `strip` from the left side of the string slice `input`.
+pub fn lstrip_slice<'a>(input: &'a str, strip: &str) -> &'a str {
+    let mut start = 0;
+
+    for c in input.chars() {
+        if strip.contains(c) {
+            start += c.len_utf8();
+        } else {
+            break;
+        }
+    }
+
+    &input[start..]
+}
+
 /// Strip the characters in the string `strip` from the right side of the string slice `input`.
 pub fn rstrip_slice<'a>(input: &'a str, strip: &str) -> &'a str {
     let mut end = input.len();
@@ -131,6 +146,21 @@ here
             ("\n", 28, 29),
         ];
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_lstrip_slice() {
+        let examples = vec![
+            (("\r\nasdfasdf", "\r\n"), "asdfasdf"),
+            (("\n\rasdfasdf", "\n"), "\rasdfasdf"),
+            (("\r\nasdfasdf", ""), "\r\nasdfasdf"),
+            (("asdfasdf", "\r\n"), "asdfasdf"),
+            (("", "\r\n"), ""),
+        ];
+        for ((input, strip), expected) in examples {
+            let actual = lstrip_slice(input, strip);
+            assert_eq!(actual, expected);
+        }
     }
 
     #[test]
