@@ -6,6 +6,7 @@ use std::fmt;
 
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
+
 use vyper_parser::tokenizer::*;
 
 /// Return the lines in `lines` prefixed with the prefix in `prefix.
