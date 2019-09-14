@@ -134,6 +134,10 @@ fn test_tokenize() {
             "triple_quote_strings.py",
             include_str!("fixtures/tokenizer/triple_quote_strings.py"),
         ),
+        (
+            "single_quote_strings.py",
+            include_str!("fixtures/tokenizer/single_quote_strings.py"),
+        ),
     ];
 
     // Load python token helpers
