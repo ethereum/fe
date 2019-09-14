@@ -31,8 +31,7 @@ pub fn lines_with_endings<'a>(buf: &'a str) -> impl Iterator<Item = (&'a str, us
     })
 }
 
-/// Strip the characters in the static string `strip` from the right side of the string slice
-/// `input`.
+/// Strip the characters in the string `strip` from the right side of the string slice `input`.
 pub fn rstrip_slice<'a>(input: &'a str, strip: &str) -> &'a str {
     let strip: HashSet<_> = strip.chars().collect();
 
