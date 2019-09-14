@@ -1,7 +1,7 @@
 use regex::Regex;
 
 use crate::parsers::is_identifier_char;
-use crate::string_utils::{lines_with_endings, rstrip_slice};
+use crate::string_utils::{lines_with_endings, lstrip_slice, rstrip_slice};
 use crate::tokenizer::regex::{
     get_pseudotoken_pattern, get_single_quote_set, get_triple_quote_set, DOUBLE, DOUBLE3, SINGLE,
     SINGLE3,
@@ -25,16 +25,18 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
     // The ordering of checks matters here.  We need to eliminate the possibility of triple quote
     // delimiters before looking for single quote delimiters.
     let get_contstr_end_re = |token: &str| {
-        if token.starts_with("\"\"\"") {
+        let token_stripped = lstrip_slice(token, "bBrRuUfF");
+
+        if token_stripped.starts_with("\"\"\"") {
             &double3_re
-        } else if token.starts_with("'''") {
+        } else if token_stripped.starts_with("'''") {
             &single3_re
-        } else if token.starts_with("\"") {
+        } else if token_stripped.starts_with("\"") {
             &double_re
-        } else if token.starts_with("'") {
+        } else if token_stripped.starts_with("'") {
             &single_re
         } else {
-            panic!("Unrecognized quote style {:?}", token);
+            panic!("Unrecognized quote style {:?}", token_stripped);
         }
     };
 
