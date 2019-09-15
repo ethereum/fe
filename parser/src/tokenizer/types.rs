@@ -11,8 +11,8 @@ pub enum TokenType {
     INDENT,
     DEDENT,
 
-    NEWLINE, // Newlines *between* statements and strings
-    NL,      // Newlines *within* statements and strings
+    NEWLINE, // Grammatically significant newlines
+    NL,      // Whitespace newlines (useful in case source should be reconstructed from tokens)
     ENDMARKER,
 
     ERRORTOKEN,
