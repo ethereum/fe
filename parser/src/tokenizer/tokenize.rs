@@ -1,6 +1,5 @@
 use regex::Regex;
 
-use crate::parsers::is_identifier_char;
 use crate::string_utils::{lines_with_endings, lstrip_slice, rstrip_slice};
 use crate::tokenizer::regex::{
     compile_anchored, get_pseudotoken_pattern, get_single_quote_set, get_triple_quote_set, DOUBLE,
@@ -9,6 +8,12 @@ use crate::tokenizer::regex::{
 use crate::tokenizer::types::{Position, TokenInfo, TokenType::*};
 
 pub const TABSIZE: usize = 8;
+
+/// Return true if the char `c` is a valid identifier character.
+#[inline]
+pub fn is_identifier_char(c: char) -> bool {
+    c == '_' || c.is_ascii_alphabetic() || c.is_digit(10)
+}
 
 pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
     // Static values/helpers
