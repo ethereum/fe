@@ -9,7 +9,7 @@ use pyo3::types::PyBytes;
 
 use vyper_parser::tokenizer::*;
 
-/// Return the lines in `lines` prefixed with the prefix in `prefix.
+/// Return the lines of text in the string `lines` prefixed with the prefix in the string `prefix`.
 fn prefix_lines(prefix: &str, lines: &str) -> String {
     lines
         .lines()
@@ -129,7 +129,7 @@ fn get_rust_token_json(input: &str) -> String {
 
 #[test]
 fn test_tokenize() {
-    let examples = &[
+    let fixtures = &[
         ("basic.py", include_str!("fixtures/tokenizer/basic.py")),
         (
             "triple_quote_strings.py",
@@ -138,6 +138,10 @@ fn test_tokenize() {
         (
             "single_quote_strings.py",
             include_str!("fixtures/tokenizer/single_quote_strings.py"),
+        ),
+        (
+            "continued_statements.py",
+            include_str!("fixtures/tokenizer/continued_statements.py"),
         ),
         (
             "validator_registration.v.py",
@@ -154,7 +158,7 @@ fn test_tokenize() {
     let py = gil.python();
     let token_helpers = TokenHelpers::new(py);
 
-    for (filename, content) in examples {
+    for (filename, content) in fixtures {
         let expected = token_helpers.get_token_json(content);
         let actual = get_rust_token_json(content);
 
