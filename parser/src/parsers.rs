@@ -227,6 +227,11 @@ mod tests {
 
     type SimpleError<I> = (I, ErrorKind);
 
+    /// Convert a parser into one that can function as a standalone file parser.  File
+    /// tokenizations can be interspersed with arbitrary `NEWLINE` tokens and are also terminated
+    /// with an `ENDMARKER` token.  Parsers defined lower in the grammar tree are not intended to
+    /// handle that kind of tokenization which makes testing them difficult.  This combinator helps
+    /// with that.
     fn standalone<'a, O, E, F>(parser: F) -> impl Fn(TokenSlice<'a>) -> TokenResult<'a, O, E>
     where
         E: ParseError<TokenSlice<'a>>,
