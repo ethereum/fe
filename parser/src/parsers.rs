@@ -1,4 +1,4 @@
-use nom::combinator::verify;
+use nom::combinator::{map, verify};
 use nom::error::{context, ErrorKind, ParseError};
 use nom::multi::{many0, many1};
 use nom::IResult;
@@ -198,6 +198,24 @@ where
     ))
 }
 
+pub fn const_atom<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    let number_or_name = context(
+        "number or name token",
+        verify(one_token, |tok: &TokenInfo| {
+            tok.typ == TokenType::NUMBER || tok.typ == TokenType::NAME
+        }),
+    );
+
+    map(number_or_name, |tok| match tok.typ {
+        TokenType::NUMBER => ConstExpr::Num(tok.string.into()),
+        TokenType::NAME => ConstExpr::Name(tok.string.into()),
+        _ => panic!("unreachable"),
+    })(input)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -205,6 +223,49 @@ mod tests {
     use nom::error::ErrorKind;
 
     type SimpleError<I> = (I, ErrorKind);
+
+    fn standalone<'a, O, E, F>(parser: F) -> impl Fn(TokenSlice<'a>) -> TokenResult<'a, O, E>
+    where
+        E: ParseError<TokenSlice<'a>>,
+        F: Fn(TokenSlice<'a>) -> TokenResult<'a, O, E>,
+    {
+        move |input: TokenSlice<'a>| {
+            let (i, _) = many0(newline_token)(input)?;
+            let (i, o) = parser(i)?;
+            let (i, _) = many0(newline_token)(i)?;
+            let (i, _) = endmarker_token(i)?;
+
+            Ok((i, o))
+        }
+    }
+
+    #[test]
+    fn test_const_atom_success() {
+        let empty_slice = &[][..];
+        let examples = vec![
+            ("1", Ok((empty_slice, ConstExpr::Num("1".into())))),
+            ("asdf", Ok((empty_slice, ConstExpr::Name("asdf".into())))),
+        ];
+
+        for (inp, expected) in examples {
+            let tokens = get_parse_tokens(inp).unwrap();
+            let actual = standalone(const_atom::<SimpleError<_>>)(&tokens[..]);
+
+            assert_eq!(actual, expected);
+        }
+    }
+
+    #[test]
+    fn test_const_atom_failure() {
+        let examples = vec!["(1)", "{ asdf }"];
+
+        for inp in examples {
+            let tokens = get_parse_tokens(inp).unwrap();
+            let result = standalone(const_atom::<SimpleError<_>>)(&tokens[..]);
+
+            assert!(result.is_err());
+        }
+    }
 
     #[test]
     fn test_parse_file() {

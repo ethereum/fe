@@ -45,80 +45,40 @@ pub struct EventField {
     //pub indexed: bool,
 }
 
-//pub struct InterfaceField {
-//    pub name: Name,
-//    pub typ: Type,
-//}
+#[derive(Debug, PartialEq)]
+pub enum Operator {
+    Add,
+    Sub,
+    Mult,
+    Div,
+    Mod,
+    Pow,
+    LShift,
+    RShift,
+    BitOr,
+    BitXor,
+    BitAnd,
+}
 
-//pub struct ContractField {
-//    pub name: Name,
-//    pub typ: Type,
-//    pub public: bool,
-//}
+#[derive(Debug, PartialEq)]
+pub enum UnaryOp {
+    Invert,
+    Not,
+    UAdd,
+    USub,
+}
 
-//pub struct InterfaceMethodDef {
-//    pub name: Name,
-//    pub props: Vec<MethodProps>,
-//    pub args: Vec<Arg>,
-//    pub return_type: Option<Type>,
-//}
-
-//pub struct ContractMethodDef {
-//    pub name: Name,
-//    pub props: Vec<MethodProps>,
-//    pub args: Vec<Arg>,
-//    pub return_type: Option<Type>,
-//    pub body: Option<Stmt>,
-//}
-
-//pub struct Arg {
-//    pub name: Name,
-//    pub typ: Type,
-//    pub default: Option<Expr>,
-//}
-
-//pub enum MethodProps {
-//    Constant,
-//    Modifying,
-//    Public,
-//    Private,
-//}
-
-//pub enum Stmt {
-//    Return {
-//        value: Option<Expr>,
-//    }
-//    Assign {
-//        target: Vec<Expr>,
-//        typ: Type,
-//        value: Expr,
-//    },
-//    AugAssign {
-//        target: Expr,
-//        op: Operator,
-//    },
-//    EmitEvent {
-//        event_name: Name,
-//        args: Vec<Expr>,
-//    },
-//}
-
-//pub enum Operator {
-//    Add,
-//    Sub,
-//    Mult,
-//    Div,
-//    Mod,
-//    Pow,
-//    LShift,
-//    RShift,
-//    BitOr,
-//    BitXor,
-//    BitAnd,
-//}
-
-//pub enum Expr {
-//    Name {
-//        id: Name,
-//    },
-//}
+#[derive(Debug, PartialEq)]
+pub enum ConstExpr {
+    BinOp {
+        left: Box<ConstExpr>,
+        op: Operator,
+        right: Box<ConstExpr>,
+    },
+    UnaryOp {
+        op: UnaryOp,
+        operand: Box<ConstExpr>,
+    },
+    Name(String),
+    Num(String),
+}
