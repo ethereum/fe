@@ -6,7 +6,6 @@ use nom::IResult;
 use crate::ast::ModuleStmt::*;
 use crate::ast::*;
 use crate::errors::make_error;
-
 use crate::tokenizer::tokenize::tokenize;
 use crate::tokenizer::types::{TokenInfo, TokenType};
 
@@ -132,13 +131,13 @@ pub fn parse_file<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Module, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
-    // Consume any leading newlines
+    // NEWLINE*
     let (i, _) = many0(newline_token)(input)?;
 
     // module_stmt*
     let (i, body) = many0(parse_module_stmt)(i)?;
 
-    // <endmarker>
+    // ENDMARKER*
     let (i, _) = endmarker_token(i)?;
 
     Ok((i, Module { body }))
@@ -165,7 +164,7 @@ where
     let (i, _) = op_string(":")(i)?;
     let (i, _) = newline_token(i)?;
 
-    // <indent> event_field* <dedent>
+    // <indent> event_field+ <dedent>
     let (i, _) = indent_token(i)?;
     let (i, fields) = many1(parse_event_field)(i)?;
     let (i, _) = dedent_token(i)?;
