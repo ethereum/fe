@@ -1,7 +1,8 @@
+use nom::branch::alt;
 use nom::combinator::{map, verify};
 use nom::error::{context, ErrorKind, ParseError};
 use nom::multi::{many0, many1};
-use nom::sequence::preceded;
+use nom::sequence::{delimited, pair, preceded, separated_pair};
 use nom::IResult;
 
 use crate::ast::ModuleStmt::*;
@@ -198,6 +199,62 @@ where
     ))
 }
 
+pub fn const_expr<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    const_factor(input)
+}
+
+pub fn const_factor<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    let const_factor_left = map(
+        pair(
+            alt((op_string("+"), op_string("-"), op_string("~"))),
+            const_factor,
+        ),
+        |res| ConstExpr::UnaryOp {
+            op: match res.0.string {
+                "+" => UnaryOp::UAdd,
+                "-" => UnaryOp::USub,
+                "~" => UnaryOp::Invert,
+                _ => panic!("unreachable"),
+            },
+            operand: Box::new(res.1),
+        },
+    );
+
+    alt((const_factor_left, const_power))(input)
+}
+
+pub fn const_power<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    let const_power_left = map(
+        separated_pair(const_paren, op_string("**"), const_factor),
+        |res| ConstExpr::BinOp {
+            left: Box::new(res.0),
+            op: Operator::Pow,
+            right: Box::new(res.1),
+        },
+    );
+
+    alt((const_power_left, const_paren))(input)
+}
+
+pub fn const_paren<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    alt((
+        delimited(op_string("("), const_expr, op_string(")")),
+        const_atom,
+    ))(input)
+}
+
 pub fn const_atom<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
 where
     E: ParseError<TokenSlice<'a>>,
@@ -324,6 +381,16 @@ mod tests {
                 assert!(actual.is_err());
             }
         }};
+    }
+
+    #[test]
+    fn test_const_paren_success() {
+        let empty_slice = &[][..];
+
+        assert_standalone_parser_success!(
+            const_paren,
+            vec![("(1)", Ok((empty_slice, ConstExpr::Num("1".into())))),],
+        );
     }
 
     #[test]
