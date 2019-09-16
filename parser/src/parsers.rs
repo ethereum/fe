@@ -239,32 +239,50 @@ mod tests {
         }
     }
 
+    macro_rules! assert_parser_success {
+        ($parser:ident , $examples:expr,) => {{
+            assert_parser_success!($parser, $examples)
+        }};
+        ($parser:ident, $examples:expr) => {{
+            for (inp, expected) in $examples {
+                let tokens = get_parse_tokens(inp).unwrap();
+                let actual = standalone($parser::<SimpleError<_>>)(&tokens[..]);
+
+                assert_eq!(actual, expected);
+            }
+        }};
+    }
+
+    macro_rules! assert_parser_error {
+        ($parser:ident , $examples:expr,) => {{
+            assert_parser_error!($parser, $examples)
+        }};
+        ($parser:ident, $examples:expr) => {{
+            for inp in $examples {
+                let tokens = get_parse_tokens(inp).unwrap();
+                let actual = standalone($parser::<SimpleError<_>>)(&tokens[..]);
+
+                assert!(actual.is_err());
+            }
+        }};
+    }
+
     #[test]
     fn test_const_atom_success() {
         let empty_slice = &[][..];
-        let examples = vec![
-            ("1", Ok((empty_slice, ConstExpr::Num("1".into())))),
-            ("asdf", Ok((empty_slice, ConstExpr::Name("asdf".into())))),
-        ];
 
-        for (inp, expected) in examples {
-            let tokens = get_parse_tokens(inp).unwrap();
-            let actual = standalone(const_atom::<SimpleError<_>>)(&tokens[..]);
-
-            assert_eq!(actual, expected);
-        }
+        assert_parser_success!(
+            const_atom,
+            vec![
+                ("1", Ok((empty_slice, ConstExpr::Num("1".into())))),
+                ("asdf", Ok((empty_slice, ConstExpr::Name("asdf".into())))),
+            ],
+        );
     }
 
     #[test]
     fn test_const_atom_failure() {
-        let examples = vec!["(1)", "{ asdf }"];
-
-        for inp in examples {
-            let tokens = get_parse_tokens(inp).unwrap();
-            let result = standalone(const_atom::<SimpleError<_>>)(&tokens[..]);
-
-            assert!(result.is_err());
-        }
+        assert_parser_error!(const_atom, vec!["(1)", "{ asdf }"]);
     }
 
     #[test]
