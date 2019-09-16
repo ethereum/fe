@@ -31,7 +31,7 @@ pub struct TypeDesc {
 impl<'a> From<&'a str> for TypeDesc {
     fn from(string: &'a str) -> Self {
         Self {
-            base: string.to_string(),
+            base: string.into(),
             dimensions: vec![],
             annotations: vec![],
         }
