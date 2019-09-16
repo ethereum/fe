@@ -28,8 +28,8 @@ pub struct TypeDesc {
     annotations: Vec<String>,
 }
 
-impl<'a> From<&'a str> for TypeDesc {
-    fn from(string: &'a str) -> Self {
+impl From<&str> for TypeDesc {
+    fn from(string: &str) -> Self {
         Self {
             base: string.into(),
             dimensions: vec![],
