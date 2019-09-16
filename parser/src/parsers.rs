@@ -10,9 +10,9 @@ use crate::errors::make_error;
 use crate::tokenizer::tokenize::tokenize;
 use crate::tokenizer::types::{TokenInfo, TokenType};
 
-type TokenRef<'a> = &'a TokenInfo<'a>;
-type TokenSlice<'a> = &'a [TokenInfo<'a>];
-type TokenResult<'a, O, E> = IResult<TokenSlice<'a>, O, E>;
+pub type TokenRef<'a> = &'a TokenInfo<'a>;
+pub type TokenSlice<'a> = &'a [TokenInfo<'a>];
+pub type TokenResult<'a, O, E> = IResult<TokenSlice<'a>, O, E>;
 
 /// Tokenize the given source code in `source` and filter out tokens not relevant to parsing.
 pub fn get_parse_tokens<'a>(source: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
