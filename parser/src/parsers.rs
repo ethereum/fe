@@ -1,6 +1,7 @@
 use nom::combinator::{map, verify};
 use nom::error::{context, ErrorKind, ParseError};
 use nom::multi::{many0, many1};
+use nom::sequence::preceded;
 use nom::IResult;
 
 use crate::ast::ModuleStmt::*;
@@ -126,25 +127,25 @@ where
     token(TokenType::ENDMARKER)(input)
 }
 
-/// Parse a vyper source file into a `Module` AST object.
-pub fn parse_file<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Module, E>
+/// Parse a module definition from a list of tokens produced from a source file.
+pub fn file_input<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Module, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
+    // (NEWLINE* module_stmt)*
+    let (i, body) = many0(preceded(many0(newline_token), module_stmt))(input)?;
+
     // NEWLINE*
-    let (i, _) = many0(newline_token)(input)?;
+    let (i, _) = many0(newline_token)(i)?;
 
-    // module_stmt*
-    let (i, body) = many0(parse_module_stmt)(i)?;
-
-    // ENDMARKER*
+    // ENDMARKER
     let (i, _) = endmarker_token(i)?;
 
     Ok((i, Module { body }))
 }
 
-/// Parse a module statement, such as an event or contract definition, into a `ModuleStmt` object.
-pub fn parse_module_stmt<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ModuleStmt, E>
+/// Parse a module statement, such as a contract definition, into a `ModuleStmt` object.
+pub fn module_stmt<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ModuleStmt, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {

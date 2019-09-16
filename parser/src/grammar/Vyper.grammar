@@ -1,4 +1,4 @@
-module: NEWLINE* module_stmt* ENDMARKER
+file_input: (NEWLINE* module_stmt)* NEWLINE* ENDMARKER
 
 module_stmt: contract_def | interface_def
 
