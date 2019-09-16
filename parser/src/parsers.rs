@@ -368,15 +368,16 @@ mod tests {
         }};
     }
 
-    /// Assert `$parser` returns an error when applied to the given input in `$examples`.
-    macro_rules! assert_parser_error {
-        ($parser:expr, $examples:expr,) => {{
-            assert_parser_error!($parser, $examples)
+    /// Assert `$parser` returns an error when applied as a standalone parser to the given input in
+    /// `$examples`.
+    macro_rules! assert_standalone_parser_error {
+        ($parser:ident, $examples:expr,) => {{
+            assert_standalone_parser_error!($parser, $examples)
         }};
-        ($parser:expr, $examples:expr) => {{
+        ($parser:ident, $examples:expr) => {{
             for inp in $examples {
                 let tokens = get_parse_tokens(inp).unwrap();
-                let actual = $parser(&tokens[..]);
+                let actual = standalone($parser::<SimpleError<_>>)(&tokens[..]);
 
                 assert!(actual.is_err());
             }
@@ -413,11 +414,8 @@ mod tests {
     }
 
     #[test]
-    fn test_const_atom_failure() {
-        assert_parser_error!(
-            standalone(const_atom::<SimpleError<_>>),
-            vec!["(1)", "{ asdf }"],
-        );
+    fn test_const_atom_error() {
+        assert_standalone_parser_error!(const_atom, vec!["(1)", "{ asdf }"]);
     }
 
     #[test]
