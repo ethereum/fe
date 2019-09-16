@@ -22,9 +22,26 @@ pub enum ModuleStmt {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct TypeDesc {
+    base: String,
+    dimensions: Vec<u32>,
+    annotations: Vec<String>,
+}
+
+impl<'a> From<&'a str> for TypeDesc {
+    fn from(string: &'a str) -> Self {
+        Self {
+            base: string.to_string(),
+            dimensions: vec![],
+            annotations: vec![],
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub struct EventField {
     pub name: Name,
-    pub typ: Type,
+    pub typ: TypeDesc,
     //pub indexed: bool,
 }
 

@@ -193,7 +193,7 @@ where
         i,
         EventField {
             name: name.string.to_string(),
-            typ: typ.string.to_string(),
+            typ: typ.string.into(),
         },
     ))
 }
@@ -244,11 +244,11 @@ event Greet:
                     fields: vec![
                         EventField {
                             name: "name".to_string(),
-                            typ: "bytes32".to_string(),
+                            typ: "bytes32".into(),
                         },
                         EventField {
                             name: "age".to_string(),
-                            typ: "uint8".to_string(),
+                            typ: "uint8".into(),
                         },
                     ],
                 }],
@@ -306,11 +306,11 @@ event Other:
                         fields: vec![
                             EventField {
                                 name: "name".to_string(),
-                                typ: "bytes32".to_string(),
+                                typ: "bytes32".into(),
                             },
                             EventField {
                                 name: "age".to_string(),
-                                typ: "uint8".to_string(),
+                                typ: "uint8".into(),
                             },
                         ],
                     },
@@ -319,11 +319,11 @@ event Other:
                         fields: vec![
                             EventField {
                                 name: "info1".to_string(),
-                                typ: "uint256".to_string(),
+                                typ: "uint256".into(),
                             },
                             EventField {
                                 name: "info2".to_string(),
-                                typ: "bool".to_string(),
+                                typ: "bool".into(),
                             },
                         ],
                     },
