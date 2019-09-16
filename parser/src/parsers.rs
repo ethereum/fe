@@ -387,9 +387,15 @@ mod tests {
     fn test_const_paren_success() {
         let empty_slice = &[][..];
 
+        use crate::ast::ConstExpr::*;
+
         assert_standalone_parser_success!(
             const_paren,
-            vec![("(1)", Ok((empty_slice, ConstExpr::Num("1".into())))),],
+            vec![
+                ("(1)", Ok((empty_slice, Num("1".into())))),
+                ("(CONST)", Ok((empty_slice, Name("CONST".into())))),
+                ("1", Ok((empty_slice, Num("1".into())))),
+            ],
         );
     }
 
