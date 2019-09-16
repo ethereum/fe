@@ -102,3 +102,65 @@ pub fn format_error(input: &str, e: VerboseError<TokenSlice>) -> String {
 
     result
 }
+
+#[derive(Debug, PartialEq)]
+pub enum FormatError {
+    NoContextFound(String),
+}
+
+pub fn format_last_context_error(
+    input: &str,
+    err: VerboseError<TokenSlice>,
+) -> Result<String, FormatError> {
+    use std::iter::repeat;
+
+    let last_context_error = err
+        .errors
+        .into_iter()
+        .rev()
+        .skip_while(|e| match e {
+            (_, VerboseErrorKind::Context(_)) => false,
+            _ => true,
+        })
+        .next();
+
+    if let Some((parser_input, VerboseErrorKind::Context(context_string))) = last_context_error {
+        let lines: Vec<_> = input.lines().map(String::from).collect();
+
+        let mut result = String::new();
+
+        let first_token = parser_input.into_iter().next();
+        if let Some(tok) = first_token {
+            let tok_ptr = tok.string.as_ptr();
+            let tok_offset = tok_ptr as usize - input.as_ptr() as usize;
+
+            let mut offset = tok_offset;
+            let mut line = 1;
+            let mut column = 0;
+            for (j, l) in lines.iter().enumerate() {
+                if offset <= l.len() {
+                    line = j;
+                    column = offset;
+                    break;
+                } else {
+                    offset = offset - l.len() - 1;
+                }
+            }
+
+            result += &format!("at line {}, expected {}:\n", line, context_string);
+            result += &lines[line];
+            result += "\n";
+            if column > 0 {
+                result += &repeat(' ').take(column).collect::<String>();
+            }
+            result += "^\n";
+        } else {
+            result += &format!("expected {}, got empty input\n", context_string);
+        }
+        Ok(result)
+    } else {
+        Err(FormatError::NoContextFound(
+            "no context error found in verbose error".into(),
+        ))
+    }
+}
