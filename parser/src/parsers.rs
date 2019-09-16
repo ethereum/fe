@@ -24,77 +24,6 @@ pub fn get_parse_tokens<'a>(source: &'a str) -> Result<Vec<TokenInfo<'a>>, Strin
         .collect())
 }
 
-/// Parse a vyper source file into a `Module` AST object.
-pub fn parse_token_file<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Module, E>
-where
-    E: ParseError<TokenSlice<'a>>,
-{
-    // Consume any leading newlines
-    let (i, _) = many0(newline_token)(input)?;
-
-    // module_stmt*
-    let (i, body) = many0(parse_token_module_stmt)(i)?;
-
-    // <endmarker>
-    let (i, _) = endmarker_token(i)?;
-
-    Ok((i, Module { body }))
-}
-
-/// Parse a module statement, such as an event or contract definition, into a `ModuleStmt` object.
-pub fn parse_token_module_stmt<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ModuleStmt, E>
-where
-    E: ParseError<TokenSlice<'a>>,
-{
-    let (i, module_stmt) = context("expected event definition", parse_token_event_def)(input)?;
-
-    Ok((i, module_stmt))
-}
-
-/// Parse an event definition statement into a `ModuleStmt::EventDef` object.
-pub fn parse_token_event_def<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ModuleStmt, E>
-where
-    E: ParseError<TokenSlice<'a>>,
-{
-    // "event" name ":" <newline>
-    let (i, _) = name_string("event")(input)?;
-    let (i, name) = name_token(i)?;
-    let (i, _) = op_string(":")(i)?;
-    let (i, _) = newline_token(i)?;
-
-    // <indent> event_field* <dedent>
-    let (i, _) = indent_token(i)?;
-    let (i, fields) = many1(parse_token_event_field)(i)?;
-    let (i, _) = dedent_token(i)?;
-
-    Ok((
-        i,
-        EventDef {
-            name: name.string.to_string(),
-            fields: fields,
-        },
-    ))
-}
-
-/// Parse an event field definition into an `EventField` object.
-pub fn parse_token_event_field<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, EventField, E>
-where
-    E: ParseError<TokenSlice<'a>>,
-{
-    let (i, name) = name_token(input)?;
-    let (i, _) = op_string(":")(i)?;
-    let (i, typ) = name_token(i)?;
-    let (i, _) = newline_token(i)?;
-
-    Ok((
-        i,
-        EventField {
-            name: name.string.to_string(),
-            typ: typ.string.to_string(),
-        },
-    ))
-}
-
 /// Parse a single token from a token slice.
 pub fn one_token<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, TokenRef<'a>, E>
 where
@@ -198,6 +127,77 @@ where
     token(TokenType::ENDMARKER)(input)
 }
 
+/// Parse a vyper source file into a `Module` AST object.
+pub fn parse_file<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Module, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    // Consume any leading newlines
+    let (i, _) = many0(newline_token)(input)?;
+
+    // module_stmt*
+    let (i, body) = many0(parse_module_stmt)(i)?;
+
+    // <endmarker>
+    let (i, _) = endmarker_token(i)?;
+
+    Ok((i, Module { body }))
+}
+
+/// Parse a module statement, such as an event or contract definition, into a `ModuleStmt` object.
+pub fn parse_module_stmt<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ModuleStmt, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    let (i, module_stmt) = context("expected event definition", parse_event_def)(input)?;
+
+    Ok((i, module_stmt))
+}
+
+/// Parse an event definition statement into a `ModuleStmt::EventDef` object.
+pub fn parse_event_def<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ModuleStmt, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    // "event" name ":" <newline>
+    let (i, _) = name_string("event")(input)?;
+    let (i, name) = name_token(i)?;
+    let (i, _) = op_string(":")(i)?;
+    let (i, _) = newline_token(i)?;
+
+    // <indent> event_field* <dedent>
+    let (i, _) = indent_token(i)?;
+    let (i, fields) = many1(parse_event_field)(i)?;
+    let (i, _) = dedent_token(i)?;
+
+    Ok((
+        i,
+        EventDef {
+            name: name.string.to_string(),
+            fields: fields,
+        },
+    ))
+}
+
+/// Parse an event field definition into an `EventField` object.
+pub fn parse_event_field<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, EventField, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    let (i, name) = name_token(input)?;
+    let (i, _) = op_string(":")(i)?;
+    let (i, typ) = name_token(i)?;
+    let (i, _) = newline_token(i)?;
+
+    Ok((
+        i,
+        EventField {
+            name: name.string.to_string(),
+            typ: typ.string.to_string(),
+        },
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -214,7 +214,7 @@ mod tests {
 
         for inp in examples {
             let tokens = get_parse_tokens(inp).unwrap();
-            let actual = parse_token_file::<SimpleError<_>>(&tokens[..]);
+            let actual = parse_file::<SimpleError<_>>(&tokens[..]);
             assert_eq!(actual, expected);
         }
 
@@ -256,7 +256,7 @@ event Greet:
         ));
         for inp in examples {
             let tokens = get_parse_tokens(inp).unwrap();
-            let actual = parse_token_file::<SimpleError<_>>(&tokens[..]);
+            let actual = parse_file::<SimpleError<_>>(&tokens[..]);
             assert_eq!(actual, expected);
         }
 
@@ -332,7 +332,7 @@ event Other:
         ));
         for inp in examples {
             let tokens = get_parse_tokens(inp).unwrap();
-            let actual = parse_token_file::<SimpleError<_>>(&tokens[..]);
+            let actual = parse_file::<SimpleError<_>>(&tokens[..]);
             assert_eq!(actual, expected);
         }
     }
