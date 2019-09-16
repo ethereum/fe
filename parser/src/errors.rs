@@ -19,7 +19,7 @@ where
 
 /// Borrowed from nom:
 /// https://github.com/Geal/nom/blob/c326e077b83c62f81b717c80a281cb453cb914e7/src/error.rs#L141
-pub fn format_error<'a>(input: &str, e: VerboseError<TokenSlice<'a>>) -> String {
+pub fn format_error(input: &str, e: VerboseError<TokenSlice>) -> String {
     use nom::Offset;
     use std::iter::repeat;
 
