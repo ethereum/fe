@@ -330,8 +330,8 @@ mod tests {
     fn test_const_atom_success() {
         let empty_slice = &[][..];
 
-        assert_parser_success!(
-            standalone(const_atom::<SimpleError<_>>),
+        assert_standalone_parser_success!(
+            const_atom,
             vec![
                 ("1", Ok((empty_slice, ConstExpr::Num("1".into())))),
                 ("asdf", Ok((empty_slice, ConstExpr::Name("asdf".into())))),
