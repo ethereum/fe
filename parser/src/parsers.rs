@@ -240,27 +240,38 @@ mod tests {
     }
 
     macro_rules! assert_parser_success {
-        ($parser:ident , $examples:expr,) => {{
-            assert_parser_success!($parser, $examples)
+        ($parser:expr , $examples:expr,) => {{
+            assert_parser_success!($parser, $examples);
         }};
-        ($parser:ident, $examples:expr) => {{
+        ($parser:expr, $examples:expr) => {{
             for (inp, expected) in $examples {
                 let tokens = get_parse_tokens(inp).unwrap();
-                let actual = standalone($parser::<SimpleError<_>>)(&tokens[..]);
+                let actual = $parser(&tokens[..]);
 
                 assert_eq!(actual, expected);
+            }
+        }};
+        ($parser:expr , $examples:expr, $expected:expr,) => {{
+            assert_parser_success!($parser, $examples, $expected);
+        }};
+        ($parser:expr, $examples:expr, $expected:expr) => {{
+            for inp in $examples {
+                let tokens = get_parse_tokens(inp).unwrap();
+                let actual = $parser(&tokens[..]);
+
+                assert_eq!(actual, $expected);
             }
         }};
     }
 
     macro_rules! assert_parser_error {
-        ($parser:ident , $examples:expr,) => {{
+        ($parser:expr , $examples:expr,) => {{
             assert_parser_error!($parser, $examples)
         }};
-        ($parser:ident, $examples:expr) => {{
+        ($parser:expr, $examples:expr) => {{
             for inp in $examples {
                 let tokens = get_parse_tokens(inp).unwrap();
-                let actual = standalone($parser::<SimpleError<_>>)(&tokens[..]);
+                let actual = $parser(&tokens[..]);
 
                 assert!(actual.is_err());
             }
@@ -272,7 +283,7 @@ mod tests {
         let empty_slice = &[][..];
 
         assert_parser_success!(
-            const_atom,
+            standalone(const_atom::<SimpleError<_>>),
             vec![
                 ("1", Ok((empty_slice, ConstExpr::Num("1".into())))),
                 ("asdf", Ok((empty_slice, ConstExpr::Name("asdf".into())))),
@@ -282,22 +293,24 @@ mod tests {
 
     #[test]
     fn test_const_atom_failure() {
-        assert_parser_error!(const_atom, vec!["(1)", "{ asdf }"]);
+        assert_parser_error!(
+            standalone(const_atom::<SimpleError<_>>),
+            vec!["(1)", "{ asdf }"],
+        );
     }
 
     #[test]
-    fn test_file_input() {
+    fn test_file_input_empty_file() {
         // Empty file
-        let examples = vec!["", "  \t ", " \n\n   \t \n \t "];
-        let expected: IResult<_, _, SimpleError<_>> = Ok((&[][..], Module { body: vec![] }));
+        assert_parser_success!(
+            file_input::<SimpleError<_>>,
+            vec!["", "  \t ", " \n\n   \t \n \t "],
+            Ok((&[][..], Module { body: vec![] })),
+        );
+    }
 
-        for inp in examples {
-            let tokens = get_parse_tokens(inp).unwrap();
-            let actual = file_input::<SimpleError<_>>(&tokens[..]);
-            assert_eq!(actual, expected);
-        }
-
-        // Test one stmt
+    #[test]
+    fn test_file_input_one_stmt() {
         let examples = vec![
             // No leading or trailing whitespace
             r"event Greet:
@@ -315,7 +328,7 @@ event Greet:
     age: uint8
 ",
         ];
-        let expected: IResult<_, _, SimpleError<_>> = Ok((
+        let expected: TokenResult<_, SimpleError<_>> = Ok((
             &[][..],
             Module {
                 body: vec![EventDef {
@@ -333,13 +346,11 @@ event Greet:
                 }],
             },
         ));
-        for inp in examples {
-            let tokens = get_parse_tokens(inp).unwrap();
-            let actual = file_input::<SimpleError<_>>(&tokens[..]);
-            assert_eq!(actual, expected);
-        }
+        assert_parser_success!(file_input::<SimpleError<_>>, examples, expected);
+    }
 
-        // More than one stmt
+    #[test]
+    fn test_file_input_many_stmt() {
         let examples = vec![
             // No leading, mid, or trailing whitespace
             r"event Greet:
@@ -376,7 +387,7 @@ event Other:
     info2: bool
 ",
         ];
-        let expected: IResult<_, _, SimpleError<_>> = Ok((
+        let expected: TokenResult<_, SimpleError<_>> = Ok((
             &[][..],
             Module {
                 body: vec![
@@ -409,10 +420,6 @@ event Other:
                 ],
             },
         ));
-        for inp in examples {
-            let tokens = get_parse_tokens(inp).unwrap();
-            let actual = file_input::<SimpleError<_>>(&tokens[..]);
-            assert_eq!(actual, expected);
-        }
+        assert_parser_success!(file_input::<SimpleError<_>>, examples, expected);
     }
 }
