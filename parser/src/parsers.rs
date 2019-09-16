@@ -220,7 +220,10 @@ where
 mod tests {
     use super::*;
 
-    use nom::error::ErrorKind;
+    use nom::error::{ErrorKind, VerboseError};
+    use nom::Err as NomErr;
+
+    use crate::errors::format_debug_error;
 
     type SimpleError<I> = (I, ErrorKind);
 
@@ -239,8 +242,10 @@ mod tests {
         }
     }
 
+    /// Assert `$parser` succeeds when applied to the given input in `$examples` with the expected
+    /// output specified in `$examples` or `$expected`.
     macro_rules! assert_parser_success {
-        ($parser:expr , $examples:expr,) => {{
+        ($parser:expr, $examples:expr,) => {{
             assert_parser_success!($parser, $examples);
         }};
         ($parser:expr, $examples:expr) => {{
@@ -251,7 +256,7 @@ mod tests {
                 assert_eq!(actual, expected);
             }
         }};
-        ($parser:expr , $examples:expr, $expected:expr,) => {{
+        ($parser:expr, $examples:expr, $expected:expr,) => {{
             assert_parser_success!($parser, $examples, $expected);
         }};
         ($parser:expr, $examples:expr, $expected:expr) => {{
@@ -264,8 +269,46 @@ mod tests {
         }};
     }
 
+    /// Assert that `$parser` succeeds when applied as a standalone parser to the given input in
+    /// `$examples` with the expected output specified in `$examples` or `$expected`.  Print a
+    /// debug trace if parsing fails.
+    macro_rules! assert_standalone_parser_success {
+        ($parser:ident, $examples:expr,) => {{
+            assert_standalone_parser_success!($parser, $examples);
+        }};
+        ($parser:ident, $examples:expr) => {{
+            for (inp, expected) in $examples {
+                let tokens = get_parse_tokens(inp).unwrap();
+                let actual = standalone($parser::<VerboseError<_>>)(&tokens[..]);
+
+                if let Err(err) = &actual {
+                    match err {
+                        NomErr::Error(e) | NomErr::Failure(e) => {
+                            println!("Parsing trace:\n{}", format_debug_error(inp, e.clone()));
+                        }
+                        _ => (),
+                    }
+                }
+
+                assert_eq!(actual, expected);
+            }
+        }};
+        ($parser:ident, $examples:expr, $expected:expr,) => {{
+            assert_standalone_parser_success!($parser, $examples, $expected);
+        }};
+        ($parser:ident, $examples:expr, $expected:expr) => {{
+            for inp in $examples {
+                let tokens = get_parse_tokens(inp).unwrap();
+                let actual = standalone($parser::<VerboseError<_>>)(&tokens[..]);
+
+                assert_eq!(actual, $expected);
+            }
+        }};
+    }
+
+    /// Assert `$parser` returns an error when applied to the given input in `$examples`.
     macro_rules! assert_parser_error {
-        ($parser:expr , $examples:expr,) => {{
+        ($parser:expr, $examples:expr,) => {{
             assert_parser_error!($parser, $examples)
         }};
         ($parser:expr, $examples:expr) => {{
