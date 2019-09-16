@@ -17,10 +17,11 @@ where
     Err(NomErr::Failure(ParseError::from_error_kind(input, kind)))
 }
 
-/// Borrowed from nom:
+/// Format a verbose error into a debug trace message.
+///
+/// Borrowed from nom internals:
 /// https://github.com/Geal/nom/blob/c326e077b83c62f81b717c80a281cb453cb914e7/src/error.rs#L141
-pub fn format_error(input: &str, e: VerboseError<TokenSlice>) -> String {
-    use nom::Offset;
+pub fn format_debug_error(input: &str, e: VerboseError<TokenSlice>) -> String {
     use std::iter::repeat;
 
     let lines: Vec<_> = input.lines().map(String::from).collect();
@@ -35,7 +36,7 @@ pub fn format_error(input: &str, e: VerboseError<TokenSlice>) -> String {
             let tok_offset = tok_ptr as usize - input.as_ptr() as usize;
             let substring = &input[tok_offset..];
 
-            let mut offset = input.offset(substring);
+            let mut offset = tok_offset;
 
             let mut line = 0;
             let mut column = 0;
@@ -108,7 +109,8 @@ pub enum FormatError {
     NoContextFound(String),
 }
 
-pub fn format_last_context_error(
+/// Format a verbose error into a user-facing syntax error message.
+pub fn format_user_error(
     input: &str,
     err: VerboseError<TokenSlice>,
 ) -> Result<String, FormatError> {
@@ -128,8 +130,8 @@ pub fn format_last_context_error(
         let lines: Vec<_> = input.lines().map(String::from).collect();
 
         let mut result = String::new();
-
         let first_token = parser_input.into_iter().next();
+
         if let Some(tok) = first_token {
             let tok_ptr = tok.string.as_ptr();
             let tok_offset = tok_ptr as usize - input.as_ptr() as usize;
