@@ -286,14 +286,14 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_file() {
+    fn test_file_input() {
         // Empty file
         let examples = vec!["", "  \t ", " \n\n   \t \n \t "];
         let expected: IResult<_, _, SimpleError<_>> = Ok((&[][..], Module { body: vec![] }));
 
         for inp in examples {
             let tokens = get_parse_tokens(inp).unwrap();
-            let actual = parse_file::<SimpleError<_>>(&tokens[..]);
+            let actual = file_input::<SimpleError<_>>(&tokens[..]);
             assert_eq!(actual, expected);
         }
 
@@ -335,7 +335,7 @@ event Greet:
         ));
         for inp in examples {
             let tokens = get_parse_tokens(inp).unwrap();
-            let actual = parse_file::<SimpleError<_>>(&tokens[..]);
+            let actual = file_input::<SimpleError<_>>(&tokens[..]);
             assert_eq!(actual, expected);
         }
 
@@ -411,7 +411,7 @@ event Other:
         ));
         for inp in examples {
             let tokens = get_parse_tokens(inp).unwrap();
-            let actual = parse_file::<SimpleError<_>>(&tokens[..]);
+            let actual = file_input::<SimpleError<_>>(&tokens[..]);
             assert_eq!(actual, expected);
         }
     }
