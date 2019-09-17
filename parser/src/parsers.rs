@@ -136,15 +136,15 @@ where
     E: ParseError<TokenSlice<'a>>,
 {
     // (NEWLINE* module_stmt)*
-    let (i, body) = many0(preceded(many0(newline_token), module_stmt))(input)?;
+    let (input, body) = many0(preceded(many0(newline_token), module_stmt))(input)?;
 
     // NEWLINE*
-    let (i, _) = many0(newline_token)(i)?;
+    let (input, _) = many0(newline_token)(input)?;
 
     // ENDMARKER
-    let (i, _) = endmarker_token(i)?;
+    let (input, _) = endmarker_token(input)?;
 
-    Ok((i, Module { body }))
+    Ok((input, Module { body }))
 }
 
 /// Parse a module statement, such as a contract definition, into a `ModuleStmt` object.
@@ -152,9 +152,9 @@ pub fn module_stmt<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ModuleStmt, 
 where
     E: ParseError<TokenSlice<'a>>,
 {
-    let (i, module_stmt) = context("expected event definition", parse_event_def)(input)?;
+    let (input, module_stmt) = context("expected event definition", parse_event_def)(input)?;
 
-    Ok((i, module_stmt))
+    Ok((input, module_stmt))
 }
 
 /// Parse an event definition statement into a `ModuleStmt::EventDef` object.
@@ -163,18 +163,18 @@ where
     E: ParseError<TokenSlice<'a>>,
 {
     // "event" name ":" <newline>
-    let (i, _) = name_string("event")(input)?;
-    let (i, name) = name_token(i)?;
-    let (i, _) = op_string(":")(i)?;
-    let (i, _) = newline_token(i)?;
+    let (input, _) = name_string("event")(input)?;
+    let (input, name) = name_token(input)?;
+    let (input, _) = op_string(":")(input)?;
+    let (input, _) = newline_token(input)?;
 
     // <indent> event_field+ <dedent>
-    let (i, _) = indent_token(i)?;
-    let (i, fields) = many1(parse_event_field)(i)?;
-    let (i, _) = dedent_token(i)?;
+    let (input, _) = indent_token(input)?;
+    let (input, fields) = many1(parse_event_field)(input)?;
+    let (input, _) = dedent_token(input)?;
 
     Ok((
-        i,
+        input,
         EventDef {
             name: name.string.to_string(),
             fields: fields,
@@ -187,13 +187,13 @@ pub fn parse_event_field<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, EventF
 where
     E: ParseError<TokenSlice<'a>>,
 {
-    let (i, name) = name_token(input)?;
-    let (i, _) = op_string(":")(i)?;
-    let (i, typ) = name_token(i)?;
-    let (i, _) = newline_token(i)?;
+    let (input, name) = name_token(input)?;
+    let (input, _) = op_string(":")(input)?;
+    let (input, typ) = name_token(input)?;
+    let (input, _) = newline_token(input)?;
 
     Ok((
-        i,
+        input,
         EventField {
             name: name.string.to_string(),
             typ: typ.string.into(),
@@ -325,12 +325,12 @@ mod tests {
         F: Fn(TokenSlice<'a>) -> TokenResult<'a, O, E>,
     {
         move |input: TokenSlice<'a>| {
-            let (i, _) = many0(newline_token)(input)?;
-            let (i, o) = parser(i)?;
-            let (i, _) = many0(newline_token)(i)?;
-            let (i, _) = endmarker_token(i)?;
+            let (input, _) = many0(newline_token)(input)?;
+            let (input, o) = parser(input)?;
+            let (input, _) = many0(newline_token)(input)?;
+            let (input, _) = endmarker_token(input)?;
 
-            Ok((i, o))
+            Ok((input, o))
         }
     }
 
