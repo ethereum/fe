@@ -1,3 +1,5 @@
+use std::convert::TryFrom;
+
 use nom::branch::alt;
 use nom::combinator::{map, verify};
 use nom::error::{context, ErrorKind, ParseError};
@@ -203,14 +205,52 @@ pub fn const_expr<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
-    const_factor(input)
+    let (input, head) = const_term(input)?;
+    let (input, tail) = many0(alt((
+        pair(op_string("+"), const_term),
+        pair(op_string("-"), const_term),
+    )))(input)?;
+
+    let mut left_expr = head;
+    for (op_tok, right_expr) in tail {
+        left_expr = ConstExpr::BinOp {
+            left: Box::new(left_expr),
+            op: Operator::try_from(op_tok.string).unwrap(),
+            right: Box::new(right_expr),
+        };
+    }
+
+    Ok((input, left_expr))
+}
+
+pub fn const_term<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    let (input, head) = const_factor(input)?;
+    let (input, tail) = many0(alt((
+        pair(op_string("*"), const_factor),
+        pair(op_string("/"), const_factor),
+        pair(op_string("%"), const_factor),
+    )))(input)?;
+
+    let mut left_expr = head;
+    for (op_tok, right_expr) in tail {
+        left_expr = ConstExpr::BinOp {
+            left: Box::new(left_expr),
+            op: Operator::try_from(op_tok.string).unwrap(),
+            right: Box::new(right_expr),
+        };
+    }
+
+    Ok((input, left_expr))
 }
 
 pub fn const_factor<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
-    let const_factor_left = map(
+    let unary_op = map(
         pair(
             alt((op_string("+"), op_string("-"), op_string("~"))),
             const_factor,
@@ -226,15 +266,15 @@ where
         },
     );
 
-    alt((const_factor_left, const_power))(input)
+    alt((unary_op, const_power))(input)
 }
 
 pub fn const_power<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
-    let const_power_left = map(
-        separated_pair(const_paren, op_string("**"), const_factor),
+    let bin_op = map(
+        separated_pair(const_atom, op_string("**"), const_factor),
         |res| ConstExpr::BinOp {
             left: Box::new(res.0),
             op: Operator::Pow,
@@ -242,35 +282,25 @@ where
         },
     );
 
-    alt((const_power_left, const_paren))(input)
-}
-
-pub fn const_paren<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
-where
-    E: ParseError<TokenSlice<'a>>,
-{
-    alt((
-        delimited(op_string("("), const_expr, op_string(")")),
-        const_atom,
-    ))(input)
+    alt((bin_op, const_atom))(input)
 }
 
 pub fn const_atom<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
-    let number_or_name = context(
-        "number or name token",
-        verify(one_token, |tok: &TokenInfo| {
-            tok.typ == TokenType::NUMBER || tok.typ == TokenType::NAME
-        }),
-    );
+    alt((
+        const_group,
+        map(name_token, |t| ConstExpr::Name(t.string.into())),
+        map(number_token, |t| ConstExpr::Num(t.string.into())),
+    ))(input)
+}
 
-    map(number_or_name, |tok| match tok.typ {
-        TokenType::NUMBER => ConstExpr::Num(tok.string.into()),
-        TokenType::NAME => ConstExpr::Name(tok.string.into()),
-        _ => panic!("unreachable"),
-    })(input)
+pub fn const_group<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    delimited(op_string("("), const_expr, op_string(")"))(input)
 }
 
 #[cfg(test)]
@@ -384,38 +414,48 @@ mod tests {
         }};
     }
 
-    #[test]
-    fn test_const_paren_success() {
-        let empty_slice = &[][..];
+    macro_rules! empty_slice {
+        () => {
+            &[][..]
+        };
+    }
 
+    #[test]
+    fn test_const_expr_success() {
         use crate::ast::ConstExpr::*;
+        use crate::ast::Operator::*;
 
         assert_standalone_parser_success!(
-            const_paren,
+            const_expr,
             vec![
-                ("(1)", Ok((empty_slice, Num("1".into())))),
-                ("(CONST)", Ok((empty_slice, Name("CONST".into())))),
-                ("1", Ok((empty_slice, Num("1".into())))),
+                (
+                    "2 ** 8",
+                    Ok((
+                        empty_slice!(),
+                        BinOp {
+                            left: Box::new(Num("2".into())),
+                            op: Pow,
+                            right: Box::new(Num("8".into())),
+                        }
+                    ))
+                ),
+                (
+                    "CONST_1 ** (CONST_2 + CONST_3)",
+                    Ok((
+                        empty_slice!(),
+                        BinOp {
+                            left: Box::new(Name("CONST_1".into())),
+                            op: Pow,
+                            right: Box::new(BinOp {
+                                left: Box::new(Name("CONST_2".into())),
+                                op: Add,
+                                right: Box::new(Name("CONST_3".into())),
+                            }),
+                        }
+                    ))
+                ),
             ],
         );
-    }
-
-    #[test]
-    fn test_const_atom_success() {
-        let empty_slice = &[][..];
-
-        assert_standalone_parser_success!(
-            const_atom,
-            vec![
-                ("1", Ok((empty_slice, ConstExpr::Num("1".into())))),
-                ("asdf", Ok((empty_slice, ConstExpr::Name("asdf".into())))),
-            ],
-        );
-    }
-
-    #[test]
-    fn test_const_atom_error() {
-        assert_standalone_parser_error!(const_atom, vec!["(1)", "{ asdf }"]);
     }
 
     #[test]

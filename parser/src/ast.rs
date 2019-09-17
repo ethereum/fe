@@ -1,3 +1,5 @@
+use std::convert::TryFrom;
+
 pub type Name = String;
 pub type Type = String;
 
@@ -58,6 +60,27 @@ pub enum Operator {
     BitOr,
     BitXor,
     BitAnd,
+}
+
+impl TryFrom<&str> for Operator {
+    type Error = &'static str;
+
+    fn try_from(string: &str) -> Result<Self, Self::Error> {
+        match string {
+            "+" => Ok(Self::Add),
+            "-" => Ok(Self::Sub),
+            "*" => Ok(Self::Mult),
+            "/" => Ok(Self::Div),
+            "%" => Ok(Self::Mod),
+            "**" => Ok(Self::Pow),
+            "<<" => Ok(Self::LShift),
+            ">>" => Ok(Self::RShift),
+            "|" => Ok(Self::BitOr),
+            "^" => Ok(Self::BitXor),
+            "&" => Ok(Self::BitAnd),
+            _ => Err("unrecognized operator string"),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
