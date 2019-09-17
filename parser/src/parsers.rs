@@ -425,10 +425,23 @@ mod tests {
     fn test_const_expr_success() {
         use crate::ast::ConstExpr::*;
         use crate::ast::Operator::*;
+        use crate::ast::UnaryOp::*;
 
         assert_standalone_parser_success!(
             const_expr,
             vec![
+                ("1", Ok((empty_slice!(), Num("1".into()),))),
+                (
+                    "-1",
+                    Ok((
+                        empty_slice!(),
+                        UnaryOp {
+                            op: USub,
+                            operand: Box::new(Num("1".into())),
+                        }
+                    ))
+                ),
+                ("name", Ok((empty_slice!(), Name("name".into()),))),
                 (
                     "2 ** 8",
                     Ok((
