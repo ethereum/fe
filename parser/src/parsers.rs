@@ -176,7 +176,7 @@ where
     Ok((
         input,
         EventDef {
-            name: name.string.to_string(),
+            name: name.string.into(),
             fields: fields,
         },
     ))
@@ -195,7 +195,7 @@ where
     Ok((
         input,
         EventField {
-            name: name.string.to_string(),
+            name: name.string.into(),
             typ: typ.string.into(),
         },
     ))
@@ -491,14 +491,14 @@ event Greet:
             &[][..],
             Module {
                 body: vec![EventDef {
-                    name: "Greet".to_string(),
+                    name: "Greet".into(),
                     fields: vec![
                         EventField {
-                            name: "name".to_string(),
+                            name: "name".into(),
                             typ: "bytes32".into(),
                         },
                         EventField {
-                            name: "age".to_string(),
+                            name: "age".into(),
                             typ: "uint8".into(),
                         },
                     ],
@@ -551,27 +551,27 @@ event Other:
             Module {
                 body: vec![
                     EventDef {
-                        name: "Greet".to_string(),
+                        name: "Greet".into(),
                         fields: vec![
                             EventField {
-                                name: "name".to_string(),
+                                name: "name".into(),
                                 typ: "bytes32".into(),
                             },
                             EventField {
-                                name: "age".to_string(),
+                                name: "age".into(),
                                 typ: "uint8".into(),
                             },
                         ],
                     },
                     EventDef {
-                        name: "Other".to_string(),
+                        name: "Other".into(),
                         fields: vec![
                             EventField {
-                                name: "info1".to_string(),
+                                name: "info1".into(),
                                 typ: "uint256".into(),
                             },
                             EventField {
-                                name: "info2".to_string(),
+                                name: "info2".into(),
                                 typ: "bool".into(),
                             },
                         ],
