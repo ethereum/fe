@@ -78,7 +78,7 @@ impl TryFrom<&str> for Operator {
             "|" => Ok(Self::BitOr),
             "^" => Ok(Self::BitXor),
             "&" => Ok(Self::BitAnd),
-            _ => Err("unrecognized operator string"),
+            _ => Err("unrecognized binary operator string"),
         }
     }
 }

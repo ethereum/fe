@@ -273,10 +273,13 @@ where
 {
     let bin_op = map(
         separated_pair(const_atom, op_string("**"), const_factor),
-        |res| ConstExpr::BinOp {
-            left: Box::new(res.0),
-            op: Operator::Pow,
-            right: Box::new(res.1),
+        |res| {
+            let (left, right) = res;
+            ConstExpr::BinOp {
+                left: Box::new(left),
+                op: Operator::Pow,
+                right: Box::new(right),
+            }
         },
     );
 
