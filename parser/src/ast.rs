@@ -91,6 +91,20 @@ pub enum UnaryOp {
     USub,
 }
 
+impl TryFrom<&str> for UnaryOp {
+    type Error = &'static str;
+
+    fn try_from(string: &str) -> Result<Self, Self::Error> {
+        match string {
+            "~" => Ok(Self::Invert),
+            "not" => Ok(Self::Not),
+            "+" => Ok(Self::UAdd),
+            "-" => Ok(Self::USub),
+            _ => Err("unrecognized unary operator string"),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum ConstExpr {
     BinOp {

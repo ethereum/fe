@@ -255,14 +255,12 @@ where
             alt((op_string("+"), op_string("-"), op_string("~"))),
             const_factor,
         ),
-        |res| ConstExpr::UnaryOp {
-            op: match res.0.string {
-                "+" => UnaryOp::UAdd,
-                "-" => UnaryOp::USub,
-                "~" => UnaryOp::Invert,
-                _ => panic!("unreachable"),
-            },
-            operand: Box::new(res.1),
+        |res| {
+            let (op_tok, operand) = res;
+            ConstExpr::UnaryOp {
+                op: UnaryOp::try_from(op_tok.string).unwrap(),
+                operand: Box::new(operand),
+            }
         },
     );
 
