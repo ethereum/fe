@@ -130,7 +130,7 @@ where
     token(TokenType::ENDMARKER)(input)
 }
 
-/// Parse a module definition from a list of tokens produced from a source file.
+/// Parse a module definition.
 pub fn file_input<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Module, E>
 where
     E: ParseError<TokenSlice<'a>>,
@@ -147,7 +147,7 @@ where
     Ok((input, Module { body }))
 }
 
-/// Parse a module statement, such as a contract definition, into a `ModuleStmt` object.
+/// Parse a module statement, such as a contract definition.
 pub fn module_stmt<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ModuleStmt, E>
 where
     E: ParseError<TokenSlice<'a>>,
@@ -157,7 +157,7 @@ where
     Ok((input, module_stmt))
 }
 
-/// Parse an event definition statement into a `ModuleStmt::EventDef` object.
+/// Parse an event definition statement.
 pub fn parse_event_def<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ModuleStmt, E>
 where
     E: ParseError<TokenSlice<'a>>,
@@ -182,7 +182,7 @@ where
     ))
 }
 
-/// Parse an event field definition into an `EventField` object.
+/// Parse an event field definition.
 pub fn parse_event_field<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, EventField, E>
 where
     E: ParseError<TokenSlice<'a>>,
@@ -201,6 +201,8 @@ where
     ))
 }
 
+/// Parse a constant expression (arithmetic expression that does not include dynamically evaluated
+/// terms).
 pub fn const_expr<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
 where
     E: ParseError<TokenSlice<'a>>,
@@ -223,6 +225,7 @@ where
     Ok((input, left_expr))
 }
 
+/// Parse a constant term that may appear as the operand of an addition or subtraction.
 pub fn const_term<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
 where
     E: ParseError<TokenSlice<'a>>,
@@ -246,6 +249,8 @@ where
     Ok((input, left_expr))
 }
 
+/// Parse a constant factor that may appear as the operand of a multiplication, division, modulus,
+/// or unary op or as the exponent of a power expression.
 pub fn const_factor<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
 where
     E: ParseError<TokenSlice<'a>>,
@@ -267,6 +272,7 @@ where
     alt((unary_op, const_power))(input)
 }
 
+/// Parse a constant power expression that may appear in the position of a constant factor.
 pub fn const_power<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
 where
     E: ParseError<TokenSlice<'a>>,
@@ -286,6 +292,8 @@ where
     alt((bin_op, const_atom))(input)
 }
 
+/// Parse a constant atom expression that may appear in the position of a constant power or as the
+/// base of a constant power expression.
 pub fn const_atom<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
 where
     E: ParseError<TokenSlice<'a>>,
@@ -297,6 +305,7 @@ where
     ))(input)
 }
 
+/// Parse a parenthesized constant group that may appear in the position of a constant atom.
 pub fn const_group<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
 where
     E: ParseError<TokenSlice<'a>>,
