@@ -85,7 +85,8 @@ pub const VALID_STRING_PREFIXES: &[&str] = &[
     "RB", "Rb", "rB", "rf", "RF", "Rf", "rF",
 ];
 
-/// Get a hash set containing all possible initial single-quoted string delimiters.
+/// Get a hash set containing all possible initial single-quoted string
+/// delimiters.
 pub fn get_single_quote_set() -> HashSet<String> {
     let mut set = HashSet::new();
 
@@ -99,7 +100,8 @@ pub fn get_single_quote_set() -> HashSet<String> {
     set
 }
 
-/// Get a hash set containing all possible initial triple-quoted string delimiters.
+/// Get a hash set containing all possible initial triple-quoted string
+/// delimiters.
 pub fn get_triple_quote_set() -> HashSet<String> {
     let mut set = HashSet::new();
 
@@ -146,12 +148,14 @@ pub fn get_string_pattern() -> String {
     ])
 }
 
-/// Because of leftmost-then-longest match semantics, be sure to put the longest operators first
-/// (e.g., if = came before ==, == would get recognized as two instances of =).
+/// Because of leftmost-then-longest match semantics, be sure to put the longest
+/// operators first (e.g., if = came before ==, == would get recognized as two
+/// instances of =).
+///
 /// OPERATOR = group(r"\*\*=?", r">>=?", r"<<=?", r"!=",
-///                 r"//=?", r"->",
-///                 r"[+\-*/%&@|^=<>]=?",
-///                 r"~")
+///                  r"//=?", r"->",
+///                  r"[+\-*/%&@|^=<>]=?",
+///                  r"~")
 pub fn get_operator_pattern() -> String {
     group(&[
         r"\*\*=?",
@@ -234,9 +238,9 @@ pub fn get_pseudotoken_pattern() -> String {
     .concat()
 }
 
-/// Compile the given regex with the "beginning of text" anchor prepended.  This forces the regex
-/// to match at the *beginning of a string* (as in python's re.match method) instead of anywhere in
-/// the string.
+/// Compile the given regex with the "beginning of text" anchor prepended.  This
+/// forces the regex to match at the *beginning of a string* (as in python's
+/// re.match method) instead of anywhere in the string.
 pub fn compile_anchored(re: &str) -> Regex {
     Regex::new(&[r"\A", re].concat()).unwrap()
 }

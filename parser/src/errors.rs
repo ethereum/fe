@@ -1,5 +1,13 @@
-use nom::error::{ErrorKind, ParseError, VerboseError, VerboseErrorKind};
-use nom::{Err as NomErr, IResult};
+use nom::error::{
+    ErrorKind,
+    ParseError,
+    VerboseError,
+    VerboseErrorKind,
+};
+use nom::{
+    Err as NomErr,
+    IResult,
+};
 
 use crate::parsers::TokenSlice;
 

@@ -9,7 +9,8 @@ use pyo3::types::PyBytes;
 
 use vyper_parser::tokenizer::*;
 
-/// Return the lines of text in the string `lines` prefixed with the prefix in the string `prefix`.
+/// Return the lines of text in the string `lines` prefixed with the prefix in
+/// the string `prefix`.
 fn prefix_lines(prefix: &str, lines: &str) -> String {
     lines
         .lines()
@@ -46,7 +47,8 @@ impl fmt::Display for Diff {
     }
 }
 
-/// Compare the given strings and panic when not equal with a colorized line diff.
+/// Compare the given strings and panic when not equal with a colorized line
+/// diff.
 macro_rules! assert_strings_eq {
     ($left:expr , $right:expr,) => ({
         assert_strings_eq!($left, $right)

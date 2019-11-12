@@ -1,23 +1,42 @@
 use std::convert::TryFrom;
 
 use nom::branch::alt;
-use nom::combinator::{map, verify};
-use nom::error::{context, ErrorKind, ParseError};
-use nom::multi::{many0, many1};
-use nom::sequence::{delimited, pair, preceded, separated_pair};
+use nom::combinator::{
+    map,
+    verify,
+};
+use nom::error::{
+    context,
+    ErrorKind,
+    ParseError,
+};
+use nom::multi::{
+    many0,
+    many1,
+};
+use nom::sequence::{
+    delimited,
+    pair,
+    preceded,
+    separated_pair,
+};
 use nom::IResult;
 
 use crate::ast::ModuleStmt::*;
 use crate::ast::*;
 use crate::errors::make_error;
 use crate::tokenizer::tokenize::tokenize;
-use crate::tokenizer::types::{TokenInfo, TokenType};
+use crate::tokenizer::types::{
+    TokenInfo,
+    TokenType,
+};
 
 pub type TokenRef<'a> = &'a TokenInfo<'a>;
 pub type TokenSlice<'a> = &'a [TokenInfo<'a>];
 pub type TokenResult<'a, O, E> = IResult<TokenSlice<'a>, O, E>;
 
-/// Tokenize the given source code in `source` and filter out tokens not relevant to parsing.
+/// Tokenize the given source code in `source` and filter out tokens not
+/// relevant to parsing.
 pub fn get_parse_tokens<'a>(source: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
     let tokens = tokenize(source)?;
 
@@ -201,8 +220,8 @@ where
     ))
 }
 
-/// Parse a constant expression (arithmetic expression that does not include dynamically evaluated
-/// terms).
+/// Parse a constant expression (arithmetic expression that does not include
+/// dynamically evaluated terms).
 pub fn const_expr<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
 where
     E: ParseError<TokenSlice<'a>>,
@@ -225,7 +244,8 @@ where
     Ok((input, left_expr))
 }
 
-/// Parse a constant term that may appear as the operand of an addition or subtraction.
+/// Parse a constant term that may appear as the operand of an addition or
+/// subtraction.
 pub fn const_term<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
 where
     E: ParseError<TokenSlice<'a>>,
@@ -249,8 +269,8 @@ where
     Ok((input, left_expr))
 }
 
-/// Parse a constant factor that may appear as the operand of a multiplication, division, modulus,
-/// or unary op or as the exponent of a power expression.
+/// Parse a constant factor that may appear as the operand of a multiplication,
+/// division, modulus, or unary op or as the exponent of a power expression.
 pub fn const_factor<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
 where
     E: ParseError<TokenSlice<'a>>,
@@ -272,7 +292,8 @@ where
     alt((unary_op, const_power))(input)
 }
 
-/// Parse a constant power expression that may appear in the position of a constant factor.
+/// Parse a constant power expression that may appear in the position of a
+/// constant factor.
 pub fn const_power<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
 where
     E: ParseError<TokenSlice<'a>>,
@@ -292,8 +313,8 @@ where
     alt((bin_op, const_atom))(input)
 }
 
-/// Parse a constant atom expression that may appear in the position of a constant power or as the
-/// base of a constant power expression.
+/// Parse a constant atom expression that may appear in the position of a
+/// constant power or as the base of a constant power expression.
 pub fn const_atom<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
 where
     E: ParseError<TokenSlice<'a>>,
@@ -305,7 +326,8 @@ where
     ))(input)
 }
 
-/// Parse a parenthesized constant group that may appear in the position of a constant atom.
+/// Parse a parenthesized constant group that may appear in the position of a
+/// constant atom.
 pub fn const_group<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
 where
     E: ParseError<TokenSlice<'a>>,
@@ -317,18 +339,22 @@ where
 mod tests {
     use super::*;
 
-    use nom::error::{ErrorKind, VerboseError};
+    use nom::error::{
+        ErrorKind,
+        VerboseError,
+    };
     use nom::Err as NomErr;
 
     use crate::errors::format_debug_error;
 
     type SimpleError<I> = (I, ErrorKind);
 
-    /// Convert a parser into one that can function as a standalone file parser.  File
-    /// tokenizations can be interspersed with arbitrary `NEWLINE` tokens and are also terminated
-    /// with an `ENDMARKER` token.  Parsers defined lower in the grammar tree are not intended to
-    /// handle that kind of tokenization which makes testing them difficult.  This combinator helps
-    /// with that.
+    /// Convert a parser into one that can function as a standalone file parser.
+    /// File tokenizations can be interspersed with arbitrary `NEWLINE`
+    /// tokens and are also terminated with an `ENDMARKER` token.  Parsers
+    /// defined lower in the grammar tree are not intended to handle that
+    /// kind of tokenization which makes testing them difficult.  This
+    /// combinator helps with that.
     fn standalone<'a, O, E, F>(parser: F) -> impl Fn(TokenSlice<'a>) -> TokenResult<'a, O, E>
     where
         E: ParseError<TokenSlice<'a>>,
@@ -344,8 +370,8 @@ mod tests {
         }
     }
 
-    /// Assert `$parser` succeeds when applied to the given input in `$examples` with the expected
-    /// output specified in `$examples` or `$expected`.
+    /// Assert `$parser` succeeds when applied to the given input in `$examples`
+    /// with the expected output specified in `$examples` or `$expected`.
     macro_rules! assert_parser_success {
         ($parser:expr, $examples:expr,) => {{
             assert_parser_success!($parser, $examples);
@@ -371,9 +397,9 @@ mod tests {
         }};
     }
 
-    /// Assert that `$parser` succeeds when applied as a standalone parser to the given input in
-    /// `$examples` with the expected output specified in `$examples` or `$expected`.  Print a
-    /// debug trace if parsing fails.
+    /// Assert that `$parser` succeeds when applied as a standalone parser to
+    /// the given input in `$examples` with the expected output specified in
+    /// `$examples` or `$expected`.  Print a debug trace if parsing fails.
     macro_rules! assert_standalone_parser_success {
         ($parser:ident, $examples:expr,) => {{
             assert_standalone_parser_success!($parser, $examples);
@@ -408,8 +434,8 @@ mod tests {
         }};
     }
 
-    /// Assert `$parser` returns an error when applied as a standalone parser to the given input in
-    /// `$examples`.
+    /// Assert `$parser` returns an error when applied as a standalone parser to
+    /// the given input in `$examples`.
     macro_rules! assert_standalone_parser_error {
         ($parser:ident, $examples:expr,) => {{
             assert_standalone_parser_error!($parser, $examples)

@@ -1,11 +1,25 @@
 use regex::Regex;
 
-use crate::string_utils::{lines_with_endings, lstrip_slice, rstrip_slice};
-use crate::tokenizer::regex::{
-    compile_anchored, get_pseudotoken_pattern, get_single_quote_set, get_triple_quote_set, DOUBLE,
-    DOUBLE3, SINGLE, SINGLE3,
+use crate::string_utils::{
+    lines_with_endings,
+    lstrip_slice,
+    rstrip_slice,
 };
-use crate::tokenizer::types::{Position, TokenInfo, TokenType::*};
+use crate::tokenizer::regex::{
+    compile_anchored,
+    get_pseudotoken_pattern,
+    get_single_quote_set,
+    get_triple_quote_set,
+    DOUBLE,
+    DOUBLE3,
+    SINGLE,
+    SINGLE3,
+};
+use crate::tokenizer::types::{
+    Position,
+    TokenInfo,
+    TokenType::*,
+};
 
 pub const TABSIZE: usize = 8;
 
@@ -27,8 +41,8 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
     let double_re = Regex::new(DOUBLE).unwrap();
     let single_re = Regex::new(SINGLE).unwrap();
 
-    // The ordering of checks matters here.  We need to eliminate the possibility of triple quote
-    // delimiters before looking for single quote delimiters.
+    // The ordering of checks matters here.  We need to eliminate the possibility of
+    // triple quote delimiters before looking for single quote delimiters.
     let get_contstr_end_re = |token: &str| {
         let token_stripped = lstrip_slice(token, "bBrRuUfF");
 
@@ -59,8 +73,9 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
     let mut contstr_end_re: Option<&Regex> = None;
     let mut needcont: bool = false;
 
-    // Token generation loop.  We use the `loop` keyword here (instead of `for (line, line_num) in
-    // ...`) so we can hold onto the iterator vars after the loop finishes.
+    // Token generation loop.  We use the `loop` keyword here (instead of `for
+    // (line, line_num) in ...`) so we can hold onto the iterator vars after the
+    // loop finishes.
     let mut line = &input[..0];
     let mut line_num = 0;
     let mut lines = lines_with_endings(input);
@@ -343,8 +358,9 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
         return Err("EOF in multi-line statement".to_string());
     }
 
-    // We use this zero-length slice as the ending content for remaining tokens.  This is *just in
-    // case* anyone actually cares that the location of the pointer makes any kind of sense.
+    // We use this zero-length slice as the ending content for remaining tokens.
+    // This is *just in case* anyone actually cares that the location of the
+    // pointer makes any kind of sense.
     let empty_end_slice = &input[input.len()..];
 
     if !line.is_empty() {

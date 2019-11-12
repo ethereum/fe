@@ -1,5 +1,5 @@
-/// Iterate over the lines in `buf` and include line endings in the results.  Also, provide byte
-/// offsets of line beginnings and endings.
+/// Iterate over the lines in `buf` and include line endings in the results.
+/// Also, provide byte offsets of line beginnings and endings.
 pub fn lines_with_endings<'a>(buf: &'a str) -> impl Iterator<Item = (&'a str, usize, usize)> {
     let mut rest = buf;
     let mut rest_offset = 0;
@@ -29,7 +29,8 @@ pub fn lines_with_endings<'a>(buf: &'a str) -> impl Iterator<Item = (&'a str, us
     })
 }
 
-/// Strip the characters in the string `strip` from the left side of the string slice `input`.
+/// Strip the characters in the string `strip` from the left side of the string
+/// slice `input`.
 pub fn lstrip_slice<'a>(input: &'a str, strip: &str) -> &'a str {
     let mut start = 0;
 
@@ -44,7 +45,8 @@ pub fn lstrip_slice<'a>(input: &'a str, strip: &str) -> &'a str {
     &input[start..]
 }
 
-/// Strip the characters in the string `strip` from the right side of the string slice `input`.
+/// Strip the characters in the string `strip` from the right side of the string
+/// slice `input`.
 pub fn rstrip_slice<'a>(input: &'a str, strip: &str) -> &'a str {
     let mut end = input.len();
 

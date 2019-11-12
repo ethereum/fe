@@ -11,16 +11,16 @@ pub struct Module {
 #[derive(Debug, PartialEq)]
 pub enum ModuleStmt {
     EventDef { name: Name, fields: Vec<EventField> },
-    //InterfaceDef {
-    //    name: Name,
-    //    fields: Vec<InterfaceField>,
-    //    methods: Vec<InterfaceMethodDef>,
-    //},
-    //ContractDef {
-    //    name: Name,
-    //    fields: Vec<ContractField>,
-    //    methods: Vec<ContractMethodDef>,
-    //},
+    /* InterfaceDef {
+     *     name: Name,
+     *     fields: Vec<InterfaceField>,
+     *     methods: Vec<InterfaceMethodDef>,
+     * },
+     * ContractDef {
+     *     name: Name,
+     *     fields: Vec<ContractField>,
+     *     methods: Vec<ContractMethodDef>,
+     * }, */
 }
 
 #[derive(Debug, PartialEq)]
