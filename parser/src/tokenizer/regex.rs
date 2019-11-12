@@ -138,6 +138,7 @@ pub fn get_triple_pattern() -> String {
     ])
 }
 /// Single-line ' or " string.
+///
 /// STRING = group(STRINGPREFIX + r"'[^\n'\\]*(?:\\.[^\n'\\]*)*'",
 ///                STRINGPREFIX + r'"[^\n"\\]*(?:\\.[^\n"\\]*)*"')
 pub fn get_string_pattern() -> String {
