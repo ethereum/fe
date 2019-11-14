@@ -512,7 +512,7 @@ mod tests {
         assert_parser_success!(
             file_input::<SimpleError<_>>,
             vec!["", "  \t ", " \n\n   \t \n \t "],
-            Ok((&[][..], Module { body: vec![] })),
+            Ok((empty_slice!(), Module { body: vec![] })),
         );
     }
 
@@ -536,7 +536,7 @@ event Greet:
 ",
         ];
         let expected: TokenResult<_, SimpleError<_>> = Ok((
-            &[][..],
+            empty_slice!(),
             Module {
                 body: vec![EventDef {
                     name: "Greet".into(),
@@ -595,7 +595,7 @@ event Other:
 ",
         ];
         let expected: TokenResult<_, SimpleError<_>> = Ok((
-            &[][..],
+            empty_slice!(),
             Module {
                 body: vec![
                     EventDef {
