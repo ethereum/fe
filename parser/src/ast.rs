@@ -1,14 +1,19 @@
 use std::convert::TryFrom;
 
+use serde::{
+    Deserialize,
+    Serialize,
+};
+
 pub type Name = String;
 pub type Type = String;
 
-#[derive(Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Module {
     pub body: Vec<ModuleStmt>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum ModuleStmt {
     EventDef { name: Name, fields: Vec<EventField> },
     /* InterfaceDef {
@@ -23,7 +28,7 @@ pub enum ModuleStmt {
      * }, */
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct TypeDesc {
     base: String,
     dimensions: Vec<u32>,
@@ -40,14 +45,14 @@ impl From<&str> for TypeDesc {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct EventField {
     pub name: Name,
     pub typ: TypeDesc,
     //pub indexed: bool,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum Operator {
     Add,
     Sub,
@@ -83,7 +88,7 @@ impl TryFrom<&str> for Operator {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum UnaryOp {
     Invert,
     Not,
@@ -105,7 +110,7 @@ impl TryFrom<&str> for UnaryOp {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum ConstExpr {
     BinOp {
         left: Box<ConstExpr>,
