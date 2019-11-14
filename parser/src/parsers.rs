@@ -181,13 +181,13 @@ pub fn parse_event_def<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ModuleSt
 where
     E: ParseError<TokenSlice<'a>>,
 {
-    // "event" name ":" <newline>
+    // "event" name ":" NEWLINE
     let (input, _) = name_string("event")(input)?;
     let (input, name) = name_token(input)?;
     let (input, _) = op_string(":")(input)?;
     let (input, _) = newline_token(input)?;
 
-    // <indent> event_field+ <dedent>
+    // INDENT event_field+ DEDENT
     let (input, _) = indent_token(input)?;
     let (input, fields) = many1(parse_event_field)(input)?;
     let (input, _) = dedent_token(input)?;
@@ -220,8 +220,7 @@ where
     ))
 }
 
-/// Parse a constant expression (arithmetic expression that does not include
-/// dynamically evaluated terms).
+/// Parse a constant expression that can be evaluated at compile-time.
 pub fn const_expr<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
 where
     E: ParseError<TokenSlice<'a>>,
