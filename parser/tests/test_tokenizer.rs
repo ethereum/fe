@@ -1,7 +1,3 @@
-extern crate difference;
-extern crate pyo3;
-extern crate vyper_parser;
-
 use std::fmt;
 
 use pyo3::prelude::*;
