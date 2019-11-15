@@ -6,6 +6,10 @@ use std::fmt;
 
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use vyper_parser::tokenizer::*;
 
@@ -123,10 +127,46 @@ impl<'a> TokenHelpers<'a> {
     }
 }
 
+/// This struct and its associated `From` implementation are used to cast vyper
+/// tokens (which may include specialized information only used by the vyper
+/// parser, such as global byte offsets into a source file) into objects with
+/// only as much information as would be found in a python token.
+///
+/// At the time this struct was added, its specific use was in filtering out
+/// global byte offsets found in vyper tokens for which no corresponding values
+/// exist by default in python tokens.
+#[derive(Serialize, Deserialize)]
+pub struct ConciseTokenInfo<'a> {
+    pub typ: TokenType,
+    pub string: &'a str,
+    pub start: Position,
+    pub end: Position,
+    pub line: &'a str,
+}
+
+impl<'a> From<&'a TokenInfo<'a>> for ConciseTokenInfo<'a> {
+    fn from(token_info: &'a TokenInfo<'a>) -> Self {
+        Self {
+            typ: token_info.typ,
+            string: token_info.string,
+            start: token_info.start,
+            end: token_info.end,
+            line: token_info.line,
+        }
+    }
+}
+
 fn get_rust_token_json(input: &str) -> String {
     let tokens = tokenize(input).unwrap();
-    let serialized = serde_json::to_string_pretty(&tokens).unwrap();
-    serialized
+
+    // Convert vyper tokens into "concise" tokens that only include as much
+    // information as would be found in a python token object
+    let concise_tokens = tokens
+        .iter()
+        .map(|i| i.into())
+        .collect::<Vec<ConciseTokenInfo>>();
+
+    serde_json::to_string_pretty(&concise_tokens).unwrap()
 }
 
 #[test]
