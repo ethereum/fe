@@ -108,7 +108,9 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                     typ: STRING,
                     string: &input[contstr_start_val..line_start + tok_end],
                     start: contstr_start_pos.unwrap(),
+                    start_off: contstr_start_val,
                     end: (line_num, tok_end),
+                    end_off: line_start + tok_end,
                     line: &input[contline_start.unwrap()..line_end],
                 });
 
@@ -121,7 +123,9 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                     typ: ERRORTOKEN,
                     string: &input[contstr_start_val..line_end],
                     start: contstr_start_pos.unwrap(),
+                    start_off: contstr_start_val,
                     end: (line_num, line_len),
+                    end_off: line_end,
                     line: &input[contline_start.unwrap()..line_start],
                 });
 
@@ -174,7 +178,9 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                             typ: COMMENT,
                             string: comment_token,
                             start: (line_num, line_pos),
+                            start_off: line_start + line_pos,
                             end: (line_num, line_pos + comment_token_len),
+                            end_off: line_start + line_pos + comment_token_len,
                             line: line,
                         });
 
@@ -185,7 +191,9 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                         typ: NL,
                         string: &line[line_pos..],
                         start: (line_num, line_pos),
+                        start_off: line_start + line_pos,
                         end: (line_num, line_len),
+                        end_off: line_end,
                         line: line,
                     });
 
@@ -199,7 +207,9 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                     typ: INDENT,
                     string: &line[..line_pos],
                     start: (line_num, 0),
+                    start_off: line_start,
                     end: (line_num, line_pos),
+                    end_off: line_start + line_pos,
                     line: line,
                 });
             }
@@ -211,9 +221,11 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                 indents.pop();
                 result.push(TokenInfo {
                     typ: DEDENT,
-                    string: &line[line_len..],
+                    string: &line[line_pos..line_pos],
                     start: (line_num, line_pos),
+                    start_off: line_start + line_pos,
                     end: (line_num, line_pos),
+                    end_off: line_start + line_pos,
                     line: line,
                 });
             }
@@ -229,6 +241,8 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
 
                 let spos = (line_num, tok_start);
                 let epos = (line_num, tok_end);
+                let soff = line_start + tok_start;
+                let eoff = line_start + tok_end;
                 line_pos = tok_end;
 
                 if tok_start == tok_end {
@@ -243,7 +257,9 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                         typ: NUMBER,
                         string: token,
                         start: spos,
+                        start_off: soff,
                         end: epos,
+                        end_off: eoff,
                         line: line,
                     });
                 } else if initial == '\r' || initial == '\n' {
@@ -252,7 +268,9 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                             typ: NL,
                             string: token,
                             start: spos,
+                            start_off: soff,
                             end: epos,
+                            end_off: eoff,
                             line: line,
                         });
                     } else {
@@ -260,7 +278,9 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                             typ: NEWLINE,
                             string: token,
                             start: spos,
+                            start_off: soff,
                             end: epos,
+                            end_off: eoff,
                             line: line,
                         });
                     }
@@ -269,7 +289,9 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                         typ: COMMENT,
                         string: token,
                         start: spos,
+                        start_off: soff,
                         end: epos,
+                        end_off: eoff,
                         line: line,
                     });
                 } else if triple_quoted.contains(token) {
@@ -283,7 +305,9 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                             typ: STRING,
                             string: token,
                             start: spos,
+                            start_off: soff,
                             end: (line_num, line_pos),
+                            end_off: line_start + line_pos,
                             line: line,
                         });
                     } else {
@@ -309,7 +333,9 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                             typ: STRING,
                             string: token,
                             start: spos,
+                            start_off: soff,
                             end: epos,
+                            end_off: eoff,
                             line: line,
                         });
                     }
@@ -318,7 +344,9 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                         typ: NAME,
                         string: token,
                         start: spos,
+                        start_off: soff,
                         end: epos,
+                        end_off: eoff,
                         line: line,
                     });
                 } else if initial == '\\' {
@@ -333,7 +361,9 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                         typ: OP,
                         string: token,
                         start: spos,
+                        start_off: soff,
                         end: epos,
+                        end_off: eoff,
                         line: line,
                     });
                 }
@@ -342,7 +372,9 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                     typ: ERRORTOKEN,
                     string: &line[line_pos..line_pos + 1],
                     start: (line_num, line_pos),
+                    start_off: line_start + line_pos,
                     end: (line_num, line_pos + 1),
+                    end_off: line_start + line_pos + 1,
                     line: line,
                 });
                 line_pos += 1;
@@ -361,7 +393,8 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
     // We use this zero-length slice as the ending content for remaining tokens.
     // This is *just in case* anyone actually cares that the location of the
     // pointer makes any kind of sense.
-    let empty_end_slice = &input[input.len()..];
+    let input_len = input.len();
+    let empty_end_slice = &input[input_len..];
 
     if !line.is_empty() {
         let last_char = line.chars().last().unwrap();
@@ -370,7 +403,13 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
                 typ: NEWLINE,
                 string: empty_end_slice,
                 start: (line_num - 1, line.len()),
-                end: (line_num - 1, line.len() + 1),
+                start_off: input_len,
+                // Python's stdlib tokenize module fudges the end position of this virtual token
+                // and says it's one character beyond the actual content of the string.  Since this
+                // could potentially lead someone access invalid memory, we differ slightly here
+                // and just act like the token has a length of zero.
+                end: (line_num - 1, line.len()),
+                end_off: input_len,
                 line: empty_end_slice,
             });
         }
@@ -380,7 +419,9 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
             typ: DEDENT,
             string: empty_end_slice,
             start: (line_num, 0),
+            start_off: input_len,
             end: (line_num, 0),
+            end_off: input_len,
             line: empty_end_slice,
         });
     }
@@ -388,7 +429,9 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
         typ: ENDMARKER,
         string: empty_end_slice,
         start: (line_num, 0),
+        start_off: input_len,
         end: (line_num, 0),
+        end_off: input_len,
         line: empty_end_slice,
     });
 
