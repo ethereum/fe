@@ -42,7 +42,7 @@ pub struct TokenInfo<'a> {
 
     /// The beginning line/column position of a token in the original source
     /// string
-    pub start: Position,
+    pub start_pos: Position,
 
     /// The global byte offset into the original source string of the beginning
     /// of a token
@@ -50,7 +50,7 @@ pub struct TokenInfo<'a> {
 
     /// The ending line/column position of a token in the original source
     /// string
-    pub end: Position,
+    pub end_pos: Position,
 
     /// The global byte offset into the original source string of the end of a
     /// token

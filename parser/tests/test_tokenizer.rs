@@ -149,8 +149,8 @@ impl<'a> From<&'a TokenInfo<'a>> for ConciseTokenInfo<'a> {
         Self {
             typ: token_info.typ,
             string: token_info.string,
-            start: token_info.start,
-            end: token_info.end,
+            start: token_info.start_pos,
+            end: token_info.end_pos,
             line: token_info.line,
         }
     }
