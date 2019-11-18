@@ -114,7 +114,7 @@ fn split_test_example<'a>(input: &'a str) -> Result<(&'a str, &'a str), &'static
     let parts: Vec<_> = input.split("\n---\n").collect();
 
     if parts.len() != 2 {
-        Err("Parsing example has wrong format")
+        Err("Test example has wrong format")
     } else {
         let input = parts[0];
         let parsed = parts[1];
