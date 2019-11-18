@@ -9,7 +9,6 @@ use vyper_parser::tokenizer::*;
 
 #[macro_use]
 mod utils;
-use utils::Diff;
 
 pub struct TokenHelpers<'a> {
     py: Python<'a>,

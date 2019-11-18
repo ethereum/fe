@@ -50,7 +50,7 @@ macro_rules! assert_strings_eq {
                 if *left_val != *right_val {
                     panic!(
                         "assertion failed: `(left == right)`\ndiff:\n{}",
-                        Diff::new(left_val, right_val),
+                        utils::Diff::new(left_val, right_val),
                     )
                 }
             }
@@ -63,7 +63,7 @@ macro_rules! assert_strings_eq {
                     panic!(
                         "assertion failed: `(left == right)`: {}\ndiff:\n{}",
                         format_args!($($arg)*),
-                        Diff::new(left_val, right_val),
+                        utils::Diff::new(left_val, right_val),
                     )
                 }
             }
