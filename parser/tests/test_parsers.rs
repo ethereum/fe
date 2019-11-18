@@ -1,3 +1,6 @@
+#[macro_use]
+mod utils;
+
 use nom::error::{
     ErrorKind,
     ParseError,
@@ -60,15 +63,15 @@ macro_rules! assert_parser_success {
     }};
 }
 
-/// Assert that `$parser` succeeds when applied as a standalone parser to
-/// the given input in `$examples` with the expected output specified in
-/// `$examples` or `$expected`.  Print a debug trace if parsing fails.
-macro_rules! assert_standalone_parser_success {
+/// Assert that `$parser` succeeds and parses all tokens when applied as a
+/// standalone parser to the given input.  Expected results are defined as
+/// serializations.  Print a debug trace if parsing fails.
+macro_rules! assert_all_parsed_with_serialization {
     ($parser:ident, $examples:expr,) => {{
-        assert_standalone_parser_success!($parser, $examples);
+        assert_all_parsed_with_serialization!($parser, $examples);
     }};
     ($parser:ident, $examples:expr) => {{
-        for (inp, expected) in $examples {
+        for (inp, expected_serialization) in $examples {
             let tokens = get_parse_tokens(inp).unwrap();
             let actual = standalone($parser::<VerboseError<_>>)(&tokens[..]);
 
@@ -81,34 +84,16 @@ macro_rules! assert_standalone_parser_success {
                 }
             }
 
-            assert_eq!(actual, expected);
-        }
-    }};
-    ($parser:ident, $examples:expr, $expected:expr,) => {{
-        assert_standalone_parser_success!($parser, $examples, $expected);
-    }};
-    ($parser:ident, $examples:expr, $expected:expr) => {{
-        for inp in $examples {
-            let tokens = get_parse_tokens(inp).unwrap();
-            let actual = standalone($parser::<VerboseError<_>>)(&tokens[..]);
+            let (actual_remaining, actual_ast) = actual.unwrap();
 
-            assert_eq!(actual, $expected);
-        }
-    }};
-}
+            let mut serializer_config = ron::ser::PrettyConfig::default();
+            serializer_config.indentor = "  ".to_string();
 
-/// Assert `$parser` returns an error when applied as a standalone parser to
-/// the given input in `$examples`.
-macro_rules! assert_standalone_parser_error {
-    ($parser:ident, $examples:expr,) => {{
-        assert_standalone_parser_error!($parser, $examples)
-    }};
-    ($parser:ident, $examples:expr) => {{
-        for inp in $examples {
-            let tokens = get_parse_tokens(inp).unwrap();
-            let actual = standalone($parser::<SimpleError<_>>)(&tokens[..]);
+            let actual_serialization =
+                ron::ser::to_string_pretty(&actual_ast, serializer_config).unwrap();
 
-            assert!(actual.is_err());
+            assert_eq!(actual_remaining, empty_slice!());
+            assert_strings_eq!(actual_serialization, expected_serialization);
         }
     }};
 }
@@ -119,53 +104,39 @@ macro_rules! empty_slice {
     };
 }
 
+macro_rules! include_test_example {
+    ($path:expr) => {{
+        split_test_example(include_str!($path)).unwrap()
+    }};
+}
+
+fn split_test_example<'a>(input: &'a str) -> Result<(&'a str, &'a str), &'static str> {
+    let parts: Vec<_> = input.split("\n---\n").collect();
+
+    if parts.len() != 2 {
+        Err("Parsing example has wrong format")
+    } else {
+        let input = parts[0];
+        let parsed = parts[1];
+
+        // If single trailing newline is present, clip off
+        match parsed.chars().last() {
+            Some(c) if c == '\n' => Ok((input, &parsed[..parsed.len() - 1])),
+            _ => Ok((input, parsed)),
+        }
+    }
+}
+
 #[test]
 fn test_const_expr_success() {
-    use vyper_parser::ast::ConstExpr::*;
-    use vyper_parser::ast::Operator::*;
-    use vyper_parser::ast::UnaryOp::*;
-
-    assert_standalone_parser_success!(
+    assert_all_parsed_with_serialization!(
         const_expr,
         vec![
-            ("1", Ok((empty_slice!(), Num("1".into()),))),
-            (
-                "-1",
-                Ok((
-                    empty_slice!(),
-                    UnaryOp {
-                        op: USub,
-                        operand: Box::new(Num("1".into())),
-                    }
-                ))
-            ),
-            ("name", Ok((empty_slice!(), Name("name".into()),))),
-            (
-                "2 ** 8",
-                Ok((
-                    empty_slice!(),
-                    BinOp {
-                        left: Box::new(Num("2".into())),
-                        op: Pow,
-                        right: Box::new(Num("8".into())),
-                    }
-                ))
-            ),
-            (
-                "CONST_1 ** (CONST_2 + CONST_3)",
-                Ok((
-                    empty_slice!(),
-                    BinOp {
-                        left: Box::new(Name("CONST_1".into())),
-                        op: Pow,
-                        right: Box::new(BinOp {
-                            left: Box::new(Name("CONST_2".into())),
-                            op: Add,
-                            right: Box::new(Name("CONST_3".into())),
-                        }),
-                    }
-                ))
-            ),
+            include_test_example!("fixtures/parsers/const_expr/number_1.ron"),
+            include_test_example!("fixtures/parsers/const_expr/number_2.ron"),
+            include_test_example!("fixtures/parsers/const_expr/name_1.ron"),
+            include_test_example!("fixtures/parsers/const_expr/power_1.ron"),
+            include_test_example!("fixtures/parsers/const_expr/power_2.ron"),
         ],
     );
 }

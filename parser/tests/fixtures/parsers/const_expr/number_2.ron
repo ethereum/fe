@@ -1,0 +1,6 @@
+-1
+---
+UnaryOp(
+  op: USub,
+  operand: Num("1"),
+)

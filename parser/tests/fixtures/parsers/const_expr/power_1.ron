@@ -1,0 +1,7 @@
+2 ** 8
+---
+BinOp(
+  left: Num("2"),
+  op: Pow,
+  right: Num("8"),
+)

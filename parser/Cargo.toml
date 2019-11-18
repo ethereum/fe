@@ -11,8 +11,9 @@ description = "Parser lib for Rust Vyper."
 nom = "5"
 regex = "1"
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
 
 [dev-dependencies]
-pyo3 = "0.8.2"
 difference = "2.0"
+pyo3 = "0.8.2"
+ron = "0.5.1"
+serde_json = "1"

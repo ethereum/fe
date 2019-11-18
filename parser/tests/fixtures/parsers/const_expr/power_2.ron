@@ -1,0 +1,11 @@
+CONST_1 ** (CONST_2 + CONST_3)
+---
+BinOp(
+  left: Name("CONST_1"),
+  op: Pow,
+  right: BinOp(
+    left: Name("CONST_2"),
+    op: Add,
+    right: Name("CONST_3"),
+  ),
+)
