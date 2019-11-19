@@ -8,6 +8,7 @@ use nom::error::{
 };
 use nom::multi::many0;
 use nom::Err as NomErr;
+use serde::Serialize;
 
 use vyper_parser::ast::*;
 use vyper_parser::errors::format_debug_error;
@@ -34,6 +35,55 @@ where
 
         Ok((input, o))
     }
+}
+
+/// Convenience function to serialize objects in RON format with custom pretty
+/// printing config and struct names.
+pub fn to_ron_string_pretty<T>(value: &T) -> ron::ser::Result<String>
+where
+    T: Serialize,
+{
+    let mut config = ron::ser::PrettyConfig::default();
+    // Indent with 2 spaces
+    config.indentor = "  ".to_string();
+
+    let mut serializer = ron::ser::Serializer::new(Some(config), true);
+    value.serialize(&mut serializer)?;
+
+    Ok(serializer.into_output_string())
+}
+
+/// Parse test example file content into a tuple of input text and expected
+/// serialization.
+fn parse_test_example<'a>(input: &'a str) -> Result<(&'a str, &'a str), &'static str> {
+    let parts: Vec<_> = input.split("\n---\n").collect();
+
+    if parts.len() != 2 {
+        Err("Test example has wrong format")
+    } else {
+        let input = parts[0];
+        let parsed = parts[1];
+
+        // If single trailing newline is present, clip off
+        match parsed.chars().last() {
+            Some(c) if c == '\n' => Ok((input, &parsed[..parsed.len() - 1])),
+            _ => Ok((input, parsed)),
+        }
+    }
+}
+
+/// Empty slice syntax is so ugly :/
+macro_rules! empty_slice {
+    () => {
+        &[][..]
+    };
+}
+
+/// Include a test example file and parse it.
+macro_rules! include_test_example {
+    ($path:expr) => {{
+        parse_test_example(include_str!($path)).unwrap()
+    }};
 }
 
 /// Assert `$parser` succeeds when applied to the given input in `$examples`
@@ -67,13 +117,13 @@ macro_rules! assert_parser_success {
 /// standalone parser to the given input.  Expected results are defined as
 /// serializations.  Print a debug trace if parsing fails.
 macro_rules! assert_all_parsed_with_serialization {
-    ($parser:ident, $examples:expr,) => {{
+    ($parser:expr, $examples:expr,) => {{
         assert_all_parsed_with_serialization!($parser, $examples);
     }};
-    ($parser:ident, $examples:expr) => {{
-        for (inp, expected_serialization) in $examples {
+    ($parser:expr, $examples:expr) => {{
+        for (inp, expected_ser) in $examples {
             let tokens = get_parse_tokens(inp).unwrap();
-            let actual = standalone($parser::<VerboseError<_>>)(&tokens[..]);
+            let actual = $parser(&tokens[..]);
 
             if let Err(err) = &actual {
                 match err {
@@ -85,52 +135,18 @@ macro_rules! assert_all_parsed_with_serialization {
             }
 
             let (actual_remaining, actual_ast) = actual.unwrap();
-
-            let mut serializer_config = ron::ser::PrettyConfig::default();
-            serializer_config.indentor = "  ".to_string();
-
-            let actual_serialization =
-                ron::ser::to_string_pretty(&actual_ast, serializer_config).unwrap();
+            let actual_ser = to_ron_string_pretty(&actual_ast).unwrap();
 
             assert_eq!(actual_remaining, empty_slice!());
-            assert_strings_eq!(actual_serialization, expected_serialization);
+            assert_strings_eq!(actual_ser, expected_ser);
         }
     }};
-}
-
-macro_rules! empty_slice {
-    () => {
-        &[][..]
-    };
-}
-
-macro_rules! include_test_example {
-    ($path:expr) => {{
-        split_test_example(include_str!($path)).unwrap()
-    }};
-}
-
-fn split_test_example<'a>(input: &'a str) -> Result<(&'a str, &'a str), &'static str> {
-    let parts: Vec<_> = input.split("\n---\n").collect();
-
-    if parts.len() != 2 {
-        Err("Test example has wrong format")
-    } else {
-        let input = parts[0];
-        let parsed = parts[1];
-
-        // If single trailing newline is present, clip off
-        match parsed.chars().last() {
-            Some(c) if c == '\n' => Ok((input, &parsed[..parsed.len() - 1])),
-            _ => Ok((input, parsed)),
-        }
-    }
 }
 
 #[test]
 fn test_const_expr_success() {
     assert_all_parsed_with_serialization!(
-        const_expr,
+        standalone(const_expr::<VerboseError<_>>),
         vec![
             include_test_example!("fixtures/parsers/const_expr/number_1.ron"),
             include_test_example!("fixtures/parsers/const_expr/number_2.ron"),
@@ -153,123 +169,25 @@ fn test_file_input_empty_file() {
 
 #[test]
 fn test_file_input_one_stmt() {
-    use vyper_parser::ast::ModuleStmt::*;
-
-    let examples = vec![
-        // No leading or trailing whitespace
-        r"event Greet:
-    name: bytes32
-    age: uint8",
-        // Leading whitespace
-        r"
-event Greet:
-    name: bytes32
-    age: uint8",
-        // Leading and trailing whitespace
-        r"
-event Greet:
-    name: bytes32
-    age: uint8
-",
-    ];
-    let expected: TokenResult<_, SimpleError<_>> = Ok((
-        empty_slice!(),
-        Module {
-            body: vec![EventDef {
-                name: "Greet".into(),
-                fields: vec![
-                    EventField {
-                        name: "name".into(),
-                        typ: "bytes32".into(),
-                    },
-                    EventField {
-                        name: "age".into(),
-                        typ: "uint8".into(),
-                    },
-                ],
-            }],
-        },
-    ));
-    assert_parser_success!(file_input::<SimpleError<_>>, examples, expected);
+    assert_all_parsed_with_serialization!(
+        file_input::<VerboseError<_>>,
+        vec![
+            include_test_example!("fixtures/parsers/file_input/one_stmt_no_whitespace.ron"),
+            include_test_example!("fixtures/parsers/file_input/one_stmt_leading_whitespace.ron"),
+            include_test_example!("fixtures/parsers/file_input/one_stmt_leading_trailing.ron"),
+        ],
+    );
 }
 
 #[test]
 fn test_file_input_many_stmt() {
-    use vyper_parser::ast::ModuleStmt::*;
-
-    let examples = vec![
-        // No leading, mid, or trailing whitespace
-        r"event Greet:
-    name: bytes32
-    age: uint8
-event Other:
-    info1: uint256
-    info2: bool",
-        // Leading whitespace
-        r"
-event Greet:
-    name: bytes32
-    age: uint8
-event Other:
-    info1: uint256
-    info2: bool",
-        // Leading and trailing whitespace
-        r"
-event Greet:
-    name: bytes32
-    age: uint8
-event Other:
-    info1: uint256
-    info2: bool
-",
-        // Leading, mid, and trailing whitespace
-        r"
-event Greet:
-    name: bytes32
-    age: uint8
-
-event Other:
-
-
-    info1: uint256
-
-
-    info2: bool
-
-",
-    ];
-    let expected: TokenResult<_, SimpleError<_>> = Ok((
-        empty_slice!(),
-        Module {
-            body: vec![
-                EventDef {
-                    name: "Greet".into(),
-                    fields: vec![
-                        EventField {
-                            name: "name".into(),
-                            typ: "bytes32".into(),
-                        },
-                        EventField {
-                            name: "age".into(),
-                            typ: "uint8".into(),
-                        },
-                    ],
-                },
-                EventDef {
-                    name: "Other".into(),
-                    fields: vec![
-                        EventField {
-                            name: "info1".into(),
-                            typ: "uint256".into(),
-                        },
-                        EventField {
-                            name: "info2".into(),
-                            typ: "bool".into(),
-                        },
-                    ],
-                },
-            ],
-        },
-    ));
-    assert_parser_success!(file_input::<SimpleError<_>>, examples, expected);
+    assert_all_parsed_with_serialization!(
+        file_input::<VerboseError<_>>,
+        vec![
+            include_test_example!("fixtures/parsers/file_input/many_stmt_no_whitespace.ron"),
+            include_test_example!("fixtures/parsers/file_input/many_stmt_leading_whitespace.ron"),
+            include_test_example!("fixtures/parsers/file_input/many_stmt_leading_trailing.ron"),
+            include_test_example!("fixtures/parsers/file_input/many_stmt_lots_of_whitespace.ron"),
+        ],
+    );
 }

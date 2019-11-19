@@ -1,0 +1,31 @@
+        
+event Greet:
+    name: bytes32
+    age: uint8
+
+---
+Module(
+  body: [
+    EventDef(
+      name: "Greet",
+      fields: [
+        EventField(
+          name: "name",
+          typ: TypeDesc(
+            base: "bytes32",
+            dimensions: [],
+            annotations: [],
+          ),
+        ),
+        EventField(
+          name: "age",
+          typ: TypeDesc(
+            base: "uint8",
+            dimensions: [],
+            annotations: [],
+          ),
+        ),
+      ],
+    ),
+  ],
+)
