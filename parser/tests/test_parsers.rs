@@ -116,12 +116,16 @@ macro_rules! assert_parser_success {
 /// Assert that `$parser` succeeds and parses all tokens when applied as a
 /// standalone parser to the given input.  Expected results are defined as
 /// serializations.  Print a debug trace if parsing fails.
-macro_rules! assert_all_parsed_with_serialization {
-    ($parser:expr, $examples:expr,) => {{
-        assert_all_parsed_with_serialization!($parser, $examples);
+macro_rules! assert_fixtures_parsed {
+    ($parser:expr, $($paths:expr),+,) => {{
+        assert_fixtures_parsed!($parser, $($paths),+)
     }};
-    ($parser:expr, $examples:expr) => {{
-        for (inp, expected_ser) in $examples {
+    ($parser:expr, $($paths:expr),+) => {{
+        let test_files = vec![
+            $(($paths, include_test_example!($paths))),+
+        ];
+
+        for (filename, (inp, expected_ser)) in test_files {
             let tokens = get_parse_tokens(inp).unwrap();
             let actual = $parser(&tokens[..]);
 
@@ -138,22 +142,25 @@ macro_rules! assert_all_parsed_with_serialization {
             let actual_ser = to_ron_string_pretty(&actual_ast).unwrap();
 
             assert_eq!(actual_remaining, empty_slice!());
-            assert_strings_eq!(actual_ser, expected_ser);
+            assert_strings_eq!(
+                actual_ser,
+                expected_ser,
+                "\nParsing results did not match for {}",
+                filename,
+            );
         }
     }};
 }
 
 #[test]
 fn test_const_expr_success() {
-    assert_all_parsed_with_serialization!(
+    assert_fixtures_parsed!(
         standalone(const_expr::<VerboseError<_>>),
-        vec![
-            include_test_example!("fixtures/parsers/const_expr/number_1.ron"),
-            include_test_example!("fixtures/parsers/const_expr/number_2.ron"),
-            include_test_example!("fixtures/parsers/const_expr/name_1.ron"),
-            include_test_example!("fixtures/parsers/const_expr/power_1.ron"),
-            include_test_example!("fixtures/parsers/const_expr/power_2.ron"),
-        ],
+        "fixtures/parsers/const_expr/number_1.ron",
+        "fixtures/parsers/const_expr/number_2.ron",
+        "fixtures/parsers/const_expr/name_1.ron",
+        "fixtures/parsers/const_expr/power_1.ron",
+        "fixtures/parsers/const_expr/power_2.ron",
     );
 }
 
@@ -169,25 +176,21 @@ fn test_file_input_empty_file() {
 
 #[test]
 fn test_file_input_one_stmt() {
-    assert_all_parsed_with_serialization!(
+    assert_fixtures_parsed!(
         file_input::<VerboseError<_>>,
-        vec![
-            include_test_example!("fixtures/parsers/file_input/one_stmt_no_whitespace.ron"),
-            include_test_example!("fixtures/parsers/file_input/one_stmt_leading_whitespace.ron"),
-            include_test_example!("fixtures/parsers/file_input/one_stmt_leading_trailing.ron"),
-        ],
+        "fixtures/parsers/file_input/one_stmt_no_whitespace.ron",
+        "fixtures/parsers/file_input/one_stmt_leading_whitespace.ron",
+        "fixtures/parsers/file_input/one_stmt_leading_trailing.ron",
     );
 }
 
 #[test]
 fn test_file_input_many_stmt() {
-    assert_all_parsed_with_serialization!(
+    assert_fixtures_parsed!(
         file_input::<VerboseError<_>>,
-        vec![
-            include_test_example!("fixtures/parsers/file_input/many_stmt_no_whitespace.ron"),
-            include_test_example!("fixtures/parsers/file_input/many_stmt_leading_whitespace.ron"),
-            include_test_example!("fixtures/parsers/file_input/many_stmt_leading_trailing.ron"),
-            include_test_example!("fixtures/parsers/file_input/many_stmt_lots_of_whitespace.ron"),
-        ],
+        "fixtures/parsers/file_input/many_stmt_no_whitespace.ron",
+        "fixtures/parsers/file_input/many_stmt_leading_whitespace.ron",
+        "fixtures/parsers/file_input/many_stmt_leading_trailing.ron",
+        "fixtures/parsers/file_input/many_stmt_lots_of_whitespace.ron",
     );
 }
