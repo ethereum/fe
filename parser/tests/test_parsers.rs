@@ -10,7 +10,7 @@ use nom::multi::many0;
 use nom::Err as NomErr;
 use serde::Serialize;
 
-use vyper_parser::ast::*;
+use vyper_parser::ast::Module;
 use vyper_parser::errors::format_debug_error;
 use vyper_parser::parsers::*;
 
