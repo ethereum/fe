@@ -41,32 +41,32 @@ impl fmt::Display for Diff {
 /// Compare the given strings and panic when not equal with a colorized line
 /// diff.
 macro_rules! assert_strings_eq {
-    ($left:expr , $right:expr,) => ({
+    ($left:expr, $right:expr,) => {{
         assert_strings_eq!($left, $right)
-    });
-    ($left:expr , $right:expr) => ({
+    }};
+    ($left:expr, $right:expr) => {{
         match (&($left), &($right)) {
             (left_val, right_val) => {
                 if *left_val != *right_val {
                     panic!(
-                        "assertion failed: `(left == right)`\ndiff:\n{}",
+                        "assertion failed: `(left != right)`\ndiff:\n{}",
                         utils::Diff::new(left_val, right_val),
                     )
                 }
             }
         }
-    });
-    ($left:expr , $right:expr, $($arg:tt)*) => ({
+    }};
+    ($left:expr, $right:expr, $($args:tt)*) => {{
         match (&($left), &($right)) {
             (left_val, right_val) => {
                 if *left_val != *right_val {
                     panic!(
-                        "assertion failed: `(left == right)`: {}\ndiff:\n{}",
-                        format_args!($($arg)*),
+                        "assertion failed: `(left != right)`: {}\ndiff:\n{}",
+                        format_args!($($args)*),
                         utils::Diff::new(left_val, right_val),
                     )
                 }
             }
         }
-    });
+    }};
 }
