@@ -195,7 +195,7 @@ where
     Ok((
         input,
         EventDef {
-            name: name.string.into(),
+            name: name.string,
             fields: fields,
         },
     ))
@@ -214,7 +214,7 @@ where
     Ok((
         input,
         EventField {
-            name: name.string.into(),
+            name: name.string,
             typ: typ.string.into(),
         },
     ))
@@ -320,8 +320,8 @@ where
 {
     alt((
         const_group,
-        map(name_token, |t| ConstExpr::Name(t.string.into())),
-        map(number_token, |t| ConstExpr::Num(t.string.into())),
+        map(name_token, |t| ConstExpr::Name(t.string)),
+        map(number_token, |t| ConstExpr::Num(t.string)),
     ))(input)
 }
 

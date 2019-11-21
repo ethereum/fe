@@ -11,9 +11,6 @@ use crate::tokenizer::types::{
     TokenInfo,
 };
 
-pub type Name = String;
-pub type Type = String;
-
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct SourceSpan {
     start_pos: Position,
@@ -47,13 +44,17 @@ impl From<(&TokenInfo<'_>, &TokenInfo<'_>)> for SourceSpan {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub struct Module {
-    pub body: Vec<ModuleStmt>,
+pub struct Module<'a> {
+    #[serde(borrow)]
+    pub body: Vec<ModuleStmt<'a>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub enum ModuleStmt {
-    EventDef { name: Name, fields: Vec<EventField> },
+pub enum ModuleStmt<'a> {
+    EventDef {
+        name: &'a str,
+        fields: Vec<EventField<'a>>,
+    },
     /* InterfaceDef {
      *     name: Name,
      *     fields: Vec<InterfaceField>,
@@ -67,16 +68,16 @@ pub enum ModuleStmt {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub struct TypeDesc {
-    base: String,
+pub struct TypeDesc<'a> {
+    base: &'a str,
     dimensions: Vec<u32>,
-    annotations: Vec<String>,
+    annotations: Vec<&'a str>,
 }
 
-impl From<&str> for TypeDesc {
-    fn from(string: &str) -> Self {
+impl<'a> From<&'a str> for TypeDesc<'a> {
+    fn from(string: &'a str) -> Self {
         Self {
-            base: string.into(),
+            base: string,
             dimensions: vec![],
             annotations: vec![],
         }
@@ -84,9 +85,9 @@ impl From<&str> for TypeDesc {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub struct EventField {
-    pub name: Name,
-    pub typ: TypeDesc,
+pub struct EventField<'a> {
+    pub name: &'a str,
+    pub typ: TypeDesc<'a>,
     //pub indexed: bool,
 }
 
@@ -149,16 +150,16 @@ impl TryFrom<&str> for UnaryOp {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub enum ConstExpr {
+pub enum ConstExpr<'a> {
     BinOp {
-        left: Box<ConstExpr>,
+        left: Box<ConstExpr<'a>>,
         op: Operator,
-        right: Box<ConstExpr>,
+        right: Box<ConstExpr<'a>>,
     },
     UnaryOp {
         op: UnaryOp,
-        operand: Box<ConstExpr>,
+        operand: Box<ConstExpr<'a>>,
     },
-    Name(String),
-    Num(String),
+    Name(&'a str),
+    Num(&'a str),
 }
