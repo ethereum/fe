@@ -146,7 +146,7 @@ Short-term goals:
     dimensions, etc.)
 * [ ] Construct a parser for the Vyper EBNF grammar
 * [ ] Parse and compile a basic greeter contract to YUL
-* [ ] General YUL source code from YUL ASTs
+* [ ] Generate YUL source code from YUL AST objects
 * [ ] Invoke the Solidity compiler with generated YUL source to produce a
   compiled binary
 
