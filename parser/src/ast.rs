@@ -55,16 +55,6 @@ pub enum ModuleStmt<'a> {
         name: &'a str,
         fields: Vec<EventField<'a>>,
     },
-    /* InterfaceDef {
-     *     name: Name,
-     *     fields: Vec<InterfaceField>,
-     *     methods: Vec<InterfaceMethodDef>,
-     * },
-     * ContractDef {
-     *     name: Name,
-     *     fields: Vec<ContractField>,
-     *     methods: Vec<ContractMethodDef>,
-     * }, */
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -88,7 +78,7 @@ impl<'a> From<&'a str> for TypeDesc<'a> {
 pub struct EventField<'a> {
     pub name: &'a str,
     pub typ: TypeDesc<'a>,
-    //pub indexed: bool,
+    pub indexed: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
