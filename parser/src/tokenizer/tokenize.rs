@@ -1,5 +1,6 @@
 use regex::Regex;
 
+use crate::span::Position;
 use crate::string_utils::{
     lines_with_endings,
     lstrip_slice,
@@ -16,7 +17,6 @@ use crate::tokenizer::regex::{
     SINGLE3,
 };
 use crate::tokenizer::types::{
-    Position,
     TokenInfo,
     TokenType::*,
 };

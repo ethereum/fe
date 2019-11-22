@@ -3,12 +3,19 @@ use serde::{
     Serialize,
 };
 
-use crate::tokenizer::types::{
-    Offset,
-    Position,
-    TokenInfo,
-};
+use crate::tokenizer::types::TokenInfo;
 
+/// A source file position defined by a byte offset.
+pub type Offset = usize;
+
+/// A source file position defined by a line number and corresponding byte
+/// offset into the line indicated by that number.
+pub type Position = (
+    usize, // The 1-indexed line number
+    usize, // The 0-indexed column byte offset
+);
+
+/// A span of positions in a source file.
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct SourceSpan {
     pub start_pos: Position,

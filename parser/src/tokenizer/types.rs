@@ -3,6 +3,11 @@ use serde::{
     Serialize,
 };
 
+use crate::span::{
+    Offset,
+    Position,
+};
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Copy, Clone)]
 pub enum TokenType {
     NAME,
@@ -20,17 +25,6 @@ pub enum TokenType {
 
     ERRORTOKEN,
 }
-
-/// A source file position defined by a byte offset into the original source
-/// string.
-pub type Offset = usize;
-
-/// A source file position defined by a line number and corresponding byte
-/// offset into the line indicated by that number.
-pub type Position = (
-    usize, // The 1-indexed line number
-    usize, // The 0-indexed column byte offset
-);
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct TokenInfo<'a> {

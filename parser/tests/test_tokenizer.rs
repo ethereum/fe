@@ -5,6 +5,7 @@ use serde::{
     Serialize,
 };
 
+use vyper_parser::span::Position;
 use vyper_parser::tokenizer::*;
 
 #[macro_use]
