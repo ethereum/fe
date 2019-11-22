@@ -64,14 +64,14 @@ struct PythonTokenInfo<'a> {
     pub line: &'a str,
 }
 
-impl<'a> From<&'a TokenInfo<'a>> for PythonTokenInfo<'a> {
-    fn from(token_info: &'a TokenInfo<'a>) -> Self {
+impl<'a> From<&'a Token<'a>> for PythonTokenInfo<'a> {
+    fn from(token: &'a Token<'a>) -> Self {
         Self {
-            typ: token_info.typ,
-            string: token_info.string,
-            start: token_info.span.start_pos,
-            end: token_info.span.end_pos,
-            line: token_info.line,
+            typ: token.typ,
+            string: token.string,
+            start: token.span.start_pos,
+            end: token.span.end_pos,
+            line: token.line,
         }
     }
 }

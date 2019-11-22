@@ -28,17 +28,17 @@ use crate::errors::make_error;
 use crate::span::GetSpan;
 use crate::tokenizer::tokenize::tokenize;
 use crate::tokenizer::types::{
-    TokenInfo,
+    Token,
     TokenType,
 };
 
-pub type TokenRef<'a> = &'a TokenInfo<'a>;
-pub type TokenSlice<'a> = &'a [TokenInfo<'a>];
+pub type TokenRef<'a> = &'a Token<'a>;
+pub type TokenSlice<'a> = &'a [Token<'a>];
 pub type TokenResult<'a, O, E> = IResult<TokenSlice<'a>, O, E>;
 
 /// Tokenize the given source code in `source` and filter out tokens not
 /// relevant to parsing.
-pub fn get_parse_tokens<'a>(source: &'a str) -> Result<Vec<TokenInfo<'a>>, String> {
+pub fn get_parse_tokens<'a>(source: &'a str) -> Result<Vec<Token<'a>>, String> {
     let tokens = tokenize(source)?;
 
     Ok(tokens
@@ -63,7 +63,7 @@ pub fn token<'a, E>(typ: TokenType) -> impl Fn(TokenSlice<'a>) -> TokenResult<'a
 where
     E: ParseError<TokenSlice<'a>>,
 {
-    verify(one_token, move |t: &TokenInfo| t.typ == typ)
+    verify(one_token, move |t: &Token| t.typ == typ)
 }
 
 /// Parse a name token from a token slice.
@@ -81,7 +81,7 @@ pub fn name_string<'a, E>(
 where
     E: ParseError<TokenSlice<'a>>,
 {
-    verify(name_token, move |t: &TokenInfo| t.string == string)
+    verify(name_token, move |t: &Token| t.string == string)
 }
 
 /// Parse an op token from a token slice.
@@ -99,7 +99,7 @@ pub fn op_string<'a, E>(
 where
     E: ParseError<TokenSlice<'a>>,
 {
-    verify(op_token, move |t: &TokenInfo| t.string == string)
+    verify(op_token, move |t: &Token| t.string == string)
 }
 
 /// Parse a number token from a token slice.

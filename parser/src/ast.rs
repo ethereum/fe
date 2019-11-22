@@ -9,7 +9,7 @@ use crate::span::{
     GetSpan,
     Span,
 };
-use crate::tokenizer::types::TokenInfo;
+use crate::tokenizer::types::Token;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Module<'a> {
@@ -49,13 +49,13 @@ pub struct TypeDesc<'a> {
     pub span: Span,
 }
 
-impl<'a> From<&'a TokenInfo<'a>> for TypeDesc<'a> {
-    fn from(token_info: &'a TokenInfo<'a>) -> Self {
+impl<'a> From<&'a Token<'a>> for TypeDesc<'a> {
+    fn from(token: &'a Token<'a>) -> Self {
         Self {
-            base: token_info.string,
+            base: token.string,
             dimensions: vec![],
             annotations: vec![],
-            span: token_info.span,
+            span: token.span,
         }
     }
 }

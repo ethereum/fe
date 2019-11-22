@@ -24,7 +24,7 @@ pub enum TokenType {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub struct TokenInfo<'a> {
+pub struct Token<'a> {
     /// The type of a token
     pub typ: TokenType,
 
