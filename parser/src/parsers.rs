@@ -161,9 +161,19 @@ where
     let (input, _) = many0(newline_token)(input)?;
 
     // ENDMARKER
-    let (input, _) = endmarker_token(input)?;
+    let (input, end_tok) = endmarker_token(input)?;
 
-    Ok((input, Module { body }))
+    let source_span = match body.first() {
+        Some(first_stmt) => {
+            let first_span = first_stmt.get_source_span();
+            let last_span = body.last().unwrap().get_source_span();
+
+            (first_span, last_span).into()
+        }
+        None => end_tok.into(),
+    };
+
+    Ok((input, Module { body, source_span }))
 }
 
 /// Parse a module statement, such as a contract definition.
@@ -182,7 +192,7 @@ where
     E: ParseError<TokenSlice<'a>>,
 {
     // "event" name ":" NEWLINE
-    let (input, _) = name_string("event")(input)?;
+    let (input, event_kw) = name_string("event")(input)?;
     let (input, name) = name_token(input)?;
     let (input, _) = op_string(":")(input)?;
     let (input, _) = newline_token(input)?;
@@ -192,11 +202,15 @@ where
     let (input, fields) = many1(parse_event_field)(input)?;
     let (input, _) = dedent_token(input)?;
 
+    let last_field = fields.last().unwrap();
+    let source_span = (event_kw, last_field.get_source_span()).into();
+
     Ok((
         input,
         EventDef {
             name: name.string,
             fields: fields,
+            source_span: source_span,
         },
     ))
 }
@@ -215,7 +229,8 @@ where
         input,
         EventField {
             name: name.string,
-            typ: typ.string.into(),
+            typ: typ.into(),
+            source_span: (name, typ).into(),
         },
     ))
 }
@@ -233,10 +248,13 @@ where
 
     let mut left_expr = head;
     for (op_tok, right_expr) in tail {
+        let source_span = (left_expr.get_source_span(), right_expr.get_source_span()).into();
+
         left_expr = ConstExpr::BinOp {
             left: Box::new(left_expr),
             op: Operator::try_from(op_tok.string).unwrap(),
             right: Box::new(right_expr),
+            source_span: source_span,
         };
     }
 
@@ -258,10 +276,13 @@ where
 
     let mut left_expr = head;
     for (op_tok, right_expr) in tail {
+        let source_span = (left_expr.get_source_span(), right_expr.get_source_span()).into();
+
         left_expr = ConstExpr::BinOp {
             left: Box::new(left_expr),
             op: Operator::try_from(op_tok.string).unwrap(),
             right: Box::new(right_expr),
+            source_span: source_span,
         };
     }
 
@@ -281,9 +302,12 @@ where
         ),
         |res| {
             let (op_tok, operand) = res;
+            let source_span = (op_tok, operand.get_source_span()).into();
+
             ConstExpr::UnaryOp {
                 op: UnaryOp::try_from(op_tok.string).unwrap(),
                 operand: Box::new(operand),
+                source_span: source_span,
             }
         },
     );
@@ -301,10 +325,13 @@ where
         separated_pair(const_atom, op_string("**"), const_factor),
         |res| {
             let (left, right) = res;
+            let source_span = (left.get_source_span(), right.get_source_span()).into();
+
             ConstExpr::BinOp {
                 left: Box::new(left),
                 op: Operator::Pow,
                 right: Box::new(right),
+                source_span: source_span,
             }
         },
     );
@@ -320,8 +347,14 @@ where
 {
     alt((
         const_group,
-        map(name_token, |t| ConstExpr::Name(t.string)),
-        map(number_token, |t| ConstExpr::Num(t.string)),
+        map(name_token, |t| ConstExpr::Name {
+            name: t.string,
+            source_span: t.into(),
+        }),
+        map(number_token, |t| ConstExpr::Num {
+            num: t.string,
+            source_span: t.into(),
+        }),
     ))(input)
 }
 

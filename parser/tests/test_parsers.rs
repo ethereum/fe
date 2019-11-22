@@ -10,7 +10,10 @@ use nom::multi::many0;
 use nom::Err as NomErr;
 use serde::Serialize;
 
-use vyper_parser::ast::Module;
+use vyper_parser::ast::{
+    Module,
+    SourceSpan,
+};
 use vyper_parser::errors::format_debug_error;
 use vyper_parser::parsers::*;
 
@@ -169,8 +172,53 @@ fn test_file_input_empty_file() {
     // Empty file
     assert_parser_success!(
         file_input::<SimpleError<_>>,
-        vec!["", "  \t ", " \n\n   \t \n \t "],
-        Ok((empty_slice!(), Module { body: vec![] })),
+        vec![
+            (
+                "",
+                Ok((
+                    empty_slice!(),
+                    Module {
+                        body: vec![],
+                        source_span: SourceSpan {
+                            start_pos: (1, 0),
+                            start_off: 0,
+                            end_pos: (1, 0),
+                            end_off: 0,
+                        }
+                    }
+                ))
+            ),
+            (
+                "  \t ",
+                Ok((
+                    empty_slice!(),
+                    Module {
+                        body: vec![],
+                        source_span: SourceSpan {
+                            start_pos: (1, 0),
+                            start_off: 4,
+                            end_pos: (1, 0),
+                            end_off: 4,
+                        }
+                    }
+                ))
+            ),
+            (
+                " \n\n   \t \n \t ",
+                Ok((
+                    empty_slice!(),
+                    Module {
+                        body: vec![],
+                        source_span: SourceSpan {
+                            start_pos: (4, 0),
+                            start_off: 12,
+                            end_pos: (4, 0),
+                            end_off: 12,
+                        }
+                    }
+                ))
+            ),
+        ],
     );
 }
 
