@@ -25,6 +25,7 @@ use nom::IResult;
 use crate::ast::ModuleStmt::*;
 use crate::ast::*;
 use crate::errors::make_error;
+use crate::span::GetSourceSpan;
 use crate::tokenizer::tokenize::tokenize;
 use crate::tokenizer::types::{
     TokenInfo,
