@@ -60,8 +60,10 @@ We wish to promote the following development practices:
   routines to type checking and compilation routines.
 * Thorough integration testing of combined components to identify issues with
   abstraction boundaries.
-* Property-based testing or fuzz testing of components where appropriate.  See
-  [QuickCheck](https://github.com/nick8325/quickcheck) and
+* Property-based testing or fuzz testing of components where appropriate.  For
+  examples of property-based testing frameworks, see [QuickCheck for
+  Rust](https://github.com/BurntSushi/quickcheck), [QuickCheck for
+  Haskell](https://github.com/nick8325/quickcheck), and
   [hypothesis](https://hypothesis.works/).
 * The above testing goals should, at a minimum, give 100% code coverage but
   should also redundantly test the same code sections in different modes of
