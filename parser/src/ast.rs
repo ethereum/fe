@@ -11,32 +11,6 @@ use crate::span::{
 };
 use crate::tokenizer::types::TokenInfo;
 
-impl From<(&TokenInfo<'_>, &SourceSpan)> for SourceSpan {
-    fn from(input: (&TokenInfo, &SourceSpan)) -> Self {
-        let (start, end) = input;
-
-        Self {
-            start_pos: start.start_pos,
-            start_off: start.start_off,
-            end_pos: end.end_pos,
-            end_off: end.end_off,
-        }
-    }
-}
-
-impl From<(&SourceSpan, &TokenInfo<'_>)> for SourceSpan {
-    fn from(input: (&SourceSpan, &TokenInfo)) -> Self {
-        let (start, end) = input;
-
-        Self {
-            start_pos: start.start_pos,
-            start_off: start.start_off,
-            end_pos: end.end_pos,
-            end_off: end.end_off,
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Module<'a> {
     #[serde(borrow)]
@@ -81,7 +55,7 @@ impl<'a> From<&'a TokenInfo<'a>> for TypeDesc<'a> {
             base: token_info.string,
             dimensions: vec![],
             annotations: vec![],
-            source_span: token_info.into(),
+            source_span: token_info.source_span,
         }
     }
 }

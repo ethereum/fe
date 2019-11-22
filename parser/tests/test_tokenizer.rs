@@ -1,9 +1,6 @@
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::Serialize;
 
 use vyper_parser::span::Position;
 use vyper_parser::tokenizer::*;
@@ -58,12 +55,8 @@ impl<'a> TokenHelpers<'a> {
 /// tokens (which may include specialized information only used by the vyper
 /// parser, such as global byte offsets into a source file) into objects with
 /// only as much information as would be found in a python token.
-///
-/// At the time this struct was added, its specific use was in filtering out
-/// global byte offsets found in vyper tokens for which no corresponding values
-/// exist by default in python tokens.
-#[derive(Serialize, Deserialize)]
-pub struct ConciseTokenInfo<'a> {
+#[derive(Serialize)]
+struct PythonTokenInfo<'a> {
     pub typ: TokenType,
     pub string: &'a str,
     pub start: Position,
@@ -71,13 +64,13 @@ pub struct ConciseTokenInfo<'a> {
     pub line: &'a str,
 }
 
-impl<'a> From<&'a TokenInfo<'a>> for ConciseTokenInfo<'a> {
+impl<'a> From<&'a TokenInfo<'a>> for PythonTokenInfo<'a> {
     fn from(token_info: &'a TokenInfo<'a>) -> Self {
         Self {
             typ: token_info.typ,
             string: token_info.string,
-            start: token_info.start_pos,
-            end: token_info.end_pos,
+            start: token_info.source_span.start_pos,
+            end: token_info.source_span.end_pos,
             line: token_info.line,
         }
     }
@@ -86,14 +79,13 @@ impl<'a> From<&'a TokenInfo<'a>> for ConciseTokenInfo<'a> {
 fn get_rust_token_json(input: &str) -> String {
     let tokens = tokenize(input).unwrap();
 
-    // Convert vyper tokens into "concise" tokens that only include as much
-    // information as would be found in a python token object
-    let concise_tokens = tokens
+    // Convert vyper tokens into python tokens
+    let python_tokens = tokens
         .iter()
         .map(|i| i.into())
-        .collect::<Vec<ConciseTokenInfo>>();
+        .collect::<Vec<PythonTokenInfo>>();
 
-    serde_json::to_string_pretty(&concise_tokens).unwrap()
+    serde_json::to_string_pretty(&python_tokens).unwrap()
 }
 
 #[test]

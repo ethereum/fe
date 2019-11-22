@@ -171,7 +171,7 @@ where
 
             (first_span, last_span).into()
         }
-        None => end_tok.into(),
+        None => end_tok.source_span,
     };
 
     Ok((input, Module { body, source_span }))
@@ -204,7 +204,7 @@ where
     let (input, _) = dedent_token(input)?;
 
     let last_field = fields.last().unwrap();
-    let source_span = (event_kw, last_field.get_source_span()).into();
+    let source_span = (&event_kw.source_span, last_field.get_source_span()).into();
 
     Ok((
         input,
@@ -231,7 +231,7 @@ where
         EventField {
             name: name.string,
             typ: typ.into(),
-            source_span: (name, typ).into(),
+            source_span: (&name.source_span, &typ.source_span).into(),
         },
     ))
 }
@@ -303,7 +303,7 @@ where
         ),
         |res| {
             let (op_tok, operand) = res;
-            let source_span = (op_tok, operand.get_source_span()).into();
+            let source_span = (&op_tok.source_span, operand.get_source_span()).into();
 
             ConstExpr::UnaryOp {
                 op: UnaryOp::try_from(op_tok.string).unwrap(),
@@ -350,11 +350,11 @@ where
         const_group,
         map(name_token, |t| ConstExpr::Name {
             name: t.string,
-            source_span: t.into(),
+            source_span: t.source_span,
         }),
         map(number_token, |t| ConstExpr::Num {
             num: t.string,
-            source_span: t.into(),
+            source_span: t.source_span,
         }),
     ))(input)
 }
