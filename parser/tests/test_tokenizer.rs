@@ -64,13 +64,36 @@ struct PythonTokenInfo<'a> {
     pub line: &'a str,
 }
 
-impl<'a> From<&'a Token<'a>> for PythonTokenInfo<'a> {
-    fn from(token: &'a Token<'a>) -> Self {
+#[inline]
+fn offset_to_position(input: &str, offset: usize) -> (usize, usize) {
+    let mut line: usize = 1;
+    let mut col: usize = 0;
+
+    for (chr_off, chr) in input.char_indices() {
+        if chr_off >= offset {
+            break;
+        }
+
+        if chr == '\n' {
+            line += 1;
+            col = 0;
+        } else {
+            col += chr.len_utf8();
+        }
+    }
+
+    (line, col)
+}
+
+impl<'a> From<(&'a Token<'a>, &str)> for PythonTokenInfo<'a> {
+    fn from(info: (&'a Token<'a>, &str)) -> Self {
+        let (token, input) = info;
+
         Self {
             typ: token.typ,
             string: token.string,
-            start: token.span.start_pos,
-            end: token.span.end_pos,
+            start: offset_to_position(input, token.span.start_off),
+            end: offset_to_position(input, token.span.end_off),
             line: token.line,
         }
     }
@@ -82,7 +105,7 @@ fn get_rust_token_json(input: &str) -> String {
     // Convert vyper tokens into python tokens
     let python_tokens = tokens
         .iter()
-        .map(|i| i.into())
+        .map(|i| (i, input).into())
         .collect::<Vec<PythonTokenInfo>>();
 
     serde_json::to_string_pretty(&python_tokens).unwrap()

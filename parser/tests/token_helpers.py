@@ -2,7 +2,13 @@ from collections import OrderedDict
 from io import BytesIO
 import json
 from tokenize import tokenize
-from token import tok_name, ENCODING
+from token import (
+    tok_name,
+    ENCODING,
+    ERRORTOKEN,
+    NEWLINE,
+    NL,
+)
 
 
 def tokens(source_code: bytes):
@@ -16,11 +22,16 @@ def get_token_dict(tok):
     """
     Return a JSON-serializable representation of a token.
     """
+    if tok.type in (ERRORTOKEN, NEWLINE, NL) and tok.string[-1:] == '\n':
+        end = (tok.end[0] + 1, 0)
+    else:
+        end = tok.end
+
     return OrderedDict((
         ('typ', tok_name[tok.type]),
         ('string', tok.string),
         ('start', tok.start),
-        ('end', tok.end),
+        ('end', end),
         ('line', tok.line),
     ))
 
