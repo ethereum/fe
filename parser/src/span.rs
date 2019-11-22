@@ -15,15 +15,15 @@ pub type Position = (
 
 /// A span of positions in a source file.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Copy, Clone)]
-pub struct SourceSpan {
+pub struct Span {
     pub start_pos: Position,
     pub start_off: Offset,
     pub end_pos: Position,
     pub end_off: Offset,
 }
 
-impl From<(&SourceSpan, &SourceSpan)> for SourceSpan {
-    fn from(spans: (&SourceSpan, &SourceSpan)) -> Self {
+impl From<(&Span, &Span)> for Span {
+    fn from(spans: (&Span, &Span)) -> Self {
         let (start, end) = spans;
 
         Self {
@@ -35,6 +35,6 @@ impl From<(&SourceSpan, &SourceSpan)> for SourceSpan {
     }
 }
 
-pub trait GetSourceSpan {
-    fn get_source_span(&self) -> &SourceSpan;
+pub trait GetSpan {
+    fn get_span(&self) -> &Span;
 }

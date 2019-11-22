@@ -13,7 +13,7 @@ use serde::Serialize;
 use vyper_parser::ast::Module;
 use vyper_parser::errors::format_debug_error;
 use vyper_parser::parsers::*;
-use vyper_parser::span::SourceSpan;
+use vyper_parser::span::Span;
 
 type SimpleError<I> = (I, ErrorKind);
 
@@ -177,7 +177,7 @@ fn test_file_input_empty_file() {
                     empty_slice!(),
                     Module {
                         body: vec![],
-                        source_span: SourceSpan {
+                        span: Span {
                             start_pos: (1, 0),
                             start_off: 0,
                             end_pos: (1, 0),
@@ -192,7 +192,7 @@ fn test_file_input_empty_file() {
                     empty_slice!(),
                     Module {
                         body: vec![],
-                        source_span: SourceSpan {
+                        span: Span {
                             start_pos: (1, 0),
                             start_off: 4,
                             end_pos: (1, 0),
@@ -207,7 +207,7 @@ fn test_file_input_empty_file() {
                     empty_slice!(),
                     Module {
                         body: vec![],
-                        source_span: SourceSpan {
+                        span: Span {
                             start_pos: (4, 0),
                             start_off: 12,
                             end_pos: (4, 0),

@@ -25,7 +25,7 @@ use nom::IResult;
 use crate::ast::ModuleStmt::*;
 use crate::ast::*;
 use crate::errors::make_error;
-use crate::span::GetSourceSpan;
+use crate::span::GetSpan;
 use crate::tokenizer::tokenize::tokenize;
 use crate::tokenizer::types::{
     TokenInfo,
@@ -164,17 +164,17 @@ where
     // ENDMARKER
     let (input, end_tok) = endmarker_token(input)?;
 
-    let source_span = match body.first() {
+    let span = match body.first() {
         Some(first_stmt) => {
-            let first_span = first_stmt.get_source_span();
-            let last_span = body.last().unwrap().get_source_span();
+            let first_span = first_stmt.get_span();
+            let last_span = body.last().unwrap().get_span();
 
             (first_span, last_span).into()
         }
-        None => end_tok.source_span,
+        None => end_tok.span,
     };
 
-    Ok((input, Module { body, source_span }))
+    Ok((input, Module { body, span }))
 }
 
 /// Parse a module statement, such as a contract definition.
@@ -204,14 +204,14 @@ where
     let (input, _) = dedent_token(input)?;
 
     let last_field = fields.last().unwrap();
-    let source_span = (&event_kw.source_span, last_field.get_source_span()).into();
+    let span = (&event_kw.span, last_field.get_span()).into();
 
     Ok((
         input,
         EventDef {
             name: name.string,
             fields: fields,
-            source_span: source_span,
+            span: span,
         },
     ))
 }
@@ -231,7 +231,7 @@ where
         EventField {
             name: name.string,
             typ: typ.into(),
-            source_span: (&name.source_span, &typ.source_span).into(),
+            span: (&name.span, &typ.span).into(),
         },
     ))
 }
@@ -249,13 +249,13 @@ where
 
     let mut left_expr = head;
     for (op_tok, right_expr) in tail {
-        let source_span = (left_expr.get_source_span(), right_expr.get_source_span()).into();
+        let span = (left_expr.get_span(), right_expr.get_span()).into();
 
         left_expr = ConstExpr::BinOp {
             left: Box::new(left_expr),
             op: Operator::try_from(op_tok.string).unwrap(),
             right: Box::new(right_expr),
-            source_span: source_span,
+            span: span,
         };
     }
 
@@ -277,13 +277,13 @@ where
 
     let mut left_expr = head;
     for (op_tok, right_expr) in tail {
-        let source_span = (left_expr.get_source_span(), right_expr.get_source_span()).into();
+        let span = (left_expr.get_span(), right_expr.get_span()).into();
 
         left_expr = ConstExpr::BinOp {
             left: Box::new(left_expr),
             op: Operator::try_from(op_tok.string).unwrap(),
             right: Box::new(right_expr),
-            source_span: source_span,
+            span: span,
         };
     }
 
@@ -303,12 +303,12 @@ where
         ),
         |res| {
             let (op_tok, operand) = res;
-            let source_span = (&op_tok.source_span, operand.get_source_span()).into();
+            let span = (&op_tok.span, operand.get_span()).into();
 
             ConstExpr::UnaryOp {
                 op: UnaryOp::try_from(op_tok.string).unwrap(),
                 operand: Box::new(operand),
-                source_span: source_span,
+                span: span,
             }
         },
     );
@@ -326,13 +326,13 @@ where
         separated_pair(const_atom, op_string("**"), const_factor),
         |res| {
             let (left, right) = res;
-            let source_span = (left.get_source_span(), right.get_source_span()).into();
+            let span = (left.get_span(), right.get_span()).into();
 
             ConstExpr::BinOp {
                 left: Box::new(left),
                 op: Operator::Pow,
                 right: Box::new(right),
-                source_span: source_span,
+                span: span,
             }
         },
     );
@@ -350,11 +350,11 @@ where
         const_group,
         map(name_token, |t| ConstExpr::Name {
             name: t.string,
-            source_span: t.source_span,
+            span: t.span,
         }),
         map(number_token, |t| ConstExpr::Num {
             num: t.string,
-            source_span: t.source_span,
+            span: t.span,
         }),
     ))(input)
 }

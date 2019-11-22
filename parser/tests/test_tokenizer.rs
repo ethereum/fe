@@ -69,8 +69,8 @@ impl<'a> From<&'a TokenInfo<'a>> for PythonTokenInfo<'a> {
         Self {
             typ: token_info.typ,
             string: token_info.string,
-            start: token_info.source_span.start_pos,
-            end: token_info.source_span.end_pos,
+            start: token_info.span.start_pos,
+            end: token_info.span.end_pos,
             line: token_info.line,
         }
     }

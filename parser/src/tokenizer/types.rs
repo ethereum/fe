@@ -3,7 +3,7 @@ use serde::{
     Serialize,
 };
 
-use crate::span::SourceSpan;
+use crate::span::Span;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Copy, Clone)]
 pub enum TokenType {
@@ -32,7 +32,7 @@ pub struct TokenInfo<'a> {
     pub string: &'a str,
 
     /// The span of source text covered by a token.
-    pub source_span: SourceSpan,
+    pub span: Span,
 
     /// The text content of the line from which a token was parsed
     pub line: &'a str,

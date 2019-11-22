@@ -6,8 +6,8 @@ use serde::{
 };
 
 use crate::span::{
-    GetSourceSpan,
-    SourceSpan,
+    GetSpan,
+    Span,
 };
 use crate::tokenizer::types::TokenInfo;
 
@@ -15,12 +15,12 @@ use crate::tokenizer::types::TokenInfo;
 pub struct Module<'a> {
     #[serde(borrow)]
     pub body: Vec<ModuleStmt<'a>>,
-    pub source_span: SourceSpan,
+    pub span: Span,
 }
 
-impl<'a> GetSourceSpan for Module<'a> {
-    fn get_source_span(&self) -> &SourceSpan {
-        &self.source_span
+impl<'a> GetSpan for Module<'a> {
+    fn get_span(&self) -> &Span {
+        &self.span
     }
 }
 
@@ -29,14 +29,14 @@ pub enum ModuleStmt<'a> {
     EventDef {
         name: &'a str,
         fields: Vec<EventField<'a>>,
-        source_span: SourceSpan,
+        span: Span,
     },
 }
 
-impl<'a> GetSourceSpan for ModuleStmt<'a> {
-    fn get_source_span(&self) -> &SourceSpan {
+impl<'a> GetSpan for ModuleStmt<'a> {
+    fn get_span(&self) -> &Span {
         match self {
-            Self::EventDef { source_span, .. } => source_span,
+            Self::EventDef { span, .. } => span,
         }
     }
 }
@@ -46,7 +46,7 @@ pub struct TypeDesc<'a> {
     pub base: &'a str,
     pub dimensions: Vec<u32>,
     pub annotations: Vec<&'a str>,
-    pub source_span: SourceSpan,
+    pub span: Span,
 }
 
 impl<'a> From<&'a TokenInfo<'a>> for TypeDesc<'a> {
@@ -55,14 +55,14 @@ impl<'a> From<&'a TokenInfo<'a>> for TypeDesc<'a> {
             base: token_info.string,
             dimensions: vec![],
             annotations: vec![],
-            source_span: token_info.source_span,
+            span: token_info.span,
         }
     }
 }
 
-impl<'a> GetSourceSpan for TypeDesc<'a> {
-    fn get_source_span(&self) -> &SourceSpan {
-        &self.source_span
+impl<'a> GetSpan for TypeDesc<'a> {
+    fn get_span(&self) -> &Span {
+        &self.span
     }
 }
 
@@ -70,12 +70,12 @@ impl<'a> GetSourceSpan for TypeDesc<'a> {
 pub struct EventField<'a> {
     pub name: &'a str,
     pub typ: TypeDesc<'a>,
-    pub source_span: SourceSpan,
+    pub span: Span,
 }
 
-impl<'a> GetSourceSpan for EventField<'a> {
-    fn get_source_span(&self) -> &SourceSpan {
-        &self.source_span
+impl<'a> GetSpan for EventField<'a> {
+    fn get_span(&self) -> &Span {
+        &self.span
     }
 }
 
@@ -143,30 +143,30 @@ pub enum ConstExpr<'a> {
         left: Box<ConstExpr<'a>>,
         op: Operator,
         right: Box<ConstExpr<'a>>,
-        source_span: SourceSpan,
+        span: Span,
     },
     UnaryOp {
         op: UnaryOp,
         operand: Box<ConstExpr<'a>>,
-        source_span: SourceSpan,
+        span: Span,
     },
     Name {
         name: &'a str,
-        source_span: SourceSpan,
+        span: Span,
     },
     Num {
         num: &'a str,
-        source_span: SourceSpan,
+        span: Span,
     },
 }
 
-impl<'a> GetSourceSpan for ConstExpr<'a> {
-    fn get_source_span(&self) -> &SourceSpan {
+impl<'a> GetSpan for ConstExpr<'a> {
+    fn get_span(&self) -> &Span {
         match self {
-            Self::BinOp { source_span, .. } => source_span,
-            Self::UnaryOp { source_span, .. } => source_span,
-            Self::Name { source_span, .. } => source_span,
-            Self::Num { source_span, .. } => source_span,
+            Self::BinOp { span, .. } => span,
+            Self::UnaryOp { span, .. } => span,
+            Self::Name { span, .. } => span,
+            Self::Num { span, .. } => span,
         }
     }
 }
