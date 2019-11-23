@@ -14,6 +14,14 @@ Module(
             base: "bytes32",
             dimensions: [],
             annotations: [],
+            span: Span(
+              start: 32,
+              end: 39,
+            ),
+          ),
+          span: Span(
+            start: 26,
+            end: 39,
           ),
         ),
         EventField(
@@ -22,9 +30,25 @@ Module(
             base: "uint8",
             dimensions: [],
             annotations: [],
+            span: Span(
+              start: 49,
+              end: 54,
+            ),
+          ),
+          span: Span(
+            start: 44,
+            end: 54,
           ),
         ),
       ],
+      span: Span(
+        start: 9,
+        end: 54,
+      ),
     ),
   ],
+  span: Span(
+    start: 9,
+    end: 54,
+  ),
 )

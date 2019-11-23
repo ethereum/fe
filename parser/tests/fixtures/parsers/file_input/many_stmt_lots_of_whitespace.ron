@@ -23,6 +23,14 @@ Module(
             base: "bytes32",
             dimensions: [],
             annotations: [],
+            span: Span(
+              start: 24,
+              end: 31,
+            ),
+          ),
+          span: Span(
+            start: 18,
+            end: 31,
           ),
         ),
         EventField(
@@ -31,9 +39,21 @@ Module(
             base: "uint8",
             dimensions: [],
             annotations: [],
+            span: Span(
+              start: 41,
+              end: 46,
+            ),
+          ),
+          span: Span(
+            start: 36,
+            end: 46,
           ),
         ),
       ],
+      span: Span(
+        start: 1,
+        end: 46,
+      ),
     ),
     EventDef(
       name: "Other",
@@ -44,6 +64,14 @@ Module(
             base: "uint256",
             dimensions: [],
             annotations: [],
+            span: Span(
+              start: 74,
+              end: 81,
+            ),
+          ),
+          span: Span(
+            start: 67,
+            end: 81,
           ),
         ),
         EventField(
@@ -52,9 +80,25 @@ Module(
             base: "bool",
             dimensions: [],
             annotations: [],
+            span: Span(
+              start: 98,
+              end: 102,
+            ),
+          ),
+          span: Span(
+            start: 91,
+            end: 102,
           ),
         ),
       ],
+      span: Span(
+        start: 48,
+        end: 102,
+      ),
     ),
   ],
+  span: Span(
+    start: 1,
+    end: 102,
+  ),
 )

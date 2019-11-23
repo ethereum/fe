@@ -1,11 +1,37 @@
 CONST_1 ** (CONST_2 + CONST_3)
 ---
 BinOp(
-  left: Name("CONST_1"),
+  left: Name(
+    name: "CONST_1",
+    span: Span(
+      start: 0,
+      end: 7,
+    ),
+  ),
   op: Pow,
   right: BinOp(
-    left: Name("CONST_2"),
+    left: Name(
+      name: "CONST_2",
+      span: Span(
+        start: 12,
+        end: 19,
+      ),
+    ),
     op: Add,
-    right: Name("CONST_3"),
+    right: Name(
+      name: "CONST_3",
+      span: Span(
+        start: 22,
+        end: 29,
+      ),
+    ),
+    span: Span(
+      start: 12,
+      end: 29,
+    ),
+  ),
+  span: Span(
+    start: 0,
+    end: 29,
   ),
 )
