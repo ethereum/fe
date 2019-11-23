@@ -22,6 +22,13 @@ def get_token_dict(tok):
     """
     Return a JSON-serializable representation of a token.
     """
+    # The Python tokenizer has a weird quirk.  If a token's string ends with a
+    # newline character, it considers the exclusive ending position of the
+    # token to be on the same line as the newline character and one column to
+    # the right.  It seems like most people would expect *any* text position
+    # that immediately follows a newline character to be on the next line at
+    # column zero.  Therefore, the Vyper tokenizer follows this convention and
+    # we do a bit of value massaging here to make things line up.
     if tok.type in (ERRORTOKEN, NEWLINE, NL) and tok.string[-1:] == '\n':
         end = (tok.end[0] + 1, 0)
     else:
