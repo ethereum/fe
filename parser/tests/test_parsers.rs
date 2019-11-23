@@ -177,12 +177,7 @@ fn test_file_input_empty_file() {
                     empty_slice!(),
                     Module {
                         body: vec![],
-                        span: Span {
-                            start_pos: (1, 0),
-                            start_off: 0,
-                            end_pos: (1, 0),
-                            end_off: 0,
-                        }
+                        span: Span { start: 0, end: 0 }
                     }
                 ))
             ),
@@ -192,12 +187,7 @@ fn test_file_input_empty_file() {
                     empty_slice!(),
                     Module {
                         body: vec![],
-                        span: Span {
-                            start_pos: (1, 0),
-                            start_off: 4,
-                            end_pos: (1, 0),
-                            end_off: 4,
-                        }
+                        span: Span { start: 4, end: 4 }
                     }
                 ))
             ),
@@ -207,12 +197,7 @@ fn test_file_input_empty_file() {
                     empty_slice!(),
                     Module {
                         body: vec![],
-                        span: Span {
-                            start_pos: (4, 0),
-                            start_off: 12,
-                            end_pos: (4, 0),
-                            end_off: 12,
-                        }
+                        span: Span { start: 12, end: 12 }
                     }
                 ))
             ),

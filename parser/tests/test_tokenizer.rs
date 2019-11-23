@@ -2,7 +2,6 @@ use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use serde::Serialize;
 
-use vyper_parser::span::Position;
 use vyper_parser::tokenizer::*;
 
 #[macro_use]
@@ -51,6 +50,11 @@ impl<'a> TokenHelpers<'a> {
     }
 }
 
+type Position = (
+    usize, // a 1-indexed line number
+    usize, // a 0-indexed byte offset into a line
+);
+
 /// This struct and its associated `From` implementation are used to cast vyper
 /// tokens (which may include specialized information only used by the vyper
 /// parser, such as global byte offsets into a source file) into objects with
@@ -92,8 +96,8 @@ impl<'a> From<(&'a Token<'a>, &str)> for PythonTokenInfo<'a> {
         Self {
             typ: token.typ,
             string: token.string,
-            start: offset_to_position(input, token.span.start_off),
-            end: offset_to_position(input, token.span.end_off),
+            start: offset_to_position(input, token.span.start),
+            end: offset_to_position(input, token.span.end),
             line: token.line,
         }
     }
