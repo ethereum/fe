@@ -69,7 +69,7 @@ struct PythonTokenInfo<'a> {
 }
 
 #[inline]
-fn offset_to_position(input: &str, offset: usize) -> (usize, usize) {
+fn offset_to_position(input: &str, offset: usize) -> Position {
     let mut line: usize = 1;
     let mut col: usize = 0;
 
