@@ -1,5 +1,9 @@
-from collections import OrderedDict
-from io import BytesIO
+from collections import (
+    OrderedDict,
+)
+from io import (
+    BytesIO,
+)
 import json
 from tokenize import (
     tokenize,
