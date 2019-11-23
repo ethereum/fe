@@ -21,11 +21,11 @@ use crate::tokenizer::types::{
     TokenType::*,
 };
 
-pub const TABSIZE: usize = 8;
+const TABSIZE: usize = 8;
 
 /// Return true if the char `c` is a valid identifier character.
 #[inline]
-pub fn is_identifier_char(c: char) -> bool {
+fn is_identifier_char(c: char) -> bool {
     c == '_' || c.is_ascii_alphabetic() || c.is_digit(10)
 }
 
