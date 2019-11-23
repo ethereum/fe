@@ -1,7 +1,10 @@
 from collections import OrderedDict
 from io import BytesIO
 import json
-from tokenize import tokenize
+from tokenize import (
+    tokenize,
+    TokenInfo,
+)
 from token import (
     tok_name,
     ENCODING,
@@ -9,16 +12,19 @@ from token import (
     NEWLINE,
     NL,
 )
+from typing import (
+    Iterator,
+)
 
 
-def tokens(source_code: bytes):
+def tokens(source_code: bytes) -> Iterator[TokenInfo]:
     """
     Return an iterator over the tokens in a python source string.
     """
     return tokenize(BytesIO(source_code).readline)
 
 
-def get_token_dict(tok):
+def get_token_dict(tok: TokenInfo) -> OrderedDict:
     """
     Return a JSON-serializable representation of a token.
     """
