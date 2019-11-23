@@ -114,16 +114,16 @@ macro_rules! assert_parser_success {
     }};
 }
 
-/// Assert that `$parser` succeeds and parses all tokens when applied as a
-/// standalone parser to the given input.  Expected results are defined as
-/// serializations.  Print a debug trace if parsing fails.
+/// Assert that `$parser` succeeds and parses all tokens when applied to the
+/// given input.  Expected results are defined as serializations.  Print a debug
+/// trace if parsing fails.
 macro_rules! assert_fixtures_parsed {
-    ($parser:expr, $($paths:expr),+,) => {{
-        assert_fixtures_parsed!($parser, $($paths),+)
+    ($parser:expr, $($path:expr),+,) => {{
+        assert_fixtures_parsed!($parser, $($path),+)
     }};
-    ($parser:expr, $($paths:expr),+) => {{
+    ($parser:expr, $($path:expr),+) => {{
         let test_files = vec![
-            $(($paths, include_test_example!($paths))),+
+            $(($path, include_test_example!($path))),+
         ];
 
         for (filename, (inp, expected_ser)) in test_files {
