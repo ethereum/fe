@@ -1,19 +1,25 @@
 2 ** 8
 ---
-BinOp(
-  left: Num(
-    num: "2",
-    span: Span(
-      start: 0,
-      end: 1,
+Spanned(
+  node: BinOp(
+    left: Spanned(
+      node: Num(
+        num: "2",
+      ),
+      span: Span(
+        start: 0,
+        end: 1,
+      ),
     ),
-  ),
-  op: Pow,
-  right: Num(
-    num: "8",
-    span: Span(
-      start: 5,
-      end: 6,
+    op: Pow,
+    right: Spanned(
+      node: Num(
+        num: "8",
+      ),
+      span: Span(
+        start: 5,
+        end: 6,
+      ),
     ),
   ),
   span: Span(

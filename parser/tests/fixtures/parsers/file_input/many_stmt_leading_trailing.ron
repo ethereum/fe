@@ -7,91 +7,113 @@ event Other:
     info2: bool
 
 ---
-Module(
-  body: [
-    EventDef(
-      name: "Greet",
-      fields: [
-        EventField(
-          name: "name",
-          typ: TypeDesc(
-            base: "bytes32",
-            dimensions: [],
-            annotations: [],
-            span: Span(
-              start: 27,
-              end: 34,
+Spanned(
+  node: Module(
+    body: [
+      Spanned(
+        node: EventDef(
+          name: "Greet",
+          fields: [
+            Spanned(
+              node: EventField(
+                name: "name",
+                typ: Spanned(
+                  node: TypeDesc(
+                    base: "bytes32",
+                    dimensions: [],
+                    annotations: [],
+                  ),
+                  span: Span(
+                    start: 27,
+                    end: 34,
+                  ),
+                ),
+              ),
+              span: Span(
+                start: 21,
+                end: 34,
+              ),
             ),
-          ),
-          span: Span(
-            start: 21,
-            end: 34,
-          ),
-        ),
-        EventField(
-          name: "age",
-          typ: TypeDesc(
-            base: "uint8",
-            dimensions: [],
-            annotations: [],
-            span: Span(
-              start: 44,
-              end: 49,
+            Spanned(
+              node: EventField(
+                name: "age",
+                typ: Spanned(
+                  node: TypeDesc(
+                    base: "uint8",
+                    dimensions: [],
+                    annotations: [],
+                  ),
+                  span: Span(
+                    start: 44,
+                    end: 49,
+                  ),
+                ),
+              ),
+              span: Span(
+                start: 39,
+                end: 49,
+              ),
             ),
-          ),
-          span: Span(
-            start: 39,
-            end: 49,
-          ),
+          ],
         ),
-      ],
-      span: Span(
-        start: 4,
-        end: 49,
+        span: Span(
+          start: 4,
+          end: 49,
+        ),
       ),
-    ),
-    EventDef(
-      name: "Other",
-      fields: [
-        EventField(
-          name: "info1",
-          typ: TypeDesc(
-            base: "uint256",
-            dimensions: [],
-            annotations: [],
-            span: Span(
-              start: 74,
-              end: 81,
+      Spanned(
+        node: EventDef(
+          name: "Other",
+          fields: [
+            Spanned(
+              node: EventField(
+                name: "info1",
+                typ: Spanned(
+                  node: TypeDesc(
+                    base: "uint256",
+                    dimensions: [],
+                    annotations: [],
+                  ),
+                  span: Span(
+                    start: 74,
+                    end: 81,
+                  ),
+                ),
+              ),
+              span: Span(
+                start: 67,
+                end: 81,
+              ),
             ),
-          ),
-          span: Span(
-            start: 67,
-            end: 81,
-          ),
-        ),
-        EventField(
-          name: "info2",
-          typ: TypeDesc(
-            base: "bool",
-            dimensions: [],
-            annotations: [],
-            span: Span(
-              start: 93,
-              end: 97,
+            Spanned(
+              node: EventField(
+                name: "info2",
+                typ: Spanned(
+                  node: TypeDesc(
+                    base: "bool",
+                    dimensions: [],
+                    annotations: [],
+                  ),
+                  span: Span(
+                    start: 93,
+                    end: 97,
+                  ),
+                ),
+              ),
+              span: Span(
+                start: 86,
+                end: 97,
+              ),
             ),
-          ),
-          span: Span(
-            start: 86,
-            end: 97,
-          ),
+          ],
         ),
-      ],
-      span: Span(
-        start: 50,
-        end: 97,
+        span: Span(
+          start: 50,
+          end: 97,
+        ),
       ),
-    ),
-  ],
+    ],
+  ),
   span: Span(
     start: 4,
     end: 97,

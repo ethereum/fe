@@ -4,50 +4,62 @@ event Greet:
     age: uint8
 
 ---
-Module(
-  body: [
-    EventDef(
-      name: "Greet",
-      fields: [
-        EventField(
-          name: "name",
-          typ: TypeDesc(
-            base: "bytes32",
-            dimensions: [],
-            annotations: [],
-            span: Span(
-              start: 32,
-              end: 39,
+Spanned(
+  node: Module(
+    body: [
+      Spanned(
+        node: EventDef(
+          name: "Greet",
+          fields: [
+            Spanned(
+              node: EventField(
+                name: "name",
+                typ: Spanned(
+                  node: TypeDesc(
+                    base: "bytes32",
+                    dimensions: [],
+                    annotations: [],
+                  ),
+                  span: Span(
+                    start: 32,
+                    end: 39,
+                  ),
+                ),
+              ),
+              span: Span(
+                start: 26,
+                end: 39,
+              ),
             ),
-          ),
-          span: Span(
-            start: 26,
-            end: 39,
-          ),
-        ),
-        EventField(
-          name: "age",
-          typ: TypeDesc(
-            base: "uint8",
-            dimensions: [],
-            annotations: [],
-            span: Span(
-              start: 49,
-              end: 54,
+            Spanned(
+              node: EventField(
+                name: "age",
+                typ: Spanned(
+                  node: TypeDesc(
+                    base: "uint8",
+                    dimensions: [],
+                    annotations: [],
+                  ),
+                  span: Span(
+                    start: 49,
+                    end: 54,
+                  ),
+                ),
+              ),
+              span: Span(
+                start: 44,
+                end: 54,
+              ),
             ),
-          ),
-          span: Span(
-            start: 44,
-            end: 54,
-          ),
+          ],
         ),
-      ],
-      span: Span(
-        start: 9,
-        end: 54,
+        span: Span(
+          start: 9,
+          end: 54,
+        ),
       ),
-    ),
-  ],
+    ],
+  ),
   span: Span(
     start: 9,
     end: 54,

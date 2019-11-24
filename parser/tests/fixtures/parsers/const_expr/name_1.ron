@@ -1,7 +1,9 @@
 name
 ---
-Name(
-  name: "name",
+Spanned(
+  node: Name(
+    name: "name",
+  ),
   span: Span(
     start: 0,
     end: 4,
