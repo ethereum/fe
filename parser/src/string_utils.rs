@@ -69,10 +69,18 @@ pub fn rstrip_slice<'a>(input: &'a str, strip: &str) -> &'a str {
 /// A position in a source file specified by a 1-indexed line number and a
 /// 0-indexed byte offset into the line specified by that number.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
-pub struct Position(
-    usize, // a 1-indexed line number
-    usize, // a 0-indexed byte offset into a line
-);
+pub struct Position {
+    /// A 1-indexed line number
+    pub line: usize,
+    /// A 0-indexed byte offset into a line
+    pub col: usize,
+}
+
+impl Position {
+    fn new(line: usize, col: usize) -> Self {
+        Position { line, col }
+    }
+}
 
 /// Efficiently find the text positions (line, column tuples) of a monotonically
 /// increasing sequence of byte offsets in a string.  Non-monotonic sequences
@@ -137,7 +145,7 @@ impl<'a> StringPositions<'a> {
             self.offset += chr_len;
         }
 
-        Some(Position(self.line, self.col))
+        Some(Position::new(self.line, self.col))
     }
 
     /// Get the last valid position in a string.
@@ -154,14 +162,14 @@ impl<'a> StringPositions<'a> {
     /// Get the pseudo-position representing the end of the file (string).
     pub fn get_eof(&mut self) -> Position {
         match self.get_last() {
-            None => Position(1, 0),
+            None => Position::new(1, 0),
             Some(last_pos) => {
                 let last_chr = self.input[self.offset..].chars().next().unwrap();
 
                 if last_chr == '\n' {
-                    Position(last_pos.0 + 1, 0)
+                    Position::new(last_pos.line + 1, 0)
                 } else {
-                    Position(last_pos.0, last_pos.1 + 1)
+                    Position::new(last_pos.line, last_pos.col + 1)
                 }
             }
         }
@@ -294,36 +302,36 @@ here
         assert_eq!(string_pos.get_pos(0), None);
         assert_eq!(string_pos.get_pos(1), None);
         assert_eq!(string_pos.get_last(), None);
-        assert_eq!(string_pos.get_eof(), Position(1, 0));
+        assert_eq!(string_pos.get_eof(), Position::new(1, 0));
 
         // Can get same position twice
         let mut string_pos = StringPositions::new(&r#"asdf"#);
-        assert_eq!(string_pos.get_pos(0), Some(Position(1, 0)));
-        assert_eq!(string_pos.get_pos(0), Some(Position(1, 0)));
-        assert_eq!(string_pos.get_pos(1), Some(Position(1, 1)));
-        assert_eq!(string_pos.get_pos(1), Some(Position(1, 1)));
-        assert_eq!(string_pos.get_last(), Some(Position(1, 3)));
-        assert_eq!(string_pos.get_eof(), Position(1, 4));
+        assert_eq!(string_pos.get_pos(0), Some(Position::new(1, 0)));
+        assert_eq!(string_pos.get_pos(0), Some(Position::new(1, 0)));
+        assert_eq!(string_pos.get_pos(1), Some(Position::new(1, 1)));
+        assert_eq!(string_pos.get_pos(1), Some(Position::new(1, 1)));
+        assert_eq!(string_pos.get_last(), Some(Position::new(1, 3)));
+        assert_eq!(string_pos.get_eof(), Position::new(1, 4));
 
         // Can get sequential positions
         let mut string_pos = StringPositions::new(&r#"asdf"#);
-        assert_eq!(string_pos.get_pos(0), Some(Position(1, 0)));
-        assert_eq!(string_pos.get_pos(1), Some(Position(1, 1)));
-        assert_eq!(string_pos.get_pos(2), Some(Position(1, 2)));
-        assert_eq!(string_pos.get_pos(3), Some(Position(1, 3)));
+        assert_eq!(string_pos.get_pos(0), Some(Position::new(1, 0)));
+        assert_eq!(string_pos.get_pos(1), Some(Position::new(1, 1)));
+        assert_eq!(string_pos.get_pos(2), Some(Position::new(1, 2)));
+        assert_eq!(string_pos.get_pos(3), Some(Position::new(1, 3)));
 
         // Can get non-sequential positions
         let mut string_pos = StringPositions::new(&r#"asdf"#);
-        assert_eq!(string_pos.get_pos(0), Some(Position(1, 0)));
-        assert_eq!(string_pos.get_pos(1), Some(Position(1, 1)));
-        assert_eq!(string_pos.get_pos(0), Some(Position(1, 0)));
+        assert_eq!(string_pos.get_pos(0), Some(Position::new(1, 0)));
+        assert_eq!(string_pos.get_pos(1), Some(Position::new(1, 1)));
+        assert_eq!(string_pos.get_pos(0), Some(Position::new(1, 0)));
 
         // Can get sequential then invalid
         let mut string_pos = StringPositions::new(&r#"asdf"#);
-        assert_eq!(string_pos.get_pos(0), Some(Position(1, 0)));
-        assert_eq!(string_pos.get_pos(1), Some(Position(1, 1)));
-        assert_eq!(string_pos.get_pos(2), Some(Position(1, 2)));
-        assert_eq!(string_pos.get_pos(3), Some(Position(1, 3)));
+        assert_eq!(string_pos.get_pos(0), Some(Position::new(1, 0)));
+        assert_eq!(string_pos.get_pos(1), Some(Position::new(1, 1)));
+        assert_eq!(string_pos.get_pos(2), Some(Position::new(1, 2)));
+        assert_eq!(string_pos.get_pos(3), Some(Position::new(1, 3)));
         assert_eq!(string_pos.get_pos(4), None);
         assert_eq!(string_pos.get_pos(5), None);
 
@@ -337,19 +345,19 @@ here
 thing that finds
 positions on lines"#,
         );
-        assert_eq!(string_pos.get_pos(4), Some(Position(1, 4)));
-        assert_eq!(string_pos.get_pos(11), Some(Position(1, 11)));
-        assert_eq!(string_pos.get_pos(12), Some(Position(1, 12)));
-        assert_eq!(string_pos.get_pos(13), Some(Position(2, 0)));
-        assert_eq!(string_pos.get_pos(18), Some(Position(2, 5)));
-        assert_eq!(string_pos.get_pos(28), Some(Position(2, 15)));
-        assert_eq!(string_pos.get_pos(29), Some(Position(2, 16)));
-        assert_eq!(string_pos.get_pos(30), Some(Position(3, 0)));
-        assert_eq!(string_pos.get_pos(42), Some(Position(3, 12)));
-        assert_eq!(string_pos.get_pos(47), Some(Position(3, 17)));
+        assert_eq!(string_pos.get_pos(4), Some(Position::new(1, 4)));
+        assert_eq!(string_pos.get_pos(11), Some(Position::new(1, 11)));
+        assert_eq!(string_pos.get_pos(12), Some(Position::new(1, 12)));
+        assert_eq!(string_pos.get_pos(13), Some(Position::new(2, 0)));
+        assert_eq!(string_pos.get_pos(18), Some(Position::new(2, 5)));
+        assert_eq!(string_pos.get_pos(28), Some(Position::new(2, 15)));
+        assert_eq!(string_pos.get_pos(29), Some(Position::new(2, 16)));
+        assert_eq!(string_pos.get_pos(30), Some(Position::new(3, 0)));
+        assert_eq!(string_pos.get_pos(42), Some(Position::new(3, 12)));
+        assert_eq!(string_pos.get_pos(47), Some(Position::new(3, 17)));
         assert_eq!(string_pos.get_pos(48), None);
-        assert_eq!(string_pos.get_last(), Some(Position(3, 17)));
-        assert_eq!(string_pos.get_eof(), Position(3, 18));
+        assert_eq!(string_pos.get_last(), Some(Position::new(3, 17)));
+        assert_eq!(string_pos.get_eof(), Position::new(3, 18));
 
         // EOF is after newline
         let mut string_pos = StringPositions::new(
@@ -358,7 +366,7 @@ thing that finds
 positions on lines
 "#,
         );
-        assert_eq!(string_pos.get_last(), Some(Position(3, 18)));
-        assert_eq!(string_pos.get_eof(), Position(4, 0));
+        assert_eq!(string_pos.get_last(), Some(Position::new(3, 18)));
+        assert_eq!(string_pos.get_eof(), Position::new(4, 0));
     }
 }

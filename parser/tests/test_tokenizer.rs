@@ -2,10 +2,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use serde::Serialize;
 
-use vyper_parser::string_utils::{
-    Position,
-    StringPositions,
-};
+use vyper_parser::string_utils::StringPositions;
 use vyper_parser::tokenizer::*;
 
 #[macro_use]
@@ -54,16 +51,14 @@ impl<'a> TokenHelpers<'a> {
     }
 }
 
-/// This struct and its associated `From` implementation are used to cast vyper
-/// tokens (which may include specialized information only used by the vyper
-/// parser, such as global byte offsets into a source file) into objects with
-/// only as much information as would be found in a python token.
+/// A python token object similar to those defined in python's stdlib `tokenize`
+/// module.
 #[derive(Serialize)]
 struct PythonTokenInfo<'a> {
     pub typ: TokenType,
     pub string: &'a str,
-    pub start: Position,
-    pub end: Position,
+    pub start: (usize, usize),
+    pub end: (usize, usize),
     pub line: &'a str,
 }
 
@@ -83,8 +78,8 @@ impl<'a> From<(&'a Token<'a>, &mut StringPositions<'_>)> for PythonTokenInfo<'a>
         Self {
             typ: tok.typ,
             string: tok.string,
-            start: start_pos,
-            end: end_pos,
+            start: (start_pos.line, start_pos.col),
+            end: (end_pos.line, end_pos.col),
             line: tok.line,
         }
     }
