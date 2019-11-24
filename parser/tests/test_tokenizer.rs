@@ -3,8 +3,8 @@ use pyo3::types::PyBytes;
 use serde::Serialize;
 
 use vyper_parser::string_utils::{
-    FilePositions,
     Position,
+    StringPositions,
 };
 use vyper_parser::tokenizer::*;
 
@@ -67,17 +67,17 @@ struct PythonTokenInfo<'a> {
     pub line: &'a str,
 }
 
-impl<'a> From<(&'a Token<'a>, &mut FilePositions<'_>)> for PythonTokenInfo<'a> {
-    fn from(info: (&'a Token<'a>, &mut FilePositions<'_>)) -> Self {
-        let (tok, file_positions) = info;
+impl<'a> From<(&'a Token<'a>, &mut StringPositions<'_>)> for PythonTokenInfo<'a> {
+    fn from(info: (&'a Token<'a>, &mut StringPositions<'_>)) -> Self {
+        let (tok, string_pos) = info;
 
-        let start_pos = match file_positions.get_pos(tok.span.start) {
+        let start_pos = match string_pos.get_pos(tok.span.start) {
             Some(pos) => pos,
-            None => file_positions.get_eof(),
+            None => string_pos.get_eof(),
         };
-        let end_pos = match file_positions.get_pos(tok.span.end) {
+        let end_pos = match string_pos.get_pos(tok.span.end) {
             Some(pos) => pos,
-            None => file_positions.get_eof(),
+            None => string_pos.get_eof(),
         };
 
         Self {
@@ -92,12 +92,12 @@ impl<'a> From<(&'a Token<'a>, &mut FilePositions<'_>)> for PythonTokenInfo<'a> {
 
 fn get_rust_token_json(input: &str) -> String {
     let tokens = tokenize(input).unwrap();
-    let mut file_positions = FilePositions::new(input);
+    let mut string_pos = StringPositions::new(input);
 
     // Convert vyper tokens into python tokens
     let python_tokens = tokens
         .iter()
-        .map(|tok| (tok, &mut file_positions).into())
+        .map(|tok| (tok, &mut string_pos).into())
         .collect::<Vec<PythonTokenInfo>>();
 
     serde_json::to_string_pretty(&python_tokens).unwrap()
