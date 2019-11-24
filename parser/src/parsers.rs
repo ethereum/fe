@@ -32,7 +32,6 @@ use crate::tokenizer::types::{
     TokenType,
 };
 
-pub type TokenRef<'a> = &'a Token<'a>;
 pub type TokenSlice<'a> = &'a [Token<'a>];
 pub type TokenResult<'a, O, E> = IResult<TokenSlice<'a>, O, E>;
 
@@ -48,7 +47,7 @@ pub fn get_parse_tokens<'a>(source: &'a str) -> Result<Vec<Token<'a>>, String> {
 }
 
 /// Parse a single token from a token slice.
-pub fn one_token<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, TokenRef<'a>, E>
+pub fn one_token<'a, E>(input: TokenSlice<'a>) -> TokenResult<&Token, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -59,7 +58,7 @@ where
 }
 
 /// Parse a token of a specific type from a token slice.
-pub fn token<'a, E>(typ: TokenType) -> impl Fn(TokenSlice<'a>) -> TokenResult<'a, TokenRef<'a>, E>
+pub fn token<'a, E>(typ: TokenType) -> impl Fn(TokenSlice<'a>) -> TokenResult<&Token, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -67,7 +66,7 @@ where
 }
 
 /// Parse a name token from a token slice.
-pub fn name_token<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, TokenRef<'a>, E>
+pub fn name_token<'a, E>(input: TokenSlice<'a>) -> TokenResult<&Token, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -75,9 +74,7 @@ where
 }
 
 /// Parse a name token containing a specific string from a token slice.
-pub fn name_string<'a, E>(
-    string: &'a str,
-) -> impl Fn(TokenSlice<'a>) -> TokenResult<'a, TokenRef<'a>, E>
+pub fn name_string<'a, E>(string: &'a str) -> impl Fn(TokenSlice<'a>) -> TokenResult<&Token, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -85,7 +82,7 @@ where
 }
 
 /// Parse an op token from a token slice.
-pub fn op_token<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, TokenRef<'a>, E>
+pub fn op_token<'a, E>(input: TokenSlice<'a>) -> TokenResult<&Token, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -93,9 +90,7 @@ where
 }
 
 /// Parse an op token containing a specific string from a token slice.
-pub fn op_string<'a, E>(
-    string: &'a str,
-) -> impl Fn(TokenSlice<'a>) -> TokenResult<'a, TokenRef<'a>, E>
+pub fn op_string<'a, E>(string: &'a str) -> impl Fn(TokenSlice<'a>) -> TokenResult<&Token, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -103,7 +98,7 @@ where
 }
 
 /// Parse a number token from a token slice.
-pub fn number_token<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, TokenRef<'a>, E>
+pub fn number_token<'a, E>(input: TokenSlice<'a>) -> TokenResult<&Token, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -111,7 +106,7 @@ where
 }
 
 /// Parse a string token from a token slice.
-pub fn string_token<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, TokenRef<'a>, E>
+pub fn string_token<'a, E>(input: TokenSlice<'a>) -> TokenResult<&Token, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -119,7 +114,7 @@ where
 }
 
 /// Parse an indent token from a token slice.
-pub fn indent_token<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, TokenRef<'a>, E>
+pub fn indent_token<'a, E>(input: TokenSlice<'a>) -> TokenResult<&Token, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -127,7 +122,7 @@ where
 }
 
 /// Parse a dedent token from a token slice.
-pub fn dedent_token<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, TokenRef<'a>, E>
+pub fn dedent_token<'a, E>(input: TokenSlice<'a>) -> TokenResult<&Token, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -135,7 +130,7 @@ where
 }
 
 /// Parse a grammatically significant newline token from a token slice.
-pub fn newline_token<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, TokenRef<'a>, E>
+pub fn newline_token<'a, E>(input: TokenSlice<'a>) -> TokenResult<&Token, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -143,7 +138,7 @@ where
 }
 
 /// Parse an endmarker token from a token slice.
-pub fn endmarker_token<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, TokenRef<'a>, E>
+pub fn endmarker_token<'a, E>(input: TokenSlice<'a>) -> TokenResult<&Token, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -151,7 +146,7 @@ where
 }
 
 /// Parse a module definition.
-pub fn file_input<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Spanned<Module>, E>
+pub fn file_input<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<Module>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -184,7 +179,7 @@ where
 }
 
 /// Parse a module statement, such as a contract definition.
-pub fn module_stmt<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Spanned<ModuleStmt>, E>
+pub fn module_stmt<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ModuleStmt>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -194,7 +189,7 @@ where
 }
 
 /// Parse an event definition statement.
-pub fn parse_event_def<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Spanned<ModuleStmt>, E>
+pub fn parse_event_def<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ModuleStmt>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -225,7 +220,7 @@ where
 }
 
 /// Parse an event field definition.
-pub fn parse_event_field<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Spanned<EventField>, E>
+pub fn parse_event_field<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<EventField>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -247,7 +242,7 @@ where
 }
 
 /// Parse a constant expression that can be evaluated at compile-time.
-pub fn const_expr<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Spanned<ConstExpr>, E>
+pub fn const_expr<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ConstExpr>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -276,7 +271,7 @@ where
 
 /// Parse a constant term that may appear as the operand of an addition or
 /// subtraction.
-pub fn const_term<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Spanned<ConstExpr>, E>
+pub fn const_term<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ConstExpr>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -306,7 +301,7 @@ where
 
 /// Parse a constant factor that may appear as the operand of a multiplication,
 /// division, modulus, or unary op or as the exponent of a power expression.
-pub fn const_factor<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Spanned<ConstExpr>, E>
+pub fn const_factor<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ConstExpr>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -334,7 +329,7 @@ where
 
 /// Parse a constant power expression that may appear in the position of a
 /// constant factor.
-pub fn const_power<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Spanned<ConstExpr>, E>
+pub fn const_power<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ConstExpr>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -360,7 +355,7 @@ where
 
 /// Parse a constant atom expression that may appear in the position of a
 /// constant power or as the base of a constant power expression.
-pub fn const_atom<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Spanned<ConstExpr>, E>
+pub fn const_atom<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ConstExpr>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -379,7 +374,7 @@ where
 
 /// Parse a parenthesized constant group that may appear in the position of a
 /// constant atom.
-pub fn const_group<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Spanned<ConstExpr>, E>
+pub fn const_group<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ConstExpr>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
