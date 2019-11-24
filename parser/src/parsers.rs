@@ -183,13 +183,13 @@ pub fn module_stmt<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ModuleSt
 where
     E: ParseError<TokenSlice<'a>>,
 {
-    let (input, module_stmt) = context("expected event definition", parse_event_def)(input)?;
+    let (input, module_stmt) = context("expected event definition", event_def)(input)?;
 
     Ok((input, module_stmt))
 }
 
 /// Parse an event definition statement.
-pub fn parse_event_def<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ModuleStmt>, E>
+pub fn event_def<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ModuleStmt>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -201,7 +201,7 @@ where
 
     // INDENT event_field+ DEDENT
     let (input, _) = indent_token(input)?;
-    let (input, fields) = many1(parse_event_field)(input)?;
+    let (input, fields) = many1(event_field)(input)?;
     let (input, _) = dedent_token(input)?;
 
     let last_field = fields.last().unwrap();
@@ -220,7 +220,7 @@ where
 }
 
 /// Parse an event field definition.
-pub fn parse_event_field<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<EventField>, E>
+pub fn event_field<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<EventField>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
