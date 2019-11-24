@@ -25,7 +25,7 @@ use nom::IResult;
 use crate::ast::ModuleStmt::*;
 use crate::ast::*;
 use crate::errors::make_error;
-use crate::span::GetSpan;
+use crate::span::Spanned;
 use crate::tokenizer::tokenize::tokenize;
 use crate::tokenizer::types::{
     Token,
@@ -151,7 +151,7 @@ where
 }
 
 /// Parse a module definition.
-pub fn file_input<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Module, E>
+pub fn file_input<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Spanned<Module>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -166,19 +166,25 @@ where
 
     let span = match body.first() {
         Some(first_stmt) => {
-            let first_span = first_stmt.get_span();
-            let last_span = body.last().unwrap().get_span();
+            let first_span = first_stmt.span;
+            let last_span = body.last().unwrap().span;
 
-            (first_span, last_span).into()
+            (&first_span, &last_span).into()
         }
         None => end_tok.span,
     };
 
-    Ok((input, Module { body, span }))
+    Ok((
+        input,
+        Spanned {
+            node: Module { body },
+            span: span,
+        },
+    ))
 }
 
 /// Parse a module statement, such as a contract definition.
-pub fn module_stmt<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ModuleStmt, E>
+pub fn module_stmt<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Spanned<ModuleStmt>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -188,7 +194,7 @@ where
 }
 
 /// Parse an event definition statement.
-pub fn parse_event_def<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ModuleStmt, E>
+pub fn parse_event_def<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Spanned<ModuleStmt>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -204,20 +210,22 @@ where
     let (input, _) = dedent_token(input)?;
 
     let last_field = fields.last().unwrap();
-    let span = (&event_kw.span, last_field.get_span()).into();
+    let span = (&event_kw.span, &last_field.span).into();
 
     Ok((
         input,
-        EventDef {
-            name: name.string,
-            fields: fields,
+        Spanned {
+            node: EventDef {
+                name: name.string,
+                fields: fields,
+            },
             span: span,
         },
     ))
 }
 
 /// Parse an event field definition.
-pub fn parse_event_field<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, EventField, E>
+pub fn parse_event_field<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Spanned<EventField>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -228,16 +236,18 @@ where
 
     Ok((
         input,
-        EventField {
-            name: name.string,
-            typ: typ.into(),
+        Spanned {
+            node: EventField {
+                name: name.string,
+                typ: typ.into(),
+            },
             span: (&name.span, &typ.span).into(),
         },
     ))
 }
 
 /// Parse a constant expression that can be evaluated at compile-time.
-pub fn const_expr<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
+pub fn const_expr<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Spanned<ConstExpr>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -249,12 +259,14 @@ where
 
     let mut left_expr = head;
     for (op_tok, right_expr) in tail {
-        let span = (left_expr.get_span(), right_expr.get_span()).into();
+        let span = (&left_expr.span, &right_expr.span).into();
 
-        left_expr = ConstExpr::BinOp {
-            left: Box::new(left_expr),
-            op: Operator::try_from(op_tok.string).unwrap(),
-            right: Box::new(right_expr),
+        left_expr = Spanned {
+            node: ConstExpr::BinOp {
+                left: Box::new(left_expr),
+                op: Operator::try_from(op_tok.string).unwrap(),
+                right: Box::new(right_expr),
+            },
             span: span,
         };
     }
@@ -264,7 +276,7 @@ where
 
 /// Parse a constant term that may appear as the operand of an addition or
 /// subtraction.
-pub fn const_term<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
+pub fn const_term<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Spanned<ConstExpr>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -277,12 +289,14 @@ where
 
     let mut left_expr = head;
     for (op_tok, right_expr) in tail {
-        let span = (left_expr.get_span(), right_expr.get_span()).into();
+        let span = (&left_expr.span, &right_expr.span).into();
 
-        left_expr = ConstExpr::BinOp {
-            left: Box::new(left_expr),
-            op: Operator::try_from(op_tok.string).unwrap(),
-            right: Box::new(right_expr),
+        left_expr = Spanned {
+            node: ConstExpr::BinOp {
+                left: Box::new(left_expr),
+                op: Operator::try_from(op_tok.string).unwrap(),
+                right: Box::new(right_expr),
+            },
             span: span,
         };
     }
@@ -292,7 +306,7 @@ where
 
 /// Parse a constant factor that may appear as the operand of a multiplication,
 /// division, modulus, or unary op or as the exponent of a power expression.
-pub fn const_factor<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
+pub fn const_factor<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Spanned<ConstExpr>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -303,11 +317,13 @@ where
         ),
         |res| {
             let (op_tok, operand) = res;
-            let span = (&op_tok.span, operand.get_span()).into();
+            let span = (&op_tok.span, &operand.span).into();
 
-            ConstExpr::UnaryOp {
-                op: UnaryOp::try_from(op_tok.string).unwrap(),
-                operand: Box::new(operand),
+            Spanned {
+                node: ConstExpr::UnaryOp {
+                    op: UnaryOp::try_from(op_tok.string).unwrap(),
+                    operand: Box::new(operand),
+                },
                 span: span,
             }
         },
@@ -318,7 +334,7 @@ where
 
 /// Parse a constant power expression that may appear in the position of a
 /// constant factor.
-pub fn const_power<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
+pub fn const_power<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Spanned<ConstExpr>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -326,12 +342,14 @@ where
         separated_pair(const_atom, op_string("**"), const_factor),
         |res| {
             let (left, right) = res;
-            let span = (left.get_span(), right.get_span()).into();
+            let span = (&left.span, &right.span).into();
 
-            ConstExpr::BinOp {
-                left: Box::new(left),
-                op: Operator::Pow,
-                right: Box::new(right),
+            Spanned {
+                node: ConstExpr::BinOp {
+                    left: Box::new(left),
+                    op: Operator::Pow,
+                    right: Box::new(right),
+                },
                 span: span,
             }
         },
@@ -342,18 +360,18 @@ where
 
 /// Parse a constant atom expression that may appear in the position of a
 /// constant power or as the base of a constant power expression.
-pub fn const_atom<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
+pub fn const_atom<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Spanned<ConstExpr>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
     alt((
         const_group,
-        map(name_token, |t| ConstExpr::Name {
-            name: t.string,
+        map(name_token, |t| Spanned {
+            node: ConstExpr::Name { name: t.string },
             span: t.span,
         }),
-        map(number_token, |t| ConstExpr::Num {
-            num: t.string,
+        map(number_token, |t| Spanned {
+            node: ConstExpr::Num { num: t.string },
             span: t.span,
         }),
     ))(input)
@@ -361,7 +379,7 @@ where
 
 /// Parse a parenthesized constant group that may appear in the position of a
 /// constant atom.
-pub fn const_group<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, ConstExpr, E>
+pub fn const_group<'a, E>(input: TokenSlice<'a>) -> TokenResult<'a, Spanned<ConstExpr>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {

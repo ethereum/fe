@@ -5,40 +5,21 @@ use serde::{
     Serialize,
 };
 
-use crate::span::{
-    GetSpan,
-    Span,
-};
+use crate::span::Spanned;
 use crate::tokenizer::types::Token;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Module<'a> {
     #[serde(borrow)]
-    pub body: Vec<ModuleStmt<'a>>,
-    pub span: Span,
-}
-
-impl<'a> GetSpan for Module<'a> {
-    fn get_span(&self) -> &Span {
-        &self.span
-    }
+    pub body: Vec<Spanned<ModuleStmt<'a>>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum ModuleStmt<'a> {
     EventDef {
         name: &'a str,
-        fields: Vec<EventField<'a>>,
-        span: Span,
+        fields: Vec<Spanned<EventField<'a>>>,
     },
-}
-
-impl<'a> GetSpan for ModuleStmt<'a> {
-    fn get_span(&self) -> &Span {
-        match self {
-            Self::EventDef { span, .. } => span,
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -46,37 +27,25 @@ pub struct TypeDesc<'a> {
     pub base: &'a str,
     pub dimensions: Vec<u32>,
     pub annotations: Vec<&'a str>,
-    pub span: Span,
 }
 
-impl<'a> From<&'a Token<'a>> for TypeDesc<'a> {
+impl<'a> From<&'a Token<'a>> for Spanned<TypeDesc<'a>> {
     fn from(token: &'a Token<'a>) -> Self {
-        Self {
-            base: token.string,
-            dimensions: vec![],
-            annotations: vec![],
+        Spanned {
+            node: TypeDesc {
+                base: token.string,
+                dimensions: vec![],
+                annotations: vec![],
+            },
             span: token.span,
         }
-    }
-}
-
-impl<'a> GetSpan for TypeDesc<'a> {
-    fn get_span(&self) -> &Span {
-        &self.span
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct EventField<'a> {
     pub name: &'a str,
-    pub typ: TypeDesc<'a>,
-    pub span: Span,
-}
-
-impl<'a> GetSpan for EventField<'a> {
-    fn get_span(&self) -> &Span {
-        &self.span
-    }
+    pub typ: Spanned<TypeDesc<'a>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -140,33 +109,18 @@ impl TryFrom<&str> for UnaryOp {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum ConstExpr<'a> {
     BinOp {
-        left: Box<ConstExpr<'a>>,
+        left: Box<Spanned<ConstExpr<'a>>>,
         op: Operator,
-        right: Box<ConstExpr<'a>>,
-        span: Span,
+        right: Box<Spanned<ConstExpr<'a>>>,
     },
     UnaryOp {
         op: UnaryOp,
-        operand: Box<ConstExpr<'a>>,
-        span: Span,
+        operand: Box<Spanned<ConstExpr<'a>>>,
     },
     Name {
         name: &'a str,
-        span: Span,
     },
     Num {
         num: &'a str,
-        span: Span,
     },
-}
-
-impl<'a> GetSpan for ConstExpr<'a> {
-    fn get_span(&self) -> &Span {
-        match self {
-            Self::BinOp { span, .. } => span,
-            Self::UnaryOp { span, .. } => span,
-            Self::Name { span, .. } => span,
-            Self::Num { span, .. } => span,
-        }
-    }
 }

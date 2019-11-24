@@ -29,6 +29,8 @@ impl From<(&Span, &Span)> for Span {
     }
 }
 
-pub trait GetSpan {
-    fn get_span(&self) -> &Span;
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub struct Spanned<T> {
+    pub node: T,
+    pub span: Span,
 }
