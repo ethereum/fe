@@ -104,10 +104,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                 result.push(Token {
                     typ: STRING,
                     string: &input[contstr_start_val..line_start + tok_end],
-                    span: Span {
-                        start: contstr_start_val,
-                        end: line_start + tok_end,
-                    },
+                    span: Span::new(contstr_start_val, line_start + tok_end),
                     line: &input[contline_start.unwrap()..line_end],
                 });
 
@@ -119,10 +116,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                 result.push(Token {
                     typ: ERRORTOKEN,
                     string: &input[contstr_start_val..line_end],
-                    span: Span {
-                        start: contstr_start_val,
-                        end: line_end,
-                    },
+                    span: Span::new(contstr_start_val, line_end),
                     line: &input[contline_start.unwrap()..line_start],
                 });
 
@@ -174,10 +168,10 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                         result.push(Token {
                             typ: COMMENT,
                             string: comment_token,
-                            span: Span {
-                                start: line_start + line_pos,
-                                end: line_start + line_pos + comment_token_len,
-                            },
+                            span: Span::new(
+                                line_start + line_pos,
+                                line_start + line_pos + comment_token_len,
+                            ),
                             line: line,
                         });
 
@@ -187,10 +181,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                     result.push(Token {
                         typ: NL,
                         string: &line[line_pos..],
-                        span: Span {
-                            start: line_start + line_pos,
-                            end: line_end,
-                        },
+                        span: Span::new(line_start + line_pos, line_end),
                         line: line,
                     });
 
@@ -203,10 +194,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                 result.push(Token {
                     typ: INDENT,
                     string: &line[..line_pos],
-                    span: Span {
-                        start: line_start,
-                        end: line_start + line_pos,
-                    },
+                    span: Span::new(line_start, line_start + line_pos),
                     line: line,
                 });
             }
@@ -219,10 +207,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                 result.push(Token {
                     typ: DEDENT,
                     string: &line[line_pos..line_pos],
-                    span: Span {
-                        start: line_start + line_pos,
-                        end: line_start + line_pos,
-                    },
+                    span: Span::new(line_start + line_pos, line_start + line_pos),
                     line: line,
                 });
             }
@@ -251,10 +236,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                     result.push(Token {
                         typ: NUMBER,
                         string: token,
-                        span: Span {
-                            start: soff,
-                            end: eoff,
-                        },
+                        span: Span::new(soff, eoff),
                         line: line,
                     });
                 } else if initial == '\r' || initial == '\n' {
@@ -262,20 +244,14 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                         result.push(Token {
                             typ: NL,
                             string: token,
-                            span: Span {
-                                start: soff,
-                                end: eoff,
-                            },
+                            span: Span::new(soff, eoff),
                             line: line,
                         });
                     } else {
                         result.push(Token {
                             typ: NEWLINE,
                             string: token,
-                            span: Span {
-                                start: soff,
-                                end: eoff,
-                            },
+                            span: Span::new(soff, eoff),
                             line: line,
                         });
                     }
@@ -283,10 +259,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                     result.push(Token {
                         typ: COMMENT,
                         string: token,
-                        span: Span {
-                            start: soff,
-                            end: eoff,
-                        },
+                        span: Span::new(soff, eoff),
                         line: line,
                     });
                 } else if triple_quoted.contains(token) {
@@ -299,10 +272,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                         result.push(Token {
                             typ: STRING,
                             string: token,
-                            span: Span {
-                                start: soff,
-                                end: line_start + line_pos,
-                            },
+                            span: Span::new(soff, line_start + line_pos),
                             line: line,
                         });
                     } else {
@@ -325,10 +295,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                         result.push(Token {
                             typ: STRING,
                             string: token,
-                            span: Span {
-                                start: soff,
-                                end: eoff,
-                            },
+                            span: Span::new(soff, eoff),
                             line: line,
                         });
                     }
@@ -336,10 +303,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                     result.push(Token {
                         typ: NAME,
                         string: token,
-                        span: Span {
-                            start: soff,
-                            end: eoff,
-                        },
+                        span: Span::new(soff, eoff),
                         line: line,
                     });
                 } else if initial == '\\' {
@@ -353,10 +317,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                     result.push(Token {
                         typ: OP,
                         string: token,
-                        span: Span {
-                            start: soff,
-                            end: eoff,
-                        },
+                        span: Span::new(soff, eoff),
                         line: line,
                     });
                 }
@@ -364,10 +325,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                 result.push(Token {
                     typ: ERRORTOKEN,
                     string: &line[line_pos..line_pos + 1],
-                    span: Span {
-                        start: line_start + line_pos,
-                        end: line_start + line_pos + 1,
-                    },
+                    span: Span::new(line_start + line_pos, line_start + line_pos + 1),
                     line: line,
                 });
                 line_pos += 1;
@@ -395,15 +353,15 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
             result.push(Token {
                 typ: NEWLINE,
                 string: empty_end_slice,
-                span: Span {
-                    start: input_len,
-                    // Python's stdlib tokenize module fudges the end position of this virtual token
-                    // and says it's one character beyond the actual content of the string.  Since
-                    // this could potentially lead someone access invalid
-                    // memory, we differ slightly here and just act like the
-                    // token has a length of zero.
-                    end: input_len,
-                },
+                span: Span::new(
+                    input_len,
+                    // Python's stdlib tokenize module fudges the end position of this virtual
+                    // token and says it's one character beyond the actual
+                    // content of the string.  Since this could potentially
+                    // lead someone access invalid memory, we differ slightly
+                    // here and just act like the token has a length of zero.
+                    input_len,
+                ),
                 line: empty_end_slice,
             });
         }
@@ -412,20 +370,14 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
         result.push(Token {
             typ: DEDENT,
             string: empty_end_slice,
-            span: Span {
-                start: input_len,
-                end: input_len,
-            },
+            span: Span::new(input_len, input_len),
             line: empty_end_slice,
         });
     }
     result.push(Token {
         typ: ENDMARKER,
         string: empty_end_slice,
-        span: Span {
-            start: input_len,
-            end: input_len,
-        },
+        span: Span::new(input_len, input_len),
         line: empty_end_slice,
     });
 
