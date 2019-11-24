@@ -1,3 +1,8 @@
+use serde::{
+    Deserialize,
+    Serialize,
+};
+
 /// Iterate over the lines in `buf` and include line endings in the results.
 /// Also, provide byte offsets of line beginnings and endings.
 pub fn lines_with_endings<'a>(buf: &'a str) -> impl Iterator<Item = (&'a str, usize, usize)> {
@@ -59,6 +64,77 @@ pub fn rstrip_slice<'a>(input: &'a str, strip: &str) -> &'a str {
     }
 
     &input[..end]
+}
+
+/// A position in a source file specified by a 1-indexed line number and a
+/// 0-indexed byte offset into the line specified by that number.
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
+pub struct Position(
+    usize, // a 1-indexed line number
+    usize, // a 0-indexed byte offset into a line
+);
+
+/// Effiently find the text positions (line, column tuples) of a monotonically
+/// increasing sequence of byte offsets in a string.
+pub struct FilePositions<'a> {
+    /// A string in which text positions should be calculated
+    input: &'a str,
+    /// The 1-indexed line number at the current byte offset
+    line: usize,
+    /// The 0-indexed column number at the current byte offset
+    col: usize,
+    /// The current byte offset
+    offset: usize,
+}
+
+impl<'a> FilePositions<'a> {
+    pub fn new(input: &'a str) -> Self {
+        Self {
+            input: input,
+            line: 1,
+            col: 0,
+            offset: 0,
+        }
+    }
+
+    fn reset(&mut self) {
+        self.line = 1;
+        self.col = 0;
+        self.offset = 0;
+    }
+
+    pub fn get_position(&mut self, pos_offset: usize) -> Option<Position> {
+        if pos_offset >= self.input.len() {
+            // Position does not exist
+            return None;
+        }
+        if pos_offset < self.offset {
+            // The desired position is behind the current cursor
+            self.reset()
+        }
+
+        let rel_offset = pos_offset - self.offset;
+        let rest = &self.input[self.offset..];
+
+        for (chr_offset, chr) in rest.char_indices() {
+            if chr_offset >= rel_offset {
+                break;
+            }
+
+            let chr_len = chr.len_utf8();
+
+            if chr == '\n' {
+                self.line += 1;
+                self.col = 0;
+            } else {
+                self.col += chr_len;
+            }
+
+            self.offset += chr_len;
+        }
+
+        Some(Position(self.line, self.col))
+    }
 }
 
 #[cfg(test)]
@@ -178,5 +254,59 @@ here
             let actual = rstrip_slice(input, strip);
             assert_eq!(actual, expected);
         }
+    }
+
+    #[test]
+    fn test_file_positions() {
+        // Can get same position twice
+        let mut positioner = FilePositions::new(&r#"asdf"#);
+        assert_eq!(positioner.get_position(0), Some(Position(1, 0)));
+        assert_eq!(positioner.get_position(0), Some(Position(1, 0)));
+        assert_eq!(positioner.get_position(1), Some(Position(1, 1)));
+        assert_eq!(positioner.get_position(1), Some(Position(1, 1)));
+
+        // Can get sequential positions
+        let mut positioner = FilePositions::new(&r#"asdf"#);
+        assert_eq!(positioner.get_position(0), Some(Position(1, 0)));
+        assert_eq!(positioner.get_position(1), Some(Position(1, 1)));
+        assert_eq!(positioner.get_position(2), Some(Position(1, 2)));
+        assert_eq!(positioner.get_position(3), Some(Position(1, 3)));
+
+        // Can get non-sequential positions
+        let mut positioner = FilePositions::new(&r#"asdf"#);
+        assert_eq!(positioner.get_position(0), Some(Position(1, 0)));
+        assert_eq!(positioner.get_position(1), Some(Position(1, 1)));
+        assert_eq!(positioner.get_position(0), Some(Position(1, 0)));
+
+        // Can get sequential then invalid
+        let mut positioner = FilePositions::new(&r#"asdf"#);
+        assert_eq!(positioner.get_position(0), Some(Position(1, 0)));
+        assert_eq!(positioner.get_position(1), Some(Position(1, 1)));
+        assert_eq!(positioner.get_position(2), Some(Position(1, 2)));
+        assert_eq!(positioner.get_position(3), Some(Position(1, 3)));
+        assert_eq!(positioner.get_position(4), None);
+        assert_eq!(positioner.get_position(5), None);
+
+        // Can get invalid
+        let mut positioner = FilePositions::new(&r#"asdf"#);
+        assert_eq!(positioner.get_position(4), None);
+
+        // Can get multiple line positions
+        let mut positioner = FilePositions::new(
+            &r#"i wrote this
+thing that finds
+positions on lines"#,
+        );
+        assert_eq!(positioner.get_position(4), Some(Position(1, 4)));
+        assert_eq!(positioner.get_position(11), Some(Position(1, 11)));
+        assert_eq!(positioner.get_position(12), Some(Position(1, 12)));
+        assert_eq!(positioner.get_position(13), Some(Position(2, 0)));
+        assert_eq!(positioner.get_position(18), Some(Position(2, 5)));
+        assert_eq!(positioner.get_position(28), Some(Position(2, 15)));
+        assert_eq!(positioner.get_position(29), Some(Position(2, 16)));
+        assert_eq!(positioner.get_position(30), Some(Position(3, 0)));
+        assert_eq!(positioner.get_position(42), Some(Position(3, 12)));
+        assert_eq!(positioner.get_position(47), Some(Position(3, 17)));
+        assert_eq!(positioner.get_position(48), None);
     }
 }
