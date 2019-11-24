@@ -74,7 +74,7 @@ pub struct Position(
     usize, // a 0-indexed byte offset into a line
 );
 
-/// Effiently find the text positions (line, column tuples) of a monotonically
+/// Efficiently find the text positions (line, column tuples) of a monotonically
 /// increasing sequence of byte offsets in a string.
 pub struct FilePositions<'a> {
     /// A string in which text positions should be calculated
