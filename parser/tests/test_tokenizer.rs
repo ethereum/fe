@@ -57,6 +57,7 @@ fn get_python_token_json(input: &str) -> String {
         .arg(include_str!("token_helpers.py"))
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()
         .expect("could not start python 3");
 
@@ -64,12 +65,17 @@ fn get_python_token_json(input: &str) -> String {
         let py3_stdin = py3.stdin.as_mut().unwrap();
         py3_stdin
             .write_all(input.as_bytes())
-            .expect("failed to write stdin for python 3");
+            .expect("failed to write to stdin for python 3");
     }
 
-    let output = py3
-        .wait_with_output()
-        .expect("failed to read stdout from python 3");
+    let output = py3.wait_with_output().expect("failed to wait on python 3");
+
+    if !output.status.success() {
+        panic!(
+            "failed to get output from python 3: {}",
+            String::from_utf8(output.stderr).unwrap()
+        );
+    }
 
     String::from_utf8(output.stdout).unwrap()
 }

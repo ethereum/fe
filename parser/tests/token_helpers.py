@@ -1,3 +1,8 @@
+import sys
+if sys.version_info < (3, 7):
+    sys.stderr.write('tokenization helpers require python 3.7 or greater!\n')
+    sys.exit(1)
+
 from collections import (
     OrderedDict,
 )
@@ -5,7 +10,6 @@ from io import (
     BytesIO,
 )
 import json
-import sys
 from tokenize import (
     tokenize,
     TokenInfo,
