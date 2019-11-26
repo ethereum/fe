@@ -1,55 +1,20 @@
-use pyo3::prelude::*;
-use pyo3::types::PyBytes;
+use std::io::Write;
+use std::process::{
+    Command,
+    Stdio,
+};
+
 use serde::Serialize;
 
 use vyper_parser::string_utils::StringPositions;
-use vyper_parser::tokenizer::*;
+use vyper_parser::tokenizer::{
+    tokenize,
+    Token,
+    TokenType,
+};
 
 #[macro_use]
 mod utils;
-
-pub struct TokenHelpers<'a> {
-    py: Python<'a>,
-    module: &'a PyModule,
-}
-
-impl<'a> TokenHelpers<'a> {
-    fn new(py: Python<'a>) -> Self {
-        let result = PyModule::from_code(
-            py,
-            include_str!("token_helpers.py"),
-            "token_helpers.py",
-            "token_helpers",
-        );
-
-        match result {
-            Err(e) => {
-                e.print(py);
-                panic!("Python exception when loading token_helpers.py");
-            }
-            Ok(module) => Self { py, module },
-        }
-    }
-
-    fn get_token_json(&self, source: &str) -> String {
-        let bytes = PyBytes::new(self.py, source.as_bytes());
-        let result = self.module.call("get_token_json", (bytes,), None);
-
-        match result {
-            Err(e) => {
-                e.print(self.py);
-                panic!("Python exception when calling get_token_json");
-            }
-            Ok(any) => match any.extract() {
-                Err(e) => {
-                    e.print(self.py);
-                    panic!("Python exception when converting result to string");
-                }
-                Ok(string) => string,
-            },
-        }
-    }
-}
 
 /// A python token object similar to those defined in python's stdlib `tokenize`
 /// module.
@@ -62,10 +27,11 @@ struct PythonTokenInfo<'a> {
     pub line: &'a str,
 }
 
-impl<'a> From<(&'a Token<'a>, &mut StringPositions<'_>)> for PythonTokenInfo<'a> {
-    fn from(info: (&'a Token<'a>, &mut StringPositions<'_>)) -> Self {
-        let (tok, string_pos) = info;
-
+impl<'a> PythonTokenInfo<'a> {
+    pub fn from_token_and_positions(
+        tok: &'a Token<'a>,
+        string_pos: &mut StringPositions<'_>,
+    ) -> Self {
         let start_pos = match string_pos.get_pos(tok.span.start) {
             Some(pos) => pos,
             None => string_pos.get_eof(),
@@ -85,6 +51,29 @@ impl<'a> From<(&'a Token<'a>, &mut StringPositions<'_>)> for PythonTokenInfo<'a>
     }
 }
 
+fn get_python_token_json(input: &str) -> String {
+    let mut py3 = Command::new("python3")
+        .arg("-c")
+        .arg(include_str!("token_helpers.py"))
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("could not start python 3");
+
+    {
+        let py3_stdin = py3.stdin.as_mut().unwrap();
+        py3_stdin
+            .write_all(input.as_bytes())
+            .expect("failed to write stdin for python 3");
+    }
+
+    let output = py3
+        .wait_with_output()
+        .expect("failed to read stdout from python 3");
+
+    String::from_utf8(output.stdout).unwrap()
+}
+
 fn get_rust_token_json(input: &str) -> String {
     let tokens = tokenize(input).unwrap();
     let mut string_pos = StringPositions::new(input);
@@ -92,7 +81,7 @@ fn get_rust_token_json(input: &str) -> String {
     // Convert vyper tokens into python tokens
     let python_tokens = tokens
         .iter()
-        .map(|tok| (tok, &mut string_pos).into())
+        .map(|tok| PythonTokenInfo::from_token_and_positions(tok, &mut string_pos))
         .collect::<Vec<PythonTokenInfo>>();
 
     serde_json::to_string_pretty(&python_tokens).unwrap()
@@ -124,13 +113,8 @@ fn test_tokenize() {
         ),
     ];
 
-    // Load python token helpers
-    let gil = Python::acquire_gil();
-    let py = gil.python();
-    let token_helpers = TokenHelpers::new(py);
-
     for (filename, content) in fixtures {
-        let expected = token_helpers.get_token_json(content);
+        let expected = get_python_token_json(content);
         let actual = get_rust_token_json(content);
 
         assert_strings_eq!(

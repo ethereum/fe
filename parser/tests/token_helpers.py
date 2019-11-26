@@ -5,6 +5,7 @@ from io import (
     BytesIO,
 )
 import json
+import sys
 from tokenize import (
     tokenize,
     TokenInfo,
@@ -67,3 +68,7 @@ def get_token_json(source_code: bytes) -> str:
         [get_token_dict(tok) for tok in toks],
         indent=2,
     )
+
+
+if __name__ == '__main__':
+    sys.stdout.write(get_token_json(sys.stdin.read().encode('utf-8')))
