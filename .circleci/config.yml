@@ -1,0 +1,67 @@
+version: 2.1
+
+common: &common
+  working_directory: ~/repo
+
+jobs:
+  linux-test:
+    <<: *common
+    docker:
+      - image: rustlang/rust:nightly
+    steps:
+      - checkout
+      - run:
+          name: merge pull request base
+          command: ./.circleci/merge_pr.sh
+      - run:
+          name: ensure nightly is default and upgrade
+          command: |
+            rustup default nightly
+            rustup update
+      - run:
+          name: test
+          command: cargo test --workspace
+
+  macos-test:
+    <<: *common
+    macos:
+      xcode: "11.0"
+    steps:
+      - checkout
+      - run:
+          name: merge pull request base
+          command: ./.circleci/merge_pr.sh
+      - run:
+          name: install rust nightly toolchain
+          command: |
+            curl https://sh.rustup.rs -sSf | sh
+            rustup default nightly
+      - run:
+          name: test
+          command: cargo test --workspace
+
+  coverage:
+    <<: *common
+    docker:
+      - image: davesque/tarpaulin
+    steps:
+      - checkout
+      - run:
+          name: merge pull request base
+          command: ./.circleci/merge_pr.sh
+      - run:
+          name: ensure nightly is default and upgrade
+          command: |
+            rustup default nightly
+            rustup update
+      - run:
+          name: test
+          command: cargo tarpaulin --all --verbose
+
+workflows:
+  version: 2
+  test:
+    jobs:
+      - linux-test
+      - macos-test
+      - coverage
