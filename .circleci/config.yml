@@ -22,24 +22,6 @@ jobs:
           name: test
           command: cargo test --workspace
 
-  macos-test:
-    <<: *common
-    macos:
-      xcode: "11.0"
-    steps:
-      - checkout
-      - run:
-          name: merge pull request base
-          command: ./.circleci/merge_pr.sh
-      - run:
-          name: install rust nightly toolchain
-          command: |
-            curl https://sh.rustup.rs -sSf | sh
-            rustup default nightly
-      - run:
-          name: test
-          command: cargo test --workspace
-
   coverage:
     <<: *common
     machine: true
@@ -59,5 +41,4 @@ workflows:
   test:
     jobs:
       - linux-test
-      - macos-test
       - coverage
