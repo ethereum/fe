@@ -1,5 +1,8 @@
 # Rust Vyper
 
+[![Build Status](https://circleci.com/gh/davesque/rust-vyper.svg?style=shield)](https://circleci.com/gh/davesque/rust-vyper)
+[![Coverage](https://codecov.io/gh/davesque/rust-vyper/branch/master/graph/badge.svg)](https://codecov.io/gh/davesque/rust-vyper)
+
 ## Overview
 
 Rust Vyper is a next generation version of the Vyper smart contract language.
