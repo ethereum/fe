@@ -50,7 +50,7 @@ jobs:
           command: ./.circleci/merge_pr.sh
       - run:
           name: coverage with tarpaulin
-          command: docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" xd009642/tarpaulin cargo tarpaulin --all --verbose
+          command: docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" -e CODECOV_TOKEN="${CODECOV_TOKEN}" xd009642/tarpaulin cargo tarpaulin --all --verbose
 
 workflows:
   version: 2
