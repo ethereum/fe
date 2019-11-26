@@ -42,8 +42,7 @@ jobs:
 
   coverage:
     <<: *common
-    docker:
-      - image: xd009642/tarpaulin
+    machine: true
     steps:
       - checkout
       - run:
