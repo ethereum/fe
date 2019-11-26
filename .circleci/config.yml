@@ -43,20 +43,15 @@ jobs:
   coverage:
     <<: *common
     docker:
-      - image: davesque/tarpaulin
+      - image: xd009642/tarpaulin
     steps:
       - checkout
       - run:
           name: merge pull request base
           command: ./.circleci/merge_pr.sh
       - run:
-          name: ensure nightly is default and upgrade
-          command: |
-            rustup default nightly
-            rustup update
-      - run:
-          name: test
-          command: cargo tarpaulin --all --verbose
+          name: coverage with tarpaulin
+          command: docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" xd009642/tarpaulin cargo tarpaulin --all --verbose
 
 workflows:
   version: 2

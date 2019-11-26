@@ -3,8 +3,8 @@ docker-coverage:
 		--rm \
 		--security-opt seccomp=unconfined \
 		--volume "$(shell pwd):/volume" \
-		davesque/tarpaulin \
-		tarpaulin --all --verbose
+		xd009642/tarpaulin \
+		cargo tarpaulin --all --verbose
 
 docker-test:
 	docker run \
