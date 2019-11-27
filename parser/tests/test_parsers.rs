@@ -1,10 +1,3 @@
-#[macro_use]
-mod utils;
-use utils::{
-    parse_test_example,
-    to_ron_string_pretty,
-};
-
 use nom::error::{
     ErrorKind,
     ParseError,
@@ -19,6 +12,13 @@ use vyper_parser::parsers::*;
 use vyper_parser::span::{
     Span,
     Spanned,
+};
+
+#[macro_use]
+mod utils;
+use utils::{
+    parse_test_example,
+    to_ron_string_pretty,
 };
 
 type SimpleError<I> = (I, ErrorKind);
