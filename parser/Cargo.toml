@@ -3,7 +3,7 @@ name = "vyper-parser"
 version = "0.1.0"
 authors = ["David Sanders <david@ethereum.org>"]
 edition = "2018"
-license = "MIT"
+license = "Apache-2.0"
 repository = "https://github.com/davesque/rust-vyper"
 description = "Parser lib for Rust Vyper."
 
