@@ -46,6 +46,7 @@ impl fmt::Display for Diff {
 
 /// Compare the given strings and panic when not equal with a colorized line
 /// diff.
+#[allow(unused_macros)]
 macro_rules! assert_strings_eq {
     ($left:expr, $right:expr,) => {{
         assert_strings_eq!($left, $right)
@@ -97,19 +98,19 @@ where
 /// Parse test example file content into a tuple of input text and expected
 /// serialization.
 #[allow(dead_code)]
-pub fn parse_test_example<'a>(input: &'a str) -> Result<(&'a str, &'a str), &'static str> {
+pub fn parse_test_example<'a>(name: &'static str, input: &'a str) -> (&'a str, &'a str) {
     let parts: Vec<_> = input.split("\n---\n").collect();
 
     if parts.len() != 2 {
-        Err("Test example has wrong format")
+        panic!("Test example has wrong format in {}", name);
     } else {
         let input = parts[0];
         let parsed = parts[1];
 
         // If single trailing newline is present, clip off
         match parsed.chars().last() {
-            Some(c) if c == '\n' => Ok((input, &parsed[..parsed.len() - 1])),
-            _ => Ok((input, parsed)),
+            Some(c) if c == '\n' => (input, &parsed[..parsed.len() - 1]),
+            _ => (input, parsed),
         }
     }
 }
@@ -126,6 +127,6 @@ macro_rules! empty_slice {
 #[allow(unused_macros)]
 macro_rules! include_test_example {
     ($path:expr) => {{
-        parse_test_example(include_str!($path)).unwrap()
+        parse_test_example($path, include_str!($path))
     }};
 }
