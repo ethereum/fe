@@ -1,9 +1,3 @@
-use std::io::Write;
-use std::process::{
-    Command,
-    Stdio,
-};
-
 use serde::Serialize;
 
 use vyper_parser::string_utils::StringPositions;
@@ -15,6 +9,7 @@ use vyper_parser::tokenizer::{
 
 #[macro_use]
 mod utils;
+use utils::parse_test_example;
 
 /// A python token object similar to those defined in python's stdlib `tokenize`
 /// module.
@@ -51,35 +46,6 @@ impl<'a> PythonTokenInfo<'a> {
     }
 }
 
-fn get_python_token_json(input: &str) -> String {
-    let mut py3 = Command::new("python3")
-        .arg("-c")
-        .arg(include_str!("token_helpers.py"))
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("could not start python 3");
-
-    {
-        let py3_stdin = py3.stdin.as_mut().unwrap();
-        py3_stdin
-            .write_all(input.as_bytes())
-            .expect("failed to write to stdin for python 3");
-    }
-
-    let output = py3.wait_with_output().expect("failed to wait on python 3");
-
-    if !output.status.success() {
-        panic!(
-            "failed to get output from python 3: {}",
-            String::from_utf8(output.stderr).unwrap()
-        );
-    }
-
-    String::from_utf8(output.stdout).unwrap()
-}
-
 fn get_rust_token_json(input: &str) -> String {
     let tokens = tokenize(input).unwrap();
     let mut string_pos = StringPositions::new(input);
@@ -93,41 +59,39 @@ fn get_rust_token_json(input: &str) -> String {
     serde_json::to_string_pretty(&python_tokens).unwrap()
 }
 
+/// Assert that all the given fixture files are tokenized correctly.  Expected
+/// results are defined as serializations.  Print a debug trace if parsing
+/// fails.
+macro_rules! assert_fixtures_tokenized {
+    ($($path:expr),+,) => {{
+        assert_fixtures_tokenized!($($path),+)
+    }};
+    ($($path:expr),+) => {{
+        let test_files = vec![
+            $(($path, include_test_example!($path))),+
+        ];
+
+        for (filename, (inp, expected_ser)) in test_files {
+            let actual_ser = get_rust_token_json(inp);
+
+            assert_strings_eq!(
+                actual_ser,
+                expected_ser,
+                "\nTokenizations did not match for {}",
+                filename,
+            );
+        }
+    }};
+}
+
 #[test]
 fn test_tokenize() {
-    let fixtures = &[
-        ("basic.py", include_str!("fixtures/tokenizer/basic.py")),
-        (
-            "triple_quote_strings.py",
-            include_str!("fixtures/tokenizer/triple_quote_strings.py"),
-        ),
-        (
-            "single_quote_strings.py",
-            include_str!("fixtures/tokenizer/single_quote_strings.py"),
-        ),
-        (
-            "continued_statements.py",
-            include_str!("fixtures/tokenizer/continued_statements.py"),
-        ),
-        (
-            "validator_registration.v.py",
-            include_str!("fixtures/tokenizer/validator_registration.v.py"),
-        ),
-        (
-            "tokenize.py",
-            include_str!("fixtures/tokenizer/tokenize.py"),
-        ),
-    ];
-
-    for (filename, content) in fixtures {
-        let expected = get_python_token_json(content);
-        let actual = get_rust_token_json(content);
-
-        assert_strings_eq!(
-            expected,
-            actual,
-            "Tokenizations didn't match for {}",
-            filename
-        );
-    }
+    assert_fixtures_tokenized!(
+        "fixtures/tokenizer/basic.py.json",
+        "fixtures/tokenizer/triple_quote_strings.py.json",
+        "fixtures/tokenizer/single_quote_strings.py.json",
+        "fixtures/tokenizer/continued_statements.py.json",
+        "fixtures/tokenizer/validator_registration.v.py.json",
+        "fixtures/tokenizer/tokenize.py.json",
+    );
 }
