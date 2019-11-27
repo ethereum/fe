@@ -1,0 +1,795 @@
+foo = "bar" \
+    "baz" \
+    "bing"
+
+foo = (
+    "bar"
+    "baz"
+    "bing"
+)
+
+foo = (
+    "bar" +
+    "baz" +
+    "bing"
+)
+
+foo = (
+    "bar"
+    + "baz"
+    + "bing"
+)
+
+foo = bar or \
+    baz or \
+    bing
+---
+[
+  {
+    "typ": "NAME",
+    "string": "foo",
+    "start": [
+      1,
+      0
+    ],
+    "end": [
+      1,
+      3
+    ],
+    "line": "foo = \"bar\" \\\n"
+  },
+  {
+    "typ": "OP",
+    "string": "=",
+    "start": [
+      1,
+      4
+    ],
+    "end": [
+      1,
+      5
+    ],
+    "line": "foo = \"bar\" \\\n"
+  },
+  {
+    "typ": "STRING",
+    "string": "\"bar\"",
+    "start": [
+      1,
+      6
+    ],
+    "end": [
+      1,
+      11
+    ],
+    "line": "foo = \"bar\" \\\n"
+  },
+  {
+    "typ": "STRING",
+    "string": "\"baz\"",
+    "start": [
+      2,
+      4
+    ],
+    "end": [
+      2,
+      9
+    ],
+    "line": "    \"baz\" \\\n"
+  },
+  {
+    "typ": "STRING",
+    "string": "\"bing\"",
+    "start": [
+      3,
+      4
+    ],
+    "end": [
+      3,
+      10
+    ],
+    "line": "    \"bing\"\n"
+  },
+  {
+    "typ": "NEWLINE",
+    "string": "\n",
+    "start": [
+      3,
+      10
+    ],
+    "end": [
+      4,
+      0
+    ],
+    "line": "    \"bing\"\n"
+  },
+  {
+    "typ": "NL",
+    "string": "\n",
+    "start": [
+      4,
+      0
+    ],
+    "end": [
+      5,
+      0
+    ],
+    "line": "\n"
+  },
+  {
+    "typ": "NAME",
+    "string": "foo",
+    "start": [
+      5,
+      0
+    ],
+    "end": [
+      5,
+      3
+    ],
+    "line": "foo = (\n"
+  },
+  {
+    "typ": "OP",
+    "string": "=",
+    "start": [
+      5,
+      4
+    ],
+    "end": [
+      5,
+      5
+    ],
+    "line": "foo = (\n"
+  },
+  {
+    "typ": "OP",
+    "string": "(",
+    "start": [
+      5,
+      6
+    ],
+    "end": [
+      5,
+      7
+    ],
+    "line": "foo = (\n"
+  },
+  {
+    "typ": "NL",
+    "string": "\n",
+    "start": [
+      5,
+      7
+    ],
+    "end": [
+      6,
+      0
+    ],
+    "line": "foo = (\n"
+  },
+  {
+    "typ": "STRING",
+    "string": "\"bar\"",
+    "start": [
+      6,
+      4
+    ],
+    "end": [
+      6,
+      9
+    ],
+    "line": "    \"bar\"\n"
+  },
+  {
+    "typ": "NL",
+    "string": "\n",
+    "start": [
+      6,
+      9
+    ],
+    "end": [
+      7,
+      0
+    ],
+    "line": "    \"bar\"\n"
+  },
+  {
+    "typ": "STRING",
+    "string": "\"baz\"",
+    "start": [
+      7,
+      4
+    ],
+    "end": [
+      7,
+      9
+    ],
+    "line": "    \"baz\"\n"
+  },
+  {
+    "typ": "NL",
+    "string": "\n",
+    "start": [
+      7,
+      9
+    ],
+    "end": [
+      8,
+      0
+    ],
+    "line": "    \"baz\"\n"
+  },
+  {
+    "typ": "STRING",
+    "string": "\"bing\"",
+    "start": [
+      8,
+      4
+    ],
+    "end": [
+      8,
+      10
+    ],
+    "line": "    \"bing\"\n"
+  },
+  {
+    "typ": "NL",
+    "string": "\n",
+    "start": [
+      8,
+      10
+    ],
+    "end": [
+      9,
+      0
+    ],
+    "line": "    \"bing\"\n"
+  },
+  {
+    "typ": "OP",
+    "string": ")",
+    "start": [
+      9,
+      0
+    ],
+    "end": [
+      9,
+      1
+    ],
+    "line": ")\n"
+  },
+  {
+    "typ": "NEWLINE",
+    "string": "\n",
+    "start": [
+      9,
+      1
+    ],
+    "end": [
+      10,
+      0
+    ],
+    "line": ")\n"
+  },
+  {
+    "typ": "NL",
+    "string": "\n",
+    "start": [
+      10,
+      0
+    ],
+    "end": [
+      11,
+      0
+    ],
+    "line": "\n"
+  },
+  {
+    "typ": "NAME",
+    "string": "foo",
+    "start": [
+      11,
+      0
+    ],
+    "end": [
+      11,
+      3
+    ],
+    "line": "foo = (\n"
+  },
+  {
+    "typ": "OP",
+    "string": "=",
+    "start": [
+      11,
+      4
+    ],
+    "end": [
+      11,
+      5
+    ],
+    "line": "foo = (\n"
+  },
+  {
+    "typ": "OP",
+    "string": "(",
+    "start": [
+      11,
+      6
+    ],
+    "end": [
+      11,
+      7
+    ],
+    "line": "foo = (\n"
+  },
+  {
+    "typ": "NL",
+    "string": "\n",
+    "start": [
+      11,
+      7
+    ],
+    "end": [
+      12,
+      0
+    ],
+    "line": "foo = (\n"
+  },
+  {
+    "typ": "STRING",
+    "string": "\"bar\"",
+    "start": [
+      12,
+      4
+    ],
+    "end": [
+      12,
+      9
+    ],
+    "line": "    \"bar\" +\n"
+  },
+  {
+    "typ": "OP",
+    "string": "+",
+    "start": [
+      12,
+      10
+    ],
+    "end": [
+      12,
+      11
+    ],
+    "line": "    \"bar\" +\n"
+  },
+  {
+    "typ": "NL",
+    "string": "\n",
+    "start": [
+      12,
+      11
+    ],
+    "end": [
+      13,
+      0
+    ],
+    "line": "    \"bar\" +\n"
+  },
+  {
+    "typ": "STRING",
+    "string": "\"baz\"",
+    "start": [
+      13,
+      4
+    ],
+    "end": [
+      13,
+      9
+    ],
+    "line": "    \"baz\" +\n"
+  },
+  {
+    "typ": "OP",
+    "string": "+",
+    "start": [
+      13,
+      10
+    ],
+    "end": [
+      13,
+      11
+    ],
+    "line": "    \"baz\" +\n"
+  },
+  {
+    "typ": "NL",
+    "string": "\n",
+    "start": [
+      13,
+      11
+    ],
+    "end": [
+      14,
+      0
+    ],
+    "line": "    \"baz\" +\n"
+  },
+  {
+    "typ": "STRING",
+    "string": "\"bing\"",
+    "start": [
+      14,
+      4
+    ],
+    "end": [
+      14,
+      10
+    ],
+    "line": "    \"bing\"\n"
+  },
+  {
+    "typ": "NL",
+    "string": "\n",
+    "start": [
+      14,
+      10
+    ],
+    "end": [
+      15,
+      0
+    ],
+    "line": "    \"bing\"\n"
+  },
+  {
+    "typ": "OP",
+    "string": ")",
+    "start": [
+      15,
+      0
+    ],
+    "end": [
+      15,
+      1
+    ],
+    "line": ")\n"
+  },
+  {
+    "typ": "NEWLINE",
+    "string": "\n",
+    "start": [
+      15,
+      1
+    ],
+    "end": [
+      16,
+      0
+    ],
+    "line": ")\n"
+  },
+  {
+    "typ": "NL",
+    "string": "\n",
+    "start": [
+      16,
+      0
+    ],
+    "end": [
+      17,
+      0
+    ],
+    "line": "\n"
+  },
+  {
+    "typ": "NAME",
+    "string": "foo",
+    "start": [
+      17,
+      0
+    ],
+    "end": [
+      17,
+      3
+    ],
+    "line": "foo = (\n"
+  },
+  {
+    "typ": "OP",
+    "string": "=",
+    "start": [
+      17,
+      4
+    ],
+    "end": [
+      17,
+      5
+    ],
+    "line": "foo = (\n"
+  },
+  {
+    "typ": "OP",
+    "string": "(",
+    "start": [
+      17,
+      6
+    ],
+    "end": [
+      17,
+      7
+    ],
+    "line": "foo = (\n"
+  },
+  {
+    "typ": "NL",
+    "string": "\n",
+    "start": [
+      17,
+      7
+    ],
+    "end": [
+      18,
+      0
+    ],
+    "line": "foo = (\n"
+  },
+  {
+    "typ": "STRING",
+    "string": "\"bar\"",
+    "start": [
+      18,
+      4
+    ],
+    "end": [
+      18,
+      9
+    ],
+    "line": "    \"bar\"\n"
+  },
+  {
+    "typ": "NL",
+    "string": "\n",
+    "start": [
+      18,
+      9
+    ],
+    "end": [
+      19,
+      0
+    ],
+    "line": "    \"bar\"\n"
+  },
+  {
+    "typ": "OP",
+    "string": "+",
+    "start": [
+      19,
+      4
+    ],
+    "end": [
+      19,
+      5
+    ],
+    "line": "    + \"baz\"\n"
+  },
+  {
+    "typ": "STRING",
+    "string": "\"baz\"",
+    "start": [
+      19,
+      6
+    ],
+    "end": [
+      19,
+      11
+    ],
+    "line": "    + \"baz\"\n"
+  },
+  {
+    "typ": "NL",
+    "string": "\n",
+    "start": [
+      19,
+      11
+    ],
+    "end": [
+      20,
+      0
+    ],
+    "line": "    + \"baz\"\n"
+  },
+  {
+    "typ": "OP",
+    "string": "+",
+    "start": [
+      20,
+      4
+    ],
+    "end": [
+      20,
+      5
+    ],
+    "line": "    + \"bing\"\n"
+  },
+  {
+    "typ": "STRING",
+    "string": "\"bing\"",
+    "start": [
+      20,
+      6
+    ],
+    "end": [
+      20,
+      12
+    ],
+    "line": "    + \"bing\"\n"
+  },
+  {
+    "typ": "NL",
+    "string": "\n",
+    "start": [
+      20,
+      12
+    ],
+    "end": [
+      21,
+      0
+    ],
+    "line": "    + \"bing\"\n"
+  },
+  {
+    "typ": "OP",
+    "string": ")",
+    "start": [
+      21,
+      0
+    ],
+    "end": [
+      21,
+      1
+    ],
+    "line": ")\n"
+  },
+  {
+    "typ": "NEWLINE",
+    "string": "\n",
+    "start": [
+      21,
+      1
+    ],
+    "end": [
+      22,
+      0
+    ],
+    "line": ")\n"
+  },
+  {
+    "typ": "NL",
+    "string": "\n",
+    "start": [
+      22,
+      0
+    ],
+    "end": [
+      23,
+      0
+    ],
+    "line": "\n"
+  },
+  {
+    "typ": "NAME",
+    "string": "foo",
+    "start": [
+      23,
+      0
+    ],
+    "end": [
+      23,
+      3
+    ],
+    "line": "foo = bar or \\\n"
+  },
+  {
+    "typ": "OP",
+    "string": "=",
+    "start": [
+      23,
+      4
+    ],
+    "end": [
+      23,
+      5
+    ],
+    "line": "foo = bar or \\\n"
+  },
+  {
+    "typ": "NAME",
+    "string": "bar",
+    "start": [
+      23,
+      6
+    ],
+    "end": [
+      23,
+      9
+    ],
+    "line": "foo = bar or \\\n"
+  },
+  {
+    "typ": "NAME",
+    "string": "or",
+    "start": [
+      23,
+      10
+    ],
+    "end": [
+      23,
+      12
+    ],
+    "line": "foo = bar or \\\n"
+  },
+  {
+    "typ": "NAME",
+    "string": "baz",
+    "start": [
+      24,
+      4
+    ],
+    "end": [
+      24,
+      7
+    ],
+    "line": "    baz or \\\n"
+  },
+  {
+    "typ": "NAME",
+    "string": "or",
+    "start": [
+      24,
+      8
+    ],
+    "end": [
+      24,
+      10
+    ],
+    "line": "    baz or \\\n"
+  },
+  {
+    "typ": "NAME",
+    "string": "bing",
+    "start": [
+      25,
+      4
+    ],
+    "end": [
+      25,
+      8
+    ],
+    "line": "    bing"
+  },
+  {
+    "typ": "NEWLINE",
+    "string": "",
+    "start": [
+      25,
+      8
+    ],
+    "end": [
+      25,
+      8
+    ],
+    "line": ""
+  },
+  {
+    "typ": "ENDMARKER",
+    "string": "",
+    "start": [
+      25,
+      8
+    ],
+    "end": [
+      25,
+      8
+    ],
+    "line": ""
+  }
+]
