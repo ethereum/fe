@@ -1,3 +1,4 @@
+.PHONY: docker-coverage
 docker-coverage:
 	docker run \
 		--rm \
@@ -6,6 +7,7 @@ docker-coverage:
 		xd009642/tarpaulin \
 		cargo tarpaulin --all --verbose
 
+.PHONY: docker-test
 docker-test:
 	docker run \
 		--rm \
@@ -13,3 +15,11 @@ docker-test:
 		--workdir '/mnt' \
 		rustlang/rust:nightly \
 		cargo test --workspace
+
+.PHONY: build-docs
+build-docs:
+	cargo doc --no-deps --workspace
+
+.PHONY: watch-docs
+watch-docs:
+	./watch_docs.py
