@@ -4,10 +4,7 @@ extern crate wasm_bindgen_test;
 mod utils;
 
 use serde::Serialize;
-use wasm_bindgen_test::{
-    wasm_bindgen_test,
-    wasm_bindgen_test_configure,
-};
+use wasm_bindgen_test::wasm_bindgen_test;
 
 use utils::parse_test_example;
 use vyper_parser::string_utils::StringPositions;

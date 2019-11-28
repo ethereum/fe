@@ -5,10 +5,7 @@ extern crate wasm_bindgen_test;
 #[macro_use]
 mod utils;
 
-use wasm_bindgen_test::{
-    wasm_bindgen_test,
-    wasm_bindgen_test_configure,
-};
+use wasm_bindgen_test::wasm_bindgen_test;
 
 use utils::parse_test_example;
 use vyper_parser::tokenizer::wasm::tokenize;
