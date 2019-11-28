@@ -130,3 +130,21 @@ macro_rules! include_test_example {
         parse_test_example($path, include_str!($path))
     }};
 }
+
+/// Apply the function identified by `$func` to the fixture content in the files
+/// given in `$($path),+`.
+#[allow(unused_macros)]
+macro_rules! do_with_fixtures {
+    ($func:expr, $($path:expr),+,) => {{
+        do_with_fixtures!($func, $($path),+)
+    }};
+    ($func:expr, $($path:expr),+) => {{
+        let fixtures = vec![
+            $(($path, include_test_example!($path))),+
+        ];
+
+        for (filename, (input, expected_ser)) in fixtures {
+            $func(filename, input, expected_ser);
+        }
+    }};
+}

@@ -59,34 +59,21 @@ fn get_rust_token_json(input: &str) -> String {
     serde_json::to_string_pretty(&python_tokens).unwrap()
 }
 
-/// Assert that all the given fixture files are tokenized correctly.  Expected
-/// results are defined as serializations.  Print a debug trace if parsing
-/// fails.
-macro_rules! assert_fixtures_tokenized {
-    ($($path:expr),+,) => {{
-        assert_fixtures_tokenized!($($path),+)
-    }};
-    ($($path:expr),+) => {{
-        let test_files = vec![
-            $(($path, include_test_example!($path))),+
-        ];
+fn assert_fixture_is_valid(filename: &str, input: &str, expected_ser: &str) {
+    let actual_ser = get_rust_token_json(input);
 
-        for (filename, (inp, expected_ser)) in test_files {
-            let actual_ser = get_rust_token_json(inp);
-
-            assert_strings_eq!(
-                actual_ser,
-                expected_ser,
-                "\nTokenizations did not match for {}",
-                filename,
-            );
-        }
-    }};
+    assert_strings_eq!(
+        actual_ser,
+        expected_ser,
+        "\nTokenizations did not match for {}",
+        filename,
+    );
 }
 
 #[test]
 fn test_tokenize() {
-    assert_fixtures_tokenized!(
+    do_with_fixtures!(
+        assert_fixture_is_valid,
         "fixtures/tokenizer/basic.py.json",
         "fixtures/tokenizer/triple_quote_strings.py.json",
         "fixtures/tokenizer/single_quote_strings.py.json",
