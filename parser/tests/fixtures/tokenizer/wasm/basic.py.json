@@ -1,0 +1,336 @@
+
+# Test comment
+class TestClassDefinition(WithParent1, WithParent2):
+    foo = 'bar'
+
+    def foo():
+        return 'bar'
+
+test = 'foo'
+---
+[
+  {
+    "typ": "NL",
+    "string": "\n",
+    "span": {
+      "start": 0,
+      "end": 1
+    },
+    "line": "\n"
+  },
+  {
+    "typ": "COMMENT",
+    "string": "# Test comment",
+    "span": {
+      "start": 1,
+      "end": 15
+    },
+    "line": "# Test comment\n"
+  },
+  {
+    "typ": "NL",
+    "string": "\n",
+    "span": {
+      "start": 15,
+      "end": 16
+    },
+    "line": "# Test comment\n"
+  },
+  {
+    "typ": "NAME",
+    "string": "class",
+    "span": {
+      "start": 16,
+      "end": 21
+    },
+    "line": "class TestClassDefinition(WithParent1, WithParent2):\n"
+  },
+  {
+    "typ": "NAME",
+    "string": "TestClassDefinition",
+    "span": {
+      "start": 22,
+      "end": 41
+    },
+    "line": "class TestClassDefinition(WithParent1, WithParent2):\n"
+  },
+  {
+    "typ": "OP",
+    "string": "(",
+    "span": {
+      "start": 41,
+      "end": 42
+    },
+    "line": "class TestClassDefinition(WithParent1, WithParent2):\n"
+  },
+  {
+    "typ": "NAME",
+    "string": "WithParent1",
+    "span": {
+      "start": 42,
+      "end": 53
+    },
+    "line": "class TestClassDefinition(WithParent1, WithParent2):\n"
+  },
+  {
+    "typ": "OP",
+    "string": ",",
+    "span": {
+      "start": 53,
+      "end": 54
+    },
+    "line": "class TestClassDefinition(WithParent1, WithParent2):\n"
+  },
+  {
+    "typ": "NAME",
+    "string": "WithParent2",
+    "span": {
+      "start": 55,
+      "end": 66
+    },
+    "line": "class TestClassDefinition(WithParent1, WithParent2):\n"
+  },
+  {
+    "typ": "OP",
+    "string": ")",
+    "span": {
+      "start": 66,
+      "end": 67
+    },
+    "line": "class TestClassDefinition(WithParent1, WithParent2):\n"
+  },
+  {
+    "typ": "OP",
+    "string": ":",
+    "span": {
+      "start": 67,
+      "end": 68
+    },
+    "line": "class TestClassDefinition(WithParent1, WithParent2):\n"
+  },
+  {
+    "typ": "NEWLINE",
+    "string": "\n",
+    "span": {
+      "start": 68,
+      "end": 69
+    },
+    "line": "class TestClassDefinition(WithParent1, WithParent2):\n"
+  },
+  {
+    "typ": "INDENT",
+    "string": "    ",
+    "span": {
+      "start": 69,
+      "end": 73
+    },
+    "line": "    foo = 'bar'\n"
+  },
+  {
+    "typ": "NAME",
+    "string": "foo",
+    "span": {
+      "start": 73,
+      "end": 76
+    },
+    "line": "    foo = 'bar'\n"
+  },
+  {
+    "typ": "OP",
+    "string": "=",
+    "span": {
+      "start": 77,
+      "end": 78
+    },
+    "line": "    foo = 'bar'\n"
+  },
+  {
+    "typ": "STRING",
+    "string": "'bar'",
+    "span": {
+      "start": 79,
+      "end": 84
+    },
+    "line": "    foo = 'bar'\n"
+  },
+  {
+    "typ": "NEWLINE",
+    "string": "\n",
+    "span": {
+      "start": 84,
+      "end": 85
+    },
+    "line": "    foo = 'bar'\n"
+  },
+  {
+    "typ": "NL",
+    "string": "\n",
+    "span": {
+      "start": 85,
+      "end": 86
+    },
+    "line": "\n"
+  },
+  {
+    "typ": "NAME",
+    "string": "def",
+    "span": {
+      "start": 90,
+      "end": 93
+    },
+    "line": "    def foo():\n"
+  },
+  {
+    "typ": "NAME",
+    "string": "foo",
+    "span": {
+      "start": 94,
+      "end": 97
+    },
+    "line": "    def foo():\n"
+  },
+  {
+    "typ": "OP",
+    "string": "(",
+    "span": {
+      "start": 97,
+      "end": 98
+    },
+    "line": "    def foo():\n"
+  },
+  {
+    "typ": "OP",
+    "string": ")",
+    "span": {
+      "start": 98,
+      "end": 99
+    },
+    "line": "    def foo():\n"
+  },
+  {
+    "typ": "OP",
+    "string": ":",
+    "span": {
+      "start": 99,
+      "end": 100
+    },
+    "line": "    def foo():\n"
+  },
+  {
+    "typ": "NEWLINE",
+    "string": "\n",
+    "span": {
+      "start": 100,
+      "end": 101
+    },
+    "line": "    def foo():\n"
+  },
+  {
+    "typ": "INDENT",
+    "string": "        ",
+    "span": {
+      "start": 101,
+      "end": 109
+    },
+    "line": "        return 'bar'\n"
+  },
+  {
+    "typ": "NAME",
+    "string": "return",
+    "span": {
+      "start": 109,
+      "end": 115
+    },
+    "line": "        return 'bar'\n"
+  },
+  {
+    "typ": "STRING",
+    "string": "'bar'",
+    "span": {
+      "start": 116,
+      "end": 121
+    },
+    "line": "        return 'bar'\n"
+  },
+  {
+    "typ": "NEWLINE",
+    "string": "\n",
+    "span": {
+      "start": 121,
+      "end": 122
+    },
+    "line": "        return 'bar'\n"
+  },
+  {
+    "typ": "NL",
+    "string": "\n",
+    "span": {
+      "start": 122,
+      "end": 123
+    },
+    "line": "\n"
+  },
+  {
+    "typ": "DEDENT",
+    "string": "",
+    "span": {
+      "start": 123,
+      "end": 123
+    },
+    "line": "test = 'foo'"
+  },
+  {
+    "typ": "DEDENT",
+    "string": "",
+    "span": {
+      "start": 123,
+      "end": 123
+    },
+    "line": "test = 'foo'"
+  },
+  {
+    "typ": "NAME",
+    "string": "test",
+    "span": {
+      "start": 123,
+      "end": 127
+    },
+    "line": "test = 'foo'"
+  },
+  {
+    "typ": "OP",
+    "string": "=",
+    "span": {
+      "start": 128,
+      "end": 129
+    },
+    "line": "test = 'foo'"
+  },
+  {
+    "typ": "STRING",
+    "string": "'foo'",
+    "span": {
+      "start": 130,
+      "end": 135
+    },
+    "line": "test = 'foo'"
+  },
+  {
+    "typ": "NEWLINE",
+    "string": "",
+    "span": {
+      "start": 135,
+      "end": 135
+    },
+    "line": ""
+  },
+  {
+    "typ": "ENDMARKER",
+    "string": "",
+    "span": {
+      "start": 135,
+      "end": 135
+    },
+    "line": ""
+  }
+]

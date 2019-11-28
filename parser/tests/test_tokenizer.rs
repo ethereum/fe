@@ -1,5 +1,15 @@
-use serde::Serialize;
+extern crate wasm_bindgen_test;
 
+#[macro_use]
+mod utils;
+
+use serde::Serialize;
+use wasm_bindgen_test::{
+    wasm_bindgen_test,
+    wasm_bindgen_test_configure,
+};
+
+use utils::parse_test_example;
 use vyper_parser::string_utils::StringPositions;
 use vyper_parser::tokenizer::{
     tokenize,
@@ -7,9 +17,7 @@ use vyper_parser::tokenizer::{
     TokenType,
 };
 
-#[macro_use]
-mod utils;
-use utils::parse_test_example;
+wasm_bindgen_test_configure!(run_in_browser);
 
 /// A python token object similar to those defined in python's stdlib `tokenize`
 /// module.
@@ -71,6 +79,7 @@ fn assert_fixture_is_valid(filename: &str, input: &str, expected_ser: &str) {
 }
 
 #[test]
+#[wasm_bindgen_test]
 fn test_tokenize() {
     do_with_fixtures!(
         assert_fixture_is_valid,
