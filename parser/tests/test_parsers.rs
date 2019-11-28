@@ -1,3 +1,8 @@
+extern crate wasm_bindgen_test;
+
+#[macro_use]
+mod utils;
+
 use nom::error::{
     ErrorKind,
     ParseError,
@@ -5,20 +10,18 @@ use nom::error::{
 };
 use nom::multi::many0;
 use nom::Err as NomErr;
+use wasm_bindgen_test::wasm_bindgen_test;
 
+use utils::{
+    parse_test_example,
+    to_ron_string_pretty,
+};
 use vyper_parser::ast::Module;
 use vyper_parser::errors::format_debug_error;
 use vyper_parser::parsers::*;
 use vyper_parser::span::{
     Span,
     Spanned,
-};
-
-#[macro_use]
-mod utils;
-use utils::{
-    parse_test_example,
-    to_ron_string_pretty,
 };
 
 type SimpleError<I> = (I, ErrorKind);
@@ -111,6 +114,7 @@ macro_rules! assert_fixtures_parsed {
 }
 
 #[test]
+#[wasm_bindgen_test]
 fn test_const_expr_success() {
     assert_fixtures_parsed!(
         standalone(const_expr),
@@ -123,6 +127,7 @@ fn test_const_expr_success() {
 }
 
 #[test]
+#[wasm_bindgen_test]
 fn test_file_input_empty_file() {
     // Empty file
     assert_parser_success!(
@@ -163,6 +168,7 @@ fn test_file_input_empty_file() {
 }
 
 #[test]
+#[wasm_bindgen_test]
 fn test_file_input_one_stmt() {
     assert_fixtures_parsed!(
         file_input,
@@ -173,6 +179,7 @@ fn test_file_input_one_stmt() {
 }
 
 #[test]
+#[wasm_bindgen_test]
 fn test_file_input_many_stmt() {
     assert_fixtures_parsed!(
         file_input,
