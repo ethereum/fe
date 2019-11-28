@@ -16,6 +16,10 @@ docker-test:
 		rustlang/rust:nightly \
 		cargo test --workspace
 
+.PHONY: wasm-test
+wasm-test:
+	wasm-pack test --firefox --headless -- --workspace
+
 .PHONY: build-docs
 build-docs:
 	cargo doc --no-deps --workspace
