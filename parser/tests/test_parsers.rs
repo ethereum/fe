@@ -53,7 +53,7 @@ macro_rules! assert_parser_success {
     ($parser:expr, $examples:expr) => {{
         for (inp, expected) in $examples {
             let tokens = get_parse_tokens(inp).unwrap();
-            let actual = $parser(&tokens[..]);
+            let actual: TokenResult<_, SimpleError<_>> = $parser(&tokens[..]);
 
             assert_eq!(actual, expected);
         }
@@ -64,7 +64,7 @@ macro_rules! assert_parser_success {
     ($parser:expr, $examples:expr, $expected:expr) => {{
         for inp in $examples {
             let tokens = get_parse_tokens(inp).unwrap();
-            let actual = $parser(&tokens[..]);
+            let actual: TokenResult<_, SimpleError<_>> = $parser(&tokens[..]);
 
             assert_eq!(actual, $expected);
         }
@@ -85,7 +85,7 @@ macro_rules! assert_fixtures_parsed {
 
         for (filename, (inp, expected_ser)) in test_files {
             let tokens = get_parse_tokens(inp).unwrap();
-            let actual = $parser(&tokens[..]);
+            let actual: TokenResult<_, VerboseError<_>> = $parser(&tokens[..]);
 
             if let Err(err) = &actual {
                 match err {
@@ -113,7 +113,7 @@ macro_rules! assert_fixtures_parsed {
 #[test]
 fn test_const_expr_success() {
     assert_fixtures_parsed!(
-        standalone(const_expr::<VerboseError<_>>),
+        standalone(const_expr),
         "fixtures/parsers/const_expr/number_1.ron",
         "fixtures/parsers/const_expr/number_2.ron",
         "fixtures/parsers/const_expr/name_1.ron",
@@ -126,7 +126,7 @@ fn test_const_expr_success() {
 fn test_file_input_empty_file() {
     // Empty file
     assert_parser_success!(
-        file_input::<SimpleError<_>>,
+        file_input,
         vec![
             (
                 "",
@@ -165,7 +165,7 @@ fn test_file_input_empty_file() {
 #[test]
 fn test_file_input_one_stmt() {
     assert_fixtures_parsed!(
-        file_input::<VerboseError<_>>,
+        file_input,
         "fixtures/parsers/file_input/one_stmt_no_whitespace.ron",
         "fixtures/parsers/file_input/one_stmt_leading_whitespace.ron",
         "fixtures/parsers/file_input/one_stmt_leading_trailing.ron",
@@ -175,7 +175,7 @@ fn test_file_input_one_stmt() {
 #[test]
 fn test_file_input_many_stmt() {
     assert_fixtures_parsed!(
-        file_input::<VerboseError<_>>,
+        file_input,
         "fixtures/parsers/file_input/many_stmt_no_whitespace.ron",
         "fixtures/parsers/file_input/many_stmt_leading_whitespace.ron",
         "fixtures/parsers/file_input/many_stmt_leading_trailing.ron",
