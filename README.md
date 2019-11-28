@@ -146,8 +146,8 @@ Recently achieved goals:
   to Rust
 * [x] Settled on use of [`nom`](https://github.com/Geal/nom) to write parsing routines
 * [x] Completed a few basic parsers with `nom`
-* [x] All code compiled to both native and WASM architectures with WASM testing
-  via node.js
+* [x] All code compiled to both native and WASM platforms with WASM testing via
+  node.js
 
 Short-term goals:
 
