@@ -139,6 +139,16 @@ Development of Rust Vyper is currently in its early stages.  This section
 includes lists of short and long-term goals though these lists should not be
 considered exhaustive.
 
+Recently achieved goals:
+
+* [x] Completed port of [python's stdlib `tokenize`
+  module](https://github.com/python/cpython/blob/2a58b0636d1f620f8a85a2e4c030cc10551936a5/Lib/tokenize.py)
+  to Rust
+* [x] Settled on use of [`nom`](https://github.com/Geal/nom) to write parsing routines
+* [x] Completed a few basic parsers with `nom`
+* [x] All code compiled to both native and WASM architectures with WASM testing
+  via node.js
+
 Short-term goals:
 
 * [ ] Identify an appropriate subset of the Python grammar and any grammatical
