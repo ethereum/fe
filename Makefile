@@ -16,9 +16,14 @@ docker-test:
 		rustlang/rust:nightly \
 		cargo test --workspace
 
-.PHONY: wasm-test
-wasm-test:
-	wasm-pack test --node -- --workspace
+.PHONY: docker-wasm-test
+docker-wasm-test:
+	docker run \
+		--rm \
+		--volume "$(shell pwd):/mnt" \
+		--workdir '/mnt' \
+		davesque/docker-rust-wasm \
+		wasm-pack test --node -- --workspace
 
 .PHONY: build-docs
 build-docs:

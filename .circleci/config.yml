@@ -22,6 +22,24 @@ jobs:
           name: test
           command: cargo test --workspace
 
+  linux-wasm-test:
+    <<: *common
+    docker:
+      - image: davesque/docker-rust-wasm
+    steps:
+      - checkout
+      - run:
+          name: merge pull request base
+          command: ./.circleci/merge_pr.sh
+      - run:
+          name: ensure nightly is default and upgrade
+          command: |
+            rustup default nightly
+            rustup update
+      - run:
+          name: test
+          command: wasm-pack test --node -- --workspace
+
   coverage:
     <<: *common
     machine: true
@@ -41,4 +59,5 @@ workflows:
   test:
     jobs:
       - linux-test
+      - linux-wasm-test
       - coverage
