@@ -95,9 +95,9 @@ where
     Ok(serializer.into_output_string())
 }
 
-/// Parse test example file content into a tuple of input text and expected
-/// serialization.
-#[allow(dead_code)]
+/// Parse file content containing a test example into a tuple of input text and
+/// expected serialization.  Input text and expected serialization are separated
+/// by a line that only contains the string "---".
 pub fn parse_test_example<'a>(name: &'static str, input: &'a str) -> (&'a str, &'a str) {
     let parts: Vec<_> = input.split("\n---\n").collect();
 
