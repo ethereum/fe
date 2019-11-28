@@ -18,7 +18,7 @@ docker-test:
 
 .PHONY: wasm-test
 wasm-test:
-	wasm-pack test --firefox --headless -- --workspace
+	wasm-pack test --node -- --workspace
 
 .PHONY: build-docs
 build-docs:

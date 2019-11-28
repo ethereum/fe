@@ -17,8 +17,6 @@ use vyper_parser::tokenizer::{
     TokenType,
 };
 
-wasm_bindgen_test_configure!(run_in_browser);
-
 /// A python token object similar to those defined in python's stdlib `tokenize`
 /// module.
 #[derive(Serialize)]
