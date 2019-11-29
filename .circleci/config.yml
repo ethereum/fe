@@ -43,7 +43,9 @@ jobs:
   lint:
     <<: *common
     docker:
-      - image: rustlang/rust:nightly
+      # Switch back to rustlang/rust:nightly once this fix propagates:
+      # https://github.com/rust-lang/rust-clippy/issues/3448
+      - image: davesque/rust-lint
     steps:
       - checkout
       - run:
