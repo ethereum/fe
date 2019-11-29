@@ -76,7 +76,7 @@ jobs:
 
 workflows:
   version: 2
-  test:
+  default:
     jobs:
       - test
       - wasm-test
