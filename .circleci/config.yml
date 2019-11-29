@@ -4,7 +4,7 @@ common: &common
   working_directory: ~/repo
 
 jobs:
-  linux-test:
+  test:
     <<: *common
     docker:
       - image: rustlang/rust:nightly
@@ -22,7 +22,7 @@ jobs:
           name: test
           command: cargo test --workspace
 
-  linux-wasm-test:
+  wasm-test:
     <<: *common
     docker:
       - image: davesque/rust-wasm
@@ -39,6 +39,24 @@ jobs:
       - run:
           name: test
           command: wasm-pack test --node -- --workspace
+
+  lint:
+    <<: *common
+    docker:
+      - image: rustlang/rust:nightly
+    steps:
+      - checkout
+      - run:
+          name: merge pull request base
+          command: ./.circleci/merge_pr.sh
+      - run:
+          name: ensure nightly is default and upgrade
+          command: |
+            rustup default nightly
+            rustup update
+      - run:
+          name: lint
+          command: make lint
 
   coverage:
     <<: *common
@@ -58,6 +76,7 @@ workflows:
   version: 2
   test:
     jobs:
-      - linux-test
-      - linux-wasm-test
+      - test
+      - wasm-test
+      - lint
       - coverage
