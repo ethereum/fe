@@ -22,7 +22,7 @@ docker-wasm-test:
 		--rm \
 		--volume "$(shell pwd):/mnt" \
 		--workdir '/mnt' \
-		davesque/docker-rust-wasm \
+		davesque/rust-wasm \
 		wasm-pack test --node -- --workspace
 
 .PHONY: build-docs
