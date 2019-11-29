@@ -25,6 +25,17 @@ docker-wasm-test:
 		davesque/rust-wasm \
 		wasm-pack test --node -- --workspace
 
+.PHONY: clippy
+clippy:
+	cargo clippy-preview -Z unstable-options --workspace
+
+.PHONY: rustfmt
+rustfmt:
+	cargo fmt --all -- --check
+
+.PHONY: lint
+lint: rustfmt clippy
+
 .PHONY: build-docs
 build-docs:
 	cargo doc --no-deps --workspace
