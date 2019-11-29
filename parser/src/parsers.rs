@@ -173,7 +173,7 @@ where
         input,
         Spanned {
             node: Module { body },
-            span: span,
+            span,
         },
     ))
 }
@@ -212,9 +212,9 @@ where
         Spanned {
             node: EventDef {
                 name: name.string,
-                fields: fields,
+                fields,
             },
-            span: span,
+            span,
         },
     ))
 }
@@ -262,7 +262,7 @@ where
                 op: Operator::try_from(op_tok.string).unwrap(),
                 right: Box::new(right_expr),
             },
-            span: span,
+            span,
         };
     }
 
@@ -292,7 +292,7 @@ where
                 op: Operator::try_from(op_tok.string).unwrap(),
                 right: Box::new(right_expr),
             },
-            span: span,
+            span,
         };
     }
 
@@ -319,7 +319,7 @@ where
                     op: UnaryOp::try_from(op_tok.string).unwrap(),
                     operand: Box::new(operand),
                 },
-                span: span,
+                span,
             }
         },
     );
@@ -345,7 +345,7 @@ where
                     op: Operator::Pow,
                     right: Box::new(right),
                 },
-                span: span,
+                span,
             }
         },
     );

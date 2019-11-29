@@ -5,7 +5,7 @@ use serde::{
 
 /// Iterate over the lines in `buf` and include line endings in the results.
 /// Also, provide byte offsets of line beginnings and endings.
-pub fn lines_with_endings<'a>(buf: &'a str) -> impl Iterator<Item = (&'a str, usize, usize)> {
+pub fn lines_with_endings(buf: &str) -> impl Iterator<Item = (&str, usize, usize)> {
     let mut rest = buf;
     let mut rest_offset = 0;
 
@@ -100,7 +100,7 @@ impl<'a> StringPositions<'a> {
     /// Create a new position counter over the string in `input`.
     pub fn new(input: &'a str) -> Self {
         Self {
-            input: input,
+            input,
             line: 1,
             col: 0,
             offset: 0,

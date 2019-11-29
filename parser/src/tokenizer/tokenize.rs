@@ -29,6 +29,8 @@ fn is_identifier_char(c: char) -> bool {
     c == '_' || c.is_ascii_alphabetic() || c.is_digit(10)
 }
 
+#[allow(clippy::cognitive_complexity)]
+#[allow(clippy::trivial_regex)]
 pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
     // Static values/helpers
     let pseudo_token_re = compile_anchored(&get_pseudotoken_pattern());
@@ -50,9 +52,9 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
             &double3_re
         } else if token_stripped.starts_with("'''") {
             &single3_re
-        } else if token_stripped.starts_with("\"") {
+        } else if token_stripped.starts_with('\"') {
             &double_re
-        } else if token_stripped.starts_with("'") {
+        } else if token_stripped.starts_with('\'') {
             &single_re
         } else {
             panic!("Unrecognized quote style {:?}", token_stripped);
@@ -172,7 +174,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                                 line_start + line_pos,
                                 line_start + line_pos + comment_token_len,
                             ),
-                            line: line,
+                            line,
                         });
 
                         line_pos += comment_token_len;
@@ -182,7 +184,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                         typ: NL,
                         string: &line[line_pos..],
                         span: Span::new(line_start + line_pos, line_end),
-                        line: line,
+                        line,
                     });
 
                     continue;
@@ -195,7 +197,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                     typ: INDENT,
                     string: &line[..line_pos],
                     span: Span::new(line_start, line_start + line_pos),
-                    line: line,
+                    line,
                 });
             }
 
@@ -208,7 +210,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                     typ: DEDENT,
                     string: &line[line_pos..line_pos],
                     span: Span::new(line_start + line_pos, line_start + line_pos),
-                    line: line,
+                    line,
                 });
             }
         } else {
@@ -237,7 +239,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                         typ: NUMBER,
                         string: token,
                         span: Span::new(soff, eoff),
-                        line: line,
+                        line,
                     });
                 } else if initial == '\r' || initial == '\n' {
                     if parenlev > 0 {
@@ -245,14 +247,14 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                             typ: NL,
                             string: token,
                             span: Span::new(soff, eoff),
-                            line: line,
+                            line,
                         });
                     } else {
                         result.push(Token {
                             typ: NEWLINE,
                             string: token,
                             span: Span::new(soff, eoff),
-                            line: line,
+                            line,
                         });
                     }
                 } else if initial == '#' {
@@ -260,7 +262,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                         typ: COMMENT,
                         string: token,
                         span: Span::new(soff, eoff),
-                        line: line,
+                        line,
                     });
                 } else if triple_quoted.contains(token) {
                     contstr_end_re = Some(get_contstr_end_re(token));
@@ -273,7 +275,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                             typ: STRING,
                             string: token,
                             span: Span::new(soff, line_start + line_pos),
-                            line: line,
+                            line,
                         });
                     } else {
                         contstr_start = Some(line_start + tok_start);
@@ -284,7 +286,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                     || single_quoted.contains(&token.chars().take(2).collect::<String>())
                     || single_quoted.contains(&token.chars().take(3).collect::<String>())
                 {
-                    if token.chars().last().unwrap() == '\n' {
+                    if token.ends_with('\n') {
                         contstr_end_re = Some(get_contstr_end_re(token));
 
                         contstr_start = Some(line_start + tok_start);
@@ -296,7 +298,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                             typ: STRING,
                             string: token,
                             span: Span::new(soff, eoff),
-                            line: line,
+                            line,
                         });
                     }
                 } else if is_identifier_char(initial) {
@@ -304,7 +306,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                         typ: NAME,
                         string: token,
                         span: Span::new(soff, eoff),
-                        line: line,
+                        line,
                     });
                 } else if initial == '\\' {
                     continued = true;
@@ -318,22 +320,23 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                         typ: OP,
                         string: token,
                         span: Span::new(soff, eoff),
-                        line: line,
+                        line,
                     });
                 }
             } else {
+                #[allow(clippy::range_plus_one)]
                 result.push(Token {
                     typ: ERRORTOKEN,
                     string: &line[line_pos..line_pos + 1],
                     span: Span::new(line_start + line_pos, line_start + line_pos + 1),
-                    line: line,
+                    line,
                 });
                 line_pos += 1;
             }
         }
     }
 
-    if let Some(_) = contstr_start {
+    if contstr_start.is_some() {
         return Err("EOF in multi-line string".to_string());
     }
 

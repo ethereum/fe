@@ -37,7 +37,7 @@ pub fn format_debug_error(input: &str, e: VerboseError<TokenSlice>) -> String {
     let mut result = String::new();
 
     for (i, (parser_input, kind)) in e.errors.iter().enumerate() {
-        let first_token = parser_input.into_iter().next();
+        let first_token = parser_input.iter().next();
 
         if let Some(tok) = first_token {
             let tok_ptr = tok.string.as_ptr();
@@ -138,7 +138,7 @@ pub fn format_user_error(
         let lines: Vec<_> = input.lines().map(String::from).collect();
 
         let mut result = String::new();
-        let first_token = parser_input.into_iter().next();
+        let first_token = parser_input.iter().next();
 
         if let Some(tok) = first_token {
             let tok_ptr = tok.string.as_ptr();
