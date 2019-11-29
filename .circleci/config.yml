@@ -50,9 +50,9 @@ jobs:
           name: merge pull request base
           command: ./.circleci/merge_pr.sh
       - run:
-          name: ensure nightly is default and upgrade
+          name: update rust toolchains
           command: |
-            rustup default nightly
+            rustup component add clippy
             rustup update
       - run:
           name: lint
