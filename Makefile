@@ -39,7 +39,3 @@ lint: rustfmt clippy
 .PHONY: build-docs
 build-docs:
 	cargo doc --no-deps --workspace
-
-.PHONY: watch-docs
-watch-docs:
-	./watch_docs.py
