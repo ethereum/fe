@@ -28,7 +28,15 @@ fn is_identifier_char(c: char) -> bool {
     c == '_' || c.is_ascii_alphabetic() || c.is_digit(10)
 }
 
-/// Parse the source string in `input` into a vector of tokens.
+/// Parse a source string into a vector of tokens.
+///
+/// Arguments:
+///
+/// * `input` - The source string to be parsed.
+///
+/// Returns:
+///
+/// A vector of tokens.
 #[allow(clippy::cognitive_complexity)]
 #[allow(clippy::trivial_regex)]
 pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {

@@ -40,5 +40,8 @@ pub mod tokenize;
 pub mod types;
 pub mod wasm;
 
-pub use self::tokenize::*;
-pub use self::types::*;
+pub use self::tokenize::tokenize;
+pub use self::types::{
+    Token,
+    TokenType,
+};
