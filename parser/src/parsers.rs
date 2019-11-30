@@ -15,7 +15,6 @@ use nom::multi::{
     many1,
 };
 use nom::sequence::{
-    delimited,
     pair,
     preceded,
     separated_pair,
@@ -378,5 +377,15 @@ pub fn const_group<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ConstExp
 where
     E: ParseError<TokenSlice<'a>>,
 {
-    delimited(op_string("("), const_expr, op_string(")"))(input)
+    let (input, l_paren) = op_string("(")(input)?;
+    let (input, spanned_expr) = const_expr(input)?;
+    let (input, r_paren) = op_string(")")(input)?;
+
+    Ok((
+        input,
+        Spanned {
+            node: spanned_expr.node,
+            span: (&l_paren.span, &r_paren.span).into(),
+        },
+    ))
 }

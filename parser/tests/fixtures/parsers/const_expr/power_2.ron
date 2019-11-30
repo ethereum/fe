@@ -35,13 +35,13 @@ Spanned(
         ),
       ),
       span: Span(
-        start: 12,
-        end: 29,
+        start: 11,
+        end: 30,
       ),
     ),
   ),
   span: Span(
     start: 0,
-    end: 29,
+    end: 30,
   ),
 )
