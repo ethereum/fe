@@ -35,11 +35,10 @@
 //! later cleanup.  However, it may also be fine as is assuming it doesn't need
 //! to be modified often.
 
-pub mod regex;
+mod regex;
 pub mod tokenize;
 pub mod types;
 pub mod wasm;
 
-pub use self::regex::*;
 pub use self::tokenize::*;
 pub use self::types::*;
