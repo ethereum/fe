@@ -71,7 +71,7 @@ jobs:
       - run:
           name: coverage with tarpaulin
           command: |
-            docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" xd009642/tarpaulin:latest-nightly cargo tarpaulin --all --verbose --out Xml
+            ./coverage.sh --out Xml
             bash <(curl -s https://codecov.io/bash)
 
 workflows:

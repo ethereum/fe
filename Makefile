@@ -1,11 +1,6 @@
 .PHONY: docker-coverage
 docker-coverage:
-	docker run \
-		--rm \
-		--security-opt seccomp=unconfined \
-		--volume "$(shell pwd):/volume" \
-		xd009642/tarpaulin \
-		cargo tarpaulin --all --verbose
+	./coverage.sh --out Html
 
 .PHONY: docker-test
 docker-test:
