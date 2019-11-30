@@ -23,12 +23,12 @@ use crate::tokenizer::types::{
 
 const TABSIZE: usize = 8;
 
-/// Return true if the char `c` is a valid identifier character.
 #[inline]
 fn is_identifier_char(c: char) -> bool {
     c == '_' || c.is_ascii_alphabetic() || c.is_digit(10)
 }
 
+/// Parse the source string in `input` into a vector of tokens.
 #[allow(clippy::cognitive_complexity)]
 #[allow(clippy::trivial_regex)]
 pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
