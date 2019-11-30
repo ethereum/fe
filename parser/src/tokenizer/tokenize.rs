@@ -142,7 +142,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
             let mut column: usize = 0;
 
             // Measure leading whitespace
-            for c in line[line_pos..].chars() {
+            for c in line.chars() {
                 match c {
                     ' ' => {
                         column += 1;
