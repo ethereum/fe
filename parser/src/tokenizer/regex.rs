@@ -6,23 +6,12 @@ fn group(choices: &[&str]) -> String {
     ["(", &choices.join("|"), ")"].concat()
 }
 
-fn any(choices: &[&str]) -> String {
-    [&group(choices), "*"].concat()
-}
-
 fn maybe(choices: &[&str]) -> String {
     [&group(choices), "?"].concat()
 }
 
 pub const WHITESPACE: &str = r"[ \f\t]*";
 pub const COMMENT: &str = r"#[^\r\n]*";
-
-/// Whitespace + any(r"\\\r?\n" + Whitespace) + maybe(Comment)
-pub fn get_ignore_pattern() -> String {
-    let any_part = &[r"\\\r?\n", WHITESPACE].concat();
-
-    [WHITESPACE, &any(&[any_part]), &maybe(&[COMMENT])].concat()
-}
 
 pub const NAME: &str = r"\w+";
 
@@ -137,17 +126,6 @@ pub fn get_triple_pattern() -> String {
         &[stringprefix, "\"\"\""].concat(),
     ])
 }
-/// Single-line ' or " string.
-///
-/// STRING = group(STRINGPREFIX + r"'[^\n'\\]*(?:\\.[^\n'\\]*)*'",
-///                STRINGPREFIX + r'"[^\n"\\]*(?:\\.[^\n"\\]*)*"')
-pub fn get_string_pattern() -> String {
-    let stringprefix = &get_stringprefix_pattern();
-    group(&[
-        &[stringprefix, r###"'[^\n'\\]*(?:\\.[^\n'\\]*)*'"###].concat(),
-        &[stringprefix, r###""[^\n"\\]*(?:\\.[^\n"\\]*)*""###].concat(),
-    ])
-}
 
 /// Because of leftmost-then-longest match semantics, be sure to put the longest
 /// operators first (e.g., if = came before ==, == would get recognized as two
@@ -180,21 +158,6 @@ pub fn get_special_pattern() -> String {
 /// FUNNY = group(OPERATOR, BRACKET, SPECIAL)
 pub fn get_funny_pattern() -> String {
     group(&[&get_operator_pattern(), BRACKET, &get_special_pattern()])
-}
-
-/// PLAINTOKEN = group(NUMBER, FUNNY, STRING, NAME)
-pub fn get_plaintoken_pattern() -> String {
-    group(&[
-        &get_number_pattern(),
-        &get_funny_pattern(),
-        &get_string_pattern(),
-        NAME,
-    ])
-}
-
-/// TOKEN = IGNORE + PLAINTOKEN
-pub fn get_token_pattern() -> String {
-    [get_ignore_pattern(), get_plaintoken_pattern()].concat()
 }
 
 /// First (or only) line of ' or " string.
@@ -255,10 +218,6 @@ mod tests {
     #[test]
     fn test_get_regex_patterns() {
         assert_eq!(
-            get_ignore_pattern(),
-            "[ \\f\\t]*(\\\\\\r?\\n[ \\f\\t]*)*(#[^\\r\\n]*)?",
-        );
-        assert_eq!(
             get_intnumber_pattern(),
             "(0[xX](?:_?[0-9a-fA-F])+|0[bB](?:_?[01])+|0[oO](?:_?[0-7])+|(?:0(?:_?0)*|[1-9](?:_?[0-9])*))",
         );
@@ -291,10 +250,6 @@ mod tests {
             "((b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)?\'\'\'|(b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)?\"\"\")",
         );
         assert_eq!(
-            get_string_pattern(),
-            "((b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)?\'[^\\n\'\\\\]*(?:\\\\.[^\\n\'\\\\]*)*\'|(b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)?\"[^\\n\"\\\\]*(?:\\\\.[^\\n\"\\\\]*)*\")",
-        );
-        assert_eq!(
             get_operator_pattern(),
             "(\\*\\*=?|>>=?|<<=?|!=|//=?|->|[+\\-*/%&@|^=<>]=?|~)",
         );
@@ -302,14 +257,6 @@ mod tests {
         assert_eq!(
             get_funny_pattern(),
             "((\\*\\*=?|>>=?|<<=?|!=|//=?|->|[+\\-*/%&@|^=<>]=?|~)|[\\[\\](){}]|(\\r?\\n|\\.\\.\\.|[:;.,@]))",
-        );
-        assert_eq!(
-            get_plaintoken_pattern(),
-            "((([0-9](?:_?[0-9])*[jJ]|(([0-9](?:_?[0-9])*\\.(?:[0-9](?:_?[0-9])*)?|\\.[0-9](?:_?[0-9])*)([eE][-+]?[0-9](?:_?[0-9])*)?|[0-9](?:_?[0-9])*[eE][-+]?[0-9](?:_?[0-9])*)[jJ])|(([0-9](?:_?[0-9])*\\.(?:[0-9](?:_?[0-9])*)?|\\.[0-9](?:_?[0-9])*)([eE][-+]?[0-9](?:_?[0-9])*)?|[0-9](?:_?[0-9])*[eE][-+]?[0-9](?:_?[0-9])*)|(0[xX](?:_?[0-9a-fA-F])+|0[bB](?:_?[01])+|0[oO](?:_?[0-7])+|(?:0(?:_?0)*|[1-9](?:_?[0-9])*)))|((\\*\\*=?|>>=?|<<=?|!=|//=?|->|[+\\-*/%&@|^=<>]=?|~)|[\\[\\](){}]|(\\r?\\n|\\.\\.\\.|[:;.,@]))|((b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)?\'[^\\n\'\\\\]*(?:\\\\.[^\\n\'\\\\]*)*\'|(b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)?\"[^\\n\"\\\\]*(?:\\\\.[^\\n\"\\\\]*)*\")|\\w+)",
-        );
-        assert_eq!(
-            get_token_pattern(),
-            "[ \\f\\t]*(\\\\\\r?\\n[ \\f\\t]*)*(#[^\\r\\n]*)?((([0-9](?:_?[0-9])*[jJ]|(([0-9](?:_?[0-9])*\\.(?:[0-9](?:_?[0-9])*)?|\\.[0-9](?:_?[0-9])*)([eE][-+]?[0-9](?:_?[0-9])*)?|[0-9](?:_?[0-9])*[eE][-+]?[0-9](?:_?[0-9])*)[jJ])|(([0-9](?:_?[0-9])*\\.(?:[0-9](?:_?[0-9])*)?|\\.[0-9](?:_?[0-9])*)([eE][-+]?[0-9](?:_?[0-9])*)?|[0-9](?:_?[0-9])*[eE][-+]?[0-9](?:_?[0-9])*)|(0[xX](?:_?[0-9a-fA-F])+|0[bB](?:_?[01])+|0[oO](?:_?[0-7])+|(?:0(?:_?0)*|[1-9](?:_?[0-9])*)))|((\\*\\*=?|>>=?|<<=?|!=|//=?|->|[+\\-*/%&@|^=<>]=?|~)|[\\[\\](){}]|(\\r?\\n|\\.\\.\\.|[:;.,@]))|((b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)?\'[^\\n\'\\\\]*(?:\\\\.[^\\n\'\\\\]*)*\'|(b|B|r|R|u|U|f|F|br|BR|bR|Br|fr|FR|fR|Fr|rb|RB|Rb|rB|rf|RF|Rf|rF)?\"[^\\n\"\\\\]*(?:\\\\.[^\\n\"\\\\]*)*\")|\\w+)",
         );
         assert_eq!(
             get_contstr_pattern(),
@@ -328,7 +275,6 @@ mod tests {
     #[test]
     fn test_parse_regex_patterns() {
         let patterns = &[
-            ("get_ignore_pattern", get_ignore_pattern()),
             ("get_intnumber_pattern", get_intnumber_pattern()),
             ("get_pointfloat_pattern", get_pointfloat_pattern()),
             ("get_expfloat_pattern", get_expfloat_pattern()),
@@ -337,12 +283,9 @@ mod tests {
             ("get_number_pattern", get_number_pattern()),
             ("get_stringprefix_pattern", get_stringprefix_pattern()),
             ("get_triple_pattern", get_triple_pattern()),
-            ("get_string_pattern", get_string_pattern()),
             ("get_operator_pattern", get_operator_pattern()),
             ("get_special_pattern", get_special_pattern()),
             ("get_funny_pattern", get_funny_pattern()),
-            ("get_plaintoken_pattern", get_plaintoken_pattern()),
-            ("get_token_pattern", get_token_pattern()),
             ("get_contstr_pattern", get_contstr_pattern()),
             ("get_pseudoextras_pattern", get_pseudoextras_pattern()),
             ("get_pseudotoken_pattern", get_pseudotoken_pattern()),
