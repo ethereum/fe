@@ -75,7 +75,7 @@ fn assert_fixture_is_valid(filename: &str, input: &str, expected_ser: &str) {
 
 #[test]
 #[wasm_bindgen_test]
-fn test_tokenize() {
+fn test_tokenize_fixtures() {
     do_with_fixtures!(
         assert_fixture_is_valid,
         "fixtures/tokenizer/basic.py.json",
