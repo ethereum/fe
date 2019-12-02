@@ -66,6 +66,7 @@ pub enum Operator {
 impl TryFrom<&str> for Operator {
     type Error = &'static str;
 
+    #[cfg_attr(tarpaulin, skip)]
     fn try_from(string: &str) -> Result<Self, Self::Error> {
         match string {
             "+" => Ok(Self::Add),
@@ -95,6 +96,7 @@ pub enum UnaryOp {
 impl TryFrom<&str> for UnaryOp {
     type Error = &'static str;
 
+    #[cfg_attr(tarpaulin, skip)]
     fn try_from(string: &str) -> Result<Self, Self::Error> {
         match string {
             "~" => Ok(Self::Invert),
