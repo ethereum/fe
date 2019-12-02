@@ -28,6 +28,12 @@ fn is_identifier_char(c: char) -> bool {
     c == '_' || c.is_ascii_alphabetic() || c.is_digit(10)
 }
 
+#[derive(Debug, PartialEq)]
+pub struct TokenizeError {
+    pub msg: &'static str,
+    pub offset: usize,
+}
+
 /// Parse a source string into a vector of tokens.
 ///
 /// Arguments:
@@ -39,7 +45,7 @@ fn is_identifier_char(c: char) -> bool {
 /// A vector of tokens.
 #[allow(clippy::cognitive_complexity)]
 #[allow(clippy::trivial_regex)]
-pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
+pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, TokenizeError> {
     // Static values/helpers
     let pseudo_token_re = compile_anchored(&get_pseudotoken_pattern());
 
@@ -53,7 +59,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
 
     // The ordering of checks matters here.  We need to eliminate the possibility of
     // triple quote delimiters before looking for single quote delimiters.
-    let get_contstr_end_re = |token: &str| {
+    let get_contstr_end_re = |token: &str| -> &Regex {
         let token_stripped = lstrip_slice(token, "bBrRuUfF");
 
         if token_stripped.starts_with("\"\"\"") {
@@ -62,10 +68,14 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
             &single3_re
         } else if token_stripped.starts_with('"') {
             &double_re
-        } else if token_stripped.starts_with('\'') {
-            &single_re
         } else {
-            panic!("Unrecognized quote style {:?}", token_stripped);
+            // This arm of the if statement is equivalent to the following check:
+            // `else if token_stripped.starts_with('\'')`
+            //
+            // This is because any string in `token` has already been matched against a
+            // regex that ensures it begins with """, ''', ", or ' after
+            // stripping of any leading prefix codes
+            &single_re
         }
     };
 
@@ -212,7 +222,10 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
             }
 
             if !indents.contains(&column) {
-                return Err("unindent does not match any outer indentation level".to_string());
+                return Err(TokenizeError {
+                    msg: "unindent does not match any outer indentation level",
+                    offset: rest_off,
+                });
             }
 
             while column < *indents.last().unwrap() {
@@ -338,19 +351,25 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
         }
     }
 
-    if contstr_start.is_some() {
-        return Err("EOF in multi-line string".to_string());
-    }
-
-    if continued {
-        return Err("EOF in multi-line statement".to_string());
-    }
-
     // We use this zero-length slice as the ending content for remaining tokens.
     // This is *just in case* anyone actually cares that the location of the
     // pointer makes any kind of sense.
     let input_len = input.len();
     let empty_end_slice = &input[input_len..];
+
+    if contstr_start.is_some() {
+        return Err(TokenizeError {
+            msg: "EOF in multi-line string",
+            offset: input_len,
+        });
+    }
+
+    if continued {
+        return Err(TokenizeError {
+            msg: "EOF in multi-line statement",
+            offset: input_len,
+        });
+    }
 
     if !line.is_empty() {
         let last_char = line.chars().last().unwrap();

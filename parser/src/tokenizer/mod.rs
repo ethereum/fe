@@ -40,7 +40,10 @@ pub mod tokenize;
 pub mod types;
 pub mod wasm;
 
-pub use self::tokenize::tokenize;
+pub use self::tokenize::{
+    tokenize,
+    TokenizeError,
+};
 pub use self::types::{
     Token,
     TokenType,

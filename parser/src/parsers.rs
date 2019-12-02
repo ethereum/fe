@@ -24,7 +24,10 @@ use crate::ast::ModuleStmt::*;
 use crate::ast::*;
 use crate::errors::make_error;
 use crate::span::Spanned;
-use crate::tokenizer::tokenize::tokenize;
+use crate::tokenizer::tokenize::{
+    tokenize,
+    TokenizeError,
+};
 use crate::tokenizer::types::{
     Token,
     TokenType,
@@ -35,7 +38,7 @@ pub type TokenResult<'a, O, E> = IResult<TokenSlice<'a>, O, E>;
 
 /// Tokenize the given source code in `source` and filter out tokens not
 /// relevant to parsing.
-pub fn get_parse_tokens<'a>(source: &'a str) -> Result<Vec<Token<'a>>, String> {
+pub fn get_parse_tokens<'a>(source: &'a str) -> Result<Vec<Token<'a>>, TokenizeError> {
     let tokens = tokenize(source)?;
 
     Ok(tokens
