@@ -29,7 +29,7 @@ pub fn format_debug_error(input: &str, e: VerboseError<TokenSlice>) -> String {
 
     let mut result = String::new();
 
-    for (i, (parser_input, kind)) in e.errors.iter().enumerate() {
+    for (err_no, (parser_input, err_kind)) in e.errors.iter().rev().enumerate() {
         let first_token = parser_input.iter().next();
 
         if let Some(tok) = first_token {
@@ -52,9 +52,9 @@ pub fn format_debug_error(input: &str, e: VerboseError<TokenSlice>) -> String {
                 }
             }
 
-            match kind {
+            match err_kind {
                 VerboseErrorKind::Char(c) => {
-                    result += &format!("{}: at line {}:\n", i, line);
+                    result += &format!("{}: at line {}:\n", err_no, line);
                     result += &lines[line];
                     result += "\n";
 
@@ -69,7 +69,7 @@ pub fn format_debug_error(input: &str, e: VerboseError<TokenSlice>) -> String {
                     );
                 }
                 VerboseErrorKind::Context(s) => {
-                    result += &format!("{}: at line {}, in {}:\n", i, line, s);
+                    result += &format!("{}: at line {}, in {}:\n", err_no, line, s);
                     result += &lines[line];
                     result += "\n";
                     if column > 0 {
@@ -78,7 +78,7 @@ pub fn format_debug_error(input: &str, e: VerboseError<TokenSlice>) -> String {
                     result += "^\n\n";
                 }
                 VerboseErrorKind::Nom(e) => {
-                    result += &format!("{}: at line {}, in {:?}:\n", i, line, e);
+                    result += &format!("{}: at line {}, in {:?}:\n", err_no, line, e);
                     result += &lines[line];
                     result += "\n";
                     if column > 0 {
@@ -88,15 +88,15 @@ pub fn format_debug_error(input: &str, e: VerboseError<TokenSlice>) -> String {
                 }
             }
         } else {
-            match kind {
+            match err_kind {
                 VerboseErrorKind::Char(c) => {
-                    result += &format!("{}: expected '{}', got empty input\n\n", i, c);
+                    result += &format!("{}: expected '{}', got empty input\n\n", err_no, c);
                 }
                 VerboseErrorKind::Context(s) => {
-                    result += &format!("{}: in {}, got empty input\n\n", i, s);
+                    result += &format!("{}: in {}, got empty input\n\n", err_no, s);
                 }
                 VerboseErrorKind::Nom(e) => {
-                    result += &format!("{}: in {:?}, got empty input\n\n", i, e);
+                    result += &format!("{}: in {:?}, got empty input\n\n", err_no, e);
                 }
             }
         }
