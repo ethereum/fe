@@ -12,6 +12,7 @@ use vyper_parser::tokenizer::{
     tokenize,
     Token,
     TokenType,
+    TokenizeError,
 };
 
 /// A python token object similar to those defined in python's stdlib `tokenize`
@@ -86,4 +87,24 @@ fn test_tokenize_fixtures() {
         "fixtures/tokenizer/tokenize.py.json",
         "fixtures/tokenizer/one_stmt_form_feed.v.py.json",
     );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_tokenize_errors() {
+    let examples = vec![(
+        r#"
+event Test:
+    field1: uint128
+   field2: uint128
+        "#,
+        Err(TokenizeError {
+            msg: "unindent does not match any outer indentation level",
+            offset: 36,
+        }),
+    )];
+
+    for (input, expected) in examples {
+        assert_eq!(tokenize(input), expected);
+    }
 }
