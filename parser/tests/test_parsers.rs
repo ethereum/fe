@@ -120,6 +120,7 @@ fn test_const_expr_ok() {
         "fixtures/parsers/const_expr/name_1.ron",
         "fixtures/parsers/const_expr/power_1.ron",
         "fixtures/parsers/const_expr/power_2.ron",
+        "fixtures/parsers/const_expr/power_3.ron",
         "fixtures/parsers/const_expr/lots_of_operators.ron",
         "fixtures/parsers/const_expr/unary_ops.ron",
     );
