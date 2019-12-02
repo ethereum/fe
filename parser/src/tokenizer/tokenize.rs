@@ -353,7 +353,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
         let last_char = line.chars().last().unwrap();
         if last_char != '\r' && last_char != '\n' {
             result.push(Token {
-                typ: NEWLINE,
+                typ: if line.trim().is_empty() { NL } else { NEWLINE },
                 string: empty_end_slice,
                 span: Span::new(
                     input_len,
