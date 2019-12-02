@@ -177,6 +177,7 @@ fn test_file_input_one_stmt() {
         "fixtures/parsers/file_input/one_stmt_no_whitespace.ron",
         "fixtures/parsers/file_input/one_stmt_leading_whitespace.ron",
         "fixtures/parsers/file_input/one_stmt_leading_trailing.ron",
+        "fixtures/parsers/file_input/one_stmt_form_feed.ron",
     );
 }
 

@@ -1,0 +1,65 @@
+event Greet:
+        name: bytes32
+    age: uint8
+---
+Spanned(
+  node: Module(
+    body: [
+      Spanned(
+        node: EventDef(
+          name: "Greet",
+          fields: [
+            Spanned(
+              node: EventField(
+                name: "name",
+                typ: Spanned(
+                  node: TypeDesc(
+                    base: "bytes32",
+                    dimensions: [],
+                    annotations: [],
+                  ),
+                  span: Span(
+                    start: 28,
+                    end: 35,
+                  ),
+                ),
+              ),
+              span: Span(
+                start: 22,
+                end: 35,
+              ),
+            ),
+            Spanned(
+              node: EventField(
+                name: "age",
+                typ: Spanned(
+                  node: TypeDesc(
+                    base: "uint8",
+                    dimensions: [],
+                    annotations: [],
+                  ),
+                  span: Span(
+                    start: 45,
+                    end: 50,
+                  ),
+                ),
+              ),
+              span: Span(
+                start: 40,
+                end: 50,
+              ),
+            ),
+          ],
+        ),
+        span: Span(
+          start: 0,
+          end: 50,
+        ),
+      ),
+    ],
+  ),
+  span: Span(
+    start: 0,
+    end: 50,
+  ),
+)

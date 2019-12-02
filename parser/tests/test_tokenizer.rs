@@ -84,5 +84,6 @@ fn test_tokenize_fixtures() {
         "fixtures/tokenizer/continued_statements.py.json",
         "fixtures/tokenizer/validator_registration.v.py.json",
         "fixtures/tokenizer/tokenize.py.json",
+        "fixtures/tokenizer/one_stmt_form_feed.v.py.json",
     );
 }
