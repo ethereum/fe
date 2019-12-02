@@ -124,8 +124,10 @@ We wish to provide a complete language specification with the following parts:
   their relationship, and the context in which they operate.
 
 A secondary goal to providing a specification document could be to also provide
-an executable specification via tools such as the [K
-framework](http://www.kframework.org/index.php/Main_Page).  Providing such an
+an executable specification via tools such as, for example, the
+[K framework](http://www.kframework.org/index.php/Main_Page),
+[PLT Redex](https://redex.racket-lang.org/), or
+[Ott](https://www.cl.cam.ac.uk/~pes20/ott/). Providing such an
 executable specification may become a primary goal if it can be achieved
 without too much effort and without hampering the achievement of other goals.
 
