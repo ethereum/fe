@@ -46,9 +46,9 @@ where
 
 /// Assert `$parser` succeeds when applied to the given input in `$examples`
 /// with the expected output specified in `$examples` or `$expected`.
-macro_rules! assert_parser_success {
+macro_rules! assert_parser_ok {
     ($parser:expr, $examples:expr,) => {{
-        assert_parser_success!($parser, $examples);
+        assert_parser_ok!($parser, $examples);
     }};
     ($parser:expr, $examples:expr) => {{
         for (inp, expected) in $examples {
@@ -59,7 +59,7 @@ macro_rules! assert_parser_success {
         }
     }};
     ($parser:expr, $examples:expr, $expected:expr,) => {{
-        assert_parser_success!($parser, $examples, $expected);
+        assert_parser_ok!($parser, $examples, $expected);
     }};
     ($parser:expr, $examples:expr, $expected:expr) => {{
         for inp in $examples {
@@ -112,7 +112,7 @@ macro_rules! assert_fixtures_parsed {
 
 #[test]
 #[wasm_bindgen_test]
-fn test_const_expr_success() {
+fn test_const_expr_ok() {
     assert_fixtures_parsed!(
         standalone(const_expr),
         "fixtures/parsers/const_expr/number_1.ron",
@@ -129,7 +129,7 @@ fn test_const_expr_success() {
 #[wasm_bindgen_test]
 fn test_file_input_empty_file() {
     // Empty file
-    assert_parser_success!(
+    assert_parser_ok!(
         file_input,
         vec![
             (
