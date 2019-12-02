@@ -10,6 +10,7 @@ use nom::{
 };
 
 use crate::parsers::TokenSlice;
+use crate::string_utils::StringPositions;
 
 pub fn make_error<I, O, E>(input: I, kind: ErrorKind) -> IResult<I, O, E>
 where
@@ -20,11 +21,12 @@ where
 
 /// Format a verbose error into a debug trace message.
 ///
-/// Borrowed from nom internals:
+/// Inspired by nom internals:
 /// https://github.com/Geal/nom/blob/c326e077b83c62f81b717c80a281cb453cb914e7/src/error.rs#L141
 pub fn format_debug_error(input: &str, e: VerboseError<TokenSlice>) -> String {
     use std::iter::repeat;
 
+    let mut string_positions = StringPositions::new(input);
     let lines: Vec<_> = input.lines().map(String::from).collect();
 
     let mut result = String::new();
@@ -33,24 +35,9 @@ pub fn format_debug_error(input: &str, e: VerboseError<TokenSlice>) -> String {
         let first_token = parser_input.iter().next();
 
         if let Some(tok) = first_token {
-            let tok_ptr = tok.string.as_ptr();
-            let tok_offset = tok_ptr as usize - input.as_ptr() as usize;
-            let substring = &input[tok_offset..];
-
-            let mut offset = tok_offset;
-
-            let mut line = 0;
-            let mut column = 0;
-
-            for (j, l) in lines.iter().enumerate() {
-                if offset <= l.len() {
-                    line = j;
-                    column = offset;
-                    break;
-                } else {
-                    offset = offset - l.len() - 1;
-                }
-            }
+            let pos = string_positions.get_pos(tok.span.start).unwrap();
+            let line = pos.line;
+            let col = pos.col;
 
             match err_kind {
                 VerboseErrorKind::Char(c) => {
@@ -58,22 +45,22 @@ pub fn format_debug_error(input: &str, e: VerboseError<TokenSlice>) -> String {
                     result += &lines[line];
                     result += "\n";
 
-                    if column > 0 {
-                        result += &repeat(' ').take(column).collect::<String>();
+                    if col > 0 {
+                        result += &repeat(' ').take(col).collect::<String>();
                     }
                     result += "^\n";
                     result += &format!(
                         "expected '{}', found {}\n\n",
                         c,
-                        substring.chars().next().unwrap()
+                        tok.string.chars().next().unwrap()
                     );
                 }
                 VerboseErrorKind::Context(s) => {
                     result += &format!("{}: at line {}, in {}:\n", err_no, line, s);
                     result += &lines[line];
                     result += "\n";
-                    if column > 0 {
-                        result += &repeat(' ').take(column).collect::<String>();
+                    if col > 0 {
+                        result += &repeat(' ').take(col).collect::<String>();
                     }
                     result += "^\n\n";
                 }
@@ -81,8 +68,8 @@ pub fn format_debug_error(input: &str, e: VerboseError<TokenSlice>) -> String {
                     result += &format!("{}: at line {}, in {:?}:\n", err_no, line, e);
                     result += &lines[line];
                     result += "\n";
-                    if column > 0 {
-                        result += &repeat(' ').take(column).collect::<String>();
+                    if col > 0 {
+                        result += &repeat(' ').take(col).collect::<String>();
                     }
                     result += "^\n\n";
                 }
@@ -128,33 +115,22 @@ pub fn format_user_error(
         .next();
 
     if let Some((parser_input, VerboseErrorKind::Context(context_string))) = last_context_error {
+        let mut string_positions = StringPositions::new(input);
         let lines: Vec<_> = input.lines().map(String::from).collect();
 
         let mut result = String::new();
         let first_token = parser_input.iter().next();
 
         if let Some(tok) = first_token {
-            let tok_ptr = tok.string.as_ptr();
-            let tok_offset = tok_ptr as usize - input.as_ptr() as usize;
-
-            let mut offset = tok_offset;
-            let mut line = 1;
-            let mut column = 0;
-            for (j, l) in lines.iter().enumerate() {
-                if offset <= l.len() {
-                    line = j;
-                    column = offset;
-                    break;
-                } else {
-                    offset = offset - l.len() - 1;
-                }
-            }
+            let pos = string_positions.get_pos(tok.span.start).unwrap();
+            let line = pos.line;
+            let col = pos.col;
 
             result += &format!("at line {}, expected {}:\n", line, context_string);
             result += &lines[line];
             result += "\n";
-            if column > 0 {
-                result += &repeat(' ').take(column).collect::<String>();
+            if col > 0 {
+                result += &repeat(' ').take(col).collect::<String>();
             }
             result += "^\n";
         } else {
