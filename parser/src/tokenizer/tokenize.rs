@@ -251,10 +251,6 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, TokenizeError> {
                 let eoff = line_start + tok_end;
                 line_pos = tok_end;
 
-                if tok_start == tok_end {
-                    continue;
-                }
-
                 let token = &line[tok_start..tok_end];
                 let initial = line[tok_start..].chars().next().unwrap();
 
