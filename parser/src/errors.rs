@@ -18,13 +18,6 @@ where
     Err(NomErr::Error(ParseError::from_error_kind(input, kind)))
 }
 
-pub fn make_failure<I, O, E>(input: I, kind: ErrorKind) -> IResult<I, O, E>
-where
-    E: ParseError<I>,
-{
-    Err(NomErr::Failure(ParseError::from_error_kind(input, kind)))
-}
-
 /// Format a verbose error into a debug trace message.
 ///
 /// Borrowed from nom internals:
