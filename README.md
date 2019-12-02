@@ -84,7 +84,15 @@ We wish to promote the following development practices:
 We wish to leverage the YUL IR format as a means of targeting both the eWASM
 and EVM platforms.  YUL is actively developed by the Solidity community and we
 see a great opportunity for synergy with the Solidity project through shared
-use of YUL.
+use of YUL.  In particular, we advocate that YUL become an independently specified
+and implemented IR through which implementations of high-level smart contract
+languages can be factored.
+
+If, as is our intention, this Rust Vyper implementation is indeed to rely on the
+YUL IR, then the quality of this implementation will crucially depend on a
+high-quality YUL IR.  We therefore strongly suggest that the same development,
+testing, and specification pratices that Rust Vyper is subject to will be applied
+to the YUL IR.
 
 ### Use of Rust as an implementation language
 
