@@ -250,21 +250,12 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                         line,
                     });
                 } else if initial == '\r' || initial == '\n' {
-                    if parenlev > 0 {
-                        result.push(Token {
-                            typ: NL,
-                            string: token,
-                            span: Span::new(soff, eoff),
-                            line,
-                        });
-                    } else {
-                        result.push(Token {
-                            typ: NEWLINE,
-                            string: token,
-                            span: Span::new(soff, eoff),
-                            line,
-                        });
-                    }
+                    result.push(Token {
+                        typ: if parenlev > 0 { NL } else { NEWLINE },
+                        string: token,
+                        span: Span::new(soff, eoff),
+                        line,
+                    });
                 } else if initial == '#' {
                     result.push(Token {
                         typ: COMMENT,
