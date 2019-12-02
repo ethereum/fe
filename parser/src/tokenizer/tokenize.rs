@@ -60,7 +60,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
             &double3_re
         } else if token_stripped.starts_with("'''") {
             &single3_re
-        } else if token_stripped.starts_with('\"') {
+        } else if token_stripped.starts_with('"') {
             &double_re
         } else if token_stripped.starts_with('\'') {
             &single_re
