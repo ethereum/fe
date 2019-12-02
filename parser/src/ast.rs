@@ -75,11 +75,11 @@ impl TryFrom<&str> for Operator {
             "/" => Ok(Self::Div),
             "%" => Ok(Self::Mod),
             "**" => Ok(Self::Pow),
-            //"<<" => Ok(Self::LShift),
-            //">>" => Ok(Self::RShift),
-            //"|" => Ok(Self::BitOr),
-            //"^" => Ok(Self::BitXor),
-            //"&" => Ok(Self::BitAnd),
+            "<<" => Ok(Self::LShift),
+            ">>" => Ok(Self::RShift),
+            "|" => Ok(Self::BitOr),
+            "^" => Ok(Self::BitXor),
+            "&" => Ok(Self::BitAnd),
             _ => Err("unrecognized binary operator string"),
         }
     }
@@ -100,7 +100,7 @@ impl TryFrom<&str> for UnaryOp {
     fn try_from(string: &str) -> Result<Self, Self::Error> {
         match string {
             "~" => Ok(Self::Invert),
-            //"not" => Ok(Self::Not),
+            "not" => Ok(Self::Not),
             "+" => Ok(Self::UAdd),
             "-" => Ok(Self::USub),
             _ => Err("unrecognized unary operator string"),
