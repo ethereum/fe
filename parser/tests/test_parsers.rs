@@ -8,7 +8,6 @@ use nom::error::{
     ParseError,
     VerboseError,
 };
-use nom::multi::many0;
 use nom::Err as NomErr;
 use wasm_bindgen_test::wasm_bindgen_test;
 
@@ -27,20 +26,18 @@ use vyper_parser::span::{
 type SimpleError<I> = (I, ErrorKind);
 
 /// Convert a parser into one that can function as a standalone file parser.
-/// File tokenizations can be interspersed with arbitrary `NEWLINE`
-/// tokens and are also terminated with an `ENDMARKER` token.  Parsers
-/// defined lower in the grammar tree are not intended to handle that
-/// kind of tokenization which makes testing them difficult.  This
-/// combinator helps with that.
+/// File tokenizations always include a trailing `NEWLINE` and `ENDMARKER`
+/// token.  Parsers defined lower in the grammar tree are not intended to handle
+/// that kind of tokenization.  This combinator modifies lower-level parsers to
+/// handle such tokenizations to facilitate unit testing.
 fn standalone<'a, O, E, F>(parser: F) -> impl Fn(TokenSlice<'a>) -> TokenResult<'a, O, E>
 where
     E: ParseError<TokenSlice<'a>>,
     F: Fn(TokenSlice<'a>) -> TokenResult<'a, O, E>,
 {
     move |input: TokenSlice<'a>| {
-        let (input, _) = many0(newline_token)(input)?;
         let (input, o) = parser(input)?;
-        let (input, _) = many0(newline_token)(input)?;
+        let (input, _) = newline_token(input)?;
         let (input, _) = endmarker_token(input)?;
 
         Ok((input, o))
