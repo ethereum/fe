@@ -119,7 +119,7 @@ pub fn format_user_error(
 
     let last_context_error = err
         .errors
-        .into_iter()
+        .iter()
         .rev()
         .skip_while(|e| match e {
             (_, VerboseErrorKind::Context(_)) => false,
