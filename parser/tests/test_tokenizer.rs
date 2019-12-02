@@ -93,17 +93,33 @@ fn test_tokenize_fixtures() {
 #[test]
 #[wasm_bindgen_test]
 fn test_tokenize_errors() {
-    let examples = vec![(
-        r#"
+    let examples = vec![
+        (
+            r#"
 event Test:
     field1: uint128
    field2: uint128
         "#,
-        Err(TokenizeError {
-            msg: "unindent does not match any outer indentation level",
-            offset: 36,
-        }),
-    )];
+            Err(TokenizeError {
+                msg: "unindent does not match any outer indentation level",
+                offset: 36,
+            }),
+        ),
+        (
+            r#"s = """"#,
+            Err(TokenizeError {
+                msg: "EOF in multi-line string",
+                offset: 7,
+            }),
+        ),
+        (
+            "s = 3 + \\\n",
+            Err(TokenizeError {
+                msg: "EOF in multi-line statement",
+                offset: 10,
+            }),
+        ),
+    ];
 
     for (input, expected) in examples {
         assert_eq!(tokenize(input), expected);
