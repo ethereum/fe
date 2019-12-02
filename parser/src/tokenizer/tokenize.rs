@@ -199,25 +199,28 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, String> {
                 }
             }
 
+            let rest_off = line_start + line_pos;
+
             if column > *indents.last().unwrap() {
                 indents.push(column);
                 result.push(Token {
                     typ: INDENT,
                     string: &line[..line_pos],
-                    span: Span::new(line_start, line_start + line_pos),
+                    span: Span::new(line_start, rest_off),
                     line,
                 });
             }
 
+            if !indents.contains(&column) {
+                return Err("unindent does not match any outer indentation level".to_string());
+            }
+
             while column < *indents.last().unwrap() {
-                if !indents.contains(&column) {
-                    return Err("Unindent does not match any outer indentation level".to_string());
-                }
                 indents.pop();
                 result.push(Token {
                     typ: DEDENT,
                     string: &line[line_pos..line_pos],
-                    span: Span::new(line_start + line_pos, line_start + line_pos),
+                    span: Span::new(rest_off, rest_off),
                     line,
                 });
             }
