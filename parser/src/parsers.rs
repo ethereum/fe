@@ -16,7 +16,6 @@ use nom::multi::{
 };
 use nom::sequence::{
     pair,
-    preceded,
     separated_pair,
 };
 use nom::IResult;
@@ -149,23 +148,42 @@ pub fn file_input<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<Module>, 
 where
     E: ParseError<TokenSlice<'a>>,
 {
-    // (NEWLINE* module_stmt)*
-    let (input, body) = many0(preceded(many0(newline_token), module_stmt))(input)?;
+    alt((empty_file_input, non_empty_file_input))(input)
+}
 
-    // NEWLINE*
-    let (input, _) = many0(newline_token)(input)?;
-
+/// Parse an empty module definition.
+pub fn empty_file_input<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<Module>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
     // ENDMARKER
     let (input, end_tok) = endmarker_token(input)?;
 
-    let span = match body.first() {
-        Some(first_stmt) => {
-            let first_span = first_stmt.span;
-            let last_span = body.last().unwrap().span;
+    Ok((
+        input,
+        Spanned {
+            node: Module { body: vec![] },
+            span: end_tok.span,
+        },
+    ))
+}
 
-            (&first_span, &last_span).into()
-        }
-        None => end_tok.span,
+/// Parse a non-empty module definition.
+pub fn non_empty_file_input<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<Module>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    // module_stmt+
+    let (input, body) = many1(module_stmt)(input)?;
+
+    // ENDMARKER
+    let (input, _) = endmarker_token(input)?;
+
+    let span = {
+        let first_span = body.first().unwrap().span;
+        let last_span = body.last().unwrap().span;
+
+        (&first_span, &last_span).into()
     };
 
     Ok((
