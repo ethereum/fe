@@ -34,56 +34,45 @@ pub fn format_debug_error(input: &str, e: VerboseError<TokenSlice>) -> String {
     for (err_no, (parser_input, err_kind)) in e.errors.iter().rev().enumerate() {
         let first_token = parser_input.iter().next();
 
+        result += &format!("{}: ", err_no);
+
         if let Some(tok) = first_token {
             let pos = string_positions.get_pos(tok.span.start).unwrap();
-            let line = pos.line;
-            let col = pos.col;
+
+            result += &format!("at line {} col {}", pos.line, pos.col);
 
             match err_kind {
                 VerboseErrorKind::Char(c) => {
-                    result += &format!("{}: at line {}:\n", err_no, line);
-                    result += &lines[line];
-                    result += "\n";
-
-                    if col > 0 {
-                        result += &repeat(' ').take(col).collect::<String>();
-                    }
-                    result += "^\n";
                     result += &format!(
-                        "expected '{}', found {}\n\n",
+                        ", expected {:?} but found {:?}:\n",
                         c,
                         tok.string.chars().next().unwrap()
                     );
                 }
                 VerboseErrorKind::Context(s) => {
-                    result += &format!("{}: at line {}, in {}:\n", err_no, line, s);
-                    result += &lines[line];
-                    result += "\n";
-                    if col > 0 {
-                        result += &repeat(' ').take(col).collect::<String>();
-                    }
-                    result += "^\n\n";
+                    result += &format!(", in {}:\n", s);
                 }
                 VerboseErrorKind::Nom(e) => {
-                    result += &format!("{}: at line {}, in {:?}:\n", err_no, line, e);
-                    result += &lines[line];
-                    result += "\n";
-                    if col > 0 {
-                        result += &repeat(' ').take(col).collect::<String>();
-                    }
-                    result += "^\n\n";
+                    result += &format!(", in {:?}:\n", e);
                 }
             }
+
+            result += &lines[pos.line - 1];
+            result += "\n";
+            if pos.col > 0 {
+                result += &repeat(' ').take(pos.col).collect::<String>();
+            }
+            result += "^\n\n";
         } else {
             match err_kind {
                 VerboseErrorKind::Char(c) => {
-                    result += &format!("{}: expected '{}', got empty input\n\n", err_no, c);
+                    result += &format!("expected '{}', got empty input\n\n", c);
                 }
                 VerboseErrorKind::Context(s) => {
-                    result += &format!("{}: in {}, got empty input\n\n", err_no, s);
+                    result += &format!("in {}, got empty input\n\n", s);
                 }
                 VerboseErrorKind::Nom(e) => {
-                    result += &format!("{}: in {:?}, got empty input\n\n", err_no, e);
+                    result += &format!("in {:?}, got empty input\n\n", e);
                 }
             }
         }
@@ -129,14 +118,15 @@ pub fn format_user_error(
 
         if let Some(tok) = first_token {
             let pos = string_positions.get_pos(tok.span.start).unwrap();
-            let line = pos.line;
-            let col = pos.col;
 
-            result += &format!("at line {}, expected {}:\n", line, context_string);
-            result += &lines[line];
+            result += &format!(
+                "at line {} col {}, expected {}:\n",
+                pos.line, pos.col, context_string
+            );
+            result += &lines[pos.line - 1];
             result += "\n";
-            if col > 0 {
-                result += &repeat(' ').take(col).collect::<String>();
+            if pos.col > 0 {
+                result += &repeat(' ').take(pos.col).collect::<String>();
             }
             result += "^\n";
         } else {
