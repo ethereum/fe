@@ -98,6 +98,12 @@ pub enum FormatError {
 }
 
 /// Format a verbose error into a user-facing syntax error message.
+///
+/// Uses the last (outermost) context error string in a verbose error to build a
+/// user-facing error message and position.
+///
+/// Inspired by nom internals:
+/// https://github.com/Geal/nom/blob/c326e077b83c62f81b717c80a281cb453cb914e7/src/error.rs#L141
 pub fn format_user_error(
     input: &str,
     err: VerboseError<TokenSlice>,
