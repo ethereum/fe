@@ -149,10 +149,14 @@ considered to represent the exact prioritization of work items.
 * [x] Completed a few basic parsers with `nom`
 * [x] All code is now tested on both native and WASM platforms with WASM
   testing via node.js
+* [x] Achieve ~100% code coverage by tests.  Coverage is currently maximized at
+  99% due to some code paths being unreachable and our coverage tool currently
+  having no support for ignoring specific lines of code.  These code paths
+  cannot be reached due to the style in which the `nom` parsing library defines
+  some of its parsers.
 
 ### Short-term goals
 
-* [ ] Achieve 100% code coverage by tests
 * [ ] Identify an appropriate subset of the Python grammar and any grammatical
   extensions needed to define a Vyper EBNF grammar
   - Eliminate certain Pythonic grammatical elements that don't apply to Vyper
