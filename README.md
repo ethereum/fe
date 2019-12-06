@@ -169,7 +169,7 @@ considered to represent the exact prioritization of work items.
 * [ ] Parse and compile a basic greeter contract to YUL
 * [ ] Generate YUL source code from YUL AST objects (via [yultsur](https://github.com/axic/yultsur/))
 * [ ] Invoke the Solidity compiler with generated YUL source to produce a
-  compiled binary
+  compiled binary (via [solc-rust](https://github.com/axic/solc-rust))
 
 ### Long-term goals
 
