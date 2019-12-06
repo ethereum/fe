@@ -167,7 +167,7 @@ considered to represent the exact prioritization of work items.
     dimensions, etc.)
 * [ ] Finish writing parsers for the Vyper EBNF grammar
 * [ ] Parse and compile a basic greeter contract to YUL
-* [ ] Generate YUL source code from YUL AST objects
+* [ ] Generate YUL source code from YUL AST objects (via [yultsur](https://github.com/axic/yultsur/))
 * [ ] Invoke the Solidity compiler with generated YUL source to produce a
   compiled binary
 
