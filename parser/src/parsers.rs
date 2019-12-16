@@ -7,7 +7,6 @@ use nom::combinator::{
     verify,
 };
 use nom::error::{
-    context,
     ErrorKind,
     ParseError,
 };
@@ -206,9 +205,7 @@ pub fn module_stmt<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ModuleSt
 where
     E: ParseError<TokenSlice<'a>>,
 {
-    let (input, module_stmt) = alt((import_stmt, context("event definition", event_def)))(input)?;
-
-    Ok((input, module_stmt))
+    alt((import_stmt, event_def))(input)
 }
 
 /// Parse an import statement.
