@@ -1,0 +1,107 @@
+from . import *
+from foo import bar
+from foo import (
+    bar,
+)
+---
+[
+  Spanned(
+    node: FromImport(
+      path: Spanned(
+        node: Relative(
+          parent_level: 0,
+          path: [],
+        ),
+        span: Span(
+          start: 5,
+          end: 6,
+        ),
+      ),
+      names: Spanned(
+        node: Star,
+        span: Span(
+          start: 14,
+          end: 15,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 0,
+      end: 15,
+    ),
+  ),
+  Spanned(
+    node: FromImport(
+      path: Spanned(
+        node: Absolute(
+          path: [
+            "foo",
+          ],
+        ),
+        span: Span(
+          start: 21,
+          end: 24,
+        ),
+      ),
+      names: Spanned(
+        node: List([
+          Spanned(
+            node: FromImportName(
+              name: "bar",
+              alias: None,
+            ),
+            span: Span(
+              start: 32,
+              end: 35,
+            ),
+          ),
+        ]),
+        span: Span(
+          start: 32,
+          end: 35,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 16,
+      end: 35,
+    ),
+  ),
+  Spanned(
+    node: FromImport(
+      path: Spanned(
+        node: Absolute(
+          path: [
+            "foo",
+          ],
+        ),
+        span: Span(
+          start: 41,
+          end: 44,
+        ),
+      ),
+      names: Spanned(
+        node: List([
+          Spanned(
+            node: FromImportName(
+              name: "bar",
+              alias: None,
+            ),
+            span: Span(
+              start: 58,
+              end: 61,
+            ),
+          ),
+        ]),
+        span: Span(
+          start: 52,
+          end: 64,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 36,
+      end: 64,
+    ),
+  ),
+]

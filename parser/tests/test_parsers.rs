@@ -205,6 +205,24 @@ fn test_file_input() {
 
 #[test]
 #[wasm_bindgen_test]
+fn test_from_import() {
+    assert_fixtures_parsed!(
+        standalone_vec(from_import),
+        "fixtures/parsers/from_import.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_from_import_sub_path() {
+    assert_fixtures_parsed!(
+        standalone_vec(from_import_sub_path),
+        "fixtures/parsers/from_import_sub_path.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
 fn test_from_import_names() {
     assert_fixtures_parsed!(
         standalone_vec(from_import_names),

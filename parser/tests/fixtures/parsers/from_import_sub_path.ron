@@ -1,0 +1,55 @@
+foo.bar
+.foo
+..foo
+...foo
+---
+[
+  Spanned(
+    node: Absolute(
+      path: [
+        "foo",
+        "bar",
+      ],
+    ),
+    span: Span(
+      start: 0,
+      end: 7,
+    ),
+  ),
+  Spanned(
+    node: Relative(
+      parent_level: 0,
+      path: [
+        "foo",
+      ],
+    ),
+    span: Span(
+      start: 8,
+      end: 12,
+    ),
+  ),
+  Spanned(
+    node: Relative(
+      parent_level: 1,
+      path: [
+        "foo",
+      ],
+    ),
+    span: Span(
+      start: 13,
+      end: 18,
+    ),
+  ),
+  Spanned(
+    node: Relative(
+      parent_level: 2,
+      path: [
+        "foo",
+      ],
+    ),
+    span: Span(
+      start: 19,
+      end: 25,
+    ),
+  ),
+]
