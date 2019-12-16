@@ -1,0 +1,30 @@
+abc
+foo.bar as baz
+---
+[
+  Spanned(
+    node: SimpleImportName(
+      path: [
+        "abc",
+      ],
+      alias: None,
+    ),
+    span: Span(
+      start: 0,
+      end: 3,
+    ),
+  ),
+  Spanned(
+    node: SimpleImportName(
+      path: [
+        "foo",
+        "bar",
+      ],
+      alias: Some("baz"),
+    ),
+    span: Span(
+      start: 4,
+      end: 18,
+    ),
+  ),
+]

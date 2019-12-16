@@ -1,0 +1,108 @@
+import foo
+import foo as bar, baz
+import foo as bar, baz, bing as bop
+---
+[
+  Spanned(
+    node: SimpleImport(
+      names: [
+        Spanned(
+          node: SimpleImportName(
+            path: [
+              "foo",
+            ],
+            alias: None,
+          ),
+          span: Span(
+            start: 7,
+            end: 10,
+          ),
+        ),
+      ],
+    ),
+    span: Span(
+      start: 0,
+      end: 10,
+    ),
+  ),
+  Spanned(
+    node: SimpleImport(
+      names: [
+        Spanned(
+          node: SimpleImportName(
+            path: [
+              "foo",
+            ],
+            alias: Some("bar"),
+          ),
+          span: Span(
+            start: 18,
+            end: 28,
+          ),
+        ),
+        Spanned(
+          node: SimpleImportName(
+            path: [
+              "baz",
+            ],
+            alias: None,
+          ),
+          span: Span(
+            start: 30,
+            end: 33,
+          ),
+        ),
+      ],
+    ),
+    span: Span(
+      start: 11,
+      end: 33,
+    ),
+  ),
+  Spanned(
+    node: SimpleImport(
+      names: [
+        Spanned(
+          node: SimpleImportName(
+            path: [
+              "foo",
+            ],
+            alias: Some("bar"),
+          ),
+          span: Span(
+            start: 41,
+            end: 51,
+          ),
+        ),
+        Spanned(
+          node: SimpleImportName(
+            path: [
+              "baz",
+            ],
+            alias: None,
+          ),
+          span: Span(
+            start: 53,
+            end: 56,
+          ),
+        ),
+        Spanned(
+          node: SimpleImportName(
+            path: [
+              "bing",
+            ],
+            alias: Some("bop"),
+          ),
+          span: Span(
+            start: 58,
+            end: 69,
+          ),
+        ),
+      ],
+    ),
+    span: Span(
+      start: 34,
+      end: 69,
+    ),
+  ),
+]
