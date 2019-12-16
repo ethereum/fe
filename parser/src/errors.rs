@@ -37,7 +37,10 @@ pub fn format_debug_error(input: &str, e: VerboseError<TokenSlice>) -> String {
         result += &format!("{}: ", err_no);
 
         if let Some(tok) = first_token {
-            let pos = string_positions.get_pos(tok.span.start).unwrap();
+            let pos = match string_positions.get_pos(tok.span.start) {
+                Some(pos) => pos,
+                None => string_positions.get_last().unwrap(),
+            };
 
             result += &format!("at line {} col {}", pos.line, pos.col);
 
