@@ -205,6 +205,15 @@ fn test_file_input() {
 
 #[test]
 #[wasm_bindgen_test]
+fn test_import_stmt() {
+    assert_fixtures_parsed!(
+        terminated(many1(import_stmt), endmarker_token),
+        "fixtures/parsers/import_stmt.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
 fn test_simple_import() {
     assert_fixtures_parsed!(
         standalone_vec(simple_import),
