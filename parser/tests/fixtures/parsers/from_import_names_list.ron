@@ -1,0 +1,129 @@
+foo as bar
+bar, bing
+bar, bing, boom
+bar, bing, boom,
+---
+[
+  Spanned(
+    node: List([
+      Spanned(
+        node: FromImportName(
+          name: "foo",
+          alias: Some("bar"),
+        ),
+        span: Span(
+          start: 0,
+          end: 10,
+        ),
+      ),
+    ]),
+    span: Span(
+      start: 0,
+      end: 10,
+    ),
+  ),
+  Spanned(
+    node: List([
+      Spanned(
+        node: FromImportName(
+          name: "bar",
+          alias: None,
+        ),
+        span: Span(
+          start: 11,
+          end: 14,
+        ),
+      ),
+      Spanned(
+        node: FromImportName(
+          name: "bing",
+          alias: None,
+        ),
+        span: Span(
+          start: 16,
+          end: 20,
+        ),
+      ),
+    ]),
+    span: Span(
+      start: 11,
+      end: 20,
+    ),
+  ),
+  Spanned(
+    node: List([
+      Spanned(
+        node: FromImportName(
+          name: "bar",
+          alias: None,
+        ),
+        span: Span(
+          start: 21,
+          end: 24,
+        ),
+      ),
+      Spanned(
+        node: FromImportName(
+          name: "bing",
+          alias: None,
+        ),
+        span: Span(
+          start: 26,
+          end: 30,
+        ),
+      ),
+      Spanned(
+        node: FromImportName(
+          name: "boom",
+          alias: None,
+        ),
+        span: Span(
+          start: 32,
+          end: 36,
+        ),
+      ),
+    ]),
+    span: Span(
+      start: 21,
+      end: 36,
+    ),
+  ),
+  Spanned(
+    node: List([
+      Spanned(
+        node: FromImportName(
+          name: "bar",
+          alias: None,
+        ),
+        span: Span(
+          start: 37,
+          end: 40,
+        ),
+      ),
+      Spanned(
+        node: FromImportName(
+          name: "bing",
+          alias: None,
+        ),
+        span: Span(
+          start: 42,
+          end: 46,
+        ),
+      ),
+      Spanned(
+        node: FromImportName(
+          name: "boom",
+          alias: None,
+        ),
+        span: Span(
+          start: 48,
+          end: 52,
+        ),
+      ),
+    ]),
+    span: Span(
+      start: 37,
+      end: 53,
+    ),
+  ),
+]

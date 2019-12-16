@@ -1,0 +1,51 @@
+.
+..
+...
+....
+.....
+......
+---
+[
+  Spanned(
+    node: 0,
+    span: Span(
+      start: 0,
+      end: 1,
+    ),
+  ),
+  Spanned(
+    node: 1,
+    span: Span(
+      start: 2,
+      end: 4,
+    ),
+  ),
+  Spanned(
+    node: 2,
+    span: Span(
+      start: 5,
+      end: 8,
+    ),
+  ),
+  Spanned(
+    node: 3,
+    span: Span(
+      start: 9,
+      end: 13,
+    ),
+  ),
+  Spanned(
+    node: 4,
+    span: Span(
+      start: 14,
+      end: 19,
+    ),
+  ),
+  Spanned(
+    node: 5,
+    span: Span(
+      start: 20,
+      end: 26,
+    ),
+  ),
+]

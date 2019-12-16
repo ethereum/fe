@@ -1,0 +1,25 @@
+abc
+foo as bar
+---
+[
+  Spanned(
+    node: FromImportName(
+      name: "abc",
+      alias: None,
+    ),
+    span: Span(
+      start: 0,
+      end: 3,
+    ),
+  ),
+  Spanned(
+    node: FromImportName(
+      name: "foo",
+      alias: Some("bar"),
+    ),
+    span: Span(
+      start: 4,
+      end: 14,
+    ),
+  ),
+]

@@ -202,3 +202,48 @@ fn test_file_input() {
         "fixtures/parsers/file_input/many_stmt_lots_of_whitespace.ron",
     );
 }
+
+#[test]
+#[wasm_bindgen_test]
+fn test_from_import_names() {
+    assert_fixtures_parsed!(
+        standalone_vec(from_import_names),
+        "fixtures/parsers/from_import_names.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_from_import_names_list() {
+    assert_fixtures_parsed!(
+        standalone_vec(from_import_names_list),
+        "fixtures/parsers/from_import_names_list.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_from_import_name() {
+    assert_fixtures_parsed!(
+        standalone_vec(from_import_name),
+        "fixtures/parsers/from_import_name.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_dotted_name() {
+    assert_fixtures_parsed!(
+        standalone_vec(dotted_name),
+        "fixtures/parsers/dotted_name.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_dots_to_int() {
+    assert_fixtures_parsed!(
+        standalone_vec(dots_to_int),
+        "fixtures/parsers/dots_to_int.ron",
+    );
+}
