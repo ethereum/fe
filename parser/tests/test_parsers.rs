@@ -8,6 +8,8 @@ use nom::error::{
     ParseError,
     VerboseError,
 };
+use nom::multi::many1;
+use nom::sequence::terminated;
 use nom::Err as NomErr;
 use wasm_bindgen_test::wasm_bindgen_test;
 
@@ -38,6 +40,22 @@ where
     move |input: TokenSlice<'a>| {
         let (input, o) = parser(input)?;
         let (input, _) = newline_token(input)?;
+        let (input, _) = endmarker_token(input)?;
+
+        Ok((input, o))
+    }
+}
+
+/// Convert a parser into one that can function as a standalone parser that
+/// applies itself one or more times to an input and returns all outputs in a
+/// vector.
+fn standalone_vec<'a, O, E, F>(parser: F) -> impl Fn(TokenSlice<'a>) -> TokenResult<'a, Vec<O>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+    F: Fn(TokenSlice<'a>) -> TokenResult<'a, O, E> + Copy,
+{
+    move |input: TokenSlice<'a>| {
+        let (input, o) = many1(terminated(parser, newline_token))(input)?;
         let (input, _) = endmarker_token(input)?;
 
         Ok((input, o))
