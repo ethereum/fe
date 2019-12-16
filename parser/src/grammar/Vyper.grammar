@@ -1,20 +1,46 @@
 file_input: module_stmt+ ENDMARKER
+module_stmt: import_stmt | interface_def | contract_def
 
-module_stmt: contract_def | interface_def
+########################### import_stmt ##############################
 
-contract_def: 'contract' NAME ':' NEWLINE INDENT contract_stmt+ DEDENT
-contract_stmt: event_def | func_def | field_def
+import_stmt: (simple_import | from_import) NEWLINE
+
+simple_import: 'import' (simple_import_name (',' simple_import_name)*)
+simple_import_name: dotted_name ['as' NAME]
+
+# Note: the ('.' | '...') is necessary because '...' is tokenized as a single
+# OP token (an ellipsis OP)
+from_import: from_import_parent_alt | from_import_sub_alt
+
+from_import_parent_alt: 'from' ('.' | '...')+ 'import' from_import_names
+from_import_sub_alt: 'from' from_import_sub_path 'import' from_import_names
+
+from_import_sub_path: ('.' | '...')* dotted_name
+from_import_names: '*' | '(' from_import_names_list ')' | from_import_names_list
+from_import_names_list: from_import_name (',' from_import_name)* [',']
+from_import_name: NAME ['as' NAME]
+
+dotted_name: NAME ('.' NAME)*
+
+########################### interface_def ############################
 
 #interface_def: 'interface' NAME ':' NEWLINE INDENT interface_stmt+ DEDENT
 #interface_stmt: interface_prop_def | event_def | interface_func_def
 
-event_def: 'event' NAME ':' NEWLINE INDENT event_field_def+ DEDENT
-event_field_def: NAME ':' ann_type_desc NEWLINE
+########################### event_def ################################
 
-field_def: NAME ':' ann_type_desc ['=' const_expr] NEWLINE
+#event_def: 'event' NAME ':' NEWLINE INDENT event_field_def+ DEDENT
+#event_field_def: NAME ':' ann_type_desc NEWLINE
 
-ann_type_desc: NAME '(' ann_type_desc ')' | base_type_desc
-base_type_desc: NAME ('[' const_expr ']')*
+########################### contract_def #############################
+
+#contract_def: 'contract' NAME ':' NEWLINE INDENT contract_stmt+ DEDENT
+#contract_stmt: event_def | func_def | field_def
+
+#field_def: NAME ':' ann_type_desc ['=' const_expr] NEWLINE
+
+#ann_type_desc: NAME '(' ann_type_desc ')' | base_type_desc
+#base_type_desc: NAME ('[' const_expr ']')*
 
 ########################### const_expr ###############################
 
