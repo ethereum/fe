@@ -3,6 +3,7 @@ use std::convert::TryFrom;
 use nom::branch::alt;
 use nom::combinator::{
     map,
+    opt,
     verify,
 };
 use nom::error::{
@@ -16,7 +17,9 @@ use nom::multi::{
 };
 use nom::sequence::{
     pair,
+    preceded,
     separated_pair,
+    terminated,
 };
 use nom::IResult;
 
@@ -203,9 +206,310 @@ pub fn module_stmt<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ModuleSt
 where
     E: ParseError<TokenSlice<'a>>,
 {
-    let (input, module_stmt) = context("event definition", event_def)(input)?;
+    let (input, module_stmt) = alt((import_stmt, context("event definition", event_def)))(input)?;
 
     Ok((input, module_stmt))
+}
+
+/// Parse an import statement.
+pub fn import_stmt<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ModuleStmt>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    terminated(alt((simple_import, from_import)), newline_token)(input)
+}
+
+/// Parse an import statement beginning with the "import" keyword.
+pub fn simple_import<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ModuleStmt>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    let (input, import_kw) = name_string("import")(input)?;
+    let (input, first_name) = simple_import_name(input)?;
+    let (input, mut other_names) = many0(preceded(op_string(","), simple_import_name))(input)?;
+
+    let mut result = vec![first_name];
+    result.append(&mut other_names);
+
+    let span = {
+        let last_span = result.last().unwrap().span;
+
+        (&import_kw.span, &last_span).into()
+    };
+
+    Ok((
+        input,
+        Spanned {
+            node: SimpleImport { names: result },
+            span,
+        },
+    ))
+}
+
+pub fn simple_import_name<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<SimpleImportName>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    let (input, path) = dotted_name(input)?;
+    let (input, alias) = opt(preceded(name_string("as"), name_token))(input)?;
+
+    let span = {
+        match alias {
+            Some(alias_tok) => (&path.span, &alias_tok.span).into(),
+            None => path.span,
+        }
+    };
+
+    Ok((
+        input,
+        Spanned {
+            node: SimpleImportName {
+                path: path.node,
+                alias: alias.map(|t| t.string),
+            },
+            span,
+        },
+    ))
+}
+
+/// Parse an import statement beginning with the "from" keyword.
+pub fn from_import<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ModuleStmt>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    alt((from_import_parent_alt, from_import_sub_alt))(input)
+}
+
+/// Parse a "from" import with a path that contains only parent module
+/// components.
+pub fn from_import_parent_alt<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ModuleStmt>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    let (input, from_kw) = name_string("from")(input)?;
+    let (input, parent_level) = dots_to_int(input)?;
+    let (input, _) = name_string("import")(input)?;
+    let (input, names) = from_import_names(input)?;
+
+    let path = Spanned {
+        node: FromImportPath::Relative {
+            parent_level: parent_level.node,
+            path: vec![],
+        },
+        span: parent_level.span,
+    };
+    let names_span = names.span;
+
+    Ok((
+        input,
+        Spanned {
+            node: FromImport { path, names },
+            span: (&from_kw.span, &names_span).into(),
+        },
+    ))
+}
+
+/// Parse a "from" import with a path that contains sub module components.
+pub fn from_import_sub_alt<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ModuleStmt>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    let (input, from_kw) = name_string("from")(input)?;
+    let (input, path) = from_import_sub_path(input)?;
+    let (input, _) = name_string("import")(input)?;
+    let (input, names) = from_import_names(input)?;
+
+    let names_span = names.span;
+
+    Ok((
+        input,
+        Spanned {
+            node: FromImport { path, names },
+            span: (&from_kw.span, &names_span).into(),
+        },
+    ))
+}
+
+/// Parse a path containing sub module components in a "from" import statement.
+pub fn from_import_sub_path<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<FromImportPath>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    let (input, opt_parent_level) = opt(dots_to_int)(input)?;
+    let (input, dotted_name) = dotted_name(input)?;
+
+    let result = match opt_parent_level {
+        Some(parent_level) => Spanned {
+            node: FromImportPath::Relative {
+                parent_level: parent_level.node,
+                path: dotted_name.node,
+            },
+            span: (&parent_level.span, &dotted_name.span).into(),
+        },
+        None => Spanned {
+            node: FromImportPath::Absolute {
+                path: dotted_name.node,
+            },
+            span: dotted_name.span,
+        },
+    };
+
+    Ok((input, result))
+}
+
+/// Parse the names to be imported by a "from" import statement.
+pub fn from_import_names<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<FromImportNames>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    alt((
+        from_import_names_star,
+        from_import_names_parens,
+        from_import_names_list,
+    ))(input)
+}
+
+/// Parse a wildcard token ("*") in a "from" import statement.
+pub fn from_import_names_star<'a, E>(
+    input: TokenSlice<'a>,
+) -> TokenResult<Spanned<FromImportNames>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    let (input, star) = op_string("*")(input)?;
+
+    Ok((
+        input,
+        Spanned {
+            node: FromImportNames::Star,
+            span: star.span,
+        },
+    ))
+}
+
+/// Parse a parenthesized list of names to be imported by a "from" import
+/// statement.
+pub fn from_import_names_parens<'a, E>(
+    input: TokenSlice<'a>,
+) -> TokenResult<Spanned<FromImportNames>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    let (input, l_paren) = op_string("(")(input)?;
+    let (input, names) = from_import_names_list(input)?;
+    let (input, r_paren) = op_string(")")(input)?;
+
+    Ok((
+        input,
+        Spanned {
+            node: names.node,
+            span: (&l_paren.span, &r_paren.span).into(),
+        },
+    ))
+}
+
+/// Parse a list of names to be imported by a "from" import statement.
+pub fn from_import_names_list<'a, E>(
+    input: TokenSlice<'a>,
+) -> TokenResult<Spanned<FromImportNames>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    let (input, first_name) = from_import_name(input)?;
+    let (input, mut other_names) = many0(preceded(op_string(","), from_import_name))(input)?;
+    let (input, comma_tok) = opt(op_string(","))(input)?;
+
+    let mut names = vec![first_name];
+    names.append(&mut other_names);
+
+    let span = {
+        let first_span = names.first().unwrap().span;
+        match comma_tok {
+            Some(tok) => (&first_span, &tok.span).into(),
+            None => {
+                let last_span = names.last().unwrap().span;
+                (&first_span, &last_span).into()
+            }
+        }
+    };
+
+    Ok((
+        input,
+        Spanned {
+            node: FromImportNames::List(names),
+            span,
+        },
+    ))
+}
+
+/// Parse an import name with an optional alias in a "from" import statement.
+pub fn from_import_name<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<FromImportName>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    let (input, name) = name_token(input)?;
+    let (input, alias) = opt(preceded(name_string("as"), name_token))(input)?;
+
+    let span = match alias {
+        Some(alias_tok) => (&name.span, &alias_tok.span).into(),
+        None => name.span,
+    };
+
+    Ok((
+        input,
+        Spanned {
+            node: FromImportName {
+                name: name.string,
+                alias: alias.map(|t| t.string),
+            },
+            span,
+        },
+    ))
+}
+
+/// Parse a dotted import name.
+pub fn dotted_name<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<Vec<&'a str>>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    let (input, first_part) = name_token(input)?;
+    let (input, other_parts) = many0(preceded(op_string("."), name_token))(input)?;
+
+    let mut path = vec![first_part.string];
+    path.extend(other_parts.iter().map(|t| t.string));
+
+    let span = if other_parts.is_empty() {
+        first_part.span
+    } else {
+        let last_span = other_parts.last().unwrap().span;
+        (&first_part.span, &last_span).into()
+    };
+
+    Ok((input, Spanned { node: path, span }))
+}
+
+/// Parse preceding dots used to indicate parent module imports in import
+/// statements.
+pub fn dots_to_int<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<usize>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    let (input, toks) = many1(alt((op_string("."), op_string("..."))))(input)?;
+
+    let value = toks
+        .iter()
+        .map(|t| if t.string == "." { 1 } else { 3 })
+        .sum::<usize>()
+        - 1;
+
+    let span = {
+        let first_span = toks.first().unwrap().span;
+        let last_span = toks.last().unwrap().span;
+
+        (&first_span, &last_span).into()
+    };
+
+    Ok((input, Spanned { node: value, span }))
 }
 
 /// Parse an event definition statement.
