@@ -18,8 +18,51 @@ pub struct Module<'a> {
 pub enum ModuleStmt<'a> {
     EventDef {
         name: &'a str,
+        #[serde(borrow)]
         fields: Vec<Spanned<EventField<'a>>>,
     },
+    SimpleImport {
+        #[serde(borrow)]
+        names: Vec<Spanned<SimpleImportName<'a>>>,
+    },
+    FromImport {
+        #[serde(borrow)]
+        path: Spanned<FromImportPath<'a>>,
+        #[serde(borrow)]
+        names: Spanned<FromImportNames<'a>>,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub struct SimpleImportName<'a> {
+    pub path: Vec<&'a str>,
+    pub alias: Option<&'a str>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum FromImportPath<'a> {
+    Absolute {
+        #[serde(borrow)]
+        path: Vec<&'a str>,
+    },
+    Relative {
+        parent_level: usize,
+        #[serde(borrow)]
+        path: Vec<&'a str>,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum FromImportNames<'a> {
+    Star,
+    #[serde(borrow)]
+    List(Vec<Spanned<FromImportName<'a>>>),
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub struct FromImportName<'a> {
+    pub name: &'a str,
+    pub alias: Option<&'a str>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
