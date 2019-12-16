@@ -189,21 +189,13 @@ fn test_file_input_empty_file() {
 
 #[test]
 #[wasm_bindgen_test]
-fn test_file_input_one_stmt() {
+fn test_file_input() {
     assert_fixtures_parsed!(
         file_input,
         "fixtures/parsers/file_input/one_stmt_no_whitespace.ron",
         "fixtures/parsers/file_input/one_stmt_leading_whitespace.ron",
         "fixtures/parsers/file_input/one_stmt_leading_trailing.ron",
         "fixtures/parsers/file_input/one_stmt_form_feed.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_file_input_many_stmt() {
-    assert_fixtures_parsed!(
-        file_input,
         "fixtures/parsers/file_input/many_stmt_no_whitespace.ron",
         "fixtures/parsers/file_input/many_stmt_leading_whitespace.ron",
         "fixtures/parsers/file_input/many_stmt_leading_trailing.ron",
