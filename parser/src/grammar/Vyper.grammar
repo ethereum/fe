@@ -32,16 +32,16 @@ contract_def:
     contract_stmt+
     DEDENT
 
-contract_stmt: field_def | event_def | func_def
+contract_stmt: contract_field | event_def | func_def
 
-field_def: [field_qual] NAME ':' type NEWLINE
+contract_field: [contract_field_qual] NAME ':' type NEWLINE
 
 event_def:
     'event' NAME ':' NEWLINE
     INDENT
     event_field_def+
     DEDENT
-event_field_def: [event_field_qual] NAME ':' type NEWLINE
+event_field: [event_field_qual] NAME ':' type NEWLINE
 
 func_def:
     [func_qual] 'def' NAME '(' [arg_list] ')' ['->' base_type] ':' NEWLINE
@@ -56,7 +56,7 @@ map_type: 'map' '[' type ',' type ']' [arr_list]
 base_type: NAME [arr_list]
 arr_list: ('[' const_expr ']')+
 
-field_qual: 'const' | 'pub'
+contract_field_qual: 'const' | 'pub'
 event_field_qual: 'idx'
 func_qual: 'pub'
 
