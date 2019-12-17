@@ -205,7 +205,7 @@ pub fn module_stmt<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ModuleSt
 where
     E: ParseError<TokenSlice<'a>>,
 {
-    alt((import_stmt, event_def))(input)
+    alt((import_stmt, contract_def))(input)
 }
 
 /// Parse an import statement.
@@ -509,8 +509,47 @@ where
     Ok((input, Spanned { node: value, span }))
 }
 
+/// Parse a contract definition statement.
+pub fn contract_def<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ModuleStmt>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    // "contract" name ":" NEWLINE
+    let (input, contract_kw) = name_string("contract")(input)?;
+    let (input, name) = name_token(input)?;
+    let (input, _) = op_string(":")(input)?;
+    let (input, _) = newline_token(input)?;
+
+    // INDENT contract_stmt+ DEDENT
+    let (input, _) = indent_token(input)?;
+    let (input, body) = many1(contract_stmt)(input)?;
+    let (input, _) = dedent_token(input)?;
+
+    let last_stmt = body.last().unwrap();
+    let span = (&contract_kw.span, &last_stmt.span).into();
+
+    Ok((
+        input,
+        Spanned {
+            node: ContractDef {
+                name: name.string,
+                body,
+            },
+            span,
+        },
+    ))
+}
+
+/// Parse a contract statement.
+pub fn contract_stmt<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ContractStmt>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    event_def(input)
+}
+
 /// Parse an event definition statement.
-pub fn event_def<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ModuleStmt>, E>
+pub fn event_def<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ContractStmt>, E>
 where
     E: ParseError<TokenSlice<'a>>,
 {
@@ -531,7 +570,7 @@ where
     Ok((
         input,
         Spanned {
-            node: EventDef {
+            node: ContractStmt::EventDef {
                 name: name.string,
                 fields,
             },

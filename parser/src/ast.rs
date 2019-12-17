@@ -16,10 +16,10 @@ pub struct Module<'a> {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum ModuleStmt<'a> {
-    EventDef {
+    ContractDef {
         name: &'a str,
         #[serde(borrow)]
-        fields: Vec<Spanned<EventField<'a>>>,
+        body: Vec<Spanned<ContractStmt<'a>>>,
     },
     SimpleImport {
         #[serde(borrow)]
@@ -35,6 +35,15 @@ pub enum ModuleStmt<'a> {
         name: &'a str,
         #[serde(borrow)]
         typ: Type<'a>,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum ContractStmt<'a> {
+    EventDef {
+        name: &'a str,
+        #[serde(borrow)]
+        fields: Vec<Spanned<EventField<'a>>>,
     },
 }
 

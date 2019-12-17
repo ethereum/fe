@@ -1,62 +1,74 @@
         
-event Greet:
-    name: bytes32
-    age: uint8
+contract Test:
+    event Greet:
+        name: bytes32
+        age: uint8
 ---
 Spanned(
   node: Module(
     body: [
       Spanned(
-        node: EventDef(
-          name: "Greet",
-          fields: [
+        node: ContractDef(
+          name: "Test",
+          body: [
             Spanned(
-              node: EventField(
-                name: "name",
-                typ: Spanned(
-                  node: Base(
-                    base: "bytes32",
+              node: EventDef(
+                name: "Greet",
+                fields: [
+                  Spanned(
+                    node: EventField(
+                      name: "name",
+                      typ: Spanned(
+                        node: Base(
+                          base: "bytes32",
+                        ),
+                        span: Span(
+                          start: 55,
+                          end: 62,
+                        ),
+                      ),
+                    ),
+                    span: Span(
+                      start: 49,
+                      end: 62,
+                    ),
                   ),
-                  span: Span(
-                    start: 32,
-                    end: 39,
+                  Spanned(
+                    node: EventField(
+                      name: "age",
+                      typ: Spanned(
+                        node: Base(
+                          base: "uint8",
+                        ),
+                        span: Span(
+                          start: 76,
+                          end: 81,
+                        ),
+                      ),
+                    ),
+                    span: Span(
+                      start: 71,
+                      end: 81,
+                    ),
                   ),
-                ),
+                ],
               ),
               span: Span(
-                start: 26,
-                end: 39,
-              ),
-            ),
-            Spanned(
-              node: EventField(
-                name: "age",
-                typ: Spanned(
-                  node: Base(
-                    base: "uint8",
-                  ),
-                  span: Span(
-                    start: 49,
-                    end: 54,
-                  ),
-                ),
-              ),
-              span: Span(
-                start: 44,
-                end: 54,
+                start: 28,
+                end: 81,
               ),
             ),
           ],
         ),
         span: Span(
           start: 9,
-          end: 54,
+          end: 81,
         ),
       ),
     ],
   ),
   span: Span(
     start: 9,
-    end: 54,
+    end: 81,
   ),
 )
