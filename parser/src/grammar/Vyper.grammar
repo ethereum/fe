@@ -1,5 +1,5 @@
 file_input: module_stmt+ ENDMARKER
-module_stmt: import_stmt | interface_def | contract_def
+module_stmt: import_stmt | type_def | contract_def
 
 ########################### import_stmt ##############################
 
@@ -22,25 +22,47 @@ from_import_name: NAME ['as' NAME]
 
 dotted_name: NAME ('.' NAME)*
 
-########################### interface_def ############################
+########################### type_def #############################
 
-#interface_def: 'interface' NAME ':' NEWLINE INDENT interface_stmt+ DEDENT
-#interface_stmt: interface_prop_def | event_def | interface_func_def
-
-########################### event_def ################################
-
-#event_def: 'event' NAME ':' NEWLINE INDENT event_field_def+ DEDENT
-#event_field_def: NAME ':' ann_type_desc NEWLINE
+type_def: 'type' NAME '=' compound_type NEWLINE
 
 ########################### contract_def #############################
 
-#contract_def: 'contract' NAME ':' NEWLINE INDENT contract_stmt+ DEDENT
-#contract_stmt: event_def | func_def | field_def
+contract_def:
+    'contract' NAME ':' NEWLINE
+    INDENT
+    contract_stmt+
+    DEDENT
 
-#field_def: NAME ':' ann_type_desc ['=' const_expr] NEWLINE
+contract_stmt: field_def | event_def | func_def
 
-#ann_type_desc: NAME '(' ann_type_desc ')' | base_type_desc
-#base_type_desc: NAME ('[' const_expr ']')*
+field_def: [field_qual] NAME ':' compound_type NEWLINE
+
+event_def:
+    'event' NAME ':' NEWLINE
+    INDENT
+    event_field_def+
+    DEDENT
+event_field_def: [event_field_qual] NAME ':' compound_type NEWLINE
+
+func_def:
+    [func_qual] 'def' NAME '(' [arg_list] ')' ['->' base_type] ':' NEWLINE
+    INDENT
+    func_stmt+
+    DEDENT
+arg_list: compound_type (',' compound_type)* [',']
+arg_def: NAME ':' compound_type
+
+compound_type: map_type | base_type
+map_type: 'map' '[' compound_type ',' compound_type ']' [arr_list]
+base_type: NAME [arr_list]
+arr_list: ('[' const_expr ']')+
+
+field_qual: 'const' | 'pub'
+event_field_qual: 'idx'
+func_qual: 'pub'
+
+func_stmt: 'pass'
 
 ########################### const_expr ###############################
 
