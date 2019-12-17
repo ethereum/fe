@@ -31,6 +31,11 @@ pub enum ModuleStmt<'a> {
         #[serde(borrow)]
         names: Spanned<FromImportNames<'a>>,
     },
+    TypeDef {
+        name: &'a str,
+        #[serde(borrow)]
+        typ: Type<'a>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -66,20 +71,24 @@ pub struct FromImportName<'a> {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub struct TypeDesc<'a> {
-    pub base: &'a str,
-    pub dimensions: Vec<u32>,
-    pub annotations: Vec<&'a str>,
+pub enum Type<'a> {
+    Base {
+        base: &'a str,
+    },
+    Array {
+        typ: Box<Spanned<Type<'a>>>,
+        dimension: usize,
+    },
+    Map {
+        from: Box<Spanned<Type<'a>>>,
+        to: Box<Spanned<Type<'a>>>,
+    },
 }
 
-impl<'a> From<&'a Token<'a>> for Spanned<TypeDesc<'a>> {
+impl<'a> From<&'a Token<'a>> for Spanned<Type<'a>> {
     fn from(token: &'a Token<'a>) -> Self {
         Spanned {
-            node: TypeDesc {
-                base: token.string,
-                dimensions: vec![],
-                annotations: vec![],
-            },
+            node: Type::Base { base: token.string },
             span: token.span,
         }
     }
@@ -88,7 +97,8 @@ impl<'a> From<&'a Token<'a>> for Spanned<TypeDesc<'a>> {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct EventField<'a> {
     pub name: &'a str,
-    pub typ: Spanned<TypeDesc<'a>>,
+    #[serde(borrow)]
+    pub typ: Spanned<Type<'a>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]

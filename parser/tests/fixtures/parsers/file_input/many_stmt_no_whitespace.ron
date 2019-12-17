@@ -16,10 +16,8 @@ Spanned(
               node: EventField(
                 name: "name",
                 typ: Spanned(
-                  node: TypeDesc(
+                  node: Base(
                     base: "bytes32",
-                    dimensions: [],
-                    annotations: [],
                   ),
                   span: Span(
                     start: 23,
@@ -36,10 +34,8 @@ Spanned(
               node: EventField(
                 name: "age",
                 typ: Spanned(
-                  node: TypeDesc(
+                  node: Base(
                     base: "uint8",
-                    dimensions: [],
-                    annotations: [],
                   ),
                   span: Span(
                     start: 40,
@@ -67,10 +63,8 @@ Spanned(
               node: EventField(
                 name: "info1",
                 typ: Spanned(
-                  node: TypeDesc(
+                  node: Base(
                     base: "uint256",
-                    dimensions: [],
-                    annotations: [],
                   ),
                   span: Span(
                     start: 70,
@@ -87,10 +81,8 @@ Spanned(
               node: EventField(
                 name: "info2",
                 typ: Spanned(
-                  node: TypeDesc(
+                  node: Base(
                     base: "bool",
-                    dimensions: [],
-                    annotations: [],
                   ),
                   span: Span(
                     start: 89,
