@@ -22,7 +22,7 @@ from_import_name: NAME ['as' NAME]
 
 ########################### type_def #################################
 
-type_def: 'type' NAME '=' compound_type NEWLINE
+type_def: 'type' NAME '=' type NEWLINE
 
 ########################### contract_def #############################
 
@@ -34,14 +34,14 @@ contract_def:
 
 contract_stmt: field_def | event_def | func_def
 
-field_def: [field_qual] NAME ':' compound_type NEWLINE
+field_def: [field_qual] NAME ':' type NEWLINE
 
 event_def:
     'event' NAME ':' NEWLINE
     INDENT
     event_field_def+
     DEDENT
-event_field_def: [event_field_qual] NAME ':' compound_type NEWLINE
+event_field_def: [event_field_qual] NAME ':' type NEWLINE
 
 func_def:
     [func_qual] 'def' NAME '(' [arg_list] ')' ['->' base_type] ':' NEWLINE
@@ -49,10 +49,10 @@ func_def:
     func_stmt+
     DEDENT
 arg_list: arg_def (',' arg_def)* [',']
-arg_def: NAME ':' compound_type
+arg_def: NAME ':' type
 
-compound_type: map_type | base_type
-map_type: 'map' '[' compound_type ',' compound_type ']' [arr_list]
+type: map_type | base_type
+map_type: 'map' '[' type ',' type ']' [arr_list]
 base_type: NAME [arr_list]
 arr_list: ('[' const_expr ']')+
 
