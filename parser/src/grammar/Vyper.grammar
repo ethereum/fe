@@ -20,9 +20,7 @@ from_import_names: '*' | '(' from_import_names_list ')' | from_import_names_list
 from_import_names_list: from_import_name (',' from_import_name)* [',']
 from_import_name: NAME ['as' NAME]
 
-dotted_name: NAME ('.' NAME)*
-
-########################### type_def #############################
+########################### type_def #################################
 
 type_def: 'type' NAME '=' compound_type NEWLINE
 
@@ -62,7 +60,9 @@ field_qual: 'const' | 'pub'
 event_field_qual: 'idx'
 func_qual: 'pub'
 
-func_stmt: 'pass'
+func_stmt: pass_stmt NEWLINE
+
+pass_stmt: 'pass'
 
 ########################### const_expr ###############################
 
@@ -74,3 +74,7 @@ const_power: const_atom '**' const_factor | const_atom
 const_atom: const_group | NAME | NUMBER
 
 const_group: '(' const_expr ')'
+
+########################### common ###################################
+
+dotted_name: NAME ('.' NAME)*
