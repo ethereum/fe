@@ -34,7 +34,7 @@ pub enum ModuleStmt<'a> {
     TypeDef {
         name: &'a str,
         #[serde(borrow)]
-        typ: Type<'a>,
+        typ: TypeDesc<'a>,
     },
 }
 
@@ -80,24 +80,24 @@ pub struct FromImportName<'a> {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub enum Type<'a> {
+pub enum TypeDesc<'a> {
     Base {
         base: &'a str,
     },
     Array {
-        typ: Box<Spanned<Type<'a>>>,
+        typ: Box<Spanned<TypeDesc<'a>>>,
         dimension: usize,
     },
     Map {
-        from: Box<Spanned<Type<'a>>>,
-        to: Box<Spanned<Type<'a>>>,
+        from: Box<Spanned<TypeDesc<'a>>>,
+        to: Box<Spanned<TypeDesc<'a>>>,
     },
 }
 
-impl<'a> From<&'a Token<'a>> for Spanned<Type<'a>> {
+impl<'a> From<&'a Token<'a>> for Spanned<TypeDesc<'a>> {
     fn from(token: &'a Token<'a>) -> Self {
         Spanned {
-            node: Type::Base { base: token.string },
+            node: TypeDesc::Base { base: token.string },
             span: token.span,
         }
     }
@@ -107,7 +107,7 @@ impl<'a> From<&'a Token<'a>> for Spanned<Type<'a>> {
 pub struct EventField<'a> {
     pub name: &'a str,
     #[serde(borrow)]
-    pub typ: Spanned<Type<'a>>,
+    pub typ: Spanned<TypeDesc<'a>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
