@@ -16,11 +16,15 @@ impl Span {
     pub fn new(start: usize, end: usize) -> Self {
         Span { start, end }
     }
-}
 
-impl From<(&Span, &Span)> for Span {
-    fn from(spans: (&Span, &Span)) -> Self {
-        let (start_span, end_span) = spans;
+    #[inline]
+    pub fn from_pair<S, E>(start_elem: S, end_elem: E) -> Self
+    where
+        S: Into<Span>,
+        E: Into<Span>,
+    {
+        let start_span: Span = start_elem.into();
+        let end_span: Span = end_elem.into();
 
         Self {
             start: start_span.start,
@@ -33,4 +37,10 @@ impl From<(&Span, &Span)> for Span {
 pub struct Spanned<T> {
     pub node: T,
     pub span: Span,
+}
+
+impl<T> From<&Spanned<T>> for Span {
+    fn from(spanned: &Spanned<T>) -> Span {
+        spanned.span
+    }
 }

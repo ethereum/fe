@@ -25,7 +25,10 @@ use nom::IResult;
 use crate::ast::ModuleStmt::*;
 use crate::ast::*;
 use crate::errors::make_error;
-use crate::span::Spanned;
+use crate::span::{
+    Span,
+    Spanned,
+};
 use crate::tokenizer::tokenize::{
     tokenize,
     TokenizeError,
@@ -185,10 +188,10 @@ where
     let (input, _) = endmarker_token(input)?;
 
     let span = {
-        let first_span = body.first().unwrap().span;
-        let last_span = body.last().unwrap().span;
+        let first = body.first().unwrap();
+        let last = body.last().unwrap();
 
-        (&first_span, &last_span).into()
+        Span::from_pair(first, last)
     };
 
     Ok((
@@ -229,9 +232,8 @@ where
     result.append(&mut other_names);
 
     let span = {
-        let last_span = result.last().unwrap().span;
-
-        (&import_kw.span, &last_span).into()
+        let last = result.last().unwrap();
+        Span::from_pair(import_kw, last)
     };
 
     Ok((
@@ -252,7 +254,7 @@ where
 
     let span = {
         match alias {
-            Some(alias_tok) => (&path.span, &alias_tok.span).into(),
+            Some(alias_tok) => Span::from_pair(&path, alias_tok),
             None => path.span,
         }
     };
@@ -295,13 +297,13 @@ where
         },
         span: parent_level.span,
     };
-    let names_span = names.span;
+    let span = Span::from_pair(from_kw, names.span);
 
     Ok((
         input,
         Spanned {
             node: FromImport { path, names },
-            span: (&from_kw.span, &names_span).into(),
+            span,
         },
     ))
 }
@@ -316,13 +318,13 @@ where
     let (input, _) = name_string("import")(input)?;
     let (input, names) = from_import_names(input)?;
 
-    let names_span = names.span;
+    let span = Span::from_pair(from_kw, names.span);
 
     Ok((
         input,
         Spanned {
             node: FromImport { path, names },
-            span: (&from_kw.span, &names_span).into(),
+            span,
         },
     ))
 }
@@ -336,13 +338,16 @@ where
     let (input, dotted_name) = dotted_name(input)?;
 
     let result = match opt_parent_level {
-        Some(parent_level) => Spanned {
-            node: FromImportPath::Relative {
-                parent_level: parent_level.node,
-                path: dotted_name.node,
-            },
-            span: (&parent_level.span, &dotted_name.span).into(),
-        },
+        Some(parent_level) => {
+            let span = Span::from_pair(&parent_level, &dotted_name);
+            Spanned {
+                node: FromImportPath::Relative {
+                    parent_level: parent_level.node,
+                    path: dotted_name.node,
+                },
+                span,
+            }
+        }
         None => Spanned {
             node: FromImportPath::Absolute {
                 path: dotted_name.node,
@@ -400,7 +405,7 @@ where
         input,
         Spanned {
             node: names.node,
-            span: (&l_paren.span, &r_paren.span).into(),
+            span: Span::from_pair(l_paren, r_paren),
         },
     ))
 }
@@ -420,12 +425,12 @@ where
     names.append(&mut other_names);
 
     let span = {
-        let first_span = names.first().unwrap().span;
+        let first = names.first().unwrap();
         match comma_tok {
-            Some(tok) => (&first_span, &tok.span).into(),
+            Some(tok) => Span::from_pair(first, tok),
             None => {
-                let last_span = names.last().unwrap().span;
-                (&first_span, &last_span).into()
+                let last = names.last().unwrap();
+                Span::from_pair(first, last)
             }
         }
     };
@@ -448,7 +453,7 @@ where
     let (input, alias) = opt(preceded(name_string("as"), name_token))(input)?;
 
     let span = match alias {
-        Some(alias_tok) => (&name.span, &alias_tok.span).into(),
+        Some(alias_tok) => Span::from_pair(name, alias_tok),
         None => name.span,
     };
 
@@ -478,8 +483,8 @@ where
     let span = if other_parts.is_empty() {
         first_part.span
     } else {
-        let last_span = other_parts.last().unwrap().span;
-        (&first_part.span, &last_span).into()
+        let last_part = other_parts.last().unwrap();
+        Span::from_pair(first_part, *last_part)
     };
 
     Ok((input, Spanned { node: path, span }))
@@ -500,10 +505,10 @@ where
         - 1;
 
     let span = {
-        let first_span = toks.first().unwrap().span;
-        let last_span = toks.last().unwrap().span;
+        let first = toks.first().unwrap();
+        let last = toks.last().unwrap();
 
-        (&first_span, &last_span).into()
+        Span::from_pair(*first, *last)
     };
 
     Ok((input, Spanned { node: value, span }))
@@ -526,7 +531,7 @@ where
     let (input, _) = dedent_token(input)?;
 
     let last_stmt = body.last().unwrap();
-    let span = (&contract_kw.span, &last_stmt.span).into();
+    let span = Span::from_pair(contract_kw, last_stmt);
 
     Ok((
         input,
@@ -565,7 +570,7 @@ where
     let (input, _) = dedent_token(input)?;
 
     let last_field = fields.last().unwrap();
-    let span = (&event_kw.span, &last_field.span).into();
+    let span = Span::from_pair(event_kw, last_field);
 
     Ok((
         input,
@@ -589,6 +594,8 @@ where
     let (input, typ) = name_token(input)?;
     let (input, _) = newline_token(input)?;
 
+    let span = Span::from_pair(name, typ);
+
     Ok((
         input,
         Spanned {
@@ -596,7 +603,7 @@ where
                 name: name.string,
                 typ: typ.into(),
             },
-            span: (&name.span, &typ.span).into(),
+            span,
         },
     ))
 }
@@ -614,7 +621,7 @@ where
 
     let mut left_expr = head;
     for (op_tok, right_expr) in tail {
-        let span = (&left_expr.span, &right_expr.span).into();
+        let span = Span::from_pair(&left_expr, &right_expr);
 
         left_expr = Spanned {
             node: ConstExpr::BinOp {
@@ -644,7 +651,7 @@ where
 
     let mut left_expr = head;
     for (op_tok, right_expr) in tail {
-        let span = (&left_expr.span, &right_expr.span).into();
+        let span = Span::from_pair(&left_expr, &right_expr);
 
         left_expr = Spanned {
             node: ConstExpr::BinOp {
@@ -672,7 +679,7 @@ where
         ),
         |res| {
             let (op_tok, operand) = res;
-            let span = (&op_tok.span, &operand.span).into();
+            let span = Span::from_pair(op_tok, &operand);
 
             Spanned {
                 node: ConstExpr::UnaryOp {
@@ -697,7 +704,7 @@ where
         separated_pair(const_atom, op_string("**"), const_factor),
         |res| {
             let (left, right) = res;
-            let span = (&left.span, &right.span).into();
+            let span = Span::from_pair(&left, &right);
 
             Spanned {
                 node: ConstExpr::BinOp {
@@ -746,7 +753,7 @@ where
         input,
         Spanned {
             node: spanned_expr.node,
-            span: (&l_paren.span, &r_paren.span).into(),
+            span: Span::from_pair(l_paren, r_paren),
         },
     ))
 }

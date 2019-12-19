@@ -39,3 +39,9 @@ pub struct Token<'a> {
     /// The text content of the line from which a token was parsed.
     pub line: &'a str,
 }
+
+impl<'a> From<&Token<'a>> for Span {
+    fn from(token: &Token) -> Span {
+        token.span
+    }
+}
