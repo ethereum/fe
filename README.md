@@ -1,7 +1,7 @@
 # Rust Vyper
 
-[![Build Status](https://circleci.com/gh/davesque/rust-vyper.svg?style=shield)](https://circleci.com/gh/davesque/rust-vyper)
-[![Coverage](https://codecov.io/gh/davesque/rust-vyper/branch/master/graph/badge.svg)](https://codecov.io/gh/davesque/rust-vyper)
+[![Build Status](https://circleci.com/gh/ethereum/rust-vyper.svg?style=shield)](https://circleci.com/gh/ethereum/rust-vyper)
+[![Coverage](https://codecov.io/gh/ethereum/rust-vyper/branch/master/graph/badge.svg)](https://codecov.io/gh/ethereum/rust-vyper)
 
 ## Overview
 
