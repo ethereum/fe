@@ -52,9 +52,9 @@ arg_list: arg_def (',' arg_def)* [',']
 arg_def: NAME ':' type_desc
 
 type_desc: map_type | base_type
-map_type: 'map' '[' type_desc ',' type_desc ']' [arr_list]
-base_type: NAME [arr_list]
-arr_list: ('[' const_expr ']')+
+map_type: 'map' '<' base_type ',' type_desc '>' arr_list
+base_type: NAME arr_list
+arr_list: ('[' const_expr ']')*
 
 contract_field_qual: 'const' | 'pub'
 event_field_qual: 'idx'
