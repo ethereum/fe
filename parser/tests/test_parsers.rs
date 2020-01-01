@@ -32,10 +32,10 @@ type SimpleError<I> = (I, ErrorKind);
 /// token.  Parsers defined lower in the grammar tree are not intended to handle
 /// that kind of tokenization.  This combinator modifies lower-level parsers to
 /// handle such tokenizations to facilitate unit testing.
-fn standalone<'a, O, E, F>(parser: F) -> impl Fn(TokenSlice<'a>) -> TokenResult<'a, O, E>
+fn standalone<'a, O, E, F>(parser: F) -> impl Fn(TokenSlice<'a>) -> ParseResult<'a, O, E>
 where
     E: ParseError<TokenSlice<'a>>,
-    F: Fn(TokenSlice<'a>) -> TokenResult<'a, O, E>,
+    F: Fn(TokenSlice<'a>) -> ParseResult<'a, O, E>,
 {
     move |input: TokenSlice<'a>| {
         let (input, o) = parser(input)?;
@@ -49,10 +49,10 @@ where
 /// Convert a parser into one that can function as a standalone parser that
 /// applies itself one or more times to an input and returns all outputs in a
 /// vector.
-fn standalone_vec<'a, O, E, F>(parser: F) -> impl Fn(TokenSlice<'a>) -> TokenResult<'a, Vec<O>, E>
+fn standalone_vec<'a, O, E, F>(parser: F) -> impl Fn(TokenSlice<'a>) -> ParseResult<'a, Vec<O>, E>
 where
     E: ParseError<TokenSlice<'a>>,
-    F: Fn(TokenSlice<'a>) -> TokenResult<'a, O, E> + Copy,
+    F: Fn(TokenSlice<'a>) -> ParseResult<'a, O, E> + Copy,
 {
     move |input: TokenSlice<'a>| {
         let (input, o) = many1(terminated(parser, newline_token))(input)?;
@@ -71,7 +71,7 @@ macro_rules! assert_parser_ok {
     ($parser:expr, $examples:expr) => {{
         for (inp, expected) in $examples {
             let tokens = get_parse_tokens(inp).unwrap();
-            let actual: TokenResult<_, SimpleError<_>> = $parser(&tokens[..]);
+            let actual: ParseResult<_, SimpleError<_>> = $parser(&tokens[..]);
 
             assert_eq!(actual, expected);
         }
@@ -82,7 +82,7 @@ macro_rules! assert_parser_ok {
     ($parser:expr, $examples:expr, $expected:expr) => {{
         for inp in $examples {
             let tokens = get_parse_tokens(inp).unwrap();
-            let actual: TokenResult<_, SimpleError<_>> = $parser(&tokens[..]);
+            let actual: ParseResult<_, SimpleError<_>> = $parser(&tokens[..]);
 
             assert_eq!(actual, $expected);
         }
@@ -103,7 +103,7 @@ macro_rules! assert_fixtures_parsed {
 
         for (filename, (inp, expected_ser)) in test_files {
             let tokens = get_parse_tokens(inp).unwrap();
-            let actual: TokenResult<_, VerboseError<_>> = $parser(&tokens[..]);
+            let actual: ParseResult<_, VerboseError<_>> = $parser(&tokens[..]);
 
             if let Err(err) = &actual {
                 match err {

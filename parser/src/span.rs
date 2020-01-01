@@ -13,6 +13,7 @@ pub struct Span {
 }
 
 impl Span {
+    #[inline]
     pub fn new(start: usize, end: usize) -> Self {
         Span { start, end }
     }
