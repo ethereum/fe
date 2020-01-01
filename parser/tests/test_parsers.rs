@@ -3,11 +3,6 @@ extern crate wasm_bindgen_test;
 #[macro_use]
 mod utils;
 
-use nom::error::{
-    ErrorKind,
-    ParseError,
-    VerboseError,
-};
 use nom::multi::many1;
 use nom::sequence::terminated;
 use nom::Err as NomErr;
@@ -25,17 +20,14 @@ use vyper_parser::span::{
     Spanned,
 };
 
-type SimpleError<I> = (I, ErrorKind);
-
 /// Convert a parser into one that can function as a standalone file parser.
 /// File tokenizations always include a trailing `NEWLINE` and `ENDMARKER`
 /// token.  Parsers defined lower in the grammar tree are not intended to handle
 /// that kind of tokenization.  This combinator modifies lower-level parsers to
 /// handle such tokenizations to facilitate unit testing.
-fn standalone<'a, O, E, F>(parser: F) -> impl Fn(Cursor<'a>) -> ParseResult<'a, O, E>
+fn standalone<'a, O, F>(parser: F) -> impl Fn(Cursor<'a>) -> ParseResult<'a, O>
 where
-    E: ParseError<Cursor<'a>>,
-    F: Fn(Cursor<'a>) -> ParseResult<'a, O, E>,
+    F: Fn(Cursor<'a>) -> ParseResult<'a, O>,
 {
     move |input: Cursor<'a>| {
         let (input, o) = parser(input)?;
@@ -49,10 +41,9 @@ where
 /// Convert a parser into one that can function as a standalone parser that
 /// applies itself one or more times to an input and returns all outputs in a
 /// vector.
-fn standalone_vec<'a, O, E, F>(parser: F) -> impl Fn(Cursor<'a>) -> ParseResult<'a, Vec<O>, E>
+fn standalone_vec<'a, O, F>(parser: F) -> impl Fn(Cursor<'a>) -> ParseResult<'a, Vec<O>>
 where
-    E: ParseError<Cursor<'a>>,
-    F: Fn(Cursor<'a>) -> ParseResult<'a, O, E> + Copy,
+    F: Fn(Cursor<'a>) -> ParseResult<'a, O> + Copy,
 {
     move |input: Cursor<'a>| {
         let (input, o) = many1(terminated(parser, newline_token))(input)?;
@@ -71,7 +62,7 @@ macro_rules! assert_parser_ok {
     ($parser:expr, $examples:expr) => {{
         for (inp, expected) in $examples {
             let tokens = get_parse_tokens(inp).unwrap();
-            let actual: ParseResult<_, SimpleError<_>> = $parser(&tokens[..]);
+            let actual = $parser(&tokens[..]);
 
             assert_eq!(actual, expected);
         }
@@ -82,7 +73,7 @@ macro_rules! assert_parser_ok {
     ($parser:expr, $examples:expr, $expected:expr) => {{
         for inp in $examples {
             let tokens = get_parse_tokens(inp).unwrap();
-            let actual: ParseResult<_, SimpleError<_>> = $parser(&tokens[..]);
+            let actual = $parser(&tokens[..]);
 
             assert_eq!(actual, $expected);
         }
@@ -103,7 +94,7 @@ macro_rules! assert_fixtures_parsed {
 
         for (filename, (inp, expected_ser)) in test_files {
             let tokens = get_parse_tokens(inp).unwrap();
-            let actual: ParseResult<_, VerboseError<_>> = $parser(&tokens[..]);
+            let actual = $parser(&tokens[..]);
 
             if let Err(err) = &actual {
                 match err {
