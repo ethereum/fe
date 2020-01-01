@@ -18,7 +18,7 @@ pub enum TokenType {
     DEDENT,
 
     NEWLINE, // Grammatically significant newlines
-    NL,      // Whitespace newlines (useful in case source should be reconstructed from tokens)
+    NL,      // Whitespace newlines
     ENDMARKER,
 
     ERRORTOKEN,
