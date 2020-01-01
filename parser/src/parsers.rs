@@ -608,6 +608,138 @@ where
     ))
 }
 
+pub fn type_desc<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<TypeDesc>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    alt((map_type, base_type))(input)
+}
+
+pub fn map_type<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<TypeDesc>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    alt((map_type_double, map_type_single))(input)
+}
+
+pub fn map_type_double<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<TypeDesc>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    let (input, map_kw_1) = name_string("map")(input)?;
+    let (input, _) = op_string("<")(input)?;
+    let (input, from_1) = base_type(input)?;
+    let (input, _) = op_string(",")(input)?;
+
+    let (input, map_kw_2) = name_string("map")(input)?;
+    let (input, _) = op_string("<")(input)?;
+    let (input, from_2) = base_type(input)?;
+    let (input, _) = op_string(",")(input)?;
+
+    let (input, to) = type_desc(input)?;
+    let (input, r_bracket) = op_string(">>")(input)?;
+
+    let inner_map = Spanned {
+        node: TypeDesc::Map {
+            from: Box::new(from_2),
+            to: Box::new(to),
+        },
+        span: Span::new(map_kw_2.span.start, r_bracket.span.end - 1),
+    };
+
+    Ok((
+        input,
+        Spanned {
+            node: TypeDesc::Map {
+                from: Box::new(from_1),
+                to: Box::new(inner_map),
+            },
+            span: Span::from_pair(map_kw_1, r_bracket),
+        },
+    ))
+}
+
+pub fn map_type_single<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<TypeDesc>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    let (input, map_kw) = name_string("map")(input)?;
+    let (input, _) = op_string("<")(input)?;
+    let (input, from) = base_type(input)?;
+    let (input, _) = op_string(",")(input)?;
+    let (input, to) = type_desc(input)?;
+    let (input, r_bracket) = op_string(">")(input)?;
+
+    Ok((
+        input,
+        Spanned {
+            node: TypeDesc::Map {
+                from: Box::new(from),
+                to: Box::new(to),
+            },
+            span: Span::from_pair(map_kw, r_bracket),
+        },
+    ))
+}
+
+pub fn base_type<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<TypeDesc>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    let (input, base) = name_token(input)?;
+    let (input, dims) = arr_list(input)?;
+
+    let mut result = Spanned {
+        node: TypeDesc::Base { base: base.string },
+        span: base.into(),
+    };
+    for dim in dims {
+        let span = Span::from_pair(&result, &dim);
+
+        result = Spanned {
+            node: TypeDesc::Array {
+                typ: Box::new(result),
+                dimension: dim.node,
+            },
+            span,
+        };
+    }
+
+    Ok((input, result))
+}
+
+pub fn arr_list<'a, E>(input: TokenSlice<'a>) -> TokenResult<Vec<Spanned<usize>>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    many0(arr_dim)(input)
+}
+
+pub fn arr_dim<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<usize>, E>
+where
+    E: ParseError<TokenSlice<'a>>,
+{
+    let (num_input, l_bracket) = op_string("[")(input)?;
+    let (input, num_tok) = number_token(num_input)?;
+    let (input, r_bracket) = op_string("]")(input)?;
+
+    let n: usize = match num_tok.string.parse() {
+        Ok(n) => n,
+        Err(_) => return make_error(num_input, ErrorKind::ParseTo),
+    };
+    if n < 1 {
+        return make_error(num_input, ErrorKind::ParseTo);
+    }
+
+    Ok((
+        input,
+        Spanned {
+            node: n,
+            span: Span::from_pair(l_bracket, r_bracket),
+        },
+    ))
+}
+
 /// Parse a constant expression that can be evaluated at compile-time.
 pub fn const_expr<'a, E>(input: TokenSlice<'a>) -> TokenResult<Spanned<ConstExpr>, E>
 where

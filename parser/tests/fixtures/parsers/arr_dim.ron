@@ -1,0 +1,19 @@
+[10]
+[2]
+---
+[
+  Spanned(
+    node: 10,
+    span: Span(
+      start: 0,
+      end: 4,
+    ),
+  ),
+  Spanned(
+    node: 2,
+    span: Span(
+      start: 5,
+      end: 8,
+    ),
+  ),
+]

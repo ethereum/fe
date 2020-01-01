@@ -1,0 +1,344 @@
+map<address, bytes[100]>
+map<MyType, map<bool, uint128>>
+map<MyType, map<bool, uint128> >
+map<MyType, map<bool, map<asdf, foo>>>
+map<MyType, map<bool, map<asdf, map<foo, bar>>>>
+map<MyType, map<bool, map<asdf, map<foo, bar> > > >
+---
+[
+  Spanned(
+    node: Map(
+      from: Spanned(
+        node: Base(
+          base: "address",
+        ),
+        span: Span(
+          start: 4,
+          end: 11,
+        ),
+      ),
+      to: Spanned(
+        node: Array(
+          typ: Spanned(
+            node: Base(
+              base: "bytes",
+            ),
+            span: Span(
+              start: 13,
+              end: 18,
+            ),
+          ),
+          dimension: 100,
+        ),
+        span: Span(
+          start: 13,
+          end: 23,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 0,
+      end: 24,
+    ),
+  ),
+  Spanned(
+    node: Map(
+      from: Spanned(
+        node: Base(
+          base: "MyType",
+        ),
+        span: Span(
+          start: 29,
+          end: 35,
+        ),
+      ),
+      to: Spanned(
+        node: Map(
+          from: Spanned(
+            node: Base(
+              base: "bool",
+            ),
+            span: Span(
+              start: 41,
+              end: 45,
+            ),
+          ),
+          to: Spanned(
+            node: Base(
+              base: "uint128",
+            ),
+            span: Span(
+              start: 47,
+              end: 54,
+            ),
+          ),
+        ),
+        span: Span(
+          start: 37,
+          end: 55,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 25,
+      end: 56,
+    ),
+  ),
+  Spanned(
+    node: Map(
+      from: Spanned(
+        node: Base(
+          base: "MyType",
+        ),
+        span: Span(
+          start: 61,
+          end: 67,
+        ),
+      ),
+      to: Spanned(
+        node: Map(
+          from: Spanned(
+            node: Base(
+              base: "bool",
+            ),
+            span: Span(
+              start: 73,
+              end: 77,
+            ),
+          ),
+          to: Spanned(
+            node: Base(
+              base: "uint128",
+            ),
+            span: Span(
+              start: 79,
+              end: 86,
+            ),
+          ),
+        ),
+        span: Span(
+          start: 69,
+          end: 87,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 57,
+      end: 89,
+    ),
+  ),
+  Spanned(
+    node: Map(
+      from: Spanned(
+        node: Base(
+          base: "MyType",
+        ),
+        span: Span(
+          start: 94,
+          end: 100,
+        ),
+      ),
+      to: Spanned(
+        node: Map(
+          from: Spanned(
+            node: Base(
+              base: "bool",
+            ),
+            span: Span(
+              start: 106,
+              end: 110,
+            ),
+          ),
+          to: Spanned(
+            node: Map(
+              from: Spanned(
+                node: Base(
+                  base: "asdf",
+                ),
+                span: Span(
+                  start: 116,
+                  end: 120,
+                ),
+              ),
+              to: Spanned(
+                node: Base(
+                  base: "foo",
+                ),
+                span: Span(
+                  start: 122,
+                  end: 125,
+                ),
+              ),
+            ),
+            span: Span(
+              start: 112,
+              end: 126,
+            ),
+          ),
+        ),
+        span: Span(
+          start: 102,
+          end: 127,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 90,
+      end: 128,
+    ),
+  ),
+  Spanned(
+    node: Map(
+      from: Spanned(
+        node: Base(
+          base: "MyType",
+        ),
+        span: Span(
+          start: 133,
+          end: 139,
+        ),
+      ),
+      to: Spanned(
+        node: Map(
+          from: Spanned(
+            node: Base(
+              base: "bool",
+            ),
+            span: Span(
+              start: 145,
+              end: 149,
+            ),
+          ),
+          to: Spanned(
+            node: Map(
+              from: Spanned(
+                node: Base(
+                  base: "asdf",
+                ),
+                span: Span(
+                  start: 155,
+                  end: 159,
+                ),
+              ),
+              to: Spanned(
+                node: Map(
+                  from: Spanned(
+                    node: Base(
+                      base: "foo",
+                    ),
+                    span: Span(
+                      start: 165,
+                      end: 168,
+                    ),
+                  ),
+                  to: Spanned(
+                    node: Base(
+                      base: "bar",
+                    ),
+                    span: Span(
+                      start: 170,
+                      end: 173,
+                    ),
+                  ),
+                ),
+                span: Span(
+                  start: 161,
+                  end: 174,
+                ),
+              ),
+            ),
+            span: Span(
+              start: 151,
+              end: 175,
+            ),
+          ),
+        ),
+        span: Span(
+          start: 141,
+          end: 176,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 129,
+      end: 177,
+    ),
+  ),
+  Spanned(
+    node: Map(
+      from: Spanned(
+        node: Base(
+          base: "MyType",
+        ),
+        span: Span(
+          start: 182,
+          end: 188,
+        ),
+      ),
+      to: Spanned(
+        node: Map(
+          from: Spanned(
+            node: Base(
+              base: "bool",
+            ),
+            span: Span(
+              start: 194,
+              end: 198,
+            ),
+          ),
+          to: Spanned(
+            node: Map(
+              from: Spanned(
+                node: Base(
+                  base: "asdf",
+                ),
+                span: Span(
+                  start: 204,
+                  end: 208,
+                ),
+              ),
+              to: Spanned(
+                node: Map(
+                  from: Spanned(
+                    node: Base(
+                      base: "foo",
+                    ),
+                    span: Span(
+                      start: 214,
+                      end: 217,
+                    ),
+                  ),
+                  to: Spanned(
+                    node: Base(
+                      base: "bar",
+                    ),
+                    span: Span(
+                      start: 219,
+                      end: 222,
+                    ),
+                  ),
+                ),
+                span: Span(
+                  start: 210,
+                  end: 223,
+                ),
+              ),
+            ),
+            span: Span(
+              start: 200,
+              end: 225,
+            ),
+          ),
+        ),
+        span: Span(
+          start: 190,
+          end: 227,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 178,
+      end: 229,
+    ),
+  ),
+]

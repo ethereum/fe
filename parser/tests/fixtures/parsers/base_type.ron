@@ -1,0 +1,60 @@
+MyType
+fixed128x18[1]
+bool[1][2]
+---
+[
+  Spanned(
+    node: Base(
+      base: "MyType",
+    ),
+    span: Span(
+      start: 0,
+      end: 6,
+    ),
+  ),
+  Spanned(
+    node: Array(
+      typ: Spanned(
+        node: Base(
+          base: "fixed128x18",
+        ),
+        span: Span(
+          start: 7,
+          end: 18,
+        ),
+      ),
+      dimension: 1,
+    ),
+    span: Span(
+      start: 7,
+      end: 21,
+    ),
+  ),
+  Spanned(
+    node: Array(
+      typ: Spanned(
+        node: Array(
+          typ: Spanned(
+            node: Base(
+              base: "bool",
+            ),
+            span: Span(
+              start: 22,
+              end: 26,
+            ),
+          ),
+          dimension: 1,
+        ),
+        span: Span(
+          start: 22,
+          end: 29,
+        ),
+      ),
+      dimension: 2,
+    ),
+    span: Span(
+      start: 22,
+      end: 32,
+    ),
+  ),
+]

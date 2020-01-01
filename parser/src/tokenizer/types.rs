@@ -25,7 +25,7 @@ pub enum TokenType {
 }
 
 /// A token parsed from a source string.
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 pub struct Token<'a> {
     /// The type of a token.
     pub typ: TokenType,
