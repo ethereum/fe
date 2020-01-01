@@ -32,12 +32,12 @@ type SimpleError<I> = (I, ErrorKind);
 /// token.  Parsers defined lower in the grammar tree are not intended to handle
 /// that kind of tokenization.  This combinator modifies lower-level parsers to
 /// handle such tokenizations to facilitate unit testing.
-fn standalone<'a, O, E, F>(parser: F) -> impl Fn(TokenSlice<'a>) -> ParseResult<'a, O, E>
+fn standalone<'a, O, E, F>(parser: F) -> impl Fn(Cursor<'a>) -> ParseResult<'a, O, E>
 where
-    E: ParseError<TokenSlice<'a>>,
-    F: Fn(TokenSlice<'a>) -> ParseResult<'a, O, E>,
+    E: ParseError<Cursor<'a>>,
+    F: Fn(Cursor<'a>) -> ParseResult<'a, O, E>,
 {
-    move |input: TokenSlice<'a>| {
+    move |input: Cursor<'a>| {
         let (input, o) = parser(input)?;
         let (input, _) = newline_token(input)?;
         let (input, _) = endmarker_token(input)?;
@@ -49,12 +49,12 @@ where
 /// Convert a parser into one that can function as a standalone parser that
 /// applies itself one or more times to an input and returns all outputs in a
 /// vector.
-fn standalone_vec<'a, O, E, F>(parser: F) -> impl Fn(TokenSlice<'a>) -> ParseResult<'a, Vec<O>, E>
+fn standalone_vec<'a, O, E, F>(parser: F) -> impl Fn(Cursor<'a>) -> ParseResult<'a, Vec<O>, E>
 where
-    E: ParseError<TokenSlice<'a>>,
-    F: Fn(TokenSlice<'a>) -> ParseResult<'a, O, E> + Copy,
+    E: ParseError<Cursor<'a>>,
+    F: Fn(Cursor<'a>) -> ParseResult<'a, O, E> + Copy,
 {
-    move |input: TokenSlice<'a>| {
+    move |input: Cursor<'a>| {
         let (input, o) = many1(terminated(parser, newline_token))(input)?;
         let (input, _) = endmarker_token(input)?;
 

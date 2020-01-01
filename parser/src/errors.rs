@@ -9,7 +9,7 @@ use nom::{
     IResult,
 };
 
-use crate::parsers::TokenSlice;
+use crate::parsers::Cursor;
 use crate::string_utils::StringPositions;
 
 pub fn make_error<I, O, E>(input: I, kind: ErrorKind) -> IResult<I, O, E>
@@ -23,7 +23,7 @@ where
 ///
 /// Inspired by nom internals:
 /// https://github.com/Geal/nom/blob/c326e077b83c62f81b717c80a281cb453cb914e7/src/error.rs#L141
-pub fn format_debug_error(input: &str, e: VerboseError<TokenSlice>) -> String {
+pub fn format_debug_error(input: &str, e: VerboseError<Cursor>) -> String {
     use std::iter::repeat;
 
     let mut string_positions = StringPositions::new(input);
@@ -96,10 +96,7 @@ pub enum FormatError {
 ///
 /// Inspired by nom internals:
 /// https://github.com/Geal/nom/blob/c326e077b83c62f81b717c80a281cb453cb914e7/src/error.rs#L141
-pub fn format_user_error(
-    input: &str,
-    err: VerboseError<TokenSlice>,
-) -> Result<String, FormatError> {
+pub fn format_user_error(input: &str, err: VerboseError<Cursor>) -> Result<String, FormatError> {
     use std::iter::repeat;
 
     let last_context_error = err
