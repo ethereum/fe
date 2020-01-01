@@ -43,7 +43,7 @@ pub type ParseResult<'a, O> = IResult<Cursor<'a>, O, VerboseError<Cursor<'a>>>;
 
 /// Tokenize the given source code in `source` and filter out tokens not
 /// relevant to parsing.
-pub fn get_parse_tokens<'a>(source: &'a str) -> Result<Vec<Token<'a>>, TokenizeError> {
+pub fn get_parse_tokens(source: &str) -> Result<Vec<Token>, TokenizeError> {
     let tokens = tokenize(source)?;
 
     Ok(tokens
@@ -53,7 +53,7 @@ pub fn get_parse_tokens<'a>(source: &'a str) -> Result<Vec<Token<'a>>, TokenizeE
 }
 
 /// Parse a single token from a token slice.
-pub fn one_token<'a>(input: Cursor<'a>) -> ParseResult<&Token> {
+pub fn one_token(input: Cursor) -> ParseResult<&Token> {
     match input.iter().next() {
         None => make_error(input, ErrorKind::Eof),
         Some(token) => Ok((&input[1..], token)),
@@ -66,7 +66,7 @@ pub fn token<'a>(typ: TokenType) -> impl Fn(Cursor<'a>) -> ParseResult<&Token> {
 }
 
 /// Parse a name token from a token slice.
-pub fn name_token<'a>(input: Cursor<'a>) -> ParseResult<&Token> {
+pub fn name_token(input: Cursor) -> ParseResult<&Token> {
     token(TokenType::NAME)(input)
 }
 
@@ -76,7 +76,7 @@ pub fn name<'a>(string: &'a str) -> impl Fn(Cursor<'a>) -> ParseResult<&Token> {
 }
 
 /// Parse an op token from a token slice.
-pub fn op_token<'a>(input: Cursor<'a>) -> ParseResult<&Token> {
+pub fn op_token(input: Cursor) -> ParseResult<&Token> {
     token(TokenType::OP)(input)
 }
 
@@ -86,42 +86,42 @@ pub fn op<'a>(string: &'a str) -> impl Fn(Cursor<'a>) -> ParseResult<&Token> {
 }
 
 /// Parse a number token from a token slice.
-pub fn number_token<'a>(input: Cursor<'a>) -> ParseResult<&Token> {
+pub fn number_token(input: Cursor) -> ParseResult<&Token> {
     token(TokenType::NUMBER)(input)
 }
 
 /// Parse a string token from a token slice.
-pub fn string_token<'a>(input: Cursor<'a>) -> ParseResult<&Token> {
+pub fn string_token(input: Cursor) -> ParseResult<&Token> {
     token(TokenType::STRING)(input)
 }
 
 /// Parse an indent token from a token slice.
-pub fn indent_token<'a>(input: Cursor<'a>) -> ParseResult<&Token> {
+pub fn indent_token(input: Cursor) -> ParseResult<&Token> {
     token(TokenType::INDENT)(input)
 }
 
 /// Parse a dedent token from a token slice.
-pub fn dedent_token<'a>(input: Cursor<'a>) -> ParseResult<&Token> {
+pub fn dedent_token(input: Cursor) -> ParseResult<&Token> {
     token(TokenType::DEDENT)(input)
 }
 
 /// Parse a grammatically significant newline token from a token slice.
-pub fn newline_token<'a>(input: Cursor<'a>) -> ParseResult<&Token> {
+pub fn newline_token(input: Cursor) -> ParseResult<&Token> {
     token(TokenType::NEWLINE)(input)
 }
 
 /// Parse an endmarker token from a token slice.
-pub fn endmarker_token<'a>(input: Cursor<'a>) -> ParseResult<&Token> {
+pub fn endmarker_token(input: Cursor) -> ParseResult<&Token> {
     token(TokenType::ENDMARKER)(input)
 }
 
 /// Parse a module definition.
-pub fn file_input<'a>(input: Cursor<'a>) -> ParseResult<Spanned<Module>> {
+pub fn file_input(input: Cursor) -> ParseResult<Spanned<Module>> {
     alt((empty_file_input, non_empty_file_input))(input)
 }
 
 /// Parse an empty module definition.
-pub fn empty_file_input<'a>(input: Cursor<'a>) -> ParseResult<Spanned<Module>> {
+pub fn empty_file_input(input: Cursor) -> ParseResult<Spanned<Module>> {
     // ENDMARKER
     let (input, end_tok) = endmarker_token(input)?;
 
@@ -135,7 +135,7 @@ pub fn empty_file_input<'a>(input: Cursor<'a>) -> ParseResult<Spanned<Module>> {
 }
 
 /// Parse a non-empty module definition.
-pub fn non_empty_file_input<'a>(input: Cursor<'a>) -> ParseResult<Spanned<Module>> {
+pub fn non_empty_file_input(input: Cursor) -> ParseResult<Spanned<Module>> {
     // module_stmt+
     let (input, body) = many1(module_stmt)(input)?;
 
@@ -159,17 +159,17 @@ pub fn non_empty_file_input<'a>(input: Cursor<'a>) -> ParseResult<Spanned<Module
 }
 
 /// Parse a module statement, such as a contract definition.
-pub fn module_stmt<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ModuleStmt>> {
+pub fn module_stmt(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
     alt((import_stmt, contract_def))(input)
 }
 
 /// Parse an import statement.
-pub fn import_stmt<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ModuleStmt>> {
+pub fn import_stmt(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
     terminated(alt((simple_import, from_import)), newline_token)(input)
 }
 
 /// Parse an import statement beginning with the "import" keyword.
-pub fn simple_import<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ModuleStmt>> {
+pub fn simple_import(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
     let (input, import_kw) = name("import")(input)?;
     let (input, first_name) = simple_import_name(input)?;
     let (input, mut other_names) = many0(preceded(op(","), simple_import_name))(input)?;
@@ -191,7 +191,7 @@ pub fn simple_import<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ModuleStmt>> 
     ))
 }
 
-pub fn simple_import_name<'a>(input: Cursor<'a>) -> ParseResult<Spanned<SimpleImportName>> {
+pub fn simple_import_name(input: Cursor) -> ParseResult<Spanned<SimpleImportName>> {
     let (input, path) = dotted_name(input)?;
     let (input, alias) = opt(preceded(name("as"), name_token))(input)?;
 
@@ -215,13 +215,13 @@ pub fn simple_import_name<'a>(input: Cursor<'a>) -> ParseResult<Spanned<SimpleIm
 }
 
 /// Parse an import statement beginning with the "from" keyword.
-pub fn from_import<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ModuleStmt>> {
+pub fn from_import(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
     alt((from_import_parent_alt, from_import_sub_alt))(input)
 }
 
 /// Parse a "from" import with a path that contains only parent module
 /// components.
-pub fn from_import_parent_alt<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ModuleStmt>> {
+pub fn from_import_parent_alt(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
     let (input, from_kw) = name("from")(input)?;
     let (input, parent_level) = dots_to_int(input)?;
     let (input, _) = name("import")(input)?;
@@ -246,7 +246,7 @@ pub fn from_import_parent_alt<'a>(input: Cursor<'a>) -> ParseResult<Spanned<Modu
 }
 
 /// Parse a "from" import with a path that contains sub module components.
-pub fn from_import_sub_alt<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ModuleStmt>> {
+pub fn from_import_sub_alt(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
     let (input, from_kw) = name("from")(input)?;
     let (input, path) = from_import_sub_path(input)?;
     let (input, _) = name("import")(input)?;
@@ -264,7 +264,7 @@ pub fn from_import_sub_alt<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ModuleS
 }
 
 /// Parse a path containing sub module components in a "from" import statement.
-pub fn from_import_sub_path<'a>(input: Cursor<'a>) -> ParseResult<Spanned<FromImportPath>> {
+pub fn from_import_sub_path(input: Cursor) -> ParseResult<Spanned<FromImportPath>> {
     let (input, opt_parent_level) = opt(dots_to_int)(input)?;
     let (input, dotted_name) = dotted_name(input)?;
 
@@ -291,7 +291,7 @@ pub fn from_import_sub_path<'a>(input: Cursor<'a>) -> ParseResult<Spanned<FromIm
 }
 
 /// Parse the names to be imported by a "from" import statement.
-pub fn from_import_names<'a>(input: Cursor<'a>) -> ParseResult<Spanned<FromImportNames>> {
+pub fn from_import_names(input: Cursor) -> ParseResult<Spanned<FromImportNames>> {
     alt((
         from_import_names_star,
         from_import_names_parens,
@@ -300,7 +300,7 @@ pub fn from_import_names<'a>(input: Cursor<'a>) -> ParseResult<Spanned<FromImpor
 }
 
 /// Parse a wildcard token ("*") in a "from" import statement.
-pub fn from_import_names_star<'a>(input: Cursor<'a>) -> ParseResult<Spanned<FromImportNames>> {
+pub fn from_import_names_star(input: Cursor) -> ParseResult<Spanned<FromImportNames>> {
     let (input, star) = op("*")(input)?;
 
     Ok((
@@ -314,7 +314,7 @@ pub fn from_import_names_star<'a>(input: Cursor<'a>) -> ParseResult<Spanned<From
 
 /// Parse a parenthesized list of names to be imported by a "from" import
 /// statement.
-pub fn from_import_names_parens<'a>(input: Cursor<'a>) -> ParseResult<Spanned<FromImportNames>> {
+pub fn from_import_names_parens(input: Cursor) -> ParseResult<Spanned<FromImportNames>> {
     let (input, l_paren) = op("(")(input)?;
     let (input, names) = from_import_names_list(input)?;
     let (input, r_paren) = op(")")(input)?;
@@ -329,7 +329,7 @@ pub fn from_import_names_parens<'a>(input: Cursor<'a>) -> ParseResult<Spanned<Fr
 }
 
 /// Parse a list of names to be imported by a "from" import statement.
-pub fn from_import_names_list<'a>(input: Cursor<'a>) -> ParseResult<Spanned<FromImportNames>> {
+pub fn from_import_names_list(input: Cursor) -> ParseResult<Spanned<FromImportNames>> {
     let (input, first_name) = from_import_name(input)?;
     let (input, mut other_names) = many0(preceded(op(","), from_import_name))(input)?;
     let (input, comma_tok) = opt(op(","))(input)?;
@@ -358,7 +358,7 @@ pub fn from_import_names_list<'a>(input: Cursor<'a>) -> ParseResult<Spanned<From
 }
 
 /// Parse an import name with an optional alias in a "from" import statement.
-pub fn from_import_name<'a>(input: Cursor<'a>) -> ParseResult<Spanned<FromImportName>> {
+pub fn from_import_name(input: Cursor) -> ParseResult<Spanned<FromImportName>> {
     let (input, name_tok) = name_token(input)?;
     let (input, alias) = opt(preceded(name("as"), name_token))(input)?;
 
@@ -380,7 +380,7 @@ pub fn from_import_name<'a>(input: Cursor<'a>) -> ParseResult<Spanned<FromImport
 }
 
 /// Parse a dotted import name.
-pub fn dotted_name<'a>(input: Cursor<'a>) -> ParseResult<Spanned<Vec<&'a str>>> {
+pub fn dotted_name(input: Cursor) -> ParseResult<Spanned<Vec<&str>>> {
     let (input, first_part) = name_token(input)?;
     let (input, other_parts) = many0(preceded(op("."), name_token))(input)?;
 
@@ -399,7 +399,7 @@ pub fn dotted_name<'a>(input: Cursor<'a>) -> ParseResult<Spanned<Vec<&'a str>>> 
 
 /// Parse preceding dots used to indicate parent module imports in import
 /// statements.
-pub fn dots_to_int<'a>(input: Cursor<'a>) -> ParseResult<Spanned<usize>> {
+pub fn dots_to_int(input: Cursor) -> ParseResult<Spanned<usize>> {
     let (input, toks) = many1(alt((op("."), op("..."))))(input)?;
 
     let value = toks
@@ -419,7 +419,7 @@ pub fn dots_to_int<'a>(input: Cursor<'a>) -> ParseResult<Spanned<usize>> {
 }
 
 /// Parse a contract definition statement.
-pub fn contract_def<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ModuleStmt>> {
+pub fn contract_def(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
     // "contract" name ":" NEWLINE
     let (input, contract_kw) = name("contract")(input)?;
     let (input, name_tok) = name_token(input)?;
@@ -447,12 +447,12 @@ pub fn contract_def<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ModuleStmt>> {
 }
 
 /// Parse a contract statement.
-pub fn contract_stmt<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ContractStmt>> {
+pub fn contract_stmt(input: Cursor) -> ParseResult<Spanned<ContractStmt>> {
     event_def(input)
 }
 
 /// Parse an event definition statement.
-pub fn event_def<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ContractStmt>> {
+pub fn event_def(input: Cursor) -> ParseResult<Spanned<ContractStmt>> {
     // "event" name ":" NEWLINE
     let (input, event_kw) = name("event")(input)?;
     let (input, name_tok) = name_token(input)?;
@@ -480,7 +480,7 @@ pub fn event_def<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ContractStmt>> {
 }
 
 /// Parse an event field definition.
-pub fn event_field<'a>(input: Cursor<'a>) -> ParseResult<Spanned<EventField>> {
+pub fn event_field(input: Cursor) -> ParseResult<Spanned<EventField>> {
     let (input, name_tok) = name_token(input)?;
     let (input, _) = op(":")(input)?;
     let (input, typ) = name_token(input)?;
@@ -500,15 +500,15 @@ pub fn event_field<'a>(input: Cursor<'a>) -> ParseResult<Spanned<EventField>> {
     ))
 }
 
-pub fn type_desc<'a>(input: Cursor<'a>) -> ParseResult<Spanned<TypeDesc>> {
+pub fn type_desc(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
     alt((map_type, base_type))(input)
 }
 
-pub fn map_type<'a>(input: Cursor<'a>) -> ParseResult<Spanned<TypeDesc>> {
+pub fn map_type(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
     alt((map_type_double, map_type_single))(input)
 }
 
-pub fn map_type_double<'a>(input: Cursor<'a>) -> ParseResult<Spanned<TypeDesc>> {
+pub fn map_type_double(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
     let (input, map_kw_1) = name("map")(input)?;
     let (input, _) = op("<")(input)?;
     let (input, from_1) = base_type(input)?;
@@ -542,7 +542,7 @@ pub fn map_type_double<'a>(input: Cursor<'a>) -> ParseResult<Spanned<TypeDesc>> 
     ))
 }
 
-pub fn map_type_single<'a>(input: Cursor<'a>) -> ParseResult<Spanned<TypeDesc>> {
+pub fn map_type_single(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
     let (input, map_kw) = name("map")(input)?;
     let (input, _) = op("<")(input)?;
     let (input, from) = base_type(input)?;
@@ -562,7 +562,7 @@ pub fn map_type_single<'a>(input: Cursor<'a>) -> ParseResult<Spanned<TypeDesc>> 
     ))
 }
 
-pub fn base_type<'a>(input: Cursor<'a>) -> ParseResult<Spanned<TypeDesc>> {
+pub fn base_type(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
     let (input, base) = name_token(input)?;
     let (input, dims) = arr_list(input)?;
 
@@ -585,11 +585,11 @@ pub fn base_type<'a>(input: Cursor<'a>) -> ParseResult<Spanned<TypeDesc>> {
     Ok((input, result))
 }
 
-pub fn arr_list<'a>(input: Cursor<'a>) -> ParseResult<Vec<Spanned<usize>>> {
+pub fn arr_list(input: Cursor) -> ParseResult<Vec<Spanned<usize>>> {
     many0(arr_dim)(input)
 }
 
-pub fn arr_dim<'a>(input: Cursor<'a>) -> ParseResult<Spanned<usize>> {
+pub fn arr_dim(input: Cursor) -> ParseResult<Spanned<usize>> {
     let (num_input, l_bracket) = op("[")(input)?;
     let (input, num_tok) = number_token(num_input)?;
     let (input, r_bracket) = op("]")(input)?;
@@ -612,7 +612,7 @@ pub fn arr_dim<'a>(input: Cursor<'a>) -> ParseResult<Spanned<usize>> {
 }
 
 /// Parse a constant expression that can be evaluated at compile-time.
-pub fn const_expr<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ConstExpr>> {
+pub fn const_expr(input: Cursor) -> ParseResult<Spanned<ConstExpr>> {
     let (input, head) = const_term(input)?;
     let (input, tail) = many0(alt((pair(op("+"), const_term), pair(op("-"), const_term))))(input)?;
 
@@ -635,7 +635,7 @@ pub fn const_expr<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ConstExpr>> {
 
 /// Parse a constant term that may appear as the operand of an addition or
 /// subtraction.
-pub fn const_term<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ConstExpr>> {
+pub fn const_term(input: Cursor) -> ParseResult<Spanned<ConstExpr>> {
     let (input, head) = const_factor(input)?;
     let (input, tail) = many0(alt((
         pair(op("*"), const_factor),
@@ -662,7 +662,7 @@ pub fn const_term<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ConstExpr>> {
 
 /// Parse a constant factor that may appear as the operand of a multiplication,
 /// division, modulus, or unary op or as the exponent of a power expression.
-pub fn const_factor<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ConstExpr>> {
+pub fn const_factor(input: Cursor) -> ParseResult<Spanned<ConstExpr>> {
     let unary_op = map(
         pair(alt((op("+"), op("-"), op("~"))), const_factor),
         |res| {
@@ -684,7 +684,7 @@ pub fn const_factor<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ConstExpr>> {
 
 /// Parse a constant power expression that may appear in the position of a
 /// constant factor.
-pub fn const_power<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ConstExpr>> {
+pub fn const_power(input: Cursor) -> ParseResult<Spanned<ConstExpr>> {
     let bin_op = map(separated_pair(const_atom, op("**"), const_factor), |res| {
         let (left, right) = res;
         let span = Span::from_pair(&left, &right);
@@ -704,7 +704,7 @@ pub fn const_power<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ConstExpr>> {
 
 /// Parse a constant atom expression that may appear in the position of a
 /// constant power or as the base of a constant power expression.
-pub fn const_atom<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ConstExpr>> {
+pub fn const_atom(input: Cursor) -> ParseResult<Spanned<ConstExpr>> {
     alt((
         const_group,
         map(name_token, |t| Spanned {
@@ -720,7 +720,7 @@ pub fn const_atom<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ConstExpr>> {
 
 /// Parse a parenthesized constant group that may appear in the position of a
 /// constant atom.
-pub fn const_group<'a>(input: Cursor<'a>) -> ParseResult<Spanned<ConstExpr>> {
+pub fn const_group(input: Cursor) -> ParseResult<Spanned<ConstExpr>> {
     let (input, l_paren) = op("(")(input)?;
     let (input, spanned_expr) = const_expr(input)?;
     let (input, r_paren) = op(")")(input)?;

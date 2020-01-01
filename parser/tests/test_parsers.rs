@@ -25,9 +25,9 @@ use vyper_parser::span::{
 /// token.  Parsers defined lower in the grammar tree are not intended to handle
 /// that kind of tokenization.  This combinator modifies lower-level parsers to
 /// handle such tokenizations to facilitate unit testing.
-fn standalone<'a, O, F>(parser: F) -> impl Fn(Cursor<'a>) -> ParseResult<'a, O>
+fn standalone<'a, O, F>(parser: F) -> impl Fn(Cursor<'a>) -> ParseResult<O>
 where
-    F: Fn(Cursor<'a>) -> ParseResult<'a, O>,
+    F: Fn(Cursor<'a>) -> ParseResult<O>,
 {
     move |input: Cursor<'a>| {
         let (input, o) = parser(input)?;
@@ -41,9 +41,9 @@ where
 /// Convert a parser into one that can function as a standalone parser that
 /// applies itself one or more times to an input and returns all outputs in a
 /// vector.
-fn standalone_vec<'a, O, F>(parser: F) -> impl Fn(Cursor<'a>) -> ParseResult<'a, Vec<O>>
+fn standalone_vec<'a, O, F>(parser: F) -> impl Fn(Cursor<'a>) -> ParseResult<Vec<O>>
 where
-    F: Fn(Cursor<'a>) -> ParseResult<'a, O> + Copy,
+    F: Fn(Cursor<'a>) -> ParseResult<O> + Copy,
 {
     move |input: Cursor<'a>| {
         let (input, o) = many1(terminated(parser, newline_token))(input)?;
