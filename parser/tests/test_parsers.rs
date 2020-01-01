@@ -81,7 +81,10 @@ macro_rules! assert_fixture_parsed_with {
             if let Err(err) = &actual {
                 match err {
                     NomErr::Error(e) | NomErr::Failure(e) => {
-                        println!("Parsing trace:\n{}", format_debug_error(inp, e.clone()));
+                        println!(
+                            "Parsing trace:\n{}",
+                            format_debug_error(inp, e.clone(), true)
+                        );
                     }
                     _ => (),
                 }

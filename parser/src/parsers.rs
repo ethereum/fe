@@ -6,10 +6,6 @@ use nom::combinator::{
     opt,
     verify,
 };
-use nom::error::{
-    ErrorKind,
-    VerboseError,
-};
 use nom::multi::{
     many0,
     many1,
@@ -24,7 +20,11 @@ use nom::IResult;
 
 use crate::ast::ModuleStmt::*;
 use crate::ast::*;
-use crate::errors::make_error;
+use crate::errors::{
+    make_parse_error,
+    ErrorKind,
+    ParseError,
+};
 use crate::span::{
     Span,
     Spanned,
@@ -39,7 +39,7 @@ use crate::tokenizer::types::{
 };
 
 pub type Cursor<'a> = &'a [Token<'a>];
-pub type ParseResult<'a, O> = IResult<Cursor<'a>, O, VerboseError<Cursor<'a>>>;
+pub type ParseResult<'a, O> = IResult<Cursor<'a>, O, ParseError<'a>>;
 
 /// Tokenize the given source code in `source` and filter out tokens not
 /// relevant to parsing.
@@ -55,7 +55,7 @@ pub fn get_parse_tokens(source: &str) -> Result<Vec<Token>, TokenizeError> {
 /// Parse a single token from a token slice.
 pub fn one_token(input: Cursor) -> ParseResult<&Token> {
     match input.iter().next() {
-        None => make_error(input, ErrorKind::Eof),
+        None => make_parse_error(input, ErrorKind::Eof),
         Some(token) => Ok((&input[1..], token)),
     }
 }
@@ -596,10 +596,18 @@ pub fn arr_dim(input: Cursor) -> ParseResult<Spanned<usize>> {
 
     let n: usize = match num_tok.string.parse() {
         Ok(n) => n,
-        Err(_) => return make_error(num_input, ErrorKind::ParseTo),
+        Err(_) => {
+            return make_parse_error(
+                num_input,
+                ErrorKind::Str(format!("invalid integer literal \"{}\"", num_tok.string)),
+            )
+        }
     };
     if n < 1 {
-        return make_error(num_input, ErrorKind::ParseTo);
+        return make_parse_error(
+            num_input,
+            ErrorKind::StaticStr("array dimensions must be positive"),
+        );
     }
 
     Ok((
