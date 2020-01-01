@@ -12,11 +12,8 @@ use nom::{
 use crate::parsers::Cursor;
 use crate::string_utils::StringPositions;
 
-pub fn make_error<I, O, E>(input: I, kind: ErrorKind) -> IResult<I, O, E>
-where
-    E: ParseError<I>,
-{
-    Err(NomErr::Error(ParseError::from_error_kind(input, kind)))
+pub fn make_error<O>(input: Cursor, kind: ErrorKind) -> ParseResult<O> {
+    Err(NomErr::Error(VerboseError::from_error_kind(input, kind)))
 }
 
 /// Format a verbose error into a debug trace message.
