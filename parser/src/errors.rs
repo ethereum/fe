@@ -17,6 +17,18 @@ pub enum ErrorKind {
     Eof,
 }
 
+impl ErrorKind {
+    pub fn description(&self) -> &str {
+        use ErrorKind::*;
+
+        match self {
+            StaticStr(s) => s,
+            Str(s) => s.as_str(),
+            Eof => "end of file",
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct ParseError<'a> {
     errors: Vec<(Cursor<'a>, ErrorKind)>,
@@ -79,45 +91,28 @@ pub fn format_debug_error(input: &str, e: ParseError, show_err_no: bool) -> Stri
             result += &format!("{}: ", err_no);
         }
 
-        if let Some(tok) = first_token {
-            let pos = match string_positions.get_pos(tok.span.start) {
-                Some(pos) => pos,
-                None => string_positions.get_last().unwrap(),
-            };
+        let offset = match first_token {
+            Some(tok) => tok.span.start,
+            None => input.len(),
+        };
+        let pos = match string_positions.get_pos(offset) {
+            Some(pos) => pos,
+            None => string_positions.get_last().unwrap(),
+        };
 
-            result += &format!("at line {} col {}, ", pos.line, pos.col);
+        result += &format!(
+            "at line {} col {}, {}:\n",
+            pos.line,
+            pos.col,
+            err_kind.description()
+        );
 
-            match err_kind {
-                ErrorKind::StaticStr(s) => {
-                    result += s;
-                }
-                ErrorKind::Str(s) => {
-                    result += s;
-                }
-                ErrorKind::Eof => {
-                    result += "end of file reached";
-                }
-            }
-
-            result += &lines[pos.line - 1];
-            result += "\n";
-            if pos.col > 0 {
-                result += &repeat(' ').take(pos.col).collect::<String>();
-            }
-            result += "^\n\n";
-        } else {
-            match err_kind {
-                ErrorKind::StaticStr(s) => {
-                    result += &format!("at end of file, {}\n\n", s);
-                }
-                ErrorKind::Str(s) => {
-                    result += &format!("at end of file, {}\n\n", s);
-                }
-                ErrorKind::Eof => {
-                    result += "end of file reached";
-                }
-            }
+        result += &lines[pos.line - 1];
+        result += "\n";
+        if pos.col > 0 {
+            result += &repeat(' ').take(pos.col).collect::<String>();
         }
+        result += "^\n\n";
     }
 
     result
