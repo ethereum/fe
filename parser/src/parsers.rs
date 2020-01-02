@@ -22,10 +22,6 @@ use crate::span::{
     Span,
     Spanned,
 };
-use crate::tokenizer::tokenize::{
-    tokenize,
-    TokenizeError,
-};
 use crate::tokenizer::types::{
     Token,
     TokenType,
@@ -34,17 +30,6 @@ use crate::{
     Cursor,
     ParseResult,
 };
-
-/// Tokenize the given source code in `source` and filter out tokens not
-/// relevant to parsing.
-pub fn get_parse_tokens(source: &str) -> Result<Vec<Token>, TokenizeError> {
-    let tokens = tokenize(source)?;
-
-    Ok(tokens
-        .into_iter()
-        .filter(|t| t.typ != TokenType::NL && t.typ != TokenType::COMMENT)
-        .collect())
-}
 
 /// Parse next token in input.
 pub fn next(input: Cursor) -> ParseResult<&Token> {

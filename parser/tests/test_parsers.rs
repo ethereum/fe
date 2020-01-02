@@ -21,6 +21,7 @@ use vyper_parser::span::{
     Spanned,
 };
 use vyper_parser::{
+    get_parse_tokens,
     Cursor,
     ParseResult,
 };
