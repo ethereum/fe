@@ -485,6 +485,7 @@ pub fn event_field(input: Cursor) -> ParseResult<Spanned<EventField>> {
     ))
 }
 
+/// Parse a type definition (type alias).
 pub fn type_def(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
     let (input, type_kw) = name("type")(input)?;
     let (input, name) = name_token(input)?;
@@ -505,14 +506,20 @@ pub fn type_def(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
     ))
 }
 
+/// Parse a type description e.g. "uint256" or "map<address, bool>".
 pub fn type_desc(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
     alt((map_type, base_type))(input)
 }
 
+/// Parse a map type e.g. "map<address, bool".
 pub fn map_type(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
     alt((map_type_double, map_type_single))(input)
 }
 
+/// Parse a map type ending with a right-shift token.
+///
+/// Example:
+/// map<address, map<uint256, bool>>
 pub fn map_type_double(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
     let (input, map_kw_1) = name("map")(input)?;
     let (input, _) = op("<")(input)?;
@@ -547,6 +554,10 @@ pub fn map_type_double(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
     ))
 }
 
+/// Parse a map type ending with a greater-than token.
+///
+/// Example:
+/// map< address, map<uint256, map<bool, int128>> >
 pub fn map_type_single(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
     let (input, map_kw) = name("map")(input)?;
     let (input, _) = op("<")(input)?;
@@ -567,6 +578,10 @@ pub fn map_type_single(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
     ))
 }
 
+/// Parse a base type along with an optional array dimension list.
+///
+/// Example:
+/// int128[2][3]
 pub fn base_type(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
     let (input, base) = name_token(input)?;
     let (input, dims) = arr_list(input)?;
@@ -590,10 +605,12 @@ pub fn base_type(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
     Ok((input, result))
 }
 
+/// Parse an array dimension list e.g. "[2][3]"
 pub fn arr_list(input: Cursor) -> ParseResult<Vec<Spanned<usize>>> {
     many0(arr_dim)(input)
 }
 
+/// Parse an array dimension e.g. "[2]"
 pub fn arr_dim(input: Cursor) -> ParseResult<Spanned<usize>> {
     let (num_input, l_bracket) = op("[")(input)?;
     let (input, num_tok) = number_token(num_input)?;
