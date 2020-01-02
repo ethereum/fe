@@ -1,27 +1,8 @@
 use std::convert::TryFrom;
 
-use nom::branch::alt;
-use nom::combinator::{
-    map,
-    opt,
-    verify,
-};
-use nom::multi::{
-    many0,
-    many1,
-};
-use nom::sequence::{
-    pair,
-    preceded,
-    separated_pair,
-    terminated,
-};
-use nom::IResult;
-
 use crate::ast::ModuleStmt::*;
 use crate::ast::*;
 use crate::errors::{
-    make_parse_error,
     ErrorKind,
     ParseError,
 };
@@ -37,9 +18,20 @@ use crate::tokenizer::types::{
     Token,
     TokenType,
 };
-
-pub type Cursor<'a> = &'a [Token<'a>];
-pub type ParseResult<'a, O> = IResult<Cursor<'a>, O, ParseError<'a>>;
+use crate::{
+    alt,
+    many0,
+    many1,
+    map,
+    opt,
+    pair,
+    preceded,
+    separated_pair,
+    terminated,
+    verify,
+    Cursor,
+    ParseResult,
+};
 
 /// Tokenize the given source code in `source` and filter out tokens not
 /// relevant to parsing.
@@ -52,17 +44,21 @@ pub fn get_parse_tokens(source: &str) -> Result<Vec<Token>, TokenizeError> {
         .collect())
 }
 
-/// Parse a single token from a token slice.
-pub fn one_token(input: Cursor) -> ParseResult<&Token> {
-    match input.iter().next() {
-        None => make_parse_error(input, ErrorKind::Eof),
-        Some(token) => Ok((&input[1..], token)),
+/// Parse next token in input.
+pub fn next(input: Cursor) -> ParseResult<&Token> {
+    match input.first() {
+        Some(tok) => Ok((&input[1..], tok)),
+        None => Err(ParseError::new(input, ErrorKind::Eof)),
     }
 }
 
 /// Parse a token of a specific type from a token slice.
 pub fn token<'a>(typ: TokenType) -> impl Fn(Cursor<'a>) -> ParseResult<&Token> {
-    verify(one_token, move |t: &Token| t.typ == typ)
+    verify(
+        next,
+        move |t| t.typ == typ,
+        move |_, _| format!("expected {:?} token", typ),
+    )
 }
 
 /// Parse a name token from a token slice.
@@ -72,7 +68,11 @@ pub fn name_token(input: Cursor) -> ParseResult<&Token> {
 
 /// Parse a name token containing a specific string from a token slice.
 pub fn name<'a>(string: &'a str) -> impl Fn(Cursor<'a>) -> ParseResult<&Token> {
-    verify(name_token, move |t: &Token| t.string == string)
+    verify(
+        name_token,
+        move |t| t.string == string,
+        move |_, _| format!("expected \"{}\" name token", string),
+    )
 }
 
 /// Parse an op token from a token slice.
@@ -82,7 +82,11 @@ pub fn op_token(input: Cursor) -> ParseResult<&Token> {
 
 /// Parse an op token containing a specific string from a token slice.
 pub fn op<'a>(string: &'a str) -> impl Fn(Cursor<'a>) -> ParseResult<&Token> {
-    verify(op_token, move |t: &Token| t.string == string)
+    verify(
+        op_token,
+        move |t| t.string == string,
+        move |_, _| format!("expected \"{}\" op token", string),
+    )
 }
 
 /// Parse a number token from a token slice.
@@ -597,17 +601,17 @@ pub fn arr_dim(input: Cursor) -> ParseResult<Spanned<usize>> {
     let n: usize = match num_tok.string.parse() {
         Ok(n) => n,
         Err(_) => {
-            return make_parse_error(
+            return Err(ParseError::new(
                 num_input,
                 ErrorKind::Str(format!("invalid integer literal \"{}\"", num_tok.string)),
-            )
+            ))
         }
     };
     if n < 1 {
-        return make_parse_error(
+        return Err(ParseError::new(
             num_input,
             ErrorKind::StaticStr("array dimensions must be positive"),
-        );
+        ));
     }
 
     Ok((

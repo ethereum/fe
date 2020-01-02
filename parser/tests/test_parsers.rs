@@ -3,9 +3,6 @@ extern crate wasm_bindgen_test;
 #[macro_use]
 mod utils;
 
-use nom::multi::many1;
-use nom::sequence::terminated;
-use nom::Err as NomErr;
 use wasm_bindgen_test::wasm_bindgen_test;
 
 use utils::{
@@ -19,17 +16,23 @@ use vyper_parser::span::{
     Span,
     Spanned,
 };
+use vyper_parser::{
+    many1,
+    terminated,
+    Cursor,
+    ParseResult,
+};
 
 /// Convert a parser into one that can function as a standalone file parser.
 /// File tokenizations always include a trailing `NEWLINE` and `ENDMARKER`
 /// token.  Parsers defined lower in the grammar tree are not intended to handle
 /// that kind of tokenization.  This combinator modifies lower-level parsers to
 /// handle such tokenizations to facilitate unit testing.
-fn standalone<'a, O, F>(parser: F) -> impl Fn(Cursor<'a>) -> ParseResult<O>
+fn standalone<'a, O, P>(parser: P) -> impl Fn(Cursor<'a>) -> ParseResult<O>
 where
-    F: Fn(Cursor<'a>) -> ParseResult<O>,
+    P: Fn(Cursor<'a>) -> ParseResult<O>,
 {
-    move |input: Cursor<'a>| {
+    move |input| {
         let (input, o) = parser(input)?;
         let (input, _) = newline_token(input)?;
         let (input, _) = endmarker_token(input)?;
@@ -41,11 +44,11 @@ where
 /// Convert a parser into one that can function as a standalone parser that
 /// applies itself one or more times to an input and returns all outputs in a
 /// vector.
-fn standalone_vec<'a, O, F>(parser: F) -> impl Fn(Cursor<'a>) -> ParseResult<Vec<O>>
+fn standalone_vec<'a, O, P>(parser: P) -> impl Fn(Cursor<'a>) -> ParseResult<Vec<O>>
 where
-    F: Fn(Cursor<'a>) -> ParseResult<O> + Copy,
+    P: Fn(Cursor<'a>) -> ParseResult<O> + Copy,
 {
-    move |input: Cursor<'a>| {
+    move |input| {
         let (input, o) = many1(terminated(parser, newline_token))(input)?;
         let (input, _) = endmarker_token(input)?;
 
@@ -79,15 +82,10 @@ macro_rules! assert_fixture_parsed_with {
             let actual = $parser(&tokens[..]);
 
             if let Err(err) = &actual {
-                match err {
-                    NomErr::Error(e) | NomErr::Failure(e) => {
-                        println!(
-                            "Parsing trace:\n{}",
-                            format_debug_error(inp, e.clone(), true)
-                        );
-                    }
-                    _ => (),
-                }
+                println!(
+                    "Parsing trace:\n{}",
+                    format_debug_error(inp, err.clone(), true)
+                );
             }
 
             let (actual_remaining, actual_ast) = actual.unwrap();

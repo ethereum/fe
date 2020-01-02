@@ -11,7 +11,6 @@ description = "Parser lib for Rust Vyper."
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-nom = "5"
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 

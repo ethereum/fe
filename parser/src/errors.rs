@@ -1,14 +1,5 @@
-use nom::error::{
-    ErrorKind as NomErrorKind,
-    ParseError as NomParseError,
-};
-use nom::Err as NomErr;
-
-use crate::parsers::{
-    Cursor,
-    ParseResult,
-};
 use crate::string_utils::StringPositions;
+use crate::Cursor;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum ErrorKind {
@@ -40,36 +31,11 @@ impl<'a> ParseError<'a> {
             errors: vec![(input, kind)],
         }
     }
-}
 
-impl<'a> NomParseError<Cursor<'a>> for ParseError<'a> {
-    fn from_error_kind(input: Cursor<'a>, kind: NomErrorKind) -> Self {
-        Self::new(input, ErrorKind::Str(kind.description().to_string()))
+    pub fn push(mut self, input: Cursor<'a>, kind: ErrorKind) -> Self {
+        self.errors.push((input, kind));
+        self
     }
-
-    fn append(input: Cursor<'a>, kind: NomErrorKind, mut other: Self) -> Self {
-        other
-            .errors
-            .push((input, ErrorKind::Str(kind.description().to_string())));
-        other
-    }
-
-    fn from_char(input: Cursor<'a>, c: char) -> Self {
-        Self::new(input, ErrorKind::Str(format!("expected '{}'", c)))
-    }
-
-    fn add_context(input: Cursor<'a>, ctx: &'static str, mut other: Self) -> Self {
-        other.errors.push((input, ErrorKind::StaticStr(ctx)));
-        other
-    }
-}
-
-pub fn make_error<O>(input: Cursor, kind: NomErrorKind) -> ParseResult<O> {
-    Err(NomErr::Error(NomParseError::from_error_kind(input, kind)))
-}
-
-pub fn make_parse_error<O>(input: Cursor, kind: ErrorKind) -> ParseResult<O> {
-    Err(NomErr::Error(ParseError::new(input, kind)))
 }
 
 /// Format an error into a debug trace message.
