@@ -120,24 +120,6 @@ fn test_next_err() {
 
 #[test]
 #[wasm_bindgen_test]
-fn test_const_expr_ok() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone(const_expr)),
-        "fixtures/parsers/const_expr/number_1.ron",
-        "fixtures/parsers/const_expr/number_2.ron",
-        "fixtures/parsers/const_expr/name_1.ron",
-        "fixtures/parsers/const_expr/power_1.ron",
-        "fixtures/parsers/const_expr/power_2.ron",
-        "fixtures/parsers/const_expr/power_3.ron",
-        "fixtures/parsers/const_expr/lots_of_operators.ron",
-        "fixtures/parsers/const_expr/unary_ops.ron",
-        "fixtures/parsers/const_expr/chain_of_adds.ron",
-        "fixtures/parsers/const_expr/chain_of_muls.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
 fn test_file_input_empty_file() {
     // Empty file
     assert_parser_ok!(
@@ -376,5 +358,59 @@ fn test_func_qual() {
     do_with_fixtures!(
         assert_fixture_parsed_with!(standalone_vec(func_qual)),
         "fixtures/parsers/func_qual.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_const_expr() {
+    do_with_fixtures!(
+        assert_fixture_parsed_with!(standalone_vec(const_expr)),
+        "fixtures/parsers/const_expr.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_const_term() {
+    do_with_fixtures!(
+        assert_fixture_parsed_with!(standalone_vec(const_term)),
+        "fixtures/parsers/const_term.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_const_factor() {
+    do_with_fixtures!(
+        assert_fixture_parsed_with!(standalone_vec(const_factor)),
+        "fixtures/parsers/const_factor.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_const_power() {
+    do_with_fixtures!(
+        assert_fixture_parsed_with!(standalone_vec(const_power)),
+        "fixtures/parsers/const_power.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_const_atom() {
+    do_with_fixtures!(
+        assert_fixture_parsed_with!(standalone_vec(const_atom)),
+        "fixtures/parsers/const_atom.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_const_group() {
+    do_with_fixtures!(
+        assert_fixture_parsed_with!(standalone_vec(const_group)),
+        "fixtures/parsers/const_group.ron",
     );
 }
