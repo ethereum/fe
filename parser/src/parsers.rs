@@ -14,10 +14,7 @@ use crate::builders::{
     terminated,
     verify,
 };
-use crate::errors::{
-    ErrorKind,
-    ParseError,
-};
+use crate::errors::ParseError;
 use crate::span::{
     Span,
     Spanned,
@@ -35,7 +32,7 @@ use crate::{
 pub fn next(input: Cursor) -> ParseResult<&Token> {
     match input.first() {
         Some(tok) => Ok((&input[1..], tok)),
-        None => Err(ParseError::new(input, ErrorKind::Eof)),
+        None => Err(ParseError::eof(input)),
     }
 }
 
@@ -588,16 +585,16 @@ pub fn arr_dim(input: Cursor) -> ParseResult<Spanned<usize>> {
     let n: usize = match num_tok.string.parse() {
         Ok(n) => n,
         Err(_) => {
-            return Err(ParseError::new(
+            return Err(ParseError::str(
                 num_input,
-                ErrorKind::Str(format!("invalid integer literal \"{}\"", num_tok.string)),
+                format!("invalid integer literal \"{}\"", num_tok.string),
             ))
         }
     };
     if n < 1 {
-        return Err(ParseError::new(
+        return Err(ParseError::static_str(
             num_input,
-            ErrorKind::StaticStr("array dimensions must be positive"),
+            "array dimensions must be positive",
         ));
     }
 

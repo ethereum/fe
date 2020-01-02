@@ -93,10 +93,7 @@ where
 {
     move |input| {
         if input.is_empty() {
-            return Err(ParseError::new(
-                input,
-                ErrorKind::StaticStr("many0: end of file reached"),
-            ));
+            return Err(ParseError::eof(input));
         }
 
         let mut input = input;

@@ -32,6 +32,18 @@ impl<'a> ParseError<'a> {
         }
     }
 
+    pub fn static_str(input: Cursor<'a>, string: &'static str) -> Self {
+        Self::new(input, ErrorKind::StaticStr(string))
+    }
+
+    pub fn str(input: Cursor<'a>, string: String) -> Self {
+        Self::new(input, ErrorKind::Str(string))
+    }
+
+    pub fn eof(input: Cursor<'a>) -> Self {
+        Self::new(input, ErrorKind::Eof)
+    }
+
     pub fn push(mut self, input: Cursor<'a>, kind: ErrorKind) -> Self {
         self.errors.push((input, kind));
         self
