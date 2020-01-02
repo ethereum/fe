@@ -39,7 +39,7 @@ pub fn next(input: Cursor) -> ParseResult<&Token> {
     }
 }
 
-/// Parse a token of a specific type from a token slice.
+/// Parse a token of a specific type.
 pub fn token<'a>(typ: TokenType) -> impl Fn(Cursor<'a>) -> ParseResult<&Token> {
     verify(
         next,
@@ -48,12 +48,12 @@ pub fn token<'a>(typ: TokenType) -> impl Fn(Cursor<'a>) -> ParseResult<&Token> {
     )
 }
 
-/// Parse a name token from a token slice.
+/// Parse a name token.
 pub fn name_token(input: Cursor) -> ParseResult<&Token> {
     token(TokenType::NAME)(input)
 }
 
-/// Parse a name token containing a specific string from a token slice.
+/// Parse a name token containing a specific string.
 pub fn name<'a>(string: &'a str) -> impl Fn(Cursor<'a>) -> ParseResult<&Token> {
     verify(
         name_token,
@@ -62,12 +62,12 @@ pub fn name<'a>(string: &'a str) -> impl Fn(Cursor<'a>) -> ParseResult<&Token> {
     )
 }
 
-/// Parse an op token from a token slice.
+/// Parse an op token.
 pub fn op_token(input: Cursor) -> ParseResult<&Token> {
     token(TokenType::OP)(input)
 }
 
-/// Parse an op token containing a specific string from a token slice.
+/// Parse an op token containing a specific string.
 pub fn op<'a>(string: &'a str) -> impl Fn(Cursor<'a>) -> ParseResult<&Token> {
     verify(
         op_token,
@@ -76,32 +76,32 @@ pub fn op<'a>(string: &'a str) -> impl Fn(Cursor<'a>) -> ParseResult<&Token> {
     )
 }
 
-/// Parse a number token from a token slice.
+/// Parse a number token.
 pub fn number_token(input: Cursor) -> ParseResult<&Token> {
     token(TokenType::NUMBER)(input)
 }
 
-/// Parse a string token from a token slice.
+/// Parse a string token.
 pub fn string_token(input: Cursor) -> ParseResult<&Token> {
     token(TokenType::STRING)(input)
 }
 
-/// Parse an indent token from a token slice.
+/// Parse an indent token.
 pub fn indent_token(input: Cursor) -> ParseResult<&Token> {
     token(TokenType::INDENT)(input)
 }
 
-/// Parse a dedent token from a token slice.
+/// Parse a dedent token.
 pub fn dedent_token(input: Cursor) -> ParseResult<&Token> {
     token(TokenType::DEDENT)(input)
 }
 
-/// Parse a grammatically significant newline token from a token slice.
+/// Parse a grammatically significant newline token.
 pub fn newline_token(input: Cursor) -> ParseResult<&Token> {
     token(TokenType::NEWLINE)(input)
 }
 
-/// Parse an endmarker token from a token slice.
+/// Parse an endmarker token.
 pub fn endmarker_token(input: Cursor) -> ParseResult<&Token> {
     token(TokenType::ENDMARKER)(input)
 }
