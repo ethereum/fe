@@ -14,7 +14,6 @@ use vyper_parser::builders::{
     many1,
     terminated,
 };
-use vyper_parser::errors::format_debug_error;
 use vyper_parser::parsers::*;
 use vyper_parser::span::{
     Span,
@@ -85,10 +84,7 @@ macro_rules! assert_fixture_parsed_with {
             let actual = $parser(&tokens[..]);
 
             if let Err(err) = &actual {
-                println!(
-                    "Parsing trace:\n{}",
-                    format_debug_error(inp, err.clone(), true)
-                );
+                println!("Parsing trace:\n{}", err.format_debug(inp, true));
             }
 
             let (actual_remaining, actual_ast) = actual.unwrap();
