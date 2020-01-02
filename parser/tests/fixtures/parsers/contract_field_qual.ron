@@ -1,0 +1,19 @@
+pub
+const
+---
+[
+  Spanned(
+    node: Pub,
+    span: Span(
+      start: 0,
+      end: 3,
+    ),
+  ),
+  Spanned(
+    node: Const,
+    span: Span(
+      start: 4,
+      end: 9,
+    ),
+  ),
+]

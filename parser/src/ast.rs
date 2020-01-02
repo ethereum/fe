@@ -48,6 +48,69 @@ pub enum ContractStmt<'a> {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum ContractFieldQual {
+    Const,
+    Pub,
+}
+
+impl TryFrom<&Token<'_>> for Spanned<ContractFieldQual> {
+    type Error = &'static str;
+
+    #[cfg_attr(tarpaulin, skip)]
+    fn try_from(tok: &Token) -> Result<Self, Self::Error> {
+        use ContractFieldQual::*;
+
+        let span = tok.span;
+
+        Ok(match tok.string {
+            "const" => Spanned { node: Const, span },
+            "pub" => Spanned { node: Pub, span },
+            _ => return Err("unrecognized string"),
+        })
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum EventFieldQual {
+    Idx,
+}
+
+impl TryFrom<&Token<'_>> for Spanned<EventFieldQual> {
+    type Error = &'static str;
+
+    #[cfg_attr(tarpaulin, skip)]
+    fn try_from(tok: &Token) -> Result<Self, Self::Error> {
+        Ok(match tok.string {
+            "idx" => Spanned {
+                node: EventFieldQual::Idx,
+                span: tok.span,
+            },
+            _ => return Err("unrecognized string"),
+        })
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum FuncQual {
+    Pub,
+}
+
+impl TryFrom<&Token<'_>> for Spanned<FuncQual> {
+    type Error = &'static str;
+
+    #[cfg_attr(tarpaulin, skip)]
+    fn try_from(tok: &Token) -> Result<Self, Self::Error> {
+        Ok(match tok.string {
+            "pub" => Spanned {
+                node: FuncQual::Pub,
+                span: tok.span,
+            },
+            _ => return Err("unrecognized string"),
+        })
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct SimpleImportName<'a> {
     pub path: Vec<&'a str>,
     pub alias: Option<&'a str>,

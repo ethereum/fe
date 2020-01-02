@@ -351,3 +351,30 @@ fn test_arr_dim_err() {
         )),
     );
 }
+
+#[test]
+#[wasm_bindgen_test]
+fn test_contract_field_qual() {
+    do_with_fixtures!(
+        assert_fixture_parsed_with!(standalone_vec(contract_field_qual)),
+        "fixtures/parsers/contract_field_qual.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_event_field_qual() {
+    do_with_fixtures!(
+        assert_fixture_parsed_with!(standalone_vec(event_field_qual)),
+        "fixtures/parsers/event_field_qual.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_func_qual() {
+    do_with_fixtures!(
+        assert_fixture_parsed_with!(standalone_vec(func_qual)),
+        "fixtures/parsers/func_qual.ron",
+    );
+}

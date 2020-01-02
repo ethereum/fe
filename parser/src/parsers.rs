@@ -635,6 +635,30 @@ pub fn arr_dim(input: Cursor) -> ParseResult<Spanned<usize>> {
     ))
 }
 
+pub fn try_from_tok<'a, P, O>(parser: P) -> impl Fn(Cursor<'a>) -> ParseResult<O>
+where
+    O: TryFrom<&'a Token<'a>>,
+    <O as TryFrom<&'a Token<'a>>>::Error: std::fmt::Debug,
+    P: Fn(Cursor<'a>) -> ParseResult<&Token>,
+{
+    map(parser, |tok| TryFrom::try_from(tok).unwrap())
+}
+
+/// Parse a contract field qualifier keyword e.g. "const".
+pub fn contract_field_qual(input: Cursor) -> ParseResult<Spanned<ContractFieldQual>> {
+    try_from_tok(alt((name("const"), name("pub"))))(input)
+}
+
+/// Parse an event field qualifier keyword i.e. "idx".
+pub fn event_field_qual(input: Cursor) -> ParseResult<Spanned<EventFieldQual>> {
+    try_from_tok(name("idx"))(input)
+}
+
+/// Parse a function qualifier keyword i.e. "pub".
+pub fn func_qual(input: Cursor) -> ParseResult<Spanned<FuncQual>> {
+    try_from_tok(name("pub"))(input)
+}
+
 /// Parse a constant expression that can be evaluated at compile-time.
 pub fn const_expr(input: Cursor) -> ParseResult<Spanned<ConstExpr>> {
     let (input, head) = const_term(input)?;

@@ -1,0 +1,11 @@
+idx
+---
+[
+  Spanned(
+    node: Idx,
+    span: Span(
+      start: 0,
+      end: 3,
+    ),
+  ),
+]
