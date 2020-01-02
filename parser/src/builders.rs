@@ -171,9 +171,9 @@ where
     P: Fn(Cursor<'a>) -> ParseResult<O1>,
     M: Fn(O1) -> O2,
 {
-    move |input| match parser(input) {
-        Ok((input_ok, result)) => Ok((input_ok, mapper(result))),
-        Err(err) => Err(err),
+    move |input| {
+        let (input, result) = parser(input)?;
+        Ok((input, mapper(result)))
     }
 }
 
@@ -187,14 +187,13 @@ where
     V: Fn(&O) -> bool,
     D: Fn(Cursor<'a>, &O) -> ParseError<'a>,
 {
-    move |input| match parser(input) {
-        Ok((input_ok, result)) => {
-            if verifier(&result) {
-                Ok((input_ok, result))
-            } else {
-                Err(describer(input_ok, &result))
-            }
+    move |input| {
+        let (input, result) = parser(input)?;
+
+        if verifier(&result) {
+            Ok((input, result))
+        } else {
+            Err(describer(input, &result))
         }
-        Err(err) => Err(err),
     }
 }
