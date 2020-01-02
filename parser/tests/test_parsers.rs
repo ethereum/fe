@@ -285,6 +285,15 @@ fn test_dots_to_int() {
 
 #[test]
 #[wasm_bindgen_test]
+fn test_type_def() {
+    do_with_fixtures!(
+        assert_fixture_parsed_with!(standalone_vec(type_def)),
+        "fixtures/parsers/type_def.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
 fn test_type_desc() {
     do_with_fixtures!(
         assert_fixture_parsed_with!(standalone_vec(type_desc)),

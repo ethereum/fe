@@ -1,0 +1,31 @@
+type Msg = bytes[100]
+---
+[
+  Spanned(
+    node: TypeDef(
+      name: "Msg",
+      typ: Spanned(
+        node: Array(
+          typ: Spanned(
+            node: Base(
+              base: "bytes",
+            ),
+            span: Span(
+              start: 11,
+              end: 16,
+            ),
+          ),
+          dimension: 100,
+        ),
+        span: Span(
+          start: 11,
+          end: 21,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 0,
+      end: 21,
+    ),
+  ),
+]

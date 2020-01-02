@@ -485,6 +485,26 @@ pub fn event_field(input: Cursor) -> ParseResult<Spanned<EventField>> {
     ))
 }
 
+pub fn type_def(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
+    let (input, type_kw) = name("type")(input)?;
+    let (input, name) = name_token(input)?;
+    let (input, _) = op("=")(input)?;
+    let (input, type_desc) = type_desc(input)?;
+
+    let span = Span::from_pair(type_kw, &type_desc);
+
+    Ok((
+        input,
+        Spanned {
+            node: ModuleStmt::TypeDef {
+                name: name.string,
+                typ: type_desc,
+            },
+            span,
+        },
+    ))
+}
+
 pub fn type_desc(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
     alt((map_type, base_type))(input)
 }

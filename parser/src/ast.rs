@@ -34,7 +34,7 @@ pub enum ModuleStmt<'a> {
     TypeDef {
         name: &'a str,
         #[serde(borrow)]
-        typ: TypeDesc<'a>,
+        typ: Spanned<TypeDesc<'a>>,
     },
 }
 

@@ -1,5 +1,4 @@
-type BookMsg = bytes[100][2]<maxlen=2>
-type str = bytes<encoding='utf8'>
+type BookMsg = bytes[100]
 
 contract GuestBook:
     pub guest_book: map<address, BookMsg>
