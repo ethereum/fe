@@ -195,17 +195,14 @@ pub fn verify<'a, O, P, V, D>(
 where
     P: Fn(Cursor<'a>) -> ParseResult<O>,
     V: Fn(&O) -> bool,
-    D: Fn(Cursor<'a>, &O) -> String,
+    D: Fn(Cursor<'a>, &O) -> ParseError<'a>,
 {
     move |input| match parser(input) {
         Ok((input_ok, result)) => {
             if verifier(&result) {
                 Ok((input_ok, result))
             } else {
-                Err(ParseError::new(
-                    input,
-                    ErrorKind::Str(describer(input_ok, &result)),
-                ))
+                Err(describer(input_ok, &result))
             }
         }
         Err(err) => Err(err),

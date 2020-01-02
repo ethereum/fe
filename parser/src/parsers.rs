@@ -41,7 +41,7 @@ pub fn token<'a>(typ: TokenType) -> impl Fn(Cursor<'a>) -> ParseResult<&Token> {
     verify(
         next,
         move |t| t.typ == typ,
-        move |_, _| format!("expected {:?} token", typ),
+        move |inp, _| ParseError::str(inp, format!("expected {:?} token", typ)),
     )
 }
 
@@ -55,7 +55,7 @@ pub fn name<'a>(string: &'a str) -> impl Fn(Cursor<'a>) -> ParseResult<&Token> {
     verify(
         name_token,
         move |t| t.string == string,
-        move |_, _| format!("expected \"{}\" name token", string),
+        move |inp, _| ParseError::str(inp, format!("expected \"{}\" name token", string)),
     )
 }
 
@@ -69,7 +69,7 @@ pub fn op<'a>(string: &'a str) -> impl Fn(Cursor<'a>) -> ParseResult<&Token> {
     verify(
         op_token,
         move |t| t.string == string,
-        move |_, _| format!("expected \"{}\" op token", string),
+        move |inp, _| ParseError::str(inp, format!("expected \"{}\" op token", string)),
     )
 }
 
