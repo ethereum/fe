@@ -50,6 +50,7 @@ impl<'a> ParseError<'a> {
     }
 
     /// Format an error into a debug trace message.
+    #[cfg_attr(tarpaulin, skip)]
     pub fn format_debug(&self, input: &str, show_err_no: bool) -> String {
         use std::iter::repeat;
 
@@ -96,6 +97,7 @@ impl<'a> ParseError<'a> {
     ///
     /// Uses the innermost error to build a user-facing error message and
     /// position.
+    #[cfg_attr(tarpaulin, skip)]
     pub fn format_user(&self, input: &str) -> String {
         let deepest_error = self.errors.first().unwrap();
 
@@ -104,5 +106,66 @@ impl<'a> ParseError<'a> {
         };
 
         new_err.format_debug(input, false)
+    }
+}
+
+#[cfg_attr(tarpaulin, skip)]
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use ErrorKind::*;
+
+    macro_rules! empty_slice {
+        () => {{
+            &[][..]
+        }};
+    }
+
+    #[test]
+    fn test_error_kind_description() {
+        assert_eq!(Str("foo".to_string()).description(), "foo");
+        assert_eq!(StaticStr("foo").description(), "foo");
+        assert_eq!(Eof.description(), "end of file");
+    }
+
+    #[test]
+    fn test_parse_error_factories() {
+        assert_eq!(
+            ParseError::str(empty_slice!(), "foo".to_string()),
+            ParseError {
+                errors: vec![(empty_slice!(), Str("foo".to_string()))],
+            }
+        );
+        assert_eq!(
+            ParseError::static_str(empty_slice!(), "foo"),
+            ParseError {
+                errors: vec![(empty_slice!(), StaticStr("foo"))],
+            }
+        );
+        assert_eq!(
+            ParseError::eof(empty_slice!()),
+            ParseError {
+                errors: vec![(empty_slice!(), Eof)],
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_error_push() {
+        use crate::get_parse_tokens;
+
+        let src = "foo";
+        let toks = get_parse_tokens(src).unwrap();
+        let tok_eof = &toks[toks.len()..];
+
+        let err = ParseError::eof(tok_eof);
+
+        assert_eq!(
+            err.push(&toks[..], StaticStr("some other error")),
+            ParseError {
+                errors: vec![(tok_eof, Eof), (&toks[..], StaticStr("some other error")),],
+            }
+        );
     }
 }

@@ -9,6 +9,5 @@ exec docker run \
     --all \
     --verbose \
     --exclude-files 'tests/*' \
-    --exclude-files 'parser/src/errors.rs' \
     --exclude-files 'main.rs' \
     "$@"

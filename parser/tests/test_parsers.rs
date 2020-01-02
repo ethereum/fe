@@ -11,9 +11,11 @@ use utils::{
 };
 use vyper_parser::ast::Module;
 use vyper_parser::builders::{
+    many0,
     many1,
     terminated,
 };
+use vyper_parser::errors::ParseError;
 use vyper_parser::parsers::*;
 use vyper_parser::span::{
     Span,
@@ -99,6 +101,21 @@ macro_rules! assert_fixture_parsed_with {
             );
         }
     }};
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_many0_err() {
+    assert_eq!(
+        many0(next)(empty_slice!()),
+        Err(ParseError::eof(empty_slice!()))
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_next_err() {
+    assert_eq!(next(empty_slice!()), Err(ParseError::eof(empty_slice!())));
 }
 
 #[test]
@@ -308,5 +325,20 @@ fn test_arr_dim() {
     do_with_fixtures!(
         assert_fixture_parsed_with!(standalone_vec(arr_dim)),
         "fixtures/parsers/arr_dim.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_arr_dim_err() {
+    let src = "[1.0]";
+    let toks = get_parse_tokens(src).unwrap();
+
+    assert_eq!(
+        standalone(arr_dim)(&toks),
+        Err(ParseError::str(
+            &toks[1..],
+            "invalid integer literal \"1.0\"".to_string(),
+        )),
     );
 }

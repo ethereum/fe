@@ -80,11 +80,6 @@ pub fn number_token(input: Cursor) -> ParseResult<&Token> {
     token(TokenType::NUMBER)(input)
 }
 
-/// Parse a string token.
-pub fn string_token(input: Cursor) -> ParseResult<&Token> {
-    token(TokenType::STRING)(input)
-}
-
 /// Parse an indent token.
 pub fn indent_token(input: Cursor) -> ParseResult<&Token> {
     token(TokenType::INDENT)(input)
@@ -593,12 +588,6 @@ pub fn arr_dim(input: Cursor) -> ParseResult<Spanned<usize>> {
             ))
         }
     };
-    if n < 1 {
-        return Err(ParseError::static_str(
-            num_input,
-            "array dimensions must be positive",
-        ));
-    }
 
     Ok((
         input,
