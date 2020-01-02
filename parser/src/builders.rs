@@ -68,14 +68,9 @@ where
             let mut input = input;
             let mut results = vec![first];
 
-            loop {
-                match parser(input) {
-                    Ok((input_, next)) => {
-                        input = input_;
-                        results.push(next);
-                    }
-                    Err(_) => break,
-                }
+            while let Ok((next_input, next)) = parser(input) {
+                input = next_input;
+                results.push(next);
             }
 
             Ok((input, results))
@@ -99,14 +94,9 @@ where
         let mut input = input;
         let mut results = vec![];
 
-        loop {
-            match parser(input) {
-                Ok((next_input, next)) => {
-                    input = next_input;
-                    results.push(next);
-                }
-                Err(_) => break,
-            }
+        while let Ok((next_input, next)) = parser(input) {
+            input = next_input;
+            results.push(next);
         }
 
         Ok((input, results))

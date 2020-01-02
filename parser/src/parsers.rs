@@ -51,6 +51,7 @@ pub fn name_token(input: Cursor) -> ParseResult<&Token> {
 }
 
 /// Parse a name token containing a specific string.
+#[allow(clippy::needless_lifetimes)]
 pub fn name<'a>(string: &'a str) -> impl Fn(Cursor<'a>) -> ParseResult<&Token> {
     verify(
         name_token,
@@ -65,6 +66,7 @@ pub fn op_token(input: Cursor) -> ParseResult<&Token> {
 }
 
 /// Parse an op token containing a specific string.
+#[allow(clippy::needless_lifetimes)]
 pub fn op<'a>(string: &'a str) -> impl Fn(Cursor<'a>) -> ParseResult<&Token> {
     verify(
         op_token,
