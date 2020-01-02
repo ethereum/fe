@@ -10,6 +10,10 @@ use utils::{
     to_ron_string_pretty,
 };
 use vyper_parser::ast::Module;
+use vyper_parser::builders::{
+    many1,
+    terminated,
+};
 use vyper_parser::errors::format_debug_error;
 use vyper_parser::parsers::*;
 use vyper_parser::span::{
@@ -17,8 +21,6 @@ use vyper_parser::span::{
     Spanned,
 };
 use vyper_parser::{
-    many1,
-    terminated,
     Cursor,
     ParseResult,
 };

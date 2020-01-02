@@ -2,6 +2,18 @@ use std::convert::TryFrom;
 
 use crate::ast::ModuleStmt::*;
 use crate::ast::*;
+use crate::builders::{
+    alt,
+    many0,
+    many1,
+    map,
+    opt,
+    pair,
+    preceded,
+    separated_pair,
+    terminated,
+    verify,
+};
 use crate::errors::{
     ErrorKind,
     ParseError,
@@ -19,16 +31,6 @@ use crate::tokenizer::types::{
     TokenType,
 };
 use crate::{
-    alt,
-    many0,
-    many1,
-    map,
-    opt,
-    pair,
-    preceded,
-    separated_pair,
-    terminated,
-    verify,
     Cursor,
     ParseResult,
 };
