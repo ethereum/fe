@@ -145,15 +145,13 @@ considered to represent the exact prioritization of work items.
 * [x] Completed port of [python's stdlib `tokenize`
   module](https://github.com/python/cpython/blob/2a58b0636d1f620f8a85a2e4c030cc10551936a5/Lib/tokenize.py)
   to Rust
-* [x] Settled on use of [`nom`](https://github.com/Geal/nom) to write parsing routines
-* [x] Completed a few basic parsers with `nom`
+* [x] Settled on overall design of parser
+* [x] Completed a few basic parsers
 * [x] All code is now tested on both native and WASM platforms with WASM
   testing via node.js
 * [x] Achieve ~100% code coverage by tests.  Coverage is currently maximized at
-  99% due to some code paths being unreachable and our coverage tool currently
-  having no support for ignoring specific lines of code.  These code paths
-  cannot be reached due to the style in which the `nom` parsing library defines
-  some of its parsers.
+  ~99% due to some code paths being unreachable and our coverage tool currently
+  having no support for ignoring specific lines of code.
 
 ### Short-term goals
 

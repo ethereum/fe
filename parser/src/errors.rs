@@ -39,9 +39,6 @@ impl<'a> ParseError<'a> {
 }
 
 /// Format an error into a debug trace message.
-///
-/// Inspired by nom internals:
-/// https://github.com/Geal/nom/blob/c326e077b83c62f81b717c80a281cb453cb914e7/src/error.rs#L141
 pub fn format_debug_error(input: &str, e: ParseError, show_err_no: bool) -> String {
     use std::iter::repeat;
 
