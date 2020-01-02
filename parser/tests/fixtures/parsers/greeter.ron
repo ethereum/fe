@@ -2,7 +2,6 @@ type BookMsg = bytes[100]
 
 contract GuestBook:
     pub guest_book: map<address, BookMsg>
-    pub version: uint256<256, min=0, max=100>[2]
 
     event Signed:
         idx book_msg: BookMsg
