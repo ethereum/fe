@@ -45,10 +45,10 @@ where
     }
 }
 
-/// Convert a parser into one that can function as a standalone parser that
-/// applies itself one or more times to an input and returns all outputs in a
-/// vector.
-fn standalone_vec<'a, O, P>(parser: P) -> impl Fn(Cursor<'a>) -> ParseResult<Vec<O>>
+/// Convert a parser into one that repeatedly applies itself to consume all
+/// tokens in a source file.  Repetitions are assumed to be separated by
+/// `NEWLINE` tokens.
+fn repeat_newline<'a, O, P>(parser: P) -> impl Fn(Cursor<'a>) -> ParseResult<Vec<O>>
 where
     P: Fn(Cursor<'a>) -> ParseResult<O> + Copy,
 {
@@ -217,7 +217,7 @@ fn test_import_stmt() {
 #[wasm_bindgen_test]
 fn test_simple_import() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(simple_import)),
+        assert_fixture_parsed_with!(repeat_newline(simple_import)),
         "fixtures/parsers/simple_import.ron",
     );
 }
@@ -226,7 +226,7 @@ fn test_simple_import() {
 #[wasm_bindgen_test]
 fn test_simple_import_name() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(simple_import_name)),
+        assert_fixture_parsed_with!(repeat_newline(simple_import_name)),
         "fixtures/parsers/simple_import_name.ron",
     );
 }
@@ -235,7 +235,7 @@ fn test_simple_import_name() {
 #[wasm_bindgen_test]
 fn test_from_import() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(from_import)),
+        assert_fixture_parsed_with!(repeat_newline(from_import)),
         "fixtures/parsers/from_import.ron",
     );
 }
@@ -244,7 +244,7 @@ fn test_from_import() {
 #[wasm_bindgen_test]
 fn test_from_import_sub_path() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(from_import_sub_path)),
+        assert_fixture_parsed_with!(repeat_newline(from_import_sub_path)),
         "fixtures/parsers/from_import_sub_path.ron",
     );
 }
@@ -253,7 +253,7 @@ fn test_from_import_sub_path() {
 #[wasm_bindgen_test]
 fn test_from_import_names() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(from_import_names)),
+        assert_fixture_parsed_with!(repeat_newline(from_import_names)),
         "fixtures/parsers/from_import_names.ron",
     );
 }
@@ -262,7 +262,7 @@ fn test_from_import_names() {
 #[wasm_bindgen_test]
 fn test_from_import_names_list() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(from_import_names_list)),
+        assert_fixture_parsed_with!(repeat_newline(from_import_names_list)),
         "fixtures/parsers/from_import_names_list.ron",
     );
 }
@@ -271,7 +271,7 @@ fn test_from_import_names_list() {
 #[wasm_bindgen_test]
 fn test_from_import_name() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(from_import_name)),
+        assert_fixture_parsed_with!(repeat_newline(from_import_name)),
         "fixtures/parsers/from_import_name.ron",
     );
 }
@@ -280,7 +280,7 @@ fn test_from_import_name() {
 #[wasm_bindgen_test]
 fn test_dotted_name() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(dotted_name)),
+        assert_fixture_parsed_with!(repeat_newline(dotted_name)),
         "fixtures/parsers/dotted_name.ron",
     );
 }
@@ -289,7 +289,7 @@ fn test_dotted_name() {
 #[wasm_bindgen_test]
 fn test_dots_to_int() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(dots_to_int)),
+        assert_fixture_parsed_with!(repeat_newline(dots_to_int)),
         "fixtures/parsers/dots_to_int.ron",
     );
 }
@@ -298,7 +298,7 @@ fn test_dots_to_int() {
 #[wasm_bindgen_test]
 fn test_type_def() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(type_def)),
+        assert_fixture_parsed_with!(repeat_newline(type_def)),
         "fixtures/parsers/type_def.ron",
     );
 }
@@ -307,7 +307,7 @@ fn test_type_def() {
 #[wasm_bindgen_test]
 fn test_type_desc() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(type_desc)),
+        assert_fixture_parsed_with!(repeat_newline(type_desc)),
         "fixtures/parsers/type_desc.ron",
     );
 }
@@ -316,7 +316,7 @@ fn test_type_desc() {
 #[wasm_bindgen_test]
 fn test_map_type() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(map_type)),
+        assert_fixture_parsed_with!(repeat_newline(map_type)),
         "fixtures/parsers/map_type.ron",
     );
 }
@@ -325,7 +325,7 @@ fn test_map_type() {
 #[wasm_bindgen_test]
 fn test_base_type() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(base_type)),
+        assert_fixture_parsed_with!(repeat_newline(base_type)),
         "fixtures/parsers/base_type.ron",
     );
 }
@@ -343,7 +343,7 @@ fn test_arr_list() {
 #[wasm_bindgen_test]
 fn test_arr_dim() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(arr_dim)),
+        assert_fixture_parsed_with!(repeat_newline(arr_dim)),
         "fixtures/parsers/arr_dim.ron",
     );
 }
@@ -367,7 +367,7 @@ fn test_arr_dim_err() {
 #[wasm_bindgen_test]
 fn test_contract_field_qual() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(contract_field_qual)),
+        assert_fixture_parsed_with!(repeat_newline(contract_field_qual)),
         "fixtures/parsers/contract_field_qual.ron",
     );
 }
@@ -376,7 +376,7 @@ fn test_contract_field_qual() {
 #[wasm_bindgen_test]
 fn test_event_field_qual() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(event_field_qual)),
+        assert_fixture_parsed_with!(repeat_newline(event_field_qual)),
         "fixtures/parsers/event_field_qual.ron",
     );
 }
@@ -385,7 +385,7 @@ fn test_event_field_qual() {
 #[wasm_bindgen_test]
 fn test_func_qual() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(func_qual)),
+        assert_fixture_parsed_with!(repeat_newline(func_qual)),
         "fixtures/parsers/func_qual.ron",
     );
 }
@@ -394,7 +394,7 @@ fn test_func_qual() {
 #[wasm_bindgen_test]
 fn test_const_expr() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(const_expr)),
+        assert_fixture_parsed_with!(repeat_newline(const_expr)),
         "fixtures/parsers/const_expr.ron",
     );
 }
@@ -403,7 +403,7 @@ fn test_const_expr() {
 #[wasm_bindgen_test]
 fn test_const_term() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(const_term)),
+        assert_fixture_parsed_with!(repeat_newline(const_term)),
         "fixtures/parsers/const_term.ron",
     );
 }
@@ -412,7 +412,7 @@ fn test_const_term() {
 #[wasm_bindgen_test]
 fn test_const_factor() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(const_factor)),
+        assert_fixture_parsed_with!(repeat_newline(const_factor)),
         "fixtures/parsers/const_factor.ron",
     );
 }
@@ -421,7 +421,7 @@ fn test_const_factor() {
 #[wasm_bindgen_test]
 fn test_const_power() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(const_power)),
+        assert_fixture_parsed_with!(repeat_newline(const_power)),
         "fixtures/parsers/const_power.ron",
     );
 }
@@ -430,7 +430,7 @@ fn test_const_power() {
 #[wasm_bindgen_test]
 fn test_const_atom() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(const_atom)),
+        assert_fixture_parsed_with!(repeat_newline(const_atom)),
         "fixtures/parsers/const_atom.ron",
     );
 }
@@ -439,7 +439,7 @@ fn test_const_atom() {
 #[wasm_bindgen_test]
 fn test_const_group() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_vec(const_group)),
+        assert_fixture_parsed_with!(repeat_newline(const_group)),
         "fixtures/parsers/const_group.ron",
     );
 }
