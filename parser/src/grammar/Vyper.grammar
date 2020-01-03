@@ -1,4 +1,5 @@
-file_input: module_stmt+ ENDMARKER
+file_input: NEWLINE ENDMARKER | module_stmt+ ENDMARKER
+
 module_stmt: import_stmt | type_def | contract_def
 
 ########################### import_stmt ##############################
@@ -39,7 +40,7 @@ contract_field: [contract_field_qual] NAME ':' type_desc NEWLINE
 event_def:
     'event' NAME ':' NEWLINE
     INDENT
-    event_field_def+
+    event_field+
     DEDENT
 event_field: [event_field_qual] NAME ':' type_desc NEWLINE
 
