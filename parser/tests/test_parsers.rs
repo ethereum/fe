@@ -60,6 +60,21 @@ where
     }
 }
 
+/// Convert a statement-style parser (one that consumes trailing newlines) into
+/// one that can function as a standalone parser that applies itself one or more
+/// times to an input and returns all outputs in a vector.
+fn standalone_stmt_vec<'a, O, P>(parser: P) -> impl Fn(Cursor<'a>) -> ParseResult<Vec<O>>
+where
+    P: Fn(Cursor<'a>) -> ParseResult<O> + Copy,
+{
+    move |input| {
+        let (input, o) = many1(parser)(input)?;
+        let (input, _) = endmarker_token(input)?;
+
+        Ok((input, o))
+    }
+}
+
 /// Assert `$parser` succeeds when applied to the given input in `$examples`
 /// with the expected output specified in `$examples` or `$expected`.
 macro_rules! assert_parser_ok {
@@ -193,7 +208,7 @@ fn test_file_input() {
 #[wasm_bindgen_test]
 fn test_import_stmt() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(terminated(many1(import_stmt), endmarker_token)),
+        assert_fixture_parsed_with!(standalone_stmt_vec(import_stmt)),
         "fixtures/parsers/import_stmt.ron",
     );
 }
