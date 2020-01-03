@@ -433,7 +433,41 @@ pub fn contract_def(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
 
 /// Parse a contract statement.
 pub fn contract_stmt(input: Cursor) -> ParseResult<Spanned<ContractStmt>> {
-    event_def(input)
+    alt((contract_field, event_def))(input)
+}
+
+/// Parse a contract field definition.
+pub fn contract_field(input: Cursor) -> ParseResult<Spanned<ContractStmt>> {
+    let (input, (qual, name_tok)) = alt((
+        // Look for a qualifier and field name first...
+        map(pair(contract_field_qual, name_token), |res| {
+            let (qual, tok) = res;
+            (Some(qual), tok)
+        }),
+        // ...then fall back to just a field name
+        map(name_token, |tok| (None, tok)),
+    ))(input)?;
+
+    let (input, _) = op(":")(input)?;
+    let (input, typ) = type_desc(input)?;
+    let (input, _) = newline_token(input)?;
+
+    let span = match &qual {
+        Some(spanned) => Span::from_pair(spanned, &typ),
+        None => Span::from_pair(name_tok, &typ),
+    };
+
+    Ok((
+        input,
+        Spanned {
+            node: ContractStmt::ContractField {
+                qual,
+                name: name_tok.string,
+                typ,
+            },
+            span,
+        },
+    ))
 }
 
 /// Parse an event definition statement.
@@ -466,19 +500,32 @@ pub fn event_def(input: Cursor) -> ParseResult<Spanned<ContractStmt>> {
 
 /// Parse an event field definition.
 pub fn event_field(input: Cursor) -> ParseResult<Spanned<EventField>> {
-    let (input, name_tok) = name_token(input)?;
+    let (input, (qual, name_tok)) = alt((
+        // Look for a qualifier and field name first...
+        map(pair(event_field_qual, name_token), |res| {
+            let (qual, tok) = res;
+            (Some(qual), tok)
+        }),
+        // ...then fall back to just a field name
+        map(name_token, |tok| (None, tok)),
+    ))(input)?;
+
     let (input, _) = op(":")(input)?;
-    let (input, typ) = name_token(input)?;
+    let (input, typ) = type_desc(input)?;
     let (input, _) = newline_token(input)?;
 
-    let span = Span::from_pair(name_tok, typ);
+    let span = match &qual {
+        Some(spanned) => Span::from_pair(spanned, &typ),
+        None => Span::from_pair(name_tok, &typ),
+    };
 
     Ok((
         input,
         Spanned {
             node: EventField {
+                qual,
                 name: name_tok.string,
-                typ: typ.into(),
+                typ,
             },
             span,
         },

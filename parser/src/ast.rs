@@ -40,6 +40,12 @@ pub enum ModuleStmt<'a> {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum ContractStmt<'a> {
+    ContractField {
+        qual: Option<Spanned<ContractFieldQual>>,
+        #[serde(borrow)]
+        name: &'a str,
+        typ: Spanned<TypeDesc<'a>>,
+    },
     EventDef {
         name: &'a str,
         #[serde(borrow)]
@@ -168,8 +174,9 @@ impl<'a> From<&'a Token<'a>> for Spanned<TypeDesc<'a>> {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct EventField<'a> {
-    pub name: &'a str,
+    pub qual: Option<Spanned<EventFieldQual>>,
     #[serde(borrow)]
+    pub name: &'a str,
     pub typ: Spanned<TypeDesc<'a>>,
 }
 

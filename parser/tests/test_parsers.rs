@@ -13,6 +13,7 @@ use vyper_parser::ast::Module;
 use vyper_parser::builders::{
     many0,
     many1,
+    pair,
     terminated,
 };
 use vyper_parser::errors::ParseError;
@@ -27,52 +28,32 @@ use vyper_parser::{
     ParseResult,
 };
 
-/// Convert a parser into one that can function as a standalone file parser.
-/// File tokenizations always include a trailing `NEWLINE` and `ENDMARKER`
-/// token.  Parsers defined lower in the grammar tree are not intended to handle
-/// that kind of tokenization.  This combinator modifies lower-level parsers to
-/// handle such tokenizations to facilitate unit testing.
+/// Convert a parser into one that can parse all tokens in a source file
+/// (including the default `ENDMARKER` token).
 fn standalone<'a, O, P>(parser: P) -> impl Fn(Cursor<'a>) -> ParseResult<O>
 where
     P: Fn(Cursor<'a>) -> ParseResult<O>,
 {
-    move |input| {
-        let (input, o) = parser(input)?;
-        let (input, _) = newline_token(input)?;
-        let (input, _) = endmarker_token(input)?;
-
-        Ok((input, o))
-    }
+    terminated(parser, pair(newline_token, endmarker_token))
 }
 
 /// Convert a parser into one that repeatedly applies itself to consume all
-/// tokens in a source file.  Repetitions are assumed to be separated by
+/// tokens in a source file.  Repetitions are assumed to be terminated by
 /// `NEWLINE` tokens.
 fn repeat_newline<'a, O, P>(parser: P) -> impl Fn(Cursor<'a>) -> ParseResult<Vec<O>>
 where
     P: Fn(Cursor<'a>) -> ParseResult<O> + Copy,
 {
-    move |input| {
-        let (input, o) = many1(terminated(parser, newline_token))(input)?;
-        let (input, _) = endmarker_token(input)?;
-
-        Ok((input, o))
-    }
+    terminated(many1(terminated(parser, newline_token)), endmarker_token)
 }
 
-/// Convert a statement-style parser (one that consumes trailing newlines) into
-/// one that can function as a standalone parser that applies itself one or more
-/// times to an input and returns all outputs in a vector.
-fn standalone_stmt_vec<'a, O, P>(parser: P) -> impl Fn(Cursor<'a>) -> ParseResult<Vec<O>>
+/// Convert a parser into one that repeatedly applies itself to consume all
+/// tokens in a source file.
+fn repeat<'a, O, P>(parser: P) -> impl Fn(Cursor<'a>) -> ParseResult<Vec<O>>
 where
     P: Fn(Cursor<'a>) -> ParseResult<O> + Copy,
 {
-    move |input| {
-        let (input, o) = many1(parser)(input)?;
-        let (input, _) = endmarker_token(input)?;
-
-        Ok((input, o))
-    }
+    terminated(many1(parser), endmarker_token)
 }
 
 /// Assert `$parser` succeeds when applied to the given input in `$examples`
@@ -149,10 +130,32 @@ fn test_next_err() {
 
 #[test]
 #[wasm_bindgen_test]
-fn test_file_input_empty_file() {
-    // Empty file
+fn test_file_input() {
     assert_parser_ok!(
         file_input,
+        vec![(
+            "",
+            Ok((
+                empty_slice!(),
+                Spanned {
+                    node: Module { body: vec![] },
+                    span: Span::new(0, 0),
+                }
+            ))
+        )],
+    );
+
+    do_with_fixtures!(
+        assert_fixture_parsed_with!(file_input),
+        "fixtures/parsers/non_empty_file_input.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_empty_file_input() {
+    assert_parser_ok!(
+        empty_file_input,
         vec![
             (
                 "",
@@ -190,17 +193,19 @@ fn test_file_input_empty_file() {
 
 #[test]
 #[wasm_bindgen_test]
-fn test_file_input() {
+fn test_non_empty_file_input() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(file_input),
-        "fixtures/parsers/file_input/one_stmt_no_whitespace.ron",
-        "fixtures/parsers/file_input/one_stmt_leading_whitespace.ron",
-        "fixtures/parsers/file_input/one_stmt_leading_trailing.ron",
-        "fixtures/parsers/file_input/one_stmt_form_feed.ron",
-        "fixtures/parsers/file_input/many_stmt_no_whitespace.ron",
-        "fixtures/parsers/file_input/many_stmt_leading_whitespace.ron",
-        "fixtures/parsers/file_input/many_stmt_leading_trailing.ron",
-        "fixtures/parsers/file_input/many_stmt_lots_of_whitespace.ron",
+        assert_fixture_parsed_with!(non_empty_file_input),
+        "fixtures/parsers/non_empty_file_input.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_module_stmt() {
+    do_with_fixtures!(
+        assert_fixture_parsed_with!(repeat(module_stmt)),
+        "fixtures/parsers/module_stmt.ron",
     );
 }
 
@@ -208,7 +213,7 @@ fn test_file_input() {
 #[wasm_bindgen_test]
 fn test_import_stmt() {
     do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone_stmt_vec(import_stmt)),
+        assert_fixture_parsed_with!(repeat(import_stmt)),
         "fixtures/parsers/import_stmt.ron",
     );
 }
@@ -291,6 +296,51 @@ fn test_dots_to_int() {
     do_with_fixtures!(
         assert_fixture_parsed_with!(repeat_newline(dots_to_int)),
         "fixtures/parsers/dots_to_int.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_contract_def() {
+    do_with_fixtures!(
+        assert_fixture_parsed_with!(repeat(contract_def)),
+        "fixtures/parsers/contract_def.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_contract_stmt() {
+    do_with_fixtures!(
+        assert_fixture_parsed_with!(repeat(contract_stmt)),
+        "fixtures/parsers/contract_stmt.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_contract_field() {
+    do_with_fixtures!(
+        assert_fixture_parsed_with!(repeat(contract_field)),
+        "fixtures/parsers/contract_field.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_event_def() {
+    do_with_fixtures!(
+        assert_fixture_parsed_with!(repeat(event_def)),
+        "fixtures/parsers/event_def.ron",
+    );
+}
+
+#[test]
+#[wasm_bindgen_test]
+fn test_event_field() {
+    do_with_fixtures!(
+        assert_fixture_parsed_with!(repeat(event_field)),
+        "fixtures/parsers/event_field.ron",
     );
 }
 

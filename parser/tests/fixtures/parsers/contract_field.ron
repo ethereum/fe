@@ -1,0 +1,75 @@
+x: address
+const x: address
+pub x: address
+---
+[
+  Spanned(
+    node: ContractField(
+      qual: None,
+      name: "x",
+      typ: Spanned(
+        node: Base(
+          base: "address",
+        ),
+        span: Span(
+          start: 3,
+          end: 10,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 0,
+      end: 10,
+    ),
+  ),
+  Spanned(
+    node: ContractField(
+      qual: Some(Spanned(
+        node: Const,
+        span: Span(
+          start: 11,
+          end: 16,
+        ),
+      )),
+      name: "x",
+      typ: Spanned(
+        node: Base(
+          base: "address",
+        ),
+        span: Span(
+          start: 20,
+          end: 27,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 11,
+      end: 27,
+    ),
+  ),
+  Spanned(
+    node: ContractField(
+      qual: Some(Spanned(
+        node: Pub,
+        span: Span(
+          start: 28,
+          end: 31,
+        ),
+      )),
+      name: "x",
+      typ: Spanned(
+        node: Base(
+          base: "address",
+        ),
+        span: Span(
+          start: 35,
+          end: 42,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 28,
+      end: 42,
+    ),
+  ),
+]

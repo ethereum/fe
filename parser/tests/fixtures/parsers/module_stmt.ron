@@ -1,0 +1,58 @@
+import foo
+contract Foo:
+    x: bar
+---
+[
+  Spanned(
+    node: SimpleImport(
+      names: [
+        Spanned(
+          node: SimpleImportName(
+            path: [
+              "foo",
+            ],
+            alias: None,
+          ),
+          span: Span(
+            start: 7,
+            end: 10,
+          ),
+        ),
+      ],
+    ),
+    span: Span(
+      start: 0,
+      end: 10,
+    ),
+  ),
+  Spanned(
+    node: ContractDef(
+      name: "Foo",
+      body: [
+        Spanned(
+          node: ContractField(
+            qual: None,
+            name: "x",
+            typ: Spanned(
+              node: Base(
+                base: "bar",
+              ),
+              span: Span(
+                start: 32,
+                end: 35,
+              ),
+            ),
+          ),
+          span: Span(
+            start: 29,
+            end: 35,
+          ),
+        ),
+      ],
+    ),
+    span: Span(
+      start: 11,
+      end: 35,
+    ),
+  ),
+]

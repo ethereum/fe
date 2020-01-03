@@ -1,0 +1,34 @@
+import foo
+---
+Spanned(
+  node: Module(
+    body: [
+      Spanned(
+        node: SimpleImport(
+          names: [
+            Spanned(
+              node: SimpleImportName(
+                path: [
+                  "foo",
+                ],
+                alias: None,
+              ),
+              span: Span(
+                start: 7,
+                end: 10,
+              ),
+            ),
+          ],
+        ),
+        span: Span(
+          start: 0,
+          end: 10,
+        ),
+      ),
+    ],
+  ),
+  span: Span(
+    start: 0,
+    end: 10,
+  ),
+)

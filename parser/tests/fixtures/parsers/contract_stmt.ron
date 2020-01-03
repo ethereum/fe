@@ -1,0 +1,55 @@
+x: address
+event Foo:
+    x: address
+---
+[
+  Spanned(
+    node: ContractField(
+      qual: None,
+      name: "x",
+      typ: Spanned(
+        node: Base(
+          base: "address",
+        ),
+        span: Span(
+          start: 3,
+          end: 10,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 0,
+      end: 10,
+    ),
+  ),
+  Spanned(
+    node: EventDef(
+      name: "Foo",
+      fields: [
+        Spanned(
+          node: EventField(
+            qual: None,
+            name: "x",
+            typ: Spanned(
+              node: Base(
+                base: "address",
+              ),
+              span: Span(
+                start: 29,
+                end: 36,
+              ),
+            ),
+          ),
+          span: Span(
+            start: 26,
+            end: 36,
+          ),
+        ),
+      ],
+    ),
+    span: Span(
+      start: 11,
+      end: 36,
+    ),
+  ),
+]
