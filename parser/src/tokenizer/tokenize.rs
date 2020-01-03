@@ -92,25 +92,7 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, TokenizeError> {
     let mut contstr_end_re: Option<&Regex> = None;
     let mut needcont: bool = false;
 
-    // Token generation loop.  We use the `loop` keyword here (instead of `for
-    // (line, line_num) in ...`) so we can hold onto the iterator vars after the
-    // loop finishes.
-    let mut line = &input[..0];
-    let mut lines = lines_with_endings(input);
-
-    loop {
-        let next = lines.next();
-        // We use this guard style of exiting to avoid indenting the entire loop body
-        if next.is_none() {
-            break;
-        }
-
-        // Get current line and line offsets
-        let next_unwrap = next.unwrap();
-        line = next_unwrap.0;
-        let line_start = next_unwrap.1;
-        let line_end = next_unwrap.2;
-
+    for (line, line_start, line_end) in lines_with_endings(input) {
         // Set parsing position relative to this line
         let mut line_pos: usize = 0;
         let line_len: usize = line.len();
