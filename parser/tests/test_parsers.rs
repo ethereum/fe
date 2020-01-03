@@ -71,7 +71,14 @@ macro_rules! assert_parser_ok {
             let tokens = get_parse_tokens(inp).unwrap();
             let actual = $parser(&tokens[..]);
 
-            assert_eq!(actual, expected);
+            assert_eq!(
+                actual,
+                expected,
+                "\n===== Input =====\n{:#?}\n===== Actual =====\n{:#?}\n===== Expected =====\n{:#?}",
+                inp,
+                actual,
+                expected,
+            );
         }
     }};
 }
@@ -86,7 +93,14 @@ macro_rules! assert_fixture_parsed_with {
             let actual = $parser(&tokens[..]);
 
             if let Err(err) = &actual {
-                println!("Parsing trace:\n{}", err.format_debug(inp, true));
+                eprintln!("===== Error result for =====");
+                eprintln!("* filename: {}", filename);
+                eprintln!("* parsed with: {}", stringify!($parser));
+                eprint!(
+                    "\n===== Parsing trace =====\n{}",
+                    err.format_debug(inp, true)
+                );
+                //eprintln!("===== Error =====\n{:#?}", err);
             }
 
             let (actual_remaining, actual_ast) = actual.unwrap();
