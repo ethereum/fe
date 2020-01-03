@@ -55,7 +55,7 @@ x = 3 + \
     "line": "x = 3 + \\\n"
   },
   {
-    "typ": "NL",
+    "typ": "NEWLINE",
     "string": "",
     "start": [
       2,
