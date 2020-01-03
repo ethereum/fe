@@ -371,25 +371,18 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, TokenizeError> {
         });
     }
 
-    if !line.is_empty() {
-        let last_char = line.chars().last().unwrap();
-        if last_char != '\r' && last_char != '\n' {
-            result.push(Token {
-                typ: if line.trim().is_empty() { NL } else { NEWLINE },
-                string: empty_end_slice,
-                span: Span::new(
-                    input_len,
-                    // Python's stdlib tokenize module fudges the end position of this virtual
-                    // token and says it's one character beyond the actual
-                    // content of the string.  Since this could potentially
-                    // lead someone access invalid memory, we differ slightly
-                    // here and just act like the token has a length of zero.
-                    input_len,
-                ),
-                line: empty_end_slice,
-            });
-        }
+    // Ensure content tokens end with newline (this allows parsers to be defined
+    // more consistently)
+    match result.last() {
+        Some(Token { typ: NEWLINE, .. }) => (),
+        _ => result.push(Token {
+            typ: NEWLINE,
+            string: empty_end_slice,
+            span: Span::new(input_len, input_len),
+            line: empty_end_slice,
+        }),
     }
+    // Emit any necessary dedents
     for _ in indents.iter().skip(1) {
         result.push(Token {
             typ: DEDENT,

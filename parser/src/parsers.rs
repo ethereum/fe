@@ -107,14 +107,14 @@ pub fn file_input(input: Cursor) -> ParseResult<Spanned<Module>> {
 
 /// Parse an empty module definition.
 pub fn empty_file_input(input: Cursor) -> ParseResult<Spanned<Module>> {
-    // ENDMARKER
-    let (input, end_tok) = endmarker_token(input)?;
+    let (input, newline_tok) = newline_token(input)?;
+    let (input, _) = endmarker_token(input)?;
 
     Ok((
         input,
         Spanned {
             node: Module { body: vec![] },
-            span: end_tok.span,
+            span: newline_tok.span,
         },
     ))
 }
