@@ -21,6 +21,8 @@ from_import_names: '*' | '(' from_import_names_list ')' | from_import_names_list
 from_import_names_list: from_import_name (',' from_import_name)* [',']
 from_import_name: NAME ['as' NAME]
 
+dotted_name: NAME ('.' NAME)*
+
 ########################### type_def #################################
 
 type_def: 'type' NAME '=' type_desc NEWLINE
@@ -64,9 +66,83 @@ contract_field_qual: 'const' | 'pub'
 event_field_qual: 'idx'
 func_qual: 'pub'
 
-func_stmt: pass_stmt NEWLINE
+########################### func_stmt ###############################
 
+func_stmt:  compound_stmt | simple_stmt
+simple_stmt: small_stmt (';' small_stmt)* [';'] NEWLINE
+
+# NOTE: `assign_stmt` MUST precede `exprs`.  Otherwise, the parser will get
+# stuck.  However, it must follow all others.  Otherwise, reserved words will
+# match a simple NAME.
+small_stmt: return_stmt | pass_stmt | assert_stmt | revert_stmt | emit_stmt | assign_stmt
+            | exprs
+
+return_stmt: 'return' [exprs]
 pass_stmt: 'pass'
+assert_stmt: 'assert' expr [',' expr]
+revert_stmt: 'revert'
+emit_stmt: 'emit' expr
+
+assign_stmt: target ':' type_desc ['=' expr]
+            | (targets '=')+ exprs
+            | target augassign exprs
+augassign: '+=' | '-=' | '*=' | '/=' | '%=' | '&=' | '|=' | '^='
+           | '<<=' | '>>=' | '**=' | '//='
+
+compound_stmt: if_stmt | while_stmt | for_stmt
+
+if_stmt: 'if' expr ':' block elif_block* [else_block]
+elif_block: 'elif' expr ':' block
+else_block: 'else' ':' block
+
+while_stmt: 'while' expr ':' block [else_block]
+
+for_stmt: 'for' targets 'in' exprs ':' block [else_block]
+
+block: simple_stmt | NEWLINE INDENT func_stmt+ DEDENT
+
+exprs: expr (',' expr)* [',']
+
+expr: disjunct ['if' disjunct 'else' expr]
+disjunct: conjunct ('or' conjunct)*
+conjunct: comparison ('and' comparison)*
+comparison: 'not'* bitwise_or (comp_op bitwise_or)*
+comp_op: '<' | '<=' | '==' | '>=' | '>' | '!=' | ['not'] 'in' | 'is' ['not']
+
+bitwise_or: bitwise_xor ('|' bitwise_xor)*
+bitwise_xor: bitwise_and ('^' bitwise_and)*
+bitwise_and: shift_expr ('&' shift_expr)*
+shift_expr: sum (('<<'|'>>') sum)*
+
+sum: term (('+' term | '-' term))*
+term: factor (('*' factor | '/' factor | '//' factor | '%' factor))*
+factor: ('+' | '-' | '~') factor | power
+power: primary '**' factor | primary
+primary: atom (attr_tail | index_tail | call_tail)*
+
+slices: slice (',' slice)* [',']
+slice: [expr] ':' [expr] [':' [expr]] | expr
+
+atom: list | listcomp | tuple | group | NAME | STRING+ | NUMBER | '...'
+list: '[' [exprs] ']'
+listcomp: '[' expr for_if_clauses ']'
+tuple: '(' [exprs] ')'
+group: '(' expr ')'
+for_if_clauses: ('for' targets 'in' expr ('if' expr)*)+
+
+args: kwargs | expr [',' args]
+kwargs: kwarg (',' kwarg)*
+kwarg: NAME '=' expr
+
+targets: target (',' target)* [',']
+target: atom t_tail+ | t_atom t_tail*
+t_atom: NAME | '(' [targets] ')' | '[' [targets] ']'
+
+t_tail: call_tail* (attr_tail | index_tail)
+
+call_tail: '(' [args] ')'
+attr_tail: '.' NAME
+index_tail: '[' slices ']'
 
 ########################### const_expr ###############################
 
@@ -78,7 +154,3 @@ const_power: const_atom '**' const_factor | const_atom
 const_atom: const_group | NAME | NUMBER
 
 const_group: '(' const_expr ')'
-
-########################### common ###################################
-
-dotted_name: NAME ('.' NAME)*
