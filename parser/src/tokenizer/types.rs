@@ -3,7 +3,10 @@ use serde::{
     Serialize,
 };
 
-use crate::span::Span;
+use crate::span::{
+    Span,
+    Spanned,
+};
 
 /// Indicates the basic syntactic element represented by a token.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Copy, Clone)]
@@ -41,7 +44,16 @@ pub struct Token<'a> {
 }
 
 impl<'a> From<&Token<'a>> for Span {
-    fn from(token: &Token) -> Span {
-        token.span
+    fn from(tok: &Token) -> Self {
+        tok.span
+    }
+}
+
+impl<'a> From<&Token<'a>> for Spanned<&'a str> {
+    fn from(tok: &Token<'a>) -> Self {
+        Spanned {
+            node: tok.string,
+            span: tok.span,
+        }
     }
 }
