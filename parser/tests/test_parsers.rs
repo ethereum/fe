@@ -130,6 +130,19 @@ fn test_next_err() {
 
 #[test]
 #[wasm_bindgen_test]
+fn test_op_expr_builder_err() {
+    let examples = vec!["x + y -", "x + y - !"];
+
+    for inp in examples {
+        let tokens = get_parse_tokens(inp).unwrap();
+        let result = sum(&tokens[..]);
+
+        assert!(result.is_err());
+    }
+}
+
+#[test]
+#[wasm_bindgen_test]
 fn test_file_input() {
     assert_parser_ok!(
         file_input,
