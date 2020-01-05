@@ -113,6 +113,36 @@ macro_rules! assert_fixture_parsed_with {
     }};
 }
 
+macro_rules! parser_fixture_tests {
+    ($(($parser:expr, $tester_name:ident, $fixture_path:expr,)),+,) => {
+        parser_fixture_tests! {
+            $(($parser, $tester_name, $fixture_path)),+
+        }
+    };
+    ($(($parser:expr, $tester_name:ident, $fixture_path:expr)),+,) => {
+        parser_fixture_tests! {
+            $(($parser, $tester_name, $fixture_path)),+
+        }
+    };
+    ($(($parser:expr, $tester_name:ident, $fixture_path:expr,)),+) => {
+        parser_fixture_tests! {
+            $(($parser, $tester_name, $fixture_path)),+
+        }
+    };
+    ($(($parser:expr, $tester_name:ident, $fixture_path:expr)),+) => {
+        $(
+        #[test]
+        #[wasm_bindgen_test]
+        fn $tester_name() {
+            do_with_fixtures!(
+                assert_fixture_parsed_with!($parser),
+                $fixture_path,
+            );
+        }
+        )+
+    };
+}
+
 #[test]
 #[wasm_bindgen_test]
 fn test_many0_err() {
@@ -191,13 +221,12 @@ fn test_empty_file_input() {
     );
 }
 
-#[test]
-#[wasm_bindgen_test]
-fn test_non_empty_file_input() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(non_empty_file_input),
+parser_fixture_tests! {
+    (
+        non_empty_file_input,
+        test_non_empty_file_input,
         "fixtures/parsers/non_empty_file_input.ron",
-    );
+    ),
 }
 
 #[test]
