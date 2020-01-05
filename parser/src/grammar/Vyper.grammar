@@ -74,13 +74,15 @@ simple_stmt: small_stmt (';' small_stmt)* [';'] NEWLINE
 # NOTE: `assign_stmt` MUST precede `exprs`.  Otherwise, the parser will get
 # stuck.  However, it must follow all others.  Otherwise, reserved words will
 # match a simple NAME.
-small_stmt: return_stmt | pass_stmt | assert_stmt | revert_stmt | emit_stmt | assign_stmt
-            | exprs
+small_stmt: return_stmt | pass_stmt | break_stmt | continue_stmt | revert_stmt
+            | assert_stmt | emit_stmt | assign_stmt | exprs
 
 return_stmt: 'return' [exprs]
 pass_stmt: 'pass'
-assert_stmt: 'assert' expr [',' expr]
+break_stmt: 'break'
+continue_stmt: 'continue'
 revert_stmt: 'revert'
+assert_stmt: 'assert' expr [',' expr]
 emit_stmt: 'emit' expr
 
 assign_stmt: target ':' type_desc ['=' expr]
