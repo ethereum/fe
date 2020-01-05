@@ -13,10 +13,10 @@ pub struct Module<'a> {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum ModuleStmt<'a> {
-    ContractDef {
+    TypeDef {
         name: Spanned<&'a str>,
         #[serde(borrow)]
-        body: Vec<Spanned<ContractStmt<'a>>>,
+        typ: Spanned<TypeDesc<'a>>,
     },
     SimpleImport {
         #[serde(borrow)]
@@ -28,42 +28,26 @@ pub enum ModuleStmt<'a> {
         #[serde(borrow)]
         names: Spanned<FromImportNames<'a>>,
     },
-    TypeDef {
+    ContractDef {
         name: Spanned<&'a str>,
         #[serde(borrow)]
-        typ: Spanned<TypeDesc<'a>>,
+        body: Vec<Spanned<ContractStmt<'a>>>,
     },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub enum ContractStmt<'a> {
-    ContractField {
-        qual: Option<Spanned<ContractFieldQual>>,
-        #[serde(borrow)]
-        name: Spanned<&'a str>,
-        typ: Spanned<TypeDesc<'a>>,
+pub enum TypeDesc<'a> {
+    Base {
+        base: &'a str,
     },
-    EventDef {
-        name: Spanned<&'a str>,
-        #[serde(borrow)]
-        fields: Vec<Spanned<EventField<'a>>>,
+    Array {
+        typ: Box<Spanned<TypeDesc<'a>>>,
+        dimension: usize,
     },
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub enum ContractFieldQual {
-    Const,
-    Pub,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub enum EventFieldQual {
-    Idx,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub enum FuncQual {
-    Pub,
+    Map {
+        from: Box<Spanned<TypeDesc<'a>>>,
+        to: Box<Spanned<TypeDesc<'a>>>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -101,18 +85,30 @@ pub struct FromImportName<'a> {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub enum TypeDesc<'a> {
-    Base {
-        base: &'a str,
+pub enum ContractStmt<'a> {
+    ContractField {
+        qual: Option<Spanned<ContractFieldQual>>,
+        #[serde(borrow)]
+        name: Spanned<&'a str>,
+        typ: Spanned<TypeDesc<'a>>,
     },
-    Array {
-        typ: Box<Spanned<TypeDesc<'a>>>,
-        dimension: usize,
+    EventDef {
+        name: Spanned<&'a str>,
+        fields: Vec<Spanned<EventField<'a>>>,
     },
-    Map {
-        from: Box<Spanned<TypeDesc<'a>>>,
-        to: Box<Spanned<TypeDesc<'a>>>,
+    FuncDef {
+        qual: Option<Spanned<FuncQual>>,
+        name: Spanned<&'a str>,
+        args: Vec<Spanned<EventField<'a>>>,
+        return_type: Spanned<TypeDesc<'a>>,
+        body: Vec<Spanned<FuncStmt<'a>>>,
     },
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum ContractFieldQual {
+    Const,
+    Pub,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -121,6 +117,71 @@ pub struct EventField<'a> {
     #[serde(borrow)]
     pub name: Spanned<&'a str>,
     pub typ: Spanned<TypeDesc<'a>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum EventFieldQual {
+    Idx,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum FuncQual {
+    Pub,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub struct FuncDefArg<'a> {
+    #[serde(borrow)]
+    name: Spanned<&'a str>,
+    pub typ: Spanned<TypeDesc<'a>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum FuncStmt<'a> {
+    Return {
+        #[serde(borrow)]
+        value: Option<Expr<'a>>,
+    },
+    VarDecl {
+        target: Spanned<Expr<'a>>,
+        typ: Spanned<TypeDesc<'a>>,
+        value: Option<Spanned<Expr<'a>>>,
+    },
+    Assign {
+        targets: Vec<Spanned<Expr<'a>>>,
+        value: Spanned<Expr<'a>>,
+    },
+    AugAssign {
+        target: Spanned<Expr<'a>>,
+        op: Spanned<BinOperator>,
+        value: Spanned<Expr<'a>>,
+    },
+    For {
+        target: Spanned<Expr<'a>>,
+        iter: Spanned<Expr<'a>>,
+        body: Vec<Spanned<FuncStmt<'a>>>,
+        or_else: Vec<Spanned<FuncStmt<'a>>>,
+    },
+    While {
+        test: Spanned<Expr<'a>>,
+        body: Vec<Spanned<FuncStmt<'a>>>,
+        or_else: Vec<Spanned<FuncStmt<'a>>>,
+    },
+    If {
+        test: Spanned<Expr<'a>>,
+        body: Vec<Spanned<FuncStmt<'a>>>,
+        or_else: Vec<Spanned<FuncStmt<'a>>>,
+    },
+    Assert {
+        test: Spanned<Expr<'a>>,
+        msg: Option<Spanned<Expr<'a>>>,
+    },
+    Expr {
+        value: Expr<'a>,
+    },
+    Pass,
+    Break,
+    Continue,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
