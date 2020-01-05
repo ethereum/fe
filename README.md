@@ -152,10 +152,7 @@ considered to represent the exact prioritization of work items.
 * [x] Achieve ~100% code coverage by tests.  Coverage is currently maximized at
   ~99% due to some code paths being unreachable and our coverage tool currently
   having no support for ignoring specific lines of code.
-
-### Short-term goals
-
-* [ ] Identify an appropriate subset of the Python grammar and any grammatical
+* [x] Identify an appropriate subset of the Python grammar and any grammatical
   extensions needed to define a Vyper EBNF grammar
   - Eliminate certain Pythonic grammatical elements that don't apply to Vyper
     (such as `async` constructs, `lambda` expressions, argument packing syntax
@@ -163,6 +160,9 @@ considered to represent the exact prioritization of work items.
   - Include grammatical elements that more directly capture Vyper language
     constructs (such as event, contract, or interface definitions, type
     dimensions, etc.)
+
+### Short-term goals
+
 * [ ] Finish writing parsers for the Vyper EBNF grammar
 * [ ] Parse and compile a basic greeter contract to YUL
 * [ ] Generate YUL source code from YUL AST objects (via [yultsur](https://github.com/axic/yultsur/))
