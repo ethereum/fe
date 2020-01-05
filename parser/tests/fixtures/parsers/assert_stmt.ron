@@ -1,0 +1,43 @@
+assert x
+assert x, y
+---
+[
+  Spanned(
+    node: Assert(
+      test: Spanned(
+        node: Name("x"),
+        span: Span(
+          start: 7,
+          end: 8,
+        ),
+      ),
+      msg: None,
+    ),
+    span: Span(
+      start: 0,
+      end: 8,
+    ),
+  ),
+  Spanned(
+    node: Assert(
+      test: Spanned(
+        node: Name("x"),
+        span: Span(
+          start: 16,
+          end: 17,
+        ),
+      ),
+      msg: Some(Spanned(
+        node: Name("y"),
+        span: Span(
+          start: 19,
+          end: 20,
+        ),
+      )),
+    ),
+    span: Span(
+      start: 9,
+      end: 20,
+    ),
+  ),
+]

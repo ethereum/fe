@@ -176,6 +176,9 @@ pub enum FuncStmt<'a> {
         test: Spanned<Expr<'a>>,
         msg: Option<Spanned<Expr<'a>>>,
     },
+    Emit {
+        value: Expr<'a>,
+    },
     Expr {
         value: Expr<'a>,
     },

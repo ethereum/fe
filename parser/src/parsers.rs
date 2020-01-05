@@ -706,6 +706,69 @@ pub fn func_qual(input: Cursor) -> ParseResult<Spanned<FuncQual>> {
     try_from_tok(name("pub"))(input)
 }
 
+pub fn return_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+    let (input, return_kw) = name("return")(input)?;
+    let (input, values) = opt(exprs)(input)?;
+
+    let span = match &values {
+        Some(vec) => {
+            let last = vec.last().unwrap();
+            Span::from_pair(return_kw, last)
+        }
+        None => return_kw.span,
+    };
+    let value = match values {
+        Some(mut vec) => Some(if vec.len() > 1 {
+            Expr::Tuple { elts: vec }
+        } else {
+            vec.pop().unwrap().node
+        }),
+        None => None,
+    };
+
+    Ok((
+        input,
+        Spanned {
+            node: FuncStmt::Return { value },
+            span,
+        },
+    ))
+}
+
+pub fn assert_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+    let (input, assert_kw) = name("assert")(input)?;
+    let (input, test) = expr(input)?;
+    let (input, msg) = opt(preceded(op(","), expr))(input)?;
+
+    let span = match &msg {
+        Some(msg_expr) => Span::from_pair(assert_kw, msg_expr),
+        None => Span::from_pair(assert_kw, &test),
+    };
+
+    Ok((
+        input,
+        Spanned {
+            node: FuncStmt::Assert { test, msg },
+            span,
+        },
+    ))
+}
+
+pub fn emit_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+    let (input, emit_kw) = name("emit")(input)?;
+    let (input, value) = expr(input)?;
+
+    let span = Span::from_pair(emit_kw, &value);
+
+    Ok((
+        input,
+        Spanned {
+            node: FuncStmt::Emit { value: value.node },
+            span,
+        },
+    ))
+}
+
 pub fn keyword_statement<'a, G>(
     string: &'a str,
     get_stmt: G,

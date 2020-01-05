@@ -439,6 +439,24 @@ parser_fixture_tests! {
         "fixtures/parsers/func_qual.ron",
     ),
     (
+        repeat_newline(return_stmt),
+        test_return_stmt,
+        write_return_stmt,
+        "fixtures/parsers/return_stmt.ron",
+    ),
+    (
+        repeat_newline(assert_stmt),
+        test_assert_stmt,
+        write_assert_stmt,
+        "fixtures/parsers/assert_stmt.ron",
+    ),
+    (
+        repeat_newline(emit_stmt),
+        test_emit_stmt,
+        write_emit_stmt,
+        "fixtures/parsers/emit_stmt.ron",
+    ),
+    (
         repeat_newline(pass_stmt),
         test_pass_stmt,
         write_pass_stmt,
