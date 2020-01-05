@@ -29,7 +29,7 @@ pub enum ModuleStmt<'a> {
         names: Spanned<FromImportNames<'a>>,
     },
     TypeDef {
-        name: &'a str,
+        name: Spanned<&'a str>,
         #[serde(borrow)]
         typ: Spanned<TypeDesc<'a>>,
     },
@@ -40,11 +40,11 @@ pub enum ContractStmt<'a> {
     ContractField {
         qual: Option<Spanned<ContractFieldQual>>,
         #[serde(borrow)]
-        name: &'a str,
+        name: Spanned<&'a str>,
         typ: Spanned<TypeDesc<'a>>,
     },
     EventDef {
-        name: &'a str,
+        name: Spanned<&'a str>,
         #[serde(borrow)]
         fields: Vec<Spanned<EventField<'a>>>,
     },

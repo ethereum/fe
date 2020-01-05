@@ -4,7 +4,13 @@ event Foo:
 [
   Spanned(
     node: EventDef(
-      name: "Foo",
+      name: Spanned(
+        node: "Foo",
+        span: Span(
+          start: 6,
+          end: 9,
+        ),
+      ),
       fields: [
         Spanned(
           node: EventField(

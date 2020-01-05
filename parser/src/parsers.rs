@@ -469,7 +469,7 @@ pub fn contract_field(input: Cursor) -> ParseResult<Spanned<ContractStmt>> {
         Spanned {
             node: ContractStmt::ContractField {
                 qual,
-                name: name_tok.string,
+                name: name_tok.into(),
                 typ,
             },
             span,
@@ -497,7 +497,7 @@ pub fn event_def(input: Cursor) -> ParseResult<Spanned<ContractStmt>> {
         input,
         Spanned {
             node: ContractStmt::EventDef {
-                name: name_tok.string,
+                name: name_tok.into(),
                 fields,
             },
             span,
@@ -552,7 +552,7 @@ pub fn type_def(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
         input,
         Spanned {
             node: ModuleStmt::TypeDef {
-                name: name.string,
+                name: name.into(),
                 typ: type_desc,
             },
             span,

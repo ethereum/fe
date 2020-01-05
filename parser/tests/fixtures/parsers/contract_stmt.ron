@@ -6,7 +6,13 @@ event Foo:
   Spanned(
     node: ContractField(
       qual: None,
-      name: "x",
+      name: Spanned(
+        node: "x",
+        span: Span(
+          start: 0,
+          end: 1,
+        ),
+      ),
       typ: Spanned(
         node: Base(
           base: "address",
@@ -24,7 +30,13 @@ event Foo:
   ),
   Spanned(
     node: EventDef(
-      name: "Foo",
+      name: Spanned(
+        node: "Foo",
+        span: Span(
+          start: 17,
+          end: 20,
+        ),
+      ),
       fields: [
         Spanned(
           node: EventField(

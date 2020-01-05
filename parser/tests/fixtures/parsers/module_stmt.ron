@@ -38,7 +38,13 @@ contract Foo:
         Spanned(
           node: ContractField(
             qual: None,
-            name: "x",
+            name: Spanned(
+              node: "x",
+              span: Span(
+                start: 29,
+                end: 30,
+              ),
+            ),
             typ: Spanned(
               node: Base(
                 base: "bar",

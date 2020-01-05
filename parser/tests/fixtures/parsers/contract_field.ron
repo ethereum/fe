@@ -6,7 +6,13 @@ pub x: address
   Spanned(
     node: ContractField(
       qual: None,
-      name: "x",
+      name: Spanned(
+        node: "x",
+        span: Span(
+          start: 0,
+          end: 1,
+        ),
+      ),
       typ: Spanned(
         node: Base(
           base: "address",
@@ -31,7 +37,13 @@ pub x: address
           end: 16,
         ),
       )),
-      name: "x",
+      name: Spanned(
+        node: "x",
+        span: Span(
+          start: 17,
+          end: 18,
+        ),
+      ),
       typ: Spanned(
         node: Base(
           base: "address",
@@ -56,7 +68,13 @@ pub x: address
           end: 31,
         ),
       )),
-      name: "x",
+      name: Spanned(
+        node: "x",
+        span: Span(
+          start: 32,
+          end: 33,
+        ),
+      ),
       typ: Spanned(
         node: Base(
           base: "address",
