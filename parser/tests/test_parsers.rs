@@ -42,18 +42,18 @@ where
 /// `NEWLINE` tokens.
 fn repeat_newline<'a, O, P>(parser: P) -> impl Fn(Cursor<'a>) -> ParseResult<Vec<O>>
 where
-    P: Fn(Cursor<'a>) -> ParseResult<O> + Copy,
+    P: Fn(Cursor<'a>) -> ParseResult<O>,
 {
-    terminated(many1(terminated(parser, newline_token)), endmarker_token)
+    move |input| terminated(many1(terminated(&parser, newline_token)), endmarker_token)(input)
 }
 
 /// Convert a parser into one that repeatedly applies itself to consume all
 /// tokens in a source file.
 fn repeat<'a, O, P>(parser: P) -> impl Fn(Cursor<'a>) -> ParseResult<Vec<O>>
 where
-    P: Fn(Cursor<'a>) -> ParseResult<O> + Copy,
+    P: Fn(Cursor<'a>) -> ParseResult<O>,
 {
-    terminated(many1(parser), endmarker_token)
+    move |input| terminated(many1(&parser), endmarker_token)(input)
 }
 
 /// Assert `$parser` succeeds when applied to the given input in `$examples`
