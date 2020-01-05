@@ -1040,7 +1040,7 @@ pub fn atom(input: Cursor) -> ParseResult<Spanned<Expr>> {
 pub fn list(input: Cursor) -> ParseResult<Spanned<Expr>> {
     map(delimited(op("["), opt(exprs), op("]")), |spanned_exprs| {
         let Spanned { node, span } = spanned_exprs;
-        let elts = node.unwrap_or(vec![]);
+        let elts = node.unwrap_or_else(|| vec![]);
 
         Spanned {
             node: Expr::List { elts },
@@ -1052,7 +1052,7 @@ pub fn list(input: Cursor) -> ParseResult<Spanned<Expr>> {
 pub fn tuple(input: Cursor) -> ParseResult<Spanned<Expr>> {
     map(delimited(op("("), opt(exprs), op(")")), |spanned_exprs| {
         let Spanned { node, span } = spanned_exprs;
-        let elts = node.unwrap_or(vec![]);
+        let elts = node.unwrap_or_else(|| vec![]);
 
         Spanned {
             node: Expr::Tuple { elts },
@@ -1118,7 +1118,7 @@ pub fn index_tail(input: Cursor) -> ParseResult<Spanned<Vec<Spanned<Slice>>>> {
 
 pub fn call_tail(input: Cursor) -> ParseResult<Spanned<Vec<Spanned<CallArg>>>> {
     map(delimited(op("("), opt(args), op(")")), |spanned| Spanned {
-        node: spanned.node.unwrap_or(vec![]),
+        node: spanned.node.unwrap_or_else(|| vec![]),
         span: spanned.span,
     })(input)
 }
