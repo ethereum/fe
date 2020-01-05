@@ -123,7 +123,7 @@ primary: atom (attr_tail | index_tail | call_tail)*
 slices: slice (',' slice)* [',']
 slice: [expr] ':' [expr] [':' [expr]] | expr
 
-atom: list | listcomp | tuple | group | NAME | STRING+ | NUMBER | '...'
+atom: list | listcomp | group | tuple | NAME | STRING+ | NUMBER | '...'
 list: '[' [exprs] ']'
 listcomp: '[' expr for_if_clauses ']'
 tuple: '(' [exprs] ')'
@@ -140,9 +140,9 @@ t_atom: NAME | '(' [targets] ')' | '[' [targets] ']'
 
 t_tail: call_tail* (attr_tail | index_tail)
 
-call_tail: '(' [args] ')'
 attr_tail: '.' NAME
 index_tail: '[' slices ']'
+call_tail: '(' [args] ')'
 
 ########################### const_expr ###############################
 
