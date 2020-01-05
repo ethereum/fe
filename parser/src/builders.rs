@@ -143,24 +143,6 @@ where
     }
 }
 
-pub fn separated_pair<'a, O1, O2, O3, F, G, H>(
-    f: F,
-    g: G,
-    h: H,
-) -> impl Fn(Cursor<'a>) -> ParseResult<(O1, O3)>
-where
-    F: Fn(Cursor<'a>) -> ParseResult<O1>,
-    G: Fn(Cursor<'a>) -> ParseResult<O2>,
-    H: Fn(Cursor<'a>) -> ParseResult<O3>,
-{
-    move |input| {
-        let (input, result_1) = f(input)?;
-        let (input, _) = g(input)?;
-        let (input, result_2) = h(input)?;
-        Ok((input, (result_1, result_2)))
-    }
-}
-
 pub fn opt<'a, O, P>(parser: P) -> impl Fn(Cursor<'a>) -> ParseResult<Option<O>>
 where
     P: Fn(Cursor<'a>) -> ParseResult<O>,
