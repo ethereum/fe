@@ -1,0 +1,11 @@
+break
+---
+[
+  Spanned(
+    node: Break,
+    span: Span(
+      start: 0,
+      end: 5,
+    ),
+  ),
+]

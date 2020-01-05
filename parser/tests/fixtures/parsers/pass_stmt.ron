@@ -1,0 +1,11 @@
+pass
+---
+[
+  Spanned(
+    node: Pass,
+    span: Span(
+      start: 0,
+      end: 4,
+    ),
+  ),
+]

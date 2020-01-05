@@ -706,6 +706,37 @@ pub fn func_qual(input: Cursor) -> ParseResult<Spanned<FuncQual>> {
     try_from_tok(name("pub"))(input)
 }
 
+pub fn keyword_statement<'a, G>(
+    string: &'a str,
+    get_stmt: G,
+) -> impl Fn(Cursor<'a>) -> ParseResult<Spanned<FuncStmt>>
+where
+    G: Fn() -> FuncStmt<'a>,
+{
+    move |input| {
+        map(name(string), |t| Spanned {
+            node: get_stmt(),
+            span: t.span,
+        })(input)
+    }
+}
+
+pub fn pass_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+    keyword_statement("pass", || FuncStmt::Pass)(input)
+}
+
+pub fn break_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+    keyword_statement("break", || FuncStmt::Break)(input)
+}
+
+pub fn continue_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+    keyword_statement("continue", || FuncStmt::Continue)(input)
+}
+
+pub fn revert_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+    keyword_statement("revert", || FuncStmt::Revert)(input)
+}
+
 /// Parse a comma-separated list of expressions.
 pub fn exprs(input: Cursor) -> ParseResult<Vec<Spanned<Expr>>> {
     separated(expr, op(","), true)(input)

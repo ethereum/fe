@@ -1,0 +1,11 @@
+revert
+---
+[
+  Spanned(
+    node: Revert,
+    span: Span(
+      start: 0,
+      end: 6,
+    ),
+  ),
+]
