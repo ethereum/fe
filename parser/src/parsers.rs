@@ -13,7 +13,6 @@ use crate::builders::{
     pair,
     preceded,
     separated,
-    separated_pair,
     terminated,
     verify,
 };
@@ -712,129 +711,6 @@ pub fn event_field_qual(input: Cursor) -> ParseResult<Spanned<EventFieldQual>> {
 /// Parse a function qualifier keyword i.e. "pub".
 pub fn func_qual(input: Cursor) -> ParseResult<Spanned<FuncQual>> {
     try_from_tok(name("pub"))(input)
-}
-
-/// Parse a constant expression that can be evaluated at compile-time.
-pub fn const_expr(input: Cursor) -> ParseResult<Spanned<ConstExpr>> {
-    let (input, head) = const_term(input)?;
-    let (input, tail) = many0(alt((pair(op("+"), const_term), pair(op("-"), const_term))))(input)?;
-
-    let mut left_expr = head;
-    for (op_tok, right_expr) in tail {
-        let span = Span::from_pair(&left_expr, &right_expr);
-
-        left_expr = Spanned {
-            node: ConstExpr::BinOp {
-                left: Box::new(left_expr),
-                op: Operator::try_from(op_tok.string).unwrap(),
-                right: Box::new(right_expr),
-            },
-            span,
-        };
-    }
-
-    Ok((input, left_expr))
-}
-
-/// Parse a constant term that may appear as the operand of an addition or
-/// subtraction.
-pub fn const_term(input: Cursor) -> ParseResult<Spanned<ConstExpr>> {
-    let (input, head) = const_factor(input)?;
-    let (input, tail) = many0(alt((
-        pair(op("*"), const_factor),
-        pair(op("/"), const_factor),
-        pair(op("%"), const_factor),
-    )))(input)?;
-
-    let mut left_expr = head;
-    for (op_tok, right_expr) in tail {
-        let span = Span::from_pair(&left_expr, &right_expr);
-
-        left_expr = Spanned {
-            node: ConstExpr::BinOp {
-                left: Box::new(left_expr),
-                op: Operator::try_from(op_tok.string).unwrap(),
-                right: Box::new(right_expr),
-            },
-            span,
-        };
-    }
-
-    Ok((input, left_expr))
-}
-
-/// Parse a constant factor that may appear as the operand of a multiplication,
-/// division, modulus, or unary op or as the exponent of a power expression.
-pub fn const_factor(input: Cursor) -> ParseResult<Spanned<ConstExpr>> {
-    let unary_op = map(
-        pair(alt((op("+"), op("-"), op("~"))), const_factor),
-        |res| {
-            let (op_tok, operand) = res;
-            let span = Span::from_pair(op_tok, &operand);
-
-            Spanned {
-                node: ConstExpr::UnaryOp {
-                    op: UnaryOp::try_from(op_tok.string).unwrap(),
-                    operand: Box::new(operand),
-                },
-                span,
-            }
-        },
-    );
-
-    alt((unary_op, const_power))(input)
-}
-
-/// Parse a constant power expression that may appear in the position of a
-/// constant factor.
-pub fn const_power(input: Cursor) -> ParseResult<Spanned<ConstExpr>> {
-    let bin_op = map(separated_pair(const_atom, op("**"), const_factor), |res| {
-        let (left, right) = res;
-        let span = Span::from_pair(&left, &right);
-
-        Spanned {
-            node: ConstExpr::BinOp {
-                left: Box::new(left),
-                op: Operator::Pow,
-                right: Box::new(right),
-            },
-            span,
-        }
-    });
-
-    alt((bin_op, const_atom))(input)
-}
-
-/// Parse a constant atom expression that may appear in the position of a
-/// constant power or as the base of a constant power expression.
-pub fn const_atom(input: Cursor) -> ParseResult<Spanned<ConstExpr>> {
-    alt((
-        const_group,
-        map(name_token, |t| Spanned {
-            node: ConstExpr::Name { name: t.string },
-            span: t.span,
-        }),
-        map(number_token, |t| Spanned {
-            node: ConstExpr::Num { num: t.string },
-            span: t.span,
-        }),
-    ))(input)
-}
-
-/// Parse a parenthesized constant group that may appear in the position of a
-/// constant atom.
-pub fn const_group(input: Cursor) -> ParseResult<Spanned<ConstExpr>> {
-    let (input, l_paren) = op("(")(input)?;
-    let (input, spanned_expr) = const_expr(input)?;
-    let (input, r_paren) = op(")")(input)?;
-
-    Ok((
-        input,
-        Spanned {
-            node: spanned_expr.node,
-            span: Span::from_pair(l_paren, r_paren),
-        },
-    ))
 }
 
 /// Parse a comma-separated list of expressions.

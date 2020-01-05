@@ -442,60 +442,6 @@ fn test_func_qual() {
 
 #[test]
 #[wasm_bindgen_test]
-fn test_const_expr() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(const_expr)),
-        "fixtures/parsers/const_expr.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_const_term() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(const_term)),
-        "fixtures/parsers/const_term.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_const_factor() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(const_factor)),
-        "fixtures/parsers/const_factor.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_const_power() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(const_power)),
-        "fixtures/parsers/const_power.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_const_atom() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(const_atom)),
-        "fixtures/parsers/const_atom.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_const_group() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(const_group)),
-        "fixtures/parsers/const_group.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
 fn test_exprs() {
     do_with_fixtures!(
         assert_fixture_parsed_with!(repeat_newline(exprs)),
