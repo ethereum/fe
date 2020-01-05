@@ -198,33 +198,18 @@ where
 {
     move |input| {
         let (input, first) = parser(input)?;
+        let (input, mut rest) = many0(preceded(&sep, &parser))(input)?;
 
-        let mut next_input = input;
         let mut results = vec![first];
+        results.append(&mut rest);
 
-        loop {
-            let mut loop_input = next_input;
-
-            match sep(loop_input) {
-                Ok((input_, _)) => loop_input = input_,
-                Err(_) => break,
+        let input = if parse_trailing {
+            match opt(&sep)(input) {
+                Ok((input_, _)) => input_,
+                _ => input,
             }
-            match parser(loop_input) {
-                Ok((input_, next)) => {
-                    loop_input = input_;
-                    results.push(next);
-                }
-                Err(_) => break,
-            }
-
-            // Don't "really" consume the input until both the separator and content parsers
-            // succeed
-            next_input = loop_input;
-        }
-
-        let input = match (parse_trailing, sep(next_input)) {
-            (true, Ok((input_, _))) => input_,
-            (false, _) | (true, Err(_)) => next_input,
+        } else {
+            input
         };
 
         Ok((input, results))
@@ -273,32 +258,7 @@ where
 {
     move |input| {
         let (input, head) = operand(input)?;
-
-        let mut input = input;
-        let mut tail = vec![];
-
-        loop {
-            let oprtr;
-            let oprnd;
-
-            match operator(input) {
-                Ok((input_, oprtr_)) => {
-                    input = input_;
-                    oprtr = oprtr_;
-                }
-                Err(_) => break,
-            }
-            match operand(input) {
-                Ok((input_, oprnd_)) => {
-                    input = input_;
-                    oprnd = oprnd_;
-                }
-                // If we've come this far and can't find an operand, the entire parser should fail
-                Err(err) => return Err(err),
-            }
-
-            tail.push((oprtr, oprnd));
-        }
+        let (input, tail) = many0(pair(&operator, &operand))(input)?;
 
         let mut left = head;
         for (oprtr, right) in tail {
