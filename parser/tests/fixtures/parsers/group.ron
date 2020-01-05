@@ -1,0 +1,17 @@
+(x)
+---
+[
+  Spanned(
+    node: Spanned(
+      node: Name("x"),
+      span: Span(
+        start: 1,
+        end: 2,
+      ),
+    ),
+    span: Span(
+      start: 0,
+      end: 3,
+    ),
+  ),
+]

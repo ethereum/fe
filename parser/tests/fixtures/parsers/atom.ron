@@ -1,0 +1,66 @@
+[]
+(x)
+()
+x
+1
+"asdf" "foo"
+...
+---
+[
+  Spanned(
+    node: List(
+      elts: [],
+    ),
+    span: Span(
+      start: 0,
+      end: 2,
+    ),
+  ),
+  Spanned(
+    node: Name("x"),
+    span: Span(
+      start: 3,
+      end: 6,
+    ),
+  ),
+  Spanned(
+    node: Tuple(
+      elts: [],
+    ),
+    span: Span(
+      start: 7,
+      end: 9,
+    ),
+  ),
+  Spanned(
+    node: Name("x"),
+    span: Span(
+      start: 10,
+      end: 11,
+    ),
+  ),
+  Spanned(
+    node: Num("1"),
+    span: Span(
+      start: 12,
+      end: 13,
+    ),
+  ),
+  Spanned(
+    node: Str([
+      "\"asdf\"",
+      "\"foo\"",
+    ]),
+    span: Span(
+      start: 14,
+      end: 26,
+    ),
+  ),
+  Spanned(
+    node: Ellipsis,
+    span: Span(
+      start: 27,
+      end: 30,
+    ),
+  ),
+]

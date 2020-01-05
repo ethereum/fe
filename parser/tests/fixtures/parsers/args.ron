@@ -1,0 +1,55 @@
+x=y
+x
+x, y
+---
+[
+  [
+    Spanned(
+      node: Kwarg(Kwarg(
+        name: Spanned(
+          node: "x",
+          span: Span(
+            start: 0,
+            end: 1,
+          ),
+        ),
+        value: Spanned(
+          node: Name("y"),
+          span: Span(
+            start: 2,
+            end: 3,
+          ),
+        ),
+      )),
+      span: Span(
+        start: 0,
+        end: 3,
+      ),
+    ),
+  ],
+  [
+    Spanned(
+      node: Arg(Name("x")),
+      span: Span(
+        start: 4,
+        end: 5,
+      ),
+    ),
+  ],
+  [
+    Spanned(
+      node: Arg(Name("x")),
+      span: Span(
+        start: 6,
+        end: 7,
+      ),
+    ),
+    Spanned(
+      node: Arg(Name("y")),
+      span: Span(
+        start: 9,
+        end: 10,
+      ),
+    ),
+  ],
+]

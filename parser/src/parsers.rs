@@ -931,7 +931,7 @@ pub fn comparison(input: Cursor) -> ParseResult<Spanned<Expr>> {
     let (input, op_expr) = op_expr_builder(bitwise_or, comp_op, comp_op_builder)(input)?;
 
     let mut result = op_expr;
-    for not_tok in nots {
+    for not_tok in nots.into_iter().rev() {
         let span = Span::from_pair(not_tok, &result);
 
         result = Spanned {
