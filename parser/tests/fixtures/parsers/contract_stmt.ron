@@ -41,7 +41,13 @@ event Foo:
         Spanned(
           node: EventField(
             qual: None,
-            name: "x",
+            name: Spanned(
+              node: "x",
+              span: Span(
+                start: 26,
+                end: 27,
+              ),
+            ),
             typ: Spanned(
               node: Base(
                 base: "address",

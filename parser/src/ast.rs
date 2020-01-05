@@ -68,20 +68,21 @@ pub enum FuncQual {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct SimpleImportName<'a> {
-    pub path: Vec<&'a str>,
-    pub alias: Option<&'a str>,
+    #[serde(borrow)]
+    pub path: Vec<Spanned<&'a str>>,
+    pub alias: Option<Spanned<&'a str>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum FromImportPath<'a> {
     Absolute {
         #[serde(borrow)]
-        path: Vec<&'a str>,
+        path: Vec<Spanned<&'a str>>,
     },
     Relative {
         parent_level: usize,
         #[serde(borrow)]
-        path: Vec<&'a str>,
+        path: Vec<Spanned<&'a str>>,
     },
 }
 
@@ -94,8 +95,9 @@ pub enum FromImportNames<'a> {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct FromImportName<'a> {
-    pub name: &'a str,
-    pub alias: Option<&'a str>,
+    #[serde(borrow)]
+    pub name: Spanned<&'a str>,
+    pub alias: Option<Spanned<&'a str>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -117,7 +119,7 @@ pub enum TypeDesc<'a> {
 pub struct EventField<'a> {
     pub qual: Option<Spanned<EventFieldQual>>,
     #[serde(borrow)]
-    pub name: &'a str,
+    pub name: Spanned<&'a str>,
     pub typ: Spanned<TypeDesc<'a>>,
 }
 

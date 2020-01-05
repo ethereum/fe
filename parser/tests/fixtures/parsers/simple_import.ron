@@ -9,7 +9,13 @@ import foo as bar, baz, bing as bop
         Spanned(
           node: SimpleImportName(
             path: [
-              "foo",
+              Spanned(
+                node: "foo",
+                span: Span(
+                  start: 7,
+                  end: 10,
+                ),
+              ),
             ],
             alias: None,
           ),
@@ -31,9 +37,21 @@ import foo as bar, baz, bing as bop
         Spanned(
           node: SimpleImportName(
             path: [
-              "foo",
+              Spanned(
+                node: "foo",
+                span: Span(
+                  start: 18,
+                  end: 21,
+                ),
+              ),
             ],
-            alias: Some("bar"),
+            alias: Some(Spanned(
+              node: "bar",
+              span: Span(
+                start: 25,
+                end: 28,
+              ),
+            )),
           ),
           span: Span(
             start: 18,
@@ -43,7 +61,13 @@ import foo as bar, baz, bing as bop
         Spanned(
           node: SimpleImportName(
             path: [
-              "baz",
+              Spanned(
+                node: "baz",
+                span: Span(
+                  start: 30,
+                  end: 33,
+                ),
+              ),
             ],
             alias: None,
           ),
@@ -65,9 +89,21 @@ import foo as bar, baz, bing as bop
         Spanned(
           node: SimpleImportName(
             path: [
-              "foo",
+              Spanned(
+                node: "foo",
+                span: Span(
+                  start: 41,
+                  end: 44,
+                ),
+              ),
             ],
-            alias: Some("bar"),
+            alias: Some(Spanned(
+              node: "bar",
+              span: Span(
+                start: 48,
+                end: 51,
+              ),
+            )),
           ),
           span: Span(
             start: 41,
@@ -77,7 +113,13 @@ import foo as bar, baz, bing as bop
         Spanned(
           node: SimpleImportName(
             path: [
-              "baz",
+              Spanned(
+                node: "baz",
+                span: Span(
+                  start: 53,
+                  end: 56,
+                ),
+              ),
             ],
             alias: None,
           ),
@@ -89,9 +131,21 @@ import foo as bar, baz, bing as bop
         Spanned(
           node: SimpleImportName(
             path: [
-              "bing",
+              Spanned(
+                node: "bing",
+                span: Span(
+                  start: 58,
+                  end: 62,
+                ),
+              ),
             ],
-            alias: Some("bop"),
+            alias: Some(Spanned(
+              node: "bop",
+              span: Span(
+                start: 66,
+                end: 69,
+              ),
+            )),
           ),
           span: Span(
             start: 58,

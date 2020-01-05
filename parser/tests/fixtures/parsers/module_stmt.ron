@@ -9,7 +9,13 @@ contract Foo:
         Spanned(
           node: SimpleImportName(
             path: [
-              "foo",
+              Spanned(
+                node: "foo",
+                span: Span(
+                  start: 7,
+                  end: 10,
+                ),
+              ),
             ],
             alias: None,
           ),

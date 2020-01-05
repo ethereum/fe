@@ -7,8 +7,20 @@ foo.bar
   Spanned(
     node: Absolute(
       path: [
-        "foo",
-        "bar",
+        Spanned(
+          node: "foo",
+          span: Span(
+            start: 0,
+            end: 3,
+          ),
+        ),
+        Spanned(
+          node: "bar",
+          span: Span(
+            start: 4,
+            end: 7,
+          ),
+        ),
       ],
     ),
     span: Span(
@@ -20,7 +32,13 @@ foo.bar
     node: Relative(
       parent_level: 0,
       path: [
-        "foo",
+        Spanned(
+          node: "foo",
+          span: Span(
+            start: 9,
+            end: 12,
+          ),
+        ),
       ],
     ),
     span: Span(
@@ -32,7 +50,13 @@ foo.bar
     node: Relative(
       parent_level: 1,
       path: [
-        "foo",
+        Spanned(
+          node: "foo",
+          span: Span(
+            start: 15,
+            end: 18,
+          ),
+        ),
       ],
     ),
     span: Span(
@@ -44,7 +68,13 @@ foo.bar
     node: Relative(
       parent_level: 2,
       path: [
-        "foo",
+        Spanned(
+          node: "foo",
+          span: Span(
+            start: 22,
+            end: 25,
+          ),
+        ),
       ],
     ),
     span: Span(

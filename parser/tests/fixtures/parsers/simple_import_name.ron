@@ -5,7 +5,13 @@ foo.bar as baz
   Spanned(
     node: SimpleImportName(
       path: [
-        "abc",
+        Spanned(
+          node: "abc",
+          span: Span(
+            start: 0,
+            end: 3,
+          ),
+        ),
       ],
       alias: None,
     ),
@@ -17,10 +23,28 @@ foo.bar as baz
   Spanned(
     node: SimpleImportName(
       path: [
-        "foo",
-        "bar",
+        Spanned(
+          node: "foo",
+          span: Span(
+            start: 4,
+            end: 7,
+          ),
+        ),
+        Spanned(
+          node: "bar",
+          span: Span(
+            start: 8,
+            end: 11,
+          ),
+        ),
       ],
-      alias: Some("baz"),
+      alias: Some(Spanned(
+        node: "baz",
+        span: Span(
+          start: 15,
+          end: 18,
+        ),
+      )),
     ),
     span: Span(
       start: 4,

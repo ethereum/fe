@@ -8,8 +8,20 @@ bar, bing, boom,
     node: List([
       Spanned(
         node: FromImportName(
-          name: "foo",
-          alias: Some("bar"),
+          name: Spanned(
+            node: "foo",
+            span: Span(
+              start: 0,
+              end: 3,
+            ),
+          ),
+          alias: Some(Spanned(
+            node: "bar",
+            span: Span(
+              start: 7,
+              end: 10,
+            ),
+          )),
         ),
         span: Span(
           start: 0,
@@ -26,7 +38,13 @@ bar, bing, boom,
     node: List([
       Spanned(
         node: FromImportName(
-          name: "bar",
+          name: Spanned(
+            node: "bar",
+            span: Span(
+              start: 11,
+              end: 14,
+            ),
+          ),
           alias: None,
         ),
         span: Span(
@@ -36,7 +54,13 @@ bar, bing, boom,
       ),
       Spanned(
         node: FromImportName(
-          name: "bing",
+          name: Spanned(
+            node: "bing",
+            span: Span(
+              start: 16,
+              end: 20,
+            ),
+          ),
           alias: None,
         ),
         span: Span(
@@ -54,7 +78,13 @@ bar, bing, boom,
     node: List([
       Spanned(
         node: FromImportName(
-          name: "bar",
+          name: Spanned(
+            node: "bar",
+            span: Span(
+              start: 21,
+              end: 24,
+            ),
+          ),
           alias: None,
         ),
         span: Span(
@@ -64,7 +94,13 @@ bar, bing, boom,
       ),
       Spanned(
         node: FromImportName(
-          name: "bing",
+          name: Spanned(
+            node: "bing",
+            span: Span(
+              start: 26,
+              end: 30,
+            ),
+          ),
           alias: None,
         ),
         span: Span(
@@ -74,7 +110,13 @@ bar, bing, boom,
       ),
       Spanned(
         node: FromImportName(
-          name: "boom",
+          name: Spanned(
+            node: "boom",
+            span: Span(
+              start: 32,
+              end: 36,
+            ),
+          ),
           alias: None,
         ),
         span: Span(
@@ -92,7 +134,13 @@ bar, bing, boom,
     node: List([
       Spanned(
         node: FromImportName(
-          name: "bar",
+          name: Spanned(
+            node: "bar",
+            span: Span(
+              start: 37,
+              end: 40,
+            ),
+          ),
           alias: None,
         ),
         span: Span(
@@ -102,7 +150,13 @@ bar, bing, boom,
       ),
       Spanned(
         node: FromImportName(
-          name: "bing",
+          name: Spanned(
+            node: "bing",
+            span: Span(
+              start: 42,
+              end: 46,
+            ),
+          ),
           alias: None,
         ),
         span: Span(
@@ -112,7 +166,13 @@ bar, bing, boom,
       ),
       Spanned(
         node: FromImportName(
-          name: "boom",
+          name: Spanned(
+            node: "boom",
+            span: Span(
+              start: 48,
+              end: 52,
+            ),
+          ),
           alias: None,
         ),
         span: Span(

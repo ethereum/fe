@@ -187,10 +187,14 @@ pub fn simple_import_name(input: Cursor) -> ParseResult<Spanned<SimpleImportName
     let (input, path) = dotted_name(input)?;
     let (input, alias) = opt(preceded(name("as"), name_token))(input)?;
 
+    let first = path.first().unwrap();
+    let last = path.last().unwrap();
+    let path_span = Span::from_pair(first, last);
+
     let span = {
         match alias {
-            Some(alias_tok) => Span::from_pair(&path, alias_tok),
-            None => path.span,
+            Some(alias_tok) => Span::from_pair(path_span, alias_tok),
+            None => path_span,
         }
     };
 
@@ -198,8 +202,8 @@ pub fn simple_import_name(input: Cursor) -> ParseResult<Spanned<SimpleImportName
         input,
         Spanned {
             node: SimpleImportName {
-                path: path.node,
-                alias: alias.map(|t| t.string),
+                path,
+                alias: alias.map(|t| t.into()),
             },
             span,
         },
@@ -258,24 +262,26 @@ pub fn from_import_sub_alt(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
 /// Parse a path containing sub module components in a "from" import statement.
 pub fn from_import_sub_path(input: Cursor) -> ParseResult<Spanned<FromImportPath>> {
     let (input, opt_parent_level) = opt(dots_to_int)(input)?;
-    let (input, dotted_name) = dotted_name(input)?;
+    let (input, path) = dotted_name(input)?;
+
+    let first = path.first().unwrap();
+    let last = path.last().unwrap();
+    let span = Span::from_pair(first, last);
 
     let result = match opt_parent_level {
         Some(parent_level) => {
-            let span = Span::from_pair(&parent_level, &dotted_name);
+            let span = Span::from_pair(&parent_level, span);
             Spanned {
                 node: FromImportPath::Relative {
                     parent_level: parent_level.node,
-                    path: dotted_name.node,
+                    path,
                 },
                 span,
             }
         }
         None => Spanned {
-            node: FromImportPath::Absolute {
-                path: dotted_name.node,
-            },
-            span: dotted_name.span,
+            node: FromImportPath::Absolute { path },
+            span,
         },
     };
 
@@ -363,8 +369,8 @@ pub fn from_import_name(input: Cursor) -> ParseResult<Spanned<FromImportName>> {
         input,
         Spanned {
             node: FromImportName {
-                name: name_tok.string,
-                alias: alias.map(|t| t.string),
+                name: name_tok.into(),
+                alias: alias.map(|t| t.into()),
             },
             span,
         },
@@ -372,21 +378,8 @@ pub fn from_import_name(input: Cursor) -> ParseResult<Spanned<FromImportName>> {
 }
 
 /// Parse a dotted import name.
-pub fn dotted_name(input: Cursor) -> ParseResult<Spanned<Vec<&str>>> {
-    let (input, first_part) = name_token(input)?;
-    let (input, other_parts) = many0(preceded(op("."), name_token))(input)?;
-
-    let mut path = vec![first_part.string];
-    path.extend(other_parts.iter().map(|t| t.string));
-
-    let span = if other_parts.is_empty() {
-        first_part.span
-    } else {
-        let last_part = other_parts.last().unwrap();
-        Span::from_pair(first_part, *last_part)
-    };
-
-    Ok((input, Spanned { node: path, span }))
+pub fn dotted_name(input: Cursor) -> ParseResult<Vec<Spanned<&str>>> {
+    separated(map(name_token, |t| t.into()), op("."), false)(input)
 }
 
 /// Parse preceding dots used to indicate parent module imports in import
@@ -531,7 +524,7 @@ pub fn event_field(input: Cursor) -> ParseResult<Spanned<EventField>> {
         Spanned {
             node: EventField {
                 qual,
-                name: name_tok.string,
+                name: name_tok.into(),
                 typ,
             },
             span,

@@ -35,7 +35,13 @@ from foo import (
       path: Spanned(
         node: Absolute(
           path: [
-            "foo",
+            Spanned(
+              node: "foo",
+              span: Span(
+                start: 21,
+                end: 24,
+              ),
+            ),
           ],
         ),
         span: Span(
@@ -47,7 +53,13 @@ from foo import (
         node: List([
           Spanned(
             node: FromImportName(
-              name: "bar",
+              name: Spanned(
+                node: "bar",
+                span: Span(
+                  start: 32,
+                  end: 35,
+                ),
+              ),
               alias: None,
             ),
             span: Span(
@@ -72,7 +84,13 @@ from foo import (
       path: Spanned(
         node: Absolute(
           path: [
-            "foo",
+            Spanned(
+              node: "foo",
+              span: Span(
+                start: 41,
+                end: 44,
+              ),
+            ),
           ],
         ),
         span: Span(
@@ -84,7 +102,13 @@ from foo import (
         node: List([
           Spanned(
             node: FromImportName(
-              name: "bar",
+              name: Spanned(
+                node: "bar",
+                span: Span(
+                  start: 58,
+                  end: 61,
+                ),
+              ),
               alias: None,
             ),
             span: Span(
