@@ -7,6 +7,62 @@ use crate::span::{
 };
 use crate::tokenizer::Token;
 
+impl TryFrom<&Token<'_>> for Spanned<ContractFieldQual> {
+    type Error = &'static str;
+
+    #[cfg_attr(tarpaulin, skip)]
+    fn try_from(tok: &Token) -> Result<Self, Self::Error> {
+        use ContractFieldQual::*;
+
+        let span = tok.span;
+
+        Ok(match tok.string {
+            "const" => Spanned { node: Const, span },
+            "pub" => Spanned { node: Pub, span },
+            _ => return Err("unrecognized string"),
+        })
+    }
+}
+
+impl TryFrom<&Token<'_>> for Spanned<EventFieldQual> {
+    type Error = &'static str;
+
+    #[cfg_attr(tarpaulin, skip)]
+    fn try_from(tok: &Token) -> Result<Self, Self::Error> {
+        Ok(match tok.string {
+            "idx" => Spanned {
+                node: EventFieldQual::Idx,
+                span: tok.span,
+            },
+            _ => return Err("unrecognized string"),
+        })
+    }
+}
+
+impl TryFrom<&Token<'_>> for Spanned<FuncQual> {
+    type Error = &'static str;
+
+    #[cfg_attr(tarpaulin, skip)]
+    fn try_from(tok: &Token) -> Result<Self, Self::Error> {
+        Ok(match tok.string {
+            "pub" => Spanned {
+                node: FuncQual::Pub,
+                span: tok.span,
+            },
+            _ => return Err("unrecognized string"),
+        })
+    }
+}
+
+impl<'a> From<&'a Token<'a>> for Spanned<TypeDesc<'a>> {
+    fn from(token: &'a Token<'a>) -> Self {
+        Spanned {
+            node: TypeDesc::Base { base: token.string },
+            span: token.span,
+        }
+    }
+}
+
 impl TryFrom<&Token<'_>> for Spanned<BoolOperator> {
     type Error = &'static str;
 

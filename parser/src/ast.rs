@@ -1,12 +1,9 @@
-use std::convert::TryFrom;
-
 use serde::{
     Deserialize,
     Serialize,
 };
 
 use crate::span::Spanned;
-use crate::tokenizer::types::Token;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Module<'a> {
@@ -59,61 +56,14 @@ pub enum ContractFieldQual {
     Pub,
 }
 
-impl TryFrom<&Token<'_>> for Spanned<ContractFieldQual> {
-    type Error = &'static str;
-
-    #[cfg_attr(tarpaulin, skip)]
-    fn try_from(tok: &Token) -> Result<Self, Self::Error> {
-        use ContractFieldQual::*;
-
-        let span = tok.span;
-
-        Ok(match tok.string {
-            "const" => Spanned { node: Const, span },
-            "pub" => Spanned { node: Pub, span },
-            _ => return Err("unrecognized string"),
-        })
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum EventFieldQual {
     Idx,
 }
 
-impl TryFrom<&Token<'_>> for Spanned<EventFieldQual> {
-    type Error = &'static str;
-
-    #[cfg_attr(tarpaulin, skip)]
-    fn try_from(tok: &Token) -> Result<Self, Self::Error> {
-        Ok(match tok.string {
-            "idx" => Spanned {
-                node: EventFieldQual::Idx,
-                span: tok.span,
-            },
-            _ => return Err("unrecognized string"),
-        })
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum FuncQual {
     Pub,
-}
-
-impl TryFrom<&Token<'_>> for Spanned<FuncQual> {
-    type Error = &'static str;
-
-    #[cfg_attr(tarpaulin, skip)]
-    fn try_from(tok: &Token) -> Result<Self, Self::Error> {
-        Ok(match tok.string {
-            "pub" => Spanned {
-                node: FuncQual::Pub,
-                span: tok.span,
-            },
-            _ => return Err("unrecognized string"),
-        })
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -161,15 +111,6 @@ pub enum TypeDesc<'a> {
         from: Box<Spanned<TypeDesc<'a>>>,
         to: Box<Spanned<TypeDesc<'a>>>,
     },
-}
-
-impl<'a> From<&'a Token<'a>> for Spanned<TypeDesc<'a>> {
-    fn from(token: &'a Token<'a>) -> Self {
-        Spanned {
-            node: TypeDesc::Base { base: token.string },
-            span: token.span,
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
