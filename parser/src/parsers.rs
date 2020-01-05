@@ -430,7 +430,7 @@ pub fn contract_def(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
         input,
         Spanned {
             node: ContractDef {
-                name: name_tok.string,
+                name: name_tok.into(),
                 body,
             },
             span,

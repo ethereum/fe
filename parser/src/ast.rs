@@ -14,7 +14,7 @@ pub struct Module<'a> {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum ModuleStmt<'a> {
     ContractDef {
-        name: &'a str,
+        name: Spanned<&'a str>,
         #[serde(borrow)]
         body: Vec<Spanned<ContractStmt<'a>>>,
     },

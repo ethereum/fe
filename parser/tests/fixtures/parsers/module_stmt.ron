@@ -27,7 +27,13 @@ contract Foo:
   ),
   Spanned(
     node: ContractDef(
-      name: "Foo",
+      name: Spanned(
+        node: "Foo",
+        span: Span(
+          start: 20,
+          end: 23,
+        ),
+      ),
       body: [
         Spanned(
           node: ContractField(
