@@ -8,6 +8,8 @@ pub mod span;
 pub mod string_utils;
 pub mod tokenizer;
 
+mod ast_traits;
+
 use errors::ParseError;
 use tokenizer::{
     tokenize,
