@@ -1,6 +1,11 @@
+use crate::ast::Expr;
 use crate::errors::{
     ErrorKind,
     ParseError,
+};
+use crate::span::{
+    Span,
+    Spanned,
 };
 use crate::{
     Cursor,
@@ -195,5 +200,134 @@ where
         } else {
             Err(describer(input, &result))
         }
+    }
+}
+
+/// Modify a parser to apply itself repeatedly while consuming separators
+/// (including an optional trailing separator).
+pub fn separated<'a, P, S, O1, O2>(
+    parser: P,
+    sep: S,
+    parse_trailing: bool,
+) -> impl Fn(Cursor<'a>) -> ParseResult<Vec<O1>>
+where
+    P: Fn(Cursor<'a>) -> ParseResult<O1>,
+    S: Fn(Cursor<'a>) -> ParseResult<O2>,
+{
+    move |input| {
+        let (input, first) = parser(input)?;
+
+        let mut next_input = input;
+        let mut results = vec![first];
+
+        loop {
+            let mut loop_input = next_input;
+
+            match sep(loop_input) {
+                Ok((input_, _)) => loop_input = input_,
+                Err(_) => break,
+            }
+            match parser(loop_input) {
+                Ok((input_, next)) => {
+                    loop_input = input_;
+                    results.push(next);
+                }
+                Err(_) => break,
+            }
+
+            // Don't "really" consume the input until both the separator and content parsers
+            // succeed
+            next_input = loop_input;
+        }
+
+        let input = match (parse_trailing, sep(next_input)) {
+            (true, Ok((input_, _))) => input_,
+            (false, _) | (true, Err(_)) => next_input,
+        };
+
+        Ok((input, results))
+    }
+}
+
+/// Modify a parser to parse and discard left and right delimiters before and
+/// after the parsed content.  The parsed delimiters are used to determine the
+/// span of the parsing result.
+pub fn delimited<'a, L, P, R, O1, O2, O3>(
+    left: L,
+    parser: P,
+    right: R,
+) -> impl Fn(Cursor<'a>) -> ParseResult<Spanned<O2>>
+where
+    L: Fn(Cursor<'a>) -> ParseResult<O1>,
+    P: Fn(Cursor<'a>) -> ParseResult<O2>,
+    R: Fn(Cursor<'a>) -> ParseResult<O3>,
+    O1: Into<Span>,
+    O3: Into<Span>,
+{
+    move |input| {
+        let (input, l_delim) = left(input)?;
+        let (input, node) = parser(input)?;
+        let (input, r_delim) = right(input)?;
+
+        Ok((
+            input,
+            Spanned {
+                node,
+                span: Span::from_pair(l_delim.into(), r_delim.into()),
+            },
+        ))
+    }
+}
+
+pub fn op_expr_builder<'a, F, G, B, OperatorT>(
+    operand: F,
+    operator: G,
+    builder: B,
+) -> impl Fn(Cursor<'a>) -> ParseResult<Spanned<Expr>>
+where
+    F: Fn(Cursor<'a>) -> ParseResult<Spanned<Expr>>,
+    G: Fn(Cursor<'a>) -> ParseResult<OperatorT>,
+    B: Fn(Spanned<Expr<'a>>, OperatorT, Spanned<Expr<'a>>) -> Expr<'a>,
+{
+    move |input| {
+        let (input, head) = operand(input)?;
+
+        let mut input = input;
+        let mut tail = vec![];
+
+        loop {
+            let oprtr;
+            let oprnd;
+
+            match operator(input) {
+                Ok((input_, oprtr_)) => {
+                    input = input_;
+                    oprtr = oprtr_;
+                }
+                Err(_) => break,
+            }
+            match operand(input) {
+                Ok((input_, oprnd_)) => {
+                    input = input_;
+                    oprnd = oprnd_;
+                }
+                // If we've come this far and can't find an operand, the entire parser should fail
+                Err(err) => return Err(err),
+            }
+
+            tail.push((oprtr, oprnd));
+        }
+
+        let mut left = head;
+        for (oprtr, right) in tail {
+            let span = Span::from_pair(&left, &right);
+
+            left = Spanned {
+                node: builder(left, oprtr, right),
+                span,
+            };
+        }
+
+        Ok((input, left))
     }
 }

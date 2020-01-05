@@ -4,12 +4,15 @@ use crate::ast::ModuleStmt::*;
 use crate::ast::*;
 use crate::builders::{
     alt,
+    delimited,
     many0,
     many1,
     map,
+    op_expr_builder,
     opt,
     pair,
     preceded,
+    separated,
     separated_pair,
     terminated,
     verify,
@@ -78,6 +81,11 @@ pub fn op<'a>(string: &'a str) -> impl Fn(Cursor<'a>) -> ParseResult<&Token> {
 /// Parse a number token.
 pub fn number_token(input: Cursor) -> ParseResult<&Token> {
     token(TokenType::NUMBER)(input)
+}
+
+/// Parse a string token.
+pub fn string_token(input: Cursor) -> ParseResult<&Token> {
+    token(TokenType::STRING)(input)
 }
 
 /// Parse an indent token.
@@ -827,4 +835,414 @@ pub fn const_group(input: Cursor) -> ParseResult<Spanned<ConstExpr>> {
             span: Span::from_pair(l_paren, r_paren),
         },
     ))
+}
+
+/// Parse a comma-separated list of expressions.
+pub fn exprs(input: Cursor) -> ParseResult<Vec<Spanned<Expr>>> {
+    separated(expr, op(","), true)(input)
+}
+
+pub fn expr(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    let (input, test) = disjunct(input)?;
+    let (input, ternary) = opt(|input| {
+        let (input, _) = name("if")(input)?;
+        let (input, if_expr) = disjunct(input)?;
+        let (input, _) = name("else")(input)?;
+        let (input, else_expr) = expr(input)?;
+        Ok((input, (if_expr, else_expr)))
+    })(input)?;
+
+    let result = match ternary {
+        Some((if_expr, else_expr)) => {
+            let span = Span::from_pair(&test, &else_expr);
+
+            Spanned {
+                node: Expr::Ternary {
+                    test: Box::new(test),
+                    if_expr: Box::new(if_expr),
+                    else_expr: Box::new(else_expr),
+                },
+                span,
+            }
+        }
+        None => test,
+    };
+
+    Ok((input, result))
+}
+
+#[inline]
+pub fn bool_op_builder<'a>(
+    left: Spanned<Expr<'a>>,
+    op: &'a Token,
+    right: Spanned<Expr<'a>>,
+) -> Expr<'a> {
+    Expr::BoolOperation {
+        left: Box::new(left),
+        op: TryFrom::try_from(op).unwrap(),
+        right: Box::new(right),
+    }
+}
+
+#[inline]
+pub fn bin_op_builder<'a>(
+    left: Spanned<Expr<'a>>,
+    op: &'a Token,
+    right: Spanned<Expr<'a>>,
+) -> Expr<'a> {
+    Expr::BinOperation {
+        left: Box::new(left),
+        op: TryFrom::try_from(op).unwrap(),
+        right: Box::new(right),
+    }
+}
+
+#[inline]
+pub fn unary_op_builder<'a>(op: &'a Token, operand: Spanned<Expr<'a>>) -> Expr<'a> {
+    Expr::UnaryOperation {
+        op: TryFrom::try_from(op).unwrap(),
+        operand: Box::new(operand),
+    }
+}
+
+#[inline]
+pub fn comp_op_builder<'a>(
+    left: Spanned<Expr<'a>>,
+    op: Spanned<CompOperator>,
+    right: Spanned<Expr<'a>>,
+) -> Expr<'a> {
+    Expr::CompOperation {
+        left: Box::new(left),
+        op,
+        right: Box::new(right),
+    }
+}
+
+pub fn disjunct(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    op_expr_builder(conjunct, name("or"), bool_op_builder)(input)
+}
+
+pub fn conjunct(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    op_expr_builder(comparison, name("and"), bool_op_builder)(input)
+}
+
+pub fn comparison(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    let (input, nots) = many0(name("not"))(input)?;
+    let (input, op_expr) = op_expr_builder(bitwise_or, comp_op, comp_op_builder)(input)?;
+
+    let mut result = op_expr;
+    for not_tok in nots {
+        let span = Span::from_pair(not_tok, &result);
+
+        result = Spanned {
+            node: unary_op_builder(not_tok, result),
+            span,
+        };
+    }
+
+    Ok((input, result))
+}
+
+pub fn comp_op(input: Cursor) -> ParseResult<Spanned<CompOperator>> {
+    alt((
+        map(
+            alt((pair(name("not"), name("in")), pair(name("is"), name("not")))),
+            |toks| {
+                let (fst, snd) = toks;
+                TryFrom::try_from(&[fst, snd][..]).unwrap()
+            },
+        ),
+        map(
+            alt((
+                op("<"),
+                op("<="),
+                op("=="),
+                op(">="),
+                op(">"),
+                op("!="),
+                name("in"),
+                name("is"),
+            )),
+            |tok| TryFrom::try_from(&[tok][..]).unwrap(),
+        ),
+    ))(input)
+}
+
+pub fn bitwise_or(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    op_expr_builder(bitwise_xor, op("|"), bin_op_builder)(input)
+}
+
+pub fn bitwise_xor(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    op_expr_builder(bitwise_and, op("^"), bin_op_builder)(input)
+}
+
+pub fn bitwise_and(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    op_expr_builder(shift_expr, op("&"), bin_op_builder)(input)
+}
+
+pub fn shift_expr(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    op_expr_builder(sum, alt((op("<<"), op(">>"))), bin_op_builder)(input)
+}
+
+pub fn sum(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    op_expr_builder(term, alt((op("+"), op("-"))), bin_op_builder)(input)
+}
+
+pub fn term(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    op_expr_builder(
+        factor,
+        alt((op("*"), op("/"), op("//"), op("%"))),
+        bin_op_builder,
+    )(input)
+}
+
+pub fn factor(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    let unary_op = |input| {
+        let (input, op_tok) = alt((op("+"), op("-"), op("~")))(input)?;
+        let (input, factor_expr) = factor(input)?;
+
+        let span = Span::from_pair(op_tok, &factor_expr);
+
+        Ok((
+            input,
+            Spanned {
+                node: unary_op_builder(op_tok, factor_expr),
+                span,
+            },
+        ))
+    };
+
+    alt((unary_op, power))(input)
+}
+
+pub fn power(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    let power_op = |input| {
+        let (input, primary_expr) = primary(input)?;
+        let (input, op_tok) = op("**")(input)?;
+        let (input, factor_expr) = factor(input)?;
+
+        let span = Span::from_pair(&primary_expr, &factor_expr);
+
+        Ok((
+            input,
+            Spanned {
+                node: bin_op_builder(primary_expr, op_tok, factor_expr),
+                span,
+            },
+        ))
+    };
+
+    alt((power_op, primary))(input)
+}
+
+pub fn primary(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    let (input, atom_expr) = atom(input)?;
+
+    let mut input = input;
+    let mut result = atom_expr;
+
+    loop {
+        if let Ok((input_, name_tok)) = attr_tail(input) {
+            input = input_;
+
+            let span = Span::from_pair(&result, name_tok);
+
+            result = Spanned {
+                node: Expr::Attribute {
+                    value: Box::new(result),
+                    attr: name_tok.into(),
+                },
+                span,
+            };
+        } else if let Ok((input_, slices)) = index_tail(input) {
+            input = input_;
+
+            let span = Span::from_pair(&result, &slices);
+
+            result = Spanned {
+                node: Expr::Subscript {
+                    value: Box::new(result),
+                    slices,
+                },
+                span,
+            };
+        } else if let Ok((input_, args)) = call_tail(input) {
+            input = input_;
+
+            let span = Span::from_pair(&result, &args);
+
+            result = Spanned {
+                node: Expr::Call {
+                    func: Box::new(result),
+                    args,
+                },
+                span,
+            };
+        } else {
+            break;
+        }
+    }
+
+    Ok((input, result))
+}
+
+pub fn slices(input: Cursor) -> ParseResult<Vec<Spanned<Slice>>> {
+    separated(slice, op(","), true)(input)
+}
+
+pub fn slice(input: Cursor) -> ParseResult<Spanned<Slice>> {
+    alt((
+        |input| {
+            let boxed_expr = map(expr, Box::new);
+
+            let (input, lower) = opt(&boxed_expr)(input)?;
+            let (input, colon) = op(":")(input)?;
+            let (input, upper) = opt(&boxed_expr)(input)?;
+            let (input, step) = opt(preceded(op(":"), &boxed_expr))(input)?;
+
+            let first = match &lower {
+                Some(bx) => bx.span,
+                None => colon.span,
+            };
+            let last = match (&upper, &step) {
+                (_, Some(bx)) => bx.span,
+                (Some(bx), _) => bx.span,
+                _ => colon.span,
+            };
+
+            let span = Span::from_pair(first, last);
+
+            Ok((
+                input,
+                Spanned {
+                    node: Slice::Slice { lower, upper, step },
+                    span,
+                },
+            ))
+        },
+        map(expr, |e| Spanned {
+            node: Slice::Index(Box::new(e.node)),
+            span: e.span,
+        }),
+    ))(input)
+}
+
+pub fn atom(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    alt((
+        list,
+        map(group, |exp| Spanned {
+            node: exp.node.node,
+            span: exp.span,
+        }),
+        tuple,
+        map(name_token, |tok| Spanned {
+            node: Expr::Name(tok.string),
+            span: tok.span,
+        }),
+        map(number_token, |tok| Spanned {
+            node: Expr::Num(tok.string),
+            span: tok.span,
+        }),
+        map(many1(string_token), |toks| {
+            let tok_strings: Vec<_> = toks.iter().map(|t| t.string).collect();
+
+            let fst = toks.first().unwrap();
+            let snd = toks.last().unwrap();
+
+            Spanned {
+                node: Expr::Str(tok_strings),
+                span: Span::from_pair(*fst, *snd),
+            }
+        }),
+        map(op("..."), |tok| Spanned {
+            node: Expr::Ellipsis,
+            span: tok.span,
+        }),
+    ))(input)
+}
+
+pub fn list(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    map(delimited(op("["), opt(exprs), op("]")), |spanned_exprs| {
+        let Spanned { node, span } = spanned_exprs;
+        let elts = node.unwrap_or(vec![]);
+
+        Spanned {
+            node: Expr::List { elts },
+            span,
+        }
+    })(input)
+}
+
+pub fn tuple(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    map(delimited(op("("), opt(exprs), op(")")), |spanned_exprs| {
+        let Spanned { node, span } = spanned_exprs;
+        let elts = node.unwrap_or(vec![]);
+
+        Spanned {
+            node: Expr::Tuple { elts },
+            span,
+        }
+    })(input)
+}
+
+pub fn group(input: Cursor) -> ParseResult<Spanned<Spanned<Expr>>> {
+    delimited(op("("), expr, op(")"))(input)
+}
+
+pub fn args(input: Cursor) -> ParseResult<Vec<Spanned<CallArg>>> {
+    let kw_result = kwargs(input);
+    if kw_result.is_ok() {
+        return kw_result;
+    }
+
+    let (input, first) = expr(input)?;
+    let (input, rest) = opt(preceded(op(","), args))(input)?;
+
+    let mut results = vec![Spanned {
+        node: CallArg::Arg(first.node),
+        span: first.span,
+    }];
+    if let Some(mut rest) = rest {
+        results.append(&mut rest);
+    }
+
+    Ok((input, results))
+}
+
+pub fn kwargs(input: Cursor) -> ParseResult<Vec<Spanned<CallArg>>> {
+    separated(kwarg, op(","), false)(input)
+}
+
+pub fn kwarg(input: Cursor) -> ParseResult<Spanned<CallArg>> {
+    let (input, name_tok) = name_token(input)?;
+    let (input, _) = op("=")(input)?;
+    let (input, value_expr) = expr(input)?;
+
+    let span = Span::from_pair(name_tok, &value_expr);
+
+    Ok((
+        input,
+        Spanned {
+            node: CallArg::Kwarg(Kwarg {
+                name: name_tok.into(),
+                value: Box::new(value_expr),
+            }),
+            span,
+        },
+    ))
+}
+
+pub fn attr_tail(input: Cursor) -> ParseResult<&Token> {
+    preceded(op("."), name_token)(input)
+}
+
+pub fn index_tail(input: Cursor) -> ParseResult<Spanned<Vec<Spanned<Slice>>>> {
+    delimited(op("["), slices, op("]"))(input)
+}
+
+pub fn call_tail(input: Cursor) -> ParseResult<Spanned<Vec<Spanned<CallArg>>>> {
+    map(delimited(op("("), opt(args), op(")")), |spanned| Spanned {
+        node: spanned.node.unwrap_or(vec![]),
+        span: spanned.span,
+    })(input)
 }
