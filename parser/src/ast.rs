@@ -182,6 +182,7 @@ pub enum FuncStmt<'a> {
     Pass,
     Break,
     Continue,
+    Revert,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
