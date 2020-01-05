@@ -5,10 +5,7 @@ mod utils;
 
 use wasm_bindgen_test::wasm_bindgen_test;
 
-use utils::{
-    parse_test_example,
-    to_ron_string_pretty,
-};
+use utils::to_ron_string_pretty;
 use vyper_parser::ast::Module;
 use vyper_parser::builders::{
     many0,

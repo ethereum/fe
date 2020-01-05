@@ -98,20 +98,20 @@ where
 /// Parse file content containing a test example into a tuple of input text and
 /// expected serialization.  Input text and expected serialization are separated
 /// by a line that only contains the string "---".
-pub fn parse_test_example<'a>(name: &'static str, input: &'a str) -> (&'a str, &'a str) {
+pub fn parse_fixture<'a>(input: &'a str) -> Result<(&'a str, &'a str), String> {
     let parts: Vec<_> = input.split("\n---\n").collect();
 
     if parts.len() != 2 {
-        panic!("Test example has wrong format in {}", name);
+        Err(format!("expected 2 parts, got {}", parts.len()))
     } else {
         let input = parts[0];
         let parsed = parts[1];
 
         // If single trailing newline is present, clip off
-        match parsed.chars().last() {
+        Ok(match parsed.chars().last() {
             Some(c) if c == '\n' => (input, &parsed[..parsed.len() - 1]),
             _ => (input, parsed),
-        }
+        })
     }
 }
 
@@ -126,9 +126,10 @@ macro_rules! empty_slice {
 /// Include a test example file and parse it.
 #[allow(unused_macros)]
 macro_rules! include_test_example {
-    ($path:expr) => {{
-        parse_test_example($path, include_str!($path))
-    }};
+    ($path:expr) => {
+        $crate::utils::parse_fixture(include_str!($path))
+            .expect(&format!("Test example has wrong format {}", $path))
+    };
 }
 
 /// Apply the function identified by `$func` to the fixture content in the files
