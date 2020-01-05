@@ -115,21 +115,6 @@ macro_rules! assert_fixture_parsed_with {
 
 macro_rules! parser_fixture_tests {
     ($(($parser:expr, $tester_name:ident, $fixture_path:expr,)),+,) => {
-        parser_fixture_tests! {
-            $(($parser, $tester_name, $fixture_path)),+
-        }
-    };
-    ($(($parser:expr, $tester_name:ident, $fixture_path:expr)),+,) => {
-        parser_fixture_tests! {
-            $(($parser, $tester_name, $fixture_path)),+
-        }
-    };
-    ($(($parser:expr, $tester_name:ident, $fixture_path:expr,)),+) => {
-        parser_fixture_tests! {
-            $(($parser, $tester_name, $fixture_path)),+
-        }
-    };
-    ($(($parser:expr, $tester_name:ident, $fixture_path:expr)),+) => {
         $(
         #[test]
         #[wasm_bindgen_test]
@@ -221,212 +206,6 @@ fn test_empty_file_input() {
     );
 }
 
-parser_fixture_tests! {
-    (
-        non_empty_file_input,
-        test_non_empty_file_input,
-        "fixtures/parsers/non_empty_file_input.ron",
-    ),
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_module_stmt() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat(module_stmt)),
-        "fixtures/parsers/module_stmt.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_import_stmt() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat(import_stmt)),
-        "fixtures/parsers/import_stmt.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_simple_import() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(simple_import)),
-        "fixtures/parsers/simple_import.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_simple_import_name() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(simple_import_name)),
-        "fixtures/parsers/simple_import_name.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_from_import() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(from_import)),
-        "fixtures/parsers/from_import.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_from_import_sub_path() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(from_import_sub_path)),
-        "fixtures/parsers/from_import_sub_path.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_from_import_names() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(from_import_names)),
-        "fixtures/parsers/from_import_names.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_from_import_names_list() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(from_import_names_list)),
-        "fixtures/parsers/from_import_names_list.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_from_import_name() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(from_import_name)),
-        "fixtures/parsers/from_import_name.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_dotted_name() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(dotted_name)),
-        "fixtures/parsers/dotted_name.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_dots_to_int() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(dots_to_int)),
-        "fixtures/parsers/dots_to_int.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_contract_def() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat(contract_def)),
-        "fixtures/parsers/contract_def.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_contract_stmt() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat(contract_stmt)),
-        "fixtures/parsers/contract_stmt.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_contract_field() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat(contract_field)),
-        "fixtures/parsers/contract_field.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_event_def() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat(event_def)),
-        "fixtures/parsers/event_def.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_event_field() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat(event_field)),
-        "fixtures/parsers/event_field.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_type_def() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(type_def)),
-        "fixtures/parsers/type_def.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_type_desc() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(type_desc)),
-        "fixtures/parsers/type_desc.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_map_type() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(map_type)),
-        "fixtures/parsers/map_type.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_base_type() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(base_type)),
-        "fixtures/parsers/base_type.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_arr_list() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(standalone(arr_list)),
-        "fixtures/parsers/arr_list.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_arr_dim() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(arr_dim)),
-        "fixtures/parsers/arr_dim.ron",
-    );
-}
-
 #[test]
 #[wasm_bindgen_test]
 fn test_arr_dim_err() {
@@ -442,245 +221,255 @@ fn test_arr_dim_err() {
     );
 }
 
-#[test]
-#[wasm_bindgen_test]
-fn test_contract_field_qual() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(contract_field_qual)),
+parser_fixture_tests! {
+    (
+        non_empty_file_input,
+        test_non_empty_file_input,
+        "fixtures/parsers/non_empty_file_input.ron",
+    ),
+    (
+        repeat(module_stmt),
+        test_module_stmt,
+        "fixtures/parsers/module_stmt.ron",
+    ),
+    (
+        repeat(import_stmt),
+        test_import_stmt,
+        "fixtures/parsers/import_stmt.ron",
+    ),
+    (
+        repeat_newline(simple_import),
+        test_simple_import,
+        "fixtures/parsers/simple_import.ron",
+    ),
+    (
+        repeat_newline(simple_import_name),
+        test_simple_import_name,
+        "fixtures/parsers/simple_import_name.ron",
+    ),
+    (
+        repeat_newline(from_import),
+        test_from_import,
+        "fixtures/parsers/from_import.ron",
+    ),
+    (
+        repeat_newline(from_import_sub_path),
+        test_from_import_sub_path,
+        "fixtures/parsers/from_import_sub_path.ron",
+    ),
+    (
+        repeat_newline(from_import_names),
+        test_from_import_names,
+        "fixtures/parsers/from_import_names.ron",
+    ),
+    (
+        repeat_newline(from_import_names_list),
+        test_from_import_names_list,
+        "fixtures/parsers/from_import_names_list.ron",
+    ),
+    (
+        repeat_newline(from_import_name),
+        test_from_import_name,
+        "fixtures/parsers/from_import_name.ron",
+    ),
+    (
+        repeat_newline(dotted_name),
+        test_dotted_name,
+        "fixtures/parsers/dotted_name.ron",
+    ),
+    (
+        repeat_newline(dots_to_int),
+        test_dots_to_int,
+        "fixtures/parsers/dots_to_int.ron",
+    ),
+    (
+        repeat(contract_def),
+        test_contract_def,
+        "fixtures/parsers/contract_def.ron",
+    ),
+    (
+        repeat(contract_stmt),
+        test_contract_stmt,
+        "fixtures/parsers/contract_stmt.ron",
+    ),
+    (
+        repeat(contract_field),
+        test_contract_field,
+        "fixtures/parsers/contract_field.ron",
+    ),
+    (
+        repeat(event_def),
+        test_event_def,
+        "fixtures/parsers/event_def.ron",
+    ),
+    (
+        repeat(event_field),
+        test_event_field,
+        "fixtures/parsers/event_field.ron",
+    ),
+    (
+        repeat_newline(type_def),
+        test_type_def,
+        "fixtures/parsers/type_def.ron",
+    ),
+    (
+        repeat_newline(type_desc),
+        test_type_desc,
+        "fixtures/parsers/type_desc.ron",
+    ),
+    (
+        repeat_newline(map_type),
+        test_map_type,
+        "fixtures/parsers/map_type.ron",
+    ),
+    (
+        repeat_newline(base_type),
+        test_base_type,
+        "fixtures/parsers/base_type.ron",
+    ),
+    (
+        standalone(arr_list),
+        test_arr_list,
+        "fixtures/parsers/arr_list.ron",
+    ),
+    (
+        repeat_newline(arr_dim),
+        test_arr_dim,
+        "fixtures/parsers/arr_dim.ron",
+    ),
+    (
+        repeat_newline(contract_field_qual),
+        test_contract_field_qual,
         "fixtures/parsers/contract_field_qual.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_event_field_qual() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(event_field_qual)),
+    ),
+    (
+        repeat_newline(event_field_qual),
+        test_event_field_qual,
         "fixtures/parsers/event_field_qual.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_func_qual() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(func_qual)),
+    ),
+    (
+        repeat_newline(func_qual),
+        test_func_qual,
         "fixtures/parsers/func_qual.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_exprs() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(exprs)),
+    ),
+    (
+        repeat_newline(exprs),
+        test_exprs,
         "fixtures/parsers/exprs.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_expr() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(expr)),
+    ),
+    (
+        repeat_newline(expr),
+        test_expr,
         "fixtures/parsers/expr.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_disjunct() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(disjunct)),
+    ),
+    (
+        repeat_newline(disjunct),
+        test_disjunct,
         "fixtures/parsers/disjunct.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_conjunct() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(conjunct)),
+    ),
+    (
+        repeat_newline(conjunct),
+        test_conjunct,
         "fixtures/parsers/conjunct.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_comparison() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(comparison)),
+    ),
+    (
+        repeat_newline(comparison),
+        test_comparison,
         "fixtures/parsers/comparison.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_comp_op() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(comp_op)),
+    ),
+    (
+        repeat_newline(comp_op),
+        test_comp_op,
         "fixtures/parsers/comp_op.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_bitwise_or() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(bitwise_or)),
+    ),
+    (
+        repeat_newline(bitwise_or),
+        test_bitwise_or,
         "fixtures/parsers/bitwise_or.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_bitwise_xor() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(bitwise_xor)),
+    ),
+    (
+        repeat_newline(bitwise_xor),
+        test_bitwise_xor,
         "fixtures/parsers/bitwise_xor.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_bitwise_and() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(bitwise_and)),
+    ),
+    (
+        repeat_newline(bitwise_and),
+        test_bitwise_and,
         "fixtures/parsers/bitwise_and.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_shift_expr() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(shift_expr)),
+    ),
+    (
+        repeat_newline(shift_expr),
+        test_shift_expr,
         "fixtures/parsers/shift_expr.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_sum() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(sum)),
+    ),
+    (
+        repeat_newline(sum),
+        test_sum,
         "fixtures/parsers/sum.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_term() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(term)),
+    ),
+    (
+        repeat_newline(term),
+        test_term,
         "fixtures/parsers/term.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_factor() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(factor)),
+    ),
+    (
+        repeat_newline(factor),
+        test_factor,
         "fixtures/parsers/factor.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_power() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(power)),
+    ),
+    (
+        repeat_newline(power),
+        test_power,
         "fixtures/parsers/power.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_primary() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(primary)),
+    ),
+    (
+        repeat_newline(primary),
+        test_primary,
         "fixtures/parsers/primary.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_slices() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(slices)),
+    ),
+    (
+        repeat_newline(slices),
+        test_slices,
         "fixtures/parsers/slices.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_slice() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(slice)),
+    ),
+    (
+        repeat_newline(slice),
+        test_slice,
         "fixtures/parsers/slice.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_atom() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(atom)),
+    ),
+    (
+        repeat_newline(atom),
+        test_atom,
         "fixtures/parsers/atom.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_list() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(list)),
+    ),
+    (
+        repeat_newline(list),
+        test_list,
         "fixtures/parsers/list.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_tuple() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(tuple)),
+    ),
+    (
+        repeat_newline(tuple),
+        test_tuple,
         "fixtures/parsers/tuple.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_group() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(group)),
+    ),
+    (
+        repeat_newline(group),
+        test_group,
         "fixtures/parsers/group.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_args() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(args)),
+    ),
+    (
+        repeat_newline(args),
+        test_args,
         "fixtures/parsers/args.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_kwargs() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(kwargs)),
+    ),
+    (
+        repeat_newline(kwargs),
+        test_kwargs,
         "fixtures/parsers/kwargs.ron",
-    );
-}
-
-#[test]
-#[wasm_bindgen_test]
-fn test_kwarg() {
-    do_with_fixtures!(
-        assert_fixture_parsed_with!(repeat_newline(kwarg)),
+    ),
+    (
+        repeat_newline(kwarg),
+        test_kwarg,
         "fixtures/parsers/kwarg.ron",
-    );
+    ),
 }
