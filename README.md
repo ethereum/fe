@@ -160,11 +160,12 @@ considered to represent the exact prioritization of work items.
   - Include grammatical elements that more directly capture Vyper language
     constructs (such as event, contract, or interface definitions, type
     dimensions, etc.)
+* [x] Finish writing parsers for the Vyper EBNF grammar
+* [x] Parse a basic greeter contract to AST
 
 ### Short-term goals
 
-* [ ] Finish writing parsers for the Vyper EBNF grammar
-* [ ] Parse and compile a basic greeter contract to YUL
+* [ ] Compile the AST of a basic greeter contract to YUL
 * [ ] Generate YUL source code from YUL AST objects (via [yultsur](https://github.com/axic/yultsur/))
 * [ ] Invoke the Solidity compiler with generated YUL source to produce a
   compiled binary (via [solc-rust](https://github.com/axic/solc-rust))
