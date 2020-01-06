@@ -71,11 +71,12 @@ func_qual: 'pub'
 func_stmt:  compound_stmt | simple_stmt
 simple_stmt: small_stmt (';' small_stmt)* [';'] NEWLINE
 
-# NOTE: `assign_stmt` MUST precede `exprs`.  Otherwise, the parser will get
-# stuck.  However, it must follow all others.  Otherwise, reserved words will
-# match a simple NAME.
+# NOTE: `vardecl_stmt`, `assign_stmt`, and `augassign_stmt` MUST precede
+# `exprs`.  Otherwise, the parser will get stuck.  However, they must follow
+# all others.  Otherwise, reserved words will match a simple NAME.
 small_stmt: return_stmt | assert_stmt | emit_stmt | pass_stmt | break_stmt |
-            continue_stmt | revert_stmt | assign_stmt | exprs
+            continue_stmt | revert_stmt | vardecl_stmt | assign_stmt | augassign_stmt |
+            exprs
 
 return_stmt: 'return' [exprs]
 assert_stmt: 'assert' expr [',' expr]
@@ -86,9 +87,10 @@ break_stmt: 'break'
 continue_stmt: 'continue'
 revert_stmt: 'revert'
 
-assign_stmt: target ':' type_desc ['=' expr]
-            | (targets '=')+ exprs
-            | target augassign exprs
+vardecl_stmt: target ':' type_desc ['=' expr]
+assign_stmt: (targets '=')+ exprs
+augassign_stmt: target augassign exprs
+
 augassign: '+=' | '-=' | '*=' | '/=' | '%=' | '&=' | '|=' | '^='
            | '<<=' | '>>=' | '**=' | '//='
 
