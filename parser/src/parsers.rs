@@ -958,6 +958,7 @@ pub fn compound_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
     alt((if_stmt, while_stmt, for_stmt))(input)
 }
 
+#[allow(clippy::needless_lifetimes)]
 pub fn if_stmt_builder<'a>(
     string: &'a str,
 ) -> impl Fn(Cursor<'a>) -> ParseResult<Spanned<FuncStmt>> {
