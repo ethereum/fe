@@ -103,6 +103,18 @@ impl TryFrom<&Token<'_>> for Spanned<BinOperator> {
             "^" => BitXor,
             "&" => BitAnd,
             "//" => FloorDiv,
+            "+=" => Add,
+            "-=" => Sub,
+            "*=" => Mult,
+            "/=" => Div,
+            "%=" => Mod,
+            "**=" => Pow,
+            "<<=" => LShift,
+            ">>=" => RShift,
+            "|=" => BitOr,
+            "^=" => BitXor,
+            "&=" => BitAnd,
+            "//=" => FloorDiv,
             _ => return Err("unrecognized token"),
         };
 

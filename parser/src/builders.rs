@@ -20,19 +20,32 @@ macro_rules! succ {
   (4, $macro:ident ! ($($args:tt)*)) => ($macro!(5, $($args)*));
   (5, $macro:ident ! ($($args:tt)*)) => ($macro!(6, $($args)*));
   (6, $macro:ident ! ($($args:tt)*)) => ($macro!(7, $($args)*));
+  (7, $macro:ident ! ($($args:tt)*)) => ($macro!(8, $($args)*));
+  (8, $macro:ident ! ($($args:tt)*)) => ($macro!(9, $($args)*));
+  (9, $macro:ident ! ($($args:tt)*)) => ($macro!(10, $($args)*));
+  (10, $macro:ident ! ($($args:tt)*)) => ($macro!(11, $($args)*));
+  (11, $macro:ident ! ($($args:tt)*)) => ($macro!(12, $($args)*));
+  (12, $macro:ident ! ($($args:tt)*)) => ($macro!(13, $($args)*));
+  (13, $macro:ident ! ($($args:tt)*)) => ($macro!(14, $($args)*));
+  (14, $macro:ident ! ($($args:tt)*)) => ($macro!(15, $($args)*));
+  (15, $macro:ident ! ($($args:tt)*)) => ($macro!(16, $($args)*));
+  (16, $macro:ident ! ($($args:tt)*)) => ($macro!(17, $($args)*));
+  (17, $macro:ident ! ($($args:tt)*)) => ($macro!(18, $($args)*));
+  (18, $macro:ident ! ($($args:tt)*)) => ($macro!(19, $($args)*));
+  (19, $macro:ident ! ($($args:tt)*)) => ($macro!(20, $($args)*));
 }
 
-pub trait Alt<'a, O> {
-    fn parse(&self, input: Cursor<'a>) -> ParseResult<'a, O>;
+pub trait Alt<'a, Output> {
+    fn parse(&self, input: Cursor<'a>) -> ParseResult<'a, Output>;
 }
 
 macro_rules! alt_trait_impl {
     ($($type_var:ident)+) => {
-        impl<'a, O, $($type_var),+> Alt<'a, O> for ($($type_var),+)
+        impl<'a, Output, $($type_var),+> Alt<'a, Output> for ($($type_var),+)
         where
-            $($type_var: Fn(Cursor<'a>) -> ParseResult<O>),+
+            $($type_var: Fn(Cursor<'a>) -> ParseResult<Output>),+
         {
-            fn parse(&self, input: Cursor<'a>) -> ParseResult<'a, O> {
+            fn parse(&self, input: Cursor<'a>) -> ParseResult<'a, Output> {
                 alt_parse_body!(0, self, input, pos, $($type_var)+)
             }
         }
@@ -59,6 +72,19 @@ alt_trait_impl!(A B C D E);
 alt_trait_impl!(A B C D E F);
 alt_trait_impl!(A B C D E F G);
 alt_trait_impl!(A B C D E F G H);
+alt_trait_impl!(A B C D E F G H I);
+alt_trait_impl!(A B C D E F G H I J);
+alt_trait_impl!(A B C D E F G H I J K);
+alt_trait_impl!(A B C D E F G H I J K L);
+alt_trait_impl!(A B C D E F G H I J K L M);
+alt_trait_impl!(A B C D E F G H I J K L M N);
+alt_trait_impl!(A B C D E F G H I J K L M N O);
+alt_trait_impl!(A B C D E F G H I J K L M N O P);
+alt_trait_impl!(A B C D E F G H I J K L M N O P Q);
+alt_trait_impl!(A B C D E F G H I J K L M N O P Q R);
+alt_trait_impl!(A B C D E F G H I J K L M N O P Q R S);
+alt_trait_impl!(A B C D E F G H I J K L M N O P Q R S T);
+alt_trait_impl!(A B C D E F G H I J K L M N O P Q R S T U);
 
 pub fn alt<'a, O, A: Alt<'a, O>>(alts: A) -> impl Fn(Cursor<'a>) -> ParseResult<O> {
     move |input| alts.parse(input)

@@ -789,6 +789,82 @@ pub fn revert_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
     keyword_statement("revert", || FuncStmt::Revert)(input)
 }
 
+pub fn vardecl_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+    let (input, target_expr) = target(input)?;
+    let (input, _) = op(":")(input)?;
+    let (input, typ) = type_desc(input)?;
+    let (input, value) = opt(preceded(op("="), expr))(input)?;
+
+    let span = match &value {
+        Some(exp) => Span::from_pair(&target_expr, exp),
+        None => Span::from_pair(&target_expr, &typ),
+    };
+
+    Ok((
+        input,
+        Spanned {
+            node: FuncStmt::VarDecl {
+                target: target_expr,
+                typ,
+                value,
+            },
+            span,
+        },
+    ))
+}
+
+pub fn assign_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+    let (input, targets_vec) = many1(terminated(targets, op("=")))(input)?;
+    let (input, value) = exprs(input)?;
+
+    let first = targets_vec.first().unwrap();
+    let span = Span::from_pair(first, &value);
+
+    Ok((
+        input,
+        Spanned {
+            node: FuncStmt::Assign {
+                targets: targets_vec,
+                value,
+            },
+            span,
+        },
+    ))
+}
+
+pub fn augassign_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+    let (input, target_expr) = target(input)?;
+    let (input, aug_tok) = alt((
+        op("+="),
+        op("-="),
+        op("*="),
+        op("/="),
+        op("%="),
+        op("&="),
+        op("|="),
+        op("^="),
+        op("<<="),
+        op(">>="),
+        op("**="),
+        op("//="),
+    ))(input)?;
+    let (input, value) = expr(input)?;
+
+    let span = Span::from_pair(&target_expr, &value);
+
+    Ok((
+        input,
+        Spanned {
+            node: FuncStmt::AugAssign {
+                target: target_expr,
+                op: TryFrom::try_from(aug_tok).unwrap(),
+                value,
+            },
+            span,
+        },
+    ))
+}
+
 /// Parse a comma-separated list of expressions.
 pub fn exprs(input: Cursor) -> ParseResult<Spanned<Expr>> {
     let (input, mut elts) = separated(expr, op(","), false)(input)?;

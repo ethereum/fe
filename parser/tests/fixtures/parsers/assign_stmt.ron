@@ -1,0 +1,60 @@
+x = y
+x = y = z
+---
+[
+  Spanned(
+    node: Assign(
+      targets: [
+        Spanned(
+          node: Name("x"),
+          span: Span(
+            start: 0,
+            end: 1,
+          ),
+        ),
+      ],
+      value: Spanned(
+        node: Name("y"),
+        span: Span(
+          start: 4,
+          end: 5,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 0,
+      end: 5,
+    ),
+  ),
+  Spanned(
+    node: Assign(
+      targets: [
+        Spanned(
+          node: Name("x"),
+          span: Span(
+            start: 6,
+            end: 7,
+          ),
+        ),
+        Spanned(
+          node: Name("y"),
+          span: Span(
+            start: 10,
+            end: 11,
+          ),
+        ),
+      ],
+      value: Spanned(
+        node: Name("z"),
+        span: Span(
+          start: 14,
+          end: 15,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 6,
+      end: 15,
+    ),
+  ),
+]

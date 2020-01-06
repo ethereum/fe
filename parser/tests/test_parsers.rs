@@ -481,6 +481,24 @@ parser_fixture_tests! {
         "fixtures/parsers/revert_stmt.ron",
     ),
     (
+        repeat_newline(vardecl_stmt),
+        test_vardecl_stmt,
+        write_vardecl_stmt,
+        "fixtures/parsers/vardecl_stmt.ron",
+    ),
+    (
+        repeat_newline(assign_stmt),
+        test_assign_stmt,
+        write_assign_stmt,
+        "fixtures/parsers/assign_stmt.ron",
+    ),
+    (
+        repeat_newline(augassign_stmt),
+        test_augassign_stmt,
+        write_augassign_stmt,
+        "fixtures/parsers/augassign_stmt.ron",
+    ),
+    (
         repeat_newline(exprs),
         test_exprs,
         write_exprs,
