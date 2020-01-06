@@ -708,22 +708,11 @@ pub fn func_qual(input: Cursor) -> ParseResult<Spanned<FuncQual>> {
 
 pub fn return_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
     let (input, return_kw) = name("return")(input)?;
-    let (input, values) = opt(exprs)(input)?;
+    let (input, value) = opt(exprs)(input)?;
 
-    let span = match &values {
-        Some(vec) => {
-            let last = vec.last().unwrap();
-            Span::from_pair(return_kw, last)
-        }
+    let span = match &value {
+        Some(exp) => Span::from_pair(return_kw, exp),
         None => return_kw.span,
-    };
-    let value = match values {
-        Some(mut vec) => Some(if vec.len() > 1 {
-            Expr::Tuple { elts: vec }
-        } else {
-            vec.pop().unwrap().node
-        }),
-        None => None,
     };
 
     Ok((
@@ -801,8 +790,37 @@ pub fn revert_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
 }
 
 /// Parse a comma-separated list of expressions.
-pub fn exprs(input: Cursor) -> ParseResult<Vec<Spanned<Expr>>> {
-    separated(expr, op(","), true)(input)
+pub fn exprs(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    let (input, mut elts) = separated(expr, op(","), false)(input)?;
+    let (input, comma) = opt(op(","))(input)?;
+
+    let first = elts.first().unwrap();
+
+    let result = match comma {
+        Some(comma_tok) => {
+            let span = Span::from_pair(first, comma_tok);
+
+            Spanned {
+                node: Expr::Tuple { elts },
+                span,
+            }
+        }
+        None => {
+            if elts.len() > 1 {
+                let last = elts.last().unwrap();
+                let span = Span::from_pair(first, last);
+
+                Spanned {
+                    node: Expr::Tuple { elts },
+                    span,
+                }
+            } else {
+                elts.pop().unwrap()
+            }
+        }
+    };
+
+    Ok((input, result))
 }
 
 pub fn expr(input: Cursor) -> ParseResult<Spanned<Expr>> {
@@ -1125,26 +1143,41 @@ pub fn atom(input: Cursor) -> ParseResult<Spanned<Expr>> {
 }
 
 pub fn list(input: Cursor) -> ParseResult<Spanned<Expr>> {
-    map(delimited(op("["), opt(exprs), op("]")), |spanned_exprs| {
-        let Spanned { node, span } = spanned_exprs;
-        let elts = node.unwrap_or_else(|| vec![]);
+    map(delimited(op("["), opt(exprs), op("]")), |spanned| {
+        use Expr::{
+            List,
+            Tuple,
+        };
 
-        Spanned {
-            node: Expr::List { elts },
-            span,
-        }
+        let node = match spanned.node {
+            Some(Spanned {
+                node: Tuple { elts },
+                ..
+            }) => List { elts },
+            Some(exp) => List { elts: vec![exp] },
+            None => List { elts: vec![] },
+        };
+        let span = spanned.span;
+
+        Spanned { node, span }
     })(input)
 }
 
 pub fn tuple(input: Cursor) -> ParseResult<Spanned<Expr>> {
-    map(delimited(op("("), opt(exprs), op(")")), |spanned_exprs| {
-        let Spanned { node, span } = spanned_exprs;
-        let elts = node.unwrap_or_else(|| vec![]);
+    map(delimited(op("("), opt(exprs), op(")")), |spanned| {
+        use Expr::Tuple;
 
-        Spanned {
-            node: Expr::Tuple { elts },
-            span,
-        }
+        let node = match spanned.node {
+            Some(Spanned {
+                node: Tuple { elts },
+                ..
+            }) => Tuple { elts },
+            Some(exp) => exp.node,
+            None => Tuple { elts: vec![] },
+        };
+        let span = spanned.span;
+
+        Spanned { node, span }
     })(input)
 }
 

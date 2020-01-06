@@ -140,7 +140,7 @@ pub struct FuncDefArg<'a> {
 pub enum FuncStmt<'a> {
     Return {
         #[serde(borrow)]
-        value: Option<Expr<'a>>,
+        value: Option<Spanned<Expr<'a>>>,
     },
     VarDecl {
         target: Spanned<Expr<'a>>,

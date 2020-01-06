@@ -1,6 +1,5 @@
 return
 return x
-return x, y
 ---
 [
   Spanned(
@@ -14,37 +13,17 @@ return x, y
   ),
   Spanned(
     node: Return(
-      value: Some(Name("x")),
+      value: Some(Spanned(
+        node: Name("x"),
+        span: Span(
+          start: 14,
+          end: 15,
+        ),
+      )),
     ),
     span: Span(
       start: 7,
       end: 15,
-    ),
-  ),
-  Spanned(
-    node: Return(
-      value: Some(Tuple(
-        elts: [
-          Spanned(
-            node: Name("x"),
-            span: Span(
-              start: 23,
-              end: 24,
-            ),
-          ),
-          Spanned(
-            node: Name("y"),
-            span: Span(
-              start: 26,
-              end: 27,
-            ),
-          ),
-        ],
-      )),
-    ),
-    span: Span(
-      start: 16,
-      end: 27,
     ),
   ),
 ]
