@@ -998,57 +998,55 @@ pub fn power(input: Cursor) -> ParseResult<Spanned<Expr>> {
     alt((power_op, primary))(input)
 }
 
-pub fn primary(input: Cursor) -> ParseResult<Spanned<Expr>> {
-    use Tail::*;
+pub fn build_tail_expr<'a>(exp: Spanned<Expr<'a>>, tails: Vec<Tail<'a>>) -> Spanned<Expr<'a>> {
+    let mut result = exp;
 
-    let (input, atom_expr) = atom(input)?;
+    for tail in tails {
+        match tail {
+            Tail::Attr(name_tok) => {
+                let span = Span::from_pair(&result, name_tok);
 
-    let mut input = input;
-    let mut result = atom_expr;
+                result = Spanned {
+                    node: Expr::Attribute {
+                        value: Box::new(result),
+                        attr: name_tok.into(),
+                    },
+                    span,
+                };
+            }
+            Tail::Index(slices) => {
+                let span = Span::from_pair(&result, &slices);
 
-    loop {
-        if let Ok((input_, Attr(name_tok))) = attr_tail(input) {
-            input = input_;
+                result = Spanned {
+                    node: Expr::Subscript {
+                        value: Box::new(result),
+                        slices,
+                    },
+                    span,
+                };
+            }
+            Tail::Call(args) => {
+                let span = Span::from_pair(&result, &args);
 
-            let span = Span::from_pair(&result, name_tok);
-
-            result = Spanned {
-                node: Expr::Attribute {
-                    value: Box::new(result),
-                    attr: name_tok.into(),
-                },
-                span,
-            };
-        } else if let Ok((input_, Index(slices))) = index_tail(input) {
-            input = input_;
-
-            let span = Span::from_pair(&result, &slices);
-
-            result = Spanned {
-                node: Expr::Subscript {
-                    value: Box::new(result),
-                    slices,
-                },
-                span,
-            };
-        } else if let Ok((input_, Call(args))) = call_tail(input) {
-            input = input_;
-
-            let span = Span::from_pair(&result, &args);
-
-            result = Spanned {
-                node: Expr::Call {
-                    func: Box::new(result),
-                    args,
-                },
-                span,
-            };
-        } else {
-            break;
+                result = Spanned {
+                    node: Expr::Call {
+                        func: Box::new(result),
+                        args,
+                    },
+                    span,
+                };
+            }
         }
     }
 
-    Ok((input, result))
+    result
+}
+
+pub fn primary(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    let (input, atom_expr) = atom(input)?;
+    let (input, tails) = many0(alt((attr_tail, index_tail, call_tail)))(input)?;
+
+    Ok((input, build_tail_expr(atom_expr, tails)))
 }
 
 pub fn slices(input: Cursor) -> ParseResult<Vec<Spanned<Slice>>> {
