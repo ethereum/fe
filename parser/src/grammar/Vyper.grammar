@@ -146,14 +146,3 @@ t_tail: call_tail* (attr_tail | index_tail)
 attr_tail: '.' NAME
 index_tail: '[' slices ']'
 call_tail: '(' [args] ')'
-
-########################### const_expr ###############################
-
-const_expr: const_term ('+' const_term | '-' const_term)*
-const_term: const_factor ('*' const_factor | '/' const_factor | '%' const_factor)*
-const_factor: ('+' | '-' | '~') const_factor | const_power
-const_power: const_atom '**' const_factor | const_atom
-
-const_atom: const_group | NAME | NUMBER
-
-const_group: '(' const_expr ')'
