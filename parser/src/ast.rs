@@ -99,8 +99,8 @@ pub enum ContractStmt<'a> {
     FuncDef {
         qual: Option<Spanned<FuncQual>>,
         name: Spanned<&'a str>,
-        args: Vec<Spanned<EventField<'a>>>,
-        return_type: Spanned<TypeDesc<'a>>,
+        args: Vec<Spanned<FuncDefArg<'a>>>,
+        return_type: Option<Spanned<TypeDesc<'a>>>,
         body: Vec<Spanned<FuncStmt<'a>>>,
     },
 }
@@ -132,7 +132,7 @@ pub enum FuncQual {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct FuncDefArg<'a> {
     #[serde(borrow)]
-    name: Spanned<&'a str>,
+    pub name: Spanned<&'a str>,
     pub typ: Spanned<TypeDesc<'a>>,
 }
 
