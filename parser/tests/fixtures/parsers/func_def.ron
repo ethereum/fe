@@ -1,0 +1,129 @@
+def foo(x: bool):
+    x
+pub def foo(x: bool) -> bool:
+    x
+---
+[
+  Spanned(
+    node: FuncDef(
+      qual: None,
+      name: Spanned(
+        node: "foo",
+        span: Span(
+          start: 4,
+          end: 7,
+        ),
+      ),
+      args: [
+        Spanned(
+          node: FuncDefArg(
+            name: Spanned(
+              node: "x",
+              span: Span(
+                start: 8,
+                end: 9,
+              ),
+            ),
+            typ: Spanned(
+              node: Base(
+                base: "bool",
+              ),
+              span: Span(
+                start: 11,
+                end: 15,
+              ),
+            ),
+          ),
+          span: Span(
+            start: 8,
+            end: 15,
+          ),
+        ),
+      ],
+      return_type: None,
+      body: [
+        Spanned(
+          node: Expr(
+            value: Name("x"),
+          ),
+          span: Span(
+            start: 22,
+            end: 23,
+          ),
+        ),
+      ],
+    ),
+    span: Span(
+      start: 0,
+      end: 23,
+    ),
+  ),
+  Spanned(
+    node: FuncDef(
+      qual: Some(Spanned(
+        node: Pub,
+        span: Span(
+          start: 24,
+          end: 27,
+        ),
+      )),
+      name: Spanned(
+        node: "foo",
+        span: Span(
+          start: 32,
+          end: 35,
+        ),
+      ),
+      args: [
+        Spanned(
+          node: FuncDefArg(
+            name: Spanned(
+              node: "x",
+              span: Span(
+                start: 36,
+                end: 37,
+              ),
+            ),
+            typ: Spanned(
+              node: Base(
+                base: "bool",
+              ),
+              span: Span(
+                start: 39,
+                end: 43,
+              ),
+            ),
+          ),
+          span: Span(
+            start: 36,
+            end: 43,
+          ),
+        ),
+      ],
+      return_type: Some(Spanned(
+        node: Base(
+          base: "bool",
+        ),
+        span: Span(
+          start: 48,
+          end: 52,
+        ),
+      )),
+      body: [
+        Spanned(
+          node: Expr(
+            value: Name("x"),
+          ),
+          span: Span(
+            start: 58,
+            end: 59,
+          ),
+        ),
+      ],
+    ),
+    span: Span(
+      start: 24,
+      end: 59,
+    ),
+  ),
+]

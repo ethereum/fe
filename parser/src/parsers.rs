@@ -532,6 +532,65 @@ pub fn event_field(input: Cursor) -> ParseResult<Spanned<EventField>> {
     ))
 }
 
+pub fn func_def(input: Cursor) -> ParseResult<Spanned<ContractStmt>> {
+    let (input, qual) = opt(func_qual)(input)?;
+    let (input, def_kw) = name("def")(input)?;
+    let (input, name_tok) = name_token(input)?;
+
+    let (input, _) = op("(")(input)?;
+    let (input, args) = arg_list(input)?;
+    let (input, _) = op(")")(input)?;
+
+    let (input, return_type) = opt(preceded(op("->"), base_type))(input)?;
+
+    let (input, _) = op(":")(input)?;
+
+    let (input, body) = block(input)?;
+
+    let last = body.last().unwrap();
+    let span = match &qual {
+        Some(qual) => Span::from_pair(qual, last),
+        None => Span::from_pair(def_kw, last),
+    };
+
+    Ok((
+        input,
+        Spanned {
+            node: ContractStmt::FuncDef {
+                qual,
+                name: name_tok.into(),
+                args,
+                return_type,
+                body,
+            },
+            span,
+        },
+    ))
+}
+
+pub fn arg_list(input: Cursor) -> ParseResult<Vec<Spanned<FuncDefArg>>> {
+    separated(arg_def, op(","), true)(input)
+}
+
+pub fn arg_def(input: Cursor) -> ParseResult<Spanned<FuncDefArg>> {
+    let (input, name_tok) = name_token(input)?;
+    let (input, _) = op(":")(input)?;
+    let (input, typ) = type_desc(input)?;
+
+    let span = Span::from_pair(name_tok, &typ);
+
+    Ok((
+        input,
+        Spanned {
+            node: FuncDefArg {
+                name: name_tok.into(),
+                typ,
+            },
+            span,
+        },
+    ))
+}
+
 /// Parse a type definition (type alias).
 pub fn type_def(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
     let (input, type_kw) = name("type")(input)?;

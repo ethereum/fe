@@ -385,6 +385,24 @@ parser_fixture_tests! {
         "fixtures/parsers/event_field.ron",
     ),
     (
+        repeat(func_def),
+        test_func_def,
+        write_func_def,
+        "fixtures/parsers/func_def.ron",
+    ),
+    (
+        repeat_newline(arg_list),
+        test_arg_list,
+        write_arg_list,
+        "fixtures/parsers/arg_list.ron",
+    ),
+    (
+        repeat_newline(arg_def),
+        test_arg_def,
+        write_arg_def,
+        "fixtures/parsers/arg_def.ron",
+    ),
+    (
         repeat_newline(type_def),
         test_type_def,
         write_type_def,

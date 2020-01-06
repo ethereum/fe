@@ -1,0 +1,28 @@
+x: bool
+---
+[
+  Spanned(
+    node: FuncDefArg(
+      name: Spanned(
+        node: "x",
+        span: Span(
+          start: 0,
+          end: 1,
+        ),
+      ),
+      typ: Spanned(
+        node: Base(
+          base: "bool",
+        ),
+        span: Span(
+          start: 3,
+          end: 7,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 0,
+      end: 7,
+    ),
+  ),
+]
