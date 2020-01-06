@@ -201,12 +201,13 @@ where
     D: Fn(Cursor<'a>, &O) -> ParseError<'a>,
 {
     move |input| {
+        let orig_input = input;
         let (input, result) = parser(input)?;
 
         if verifier(&result) {
             Ok((input, result))
         } else {
-            Err(describer(input, &result))
+            Err(describer(orig_input, &result))
         }
     }
 }
