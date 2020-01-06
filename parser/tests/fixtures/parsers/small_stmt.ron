@@ -1,0 +1,169 @@
+return
+assert x
+emit x
+pass
+break
+continue
+revert
+x: bool = y
+x = y
+x += y
+x
+---
+[
+  Spanned(
+    node: Return(
+      value: None,
+    ),
+    span: Span(
+      start: 0,
+      end: 6,
+    ),
+  ),
+  Spanned(
+    node: Assert(
+      test: Spanned(
+        node: Name("x"),
+        span: Span(
+          start: 14,
+          end: 15,
+        ),
+      ),
+      msg: None,
+    ),
+    span: Span(
+      start: 7,
+      end: 15,
+    ),
+  ),
+  Spanned(
+    node: Emit(
+      value: Name("x"),
+    ),
+    span: Span(
+      start: 16,
+      end: 22,
+    ),
+  ),
+  Spanned(
+    node: Pass,
+    span: Span(
+      start: 23,
+      end: 27,
+    ),
+  ),
+  Spanned(
+    node: Break,
+    span: Span(
+      start: 28,
+      end: 33,
+    ),
+  ),
+  Spanned(
+    node: Continue,
+    span: Span(
+      start: 34,
+      end: 42,
+    ),
+  ),
+  Spanned(
+    node: Revert,
+    span: Span(
+      start: 43,
+      end: 49,
+    ),
+  ),
+  Spanned(
+    node: VarDecl(
+      target: Spanned(
+        node: Name("x"),
+        span: Span(
+          start: 50,
+          end: 51,
+        ),
+      ),
+      typ: Spanned(
+        node: Base(
+          base: "bool",
+        ),
+        span: Span(
+          start: 53,
+          end: 57,
+        ),
+      ),
+      value: Some(Spanned(
+        node: Name("y"),
+        span: Span(
+          start: 60,
+          end: 61,
+        ),
+      )),
+    ),
+    span: Span(
+      start: 50,
+      end: 61,
+    ),
+  ),
+  Spanned(
+    node: Assign(
+      targets: [
+        Spanned(
+          node: Name("x"),
+          span: Span(
+            start: 62,
+            end: 63,
+          ),
+        ),
+      ],
+      value: Spanned(
+        node: Name("y"),
+        span: Span(
+          start: 66,
+          end: 67,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 62,
+      end: 67,
+    ),
+  ),
+  Spanned(
+    node: AugAssign(
+      target: Spanned(
+        node: Name("x"),
+        span: Span(
+          start: 68,
+          end: 69,
+        ),
+      ),
+      op: Spanned(
+        node: Add,
+        span: Span(
+          start: 70,
+          end: 72,
+        ),
+      ),
+      value: Spanned(
+        node: Name("y"),
+        span: Span(
+          start: 73,
+          end: 74,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 68,
+      end: 74,
+    ),
+  ),
+  Spanned(
+    node: Expr(
+      value: Name("x"),
+    ),
+    span: Span(
+      start: 75,
+      end: 76,
+    ),
+  ),
+]

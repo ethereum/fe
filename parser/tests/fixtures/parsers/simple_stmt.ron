@@ -1,0 +1,40 @@
+pass
+pass;
+pass; pass
+---
+[
+  [
+    Spanned(
+      node: Pass,
+      span: Span(
+        start: 0,
+        end: 4,
+      ),
+    ),
+  ],
+  [
+    Spanned(
+      node: Pass,
+      span: Span(
+        start: 5,
+        end: 9,
+      ),
+    ),
+  ],
+  [
+    Spanned(
+      node: Pass,
+      span: Span(
+        start: 11,
+        end: 15,
+      ),
+    ),
+    Spanned(
+      node: Pass,
+      span: Span(
+        start: 17,
+        end: 21,
+      ),
+    ),
+  ],
+]

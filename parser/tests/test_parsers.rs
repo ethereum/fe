@@ -439,6 +439,24 @@ parser_fixture_tests! {
         "fixtures/parsers/func_qual.ron",
     ),
     (
+        repeat(func_stmt),
+        test_func_stmt,
+        write_func_stmt,
+        "fixtures/parsers/func_stmt.ron",
+    ),
+    (
+        repeat(simple_stmt),
+        test_simple_stmt,
+        write_simple_stmt,
+        "fixtures/parsers/simple_stmt.ron",
+    ),
+    (
+        repeat_newline(small_stmt),
+        test_small_stmt,
+        write_small_stmt,
+        "fixtures/parsers/small_stmt.ron",
+    ),
+    (
         repeat_newline(return_stmt),
         test_return_stmt,
         write_return_stmt,
@@ -499,6 +517,18 @@ parser_fixture_tests! {
         "fixtures/parsers/augassign_stmt.ron",
     ),
     (
+        repeat(compound_stmt),
+        test_compound_stmt,
+        write_compound_stmt,
+        "fixtures/parsers/compound_stmt.ron",
+    ),
+    (
+        repeat(if_stmt),
+        test_if_stmt,
+        write_if_stmt,
+        "fixtures/parsers/if_stmt.ron",
+    ),
+    (
         repeat(for_stmt),
         test_for_stmt,
         write_for_stmt,
@@ -509,12 +539,6 @@ parser_fixture_tests! {
         test_while_stmt,
         write_while_stmt,
         "fixtures/parsers/while_stmt.ron",
-    ),
-    (
-        repeat(if_stmt),
-        test_if_stmt,
-        write_if_stmt,
-        "fixtures/parsers/if_stmt.ron",
     ),
     (
         repeat_newline(exprs),
