@@ -999,13 +999,15 @@ pub fn power(input: Cursor) -> ParseResult<Spanned<Expr>> {
 }
 
 pub fn primary(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    use Tail::*;
+
     let (input, atom_expr) = atom(input)?;
 
     let mut input = input;
     let mut result = atom_expr;
 
     loop {
-        if let Ok((input_, name_tok)) = attr_tail(input) {
+        if let Ok((input_, Attr(name_tok))) = attr_tail(input) {
             input = input_;
 
             let span = Span::from_pair(&result, name_tok);
@@ -1017,7 +1019,7 @@ pub fn primary(input: Cursor) -> ParseResult<Spanned<Expr>> {
                 },
                 span,
             };
-        } else if let Ok((input_, slices)) = index_tail(input) {
+        } else if let Ok((input_, Index(slices))) = index_tail(input) {
             input = input_;
 
             let span = Span::from_pair(&result, &slices);
@@ -1029,7 +1031,7 @@ pub fn primary(input: Cursor) -> ParseResult<Spanned<Expr>> {
                 },
                 span,
             };
-        } else if let Ok((input_, args)) = call_tail(input) {
+        } else if let Ok((input_, Call(args))) = call_tail(input) {
             input = input_;
 
             let span = Span::from_pair(&result, &args);
@@ -1195,17 +1197,26 @@ pub fn kwarg(input: Cursor) -> ParseResult<Spanned<CallArg>> {
     ))
 }
 
-pub fn attr_tail(input: Cursor) -> ParseResult<&Token> {
-    preceded(op("."), name_token)(input)
+pub enum Tail<'a> {
+    Attr(&'a Token<'a>),
+    Index(Spanned<Vec<Spanned<Slice<'a>>>>),
+    Call(Spanned<Vec<Spanned<CallArg<'a>>>>),
 }
 
-pub fn index_tail(input: Cursor) -> ParseResult<Spanned<Vec<Spanned<Slice>>>> {
-    delimited(op("["), slices, op("]"))(input)
+pub fn attr_tail(input: Cursor) -> ParseResult<Tail> {
+    map(preceded(op("."), name_token), Tail::Attr)(input)
 }
 
-pub fn call_tail(input: Cursor) -> ParseResult<Spanned<Vec<Spanned<CallArg>>>> {
-    map(delimited(op("("), opt(args), op(")")), |spanned| Spanned {
-        node: spanned.node.unwrap_or_else(|| vec![]),
-        span: spanned.span,
-    })(input)
+pub fn index_tail(input: Cursor) -> ParseResult<Tail> {
+    map(delimited(op("["), slices, op("]")), Tail::Index)(input)
+}
+
+pub fn call_tail(input: Cursor) -> ParseResult<Tail> {
+    map(
+        map(delimited(op("("), opt(args), op(")")), |spanned| Spanned {
+            node: spanned.node.unwrap_or_else(|| vec![]),
+            span: spanned.span,
+        }),
+        Tail::Call,
+    )(input)
 }
