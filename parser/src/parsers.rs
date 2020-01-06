@@ -152,7 +152,7 @@ pub fn non_empty_file_input(input: Cursor) -> ParseResult<Spanned<Module>> {
 
 /// Parse a module statement, such as a contract definition.
 pub fn module_stmt(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
-    alt((import_stmt, contract_def))(input)
+    alt((import_stmt, type_def, contract_def))(input)
 }
 
 /// Parse an import statement.
@@ -433,7 +433,7 @@ pub fn contract_def(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
 
 /// Parse a contract statement.
 pub fn contract_stmt(input: Cursor) -> ParseResult<Spanned<ContractStmt>> {
-    alt((contract_field, event_def))(input)
+    alt((contract_field, event_def, func_def))(input)
 }
 
 /// Parse a contract field definition.
@@ -597,6 +597,7 @@ pub fn type_def(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
     let (input, name) = name_token(input)?;
     let (input, _) = op("=")(input)?;
     let (input, type_desc) = type_desc(input)?;
+    let (input, _) = newline_token(input)?;
 
     let span = Span::from_pair(type_kw, &type_desc);
 
@@ -840,7 +841,7 @@ pub fn emit_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
     Ok((
         input,
         Spanned {
-            node: FuncStmt::Emit { value: value.node },
+            node: FuncStmt::Emit { value },
             span,
         },
     ))

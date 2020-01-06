@@ -14,4 +14,452 @@ contract GuestBook:
     pub def get_msg(addr: address) -> BookMsg:
         return self.guest_book[addr]
 ---
-
+Spanned(
+  node: Module(
+    body: [
+      Spanned(
+        node: TypeDef(
+          name: Spanned(
+            node: "BookMsg",
+            span: Span(
+              start: 5,
+              end: 12,
+            ),
+          ),
+          typ: Spanned(
+            node: Array(
+              typ: Spanned(
+                node: Base(
+                  base: "bytes",
+                ),
+                span: Span(
+                  start: 15,
+                  end: 20,
+                ),
+              ),
+              dimension: 100,
+            ),
+            span: Span(
+              start: 15,
+              end: 25,
+            ),
+          ),
+        ),
+        span: Span(
+          start: 0,
+          end: 25,
+        ),
+      ),
+      Spanned(
+        node: ContractDef(
+          name: Spanned(
+            node: "GuestBook",
+            span: Span(
+              start: 36,
+              end: 45,
+            ),
+          ),
+          body: [
+            Spanned(
+              node: ContractField(
+                qual: Some(Spanned(
+                  node: Pub,
+                  span: Span(
+                    start: 51,
+                    end: 54,
+                  ),
+                )),
+                name: Spanned(
+                  node: "guest_book",
+                  span: Span(
+                    start: 55,
+                    end: 65,
+                  ),
+                ),
+                typ: Spanned(
+                  node: Map(
+                    from: Spanned(
+                      node: Base(
+                        base: "address",
+                      ),
+                      span: Span(
+                        start: 71,
+                        end: 78,
+                      ),
+                    ),
+                    to: Spanned(
+                      node: Base(
+                        base: "BookMsg",
+                      ),
+                      span: Span(
+                        start: 80,
+                        end: 87,
+                      ),
+                    ),
+                  ),
+                  span: Span(
+                    start: 67,
+                    end: 88,
+                  ),
+                ),
+              ),
+              span: Span(
+                start: 51,
+                end: 88,
+              ),
+            ),
+            Spanned(
+              node: EventDef(
+                name: Spanned(
+                  node: "Signed",
+                  span: Span(
+                    start: 100,
+                    end: 106,
+                  ),
+                ),
+                fields: [
+                  Spanned(
+                    node: EventField(
+                      qual: Some(Spanned(
+                        node: Idx,
+                        span: Span(
+                          start: 116,
+                          end: 119,
+                        ),
+                      )),
+                      name: Spanned(
+                        node: "book_msg",
+                        span: Span(
+                          start: 120,
+                          end: 128,
+                        ),
+                      ),
+                      typ: Spanned(
+                        node: Base(
+                          base: "BookMsg",
+                        ),
+                        span: Span(
+                          start: 130,
+                          end: 137,
+                        ),
+                      ),
+                    ),
+                    span: Span(
+                      start: 116,
+                      end: 137,
+                    ),
+                  ),
+                ],
+              ),
+              span: Span(
+                start: 94,
+                end: 137,
+              ),
+            ),
+            Spanned(
+              node: FuncDef(
+                qual: Some(Spanned(
+                  node: Pub,
+                  span: Span(
+                    start: 143,
+                    end: 146,
+                  ),
+                )),
+                name: Spanned(
+                  node: "sign",
+                  span: Span(
+                    start: 151,
+                    end: 155,
+                  ),
+                ),
+                args: [
+                  Spanned(
+                    node: FuncDefArg(
+                      name: Spanned(
+                        node: "book_msg",
+                        span: Span(
+                          start: 156,
+                          end: 164,
+                        ),
+                      ),
+                      typ: Spanned(
+                        node: Base(
+                          base: "BookMsg",
+                        ),
+                        span: Span(
+                          start: 166,
+                          end: 173,
+                        ),
+                      ),
+                    ),
+                    span: Span(
+                      start: 156,
+                      end: 173,
+                    ),
+                  ),
+                ],
+                return_type: None,
+                body: [
+                  Spanned(
+                    node: Assign(
+                      targets: [
+                        Spanned(
+                          node: Subscript(
+                            value: Spanned(
+                              node: Attribute(
+                                value: Spanned(
+                                  node: Name("self"),
+                                  span: Span(
+                                    start: 184,
+                                    end: 188,
+                                  ),
+                                ),
+                                attr: Spanned(
+                                  node: "guest_book",
+                                  span: Span(
+                                    start: 189,
+                                    end: 199,
+                                  ),
+                                ),
+                              ),
+                              span: Span(
+                                start: 184,
+                                end: 199,
+                              ),
+                            ),
+                            slices: Spanned(
+                              node: [
+                                Spanned(
+                                  node: Index(Attribute(
+                                    value: Spanned(
+                                      node: Name("msg"),
+                                      span: Span(
+                                        start: 200,
+                                        end: 203,
+                                      ),
+                                    ),
+                                    attr: Spanned(
+                                      node: "sender",
+                                      span: Span(
+                                        start: 204,
+                                        end: 210,
+                                      ),
+                                    ),
+                                  )),
+                                  span: Span(
+                                    start: 200,
+                                    end: 210,
+                                  ),
+                                ),
+                              ],
+                              span: Span(
+                                start: 199,
+                                end: 211,
+                              ),
+                            ),
+                          ),
+                          span: Span(
+                            start: 184,
+                            end: 211,
+                          ),
+                        ),
+                      ],
+                      value: Spanned(
+                        node: Name("book_msg"),
+                        span: Span(
+                          start: 214,
+                          end: 222,
+                        ),
+                      ),
+                    ),
+                    span: Span(
+                      start: 184,
+                      end: 222,
+                    ),
+                  ),
+                  Spanned(
+                    node: Emit(
+                      value: Spanned(
+                        node: Call(
+                          func: Spanned(
+                            node: Name("Signed"),
+                            span: Span(
+                              start: 237,
+                              end: 243,
+                            ),
+                          ),
+                          args: Spanned(
+                            node: [
+                              Spanned(
+                                node: Kwarg(Kwarg(
+                                  name: Spanned(
+                                    node: "book_msg",
+                                    span: Span(
+                                      start: 244,
+                                      end: 252,
+                                    ),
+                                  ),
+                                  value: Spanned(
+                                    node: Name("book_msg"),
+                                    span: Span(
+                                      start: 253,
+                                      end: 261,
+                                    ),
+                                  ),
+                                )),
+                                span: Span(
+                                  start: 244,
+                                  end: 261,
+                                ),
+                              ),
+                            ],
+                            span: Span(
+                              start: 243,
+                              end: 262,
+                            ),
+                          ),
+                        ),
+                        span: Span(
+                          start: 237,
+                          end: 262,
+                        ),
+                      ),
+                    ),
+                    span: Span(
+                      start: 232,
+                      end: 262,
+                    ),
+                  ),
+                ],
+              ),
+              span: Span(
+                start: 143,
+                end: 262,
+              ),
+            ),
+            Spanned(
+              node: FuncDef(
+                qual: Some(Spanned(
+                  node: Pub,
+                  span: Span(
+                    start: 268,
+                    end: 271,
+                  ),
+                )),
+                name: Spanned(
+                  node: "get_msg",
+                  span: Span(
+                    start: 276,
+                    end: 283,
+                  ),
+                ),
+                args: [
+                  Spanned(
+                    node: FuncDefArg(
+                      name: Spanned(
+                        node: "addr",
+                        span: Span(
+                          start: 284,
+                          end: 288,
+                        ),
+                      ),
+                      typ: Spanned(
+                        node: Base(
+                          base: "address",
+                        ),
+                        span: Span(
+                          start: 290,
+                          end: 297,
+                        ),
+                      ),
+                    ),
+                    span: Span(
+                      start: 284,
+                      end: 297,
+                    ),
+                  ),
+                ],
+                return_type: Some(Spanned(
+                  node: Base(
+                    base: "BookMsg",
+                  ),
+                  span: Span(
+                    start: 302,
+                    end: 309,
+                  ),
+                )),
+                body: [
+                  Spanned(
+                    node: Return(
+                      value: Some(Spanned(
+                        node: Subscript(
+                          value: Spanned(
+                            node: Attribute(
+                              value: Spanned(
+                                node: Name("self"),
+                                span: Span(
+                                  start: 326,
+                                  end: 330,
+                                ),
+                              ),
+                              attr: Spanned(
+                                node: "guest_book",
+                                span: Span(
+                                  start: 331,
+                                  end: 341,
+                                ),
+                              ),
+                            ),
+                            span: Span(
+                              start: 326,
+                              end: 341,
+                            ),
+                          ),
+                          slices: Spanned(
+                            node: [
+                              Spanned(
+                                node: Index(Name("addr")),
+                                span: Span(
+                                  start: 342,
+                                  end: 346,
+                                ),
+                              ),
+                            ],
+                            span: Span(
+                              start: 341,
+                              end: 347,
+                            ),
+                          ),
+                        ),
+                        span: Span(
+                          start: 326,
+                          end: 347,
+                        ),
+                      )),
+                    ),
+                    span: Span(
+                      start: 319,
+                      end: 347,
+                    ),
+                  ),
+                ],
+              ),
+              span: Span(
+                start: 268,
+                end: 347,
+              ),
+            ),
+          ],
+        ),
+        span: Span(
+          start: 27,
+          end: 347,
+        ),
+      ),
+    ],
+  ),
+  span: Span(
+    start: 0,
+    end: 347,
+  ),
+)

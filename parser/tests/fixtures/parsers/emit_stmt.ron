@@ -3,7 +3,13 @@ emit x
 [
   Spanned(
     node: Emit(
-      value: Name("x"),
+      value: Spanned(
+        node: Name("x"),
+        span: Span(
+          start: 5,
+          end: 6,
+        ),
+      ),
     ),
     span: Span(
       start: 0,

@@ -283,6 +283,12 @@ fn test_arr_dim_err() {
 
 parser_fixture_tests! {
     (
+        file_input,
+        test_guest_book,
+        write_guest_book,
+        "fixtures/parsers/guest_book.ron",
+    ),
+    (
         non_empty_file_input,
         test_non_empty_file_input,
         write_non_empty_file_input,
@@ -403,7 +409,7 @@ parser_fixture_tests! {
         "fixtures/parsers/arg_def.ron",
     ),
     (
-        repeat_newline(type_def),
+        repeat(type_def),
         test_type_def,
         write_type_def,
         "fixtures/parsers/type_def.ron",
