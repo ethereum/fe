@@ -96,8 +96,10 @@ augassign: '+=' | '-=' | '*=' | '/=' | '%=' | '&=' | '|=' | '^='
 
 compound_stmt: if_stmt | while_stmt | for_stmt
 
-if_stmt: 'if' expr ':' block elif_block* [else_block]
-elif_block: 'elif' expr ':' block
+if_stmt: 'if' expr ':' block elif_stmt |
+         'if' expr ':' block [else_block]
+elif_stmt: 'elif' expr ':' block elif_stmt |
+           'elif' expr ':' block [else_block]
 else_block: 'else' ':' block
 
 while_stmt: 'while' expr ':' block [else_block]
