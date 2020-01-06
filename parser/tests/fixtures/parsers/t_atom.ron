@@ -1,0 +1,61 @@
+x
+(x, y)
+[x, y]
+---
+[
+  Spanned(
+    node: Name("x"),
+    span: Span(
+      start: 0,
+      end: 1,
+    ),
+  ),
+  Spanned(
+    node: Tuple(
+      elts: [
+        Spanned(
+          node: Name("x"),
+          span: Span(
+            start: 3,
+            end: 4,
+          ),
+        ),
+        Spanned(
+          node: Name("y"),
+          span: Span(
+            start: 6,
+            end: 7,
+          ),
+        ),
+      ],
+    ),
+    span: Span(
+      start: 2,
+      end: 8,
+    ),
+  ),
+  Spanned(
+    node: List(
+      elts: [
+        Spanned(
+          node: Name("x"),
+          span: Span(
+            start: 10,
+            end: 11,
+          ),
+        ),
+        Spanned(
+          node: Name("y"),
+          span: Span(
+            start: 13,
+            end: 14,
+          ),
+        ),
+      ],
+    ),
+    span: Span(
+      start: 9,
+      end: 15,
+    ),
+  ),
+]

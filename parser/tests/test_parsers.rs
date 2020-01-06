@@ -624,4 +624,22 @@ parser_fixture_tests! {
         write_kwarg,
         "fixtures/parsers/kwarg.ron",
     ),
+    (
+        repeat_newline(targets),
+        test_targets,
+        write_targets,
+        "fixtures/parsers/targets.ron",
+    ),
+    (
+        repeat_newline(target),
+        test_target,
+        write_target,
+        "fixtures/parsers/target.ron",
+    ),
+    (
+        repeat_newline(t_atom),
+        test_t_atom,
+        write_t_atom,
+        "fixtures/parsers/t_atom.ron",
+    ),
 }

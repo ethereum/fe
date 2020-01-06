@@ -1201,6 +1201,57 @@ pub enum Tail<'a> {
     Call(Spanned<Vec<Spanned<CallArg<'a>>>>),
 }
 
+pub fn targets(input: Cursor) -> ParseResult<Vec<Spanned<Expr>>> {
+    separated(target, op(","), true)(input)
+}
+
+pub fn target(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    alt((
+        |input| {
+            let (input, atom_expr) = atom(input)?;
+            let (input, tails) = many1(t_tail)(input)?;
+
+            let tails: Vec<_> = tails.into_iter().flatten().collect();
+
+            Ok((input, build_tail_expr(atom_expr, tails)))
+        },
+        |input| {
+            let (input, atom_expr) = t_atom(input)?;
+            let (input, tails) = many0(t_tail)(input)?;
+
+            let tails: Vec<_> = tails.into_iter().flatten().collect();
+
+            Ok((input, build_tail_expr(atom_expr, tails)))
+        },
+    ))(input)
+}
+
+pub fn t_atom(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    alt((
+        map(name_token, |tok| Spanned {
+            node: Expr::Name(tok.string),
+            span: tok.span,
+        }),
+        map(delimited(op("("), targets, op(")")), |res| Spanned {
+            node: Expr::Tuple { elts: res.node },
+            span: res.span,
+        }),
+        map(delimited(op("["), targets, op("]")), |res| Spanned {
+            node: Expr::List { elts: res.node },
+            span: res.span,
+        }),
+    ))(input)
+}
+
+pub fn t_tail(input: Cursor) -> ParseResult<Vec<Tail>> {
+    let (input, mut tails) = many0(call_tail)(input)?;
+    let (input, last) = alt((attr_tail, index_tail))(input)?;
+
+    tails.push(last);
+
+    Ok((input, tails))
+}
+
 pub fn attr_tail(input: Cursor) -> ParseResult<Tail> {
     map(preceded(op("."), name_token), Tail::Attr)(input)
 }
