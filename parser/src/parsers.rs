@@ -706,6 +706,35 @@ pub fn func_qual(input: Cursor) -> ParseResult<Spanned<FuncQual>> {
     try_from_tok(name("pub"))(input)
 }
 
+pub fn func_stmt(input: Cursor) -> ParseResult<Vec<Spanned<FuncStmt>>> {
+    alt((map(compound_stmt, |stmt| vec![stmt]), simple_stmt))(input)
+}
+
+pub fn simple_stmt(input: Cursor) -> ParseResult<Vec<Spanned<FuncStmt>>> {
+    terminated(separated(small_stmt, op(";"), true), newline_token)(input)
+}
+
+pub fn small_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+    alt((
+        return_stmt,
+        assert_stmt,
+        emit_stmt,
+        pass_stmt,
+        break_stmt,
+        continue_stmt,
+        revert_stmt,
+        vardecl_stmt,
+        assign_stmt,
+        augassign_stmt,
+        map(exprs, |spanned| Spanned {
+            node: FuncStmt::Expr {
+                value: spanned.node,
+            },
+            span: spanned.span,
+        }),
+    ))(input)
+}
+
 pub fn return_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
     let (input, return_kw) = name("return")(input)?;
     let (input, value) = opt(exprs)(input)?;
@@ -863,6 +892,153 @@ pub fn augassign_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
             span,
         },
     ))
+}
+
+pub fn compound_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+    alt((if_stmt, while_stmt, for_stmt))(input)
+}
+
+pub fn if_stmt_builder<'a>(
+    string: &'a str,
+) -> impl Fn(Cursor<'a>) -> ParseResult<Spanned<FuncStmt>> {
+    move |input| {
+        alt((
+            |input| {
+                let (input, keyword) = name(string)(input)?;
+                let (input, test) = expr(input)?;
+                let (input, _) = op(":")(input)?;
+                let (input, body) = block(input)?;
+                let (input, or_else) = elif_stmt(input)?;
+
+                let span = Span::from_pair(keyword, &or_else);
+                let or_else = vec![or_else];
+
+                Ok((
+                    input,
+                    Spanned {
+                        node: FuncStmt::If {
+                            test,
+                            body,
+                            or_else,
+                        },
+                        span,
+                    },
+                ))
+            },
+            |input| {
+                let (input, keyword) = name(string)(input)?;
+                let (input, test) = expr(input)?;
+                let (input, _) = op(":")(input)?;
+                let (input, body) = block(input)?;
+                let (input, or_else) = opt(else_block)(input)?;
+
+                let last_stmt = match &or_else {
+                    Some(vec) => vec.last().unwrap(),
+                    None => body.last().unwrap(),
+                };
+                let span = Span::from_pair(keyword, last_stmt);
+                let or_else = or_else.unwrap_or_else(|| vec![]);
+
+                Ok((
+                    input,
+                    Spanned {
+                        node: FuncStmt::If {
+                            test,
+                            body,
+                            or_else,
+                        },
+                        span,
+                    },
+                ))
+            },
+        ))(input)
+    }
+}
+
+pub fn if_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+    if_stmt_builder("if")(input)
+}
+
+pub fn elif_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+    if_stmt_builder("elif")(input)
+}
+
+pub fn else_block(input: Cursor) -> ParseResult<Vec<Spanned<FuncStmt>>> {
+    let (input, _) = name("else")(input)?;
+    let (input, _) = op(":")(input)?;
+    let (input, stmts) = block(input)?;
+
+    Ok((input, stmts))
+}
+
+pub fn while_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+    let (input, while_kw) = name("while")(input)?;
+    let (input, test) = expr(input)?;
+    let (input, _) = op(":")(input)?;
+    let (input, body) = block(input)?;
+    let (input, or_else) = opt(else_block)(input)?;
+
+    let last_stmt = match &or_else {
+        Some(or_else_body) => or_else_body.last().unwrap(),
+        None => body.last().unwrap(),
+    };
+    let span = Span::from_pair(while_kw, last_stmt);
+    let or_else = or_else.unwrap_or_else(|| vec![]);
+
+    Ok((
+        input,
+        Spanned {
+            node: FuncStmt::While {
+                test,
+                body,
+                or_else,
+            },
+            span,
+        },
+    ))
+}
+
+pub fn for_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+    let (input, for_kw) = name("for")(input)?;
+    let (input, target_expr) = targets(input)?;
+    let (input, _) = name("in")(input)?;
+    let (input, iter) = exprs(input)?;
+    let (input, _) = op(":")(input)?;
+    let (input, body) = block(input)?;
+    let (input, or_else) = opt(else_block)(input)?;
+
+    let last_stmt = match &or_else {
+        Some(or_else_body) => or_else_body.last().unwrap(),
+        None => body.last().unwrap(),
+    };
+    let span = Span::from_pair(for_kw, last_stmt);
+    let or_else = or_else.unwrap_or_else(|| vec![]);
+
+    Ok((
+        input,
+        Spanned {
+            node: FuncStmt::For {
+                target: target_expr,
+                iter,
+                body,
+                or_else,
+            },
+            span,
+        },
+    ))
+}
+
+pub fn block(input: Cursor) -> ParseResult<Vec<Spanned<FuncStmt>>> {
+    alt((simple_stmt, |input| {
+        let (input, _) = newline_token(input)?;
+        let (input, _) = indent_token(input)?;
+        let (input, stmts) = many1(func_stmt)(input)?;
+        let (input, _) = dedent_token(input)?;
+
+        let result: Vec<_> = stmts.into_iter().flatten().collect();
+
+        Ok((input, result))
+    }))(input)
 }
 
 /// Parse a comma-separated list of expressions.

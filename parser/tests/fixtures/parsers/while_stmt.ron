@@ -1,0 +1,74 @@
+while a:
+    b
+
+while a:
+    b
+else:
+    c
+---
+[
+  Spanned(
+    node: While(
+      test: Spanned(
+        node: Name("a"),
+        span: Span(
+          start: 6,
+          end: 7,
+        ),
+      ),
+      body: [
+        Spanned(
+          node: Expr(
+            value: Name("b"),
+          ),
+          span: Span(
+            start: 13,
+            end: 14,
+          ),
+        ),
+      ],
+      or_else: [],
+    ),
+    span: Span(
+      start: 0,
+      end: 14,
+    ),
+  ),
+  Spanned(
+    node: While(
+      test: Spanned(
+        node: Name("a"),
+        span: Span(
+          start: 22,
+          end: 23,
+        ),
+      ),
+      body: [
+        Spanned(
+          node: Expr(
+            value: Name("b"),
+          ),
+          span: Span(
+            start: 29,
+            end: 30,
+          ),
+        ),
+      ],
+      or_else: [
+        Spanned(
+          node: Expr(
+            value: Name("c"),
+          ),
+          span: Span(
+            start: 41,
+            end: 42,
+          ),
+        ),
+      ],
+    ),
+    span: Span(
+      start: 16,
+      end: 42,
+    ),
+  ),
+]

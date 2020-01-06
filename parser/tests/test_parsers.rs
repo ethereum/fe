@@ -499,6 +499,24 @@ parser_fixture_tests! {
         "fixtures/parsers/augassign_stmt.ron",
     ),
     (
+        repeat(for_stmt),
+        test_for_stmt,
+        write_for_stmt,
+        "fixtures/parsers/for_stmt.ron",
+    ),
+    (
+        repeat(while_stmt),
+        test_while_stmt,
+        write_while_stmt,
+        "fixtures/parsers/while_stmt.ron",
+    ),
+    (
+        repeat(if_stmt),
+        test_if_stmt,
+        write_if_stmt,
+        "fixtures/parsers/if_stmt.ron",
+    ),
+    (
         repeat_newline(exprs),
         test_exprs,
         write_exprs,
