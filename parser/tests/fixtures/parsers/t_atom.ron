@@ -1,4 +1,5 @@
 x
+(x)
 (x, y)
 [x, y]
 ---
@@ -20,18 +21,35 @@ x
             end: 4,
           ),
         ),
+      ],
+    ),
+    span: Span(
+      start: 2,
+      end: 5,
+    ),
+  ),
+  Spanned(
+    node: Tuple(
+      elts: [
+        Spanned(
+          node: Name("x"),
+          span: Span(
+            start: 7,
+            end: 8,
+          ),
+        ),
         Spanned(
           node: Name("y"),
           span: Span(
-            start: 6,
-            end: 7,
+            start: 10,
+            end: 11,
           ),
         ),
       ],
     ),
     span: Span(
-      start: 2,
-      end: 8,
+      start: 6,
+      end: 12,
     ),
   ),
   Spanned(
@@ -40,22 +58,22 @@ x
         Spanned(
           node: Name("x"),
           span: Span(
-            start: 10,
-            end: 11,
+            start: 14,
+            end: 15,
           ),
         ),
         Spanned(
           node: Name("y"),
           span: Span(
-            start: 13,
-            end: 14,
+            start: 17,
+            end: 18,
           ),
         ),
       ],
     ),
     span: Span(
-      start: 9,
-      end: 15,
+      start: 13,
+      end: 19,
     ),
   ),
 ]

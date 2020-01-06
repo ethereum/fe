@@ -1234,8 +1234,37 @@ pub enum Tail<'a> {
     Call(Spanned<Vec<Spanned<CallArg<'a>>>>),
 }
 
-pub fn targets(input: Cursor) -> ParseResult<Vec<Spanned<Expr>>> {
-    separated(target, op(","), true)(input)
+pub fn targets(input: Cursor) -> ParseResult<Spanned<Expr>> {
+    let (input, mut elts) = separated(target, op(","), false)(input)?;
+    let (input, comma) = opt(op(","))(input)?;
+
+    let first = elts.first().unwrap();
+
+    let result = match comma {
+        Some(comma_tok) => {
+            let span = Span::from_pair(first, comma_tok);
+
+            Spanned {
+                node: Expr::Tuple { elts },
+                span,
+            }
+        }
+        None => {
+            if elts.len() > 1 {
+                let last = elts.last().unwrap();
+                let span = Span::from_pair(first, last);
+
+                Spanned {
+                    node: Expr::Tuple { elts },
+                    span,
+                }
+            } else {
+                elts.pop().unwrap()
+            }
+        }
+    };
+
+    Ok((input, result))
 }
 
 pub fn target(input: Cursor) -> ParseResult<Spanned<Expr>> {
@@ -1265,13 +1294,36 @@ pub fn t_atom(input: Cursor) -> ParseResult<Spanned<Expr>> {
             node: Expr::Name(tok.string),
             span: tok.span,
         }),
-        map(delimited(op("("), targets, op(")")), |res| Spanned {
-            node: Expr::Tuple { elts: res.node },
-            span: res.span,
+        map(delimited(op("("), targets, op(")")), |spanned| {
+            use Expr::Tuple;
+
+            let node = match spanned.node {
+                Spanned {
+                    node: Tuple { elts },
+                    ..
+                } => Tuple { elts },
+                exp => Tuple { elts: vec![exp] },
+            };
+            let span = spanned.span;
+
+            Spanned { node, span }
         }),
-        map(delimited(op("["), targets, op("]")), |res| Spanned {
-            node: Expr::List { elts: res.node },
-            span: res.span,
+        map(delimited(op("["), targets, op("]")), |spanned| {
+            use Expr::{
+                List,
+                Tuple,
+            };
+
+            let node = match spanned.node {
+                Spanned {
+                    node: Tuple { elts },
+                    ..
+                } => List { elts },
+                exp => List { elts: vec![exp] },
+            };
+            let span = spanned.span;
+
+            Spanned { node, span }
         }),
     ))(input)
 }
