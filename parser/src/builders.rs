@@ -1,3 +1,50 @@
+//! Parser factory functions (builders).
+//!
+//! Much of the code in this module was inspired by the [nom](https://github.com/Geal/nom/)
+//! library.  One or two particular parts of this module were copied more or
+//! less directly from `nom`.  Therefore, the `nom` license is included below
+//! and will apply where explicitly noted.  Otherwise, though the API of this
+//! module was directly taken from `nom`, the actual implementations of most
+//! parser builders are original, though they may coincide with the
+//! implementations of nom parser builders.
+//!
+//! ```text
+//! <<<< BEGIN NOM LICENSE >>>>
+//!
+//! Copyright (c) 2014-2019 Geoffroy Couprie
+//!
+//! Permission is hereby granted, free of charge, to any person obtaining a copy
+//! of this software and associated documentation files (the "Software"), to
+//! deal in the Software without restriction, including without limitation the
+//! rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+//! sell copies of the Software, and to permit persons to whom the Software is
+//! furnished to do so, subject to the following conditions:
+//!
+//! The above copyright notice and this permission notice shall be included in
+//! all copies or substantial portions of the Software.
+//!
+//! THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//! IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//! FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//! AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//! LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//! FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+//! IN THE SOFTWARE.
+//!
+//! <<<< END NOM LICENSE >>>>
+//! ```
+//!
+//! The above license applies to any component enclosed in a pair of comments as
+//! follows:
+//!
+//! ```text
+//! // <<< BEGIN NOM LICENSE COVERAGE >>>
+//!
+//! ...
+//!
+//! // <<< END NOM LICENSE COVERAGE >>>
+//! ```
+
 use crate::ast::Expr;
 use crate::errors::{
     ErrorKind,
@@ -12,6 +59,7 @@ use crate::{
     ParseResult,
 };
 
+// <<<< BEGIN NOM LICENSE COVERAGE >>>>
 macro_rules! succ {
   (0, $macro:ident ! ($($args:tt)*)) => ($macro!(1, $($args)*));
   (1, $macro:ident ! ($($args:tt)*)) => ($macro!(2, $($args)*));
@@ -89,6 +137,7 @@ alt_trait_impl!(A B C D E F G H I J K L M N O P Q R S T U);
 pub fn alt<'a, O, A: Alt<'a, O>>(alts: A) -> impl Fn(Cursor<'a>) -> ParseResult<O> {
     move |input| alts.parse(input)
 }
+// <<<< END NOM LICENSE COVERAGE >>>>
 
 pub fn many1<'a, O, P>(parser: P) -> impl Fn(Cursor<'a>) -> ParseResult<Vec<O>>
 where
@@ -134,6 +183,7 @@ where
     }
 }
 
+// <<<< BEGIN NOM LICENSE COVERAGE >>>>
 pub fn preceded<'a, O1, O2, F, G>(f: F, g: G) -> impl Fn(Cursor<'a>) -> ParseResult<O2>
 where
     F: Fn(Cursor<'a>) -> ParseResult<O1>,
@@ -144,6 +194,7 @@ where
         g(input)
     }
 }
+// <<<< END NOM LICENSE COVERAGE >>>>
 
 pub fn terminated<'a, O1, O2, F, G>(f: F, g: G) -> impl Fn(Cursor<'a>) -> ParseResult<O1>
 where
