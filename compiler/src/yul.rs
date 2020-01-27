@@ -4,9 +4,9 @@ use std::rc::Rc;
 use vyper_parser::ast as vyp;
 use yultsur::yul;
 
-struct CompileError;
+pub struct CompileError;
 
-type CompileResult<'a, T> = Result<Option<T>, CompileError>;
+pub type CompileResult<'a, T> = Result<Option<T>, CompileError>;
 type SharedScope<'a> = Rc<RefCell<Scope<'a>>>;
 
 struct Scope<'a> {
@@ -39,7 +39,7 @@ impl<'a> Scope<'a> {
     }
 }
 
-fn module<'a>(module: &'a vyp::Module<'a>) -> CompileResult<'a, yul::Statement> {
+pub fn module<'a>(module: &'a vyp::Module<'a>) -> CompileResult<'a, yul::Statement> {
     let mut scope = Rc::new(RefCell::new(Scope::new()));
 
     let statements_result: Result<Vec<Option<yul::Statement>>, CompileError> = module
@@ -230,7 +230,7 @@ fn expr<'a>(scope: SharedScope<'a>, expr: &'a vyp::Expr<'a>) -> CompileResult<'a
             identifier: String::from(*name),
             yultype: None,
         }),
-        _ => { return Err(CompileError) },
+        _ => return Err(CompileError),
     }))
 }
 
@@ -283,8 +283,8 @@ mod tests {
     #[test]
     fn test_contract_def() {
         let vyp_code = "contract Foo:\
-                      \n  pub def bar(x: u256) -> u256:\
-                      \n    return x";
+                        \n  pub def bar(x: u256) -> u256:\
+                        \n    return x";
         let toks = vyper_parser::get_parse_tokens(vyp_code).unwrap();
         let stmt = parsers::contract_def(&toks[..]).unwrap().1.node;
 
