@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
@@ -7,40 +7,67 @@ use yultsur::yul;
 pub struct CompileError;
 
 pub type CompileResult<'a, T> = Result<Option<T>, CompileError>;
-type SharedScope<'a> = Rc<RefCell<Scope<'a>>>;
+type Shared<T> = Rc<RefCell<T>>;
+type TypeDefs<'a> = HashMap<&'a str, &'a vyp::TypeDesc<'a>>;
 
-struct Scope<'a> {
-    parent: Option<SharedScope<'a>>,
-    type_defs: HashMap<&'a str, &'a vyp::TypeDesc<'a>>,
+struct ModuleScope<'a> {
+    type_defs: TypeDefs<'a>,
 }
 
-impl<'a> Scope<'a> {
-    fn new() -> Scope<'a> {
-        Scope {
-            parent: None,
+struct ContractScope<'a> {
+    parent: Shared<ModuleScope<'a>>,
+    stor_refs: HashMap<&'a str, (usize, &'a vyp::TypeDesc<'a>)>,
+    stor_size: usize,
+}
+
+struct FunctionScope<'a> {
+    parent: Shared<ContractScope<'a>>,
+}
+
+enum SharedScope<'a> {
+    Module(Shared<ModuleScope<'a>>),
+    Contract(Shared<ContractScope<'a>>),
+    Function(Shared<FunctionScope<'a>>),
+}
+
+impl<'a> ModuleScope<'a> {
+    fn new() -> ModuleScope<'a> {
+        ModuleScope {
             type_defs: HashMap::new(),
         }
     }
 
-    fn extend(parent: SharedScope) -> SharedScope {
-        Rc::new(RefCell::new(Scope {
-            parent: Some(parent),
-            type_defs: HashMap::new(),
-        }))
+    fn into_shared(self) -> Shared<ModuleScope<'a>> {
+        Rc::new(RefCell::new(self))
+    }
+}
+
+impl<'a> ContractScope<'a> {
+    fn new(parent: Shared<ModuleScope<'a>>) -> ContractScope<'a> {
+        ContractScope {
+            parent,
+            stor_refs: HashMap::new(),
+            stor_size: 0,
+        }
     }
 
-    fn top(mut current: SharedScope) -> SharedScope {
-        while current.borrow().parent.is_some() {
-            let parent = Rc::clone(current.borrow().parent.as_ref().unwrap());
-            current = parent;
-        }
+    fn into_shared(self) -> Shared<ContractScope<'a>> {
+        Rc::new(RefCell::new(self))
+    }
+}
 
-        current
+impl<'a> FunctionScope<'a> {
+    fn new(parent: Shared<ContractScope<'a>>) -> FunctionScope<'a> {
+        FunctionScope { parent }
+    }
+
+    fn into_shared(self) -> Shared<FunctionScope<'a>> {
+        Rc::new(RefCell::new(self))
     }
 }
 
 pub fn module<'a>(module: &'a vyp::Module<'a>) -> CompileResult<'a, yul::Statement> {
-    let mut scope = Rc::new(RefCell::new(Scope::new()));
+    let mut scope = ModuleScope::new().into_shared();
 
     let statements_result: Result<Vec<Option<yul::Statement>>, CompileError> = module
         .body
@@ -54,7 +81,7 @@ pub fn module<'a>(module: &'a vyp::Module<'a>) -> CompileResult<'a, yul::Stateme
 }
 
 fn module_stmt<'a>(
-    scope: SharedScope<'a>,
+    scope: Shared<ModuleScope<'a>>,
     stmt: &'a vyp::ModuleStmt<'a>,
 ) -> CompileResult<'a, yul::Statement> {
     match stmt {
@@ -65,10 +92,10 @@ fn module_stmt<'a>(
 }
 
 fn contract_def<'a>(
-    scope: SharedScope<'a>,
+    scope: Shared<ModuleScope<'a>>,
     stmt: &'a vyp::ModuleStmt<'a>,
 ) -> CompileResult<'a, yul::Statement> {
-    let new_scope = Scope::extend(scope);
+    let new_scope = ContractScope::new(scope).into_shared();
 
     if let vyp::ModuleStmt::ContractDef { name, body } = stmt {
         let statements_result: Result<Vec<Option<yul::Statement>>, CompileError> = body
@@ -93,17 +120,52 @@ fn contract_def<'a>(
 }
 
 fn contract_stmt<'a>(
-    scope: SharedScope<'a>,
+    scope: Shared<ContractScope<'a>>,
     stmt: &'a vyp::ContractStmt<'a>,
 ) -> CompileResult<'a, yul::Statement> {
     match stmt {
         vyp::ContractStmt::FuncDef { .. } => func_def(scope, stmt),
+        vyp::ContractStmt::ContractField { .. } => contract_field(scope, stmt),
         _ => Err(CompileError),
     }
 }
 
+fn contract_field<'a>(
+    scope: Shared<ContractScope<'a>>,
+    stmt: &'a vyp::ContractStmt,
+) -> CompileResult<'a, yul::Statement> {
+    if let vyp::ContractStmt::ContractField { qual, name, typ } = stmt {
+        return match &typ.node {
+            vyp::TypeDesc::Array {
+                typ: elem_typ,
+                dimension,
+            } => {
+                let p = scope.borrow().stor_size;
+                scope
+                    .borrow_mut()
+                    .stor_refs
+                    .insert(name.node, (p, &typ.node));
+                scope.borrow_mut().stor_size += *dimension;
+                Ok(Some(yul::Statement::Assignment(yul::Assignment {
+                    identifiers: vec![yul::Identifier {
+                        identifier: String::from(name.node),
+                        yultype: None,
+                    }],
+                    expression: yul::Expression::Literal(yul::Literal {
+                        literal: p.to_string(),
+                        yultype: Some(yul::Type::Uint256),
+                    }),
+                })))
+            }
+            _ => Err(CompileError),
+        };
+    }
+
+    return Err(CompileError);
+}
+
 fn type_def<'a>(
-    scope: SharedScope<'a>,
+    scope: Shared<ModuleScope<'a>>,
     stmt: &'a vyp::ModuleStmt<'a>,
 ) -> CompileResult<'a, yul::Statement> {
     if let vyp::ModuleStmt::TypeDef { name, typ } = stmt {
@@ -115,7 +177,7 @@ fn type_def<'a>(
 }
 
 fn func_def<'a>(
-    scope: SharedScope<'a>,
+    scope: Shared<ContractScope<'a>>,
     stmt: &'a vyp::ContractStmt<'a>,
 ) -> CompileResult<'a, yul::Statement> {
     if let vyp::ContractStmt::FuncDef {
@@ -126,7 +188,7 @@ fn func_def<'a>(
         body,
     } = stmt
     {
-        let new_scope = Scope::extend(scope);
+        let new_scope = FunctionScope::new(scope).into_shared();
 
         let parameters_result: Result<Vec<Option<yul::Identifier>>, CompileError> = args
             .iter()
@@ -168,17 +230,17 @@ fn func_def<'a>(
 }
 
 fn func_def_arg<'a>(
-    scope: SharedScope<'a>,
+    scope: Shared<FunctionScope<'a>>,
     arg: &'a vyp::FuncDefArg<'a>,
 ) -> CompileResult<'a, yul::Identifier> {
     Ok(Some(yul::Identifier {
         identifier: String::from(arg.name.node),
-        yultype: type_desc(scope, &arg.typ.node)?,
+        yultype: type_desc(SharedScope::Function(scope), &arg.typ.node)?,
     }))
 }
 
 fn func_stmt<'a>(
-    scope: SharedScope<'a>,
+    scope: Shared<FunctionScope<'a>>,
     stmt: &'a vyp::FuncStmt<'a>,
 ) -> CompileResult<'a, yul::Statement> {
     match stmt {
@@ -188,7 +250,7 @@ fn func_stmt<'a>(
 }
 
 fn func_return<'a>(
-    scope: SharedScope<'a>,
+    scope: Shared<FunctionScope<'a>>,
     stmt: &'a vyp::FuncStmt<'a>,
 ) -> CompileResult<'a, yul::Statement> {
     if let vyp::FuncStmt::Return { value: Some(value) } = stmt {
@@ -210,21 +272,37 @@ fn func_return<'a>(
 
 fn type_desc<'a>(
     scope: SharedScope<'a>,
-    desc: &'a vyp::TypeDesc<'a>,
+    mut desc: &'a vyp::TypeDesc<'a>,
 ) -> CompileResult<'a, yul::Type> {
+    // Custom types are stored in `TypeDesc::Base`
     if let vyp::TypeDesc::Base { base } = desc {
-        if let Some(custom_type) = Scope::top(Rc::clone(&scope)).borrow().type_defs.get(base) {
-            return type_desc(scope, *custom_type);
+        if let SharedScope::Function(scope) = scope {
+            // TODO: Clean this up.
+            if let Some(custom_desc) = scope
+                .borrow()
+                .parent
+                .borrow()
+                .parent
+                .borrow()
+                .type_defs
+                .get(base)
+            {
+                desc = custom_desc;
+            }
         }
     }
 
     Ok(Some(match desc {
         vyp::TypeDesc::Base { base: "u256" } => yul::Type::Uint256,
+        vyp::TypeDesc::Array { .. } => yul::Type::Uint256,
         _ => return Err(CompileError),
     }))
 }
 
-fn expr<'a>(scope: SharedScope<'a>, expr: &'a vyp::Expr<'a>) -> CompileResult<'a, yul::Expression> {
+fn expr<'a>(
+    scope: Shared<FunctionScope<'a>>,
+    expr: &'a vyp::Expr<'a>,
+) -> CompileResult<'a, yul::Expression> {
     Ok(Some(match expr {
         vyp::Expr::Name(name) => yul::Expression::Identifier(yul::Identifier {
             identifier: String::from(*name),
@@ -236,8 +314,7 @@ fn expr<'a>(scope: SharedScope<'a>, expr: &'a vyp::Expr<'a>) -> CompileResult<'a
 
 #[cfg(test)]
 mod tests {
-    //use crate::yul::{contract_def, func_def, module, type_def, Scope};
-    use crate::yul::{contract_def, func_def, module, type_def, Scope};
+    use crate::yul::{contract_def, func_def, module, type_def, ModuleScope, ContractScope};
     use std::cell::RefCell;
     use std::rc::Rc;
     use vyper_parser::ast::TypeDesc;
@@ -248,7 +325,7 @@ mod tests {
         let toks = vyper_parser::get_parse_tokens("type Num = u256").unwrap();
         let stmt = parsers::type_def(&toks[..]).unwrap().1.node;
 
-        let mut scope = Rc::new(RefCell::new(Scope::new()));
+        let mut scope = ModuleScope::new().into_shared();
 
         // Expecting the type definition to exist within new_scope.
         // There is no resulting statement from compiling a TypeDef.
@@ -267,7 +344,7 @@ mod tests {
             vyper_parser::get_parse_tokens("def double(x: u256) -> u256:\n   return x").unwrap();
         let stmt = parsers::func_def(&toks[..]).unwrap().1.node;
 
-        let mut scope = Rc::new(RefCell::new(Scope::new()));
+        let mut scope = ContractScope::new(ModuleScope::new().into_shared()).into_shared();
 
         if let Ok(Some(statement)) = func_def(Rc::clone(&scope), &stmt) {
             assert_eq!(
@@ -288,7 +365,7 @@ mod tests {
         let toks = vyper_parser::get_parse_tokens(vyp_code).unwrap();
         let stmt = parsers::contract_def(&toks[..]).unwrap().1.node;
 
-        let mut scope = Rc::new(RefCell::new(Scope::new()));
+        let mut scope = ModuleScope::new().into_shared();
 
         if let Ok(Some(statement)) = contract_def(scope, &stmt) {
             assert_eq!(

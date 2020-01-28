@@ -1,10 +1,10 @@
 use std::fs;
-use vyper_parser::parsers;
 use vyper_compiler::yul as compiler;
+use vyper_parser::parsers;
 
 struct Fixture {
     vyp: String,
-    yul: String
+    yul: String,
 }
 
 fn read_fixture(path: &str) -> Fixture {
@@ -23,7 +23,6 @@ fn test_fixtures() {
         .unwrap()
         .map(|entry| read_fixture(entry.unwrap().path().to_str().unwrap()))
         .collect();
-
 
     for fixture in fixtures {
         let toks = vyper_parser::get_parse_tokens(&*fixture.vyp).unwrap();
