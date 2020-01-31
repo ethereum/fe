@@ -1,4 +1,6 @@
-use std::cell::{Ref, RefCell};
+mod maps;
+
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
@@ -8,16 +10,14 @@ pub struct CompileError;
 
 pub type CompileResult<'a, T> = Result<Option<T>, CompileError>;
 type Shared<T> = Rc<RefCell<T>>;
-type TypeDefs<'a> = HashMap<&'a str, &'a vyp::TypeDesc<'a>>;
 
 struct ModuleScope<'a> {
-    type_defs: TypeDefs<'a>,
+    type_defs: HashMap<&'a str, &'a vyp::TypeDesc<'a>>,
 }
 
 struct ContractScope<'a> {
     parent: Shared<ModuleScope<'a>>,
-    stor_refs: HashMap<&'a str, (usize, &'a vyp::TypeDesc<'a>)>,
-    stor_size: usize,
+    map_count: u64,
 }
 
 struct FunctionScope<'a> {
@@ -46,8 +46,7 @@ impl<'a> ContractScope<'a> {
     fn new(parent: Shared<ModuleScope<'a>>) -> ContractScope<'a> {
         ContractScope {
             parent,
-            stor_refs: HashMap::new(),
-            stor_size: 0,
+            map_count: 0,
         }
     }
 
@@ -64,6 +63,11 @@ impl<'a> FunctionScope<'a> {
     fn into_shared(self) -> Shared<FunctionScope<'a>> {
         Rc::new(RefCell::new(self))
     }
+}
+
+enum SubscriptUse<'a> {
+    MapSLoad,
+    MapSStore(&'a vyp::Expr<'a>)
 }
 
 pub fn module<'a>(module: &'a vyp::Module<'a>) -> CompileResult<'a, yul::Statement> {
@@ -105,15 +109,15 @@ fn contract_def<'a>(
 
         let statements = statements_result?.into_iter().filter_map(|s| s).collect();
 
-        return Ok(Some(yul::Statement::ContractDefinition(
-            yul::ContractDefinition {
-                name: yul::Identifier {
-                    identifier: String::from(name.node),
-                    yultype: None,
-                },
-                block: yul::Block { statements },
+        let def = yul::ContractDefinition {
+            name: yul::Identifier {
+                identifier: String::from(name.node),
+                yultype: None,
             },
-        )));
+            block: yul::Block { statements },
+        };
+
+        return Ok(Some(yul::Statement::ContractDefinition(def)));
     }
 
     Err(CompileError)
@@ -134,25 +138,20 @@ fn contract_field<'a>(
     scope: Shared<ContractScope<'a>>,
     stmt: &'a vyp::ContractStmt,
 ) -> CompileResult<'a, yul::Statement> {
+    // TODO: cleanup
     if let vyp::ContractStmt::ContractField { qual, name, typ } = stmt {
         return match &typ.node {
-            vyp::TypeDesc::Array {
-                typ: elem_typ,
-                dimension,
-            } => {
-                let p = scope.borrow().stor_size;
-                scope
-                    .borrow_mut()
-                    .stor_refs
-                    .insert(name.node, (p, &typ.node));
-                scope.borrow_mut().stor_size += *dimension;
+            vyp::TypeDesc::Map { .. } => {
+                let map_count = scope.borrow().map_count;
+                scope.borrow_mut().map_count += 1;
+
                 Ok(Some(yul::Statement::Assignment(yul::Assignment {
                     identifiers: vec![yul::Identifier {
                         identifier: String::from(name.node),
                         yultype: None,
                     }],
                     expression: yul::Expression::Literal(yul::Literal {
-                        literal: p.to_string(),
+                        literal: map_count.to_string(),
                         yultype: Some(yul::Type::Uint256),
                     }),
                 })))
@@ -294,7 +293,7 @@ fn type_desc<'a>(
 
     Ok(Some(match desc {
         vyp::TypeDesc::Base { base: "u256" } => yul::Type::Uint256,
-        vyp::TypeDesc::Array { .. } => yul::Type::Uint256,
+        vyp::TypeDesc::Map { .. } => yul::Type::Uint256,
         _ => return Err(CompileError),
     }))
 }
@@ -303,18 +302,63 @@ fn expr<'a>(
     scope: Shared<FunctionScope<'a>>,
     expr: &'a vyp::Expr<'a>,
 ) -> CompileResult<'a, yul::Expression> {
-    Ok(Some(match expr {
-        vyp::Expr::Name(name) => yul::Expression::Identifier(yul::Identifier {
+    match expr {
+        vyp::Expr::Name(_) => name(expr),
+        vyp::Expr::Subscript { .. } => subscript(scope, expr, SubscriptUse::MapSLoad),
+        _ => Err(CompileError),
+    }
+}
+
+fn subscript<'a>(
+    scope: Shared<FunctionScope<'a>>,
+    expr: &'a vyp::Expr<'a>,
+    subscript_use: SubscriptUse<'a>
+) -> CompileResult<'a, yul::Expression> {
+    if let vyp::Expr::Subscript { value, slices } = expr {
+        let index = if let vyp::Slice::Index(box vyp::Expr::Name(name)) = &slices.node[0].node {
+            yul::Expression::Literal(yul::Literal {
+                literal: String::from(*name),
+                yultype: None
+            })
+        } else {
+            yul::Expression::Literal(yul::Literal {literal: String::from("0"), yultype: None})
+        };
+
+        let function_call = match subscript_use {
+            SubscriptUse::MapSLoad => {
+                yul::FunctionCall {
+                    identifier: yul::Identifier { identifier: String::from("_map_load_u256_u256"), yultype: None },
+                    arguments: vec![
+                        name(&value.node)?.unwrap(),
+                        index
+                    ],
+                }
+            }
+            _ => return Err(CompileError)
+        };
+
+        return Ok(Some(yul::Expression::FunctionCall(function_call)));
+    }
+
+    Err(CompileError)
+}
+
+fn name<'a>(expr: &'a vyp::Expr<'a>) -> CompileResult<'a, yul::Expression> {
+    if let vyp::Expr::Name(name) = expr {
+        let identifier = yul::Identifier {
             identifier: String::from(*name),
-            yultype: None,
-        }),
-        _ => return Err(CompileError),
-    }))
+            yultype: None
+        };
+
+        return Ok(Some(yul::Expression::Identifier(identifier)));
+    }
+
+    Err(CompileError)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::yul::{contract_def, func_def, module, type_def, ModuleScope, ContractScope};
+    use crate::yul::{contract_def, func_def, module, type_def, ContractScope, ModuleScope};
     use std::cell::RefCell;
     use std::rc::Rc;
     use vyper_parser::ast::TypeDesc;
