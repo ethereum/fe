@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
 use yultsur::yul;
+use crate::yul::maps::{map_sload, map_sstore};
 
 pub struct CompileError;
 
@@ -107,7 +108,12 @@ fn contract_def<'a>(
             .map(|stmt| contract_stmt(Rc::clone(&new_scope), &stmt.node))
             .collect();
 
-        let statements = statements_result?.into_iter().filter_map(|s| s).collect();
+        let mut statements: Vec<yul::Statement> = statements_result?.into_iter().filter_map(|s| s).collect();
+
+        if new_scope.borrow().map_count > 0 {
+            statements.push(yul::Statement::FunctionDefinition(map_sload(yul::Type::Uint256, yul::Type::Uint256)));
+            statements.push(yul::Statement::FunctionDefinition(map_sstore(yul::Type::Uint256, yul::Type::Uint256)));
+        }
 
         let def = yul::ContractDefinition {
             name: yul::Identifier {
@@ -424,18 +430,20 @@ mod tests {
 
     #[test]
     fn test_custom_type_in_function() {
-        let vyp_code = "type CustomType = u256\
-                      \n
-                      \ncontract Foo:\
-                      \n  pub def bar(x: CustomType) -> CustomType:\
-                      \n    return x";
+        let vyp_code = "pub def bar(x: CustomType) -> CustomType:\
+                        \n  return x";
         let toks = vyper_parser::get_parse_tokens(vyp_code).unwrap();
-        let stmt = parsers::file_input(&toks[..]).unwrap().1.node;
+        let stmt = parsers::func_def(&toks[..]).unwrap().1.node;
 
-        if let Ok(Some(statement)) = module(&stmt) {
+        let mut module_scope = ModuleScope::new().into_shared();
+        let u256 = TypeDesc::Base { base: "u256" };
+        module_scope.borrow_mut().type_defs.insert("CustomType", &u256);
+        let scope = ContractScope::new(module_scope).into_shared();
+
+        if let Ok(Some(statement)) = func_def(scope, &stmt) {
             assert_eq!(
                 statement.to_string(),
-                "{ object \"Foo\" { function bar(x:u256) -> return_val { return_val := x } } }",
+                "function bar(x:u256) -> return_val { return_val := x }",
                 "Compilation of module definition failed."
             );
         } else {
