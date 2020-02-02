@@ -6,6 +6,7 @@ use std::rc::Rc;
 use vyper_parser::ast as vyp;
 use yultsur::yul;
 use crate::yul::maps::{map_sload, map_sstore};
+use crate::abi;
 
 pub struct CompileError;
 

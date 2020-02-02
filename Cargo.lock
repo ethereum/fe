@@ -294,6 +294,8 @@ dependencies = [
 name = "vyper-compiler"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "serde_json",
  "vyper-parser",
  "yultsur",
 ]
