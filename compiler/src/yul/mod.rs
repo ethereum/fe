@@ -1,4 +1,5 @@
 mod maps;
+mod selectors;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -19,6 +20,7 @@ struct ModuleScope<'a> {
 
 struct ContractScope<'a> {
     parent: Shared<ModuleScope<'a>>,
+    functions: Vec<&'a vyp::ContractStmt<'a>>,
     map_count: u64,
 }
 
@@ -48,6 +50,7 @@ impl<'a> ContractScope<'a> {
     fn new(parent: Shared<ModuleScope<'a>>) -> ContractScope<'a> {
         ContractScope {
             parent,
+            functions: Vec::new(),
             map_count: 0,
         }
     }
@@ -115,6 +118,8 @@ fn contract_def<'a>(
             statements.push(yul::Statement::FunctionDefinition(map_sload(yul::Type::Uint256, yul::Type::Uint256)));
             statements.push(yul::Statement::FunctionDefinition(map_sstore(yul::Type::Uint256, yul::Type::Uint256)));
         }
+
+        statements.push(yul::Statement::Switch(selectors::switch(&new_scope.borrow().functions).map_err(|_| CompileError)?));
 
         let def = yul::ContractDefinition {
             name: yul::Identifier {
@@ -194,6 +199,7 @@ fn func_def<'a>(
         body,
     } = stmt
     {
+        scope.borrow_mut().functions.push(stmt);
         let new_scope = FunctionScope::new(scope).into_shared();
 
         let parameters_result: Result<Vec<Option<yul::Identifier>>, CompileError> = args

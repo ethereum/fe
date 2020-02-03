@@ -97,7 +97,7 @@ fn func_def_arg<'a>(arg: &'a vyp::FuncDefArg<'a>) -> Input {
     }
 }
 
-fn func_select<'a>(stmt: &'a vyp::ContractStmt<'a>) -> Result<[u8; 4], &str> {
+pub fn func_select<'a>(stmt: &'a vyp::ContractStmt<'a>) -> Result<[u8; 4], &str> {
     let abi = func_def(&stmt)?;
     let input_types = abi.inputs.iter().map(|input| input.typ.to_string()).collect::<Vec<String>>();
     let sig = format!("{}({})", abi.name, input_types.join(","));
