@@ -1,0 +1,16 @@
+name: Vyper
+version: "0.1.0"
+author: David Sanders <david@ethereum.org> Grant Wuerker <gwuerker@gmail.com>
+about: Smart contract programming language.
+args:
+  - targets:
+      short: t
+      long: targets
+      value_name: TARGET
+      help: Compilations targets. evm, ewasm, yul, abi
+      takes_value: true
+      multiple: true
+  - INPUT:
+      help: Sets the input file to use.
+      required: true
+      index: 1

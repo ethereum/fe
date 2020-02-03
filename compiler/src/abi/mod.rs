@@ -1,5 +1,6 @@
 use serde::{Serialize};
 use vyper_parser::ast as vyp;
+use vyper_parser as parser;
 use tiny_keccak::{Keccak, Hasher};
 use crate::abi::VariableType::Uint256;
 
@@ -63,7 +64,17 @@ enum StateMutability {
     Payable
 }
 
-pub fn contract_def<'a>(stmt: &'a vyp::ModuleStmt<'a>) -> Result<Contract, &str> {
+pub fn compile(src: &str) -> Result<String, &str> {
+    let tokens = parser::get_parse_tokens(src).unwrap();
+    let module = parser::parsers::file_input(&tokens[..]).unwrap().1.node;
+
+    // TODO: don't just assume the first module statement is a contract
+    // Also, handle type defs.
+    let functions = contract_def(&module.body[0].node).unwrap().functions;
+    serde_json::to_string(&functions).map_err(|_| "ABI compilation failed.")
+}
+
+fn contract_def<'a>(stmt: &'a vyp::ModuleStmt<'a>) -> Result<Contract, &str> {
     if let vyp::ModuleStmt::ContractDef {name, body} = stmt {
         return Ok(Contract { // TODO: filter out non-pub functions
             functions: body.iter().map(|stmt| {

@@ -5,6 +5,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
+use vyper_parser as parser;
 use yultsur::yul;
 use crate::yul::maps::{map_sload, map_sstore};
 use crate::abi;
@@ -73,6 +74,13 @@ impl<'a> FunctionScope<'a> {
 enum SubscriptUse<'a> {
     MapSLoad,
     MapSStore(&'a vyp::Expr<'a>)
+}
+
+pub fn compile(src: &str) -> Result<String, &str> {
+    let tokens = parser::get_parse_tokens(src).unwrap();
+    let ast_module = parser::parsers::file_input(&tokens[..]).unwrap().1.node;
+
+    module(&ast_module).map(|yul_ast| yul_ast.unwrap().to_string()).map_err(|_| "YUL compilation failed.")
 }
 
 pub fn module<'a>(module: &'a vyp::Module<'a>) -> CompileResult<'a, yul::Statement> {
