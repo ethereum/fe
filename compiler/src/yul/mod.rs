@@ -294,6 +294,10 @@ fn type_desc<'a>(
     scope: SharedScope<'a>,
     mut desc: &'a vyp::TypeDesc<'a>,
 ) -> CompileResult<'a, yul::Type> {
+    Ok(None)
+    // The solc compiler does not handle explicit types yet. Uncomment the following code
+    // once it does.
+    /*
     // Custom types are stored in `TypeDesc::Base`
     if let vyp::TypeDesc::Base { base } = desc {
         if let SharedScope::Function(scope) = scope {
@@ -317,6 +321,7 @@ fn type_desc<'a>(
         vyp::TypeDesc::Map { .. } => yul::Type::Uint256,
         _ => return Err(CompileError),
     }))
+    */
 }
 
 fn expr<'a>(
