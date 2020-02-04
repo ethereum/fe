@@ -1,16 +1,15 @@
 mod maps;
 mod selectors;
 
+use crate::abi;
+use crate::errors::CompileError;
+use crate::yul::maps::{map_sload, map_sstore};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use vyper_parser::ast as vyp;
 use vyper_parser as parser;
+use vyper_parser::ast as vyp;
 use yultsur::yul;
-use crate::yul::maps::{map_sload, map_sstore};
-use crate::abi;
-
-pub struct CompileError;
 
 pub type CompileResult<'a, T> = Result<Option<T>, CompileError>;
 type Shared<T> = Rc<RefCell<T>>;
@@ -36,19 +35,19 @@ enum SharedScope<'a> {
 }
 
 impl<'a> ModuleScope<'a> {
-    fn new() -> ModuleScope<'a> {
+    fn new() -> Self {
         ModuleScope {
             type_defs: HashMap::new(),
         }
     }
 
-    fn into_shared(self) -> Shared<ModuleScope<'a>> {
+    fn into_shared(self) -> Shared<Self> {
         Rc::new(RefCell::new(self))
     }
 }
 
 impl<'a> ContractScope<'a> {
-    fn new(parent: Shared<ModuleScope<'a>>) -> ContractScope<'a> {
+    fn new(parent: Shared<ModuleScope<'a>>) -> Self {
         ContractScope {
             parent,
             functions: Vec::new(),
@@ -56,31 +55,34 @@ impl<'a> ContractScope<'a> {
         }
     }
 
-    fn into_shared(self) -> Shared<ContractScope<'a>> {
+    fn into_shared(self) -> Shared<Self> {
         Rc::new(RefCell::new(self))
     }
 }
 
 impl<'a> FunctionScope<'a> {
-    fn new(parent: Shared<ContractScope<'a>>) -> FunctionScope<'a> {
+    fn new(parent: Shared<ContractScope<'a>>) -> Self {
         FunctionScope { parent }
     }
 
-    fn into_shared(self) -> Shared<FunctionScope<'a>> {
+    fn into_shared(self) -> Shared<Self> {
         Rc::new(RefCell::new(self))
     }
 }
 
 enum SubscriptUse<'a> {
     MapSLoad,
-    MapSStore(&'a vyp::Expr<'a>)
+    MapSStore(&'a vyp::Expr<'a>),
 }
 
-pub fn compile(src: &str) -> Result<String, &str> {
-    let tokens = parser::get_parse_tokens(src).unwrap();
-    let ast_module = parser::parsers::file_input(&tokens[..]).unwrap().1.node;
+pub fn compile(src: &str) -> Result<String, CompileError> {
+    let tokens = parser::get_parse_tokens(src)?;
+    let vyp_module = parser::parsers::file_input(&tokens[..])?.1.node;
+    if let Ok(Some(yul_ast)) = module(&vyp_module) {
+        return Ok(yul_ast.to_string());
+    }
 
-    module(&ast_module).map(|yul_ast| yul_ast.unwrap().to_string()).map_err(|_| "YUL compilation failed.")
+    Err(CompileError::static_str("Unable to parse tokens."))
 }
 
 pub fn module<'a>(module: &'a vyp::Module<'a>) -> CompileResult<'a, yul::Statement> {
@@ -104,7 +106,9 @@ fn module_stmt<'a>(
     match stmt {
         vyp::ModuleStmt::TypeDef { .. } => type_def(scope, stmt),
         vyp::ModuleStmt::ContractDef { .. } => contract_def(scope, stmt),
-        _ => Err(CompileError),
+        _ => Err(CompileError::static_str(
+            "Unable to translate module statement.",
+        )),
     }
 }
 
@@ -120,14 +124,23 @@ fn contract_def<'a>(
             .map(|stmt| contract_stmt(Rc::clone(&new_scope), &stmt.node))
             .collect();
 
-        let mut statements: Vec<yul::Statement> = statements_result?.into_iter().filter_map(|s| s).collect();
+        let mut statements: Vec<yul::Statement> =
+            statements_result?.into_iter().filter_map(|s| s).collect();
 
         if new_scope.borrow().map_count > 0 {
-            statements.push(yul::Statement::FunctionDefinition(map_sload(yul::Type::Uint256, yul::Type::Uint256)));
-            statements.push(yul::Statement::FunctionDefinition(map_sstore(yul::Type::Uint256, yul::Type::Uint256)));
+            statements.push(yul::Statement::FunctionDefinition(map_sload(
+                yul::Type::Uint256,
+                yul::Type::Uint256,
+            )));
+            statements.push(yul::Statement::FunctionDefinition(map_sstore(
+                yul::Type::Uint256,
+                yul::Type::Uint256,
+            )));
         }
 
-        statements.push(yul::Statement::Switch(selectors::switch(&new_scope.borrow().functions).map_err(|_| CompileError)?));
+        statements.push(yul::Statement::Switch(selectors::switch(
+            &new_scope.borrow().functions,
+        )?));
 
         let def = yul::ContractDefinition {
             name: yul::Identifier {
@@ -140,7 +153,9 @@ fn contract_def<'a>(
         return Ok(Some(yul::Statement::ContractDefinition(def)));
     }
 
-    Err(CompileError)
+    Err(CompileError::static_str(
+        "Contract definition translation requires ContractDef.",
+    ))
 }
 
 fn contract_stmt<'a>(
@@ -150,7 +165,9 @@ fn contract_stmt<'a>(
     match stmt {
         vyp::ContractStmt::FuncDef { .. } => func_def(scope, stmt),
         vyp::ContractStmt::ContractField { .. } => contract_field(scope, stmt),
-        _ => Err(CompileError),
+        _ => Err(CompileError::static_str(
+            "Unable to translate module statement.",
+        )),
     }
 }
 
@@ -176,11 +193,15 @@ fn contract_field<'a>(
                     }),
                 })))
             }
-            _ => Err(CompileError),
+            _ => Err(CompileError::static_str(
+                "Unable to translate contract field.",
+            )),
         };
     }
 
-    return Err(CompileError);
+    Err(CompileError::static_str(
+        "Contract field translation requires ContractField.",
+    ))
 }
 
 fn type_def<'a>(
@@ -192,7 +213,9 @@ fn type_def<'a>(
         return Ok(None);
     }
 
-    Err(CompileError)
+    Err(CompileError::static_str(
+        "Type definition translation requires TypeDef.",
+    ))
 }
 
 fn func_def<'a>(
@@ -246,7 +269,9 @@ fn func_def<'a>(
         )));
     }
 
-    Err(CompileError)
+    Err(CompileError::static_str(
+        "Function definition translation requires FuncDef.",
+    ))
 }
 
 fn func_def_arg<'a>(
@@ -265,7 +290,9 @@ fn func_stmt<'a>(
 ) -> CompileResult<'a, yul::Statement> {
     match stmt {
         vyp::FuncStmt::Return { .. } => func_return(scope, stmt),
-        _ => Err(CompileError),
+        _ => Err(CompileError::static_str(
+            "Unable to translate function statement",
+        )),
     }
 }
 
@@ -287,7 +314,9 @@ fn func_return<'a>(
         }
     }
 
-    Err(CompileError)
+    Err(CompileError::static_str(
+        "Function return translation requires Return parameter.",
+    ))
 }
 
 fn type_desc<'a>(
@@ -331,55 +360,64 @@ fn expr<'a>(
     match expr {
         vyp::Expr::Name(_) => name(expr),
         vyp::Expr::Subscript { .. } => subscript(scope, expr, SubscriptUse::MapSLoad),
-        _ => Err(CompileError),
+        _ => Err(CompileError::static_str("Unable to translate expression")),
     }
 }
 
 fn subscript<'a>(
     scope: Shared<FunctionScope<'a>>,
     expr: &'a vyp::Expr<'a>,
-    subscript_use: SubscriptUse<'a>
+    subscript_use: SubscriptUse<'a>,
 ) -> CompileResult<'a, yul::Expression> {
     if let vyp::Expr::Subscript { value, slices } = expr {
         let index = if let vyp::Slice::Index(box vyp::Expr::Name(name)) = &slices.node[0].node {
             yul::Expression::Literal(yul::Literal {
                 literal: String::from(*name),
-                yultype: None
+                yultype: None,
             })
         } else {
-            yul::Expression::Literal(yul::Literal {literal: String::from("0"), yultype: None})
+            yul::Expression::Literal(yul::Literal {
+                literal: String::from("0"),
+                yultype: None,
+            })
         };
 
         let function_call = match subscript_use {
-            SubscriptUse::MapSLoad => {
-                yul::FunctionCall {
-                    identifier: yul::Identifier { identifier: String::from("_map_load_u256_u256"), yultype: None },
-                    arguments: vec![
-                        name(&value.node)?.unwrap(),
-                        index
-                    ],
-                }
+            SubscriptUse::MapSLoad => yul::FunctionCall {
+                identifier: yul::Identifier {
+                    identifier: String::from("_map_load_u256_u256"),
+                    yultype: None,
+                },
+                arguments: vec![name(&value.node)?.unwrap(), index],
+            },
+            _ => {
+                return Err(CompileError::static_str(
+                    "Unable to translate subscript use.",
+                ))
             }
-            _ => return Err(CompileError)
         };
 
         return Ok(Some(yul::Expression::FunctionCall(function_call)));
     }
 
-    Err(CompileError)
+    Err(CompileError::static_str(
+        "Subscipt translation requires Subscript parameter.",
+    ))
 }
 
 fn name<'a>(expr: &'a vyp::Expr<'a>) -> CompileResult<'a, yul::Expression> {
     if let vyp::Expr::Name(name) = expr {
         let identifier = yul::Identifier {
             identifier: String::from(*name),
-            yultype: None
+            yultype: None,
         };
 
         return Ok(Some(yul::Expression::Identifier(identifier)));
     }
 
-    Err(CompileError)
+    Err(CompileError::static_str(
+        "Name translation requires Name parameter.",
+    ))
 }
 
 #[cfg(test)]
@@ -457,7 +495,10 @@ mod tests {
 
         let mut module_scope = ModuleScope::new().into_shared();
         let u256 = TypeDesc::Base { base: "u256" };
-        module_scope.borrow_mut().type_defs.insert("CustomType", &u256);
+        module_scope
+            .borrow_mut()
+            .type_defs
+            .insert("CustomType", &u256);
         let scope = ContractScope::new(module_scope).into_shared();
 
         if let Ok(Some(statement)) = func_def(scope, &stmt) {

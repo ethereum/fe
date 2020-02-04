@@ -30,77 +30,73 @@ pub fn map_sload(key_type: yul::Type, value_type: yul::Type) -> yul::FunctionDef
         name: yul::Identifier {
             // TODO: Format name with actual types
             identifier: String::from("_map_sload_u256_u256"),
-            yultype: None
+            yultype: None,
         },
         parameters: vec![
             yul::Identifier {
                 identifier: String::from("m"),
-                yultype: Some(yul::Type::Uint256)
+                yultype: Some(yul::Type::Uint256),
             },
             yul::Identifier {
                 identifier: String::from("k"),
-                yultype: Some(key_type)
+                yultype: Some(key_type),
             },
         ],
-        returns: vec![
-            yul::Identifier {
-                identifier: String::from("v"),
-                yultype: Some(value_type)
-            }
-        ],
+        returns: vec![yul::Identifier {
+            identifier: String::from("v"),
+            yultype: Some(value_type),
+        }],
         block: yul::Block {
             statements: vec![
                 yul::Statement::VariableDeclaration(yul::VariableDeclaration {
-                    identifiers: vec![
-                        yul::Identifier {
-                            identifier: String::from("p"),
-                            yultype: Some(yul::Type::Uint256)
-                        }
-                    ],
-                    expression: Some(yul::Expression::FunctionCall(msize()))
+                    identifiers: vec![yul::Identifier {
+                        identifier: String::from("p"),
+                        yultype: Some(yul::Type::Uint256),
+                    }],
+                    expression: Some(yul::Expression::FunctionCall(msize())),
                 }),
-                yul::Statement::Expression(yul::Expression::FunctionCall(
-                    mstore_top(yul::Expression::Identifier(yul::Identifier {
+                yul::Statement::Expression(yul::Expression::FunctionCall(mstore_top(
+                    yul::Expression::Identifier(yul::Identifier {
                         identifier: String::from("m"),
-                        yultype: None
-                    }))
-                )),
-                yul::Statement::Expression(yul::Expression::FunctionCall(
-                    mstore_top(yul::Expression::Identifier(yul::Identifier {
+                        yultype: None,
+                    }),
+                ))),
+                yul::Statement::Expression(yul::Expression::FunctionCall(mstore_top(
+                    yul::Expression::Identifier(yul::Identifier {
                         identifier: String::from("k"),
-                        yultype: None
-                    })
+                        yultype: None,
+                    }),
                 ))),
                 yul::Statement::Assignment(yul::Assignment {
                     identifiers: vec![yul::Identifier {
                         identifier: String::from("v"),
-                        yultype: None
+                        yultype: None,
                     }],
                     expression: yul::Expression::FunctionCall(yul::FunctionCall {
                         identifier: yul::Identifier {
                             identifier: String::from("sload"),
-                            yultype: None
+                            yultype: None,
                         },
                         arguments: vec![yul::Expression::FunctionCall(yul::FunctionCall {
                             identifier: yul::Identifier {
                                 identifier: String::from("keccak"),
-                                yultype: None
+                                yultype: None,
                             },
                             arguments: vec![
                                 yul::Expression::Identifier(yul::Identifier {
                                     identifier: String::from("p"),
-                                    yultype: None
+                                    yultype: None,
                                 }),
                                 yul::Expression::Identifier(yul::Identifier {
                                     identifier: String::from("2"),
-                                    yultype: Some(yul::Type::Uint256)
-                                })
-                            ]
-                        })]
-                    })
-                })
-            ]
-        }
+                                    yultype: Some(yul::Type::Uint256),
+                                }),
+                            ],
+                        })],
+                    }),
+                }),
+            ],
+        },
     }
 }
 
@@ -121,76 +117,74 @@ pub fn map_sstore(key_type: yul::Type, value_type: yul::Type) -> yul::FunctionDe
         name: yul::Identifier {
             // TODO: Format name with actual types
             identifier: String::from("_map_sstore_u256_u256"),
-            yultype: None
+            yultype: None,
         },
         parameters: vec![
             yul::Identifier {
                 identifier: String::from("m"),
-                yultype: Some(yul::Type::Uint256)
+                yultype: Some(yul::Type::Uint256),
             },
             yul::Identifier {
                 identifier: String::from("k"),
-                yultype: Some(key_type)
+                yultype: Some(key_type),
             },
             yul::Identifier {
                 identifier: String::from("v"),
-                yultype: Some(value_type)
-            }
+                yultype: Some(value_type),
+            },
         ],
         returns: Vec::new(),
         block: yul::Block {
             statements: vec![
                 yul::Statement::VariableDeclaration(yul::VariableDeclaration {
-                    identifiers: vec![
-                        yul::Identifier {
-                            identifier: String::from("p"),
-                            yultype: Some(yul::Type::Uint256)
-                        }
-                    ],
-                    expression: Some(yul::Expression::FunctionCall(msize()))
+                    identifiers: vec![yul::Identifier {
+                        identifier: String::from("p"),
+                        yultype: Some(yul::Type::Uint256),
+                    }],
+                    expression: Some(yul::Expression::FunctionCall(msize())),
                 }),
-                yul::Statement::Expression(yul::Expression::FunctionCall(
-                    mstore_top(yul::Expression::Identifier(yul::Identifier {
+                yul::Statement::Expression(yul::Expression::FunctionCall(mstore_top(
+                    yul::Expression::Identifier(yul::Identifier {
                         identifier: String::from("m"),
-                        yultype: None
-                    }))
-                )),
-                yul::Statement::Expression(yul::Expression::FunctionCall(
-                    mstore_top(yul::Expression::Identifier(yul::Identifier {
+                        yultype: None,
+                    }),
+                ))),
+                yul::Statement::Expression(yul::Expression::FunctionCall(mstore_top(
+                    yul::Expression::Identifier(yul::Identifier {
                         identifier: String::from("k"),
-                        yultype: None
-                    })
-                    ))),
+                        yultype: None,
+                    }),
+                ))),
                 yul::Statement::Expression(yul::Expression::FunctionCall(yul::FunctionCall {
                     identifier: yul::Identifier {
                         identifier: String::from("sstore"),
-                        yultype: None
+                        yultype: None,
                     },
                     arguments: vec![
                         yul::Expression::FunctionCall(yul::FunctionCall {
                             identifier: yul::Identifier {
                                 identifier: String::from("keccak"),
-                                yultype: None
+                                yultype: None,
                             },
                             arguments: vec![
                                 yul::Expression::Identifier(yul::Identifier {
                                     identifier: String::from("p"),
-                                    yultype: None
+                                    yultype: None,
                                 }),
                                 yul::Expression::Identifier(yul::Identifier {
                                     identifier: String::from("2"),
-                                    yultype: Some(yul::Type::Uint256)
-                                })
-                            ]
+                                    yultype: Some(yul::Type::Uint256),
+                                }),
+                            ],
                         }),
                         yul::Expression::Identifier(yul::Identifier {
                             identifier: String::from("v"),
-                            yultype: None
-                        })
-                    ]
-                }))
-            ]
-        }
+                            yultype: None,
+                        }),
+                    ],
+                })),
+            ],
+        },
     }
 }
 
@@ -198,12 +192,9 @@ fn mstore_top(val: yul::Expression) -> yul::FunctionCall {
     yul::FunctionCall {
         identifier: yul::Identifier {
             identifier: String::from("mstore"),
-            yultype: None
+            yultype: None,
         },
-        arguments: vec![
-            yul::Expression::FunctionCall(msize()),
-            val
-        ]
+        arguments: vec![yul::Expression::FunctionCall(msize()), val],
     }
 }
 
@@ -211,9 +202,9 @@ fn msize() -> yul::FunctionCall {
     yul::FunctionCall {
         identifier: yul::Identifier {
             identifier: String::from("msize"),
-            yultype: None
+            yultype: None,
         },
-        arguments: Vec::new()
+        arguments: Vec::new(),
     }
 }
 
