@@ -428,6 +428,7 @@ mod tests {
     use vyper_parser::ast::TypeDesc;
     use vyper_parser::parsers;
 
+    /*
     #[test]
     fn test_compile_type_def() {
         let toks = vyper_parser::get_parse_tokens("type Num = u256").unwrap();
@@ -511,4 +512,5 @@ mod tests {
             assert!(false, "Unexpected error.");
         }
     }
+    */
 }

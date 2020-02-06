@@ -17,22 +17,44 @@ fn read_fixture(path: &str) -> Fixture {
     }
 }
 
-#[test]
-fn test_fixtures() {
-    let fixtures: Vec<Fixture> = fs::read_dir("tests/fixtures")
-        .unwrap()
-        .map(|entry| read_fixture(entry.unwrap().path().to_str().unwrap()))
-        .collect();
+#[cfg(test)]
+mod tests {
+    use ethabi;
+    use evm;
+    use primitive_types::{U256,H160};
+    use std::collections::BTreeMap;
+    use evm_runtime::Handler;
 
-    for fixture in fixtures {
-        let toks = vyper_parser::get_parse_tokens(&*fixture.vyp).unwrap();
-        let stmt = parsers::file_input(&toks[..]).unwrap().1.node;
-        let expected_yul: Vec<&str> = fixture.yul.split_whitespace().collect();
+    fn vicinity() -> evm::backend::MemoryVicinity {
+        let zero = U256::from_dec_str("0").unwrap();
+        let addr = H160::repeat_byte(5);
 
-        if let Ok(Some(compiled_yul)) = compiler::module(&stmt) {
-            assert_eq!(compiled_yul.to_string(), expected_yul.join(" "));
-        } else {
-            assert!(false, "Something went wrong.")
+        evm::backend::MemoryVicinity {
+            gas_price: zero.clone(),
+            origin: addr.clone(),
+            chain_id: zero.clone(),
+            block_hashes: Vec::new(),
+            block_number: zero.clone(),
+            block_coinbase: addr.clone(),
+            block_timestamp: zero.clone(),
+            block_difficulty: zero.clone(),
+            block_gas_limit: U256::MAX
         }
+    }
+
+    #[test]
+    fn test_evm_sanity() {
+        let state: BTreeMap<H160, evm::backend::MemoryAccount> = BTreeMap::new();
+        let config = evm::Config::istanbul();
+
+        let vicinity = vicinity();
+        let backend = evm::backend::MemoryBackend::new(&vicinity, state);
+        let mut executor = evm::executor::StackExecutor::new(&backend, usize::max_value(), &config);
+
+        let addr = H160::repeat_byte(4);
+        let amount = U256::from_dec_str("1000").unwrap();
+
+        executor.deposit(addr, amount);
+        assert_eq!(executor.balance(addr), amount);
     }
 }
