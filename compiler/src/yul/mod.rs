@@ -94,9 +94,9 @@ pub fn module<'a>(module: &'a vyp::Module<'a>) -> CompileResult<'a, yul::Stateme
         .map(|stmt| module_stmt(Rc::clone(&scope), &stmt.node))
         .collect();
 
-    let statements = statements_result?.into_iter().filter_map(|s| s).collect();
+    let mut statements: Vec<yul::Statement> = statements_result?.into_iter().filter_map(|s| s).collect();
 
-    Ok(Some(yul::Statement::Block(yul::Block { statements })))
+    Ok(statements.pop())
 }
 
 fn module_stmt<'a>(

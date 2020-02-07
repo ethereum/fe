@@ -30,11 +30,12 @@ impl TryFrom<&str> for Target {
     }
 }
 
-fn compile(src: &str, target: Target) -> String {
+fn compile(src: &str, target: Target) -> Result<String, compiler::errors::CompileError> {
     match target {
-        Target::Abi => compiler::abi::compile(src).unwrap(),
-        Target::Yul => compiler::yul::compile(src).unwrap(),
-        _ => String::from("Target not implemented.")
+        Target::Abi => compiler::abi::compile(src),
+        Target::Yul => compiler::yul::compile(src),
+        Target::Evm => compiler::evm::compile(src),
+        _ => Err(compiler::errors::CompileError::static_str("Target is not supported."))
     }
 }
 
@@ -50,6 +51,6 @@ fn main() {
         .unwrap();
 
     for target in targets {
-        print!("{}", compile(&src, target))
+        print!("{}", compile(&src, target).unwrap())
     }
 }
