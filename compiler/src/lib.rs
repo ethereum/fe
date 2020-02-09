@@ -2,5 +2,5 @@
 
 pub mod abi;
 pub mod errors;
-pub mod yul;
 pub mod evm;
+pub mod yul;

@@ -1,0 +1,7 @@
+{
+  "language": "Yul",
+  "sources": { "input.yul": { "content": "{src}" } },
+  "settings": {
+    "outputSelection": { "*": { "*": ["*"], "": [ "*" ] } }
+  }
+}

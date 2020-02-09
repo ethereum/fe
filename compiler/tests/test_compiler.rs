@@ -21,9 +21,9 @@ fn read_fixture(path: &str) -> Fixture {
 mod tests {
     use ethabi;
     use evm;
-    use primitive_types::{U256,H160};
-    use std::collections::BTreeMap;
     use evm_runtime::Handler;
+    use primitive_types::{H160, U256};
+    use std::collections::BTreeMap;
 
     fn vicinity() -> evm::backend::MemoryVicinity {
         let zero = U256::from_dec_str("0").unwrap();
@@ -38,7 +38,7 @@ mod tests {
             block_coinbase: addr.clone(),
             block_timestamp: zero.clone(),
             block_difficulty: zero.clone(),
-            block_gas_limit: U256::MAX
+            block_gas_limit: U256::MAX,
         }
     }
 

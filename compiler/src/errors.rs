@@ -44,6 +44,6 @@ impl<'a> From<TokenizeError> for CompileError {
 
 impl<'a> From<serde_json::error::Error> for CompileError {
     fn from(e: serde_json::error::Error) -> Self {
-        CompileError::static_str("JSON serialization error.")
+        CompileError::str(format!("JSON serialization error: {}", e.to_string()))
     }
 }

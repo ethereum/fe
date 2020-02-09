@@ -94,7 +94,8 @@ pub fn module<'a>(module: &'a vyp::Module<'a>) -> CompileResult<'a, yul::Stateme
         .map(|stmt| module_stmt(Rc::clone(&scope), &stmt.node))
         .collect();
 
-    let mut statements: Vec<yul::Statement> = statements_result?.into_iter().filter_map(|s| s).collect();
+    let mut statements: Vec<yul::Statement> =
+        statements_result?.into_iter().filter_map(|s| s).collect();
 
     Ok(statements.pop())
 }
@@ -142,15 +143,18 @@ fn contract_def<'a>(
             &new_scope.borrow().functions,
         )?));
 
-        let def = yul::ContractDefinition {
+        let def = yul::Object {
             name: yul::Identifier {
-                identifier: String::from(name.node),
+                identifier: String::from("object"),
                 yultype: None,
             },
-            block: yul::Block { statements },
+            code: yul::Code {
+                block: yul::Block { statements },
+            },
+            objects: Vec::new(),
         };
 
-        return Ok(Some(yul::Statement::ContractDefinition(def)));
+        return Ok(Some(yul::Statement::Object(def)));
     }
 
     Err(CompileError::static_str(
