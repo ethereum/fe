@@ -12,7 +12,7 @@ pub fn compile(src: &str) -> Result<String, CompileError> {
     let raw_output = solc::compile(&input);
     let output: serde_json::Value = serde_json::from_str(&raw_output)?;
 
-    let bytecode = output["contracts"]["input.yul"]["object"]["evm"]["bytecode"]["object"]
+    let bytecode = output["contracts"]["input.yul"]["Contract"]["evm"]["bytecode"]["object"]
         .to_string()
         .replace("\"", "");
     if bytecode == "null" {

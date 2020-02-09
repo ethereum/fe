@@ -1,5 +1,6 @@
 use crate::abi;
 use crate::errors::CompileError;
+use crate::yul::base;
 use vyper_parser::ast as vyp;
 use yultsur::yul;
 
@@ -23,19 +24,10 @@ fn expression() -> yul::Expression {
         },
         arguments: vec![
             yul::Expression::FunctionCall(yul::FunctionCall {
-                identifier: yul::Identifier {
-                    identifier: String::from("calldataload"),
-                    yultype: None,
-                },
-                arguments: vec![yul::Expression::Literal(yul::Literal {
-                    literal: String::from("0"),
-                    yultype: None,
-                })],
+                identifier: base::untyped_identifier("calldataload"),
+                arguments: vec![base::untyped_literal_expr("0")],
             }),
-            yul::Expression::Literal(yul::Literal {
-                literal: String::from("224"),
-                yultype: None,
-            }),
+            base::untyped_literal_expr("224"),
         ],
     })
 }

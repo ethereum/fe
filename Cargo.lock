@@ -1117,4 +1117,4 @@ checksum = "e66366e18dc58b46801afbf2ca7661a9f59cc8c5962c29892b6039b4f86fa992"
 [[package]]
 name = "yultsur"
 version = "0.1.0"
-source = "git+https://github.com/g-r-a-n-t/yultsur#628eb19092a453ee03059ce7ddf71c44ff068660"
+source = "git+https://github.com/g-r-a-n-t/yultsur#db1336ac92b85ae6d07af63918e0bfb1afb71f4a"
