@@ -7,7 +7,7 @@ pub fn untyped_identifier_expr(i: &str) -> yul::Expression {
 pub fn untyped_identifier(i: &str) -> yul::Identifier {
     yul::Identifier {
         identifier: String::from(i),
-        yultype: None
+        yultype: None,
     }
 }
 
@@ -18,6 +18,6 @@ pub fn untyped_literal_expr(l: &str) -> yul::Expression {
 pub fn untyped_literal(l: &str) -> yul::Literal {
     yul::Literal {
         literal: String::from(l),
-        yultype: None
+        yultype: None,
     }
 }

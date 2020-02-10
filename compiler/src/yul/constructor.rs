@@ -9,8 +9,8 @@ pub fn code() -> yul::Code {
                     identifiers: vec![base::untyped_identifier("size")],
                     expression: Some(yul::Expression::FunctionCall(yul::FunctionCall {
                         identifier: base::untyped_identifier("datasize"),
-                        arguments: vec![base::untyped_identifier_expr("\"runtime\"")]
-                    }))
+                        arguments: vec![base::untyped_identifier_expr("\"runtime\"")],
+                    })),
                 }),
                 yul::Statement::Expression(yul::Expression::FunctionCall(yul::FunctionCall {
                     identifier: base::untyped_identifier("datacopy"),
@@ -18,20 +18,20 @@ pub fn code() -> yul::Code {
                         base::untyped_literal_expr("0"),
                         yul::Expression::FunctionCall(yul::FunctionCall {
                             identifier: base::untyped_identifier("dataoffset"),
-                            arguments: vec![base::untyped_literal_expr("\"runtime\"")]
+                            arguments: vec![base::untyped_literal_expr("\"runtime\"")],
                         }),
-                        base::untyped_identifier_expr("size")
-                    ]
+                        base::untyped_identifier_expr("size"),
+                    ],
                 })),
                 yul::Statement::Expression(yul::Expression::FunctionCall(yul::FunctionCall {
                     identifier: base::untyped_identifier("return"),
                     arguments: vec![
                         base::untyped_literal_expr("0"),
-                        base::untyped_identifier_expr("size")
-                    ]
-                }))
-            ]
-        }
+                        base::untyped_identifier_expr("size"),
+                    ],
+                })),
+            ],
+        },
     }
 }
 

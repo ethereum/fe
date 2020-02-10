@@ -33,17 +33,52 @@ fn expression() -> yul::Expression {
 }
 
 fn case<'a>(stmt: &'a vyp::ContractStmt<'a>) -> Result<yul::Case, CompileError> {
-    let selector = abi::func_select(stmt)?;
+    if let vyp::ContractStmt::FuncDef {
+        qual,
+        name,
+        args,
+        return_type,
+        body,
+    } = stmt
+    {
+        let selector = abi::func_select(stmt)?;
 
-    Ok(yul::Case {
-        literal: Some(yul::Literal {
-            literal: format!("0x{}", hex::encode(selector)),
-            yultype: None, // TODO: Uncomment once solc supports types: Some(yul::Type::Uint32),
-        }),
-        block: yul::Block {
-            statements: Vec::new(),
-        },
-    })
+        return Ok(yul::Case {
+            literal: Some(yul::Literal {
+                literal: format!("0x{}", hex::encode(selector)),
+                yultype: None, // TODO: Uncomment once solc supports types: Some(yul::Type::Uint32),
+            }),
+            block: yul::Block {
+                statements: vec![
+                    yul::Statement::Expression(yul::Expression::FunctionCall(yul::FunctionCall {
+                        identifier: base::untyped_identifier("mstore"),
+                        arguments: vec![
+                            base::untyped_literal_expr("0"),
+                            yul::Expression::FunctionCall(yul::FunctionCall {
+                                identifier: base::untyped_identifier(name.node),
+                                arguments: (4..4 + args.len())
+                                    .map(|n| {
+                                        base::untyped_literal_expr(
+                                            format!("calldataload({})", n).as_ref(),
+                                        )
+                                    })
+                                    .collect(),
+                            }),
+                        ],
+                    })),
+                    yul::Statement::Expression(yul::Expression::FunctionCall(yul::FunctionCall {
+                        identifier: base::untyped_identifier("return"),
+                        arguments: vec![
+                            base::untyped_literal_expr("0"),
+                            base::untyped_literal_expr("1"),
+                        ],
+                    })),
+                ],
+            },
+        });
+    }
+
+    return Err(CompileError::static_str("Requires FuncDef"));
 }
 
 #[test]

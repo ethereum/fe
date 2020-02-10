@@ -1,7 +1,7 @@
-mod maps;
-mod selectors;
 mod base;
 mod constructor;
+mod maps;
+mod selectors;
 
 use crate::abi;
 use crate::errors::CompileError;
@@ -148,15 +148,13 @@ fn contract_def<'a>(
         let def = yul::Object {
             name: base::untyped_identifier("Contract"),
             code: constructor::code(),
-            objects: vec![
-                yul::Object {
-                    name: base::untyped_identifier("runtime"),
-                    code: yul::Code {
-                        block: yul::Block{ statements }
-                    },
-                    objects: vec![]
-                }
-            ],
+            objects: vec![yul::Object {
+                name: base::untyped_identifier("runtime"),
+                code: yul::Code {
+                    block: yul::Block { statements },
+                },
+                objects: vec![],
+            }],
         };
 
         return Ok(Some(yul::Statement::Object(def)));
