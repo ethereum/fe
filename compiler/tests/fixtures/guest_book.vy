@@ -13,5 +13,3 @@ contract GuestBook:
 
     pub def get_msg(addr: address) -> BookMsg:
         return self.guest_book[addr]
----
-{}

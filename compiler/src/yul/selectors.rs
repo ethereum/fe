@@ -23,11 +23,11 @@ fn expression() -> yul::Expression {
             yultype: None,
         },
         arguments: vec![
+            base::untyped_literal_expr("224"),
             yul::Expression::FunctionCall(yul::FunctionCall {
                 identifier: base::untyped_identifier("calldataload"),
                 arguments: vec![base::untyped_literal_expr("0")],
             }),
-            base::untyped_literal_expr("224"),
         ],
     })
 }
@@ -56,10 +56,10 @@ fn case<'a>(stmt: &'a vyp::ContractStmt<'a>) -> Result<yul::Case, CompileError> 
                             base::untyped_literal_expr("0"),
                             yul::Expression::FunctionCall(yul::FunctionCall {
                                 identifier: base::untyped_identifier(name.node),
-                                arguments: (4..4 + args.len())
+                                arguments: (1..1 + args.len())
                                     .map(|n| {
                                         base::untyped_literal_expr(
-                                            format!("calldataload({})", n).as_ref(),
+                                            format!("calldataload({})", n * 32).as_ref(),
                                         )
                                     })
                                     .collect(),
@@ -70,7 +70,7 @@ fn case<'a>(stmt: &'a vyp::ContractStmt<'a>) -> Result<yul::Case, CompileError> 
                         identifier: base::untyped_identifier("return"),
                         arguments: vec![
                             base::untyped_literal_expr("0"),
-                            base::untyped_literal_expr("1"),
+                            base::untyped_literal_expr("32"),
                         ],
                     })),
                 ],
@@ -85,7 +85,7 @@ fn case<'a>(stmt: &'a vyp::ContractStmt<'a>) -> Result<yul::Case, CompileError> 
 fn test_expression() {
     assert_eq!(
         expression().to_string(),
-        "shr(calldataload(0), 224)",
+        "shr(224, calldataload(0))",
         "Switch expression not correct."
     )
 }
