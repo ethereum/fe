@@ -1,11 +1,14 @@
 use std::fs;
-use vyper_compiler::evm as compiler;
+use vyper_compiler as compiler;
 use vyper_parser::parsers;
 
-fn compile_fixture(name: &str) -> String {
+fn compile_fixture(name: &str) -> (String, String) {
     let src = fs::read_to_string(format!("tests/fixtures/{}", name))
         .expect("Unable to read fixture file.");
-    compiler::compile(&src).expect("Unable to compile fixture.")
+    (
+        compiler::evm::compile(&src).expect("Unable to compile fixture to bytecode."),
+        compiler::abi::compile(&src).expect("Unable to compile fixture to ABI."),
+    )
 }
 
 #[cfg(test)]
@@ -16,6 +19,7 @@ mod tests {
     use evm_runtime::{CreateScheme, Handler};
     use primitive_types::{H160, U256};
     use std::collections::BTreeMap;
+    use stringreader::StringReader;
 
     fn vicinity() -> evm::backend::MemoryVicinity {
         let zero = U256::from_dec_str("0").unwrap();
@@ -63,12 +67,11 @@ mod tests {
         let amount = U256::from_dec_str("1000").unwrap();
         let zero = U256::from_dec_str("0").unwrap();
 
-        let bytecode =
-            hex::decode(compile_fixture("simple_contract.vy")).expect("Unable to decode bytecode");
+        let (bytecode, abi) = compile_fixture("simple_contract.vy");
 
         executor.deposit(addr, amount);
         if let evm::Capture::Exit(exit) =
-            executor.create(addr, CreateScheme::Dynamic, zero, bytecode, None)
+            executor.create(addr, CreateScheme::Dynamic, zero, hex::decode(bytecode).unwrap(), None)
         {
             let code_address = exit.1.expect("No contract address.");
             let context = evm::Context {
@@ -76,14 +79,16 @@ mod tests {
                 caller: addr,
                 apparent_value: zero,
             };
-            let selector = "0b1fde7800000000000000000000000000000000000000000000000000000000";
-            let argument = "ff00000000000000000000000000000000000000000000000000000000000000";
-            let input = hex::decode(format!("{}{}", selector, argument)).unwrap();
+            let interface = ethabi::Contract::load(StringReader::new(&abi)).expect("Unable to load ABI.");
+            let simple_function = &interface.functions["simple_function"][0];
+            let x = ethabi::Token::Uint(ethabi::Uint::from(primitive_types::U256::from_dec_str("100").unwrap()));
+            let params = [x];
+            let input = simple_function.encode_input(&params).unwrap();
 
             if let evm::Capture::Exit(exit) =
                 executor.call(code_address, None, input, None, false, context)
             {
-                let expected_output = "ff00000000000000000000000000000000000000000000000000000000000000";
+                let expected_output = "0000000000000000000000000000000000000000000000000000000000000064";
                 assert_eq!(exit.0, evm::ExitReason::Succeed(evm::ExitSucceed::Returned));
                 assert_eq!(exit.1, hex::decode(expected_output).unwrap(), "Unexpected output.")
             }

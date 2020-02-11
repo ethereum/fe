@@ -56,10 +56,10 @@ fn case<'a>(stmt: &'a vyp::ContractStmt<'a>) -> Result<yul::Case, CompileError> 
                             base::untyped_literal_expr("0"),
                             yul::Expression::FunctionCall(yul::FunctionCall {
                                 identifier: base::untyped_identifier(name.node),
-                                arguments: (1..1 + args.len())
+                                arguments: (0..args.len())
                                     .map(|n| {
                                         base::untyped_literal_expr(
-                                            format!("calldataload({})", n * 32).as_ref(),
+                                            format!("calldataload({})", n * 32 + 4).as_ref(),
                                         )
                                     })
                                     .collect(),
