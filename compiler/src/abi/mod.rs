@@ -101,11 +101,17 @@ fn func_def<'a>(stmt: &'a vyp::ContractStmt<'a>) -> Result<Function, CompileErro
         body,
     } = stmt
     {
+        let outputs = if let Some(return_type) = return_type {
+            vec![return_value(&return_type.node)]
+        } else {
+            Vec::new()
+        };
+
         return Ok(Function {
             name: String::from(name.node),
             typ: FunctionType::Function, // TODO: Actually map this.
             inputs: args.iter().map(|arg| func_def_arg(&arg.node)).collect(),
-            outputs: Vec::new(),
+            outputs,
         });
     }
 
@@ -117,6 +123,13 @@ fn func_def<'a>(stmt: &'a vyp::ContractStmt<'a>) -> Result<Function, CompileErro
 fn func_def_arg<'a>(arg: &'a vyp::FuncDefArg<'a>) -> Input {
     Input {
         name: String::from(arg.name.node),
+        typ: VariableType::Uint256, // TODO: map this as well
+    }
+}
+
+fn return_value<'a>(typ: &'a vyp::TypeDesc<'a>) -> Output {
+    Output {
+        name: String::from("return_value"),
         typ: VariableType::Uint256, // TODO: map this as well
     }
 }
