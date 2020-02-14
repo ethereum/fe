@@ -11,7 +11,8 @@ categories = ["cryptography::cryptocurrencies", "command-line-utilities", "devel
 readme = "README.md"
 
 [workspace]
-members = [".", "parser"]
+members = [".", "parser", "compiler"]
 
 [dependencies]
 vyper-parser = {path = "parser", version = "0.1.0"}
+vyper-compiler = {path = "compiler", version = "0.1.0"}
