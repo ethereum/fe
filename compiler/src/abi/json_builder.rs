@@ -1,18 +1,18 @@
 use crate::errors::CompileError;
 use serde::Serialize;
 use std::collections::HashMap;
-use vyper_parser as parser;
 use vyper_parser::ast as vyp;
 
 type TypeDefs<'a> = HashMap<&'a str, &'a vyp::TypeDesc<'a>>;
 
+/// TODO: Add support for events.
 #[derive(Serialize)]
 pub struct Contract {
-    functions: Vec<Function>,
+    pub functions: Vec<Function>,
 }
 
 #[derive(Serialize)]
-struct Function {
+pub struct Function {
     name: String,
     #[serde(rename = "type")]
     typ: FunctionType,
@@ -68,22 +68,8 @@ enum StateMutability {
     Payable,
 }
 
-pub fn compile(src: &str) -> Result<String, CompileError> {
-    let tokens = parser::get_parse_tokens(src).unwrap();
-    let vyp_module = parser::parsers::file_input(&tokens[..]).unwrap().1.node;
-    let contracts = module(&vyp_module)?;
-
-    // TODO: Handle multiple contracts in one source file.
-    if let Some(contract) = contracts.get(0) {
-        return Ok(serde_json::to_string(&contract.functions)?);
-    }
-
-    Err(CompileError::static_str(
-        "No contract statements in source.",
-    ))
-}
-
-fn module<'a>(module: &'a vyp::Module) -> Result<Vec<Contract>, CompileError> {
+/// Takes a Vyper module builds a vector containing its contracts ABIs.
+pub fn module<'a>(module: &'a vyp::Module) -> Result<Vec<Contract>, CompileError> {
     let type_defs: TypeDefs<'a> = module
         .body
         .iter()
