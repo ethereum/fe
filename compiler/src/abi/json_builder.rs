@@ -3,15 +3,16 @@ use serde::Serialize;
 use std::collections::HashMap;
 use vyper_parser::ast as vyp;
 
+/// Used to keep track of custom types defined in a module.
 type TypeDefs<'a> = HashMap<&'a str, &'a vyp::TypeDesc<'a>>;
 
 /// TODO: Add support for events.
-#[derive(Serialize)]
+#[derive(Serialize, Debug, PartialEq)]
 pub struct Contract {
     pub functions: Vec<Function>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug, PartialEq)]
 pub struct Function {
     name: String,
     #[serde(rename = "type")]
@@ -20,15 +21,15 @@ pub struct Function {
     outputs: Vec<Output>,
 }
 
-#[derive(Serialize)]
-struct Input {
+#[derive(Serialize, Debug, PartialEq)]
+pub struct Input {
     name: String,
     #[serde(rename = "type")]
     typ: VariableType,
 }
 
-#[derive(Serialize)]
-struct Output {
+#[derive(Serialize, Debug, PartialEq)]
+pub struct Output {
     name: String,
     #[serde(rename = "type")]
     typ: VariableType,
@@ -36,17 +37,17 @@ struct Output {
 
 #[allow(dead_code)]
 #[serde(rename_all = "lowercase")]
-#[derive(Serialize)]
-enum FunctionType {
+#[derive(Serialize, Debug, PartialEq)]
+pub enum FunctionType {
     Function,
     Constructor,
     Receive,
     Fallback,
 }
 
-#[derive(Serialize)]
 #[serde(rename_all = "lowercase")]
-enum VariableType {
+#[derive(Serialize, Debug, PartialEq)]
+pub enum VariableType {
     Uint256,
 }
 
@@ -60,15 +61,15 @@ impl ToString for VariableType {
 
 #[allow(dead_code)]
 #[serde(rename_all = "lowercase")]
-#[derive(Serialize)]
-enum StateMutability {
+#[derive(Serialize, Debug, PartialEq)]
+pub enum StateMutability {
     Pure,
     View,
     Nonpayable,
     Payable,
 }
 
-/// Takes a Vyper module builds a vector containing its contracts ABIs.
+/// Builds a vector containing contract ABIs.
 pub fn module<'a>(module: &'a vyp::Module) -> Result<Vec<Contract>, CompileError> {
     let type_defs: TypeDefs<'a> = module
         .body
@@ -89,7 +90,8 @@ pub fn module<'a>(module: &'a vyp::Module) -> Result<Vec<Contract>, CompileError
         .collect::<Result<Vec<Contract>, CompileError>>()
 }
 
-fn contract_def<'a>(
+/// Builds a contract ABI.
+pub fn contract_def<'a>(
     type_defs: &'a TypeDefs<'a>,
     stmt: &'a vyp::ModuleStmt<'a>,
 ) -> Result<Contract, CompileError> {
@@ -110,7 +112,8 @@ fn contract_def<'a>(
     ))
 }
 
-fn func_def<'a>(
+/// Builds an ABI function element, returning None if the function is private.
+pub fn func_def<'a>(
     type_defs: &'a TypeDefs<'a>,
     stmt: &'a vyp::ContractStmt<'a>,
 ) -> Result<Option<Function>, CompileError> {
@@ -151,7 +154,8 @@ fn func_def<'a>(
     ))
 }
 
-fn func_def_arg<'a>(
+/// Builds a function input.
+pub fn func_def_arg<'a>(
     type_defs: &'a TypeDefs<'a>,
     arg: &'a vyp::FuncDefArg<'a>,
 ) -> Result<Input, CompileError> {
@@ -161,7 +165,8 @@ fn func_def_arg<'a>(
     })
 }
 
-fn type_desc<'a>(
+/// Maps the type description to an ABI-friendly type and handles custom types.
+pub fn type_desc<'a>(
     type_defs: &'a TypeDefs<'a>,
     typ: &'a vyp::TypeDesc<'a>,
 ) -> Result<VariableType, CompileError> {
@@ -177,26 +182,59 @@ fn type_desc<'a>(
     }
 }
 
-#[test]
-fn test_function_serialize() {
-    let func = Function {
-        name: String::from("foobar"),
-        typ: FunctionType::Function,
-        inputs: vec![Input {
+#[cfg(test)]
+mod tests {
+    use crate::abi::json_builder::{Function, FunctionType, Input, VariableType, Output, type_desc, func_def};
+    use vyper_parser::parsers;
+    use vyper_parser::ast as vyp;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_type_desc_custom() {
+        let toks = vyper_parser::get_parse_tokens("CustomType").unwrap();
+        let vyp_type_desc = parsers::type_desc(&toks[..]).unwrap().1.node;
+        let mut type_defs = HashMap::new();
+        type_defs.insert("CustomType", &vyp::TypeDesc::Base { base: "u256" });
+
+        let variable_type = type_desc(&type_defs, &vyp_type_desc).unwrap();
+        assert_eq!(variable_type, VariableType::Uint256, "Incorrect type");
+    }
+
+    #[test]
+    fn test_func_def() {
+        let toks = vyper_parser::get_parse_tokens("pub def foo(x: u256) -> u256:\n   return x").unwrap();
+        let vyp_func_def = parsers::func_def(&toks[..]).unwrap().1.node;
+
+        let function = func_def(&HashMap::new(), &vyp_func_def).unwrap().unwrap();
+        let expected = Function {
             name: String::from("foo"),
-            typ: VariableType::Uint256,
-        }],
-        outputs: vec![Output {
-            name: String::from("bar"),
-            typ: VariableType::Uint256,
-        }],
-    };
+            typ: FunctionType::Function,
+            inputs: vec![Input { name: String::from("x"), typ: VariableType::Uint256 }],
+            outputs: vec![Output { name: String::from("return_value"), typ: VariableType::Uint256 }]
+        };
+        assert_eq!(function, expected, "Incorrect function");
+    }
 
-    let json = serde_json::to_string(&func).unwrap();
+    #[test]
+    fn test_function_serialize() {
+        let func = Function {
+            name: String::from("foobar"),
+            typ: FunctionType::Function,
+            inputs: vec![Input {
+                name: String::from("foo"),
+                typ: VariableType::Uint256,
+            }],
+            outputs: vec![Output {
+                name: String::from("bar"),
+                typ: VariableType::Uint256,
+            }],
+        };
 
-    assert_eq!(
-        json,
-        r#"{"name":"foobar","type":"function","inputs":[{"name":"foo","type":"uint256"}],"outputs":[{"name":"bar","type":"uint256"}]}"#,
-        "Serialized function not correct."
-    )
+        let json = serde_json::to_string(&func).unwrap();
+        assert_eq!(
+            json,
+            r#"{"name":"foobar","type":"function","inputs":[{"name":"foo","type":"uint256"}],"outputs":[{"name":"bar","type":"uint256"}]}"#,
+            "Serialized function not correct."
+        )
+    }
 }
