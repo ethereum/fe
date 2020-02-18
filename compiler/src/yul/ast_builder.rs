@@ -6,26 +6,28 @@ use std::rc::Rc;
 use vyper_parser::ast as vyp;
 use yultsur::yul;
 
-type Shared<T> = Rc<RefCell<T>>;
+pub type Shared<T> = Rc<RefCell<T>>;
 
 #[allow(dead_code)]
-struct ModuleScope<'a> {
+pub struct ModuleScope<'a> {
     type_defs: HashMap<&'a str, &'a vyp::TypeDesc<'a>>,
 }
 
 #[allow(dead_code)]
-struct ContractScope<'a> {
+pub struct ContractScope<'a> {
     parent: Shared<ModuleScope<'a>>,
 }
 
 #[allow(dead_code)]
-struct FunctionScope<'a> {
+pub struct FunctionScope<'a> {
     parent: Shared<ContractScope<'a>>,
 }
 
 #[allow(dead_code)]
-enum Scope<'a> {
+pub enum Scope<'a> {
     Module(Shared<ModuleScope<'a>>),
+    Contract(Shared<ContractScope<'a>>),
+    Function(Shared<FunctionScope<'a>>),
 }
 
 impl<'a> ModuleScope<'a> {
@@ -48,29 +50,28 @@ impl<'a> FunctionScope<'a> {
     }
 }
 
-pub fn module<'a>(module: &'a vyp::Module<'a>) -> Result<yul::Object, CompileError> {
+/// Builds a vector of Yul contracts from a Vyper module.
+pub fn module<'a>(module: &'a vyp::Module<'a>) -> Result<Vec<yul::Object>, CompileError> {
     let scope = ModuleScope::new();
 
-    let mut statements = module
+    Ok(module
         .body
         .iter()
         .map(|stmt| module_stmt(Rc::clone(&scope), &stmt.node))
         .collect::<Result<Vec<Option<yul::Statement>>, CompileError>>()?
         .into_iter()
-        .filter_map(|statement| statement)
-        .collect::<Vec<yul::Statement>>();
+        .filter_map(|statement| {
+            if let Some(yul::Statement::Object(object)) = statement {
+                return Some(object);
+            }
 
-    // TODO: Handle multiple objects(contracts)
-    if let Some(yul::Statement::Object(object)) = statements.pop() {
-        return Ok(object);
-    }
-
-    Err(CompileError::static_str(
-        "Final statement in Yul module is not an object.",
-    ))
+            None
+        })
+        .collect::<Vec<yul::Object>>())
 }
 
-fn module_stmt<'a>(
+/// Builds a Yul statement from a Vyper module statement.
+pub fn module_stmt<'a>(
     scope: Shared<ModuleScope<'a>>,
     stmt: &'a vyp::ModuleStmt<'a>,
 ) -> Result<Option<yul::Statement>, CompileError> {
@@ -79,17 +80,20 @@ fn module_stmt<'a>(
             type_def(scope, stmt)?;
             Ok(None)
         }
-        vyp::ModuleStmt::ContractDef { .. } => contract_def(scope, stmt).map(|s| Some(s)),
+        vyp::ModuleStmt::ContractDef { .. } => {
+            contract_def(scope, stmt).map(|object| Some(yul::Statement::Object(object)))
+        }
         _ => Err(CompileError::static_str(
             "Unable to translate module statement.",
         )),
     }
 }
 
-fn contract_def<'a>(
+/// Builds a Yul object from a Vyper contract.
+pub fn contract_def<'a>(
     scope: Shared<ModuleScope<'a>>,
     stmt: &'a vyp::ModuleStmt<'a>,
-) -> Result<yul::Statement, CompileError> {
+) -> Result<yul::Object, CompileError> {
     let new_scope = ContractScope::new(scope);
 
     if let vyp::ModuleStmt::ContractDef { name: _, body } = stmt {
@@ -101,7 +105,7 @@ fn contract_def<'a>(
         // TODO: Use functions from actual contract ABI once the builder is merged.
         statements.push(yul::Statement::Switch(selectors::switch(vec![])?));
 
-        let def = yul::Object {
+        return Ok(yul::Object {
             name: base::untyped_identifier("Contract"),
             code: constructor::code(),
             objects: vec![yul::Object {
@@ -111,9 +115,7 @@ fn contract_def<'a>(
                 },
                 objects: vec![],
             }],
-        };
-
-        return Ok(yul::Statement::Object(def));
+        });
     }
 
     Err(CompileError::static_str(
@@ -121,18 +123,22 @@ fn contract_def<'a>(
     ))
 }
 
-fn contract_stmt<'a>(
+/// Builds a Yul statement from a Vyper contract statement.
+pub fn contract_stmt<'a>(
     scope: Shared<ContractScope<'a>>,
     stmt: &'a vyp::ContractStmt<'a>,
 ) -> Result<yul::Statement, CompileError> {
     match stmt {
-        vyp::ContractStmt::FuncDef { .. } => func_def(scope, stmt),
+        vyp::ContractStmt::FuncDef { .. } => {
+            func_def(scope, stmt).map(|definition| yul::Statement::FunctionDefinition(definition))
+        }
         _ => Err(CompileError::static_str(
             "Unable to translate module statement.",
         )),
     }
 }
 
+/// Adds the custom type def to the module scope.
 fn type_def<'a>(
     scope: Shared<ModuleScope<'a>>,
     stmt: &'a vyp::ModuleStmt<'a>,
@@ -147,10 +153,11 @@ fn type_def<'a>(
     ))
 }
 
-fn func_def<'a>(
+/// Builds a Yul function definition from a Vyper function definition.
+pub fn func_def<'a>(
     scope: Shared<ContractScope<'a>>,
     stmt: &'a vyp::ContractStmt<'a>,
-) -> Result<yul::Statement, CompileError> {
+) -> Result<yul::FunctionDefinition, CompileError> {
     if let vyp::ContractStmt::FuncDef {
         qual: _,
         name,
@@ -177,14 +184,12 @@ fn func_def<'a>(
             .map(|stmt| func_stmt(Rc::clone(&new_scope), &stmt.node))
             .collect::<Result<Vec<yul::Statement>, CompileError>>()?;
 
-        return Ok(yul::Statement::FunctionDefinition(
-            yul::FunctionDefinition {
-                name: base::untyped_identifier(name.node),
-                parameters,
-                returns,
-                block: yul::Block { statements },
-            },
-        ));
+        return Ok(yul::FunctionDefinition {
+            name: base::untyped_identifier(name.node),
+            parameters,
+            returns,
+            block: yul::Block { statements },
+        });
     }
 
     Err(CompileError::static_str(
@@ -192,14 +197,16 @@ fn func_def<'a>(
     ))
 }
 
-fn func_def_arg<'a>(
+/// Builds a Yul identifier from a Vyper function argument.
+pub fn func_def_arg<'a>(
     _scope: Shared<FunctionScope<'a>>,
     arg: &'a vyp::FuncDefArg<'a>,
 ) -> Result<yul::Identifier, CompileError> {
     Ok(base::untyped_identifier(arg.name.node))
 }
 
-fn func_stmt<'a>(
+/// Builds a Yul statement from a function statement.
+pub fn func_stmt<'a>(
     scope: Shared<FunctionScope<'a>>,
     stmt: &'a vyp::FuncStmt<'a>,
 ) -> Result<yul::Statement, CompileError> {
@@ -211,6 +218,7 @@ fn func_stmt<'a>(
     }
 }
 
+/// Builds a Yul return statement from a Vyper return statement.
 fn func_return<'a>(
     scope: Shared<FunctionScope<'a>>,
     stmt: &'a vyp::FuncStmt<'a>,
@@ -229,6 +237,7 @@ fn func_return<'a>(
     ))
 }
 
+/// Builds a Yul expression from a Vyper expression.
 fn expr<'a>(
     _scope: Shared<FunctionScope<'a>>,
     expr: &'a vyp::Expr<'a>,

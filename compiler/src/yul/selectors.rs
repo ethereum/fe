@@ -1,7 +1,7 @@
 use crate::errors::CompileError;
 use crate::yul::base;
-use yultsur::yul;
 use tiny_keccak::{Hasher, Keccak};
+use yultsur::yul;
 
 /// Builds a switch statement from the contract ABI.
 /// The switch's expression is the 4 left-most bytes in the calldata and each case is
@@ -42,19 +42,17 @@ pub fn case(function: &ethabi::Function) -> Result<yul::Case, CompileError> {
     let selector = Some(selector_literal(function.signature()));
 
     if function.outputs.is_empty() {
-        return Ok(
-            yul::Case {
-                literal: selector,
-                block: yul::Block {
-                    statements: vec![
-                        yul::Statement::Expression(yul::Expression::FunctionCall(yul::FunctionCall {
-                            identifier: base::untyped_identifier("foo"),
-                            arguments: vec![]
-                        }))
-                    ]
-                }
-            }
-        )
+        return Ok(yul::Case {
+            literal: selector,
+            block: yul::Block {
+                statements: vec![yul::Statement::Expression(yul::Expression::FunctionCall(
+                    yul::FunctionCall {
+                        identifier: base::untyped_identifier("foo"),
+                        arguments: vec![],
+                    },
+                ))],
+            },
+        });
     }
 
     Ok(yul::Case {
@@ -109,7 +107,7 @@ pub fn selector_literal(sig: String) -> yul::Literal {
 
 #[cfg(test)]
 mod tests {
-    use crate::yul::selectors::{expression, selector_literal, case, switch};
+    use crate::yul::selectors::{case, expression, selector_literal, switch};
     use stringreader::StringReader;
 
     #[test]
@@ -167,7 +165,9 @@ mod tests {
         let functions = abi.functions().collect();
 
         assert_eq!(
-            switch(functions).expect("Unable to build selector").to_string(),
+            switch(functions)
+                .expect("Unable to build selector")
+                .to_string(),
             String::from("switch shr(224, calldataload(0)) case 0xc2985578 { foo() } "),
             "Incorrect selector"
         )

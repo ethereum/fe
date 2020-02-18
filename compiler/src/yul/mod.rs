@@ -1,16 +1,19 @@
 use crate::errors::CompileError;
 use vyper_parser as parser;
 
+mod ast_builder;
 mod base;
 mod constructor;
-mod ast_builder;
 mod selectors;
 
+/// Builds Yul code from Vyper source.
 pub fn compile(src: &str) -> Result<String, CompileError> {
     let tokens = parser::get_parse_tokens(src)?;
     let vyp_module = parser::parsers::file_input(&tokens[..])?.1.node;
-    if let Ok(yul_ast) = ast_builder::module(&vyp_module) {
-        return Ok(yul_ast.to_string());
+
+    // TODO: Handle multiple contracts in one Vyper module cleanly.
+    if let Some(first_contract) = ast_builder::module(&vyp_module)?.get(0) {
+        return Ok(first_contract.to_string());
     }
 
     Err(CompileError::static_str("Unable to parse tokens."))

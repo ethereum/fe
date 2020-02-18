@@ -1,7 +1,9 @@
 use crate::yul::base;
 use yultsur::yul;
 
-/// Builds the code block that returns the runtime object.
+/// Builds a code block that returns the runtime object.
+///
+/// TODO: Add real constructor code here.
 pub fn code() -> yul::Code {
     yul::Code {
         block: yul::Block {
