@@ -174,7 +174,7 @@ pub fn func_def<'a>(
             .collect::<Result<Vec<yul::Identifier>, CompileError>>()?;
 
         let returns = if return_type.is_some() {
-            vec![base::untyped_identifier("return_value")]
+            vec![base::untyped_identifier("return_val")]
         } else {
             Vec::new()
         };
@@ -250,21 +250,22 @@ fn expr<'a>(
 
 #[cfg(test)]
 mod tests {
+    use crate::yul::ast_builder::{contract_def, func_def, type_def, ContractScope, ModuleScope};
+    use std::rc::Rc;
+    use vyper_parser::ast::TypeDesc;
+    use vyper_parser::parsers;
 
-    /*
     #[test]
     fn test_compile_type_def() {
-        let toks = vyper_parser::get_parse_tokens("type Num = u256").unwrap();
+        let src = "type Foo = u256";
+        let toks = vyper_parser::get_parse_tokens(src).unwrap();
         let stmt = parsers::type_def(&toks[..]).unwrap().1.node;
+        let scope = ModuleScope::new();
 
-        let mut scope = ModuleScope::new();
-
-        // Expecting the type definition to exist within new_scope.
-        // There is no resulting statement from compiling a TypeDef.
-        type_def(Rc::clone(&scope), &stmt);
+        type_def(Rc::clone(&scope), &stmt).expect("Unable to handle type def");
 
         assert_eq!(
-            scope.borrow().type_defs["Num"],
+            scope.borrow().type_defs["Foo"],
             &TypeDesc::Base { base: "u256" },
             "Compilation of type definition failed."
         );
@@ -272,68 +273,35 @@ mod tests {
 
     #[test]
     fn test_compile_func_def() {
-        let toks =
-            vyper_parser::get_parse_tokens("def double(x: u256) -> u256:\n   return x").unwrap();
+        let src = "def foo(x: u256) -> u256:\n   return x";
+        let toks = vyper_parser::get_parse_tokens(src).unwrap();
         let stmt = parsers::func_def(&toks[..]).unwrap().1.node;
+        let scope = ContractScope::new(ModuleScope::new());
 
-        let mut scope = ContractScope::new(ModuleScope::new());
+        let result = func_def(Rc::clone(&scope), &stmt).expect("Unable to build func def");
 
-        if let Ok(Some(statement)) = func_def(Rc::clone(&scope), &stmt) {
-            assert_eq!(
-                statement.to_string(),
-                "function double(x:u256) -> return_val { return_val := x }",
-                "Compilation of function definition failed."
-            );
-        } else {
-            assert!(false, "Unexpected error.");
-        }
+        assert_eq!(
+            result.to_string(),
+            "function foo(x) -> return_val { return_val := x }",
+            "Compilation of function definition failed."
+        );
     }
 
     #[test]
     fn test_contract_def() {
-        let vyp_code = "contract Foo:\
-                        \n  pub def bar(x: u256) -> u256:\
-                        \n    return x";
-        let toks = vyper_parser::get_parse_tokens(vyp_code).unwrap();
+        let src = "contract Foo:\
+                   \n  pub def bar(x: u256) -> u256:\
+                   \n    return x";
+        let toks = vyper_parser::get_parse_tokens(src).unwrap();
         let stmt = parsers::contract_def(&toks[..]).unwrap().1.node;
+        let scope = ModuleScope::new();
 
-        let mut scope = ModuleScope::new().into_shared();
+        let result = contract_def(scope, &stmt).expect("Unable to handle contract def");
 
-        if let Ok(Some(statement)) = contract_def(scope, &stmt) {
-            assert_eq!(
-                statement.to_string(),
-                "object \"Foo\" { function bar(x:u256) -> return_val { return_val := x } }",
-                "Compilation of contract definition failed."
-            );
-        } else {
-            assert!(false, "Unexpected error.");
-        }
+        assert_eq!(
+            result.to_string(),
+            r#"object "Contract" { code { let size := datasize("runtime") datacopy(0, dataoffset("runtime"), size) return(0, size) } object "runtime" { code { function bar(x) -> return_val { return_val := x } switch shr(224, calldataload(0))  }  } }"#,
+            "Compilation of contract definition failed."
+        );
     }
-
-    #[test]
-    fn test_custom_type_in_function() {
-        let vyp_code = "pub def bar(x: CustomType) -> CustomType:\
-                        \n  return x";
-        let toks = vyper_parser::get_parse_tokens(vyp_code).unwrap();
-        let stmt = parsers::func_def(&toks[..]).unwrap().1.node;
-
-        let mut module_scope = ModuleScope::new().into_shared();
-        let u256 = TypeDesc::Base { base: "u256" };
-        module_scope
-            .borrow_mut()
-            .type_defs
-            .insert("CustomType", &u256);
-        let scope = ContractScope::new(module_scope).into_shared();
-
-        if let Ok(Some(statement)) = func_def(scope, &stmt) {
-            assert_eq!(
-                statement.to_string(),
-                "function bar(x:u256) -> return_val { return_val := x }",
-                "Compilation of module definition failed."
-            );
-        } else {
-            assert!(false, "Unexpected error.");
-        }
-    }
-    */
 }
