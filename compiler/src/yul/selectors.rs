@@ -39,8 +39,26 @@ pub fn expression() -> yul::Expression {
 /// Currently, this assumes each input and the single output is 256 bits.
 /// TODO: Handle types of different sizes: https://solidity.readthedocs.io/en/v0.6.2/abi-spec.html#types
 pub fn case(function: &ethabi::Function) -> Result<yul::Case, CompileError> {
+    let selector = Some(selector_literal(function.signature()));
+
+    if function.outputs.is_empty() {
+        return Ok(
+            yul::Case {
+                literal: selector,
+                block: yul::Block {
+                    statements: vec![
+                        yul::Statement::Expression(yul::Expression::FunctionCall(yul::FunctionCall {
+                            identifier: base::untyped_identifier("foo"),
+                            arguments: vec![]
+                        }))
+                    ]
+                }
+            }
+        )
+    }
+
     Ok(yul::Case {
-        literal: Some(selector_literal(function.signature())),
+        literal: selector,
         block: yul::Block {
             statements: vec![
                 yul::Statement::Expression(yul::Expression::FunctionCall(yul::FunctionCall {
@@ -131,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_case() {
-        let json_abi = r#"[{"name": "foo", "type": "function", "inputs": [{ "name": "bar", "type": "uint256" }], "outputs": []}]"#;
+        let json_abi = r#"[{"name": "foo", "type": "function", "inputs": [{ "name": "bar", "type": "uint256" }], "outputs": [{ "name": "baz", "type": "uint256" }]}]"#;
         let abi = ethabi::Contract::load(StringReader::new(json_abi)).expect("Unable to load abi.");
         let ref foo = abi.functions["foo"][0];
 
@@ -150,7 +168,7 @@ mod tests {
 
         assert_eq!(
             switch(functions).expect("Unable to build selector").to_string(),
-            String::from("switch shr(224, calldataload(0)) case 0xc2985578 { mstore(0, foo()) return(0, 32) } "),
+            String::from("switch shr(224, calldataload(0)) case 0xc2985578 { foo() } "),
             "Incorrect selector"
         )
     }
