@@ -422,6 +422,11 @@ version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "stringreader"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "syn"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -442,6 +447,14 @@ dependencies = [
 [[package]]
 name = "tiny-keccak"
 version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "crunchy 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "tiny-keccak"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "crunchy 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -492,6 +505,8 @@ version = "0.1.0"
 dependencies = [
  "ethabi 11.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "stringreader 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tiny-keccak 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "vyper-parser 0.1.0",
  "yultsur 0.1.0 (git+https://github.com/g-r-a-n-t/yultsur)",
 ]
@@ -695,9 +710,11 @@ source = "git+https://github.com/g-r-a-n-t/yultsur#db1336ac92b85ae6d07af63918e0b
 "checksum serde_json 1.0.44 (registry+https://github.com/rust-lang/crates.io-index)" = "48c575e0cc52bdd09b47f330f646cf59afc586e9c4e3ccd6fc1f625b8ea1dad7"
 "checksum sourcefile 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "4bf77cb82ba8453b42b6ae1d692e4cdc92f9a47beaf89a847c8be83f4e328ad3"
 "checksum static_assertions 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+"checksum stringreader 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "913e7b03d63752f6cdd2df77da36749d82669904798fe8944b9ec3d23f159905"
 "checksum syn 1.0.12 (registry+https://github.com/rust-lang/crates.io-index)" = "ddc157159e2a7df58cd67b1cace10b8ed256a404fb0070593f137d8ba6bef4de"
 "checksum thread_local 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)" = "c6b53e329000edc2b34dbe8545fd20e55a333362d0a321909685a19bd28c3f1b"
 "checksum tiny-keccak 1.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "1d8a021c69bb74a44ccedb824a046447e2c84a01df9e5c20779750acb38e11b2"
+"checksum tiny-keccak 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "2953ca5148619bc99695c1274cb54c5275bbb913c6adad87e72eaf8db9787f69"
 "checksum uint 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e75a4cdd7b87b28840dba13c483b9a88ee6bbf16ba5c951ee1ecfcf723078e0d"
 "checksum unicode-segmentation 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e83e153d1053cbb5a118eeff7fd5be06ed99153f00dbcd8ae310c5fb2b22edc0"
 "checksum unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fc72304796d0818e357ead4e000d19c9c174ab23dc11093ac919054d20a6a7fc"

@@ -99,7 +99,7 @@ fn contract_def<'a>(
             .collect::<Result<Vec<yul::Statement>, CompileError>>()?;
 
         // TODO: Use functions from actual contract ABI once the builder is merged.
-        statements.push(yul::Statement::Switch(selectors::switch(&vec![])?));
+        statements.push(yul::Statement::Switch(selectors::switch(vec![])?));
 
         let def = yul::Object {
             name: base::untyped_identifier("Contract"),
