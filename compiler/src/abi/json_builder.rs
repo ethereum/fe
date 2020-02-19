@@ -184,10 +184,12 @@ pub fn type_desc<'a>(
 
 #[cfg(test)]
 mod tests {
-    use crate::abi::json_builder::{Function, FunctionType, Input, VariableType, Output, type_desc, func_def};
-    use vyper_parser::parsers;
-    use vyper_parser::ast as vyp;
+    use crate::abi::json_builder::{
+        func_def, type_desc, Function, FunctionType, Input, Output, VariableType,
+    };
     use std::collections::HashMap;
+    use vyper_parser::ast as vyp;
+    use vyper_parser::parsers;
 
     #[test]
     fn test_type_desc_custom() {
@@ -202,15 +204,22 @@ mod tests {
 
     #[test]
     fn test_func_def() {
-        let toks = vyper_parser::get_parse_tokens("pub def foo(x: u256) -> u256:\n   return x").unwrap();
+        let toks =
+            vyper_parser::get_parse_tokens("pub def foo(x: u256) -> u256:\n   return x").unwrap();
         let vyp_func_def = parsers::func_def(&toks[..]).unwrap().1.node;
 
         let function = func_def(&HashMap::new(), &vyp_func_def).unwrap().unwrap();
         let expected = Function {
             name: String::from("foo"),
             typ: FunctionType::Function,
-            inputs: vec![Input { name: String::from("x"), typ: VariableType::Uint256 }],
-            outputs: vec![Output { name: String::from("return_value"), typ: VariableType::Uint256 }]
+            inputs: vec![Input {
+                name: String::from("x"),
+                typ: VariableType::Uint256,
+            }],
+            outputs: vec![Output {
+                name: String::from("return_value"),
+                typ: VariableType::Uint256,
+            }],
         };
         assert_eq!(function, expected, "Incorrect function");
     }
