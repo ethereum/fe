@@ -1,7 +1,10 @@
 use crate::errors::CompileError;
 use vyper_parser as parser;
+use vyper_parser::ast as vyp;
 
 mod json_builder;
+
+pub use json_builder::TypeDefs;
 
 /// Builds a JSON ABI from the source file.
 ///
@@ -20,4 +23,9 @@ pub fn build(src: &str) -> Result<String, CompileError> {
     Err(CompileError::static_str(
         "No contract statements in source.",
     ))
+}
+
+pub fn build_contract<'a>(type_defs: &'a TypeDefs<'a>, stmt: &'a vyp::ModuleStmt<'a>) -> Result<String, CompileError>{
+    let contract = json_builder::contract_def(type_defs, stmt)?;
+    Ok(serde_json::to_string(&contract.functions)?)
 }

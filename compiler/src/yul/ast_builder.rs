@@ -1,10 +1,12 @@
 use crate::errors::CompileError;
 use crate::yul::{base, constructor, selectors};
+use crate::abi;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
 use yultsur::yul;
+use stringreader::StringReader;
 
 pub type Shared<T> = Rc<RefCell<T>>;
 
@@ -91,10 +93,10 @@ pub fn module_stmt<'a>(
 
 /// Builds a Yul object from a Vyper contract.
 pub fn contract_def<'a>(
-    scope: Shared<ModuleScope<'a>>,
+    module_scope: Shared<ModuleScope<'a>>,
     stmt: &'a vyp::ModuleStmt<'a>,
 ) -> Result<yul::Object, CompileError> {
-    let new_scope = ContractScope::new(scope);
+    let new_scope = ContractScope::new(Rc::clone(&module_scope));
 
     if let vyp::ModuleStmt::ContractDef { name: _, body } = stmt {
         let mut statements = body
@@ -102,8 +104,10 @@ pub fn contract_def<'a>(
             .map(|stmt| contract_stmt(Rc::clone(&new_scope), &stmt.node))
             .collect::<Result<Vec<yul::Statement>, CompileError>>()?;
 
-        // TODO: Use functions from actual contract ABI once the builder is merged.
-        statements.push(yul::Statement::Switch(selectors::switch(vec![])?));
+        let json_abi = abi::build_contract(&module_scope.borrow().type_defs, stmt)?;
+        let abi = ethabi::Contract::load(StringReader::new(&json_abi))?;
+        let functions = abi.functions().collect();
+        statements.push(yul::Statement::Switch(selectors::switch(functions)?));
 
         return Ok(yul::Object {
             name: base::untyped_identifier("Contract"),
@@ -300,7 +304,7 @@ mod tests {
 
         assert_eq!(
             result.to_string(),
-            r#"object "Contract" { code { let size := datasize("runtime") datacopy(0, dataoffset("runtime"), size) return(0, size) } object "runtime" { code { function bar(x) -> return_val { return_val := x } switch shr(224, calldataload(0))  }  } }"#,
+            r#"object "Contract" { code { let size := datasize("runtime") datacopy(0, dataoffset("runtime"), size) return(0, size) } object "runtime" { code { function bar(x) -> return_val { return_val := x } switch shr(224, calldataload(0)) case 0x0423a132 { mstore(0, bar(calldataload(4))) return(0, 32) }  }  } }"#,
             "Compilation of contract definition failed."
         );
     }

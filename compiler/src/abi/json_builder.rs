@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use vyper_parser::ast as vyp;
 
 /// Used to keep track of custom types defined in a module.
-type TypeDefs<'a> = HashMap<&'a str, &'a vyp::TypeDesc<'a>>;
+pub type TypeDefs<'a> = HashMap<&'a str, &'a vyp::TypeDesc<'a>>;
 
 /// TODO: Add support for events.
 #[derive(Serialize, Debug, PartialEq)]

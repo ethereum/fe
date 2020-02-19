@@ -47,3 +47,9 @@ impl<'a> From<serde_json::error::Error> for CompileError {
         CompileError::static_str("JSON serialization error")
     }
 }
+
+impl<'a> From<ethabi::Error> for CompileError {
+    fn from(_: ethabi::Error) -> Self {
+        CompileError::static_str("Ethabi error")
+    }
+}

@@ -16,3 +16,8 @@ solc = { git = "https://github.com/g-r-a-n-t/solc-rust" }
 ethabi = "11.0"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
 stringreader = "0.1"
+
+[dev-dependencies]
+evm = "0.14"
+primitive-types = "0.6"
+evm-runtime = "0.14"

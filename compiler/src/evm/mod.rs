@@ -30,7 +30,7 @@ fn test_solc_sanity() {
 
     let raw_output = solc::compile(&input);
     let output: serde_json::Value = serde_json::from_str(&raw_output).unwrap();
-    
+
     let bytecode = output["contracts"]["input.yul"]["object"]["evm"]["bytecode"]["object"]
         .to_string()
         .replace("\"", "");
