@@ -49,7 +49,7 @@ impl<'a> From<serde_json::error::Error> for CompileError {
 }
 
 impl<'a> From<ethabi::Error> for CompileError {
-    fn from(_: ethabi::Error) -> Self {
-        CompileError::static_str("Ethabi error")
+    fn from(e: ethabi::Error) -> Self {
+        CompileError::str(format!("Ethabi error: {}", e))
     }
 }

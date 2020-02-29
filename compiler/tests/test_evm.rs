@@ -30,13 +30,56 @@ fn with_executor(test: &dyn Fn(Executor)) {
     test(executor);
 }
 
-fn compile_fixture(name: &str) -> (String, String) {
+fn compile_fixture(name: &str) -> (String, ethabi::Contract) {
     let src = fs::read_to_string(format!("tests/fixtures/{}", name))
         .expect("Unable to read fixture file.");
+
+    let json_abi = compiler::abi::build(&src).expect("Unable to build ABI");
+    let abi = ethabi::Contract::load(StringReader::new(&json_abi)).expect("Unable to load ABI.");
+
     (
-        compiler::evm::compile(&src).expect("Unable to compile to bytecode."),
-        compiler::abi::build(&src).expect("Unable to build ABI."),
+        compiler::evm::compile(&src).expect("Unable to compile to bytecode"),
+        abi,
     )
+}
+
+fn create_contract(executor: &mut Executor, bytecode: &str) -> primitive_types::H160 {
+    if let evm::Capture::Exit(exit) = executor.create(
+        h160(4),
+        evm_runtime::CreateScheme::Dynamic,
+        u256("0"),
+        hex::decode(bytecode).unwrap(),
+        None,
+    ) {
+        return exit.1.expect("No contract address.");
+    }
+
+    panic!("Failed to create contract")
+}
+
+fn run_function(
+    executor: &mut Executor,
+    contract_address: primitive_types::H160,
+    function: &ethabi::Function,
+    input: &[ethabi::Token],
+) -> Vec<ethabi::Token> {
+    let context = evm::Context {
+        address: h160(4),
+        caller: h160(4),
+        apparent_value: u256("0"),
+    };
+
+    let input = function.encode_input(&input).unwrap();
+
+    if let evm::Capture::Exit(exit) =
+        executor.call(contract_address, None, input, None, false, context)
+    {
+        return function
+            .decode_output(&exit.1)
+            .expect("Unable to decode output.");
+    }
+
+    panic!("Failed to run function")
 }
 
 fn u256(n: &str) -> primitive_types::U256 {
@@ -51,6 +94,10 @@ fn u256_abi_token(n: &str) -> ethabi::Token {
     ethabi::Token::Uint(ethabi::Uint::from(u256(n)))
 }
 
+fn u256_array_abi_token(a: Vec<&str>) -> ethabi::Token {
+    ethabi::Token::FixedArray(a.iter().map(|n| u256_abi_token(n)).collect())
+}
+
 #[test]
 fn test_evm_sanity() {
     with_executor(&|mut executor| {
@@ -62,46 +109,43 @@ fn test_evm_sanity() {
     })
 }
 
+/*
 #[test]
 fn test_simple_contract() {
     with_executor(&|mut executor| {
-        let caller_address = h160(4);
         let (bytecode, abi) = compile_fixture("simple_contract.vy");
+        let contract_address = create_contract(&mut executor, &bytecode);
 
-        if let evm::Capture::Exit(exit) = executor.create(
-            caller_address,
-            evm_runtime::CreateScheme::Dynamic,
-            u256("0"),
-            hex::decode(bytecode).unwrap(),
-            None,
-        ) {
-            let code_address = exit.1.expect("No contract address.");
-            let context = evm::Context {
-                address: caller_address,
-                caller: caller_address,
-                apparent_value: u256("0"),
-            };
-            let contract_abi =
-                ethabi::Contract::load(StringReader::new(&abi)).expect("Unable to load ABI.");
-            let bar = &contract_abi.functions["bar"][0];
+        let bar = &abi.functions["bar"][0];
+        let output = run_function(
+            &mut executor,
+            contract_address,
+            bar,
+            &[u256_abi_token("42")],
+        );
 
-            let params = [u256_abi_token("100")];
-            let input = bar.encode_input(&params).unwrap();
+        assert_eq!(output[0], u256_abi_token("42"))
+    })
+}
+*/
 
-            if let evm::Capture::Exit(exit) =
-                executor.call(code_address, None, input, None, false, context)
-            {
-                let output = bar
-                    .decode_output(&exit.1)
-                    .expect("Unable to decode output.");
-                assert_eq!(
-                    output[0],
-                    u256_abi_token("100"),
-                    "bar output does not match."
-                )
-            }
-        } else {
-            panic!("Failed to create contract.")
-        }
+#[test]
+fn test_return_list() {
+    with_executor(&|mut executor| {
+        let (bytecode, abi) = compile_fixture("return_list.vy");
+        let contract_address = create_contract(&mut executor, &bytecode);
+
+        let bar = &abi.functions["bar"][0];
+        let output = run_function(
+            &mut executor,
+            contract_address,
+            bar,
+            &[u256_abi_token("42")],
+        );
+
+        assert_eq!(
+            output[0],
+            u256_array_abi_token(vec!["0", "0", "0", "42", "0"])
+        )
     })
 }

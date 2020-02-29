@@ -1,4 +1,7 @@
 use crate::errors::CompileError;
+use core::fmt;
+use serde::export::fmt::Error;
+use serde::export::Formatter;
 use serde::Serialize;
 use std::collections::HashMap;
 use vyper_parser::ast as vyp;
@@ -45,17 +48,27 @@ pub enum FunctionType {
     Fallback,
 }
 
-#[serde(rename_all = "lowercase")]
-#[derive(Serialize, Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum VariableType {
     Uint256,
+    FixedArray(Box<VariableType>, usize),
 }
 
-impl ToString for VariableType {
-    fn to_string(&self) -> String {
+impl fmt::Display for VariableType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         match self {
-            VariableType::Uint256 => String::from("uint256"),
+            VariableType::Uint256 => write!(f, "uint256"),
+            VariableType::FixedArray(inner, dim) => write!(f, "{}[{}]", inner, dim),
         }
+    }
+}
+
+impl serde::Serialize for VariableType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
     }
 }
 
@@ -131,11 +144,11 @@ pub fn func_def<'a>(
 
         let outputs = if let Some(return_type) = return_type {
             vec![Output {
-                name: String::from("return_value"),
+                name: "".to_string(),
                 typ: type_desc(type_defs, &return_type.node)?,
             }]
         } else {
-            Vec::new()
+            vec![]
         };
 
         return Ok(Some(Function {
@@ -178,6 +191,10 @@ pub fn type_desc<'a>(
 
     match typ {
         vyp::TypeDesc::Base { base: "u256" } => Ok(VariableType::Uint256),
+        vyp::TypeDesc::Array { typ, dimension } => {
+            let inner = type_desc(type_defs, &typ.node)?;
+            Ok(VariableType::FixedArray(Box::new(inner), *dimension))
+        }
         _ => Err(CompileError::static_str("Unrecognized Vyper type.")),
     }
 }
@@ -199,29 +216,43 @@ mod tests {
         type_defs.insert("CustomType", &vyp::TypeDesc::Base { base: "u256" });
 
         let variable_type = type_desc(&type_defs, &vyp_type_desc).unwrap();
-        assert_eq!(variable_type, VariableType::Uint256, "Incorrect type");
+        assert_eq!(variable_type, VariableType::Uint256);
+    }
+
+    #[test]
+    fn test_type_desc_array() {
+        let toks = vyper_parser::get_parse_tokens("u256[5]").unwrap();
+        let vyp_type_desc = parsers::type_desc(&toks[..]).unwrap().1.node;
+        let type_defs = HashMap::new();
+
+        let variable_type = type_desc(&type_defs, &vyp_type_desc).unwrap();
+        assert_eq!(
+            variable_type.clone(),
+            VariableType::FixedArray(Box::new(VariableType::Uint256), 5)
+        );
+        assert_eq!(variable_type.to_string(), "uint256[5]");
     }
 
     #[test]
     fn test_func_def() {
-        let toks =
-            vyper_parser::get_parse_tokens("pub def foo(x: u256) -> u256:\n   return x").unwrap();
+        let toks = vyper_parser::get_parse_tokens("pub def foo(x: u256) -> u256[10]:\n   return x")
+            .unwrap();
         let vyp_func_def = parsers::func_def(&toks[..]).unwrap().1.node;
 
         let function = func_def(&HashMap::new(), &vyp_func_def).unwrap().unwrap();
         let expected = Function {
-            name: String::from("foo"),
+            name: "foo".to_string(),
             typ: FunctionType::Function,
             inputs: vec![Input {
-                name: String::from("x"),
+                name: "x".to_string(),
                 typ: VariableType::Uint256,
             }],
             outputs: vec![Output {
-                name: String::from("return_value"),
-                typ: VariableType::Uint256,
+                name: "".to_string(),
+                typ: VariableType::FixedArray(Box::new(VariableType::Uint256), 10),
             }],
         };
-        assert_eq!(function, expected, "Incorrect function");
+        assert_eq!(function, expected);
     }
 
     #[test]
@@ -234,16 +265,15 @@ mod tests {
                 typ: VariableType::Uint256,
             }],
             outputs: vec![Output {
-                name: String::from("bar"),
-                typ: VariableType::Uint256,
+                name: String::from(""),
+                typ: VariableType::FixedArray(Box::new(VariableType::Uint256), 10),
             }],
         };
 
         let json = serde_json::to_string(&func).unwrap();
         assert_eq!(
             json,
-            r#"{"name":"foobar","type":"function","inputs":[{"name":"foo","type":"uint256"}],"outputs":[{"name":"bar","type":"uint256"}]}"#,
-            "Serialized function not correct."
+            r#"{"name":"foobar","type":"function","inputs":[{"name":"foo","type":"uint256"}],"outputs":[{"name":"","type":"uint256[10]"}]}"#,
         )
     }
 }

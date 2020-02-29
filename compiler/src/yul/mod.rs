@@ -4,7 +4,7 @@ use vyper_parser as parser;
 mod ast_builder;
 mod base;
 mod constructor;
-mod selectors;
+mod runtime;
 
 /// Builds Yul code from Vyper source.
 pub fn compile(src: &str) -> Result<String, CompileError> {
