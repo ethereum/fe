@@ -162,9 +162,7 @@ pub fn func_def<'a>(
         }));
     }
 
-    Err(CompileError::static_str(
-        "Function definition translation requires FuncDef parameter.",
-    ))
+    Ok(None)
 }
 
 /// Builds a function input.

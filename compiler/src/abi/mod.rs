@@ -24,11 +24,3 @@ pub fn build(src: &str) -> Result<String, CompileError> {
         "No contract statements in source.",
     ))
 }
-
-pub fn build_contract<'a>(
-    type_defs: &'a TypeDefs<'a>,
-    stmt: &'a vyp::ModuleStmt<'a>,
-) -> Result<String, CompileError> {
-    let contract = json_builder::contract_def(type_defs, stmt)?;
-    Ok(serde_json::to_string(&contract.functions)?)
-}
