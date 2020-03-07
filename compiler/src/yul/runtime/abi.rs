@@ -125,8 +125,8 @@ pub fn parameter_expressions(params: &Vec<types::FixedSize>) -> Vec<yul::Express
 
     for param in params.iter() {
         let start = base::untyped_literal_expr(&ptr.to_string());
+        let end = base::untyped_literal_expr(&param.size().to_string());
         ptr += param.size();
-        let end = base::untyped_literal_expr(&ptr.to_string());
 
         expressions.push(match param {
             types::FixedSize::Base(base) => expression! { callval([start], [end]) },
@@ -137,12 +137,12 @@ pub fn parameter_expressions(params: &Vec<types::FixedSize>) -> Vec<yul::Express
     expressions
 }
 
-/*
 #[cfg(test)]
 mod tests {
-    use crate::yul::runtime::selectors::{case, expression, selector_literal, switch};
-    use stringreader::StringReader;
+    use crate::yul::runtime::abi::selector_literal;
+    use crate::yul::types;
 
+    /*
     #[test]
     fn test_selector_literal_basic() {
         let json_abi = r#"[{"name": "foo", "type": "function", "inputs": [], "outputs": []}]"#;
@@ -155,19 +155,17 @@ mod tests {
             "Incorrect selector"
         )
     }
+    */
 
     #[test]
     fn test_selector_literal() {
-        let json_abi = r#"[{"name": "foo", "type": "function", "inputs": [{ "name": "bar", "type": "uint256" }], "outputs": []}]"#;
-        let abi = ethabi::Contract::load(StringReader::new(json_abi)).expect("Unable to load abi.");
-        let ref foo = abi.functions["foo"][0];
-
         assert_eq!(
-            selector_literal(foo.signature()).to_string(),
-            String::from("0x2fbebd38"),
+            selector_literal("bar".to_string(), &vec![types::FixedSize::Base(types::Base::U256)]).to_string(),
+            String::from("0x0423a132"),
         )
     }
 
+    /*
     #[test]
     fn test_case() {
         let json_abi = r#"[{"name": "foo", "type": "function", "inputs": [{ "name": "bar", "type": "uint256" }], "outputs": [{ "name": "baz", "type": "uint256" }]}]"#;
@@ -193,5 +191,5 @@ mod tests {
             String::from("switch callval(0, 4) case 0xc2985578 { foo() } "),
         )
     }
+    */
 }
-*/

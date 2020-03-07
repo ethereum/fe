@@ -19,6 +19,7 @@ pub fn alloc() -> yul::Statement {
     function_definition! {
         function alloc(size) -> ptr {
             (ptr := mload(0x00))
+            (if (eq(ptr, 0x00)) { (ptr := 0x20) })
             (mstore(0x00, (add(ptr, size))))
         }
     }
@@ -68,7 +69,7 @@ fn test_avail() {
 fn test_alloc() {
     assert_eq!(
         alloc().to_string(),
-        "function alloc(size) -> ptr { ptr := mload(0x00) mstore(0x00, add(ptr, size)) }"
+        "function alloc(size) -> ptr { ptr := mload(0x00) if eq(ptr, 0x00) { ptr := 0x20 } mstore(0x00, add(ptr, size)) }"
     )
 }
 #[test]

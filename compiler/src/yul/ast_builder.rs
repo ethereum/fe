@@ -94,6 +94,7 @@ impl ContractScope {
         params: Vec<types::FixedSize>,
         returns: Option<types::FixedSize>,
     ) {
+        self.interface.push(name.clone());
         self.defs.insert(name, ContractDef::Function { params, returns });
     }
 }
@@ -164,11 +165,11 @@ pub fn contract_def<'a>(
             .filter_map(|stmt| stmt)
             .collect::<Vec<yul::Statement>>();
 
+        statements.append(&mut runtime_functions::all());
         statements.push(runtime_abi::switch(
             &contract_scope.borrow().interface,
             &contract_scope.borrow().defs
         )?);
-        statements.append(&mut runtime_functions::all());
 
         return Ok(yul::Object {
             name: base::untyped_identifier("Contract"),
