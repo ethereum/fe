@@ -113,6 +113,7 @@ fn test_evm_sanity() {
 fn test_all() {
     test_simple_contract();
     test_return_list();
+    test_multi_param();
     //test_guest_book();
     //test_simple_map();
 }
@@ -150,6 +151,26 @@ fn test_return_list() {
         assert_eq!(
             output[0],
             u256_array_abi_token(vec!["0", "0", "0", "42", "0"])
+        )
+    })
+}
+
+fn test_multi_param() {
+    with_executor(&|mut executor| {
+        let (bytecode, abi) = compile_fixture("multi_param.vy");
+        let contract_address = create_contract(&mut executor, &bytecode);
+
+        let bar = &abi.functions["bar"][0];
+        let output = run_function(
+            &mut executor,
+            contract_address,
+            bar,
+            &[u256_abi_token("4"), u256_abi_token("42"), u256_abi_token("420")],
+        );
+
+        assert_eq!(
+            output[0],
+            u256_array_abi_token(vec!["4", "42", "420"])
         )
     })
 }
