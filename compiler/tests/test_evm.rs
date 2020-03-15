@@ -69,7 +69,9 @@ fn run_function(
         apparent_value: u256("0"),
     };
 
-    let input = function.encode_input(&input).unwrap();
+    let input = function
+        .encode_input(&input)
+        .expect("Unable to encode input");
 
     if let evm::Capture::Exit(exit) =
         executor.call(contract_address, None, input, None, false, context)
@@ -94,6 +96,14 @@ fn u256_abi_token(n: &str) -> ethabi::Token {
     ethabi::Token::Uint(ethabi::Uint::from(u256(n)))
 }
 
+fn address_abi_token(n: u8) -> ethabi::Token {
+    ethabi::Token::Address(ethabi::Address::from(h160(n)))
+}
+
+fn bytes_abi_token(s: &str) -> ethabi::Token {
+    ethabi::Token::FixedBytes(ethabi::FixedBytes::from(s))
+}
+
 fn u256_array_abi_token(a: Vec<&str>) -> ethabi::Token {
     ethabi::Token::FixedArray(a.iter().map(|n| u256_abi_token(n)).collect())
 }
@@ -114,8 +124,8 @@ fn test_all() {
     test_simple_contract();
     test_return_list();
     test_multi_param();
-    //test_guest_book();
-    //test_simple_map();
+    test_simple_map();
+    test_store_bytes();
 }
 
 fn test_simple_contract() {
@@ -165,33 +175,14 @@ fn test_multi_param() {
             &mut executor,
             contract_address,
             bar,
-            &[u256_abi_token("4"), u256_abi_token("42"), u256_abi_token("420")],
+            &[
+                u256_abi_token("4"),
+                u256_abi_token("42"),
+                u256_abi_token("420"),
+            ],
         );
 
-        assert_eq!(
-            output[0],
-            u256_array_abi_token(vec!["4", "42", "420"])
-        )
-    })
-}
-
-fn test_guest_book() {
-    with_executor(&|mut executor| {
-        let (bytecode, abi) = compile_fixture("guest_book.vy");
-        let contract_address = create_contract(&mut executor, &bytecode);
-
-        let bar = &abi.functions["bar"][0];
-        let output = run_function(
-            &mut executor,
-            contract_address,
-            bar,
-            &[u256_abi_token("42")],
-        );
-
-        assert_eq!(
-            output[0],
-            u256_array_abi_token(vec!["0", "0", "0", "42", "0"])
-        )
+        assert_eq!(output[0], u256_array_abi_token(vec!["4", "42", "420"]))
     })
 }
 
@@ -200,17 +191,49 @@ fn test_simple_map() {
         let (bytecode, abi) = compile_fixture("simple_map.vy");
         let contract_address = create_contract(&mut executor, &bytecode);
 
-        let bar = &abi.functions["bar"][0];
+        let write_bar = &abi.functions["write_bar"][0];
+        let read_bar = &abi.functions["read_bar"][0];
+
+        run_function(
+            &mut executor,
+            contract_address,
+            write_bar,
+            &[u256_abi_token("42"), u256_abi_token("420")],
+        );
+
         let output = run_function(
             &mut executor,
             contract_address,
-            bar,
+            read_bar,
             &[u256_abi_token("42")],
         );
 
-        assert_eq!(
-            output[0],
-            u256_array_abi_token(vec!["0", "0", "0", "42", "0"])
-        )
+        assert_eq!(output[0], u256_abi_token("420"))
+    })
+}
+
+fn test_store_bytes() {
+    with_executor(&|mut executor| {
+        let (bytecode, abi) = compile_fixture("store_bytes.vy");
+        let contract_address = create_contract(&mut executor, &bytecode);
+
+        let write_bar = &abi.functions["write_bar"][0];
+        let read_bar = &abi.functions["read_bar"][0];
+
+        run_function(
+            &mut executor,
+            contract_address,
+            write_bar,
+            &[address_abi_token(42), bytes_abi_token("ten bytes.")],
+        );
+
+        let output = run_function(
+            &mut executor,
+            contract_address,
+            read_bar,
+            &[address_abi_token(42)],
+        );
+
+        assert_eq!(output[0], bytes_abi_token("ten bytes."))
     })
 }

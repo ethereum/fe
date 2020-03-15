@@ -1,17 +1,17 @@
 use crate::errors::CompileError;
-use crate::yul::{base, types};
-use tiny_keccak::{Hasher, Keccak};
-use yultsur::yul;
-use yultsur::*;
+use crate::yul::namespace::scopes::ContractDef;
+use crate::yul::namespace::types::{Array, Base, FixedSize, Type};
+
 use std::collections::HashMap;
-use crate::yul::ast_builder::ContractDef;
+use tiny_keccak::{Hasher, Keccak};
+use yultsur::*;
 
 /// Builds a switch statement from the contract ABI.
 /// The switch's expression is the 4 left-most bytes in the calldata and each case is
 /// defined as the keccak value of each function's signature (without return data).
 pub fn switch(
     interface: &Vec<String>,
-    defs: &HashMap<String, ContractDef>
+    defs: &HashMap<String, ContractDef>,
 ) -> Result<yul::Statement, CompileError> {
     let cases = interface
         .into_iter()
@@ -27,8 +27,12 @@ pub fn switch(
 pub fn case(name: String, defs: &HashMap<String, ContractDef>) -> Result<yul::Case, CompileError> {
     if let Some(def) = defs.get(&name) {
         return match def {
-            ContractDef::Function { params, returns } => Ok(function_call_case(name, params, returns.to_owned())),
-            _ => Err(CompileError::static_str("Cannot create case from definition"))
+            ContractDef::Function { params, returns } => {
+                Ok(function_call_case(name, params, returns.to_owned()))
+            }
+            _ => Err(CompileError::static_str(
+                "Cannot create case from definition",
+            )),
         };
     }
 
@@ -43,35 +47,35 @@ pub fn case(name: String, defs: &HashMap<String, ContractDef>) -> Result<yul::Ca
 /// TODO: Handle types of different sizes: https://solidity.readthedocs.io/en/v0.6.2/abi-spec.html#types
 pub fn function_call_case(
     name: String,
-    params: &Vec<types::FixedSize>,
-    returns: Option<types::FixedSize>,
+    params: &Vec<FixedSize>,
+    returns: Option<FixedSize>,
 ) -> yul::Case {
     let selector = selector_literal(name.clone(), &params);
-    let name = base::untyped_identifier(&name);
+    let name = identifier! {(name)};
     let params = parameter_expressions(&params);
 
     if let Some(returns) = returns {
-        let return_size = base::untyped_literal_expr(&returns.size().to_string());
+        let return_size = literal_expression! {(returns.size())};
 
         match returns {
-            types::FixedSize::Array(_) => case! {
+            FixedSize::Array(_) => case! {
                 case [selector] {
                     (let return_ptr := [name]([params...]))
                     (return(return_ptr, [return_size]))
                 }
             },
-            types::FixedSize::Base(_) => case! {
+            FixedSize::Base(_) => case! {
                 case [selector] {
                     (let return_val := [name]([params...]))
                     (mstore(0, return_val))
                     (return(0, [return_size]))
                 }
-            }
+            },
         }
     } else {
         case! {
             case [selector] {
-                (let return_ptr := [name]([params...]))
+                ([name]([params...]))
             }
         }
     }
@@ -81,7 +85,7 @@ pub fn function_call_case(
 /// first 4 bytes.
 ///
 /// Example: "foo(uint256):(uint256)" => keccak256("foo(uint256)")
-pub fn selector_literal(name: String, params: &Vec<types::FixedSize>) -> yul::Literal {
+pub fn selector_literal(name: String, params: &Vec<FixedSize>) -> yul::Literal {
     let signature = format!(
         "{}({})",
         name,
@@ -98,45 +102,50 @@ pub fn selector_literal(name: String, params: &Vec<types::FixedSize>) -> yul::Li
     keccak.update(signature.as_bytes());
     keccak.finalize(&mut selector);
 
-    base::untyped_literal(&format!("0x{}", hex::encode(selector)))
+    literal! {(format!("0x{}", hex::encode(selector)))}
 }
 
-pub fn abi_type_base(typ: types::Base) -> String {
+pub fn abi_type_base(typ: Base) -> String {
     match typ {
-        types::Base::U256 => "uint256".to_string(),
-        types::Base::U8 => "uint8".to_string(),
-        types::Base::Address => "address".to_string(),
+        Base::U256 => "uint256".to_string(),
+        Base::Address => "address".to_string(),
+        Base::Byte => "byte".to_string(),
     }
 }
 
-pub fn abi_type(typ: types::FixedSize) -> String {
+pub fn abi_type(typ: FixedSize) -> String {
     match typ {
-        types::FixedSize::Base(base) => abi_type_base(base),
-        types::FixedSize::Array(types::Array { dimension, inner }) => {
+        FixedSize::Base(base) => abi_type_base(base),
+        FixedSize::Array(Array { dimension, inner }) => {
+            if inner == Base::Byte {
+                return format!("bytes{}", dimension);
+            }
+
             format!("{}[{}]", abi_type_base(inner), dimension)
-        },
+        }
     }
 }
 
 /// Creates a Vec of Yul expressions that loads each parameter from calldata.
-pub fn parameter_expressions(params: &Vec<types::FixedSize>) -> Vec<yul::Expression> {
+pub fn parameter_expressions(params: &Vec<FixedSize>) -> Vec<yul::Expression> {
     let mut ptr = 4;
     let mut expressions = vec![];
 
     for param in params.iter() {
-        let start = base::untyped_literal_expr(&ptr.to_string());
-        let end = base::untyped_literal_expr(&param.size().to_string());
+        let start = literal_expression! {(ptr)};
+        let size = literal_expression! {(param.size())};
         ptr += param.size();
 
         expressions.push(match param {
-            types::FixedSize::Base(base) => expression! { callval([start], [end]) },
-            types::FixedSize::Array(array) => expression! { callptr([start], [end]) }
+            FixedSize::Base(base) => expression! { callval([start], [size]) },
+            FixedSize::Array(array) => expression! { calltomem([start], [size]) },
         });
     }
 
     expressions
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use crate::yul::runtime::abi::selector_literal;
@@ -160,7 +169,11 @@ mod tests {
     #[test]
     fn test_selector_literal() {
         assert_eq!(
-            selector_literal("bar".to_string(), &vec![types::FixedSize::Base(types::Base::U256)]).to_string(),
+            selector_literal(
+                "bar".to_string(),
+                &vec![FixedSize::Base(Base::U256)]
+            )
+            .to_string(),
             String::from("0x0423a132"),
         )
     }
@@ -193,3 +206,4 @@ mod tests {
     }
     */
 }
+*/

@@ -51,6 +51,8 @@ pub enum FunctionType {
 #[derive(Debug, PartialEq, Clone)]
 pub enum VariableType {
     Uint256,
+    Address,
+    FixedBytes(usize),
     FixedArray(Box<VariableType>, usize),
 }
 
@@ -58,6 +60,8 @@ impl fmt::Display for VariableType {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         match self {
             VariableType::Uint256 => write!(f, "uint256"),
+            VariableType::Address => write!(f, "address"),
+            VariableType::FixedBytes(size) => write!(f, "bytes{}", size),
             VariableType::FixedArray(inner, dim) => write!(f, "{}[{}]", inner, dim),
         }
     }
@@ -189,11 +193,16 @@ pub fn type_desc<'a>(
 
     match typ {
         vyp::TypeDesc::Base { base: "u256" } => Ok(VariableType::Uint256),
+        vyp::TypeDesc::Base { base: "address" } => Ok(VariableType::Address),
         vyp::TypeDesc::Array { typ, dimension } => {
+            if let vyp::TypeDesc::Base { base: "bytes" } = &typ.node {
+                return Ok(VariableType::FixedBytes(*dimension));
+            }
+
             let inner = type_desc(type_defs, &typ.node)?;
             Ok(VariableType::FixedArray(Box::new(inner), *dimension))
         }
-        _ => Err(CompileError::static_str("Unrecognized Vyper type.")),
+        _ => Err(CompileError::static_str("Unrecognized Vyper type")),
     }
 }
 

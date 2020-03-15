@@ -2,7 +2,20 @@ use yultsur::*;
 
 /// Returns all functions that should be available during runtime.
 pub fn all() -> Vec<yul::Statement> {
-    vec![alloc(), free(), avail(), callval(), callptr()]
+    vec![
+        avail(),
+        alloc(),
+        free(),
+        ccopy(),
+        mcopy(),
+        scopy(),
+        mloadn(),
+        sloadn(),
+        cloadn(),
+        mstoren(),
+        sstoren(),
+        dualkeccak256(),
+    ]
 }
 
 /// Returns the highest available pointer.
@@ -34,48 +47,104 @@ pub fn free() -> yul::Statement {
     }
 }
 
-/// Returns calldata of a given size(bytes) at `pos` as a u256.
-pub fn callval() -> yul::Statement {
+/// Copy calldata to memory a newly allocated segment of memory.
+pub fn ccopy() -> yul::Statement {
     function_definition! {
-        function callval(pos, size) -> return_val {
-            (return_val := (shr(
-                (sub(256, (mul(8, size)))),
-                (calldataload(pos))
-            )))
+        function ccopy(cptr, size) -> mptr {
+            (mptr := alloc(size))
+            (calldatacopy(mptr, cptr, size))
         }
     }
 }
 
-/// Returns a pointer to a newly allocated segment of memory of a given size(bytes) with the
-/// calldata at `pos` copied into it.
-pub fn callptr() -> yul::Statement {
+/// Copy memory to a given segment of storage.
+pub fn mcopy() -> yul::Statement {
     function_definition! {
-        function callptr(pos, size) -> return_ptr {
-            (return_ptr := alloc(size))
-            (calldatacopy(return_ptr, pos, size))
+        function mcopy(mptr, sptr, size) {
+            (for {(let i := 0)} (lt(i, size)) {(i := add(i, 1))}
+            {
+                (let _mptr := add(mptr, i))
+                (let _sptr := add(sptr, i))
+                (sstoren(_sptr, (mloadn(_mptr, 1)), 1))
+            })
         }
     }
 }
 
-#[test]
-fn test_avail() {
-    assert_eq!(
-        avail().to_string(),
-        "function avail() -> ptr { ptr := mload(0x00) }"
-    )
+/// Copy storage to a newly allocated segment of memory.
+pub fn scopy() -> yul::Statement {
+    function_definition! {
+        function scopy(sptr, size) -> mptr {
+            (mptr := alloc(size))
+            (for {(let i := 0)} (lt(i, size)) {(i := add(i, 1))}
+            {
+                (let _mptr := add(mptr, i))
+                (let _sptr := add(sptr, i))
+                (mstoren(_mptr, (sloadn(_sptr, 1)), 1))
+            })
+        }
+    }
 }
 
-#[test]
-fn test_alloc() {
-    assert_eq!(
-        alloc().to_string(),
-        "function alloc(size) -> ptr { ptr := mload(0x00) if eq(ptr, 0x00) { ptr := 0x20 } mstore(0x00, add(ptr, size)) }"
-    )
+/// Read a 256 bit value from memory and right-shift according to size.
+pub fn mloadn() -> yul::Statement {
+    function_definition! {
+        function mloadn(ptr, size) -> val {
+            (val := shr((sub(256, (mul(8, size)))), (mload(ptr))))
+        }
+    }
 }
-#[test]
-fn test_free() {
-    assert_eq!(
-        free().to_string(),
-        "function free(ptr) { mstore(0x00, ptr) }"
-    )
+
+/// Read a 256 bit value from storage and right-shift according to size.
+pub fn sloadn() -> yul::Statement {
+    function_definition! {
+        function sloadn(ptr, size) -> val {
+            (val := shr((sub(256, (mul(8, size)))), (sload(ptr))))
+        }
+    }
+}
+
+/// Read a 256 bit value from calldata and right-shift according to size.
+pub fn cloadn() -> yul::Statement {
+    function_definition! {
+        function cloadn(ptr, size) -> val {
+            (val := (shr((sub(256, (mul(8, size)))), (calldataload(ptr)))))
+        }
+    }
+}
+
+/// Stores a value in memory, only modifying the given size (0 < size <= 32).
+pub fn mstoren() -> yul::Statement {
+    function_definition! {
+        function mstoren(ptr, val, size) {
+            (let size_bits := mul(8, size))
+            (let left := shl((sub(256, size_bits)), val))
+            (let right := shr(size_bits, (mload((add(ptr, size))))))
+            (mstore(ptr, (or(left, right))))
+        }
+    }
+}
+
+/// Stores a value in storage, only modifying the given size (0 < size <= 32).
+pub fn sstoren() -> yul::Statement {
+    function_definition! {
+        function sstoren(ptr, val, size) {
+            (let size_bits := mul(8, size))
+            (let left := shl((sub(256, size_bits)), val))
+            (let right := shr(size_bits, (sload((add(ptr, size))))))
+            (sstore(ptr, (or(left, right))))
+        }
+    }
+}
+
+/// Takes two 256 bit values and returns the keccak256 value of both.
+pub fn dualkeccak256() -> yul::Statement {
+    function_definition! {
+        function dualkeccak256(a, b) -> return_val {
+            (let ptr := avail())
+            (mstore(ptr, a))
+            (mstore((add(ptr, 32)), b))
+            (return_val := keccak256(ptr, 64))
+        }
+    }
 }

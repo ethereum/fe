@@ -1,11 +1,9 @@
 use crate::errors::CompileError;
 use vyper_parser as parser;
 
-mod ast_builder;
-mod base;
-mod constructor;
+mod mappers;
+mod namespace;
 mod runtime;
-mod types;
 
 /// Builds Yul code from Vyper source.
 pub fn compile(src: &str) -> Result<String, CompileError> {
@@ -13,7 +11,7 @@ pub fn compile(src: &str) -> Result<String, CompileError> {
     let vyp_module = parser::parsers::file_input(&tokens[..])?.1.node;
 
     // TODO: Handle multiple contracts in one Vyper module cleanly.
-    if let Some(first_contract) = ast_builder::module(&vyp_module)?.get(0) {
+    if let Some(first_contract) = mappers::module::module(&vyp_module)?.get(0) {
         return Ok(first_contract.to_string());
     }
 
