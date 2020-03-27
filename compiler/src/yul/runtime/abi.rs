@@ -1,7 +1,6 @@
 use crate::errors::CompileError;
 use crate::yul::namespace::scopes::ContractDef;
 use crate::yul::namespace::types::{Array, Base, FixedSize, Type};
-
 use std::collections::HashMap;
 use tiny_keccak::{Hasher, Keccak};
 use yultsur::*;
@@ -19,12 +18,12 @@ pub fn switch(
         .collect::<Result<Vec<yul::Case>, CompileError>>()?;
 
     Ok(switch! {
-        switch (callval(0, 4))
+        switch (cloadn(0, 4))
         [cases...]
     })
 }
 
-pub fn case(name: String, defs: &HashMap<String, ContractDef>) -> Result<yul::Case, CompileError> {
+fn case(name: String, defs: &HashMap<String, ContractDef>) -> Result<yul::Case, CompileError> {
     if let Some(def) = defs.get(&name) {
         return match def {
             ContractDef::Function { params, returns } => {
@@ -39,13 +38,7 @@ pub fn case(name: String, defs: &HashMap<String, ContractDef>) -> Result<yul::Ca
     Err(CompileError::static_str("No definition for name"))
 }
 
-/// Builds a switch case from the function. It matches the selector and calls
-/// the function as described in the ABI. The value (if any) returned by the
-/// function is stored in memory and returned by the contract.
-///
-/// Currently, this assumes each input and the single output is 256 bits.
-/// TODO: Handle types of different sizes: https://solidity.readthedocs.io/en/v0.6.2/abi-spec.html#types
-pub fn function_call_case(
+fn function_call_case(
     name: String,
     params: &Vec<FixedSize>,
     returns: Option<FixedSize>,
@@ -55,7 +48,7 @@ pub fn function_call_case(
     let params = parameter_expressions(&params);
 
     if let Some(returns) = returns {
-        let return_size = literal_expression! {(returns.size())};
+        let return_size = literal_expression! {(returns.size() + returns.padding())};
 
         match returns {
             FixedSize::Array(_) => case! {
@@ -81,11 +74,7 @@ pub fn function_call_case(
     }
 }
 
-/// Computes the keccak-256 value of the input portion of the function signature and returns the
-/// first 4 bytes.
-///
-/// Example: "foo(uint256):(uint256)" => keccak256("foo(uint256)")
-pub fn selector_literal(name: String, params: &Vec<FixedSize>) -> yul::Literal {
+fn selector_literal(name: String, params: &Vec<FixedSize>) -> yul::Literal {
     let signature = format!(
         "{}({})",
         name,
@@ -105,7 +94,7 @@ pub fn selector_literal(name: String, params: &Vec<FixedSize>) -> yul::Literal {
     literal! {(format!("0x{}", hex::encode(selector)))}
 }
 
-pub fn abi_type_base(typ: Base) -> String {
+fn abi_type_base(typ: Base) -> String {
     match typ {
         Base::U256 => "uint256".to_string(),
         Base::Address => "address".to_string(),
@@ -113,7 +102,7 @@ pub fn abi_type_base(typ: Base) -> String {
     }
 }
 
-pub fn abi_type(typ: FixedSize) -> String {
+fn abi_type(typ: FixedSize) -> String {
     match typ {
         FixedSize::Base(base) => abi_type_base(base),
         FixedSize::Array(Array { dimension, inner }) => {
@@ -126,19 +115,18 @@ pub fn abi_type(typ: FixedSize) -> String {
     }
 }
 
-/// Creates a Vec of Yul expressions that loads each parameter from calldata.
-pub fn parameter_expressions(params: &Vec<FixedSize>) -> Vec<yul::Expression> {
+fn parameter_expressions(params: &Vec<FixedSize>) -> Vec<yul::Expression> {
     let mut ptr = 4;
     let mut expressions = vec![];
 
     for param in params.iter() {
         let start = literal_expression! {(ptr)};
         let size = literal_expression! {(param.size())};
-        ptr += param.size();
+        ptr += param.size() + param.padding();
 
         expressions.push(match param {
-            FixedSize::Base(base) => expression! { callval([start], [size]) },
-            FixedSize::Array(array) => expression! { calltomem([start], [size]) },
+            FixedSize::Base(base) => expression! { cloadn([start], [size]) },
+            FixedSize::Array(array) => expression! { ccopy([start], [size]) },
         });
     }
 

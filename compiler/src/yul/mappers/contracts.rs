@@ -11,10 +11,10 @@ use vyper_parser::span::Spanned;
 use yultsur::*;
 
 /// Builds a Yul object from a Vyper contract.
-pub fn contract_def<'a>(
+pub fn contract_def(
     module_scope: Shared<ModuleScope>,
     name: String,
-    body: &'a Vec<Spanned<vyp::ContractStmt<'a>>>,
+    body: &Vec<Spanned<vyp::ContractStmt>>,
 ) -> Result<yul::Statement, CompileError> {
     let contract_scope = ContractScope::new(Rc::clone(&module_scope));
 
@@ -33,6 +33,7 @@ pub fn contract_def<'a>(
     )?);
 
     Ok(yul::Statement::Object(yul::Object {
+        // TODO: use actual name
         name: identifier! { Contract },
         code: constructor::code(),
         objects: vec![yul::Object {
@@ -45,10 +46,9 @@ pub fn contract_def<'a>(
     }))
 }
 
-/// Builds a Yul statement from a Vyper contract statement.
-fn contract_stmt<'a>(
+fn contract_stmt(
     scope: Shared<ContractScope>,
-    stmt: &'a vyp::ContractStmt<'a>,
+    stmt: &vyp::ContractStmt,
 ) -> Result<Option<yul::Statement>, CompileError> {
     match stmt {
         vyp::ContractStmt::ContractField { qual, name, typ } => {
@@ -72,12 +72,11 @@ fn contract_stmt<'a>(
     }
 }
 
-/// Creates a new contract variable entry from a Vyper contract field
-fn contract_field<'a>(
+fn contract_field(
     scope: Shared<ContractScope>,
-    qual: &'a Option<Spanned<vyp::ContractFieldQual>>,
+    qual: &Option<Spanned<vyp::ContractFieldQual>>,
     name: String,
-    typ: &'a vyp::TypeDesc<'a>,
+    typ: &vyp::TypeDesc,
 ) -> Result<(), CompileError> {
     match types::type_desc(Scope::Contract(Rc::clone(&scope)), typ)? {
         Type::Map(map) => scope.borrow_mut().add_map(name, map),

@@ -12,6 +12,7 @@ pub fn compile(src: &str) -> Result<String, CompileError> {
 
     // TODO: Handle multiple contracts in one Vyper module cleanly.
     if let Some(first_contract) = mappers::module::module(&vyp_module)?.get(0) {
+//        panic!(first_contract.to_string());
         return Ok(first_contract.to_string());
     }
 

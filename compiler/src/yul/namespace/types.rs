@@ -44,6 +44,13 @@ impl FixedSize {
             FixedSize::Array(array) => array.size(),
         }
     }
+
+    pub fn padding(&self) -> usize {
+        match self {
+            FixedSize::Base(base) => base.padding(),
+            FixedSize::Array(array) => array.padding(),
+        }
+    }
 }
 
 impl Base {
@@ -51,8 +58,12 @@ impl Base {
         match self {
             Base::U256 => 32,
             Base::Byte => 1,
-            Base::Address => 32,
+            Base::Address => 20,
         }
+    }
+
+    pub fn padding(&self) -> usize {
+        32 - self.size()
     }
 
     pub fn mstore(
@@ -90,15 +101,11 @@ impl Base {
 
 impl Array {
     pub fn size(&self) -> usize {
-        if self.inner == Base::Byte {
-            if self.dimension % 32 == 0 {
-                return self.dimension;
-            }
-
-            return 32 - (self.dimension % 32) + self.dimension;
-        }
-
         self.dimension * self.inner.size()
+    }
+
+    pub fn padding(&self) -> usize {
+        (self.dimension * self.inner.padding()) % 32
     }
 
     pub fn mstore_elem(
@@ -230,7 +237,7 @@ pub fn type_desc<'a>(
             }
 
             Err(CompileError::static_str(
-                "No type def for unknown base type",
+                "No type definition",
             ))
         }
         vyp::TypeDesc::Array { typ, dimension } => Ok(Type::Array(Array {

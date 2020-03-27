@@ -2,7 +2,6 @@ use crate::errors::CompileError;
 use crate::yul::mappers::contracts;
 use crate::yul::namespace::scopes::{ModuleDef, ModuleScope, Shared};
 use crate::yul::namespace::types;
-
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
 use yultsur::yul;
@@ -27,8 +26,7 @@ pub fn module<'a>(module: &'a vyp::Module<'a>) -> Result<Vec<yul::Object>, Compi
         .collect::<Vec<yul::Object>>())
 }
 
-/// Builds a Yul statement from a Vyper module statement.
-pub fn module_stmt<'a>(
+fn module_stmt<'a>(
     scope: Shared<ModuleScope>,
     stmt: &'a vyp::ModuleStmt<'a>,
 ) -> Result<Option<yul::Statement>, CompileError> {
@@ -45,8 +43,7 @@ pub fn module_stmt<'a>(
     }
 }
 
-/// Adds the custom type def to the module scope.
-pub fn type_def<'a>(
+fn type_def<'a>(
     scope: Shared<ModuleScope>,
     stmt: &'a vyp::ModuleStmt<'a>,
 ) -> Result<(), CompileError> {

@@ -755,10 +755,11 @@ checksum = "7fdf1b9db47230893d76faad238fd6097fd6d6a9245cd7a4d90dbd639536bbd2"
 [[package]]
 name = "solc"
 version = "0.1.0"
-source = "git+https://github.com/g-r-a-n-t/solc-rust#eb717e51abf460a177306243a99edb5aafdbfea8"
+source = "git+https://github.com/spalladino/solc-rust?branch=feature/solc-0.6.2#26b002047a8c5090fa755aa7c01039655b8ec1bc"
 dependencies = [
  "bindgen",
  "cmake",
+ "lazy_static",
 ]
 
 [[package]]
@@ -912,6 +913,7 @@ dependencies = [
  "evm-runtime",
  "hex",
  "primitive-types",
+ "rand",
  "serde",
  "serde_json",
  "solc",

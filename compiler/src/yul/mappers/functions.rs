@@ -4,7 +4,6 @@ use crate::yul::namespace::scopes::{
     ContractDef, ContractScope, FunctionDef, FunctionScope, Scope, Shared,
 };
 use crate::yul::namespace::types::FixedSize;
-
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
 use vyper_parser::span::Spanned;
