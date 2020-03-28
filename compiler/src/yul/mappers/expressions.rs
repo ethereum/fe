@@ -15,6 +15,7 @@ pub fn expr(
         vyp::Expr::Name(name) => expr_name(scope, name.to_string()),
         vyp::Expr::Num(num) => Ok((literal_expression! {(num)}, FixedSize::Base(Base::U256))),
         vyp::Expr::Subscript { value, slices } => expr_subscript(scope, &value.node, &slices.node),
+        vyp::Expr::Attribute { value, attr } => expr_attribute(scope, &value.node, attr.node.to_string()),
         _ => Err(CompileError::static_str("Expression not supported")),
     }
 }
@@ -122,6 +123,24 @@ fn expr_subscript_self(
         _ => Err(CompileError::static_str(
             "Contract definition not supported",
         )),
+    }
+}
+
+fn expr_attribute(
+    scope: Shared<FunctionScope>,
+    value: &vyp::Expr,
+    name: String,
+) -> Result<(yul::Expression, FixedSize), CompileError> {
+    match expr_name_str(value)? {
+        "msg" => expr_msg(name),
+        _ => Err(CompileError::static_str("Unknown attribute value")),
+    }
+}
+
+fn expr_msg(name: String) -> Result<(yul::Expression, FixedSize), CompileError> {
+    match name.as_str() {
+        "sender" => Ok((expression! { caller() }, FixedSize::Base(Base::Address))),
+        _ => Err(CompileError::static_str("Unknown attribute name")),
     }
 }
 
@@ -249,5 +268,13 @@ mod tests {
                 })
             )
         );
+    }
+
+    #[test]
+    fn msg_sender() {
+        assert_eq!(
+            map(scope(), "msg.sender"),
+            ("caller()".to_string(), FixedSize::Base(Base::Address))
+        )
     }
 }
