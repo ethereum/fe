@@ -27,7 +27,7 @@ fn case(name: String, defs: &HashMap<String, ContractDef>) -> Result<yul::Case, 
     if let Some(def) = defs.get(&name) {
         return match def {
             ContractDef::Function { params, returns } => {
-                Ok(function_call_case(name, params, returns.to_owned()))
+                function_call_case(name, params, returns.to_owned())
             }
             _ => Err(CompileError::static_str(
                 "Cannot create case from definition",
@@ -42,15 +42,15 @@ fn function_call_case(
     name: String,
     params: &Vec<FixedSize>,
     returns: Option<FixedSize>,
-) -> yul::Case {
+) -> Result<yul::Case, CompileError> {
     let selector = selector_literal(name.clone(), &params);
     let name = identifier! {(name)};
-    let params = parameter_expressions(&params);
+    let params = parameter_expressions(&params)?;
 
     if let Some(returns) = returns {
-        let return_size = literal_expression! {(returns.size() + returns.padding())};
+        let return_size = literal_expression! {(returns.padded_size())};
 
-        match returns {
+        Ok(match returns {
             FixedSize::Array(_) => case! {
                 case [selector] {
                     (let return_ptr := [name]([params...]))
@@ -64,13 +64,13 @@ fn function_call_case(
                     (return(0, [return_size]))
                 }
             },
-        }
+        })
     } else {
-        case! {
+        Ok(case! {
             case [selector] {
                 ([name]([params...]))
             }
-        }
+        })
     }
 }
 
@@ -115,22 +115,16 @@ fn abi_type(typ: FixedSize) -> String {
     }
 }
 
-fn parameter_expressions(params: &Vec<FixedSize>) -> Vec<yul::Expression> {
+fn parameter_expressions(params: &Vec<FixedSize>) -> Result<Vec<yul::Expression>, CompileError> {
     let mut ptr = 4;
     let mut expressions = vec![];
 
     for param in params.iter() {
-        let start = literal_expression! {(ptr)};
-        let size = literal_expression! {(param.size())};
-        ptr += param.size() + param.padding();
-
-        expressions.push(match param {
-            FixedSize::Base(base) => expression! { cloadn([start], [size]) },
-            FixedSize::Array(array) => expression! { ccopy([start], [size]) },
-        });
+        expressions.push(param.decode(literal_expression! {(ptr)})?);
+        ptr += param.padded_size();
     }
 
-    expressions
+    Ok(expressions)
 }
 
 /*

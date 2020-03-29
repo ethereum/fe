@@ -8,6 +8,7 @@ use stringreader::StringReader;
 use vyper_compiler as compiler;
 use std::iter;
 use std::str::FromStr;
+use vyper_parser::tokenizer::Token;
 
 type Executor<'a> = evm::executor::StackExecutor<'a, 'a, evm::backend::MemoryBackend<'a>>;
 
@@ -65,9 +66,19 @@ fn run_function(
     function: &ethabi::Function,
     input: &[ethabi::Token],
 ) -> Vec<ethabi::Token> {
+    run_function_w_caller(executor, contract_address, H160::zero(), function, input)
+}
+
+fn run_function_w_caller(
+    executor: &mut Executor,
+    contract_address: primitive_types::H160,
+    caller: H160,
+    function: &ethabi::Function,
+    input: &[ethabi::Token],
+) -> Vec<ethabi::Token> {
     let context = evm::Context {
         address: H160::zero(),
-        caller: H160::zero(),
+        caller,
         apparent_value: U256::zero(),
     };
 
@@ -100,6 +111,10 @@ fn bytes_token(s: &str) -> ethabi::Token {
 
 fn u256_array_token(v: Vec<usize>) -> ethabi::Token {
     ethabi::Token::FixedArray(v.into_iter().map(|n| u256_token(n)).collect())
+}
+
+fn address_array_token(v: Vec<&str>) -> ethabi::Token {
+    ethabi::Token::FixedArray(v.into_iter().map(|s| address_token(s)).collect())
 }
 
 #[test]
@@ -210,23 +225,92 @@ fn address_bytes10_map() {
         let write_bar = &abi.functions["write_bar"][0];
         let read_bar = &abi.functions["read_bar"][0];
 
-        let address = address_token("0000000000000000000000000000000000000001");
-        let bytes = bytes_token("ten bytes.");
+        let address1 = address_token("0000000000000000000000000000000000000001");
+        let bytes1 = bytes_token("ten bytes1");
+
+        let address2 = address_token("0000000000000000000000000000000000000002");
+        let bytes2 = bytes_token("ten bytes2");
 
         run_function(
             &mut executor,
             contract_address,
             write_bar,
-            &[address.clone(), bytes.clone()],
+            &[address1.clone(), bytes1.clone()],
+        );
+
+        run_function(
+            &mut executor,
+            contract_address,
+            write_bar,
+            &[address2.clone(), bytes2.clone()],
+        );
+
+        let output1 = run_function(
+            &mut executor,
+            contract_address,
+            read_bar,
+            &[address1],
+        );
+
+        let output2 = run_function(
+            &mut executor,
+            contract_address,
+            read_bar,
+            &[address2],
+        );
+
+        assert_eq!(output1[0], bytes1);
+        assert_eq!(output2[0], bytes2)
+    })
+}
+
+#[test]
+fn guest_book() {
+    with_executor(&|mut executor| {
+        let (bytecode, abi) = compile_fixture("guest_book_wo_events.vy");
+        let contract_address = create_contract(&mut executor, &bytecode);
+
+        let sign = &abi.functions["sign"][0];
+        let get_msg = &abi.functions["get_msg"][0];
+
+        let sender = H160::from_str("0000000000000000000000000000000000000001").unwrap();
+        let bytes = bytes_token(iter::repeat("ten bytes.").take(10).collect::<String>().as_str());
+
+        run_function_w_caller(
+            &mut executor,
+            contract_address,
+            sender.clone(),
+            sign,
+            &[bytes.clone()],
         );
 
         let output = run_function(
             &mut executor,
             contract_address,
-            read_bar,
-            &[address],
+            get_msg,
+            &[ethabi::Token::Address(sender)],
         );
 
         assert_eq!(output[0], bytes)
     })
 }
+
+#[test]
+fn return_sender() {
+    with_executor(&|mut executor| {
+        let (bytecode, abi) = compile_fixture("return_sender.vy");
+        let contract_address = create_contract(&mut executor, &bytecode);
+
+        let bar = &abi.functions["bar"][0];
+        let output = run_function_w_caller(
+            &mut executor,
+            contract_address,
+            H160::from_str("0000000000000000000000000000000000000001").unwrap(),
+            bar,
+            &[u256_token(42)],
+        );
+
+        assert_eq!(output[0], address_token("0000000000000000000000000000000000000001"))
+    })
+}
+

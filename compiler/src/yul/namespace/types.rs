@@ -45,10 +45,17 @@ impl FixedSize {
         }
     }
 
-    pub fn padding(&self) -> usize {
+    pub fn padded_size(&self) -> usize {
         match self {
-            FixedSize::Base(base) => base.padding(),
-            FixedSize::Array(array) => array.padding(),
+            FixedSize::Base(base) => base.padded_size(),
+            FixedSize::Array(array) => array.padded_size(),
+        }
+    }
+
+    pub fn decode(&self, ptr: yul::Expression) -> Result<yul::Expression, CompileError> {
+        match self {
+            FixedSize::Base(base) => base.decode(ptr),
+            FixedSize::Array(array) => array.decode(ptr),
         }
     }
 }
@@ -62,8 +69,12 @@ impl Base {
         }
     }
 
-    pub fn padding(&self) -> usize {
-        32 - self.size()
+    pub fn padded_size(&self) -> usize {
+        32
+    }
+
+    pub fn decode(&self, ptr: yul::Expression) -> Result<yul::Expression, CompileError> {
+        Ok(expression! { calldataload([ptr]) })
     }
 
     pub fn mstore(
@@ -104,8 +115,26 @@ impl Array {
         self.dimension * self.inner.size()
     }
 
-    pub fn padding(&self) -> usize {
-        (self.dimension * self.inner.padding()) % 32
+    pub fn padded_size(&self) -> usize {
+        if self.inner == Base::Byte {
+            if self.dimension % 32 == 0 {
+                return self.dimension;
+            }
+
+            return (32 - (self.dimension % 32)) + self.dimension
+        }
+
+        self.dimension * self.inner.padded_size()
+    }
+
+    pub fn decode(&self, ptr: yul::Expression) -> Result<yul::Expression, CompileError> {
+        let size = literal_expression! {(self.size())};
+
+        match &self.inner {
+            Base::Byte => Ok(expression! { ccopy([ptr], [size]) }),
+            Base::U256 => Ok(expression! { ccopy([ptr], [size]) }),
+            Base::Address => Err(CompileError::static_str("Decoding of address arrays not supported"))
+        }
     }
 
     pub fn mstore_elem(
