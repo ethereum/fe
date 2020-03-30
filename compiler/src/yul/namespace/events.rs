@@ -15,7 +15,7 @@ impl Event {
         mut values: Vec<yul::Expression>
     ) -> Result<yul::Statement, CompileError> {
         if let (Some(FixedSize::Array(array)), Some(value)) = (self.fields.first(), values.first()) {
-            let size = literal_expression! {(array.size())};
+            let size = literal_expression! {(array.padded_size())};
             return Ok(statement! { log1([(*value).clone()], [size], 0) });
         }
 

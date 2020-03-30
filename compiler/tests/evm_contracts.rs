@@ -9,6 +9,7 @@ use vyper_compiler as compiler;
 use std::iter;
 use std::str::FromStr;
 use vyper_parser::tokenizer::Token;
+use evm::backend::Log;
 
 type Executor<'a> = evm::executor::StackExecutor<'a, 'a, evm::backend::MemoryBackend<'a>>;
 
@@ -31,8 +32,6 @@ fn with_executor(test: &dyn Fn(Executor)) {
     let executor = evm::executor::StackExecutor::new(&backend, usize::max_value(), &config);
 
     test(executor);
-
-
 }
 
 fn compile_fixture(name: &str) -> (String, ethabi::Contract) {
@@ -293,7 +292,12 @@ fn guest_book() {
             &[ethabi::Token::Address(sender)],
         );
 
-        assert_eq!(output[0], bytes)
+        assert_eq!(output[0], bytes.clone());
+
+        let (_, logs) = executor.deconstruct();
+        let mut logs = logs.into_iter().collect::<Vec<Log>>();
+
+        assert_eq!(logs.first().unwrap().data, bytes.to_fixed_bytes().unwrap())
     })
 }
 
