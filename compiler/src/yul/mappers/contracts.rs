@@ -1,7 +1,7 @@
 use crate::errors::CompileError;
 use crate::yul::mappers::{constructor, functions, types};
-use crate::yul::namespace::scopes::{ContractScope, ModuleScope, Scope, Shared};
-use crate::yul::namespace::types::Type;
+use crate::yul::namespace::scopes::{ContractScope, ModuleScope, Scope, Shared, ContractDef};
+use crate::yul::namespace::types::{Type, FixedSize};
 use crate::yul::runtime::abi as runtime_abi;
 use crate::yul::runtime::functions as runtime_functions;
 
@@ -9,6 +9,7 @@ use std::rc::Rc;
 use vyper_parser::ast as vyp;
 use vyper_parser::span::Spanned;
 use yultsur::*;
+use crate::yul::namespace::events::Event;
 
 /// Builds a Yul object from a Vyper contract.
 pub fn contract_def(
@@ -65,10 +66,11 @@ fn contract_stmt(
             let function =
                 functions::func_def(scope, qual, name.node.to_string(), args, return_type, body)?;
             Ok(Some(function))
+        },
+        vyp::ContractStmt::EventDef { name, fields } => {
+            event_def(scope, name.node.to_string(), fields)?;
+            Ok(None)
         }
-        _ => Err(CompileError::static_str(
-            "Unable to translate module statement.",
-        )),
     }
 }
 
@@ -88,4 +90,26 @@ fn contract_field(
     };
 
     Ok(())
+}
+
+fn event_def(
+    scope: Shared<ContractScope>,
+    name: String,
+    fields: &Vec<Spanned<vyp::EventField>>,
+) -> Result<(), CompileError> {
+    let fields = fields
+        .iter()
+        .map(|f| event_field(Rc::clone(&scope), &f.node))
+        .collect::<Result<Vec<FixedSize>, CompileError>>()?;
+
+    scope.borrow_mut().add_event(name, Event { fields });
+
+    Ok(())
+}
+
+fn event_field(
+    scope: Shared<ContractScope>,
+    field: &vyp::EventField,
+) -> Result<FixedSize, CompileError> {
+    types::type_desc_fixed_size(Scope::Contract(scope), &field.typ.node)
 }

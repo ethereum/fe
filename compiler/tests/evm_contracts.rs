@@ -31,6 +31,8 @@ fn with_executor(test: &dyn Fn(Executor)) {
     let executor = evm::executor::StackExecutor::new(&backend, usize::max_value(), &config);
 
     test(executor);
+
+
 }
 
 fn compile_fixture(name: &str) -> (String, ethabi::Contract) {
@@ -267,7 +269,7 @@ fn address_bytes10_map() {
 #[test]
 fn guest_book() {
     with_executor(&|mut executor| {
-        let (bytecode, abi) = compile_fixture("guest_book_wo_events.vy");
+        let (bytecode, abi) = compile_fixture("guest_book.vy");
         let contract_address = create_contract(&mut executor, &bytecode);
 
         let sign = &abi.functions["sign"][0];

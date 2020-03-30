@@ -8,6 +8,7 @@ use std::rc::Rc;
 use vyper_parser::ast as vyp;
 use vyper_parser::span::Spanned;
 use yultsur::*;
+use std::collections::HashMap;
 
 /// Builds a Yul function definition from a Vyper function definition.
 pub fn func_def<'a>(
@@ -118,7 +119,46 @@ fn func_stmt<'a>(
         vyp::FuncStmt::Assign { targets, value } => {
             assignments::assign(scope, targets, &value.node)
         }
+        vyp::FuncStmt::Emit { value } => emit(scope, &value.node),
         _ => Err(CompileError::static_str("Unsupported function statement")),
+    }
+}
+
+fn emit(
+    scope: Shared<FunctionScope>,
+    value: &vyp::Expr
+) -> Result<yul::Statement, CompileError> {
+    if let vyp::Expr::Call { func, args } = value {
+        let event_name = expressions::expr_name_string(&func.node)?;
+        let event_values = args
+            .node
+            .iter()
+            .map(|a| call_arg(Rc::clone(&scope), &a.node))
+            .collect::<Result<Vec<yul::Expression>, CompileError>>()?;
+
+        if let Some(ContractDef::Event(event)) = scope.borrow().contract_def(event_name) {
+            return event.emit(event_values);
+        }
+
+        return Err(CompileError::static_str("No event definition found for emit statement"));
+    }
+
+    Err(CompileError::static_str("Not a call expression in emit statement"))
+}
+
+fn call_arg(
+    scope: Shared<FunctionScope>,
+    arg: &vyp::CallArg
+) -> Result<yul::Expression, CompileError> {
+    match arg {
+        vyp::CallArg::Arg(value) => {
+            let (value, _) = expressions::expr(scope, value)?;
+            Ok(value)
+        },
+        vyp::CallArg::Kwarg(vyp::Kwarg { name, value }) => {
+            let (value, _) = expressions::expr(scope, &value.node)?;
+            Ok(value)
+        }
     }
 }
 
