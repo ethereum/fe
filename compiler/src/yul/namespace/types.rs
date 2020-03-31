@@ -121,7 +121,7 @@ impl Array {
                 return self.dimension;
             }
 
-            return (32 - (self.dimension % 32)) + self.dimension
+            return (32 - (self.dimension % 32)) + self.dimension;
         }
 
         self.dimension * self.inner.padded_size()
@@ -133,7 +133,9 @@ impl Array {
         match &self.inner {
             Base::Byte => Ok(expression! { ccopy([ptr], [size]) }),
             Base::U256 => Ok(expression! { ccopy([ptr], [size]) }),
-            Base::Address => Err(CompileError::static_str("Decoding of address arrays not supported"))
+            Base::Address => Err(CompileError::static_str(
+                "Decoding of address arrays not supported",
+            )),
         }
     }
 
@@ -265,9 +267,7 @@ pub fn type_desc<'a>(
                 return Ok(typ.clone());
             }
 
-            Err(CompileError::static_str(
-                "No type definition",
-            ))
+            Err(CompileError::static_str("No type definition"))
         }
         vyp::TypeDesc::Array { typ, dimension } => Ok(Type::Array(Array {
             inner: type_desc_base(defs, &typ.node)?,

@@ -15,7 +15,9 @@ pub fn expr(
         vyp::Expr::Name(name) => expr_name(scope, name.to_string()),
         vyp::Expr::Num(num) => Ok((literal_expression! {(num)}, FixedSize::Base(Base::U256))),
         vyp::Expr::Subscript { value, slices } => expr_subscript(scope, &value.node, &slices.node),
-        vyp::Expr::Attribute { value, attr } => expr_attribute(scope, &value.node, attr.node.to_string()),
+        vyp::Expr::Attribute { value, attr } => {
+            expr_attribute(scope, &value.node, attr.node.to_string())
+        }
         _ => Err(CompileError::static_str("Expression not supported")),
     }
 }

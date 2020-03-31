@@ -1,9 +1,9 @@
 use crate::yul::namespace::types::*;
 
+use crate::yul::namespace::events::Event;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use crate::yul::namespace::events::Event;
 
 pub type Shared<T> = Rc<RefCell<T>>;
 
@@ -26,7 +26,7 @@ pub enum ContractDef {
         index: usize,
         array: Array,
     },
-    Event(Event)
+    Event(Event),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -119,11 +119,7 @@ impl ContractScope {
             .insert(name, ContractDef::Function { params, returns });
     }
 
-    pub fn add_event(
-        &mut self,
-        name: String,
-        event: Event,
-    ) {
+    pub fn add_event(&mut self, name: String, event: Event) {
         self.defs.insert(name, ContractDef::Event(event));
     }
 }

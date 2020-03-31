@@ -15,10 +15,7 @@ pub fn assign(
     targets: &Vec<Spanned<vyp::Expr>>,
     value: &vyp::Expr,
 ) -> Result<yul::Statement, CompileError> {
-    let targets = targets
-        .iter()
-        .map(|t| &t.node)
-        .collect::<Vec<&vyp::Expr>>();
+    let targets = targets.iter().map(|t| &t.node).collect::<Vec<&vyp::Expr>>();
 
     match targets.first() {
         Some(vyp::Expr::Name(name)) => assign_name(scope, name.to_string(), value),
@@ -37,13 +34,18 @@ fn assign_subscript(
     value: &vyp::Expr,
 ) -> Result<yul::Statement, CompileError> {
     match target {
-        vyp::Expr::Name(name) => {
-            assign_subscript_name(scope, name.to_string(), slices, value)
-        },
-        vyp::Expr::Attribute { value: target_value, attr } => {
-            assign_subscript_attribute(scope, &target_value.node, attr.node.to_string(), slices, value)
-        },
-        _ => Err(CompileError::static_str("Subscript target not supported"))
+        vyp::Expr::Name(name) => assign_subscript_name(scope, name.to_string(), slices, value),
+        vyp::Expr::Attribute {
+            value: target_value,
+            attr,
+        } => assign_subscript_attribute(
+            scope,
+            &target_value.node,
+            attr.node.to_string(),
+            slices,
+            value,
+        ),
+        _ => Err(CompileError::static_str("Subscript target not supported")),
     }
 }
 
@@ -113,9 +115,9 @@ fn assign_name(
 
 #[cfg(test)]
 mod tests {
+    use crate::yul::mappers::assignments::assign;
     use crate::yul::namespace::scopes::{ContractScope, FunctionScope, ModuleScope, Shared};
     use crate::yul::namespace::types::{Array, Base, FixedSize, Map};
-    use crate::yul::mappers::assignments::assign;
     use std::rc::Rc;
     use vyper_parser as parser;
     use vyper_parser::ast as vyp;
@@ -134,11 +136,7 @@ mod tests {
             .node;
 
         if let vyp::FuncStmt::Assign { targets, value } = stmt {
-            let assign = assign(
-                scope,
-                targets,
-                &value.node
-            ).expect("Couldn't map assignment AST");
+            let assign = assign(scope, targets, &value.node).expect("Couldn't map assignment AST");
 
             assign.to_string()
         } else {
@@ -149,15 +147,9 @@ mod tests {
     #[test]
     fn assign_u256() {
         let scope = scope();
-        scope.borrow_mut().add_base(
-            "bar".to_string(),
-            Base::U256
-        );
+        scope.borrow_mut().add_base("bar".to_string(), Base::U256);
 
-        assert_eq!(
-            map(scope, "foo = bar"),
-            "foo := bar"
-        )
+        assert_eq!(map(scope, "foo = bar"), "foo := bar")
     }
 
     #[test]
@@ -167,8 +159,8 @@ mod tests {
             "foo".to_string(),
             Array {
                 dimension: 10,
-                inner: Base::U256
-            }
+                inner: Base::U256,
+            },
         );
 
         assert_eq!(
@@ -177,4 +169,3 @@ mod tests {
         )
     }
 }
-

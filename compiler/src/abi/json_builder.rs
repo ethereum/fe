@@ -6,7 +6,6 @@ use serde::Serialize;
 use std::collections::HashMap;
 use vyper_parser::ast as vyp;
 
-
 /// Used to keep track of custom types defined in a module.
 pub type TypeDefs<'a> = HashMap<&'a str, &'a vyp::TypeDesc<'a>>;
 pub type TypeDef<'a> = (&'a str, &'a vyp::TypeDesc<'a>);
@@ -21,7 +20,7 @@ pub struct Contract {
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub enum Item {
     Event(Event),
-    Function(Function)
+    Function(Function),
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
@@ -30,7 +29,7 @@ pub struct Event {
     #[serde(rename = "type")]
     typ: String,
     inputs: Vec<EventField>,
-    anonymous: bool
+    anonymous: bool,
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
@@ -38,7 +37,7 @@ pub struct EventField {
     name: String,
     #[serde(rename = "type")]
     typ: VariableType,
-    indexed: bool
+    indexed: bool,
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
@@ -113,9 +112,7 @@ impl serde::Serialize for VariableType {
 }
 
 /// Builds a vector containing contract ABIs.
-pub fn module<'a>(
-    module: &'a vyp::Module<'a>
-) -> Result<Vec<Contract>, CompileError> {
+pub fn module<'a>(module: &'a vyp::Module<'a>) -> Result<Vec<Contract>, CompileError> {
     let type_defs = module
         .body
         .iter()
@@ -158,8 +155,8 @@ pub fn contract_def<'a>(
             .collect::<Vec<Item>>();
 
         return Ok(Some(Contract {
-            items: [&functions[..], &events[..]].concat()
-        }))
+            items: [&functions[..], &events[..]].concat(),
+        }));
     }
 
     Ok(None)
@@ -173,13 +170,13 @@ pub fn event_def<'a>(
         let inputs = fields
             .iter()
             .map(|f| event_field(type_defs, &f.node))
-            .collect::<Result<_,_>>()?;
+            .collect::<Result<_, _>>()?;
 
         return Ok(Some(Item::Event(Event {
             name: name.node.to_string(),
             typ: "event".to_string(),
             inputs,
-            anonymous: false
+            anonymous: false,
         })));
     }
 
@@ -194,7 +191,7 @@ pub fn event_field<'a>(
     Ok(EventField {
         name: String::from(field.name.node),
         typ: type_desc(&type_defs, &field.typ.node)?,
-        indexed: false
+        indexed: false,
     })
 }
 
@@ -252,14 +249,9 @@ pub fn func_def_arg<'a>(
 }
 
 /// Creates a tuple for a type definition.
-pub fn type_def<'a>(
-    stmt: &'a vyp::ModuleStmt<'a>,
-) -> Result<Option<TypeDef<'a>>, CompileError> {
+pub fn type_def<'a>(stmt: &'a vyp::ModuleStmt<'a>) -> Result<Option<TypeDef<'a>>, CompileError> {
     if let vyp::ModuleStmt::TypeDef { name, typ } = stmt {
-        return Ok(Some((
-            name.node,
-            &typ.node
-        )));
+        return Ok(Some((name.node, &typ.node)));
     }
 
     Ok(None)
@@ -293,7 +285,9 @@ pub fn type_desc<'a>(
 
 #[cfg(test)]
 mod tests {
-    use crate::abi::json_builder::{func_def, type_desc, Function, FunctionType, FuncInput, Output, VariableType, Item};
+    use crate::abi::json_builder::{
+        func_def, type_desc, FuncInput, Function, FunctionType, Item, Output, VariableType,
+    };
     use std::collections::HashMap;
     use vyper_parser::ast as vyp;
     use vyper_parser::parsers;

@@ -1,15 +1,15 @@
 use crate::errors::CompileError;
 use crate::yul::mappers::{constructor, functions, types};
-use crate::yul::namespace::scopes::{ContractScope, ModuleScope, Scope, Shared, ContractDef};
-use crate::yul::namespace::types::{Type, FixedSize};
+use crate::yul::namespace::scopes::{ContractDef, ContractScope, ModuleScope, Scope, Shared};
+use crate::yul::namespace::types::{FixedSize, Type};
 use crate::yul::runtime::abi as runtime_abi;
 use crate::yul::runtime::functions as runtime_functions;
 
+use crate::yul::namespace::events::Event;
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
 use vyper_parser::span::Spanned;
 use yultsur::*;
-use crate::yul::namespace::events::Event;
 
 /// Builds a Yul object from a Vyper contract.
 pub fn contract_def(
@@ -66,7 +66,7 @@ fn contract_stmt(
             let function =
                 functions::func_def(scope, qual, name.node.to_string(), args, return_type, body)?;
             Ok(Some(function))
-        },
+        }
         vyp::ContractStmt::EventDef { name, fields } => {
             event_def(scope, name.node.to_string(), fields)?;
             Ok(None)

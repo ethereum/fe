@@ -1,17 +1,67 @@
 use ethabi;
 use evm;
+use evm::backend::Log;
 use evm_runtime::Handler;
-use primitive_types::{U256, H160};
+use primitive_types::{H160, U256};
 use std::collections::BTreeMap;
 use std::fs;
-use stringreader::StringReader;
-use vyper_compiler as compiler;
 use std::iter;
 use std::str::FromStr;
+use stringreader::StringReader;
+use vyper_compiler as compiler;
 use vyper_parser::tokenizer::Token;
-use evm::backend::Log;
 
 type Executor<'a> = evm::executor::StackExecutor<'a, 'a, evm::backend::MemoryBackend<'a>>;
+
+struct ContractHarness {
+    address: H160,
+    abi: ethabi::Contract,
+    pub caller: primitive_types::H160,
+}
+
+impl ContractHarness {
+    fn new(address: H160, abi: ethabi::Contract) -> Self {
+        ContractHarness {
+            address,
+            abi,
+            caller: H160::zero(),
+        }
+    }
+
+    pub fn test_function(
+        &self,
+        executor: &mut Executor,
+        name: &str,
+        input: Vec<ethabi::Token>,
+        output: Option<ethabi::Token>,
+    ) {
+        let function = &self.abi.functions[name][0];
+
+        let context = evm::Context {
+            address: H160::zero(),
+            caller: self.caller.clone(),
+            apparent_value: U256::zero(),
+        };
+
+        let input = function
+            .encode_input(input.as_slice())
+            .expect("Unable to encode input");
+
+        if let evm::Capture::Exit(exit) =
+            executor.call(self.address.clone(), None, input, None, false, context)
+        {
+            if let Some(output) = output {
+                let actual_output = &function
+                    .decode_output(&exit.1)
+                    .expect("Unable to decode output.")[0];
+
+                assert_eq!(&output, actual_output)
+            }
+        } else {
+            panic!("Failed to run function")
+        }
+    }
+}
 
 fn with_executor(test: &dyn Fn(Executor)) {
     let vicinity = evm::backend::MemoryVicinity {
@@ -31,23 +81,18 @@ fn with_executor(test: &dyn Fn(Executor)) {
     let backend = evm::backend::MemoryBackend::new(&vicinity, state);
     let executor = evm::executor::StackExecutor::new(&backend, usize::max_value(), &config);
 
-    test(executor);
+    test(executor)
 }
 
-fn compile_fixture(name: &str) -> (String, ethabi::Contract) {
+fn deploy_contract(executor: &mut Executor, name: &str) -> ContractHarness {
     let src = fs::read_to_string(format!("tests/fixtures/{}", name))
         .expect("Unable to read fixture file");
+
+    let bytecode = compiler::evm::compile(&src).expect("Unable to compile to bytecode");
 
     let json_abi = compiler::abi::build(&src).expect("Unable to build ABI");
     let abi = ethabi::Contract::load(StringReader::new(&json_abi)).expect("Unable to load ABI");
 
-    (
-        compiler::evm::compile(&src).expect("Unable to compile to bytecode"),
-        abi,
-    )
-}
-
-fn create_contract(executor: &mut Executor, bytecode: &str) -> primitive_types::H160 {
     if let evm::Capture::Exit(exit) = executor.create(
         H160::zero(),
         evm_runtime::CreateScheme::Dynamic,
@@ -55,47 +100,10 @@ fn create_contract(executor: &mut Executor, bytecode: &str) -> primitive_types::
         hex::decode(bytecode).unwrap(),
         None,
     ) {
-        return exit.1.expect("No contract address.");
+        return ContractHarness::new(exit.1.expect("Unable to retrieve contract address"), abi);
     }
 
     panic!("Failed to create contract")
-}
-
-fn run_function(
-    executor: &mut Executor,
-    contract_address: primitive_types::H160,
-    function: &ethabi::Function,
-    input: &[ethabi::Token],
-) -> Vec<ethabi::Token> {
-    run_function_w_caller(executor, contract_address, H160::zero(), function, input)
-}
-
-fn run_function_w_caller(
-    executor: &mut Executor,
-    contract_address: primitive_types::H160,
-    caller: H160,
-    function: &ethabi::Function,
-    input: &[ethabi::Token],
-) -> Vec<ethabi::Token> {
-    let context = evm::Context {
-        address: H160::zero(),
-        caller,
-        apparent_value: U256::zero(),
-    };
-
-    let input = function
-        .encode_input(&input)
-        .expect("Unable to encode input");
-
-    if let evm::Capture::Exit(exit) =
-        executor.call(contract_address, None, input, None, false, context)
-    {
-        return function
-            .decode_output(&exit.1)
-            .expect("Unable to decode output.");
-    }
-
-    panic!("Failed to run function")
 }
 
 fn u256_token(n: usize) -> ethabi::Token {
@@ -132,38 +140,27 @@ fn test_evm_sanity() {
 #[test]
 fn return_u256() {
     with_executor(&|mut executor| {
-        let (bytecode, abi) = compile_fixture("return_u256.vy");
-        let contract_address = create_contract(&mut executor, &bytecode);
+        let harness = deploy_contract(&mut executor, "return_u256.vy");
 
-        let bar = &abi.functions["bar"][0];
-        let output = run_function(
+        harness.test_function(
             &mut executor,
-            contract_address,
-            bar,
-            &[u256_token(42)],
-        );
-
-        assert_eq!(output[0], u256_token(42))
+            "bar",
+            vec![u256_token(42)],
+            Some(u256_token(42))
+        )
     })
 }
 
 #[test]
 fn return_array() {
     with_executor(&|mut executor| {
-        let (bytecode, abi) = compile_fixture("return_array.vy");
-        let contract_address = create_contract(&mut executor, &bytecode);
+        let harness = deploy_contract(&mut executor, "return_array.vy");
 
-        let bar = &abi.functions["bar"][0];
-        let output = run_function(
+        harness.test_function(
             &mut executor,
-            contract_address,
-            bar,
-            &[u256_token(42)],
-        );
-
-        assert_eq!(
-            output[0],
-            u256_array_token(vec![0, 0, 0, 42, 0])
+            "bar",
+            vec![u256_token(42)],
+            Some(u256_array_token(vec![0, 0, 0, 42, 0]))
         )
     })
 }
@@ -171,60 +168,56 @@ fn return_array() {
 #[test]
 fn multi_param() {
     with_executor(&|mut executor| {
-        let (bytecode, abi) = compile_fixture("multi_param.vy");
-        let contract_address = create_contract(&mut executor, &bytecode);
+        let harness = deploy_contract(&mut executor, "multi_param.vy");
 
-        let bar = &abi.functions["bar"][0];
-        let output = run_function(
+        harness.test_function(
             &mut executor,
-            contract_address,
-            bar,
-            &[
-                u256_token(4),
-                u256_token(42),
-                u256_token(420),
-            ],
-        );
-
-        assert_eq!(output[0], u256_array_token(vec![4, 42, 420]))
+            "bar",
+            vec![u256_token(4), u256_token(42), u256_token(420)],
+            Some(u256_array_token(vec![4, 42, 420]))
+        )
     })
 }
 
 #[test]
 fn u256_u256_map() {
     with_executor(&|mut executor| {
-        let (bytecode, abi) = compile_fixture("u256_u256_map.vy");
-        let contract_address = create_contract(&mut executor, &bytecode);
+        let harness = deploy_contract(&mut executor, "u256_u256_map.vy");
 
-        let write_bar = &abi.functions["write_bar"][0];
-        let read_bar = &abi.functions["read_bar"][0];
-
-        run_function(
+        harness.test_function(
             &mut executor,
-            contract_address,
-            write_bar,
-            &[u256_token(42), u256_token(420)],
+            "write_bar",
+            vec![u256_token(4), u256_token(42)],
+            None
         );
 
-        let output = run_function(
+        harness.test_function(
             &mut executor,
-            contract_address,
-            read_bar,
-            &[u256_token(42)],
+            "write_bar",
+            vec![u256_token(420), u256_token(12)],
+            None
         );
 
-        assert_eq!(output[0], u256_token(420))
+        harness.test_function(
+            &mut executor,
+            "read_bar",
+            vec![u256_token(4)],
+            Some(u256_token(42))
+        );
+
+        harness.test_function(
+            &mut executor,
+            "read_bar",
+            vec![u256_token(420)],
+            Some(u256_token(12))
+        );
     })
 }
 
 #[test]
 fn address_bytes10_map() {
     with_executor(&|mut executor| {
-        let (bytecode, abi) = compile_fixture("address_bytes10_map.vy");
-        let contract_address = create_contract(&mut executor, &bytecode);
-
-        let write_bar = &abi.functions["write_bar"][0];
-        let read_bar = &abi.functions["read_bar"][0];
+        let harness = deploy_contract(&mut executor, "address_bytes10_map.vy");
 
         let address1 = address_token("0000000000000000000000000000000000000001");
         let bytes1 = bytes_token("ten bytes1");
@@ -232,67 +225,59 @@ fn address_bytes10_map() {
         let address2 = address_token("0000000000000000000000000000000000000002");
         let bytes2 = bytes_token("ten bytes2");
 
-        run_function(
+        harness.test_function(
             &mut executor,
-            contract_address,
-            write_bar,
-            &[address1.clone(), bytes1.clone()],
+            "write_bar",
+            vec![address1.clone(), bytes1.clone()],
+            None
         );
 
-        run_function(
+        harness.test_function(
             &mut executor,
-            contract_address,
-            write_bar,
-            &[address2.clone(), bytes2.clone()],
+            "write_bar",
+            vec![address2.clone(), bytes2.clone()],
+            None
         );
 
-        let output1 = run_function(
+        harness.test_function(
             &mut executor,
-            contract_address,
-            read_bar,
-            &[address1],
+            "read_bar",
+            vec![address1],
+            Some(bytes1)
         );
 
-        let output2 = run_function(
+        harness.test_function(
             &mut executor,
-            contract_address,
-            read_bar,
-            &[address2],
+            "read_bar",
+            vec![address2],
+            Some(bytes2)
         );
-
-        assert_eq!(output1[0], bytes1);
-        assert_eq!(output2[0], bytes2)
     })
 }
 
 #[test]
 fn guest_book() {
     with_executor(&|mut executor| {
-        let (bytecode, abi) = compile_fixture("guest_book.vy");
-        let contract_address = create_contract(&mut executor, &bytecode);
+        let mut harness = deploy_contract(&mut executor, "guest_book.vy");
 
-        let sign = &abi.functions["sign"][0];
-        let get_msg = &abi.functions["get_msg"][0];
-
-        let sender = H160::from_str("0000000000000000000000000000000000000001").unwrap();
+        let sender = address_token("1234000000000000000000000000000000005678");
         let bytes = bytes_token(iter::repeat("ten bytes.").take(10).collect::<String>().as_str());
 
-        run_function_w_caller(
+        harness.caller = sender.clone().to_address().unwrap();
+
+        harness.test_function(
             &mut executor,
-            contract_address,
-            sender.clone(),
-            sign,
-            &[bytes.clone()],
+            "sign",
+            vec![bytes.clone()],
+            None
         );
 
-        let output = run_function(
+        harness.test_function(
             &mut executor,
-            contract_address,
-            get_msg,
-            &[ethabi::Token::Address(sender)],
+            "get_msg",
+            vec![sender],
+            Some(bytes.clone())
         );
-
-        assert_eq!(output[0], bytes.clone());
 
         let (_, logs) = executor.deconstruct();
         let mut logs = logs.into_iter().collect::<Vec<Log>>();
@@ -304,19 +289,18 @@ fn guest_book() {
 #[test]
 fn return_sender() {
     with_executor(&|mut executor| {
-        let (bytecode, abi) = compile_fixture("return_sender.vy");
-        let contract_address = create_contract(&mut executor, &bytecode);
+        let mut harness = deploy_contract(&mut executor, "return_sender.vy");
 
-        let bar = &abi.functions["bar"][0];
-        let output = run_function_w_caller(
+        let sender = address_token("1234000000000000000000000000000000005678");
+
+        harness.caller = sender.clone().to_address().unwrap();
+
+        harness.test_function(
             &mut executor,
-            contract_address,
-            H160::from_str("0000000000000000000000000000000000000001").unwrap(),
-            bar,
-            &[u256_token(42)],
+            "bar",
+            // FIXME: There's an issue parsing functions with 0 params. This is here to mitigate that failure.
+            vec![u256_token(42)],
+            Some(sender)
         );
-
-        assert_eq!(output[0], address_token("0000000000000000000000000000000000000001"))
     })
 }
-
