@@ -17,7 +17,7 @@ pub fn build(src: &str) -> Result<String, CompileError> {
     let contracts = json_builder::module(&vyp_module)?;
 
     if let Some(contract) = contracts.get(0) {
-        return Ok(serde_json::to_string(&contract.functions)?);
+        return Ok(serde_json::to_string(&contract.items)?);
     }
 
     Err(CompileError::static_str(

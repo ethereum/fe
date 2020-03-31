@@ -6,32 +6,58 @@ use serde::Serialize;
 use std::collections::HashMap;
 use vyper_parser::ast as vyp;
 
+
 /// Used to keep track of custom types defined in a module.
 pub type TypeDefs<'a> = HashMap<&'a str, &'a vyp::TypeDesc<'a>>;
+pub type TypeDef<'a> = (&'a str, &'a vyp::TypeDesc<'a>);
 
 /// TODO: Add support for events.
-#[derive(Serialize, Debug, PartialEq)]
+#[derive(Serialize, Debug, PartialEq, Clone)]
 pub struct Contract {
-    pub functions: Vec<Function>,
+    pub items: Vec<Item>,
 }
 
-#[derive(Serialize, Debug, PartialEq)]
+#[serde(untagged)]
+#[derive(Serialize, Debug, PartialEq, Clone)]
+pub enum Item {
+    Event(Event),
+    Function(Function)
+}
+
+#[derive(Serialize, Debug, PartialEq, Clone)]
+pub struct Event {
+    name: String,
+    #[serde(rename = "type")]
+    typ: String,
+    inputs: Vec<EventField>,
+    anonymous: bool
+}
+
+#[derive(Serialize, Debug, PartialEq, Clone)]
+pub struct EventField {
+    name: String,
+    #[serde(rename = "type")]
+    typ: VariableType,
+    indexed: bool
+}
+
+#[derive(Serialize, Debug, PartialEq, Clone)]
 pub struct Function {
     name: String,
     #[serde(rename = "type")]
     typ: FunctionType,
-    inputs: Vec<Input>,
+    inputs: Vec<FuncInput>,
     outputs: Vec<Output>,
 }
 
-#[derive(Serialize, Debug, PartialEq)]
-pub struct Input {
+#[derive(Serialize, Debug, PartialEq, Clone)]
+pub struct FuncInput {
     name: String,
     #[serde(rename = "type")]
     typ: VariableType,
 }
 
-#[derive(Serialize, Debug, PartialEq)]
+#[derive(Serialize, Debug, PartialEq, Clone)]
 pub struct Output {
     name: String,
     #[serde(rename = "type")]
@@ -40,7 +66,7 @@ pub struct Output {
 
 #[allow(dead_code)]
 #[serde(rename_all = "lowercase")]
-#[derive(Serialize, Debug, PartialEq)]
+#[derive(Serialize, Debug, PartialEq, Clone)]
 pub enum FunctionType {
     Function,
     Constructor,
@@ -54,6 +80,16 @@ pub enum VariableType {
     Address,
     FixedBytes(usize),
     FixedArray(Box<VariableType>, usize),
+}
+
+#[allow(dead_code)]
+#[serde(rename_all = "lowercase")]
+#[derive(Serialize, Debug, PartialEq, Clone)]
+pub enum StateMutability {
+    Pure,
+    View,
+    Nonpayable,
+    Payable,
 }
 
 impl fmt::Display for VariableType {
@@ -76,64 +112,97 @@ impl serde::Serialize for VariableType {
     }
 }
 
-#[allow(dead_code)]
-#[serde(rename_all = "lowercase")]
-#[derive(Serialize, Debug, PartialEq)]
-pub enum StateMutability {
-    Pure,
-    View,
-    Nonpayable,
-    Payable,
-}
-
 /// Builds a vector containing contract ABIs.
-pub fn module<'a>(module: &'a vyp::Module) -> Result<Vec<Contract>, CompileError> {
-    let type_defs: TypeDefs<'a> = module
+pub fn module<'a>(
+    module: &'a vyp::Module<'a>
+) -> Result<Vec<Contract>, CompileError> {
+    let type_defs = module
         .body
         .iter()
-        .filter_map(|stmt| match stmt.node {
-            vyp::ModuleStmt::TypeDef { ref name, ref typ } => Some((name.node, &typ.node)),
-            _ => None,
-        })
-        .collect();
+        .map(|s| type_def(&s.node))
+        .collect::<Result<Vec<Option<TypeDef<'a>>>, CompileError>>()?
+        .into_iter()
+        .filter_map(|o| o)
+        .collect::<TypeDefs<'a>>();
 
-    module
+    Ok(module
         .body
         .iter()
-        .filter_map(|stmt| match stmt.node {
-            vyp::ModuleStmt::ContractDef { .. } => Some(contract_def(&type_defs, &stmt.node)),
-            _ => None,
-        })
-        .collect::<Result<Vec<Contract>, CompileError>>()
+        .map(|s| contract_def(&type_defs, &s.node))
+        .collect::<Result<Vec<Option<Contract>>, CompileError>>()?
+        .into_iter()
+        .filter_map(|o| o)
+        .collect::<Vec<Contract>>())
 }
 
 /// Builds a contract ABI.
 pub fn contract_def<'a>(
     type_defs: &'a TypeDefs<'a>,
     stmt: &'a vyp::ModuleStmt<'a>,
-) -> Result<Contract, CompileError> {
+) -> Result<Option<Contract>, CompileError> {
     if let vyp::ModuleStmt::ContractDef { name: _, body } = stmt {
-        return Ok(Contract {
-            functions: body
-                .iter()
-                .map(|stmt| func_def(type_defs, &stmt.node))
-                .collect::<Result<Vec<Option<Function>>, CompileError>>()?
-                .into_iter()
-                .filter_map(|function| function)
-                .collect(),
-        });
+        let functions = body
+            .iter()
+            .map(|s| func_def(type_defs, &s.node))
+            .collect::<Result<Vec<Option<Item>>, CompileError>>()?
+            .into_iter()
+            .filter_map(|o| o)
+            .collect::<Vec<Item>>();
+
+        let events = body
+            .iter()
+            .map(|s| event_def(type_defs, &s.node))
+            .collect::<Result<Vec<Option<Item>>, CompileError>>()?
+            .into_iter()
+            .filter_map(|o| o)
+            .collect::<Vec<Item>>();
+
+        return Ok(Some(Contract {
+            items: [&functions[..], &events[..]].concat()
+        }))
     }
 
-    Err(CompileError::static_str(
-        "Contract definition translation requires ContractDef parameter.",
-    ))
+    Ok(None)
+}
+
+pub fn event_def<'a>(
+    type_defs: &'a TypeDefs<'a>,
+    stmt: &'a vyp::ContractStmt<'a>,
+) -> Result<Option<Item>, CompileError> {
+    if let vyp::ContractStmt::EventDef { name, fields } = stmt {
+        let inputs = fields
+            .iter()
+            .map(|f| event_field(type_defs, &f.node))
+            .collect::<Result<_,_>>()?;
+
+        return Ok(Some(Item::Event(Event {
+            name: name.node.to_string(),
+            typ: "event".to_string(),
+            inputs,
+            anonymous: false
+        })));
+    }
+
+    Ok(None)
+}
+
+/// Builds an event input.
+pub fn event_field<'a>(
+    type_defs: &'a TypeDefs<'a>,
+    field: &'a vyp::EventField<'a>,
+) -> Result<EventField, CompileError> {
+    Ok(EventField {
+        name: String::from(field.name.node),
+        typ: type_desc(&type_defs, &field.typ.node)?,
+        indexed: false
+    })
 }
 
 /// Builds an ABI function element, returning None if the function is private.
 pub fn func_def<'a>(
     type_defs: &'a TypeDefs<'a>,
     stmt: &'a vyp::ContractStmt<'a>,
-) -> Result<Option<Function>, CompileError> {
+) -> Result<Option<Item>, CompileError> {
     if let vyp::ContractStmt::FuncDef {
         qual,
         name,
@@ -146,6 +215,11 @@ pub fn func_def<'a>(
             return Ok(None); // Private method.
         }
 
+        let inputs = args
+            .iter()
+            .map(|arg| func_def_arg(type_defs, &arg.node))
+            .collect::<Result<Vec<FuncInput>, CompileError>>()?;
+
         let outputs = if let Some(return_type) = return_type {
             vec![Output {
                 name: "".to_string(),
@@ -155,15 +229,12 @@ pub fn func_def<'a>(
             vec![]
         };
 
-        return Ok(Some(Function {
+        return Ok(Some(Item::Function(Function {
             name: String::from(name.node),
             typ: FunctionType::Function,
-            inputs: args
-                .iter()
-                .map(|arg| func_def_arg(type_defs, &arg.node))
-                .collect::<Result<Vec<Input>, CompileError>>()?,
+            inputs,
             outputs,
-        }));
+        })));
     }
 
     Ok(None)
@@ -173,14 +244,28 @@ pub fn func_def<'a>(
 pub fn func_def_arg<'a>(
     type_defs: &'a TypeDefs<'a>,
     arg: &'a vyp::FuncDefArg<'a>,
-) -> Result<Input, CompileError> {
-    Ok(Input {
+) -> Result<FuncInput, CompileError> {
+    Ok(FuncInput {
         name: String::from(arg.name.node),
         typ: type_desc(&type_defs, &arg.typ.node)?,
     })
 }
 
-/// Maps the type description to an ABI-friendly type and handles custom types.
+/// Creates a tuple for a type definition.
+pub fn type_def<'a>(
+    stmt: &'a vyp::ModuleStmt<'a>,
+) -> Result<Option<TypeDef<'a>>, CompileError> {
+    if let vyp::ModuleStmt::TypeDef { name, typ } = stmt {
+        return Ok(Some((
+            name.node,
+            &typ.node
+        )));
+    }
+
+    Ok(None)
+}
+
+/// Maps the type description to an ABI type and handles custom types.
 pub fn type_desc<'a>(
     type_defs: &'a TypeDefs<'a>,
     typ: &'a vyp::TypeDesc<'a>,
@@ -208,9 +293,7 @@ pub fn type_desc<'a>(
 
 #[cfg(test)]
 mod tests {
-    use crate::abi::json_builder::{
-        func_def, type_desc, Function, FunctionType, Input, Output, VariableType,
-    };
+    use crate::abi::json_builder::{func_def, type_desc, Function, FunctionType, FuncInput, Output, VariableType, Item};
     use std::collections::HashMap;
     use vyper_parser::ast as vyp;
     use vyper_parser::parsers;
@@ -247,10 +330,10 @@ mod tests {
         let vyp_func_def = parsers::func_def(&toks[..]).unwrap().1.node;
 
         let function = func_def(&HashMap::new(), &vyp_func_def).unwrap().unwrap();
-        let expected = Function {
+        let expected = Item::Function(Function {
             name: "foo".to_string(),
             typ: FunctionType::Function,
-            inputs: vec![Input {
+            inputs: vec![FuncInput {
                 name: "x".to_string(),
                 typ: VariableType::Uint256,
             }],
@@ -258,7 +341,7 @@ mod tests {
                 name: "".to_string(),
                 typ: VariableType::FixedArray(Box::new(VariableType::Uint256), 10),
             }],
-        };
+        });
         assert_eq!(function, expected);
     }
 
@@ -267,7 +350,7 @@ mod tests {
         let func = Function {
             name: String::from("foobar"),
             typ: FunctionType::Function,
-            inputs: vec![Input {
+            inputs: vec![FuncInput {
                 name: String::from("foo"),
                 typ: VariableType::Uint256,
             }],
