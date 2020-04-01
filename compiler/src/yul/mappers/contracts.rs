@@ -102,7 +102,7 @@ fn event_def(
         .map(|f| event_field(Rc::clone(&scope), &f.node))
         .collect::<Result<Vec<FixedSize>, CompileError>>()?;
 
-    scope.borrow_mut().add_event(name, Event { fields });
+    scope.borrow_mut().add_event(name.clone(), Event::new(name, fields));
 
     Ok(())
 }

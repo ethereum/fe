@@ -80,7 +80,7 @@ fn selector_literal(name: String, params: &Vec<FixedSize>) -> yul::Literal {
         name,
         params
             .iter()
-            .map(|param| abi_type(param.to_owned()))
+            .map(|param| param.abi_name())
             .collect::<Vec<String>>()
             .join(",")
     );
@@ -92,27 +92,6 @@ fn selector_literal(name: String, params: &Vec<FixedSize>) -> yul::Literal {
     keccak.finalize(&mut selector);
 
     literal! {(format!("0x{}", hex::encode(selector)))}
-}
-
-fn abi_type_base(typ: Base) -> String {
-    match typ {
-        Base::U256 => "uint256".to_string(),
-        Base::Address => "address".to_string(),
-        Base::Byte => "byte".to_string(),
-    }
-}
-
-fn abi_type(typ: FixedSize) -> String {
-    match typ {
-        FixedSize::Base(base) => abi_type_base(base),
-        FixedSize::Array(Array { dimension, inner }) => {
-            if inner == Base::Byte {
-                return format!("bytes{}", dimension);
-            }
-
-            format!("{}[{}]", abi_type_base(inner), dimension)
-        }
-    }
 }
 
 fn parameter_expressions(params: &Vec<FixedSize>) -> Result<Vec<yul::Expression>, CompileError> {

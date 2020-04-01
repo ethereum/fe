@@ -61,6 +61,39 @@ impl ContractHarness {
             panic!("Failed to run function")
         }
     }
+
+    pub fn event_emitted(
+        &self,
+        executor: Executor,
+        name: &str,
+        output: Vec<ethabi::Token>
+    ) {
+        let raw_logs = executor
+            .deconstruct()
+            .1
+            .into_iter()
+            .map(|l| ethabi::RawLog::from((l.topics, l.data)))
+            .collect::<Vec<ethabi::RawLog>>();
+
+        let event = self
+            .abi
+            .events()
+            .find(|e| e.name.eq(name))
+            .expect("Unable to find event for name");
+
+        let mut values = None;
+        for raw_log in raw_logs {
+            if let Ok(log) = event.parse_log(raw_log) {
+                values = Some(log.params.into_iter().map(|p| p.value).collect::<Vec<ethabi::Token>>());
+            }
+        }
+
+        if let Some(values) = values {
+            assert_eq!(values, output)
+        } else {
+            panic!("No logs for event")
+        }
+    }
 }
 
 fn with_executor(test: &dyn Fn(Executor)) {
@@ -279,10 +312,12 @@ fn guest_book() {
             Some(bytes.clone())
         );
 
-        let (_, logs) = executor.deconstruct();
-        let mut logs = logs.into_iter().collect::<Vec<Log>>();
-
-        assert_eq!(logs.first().unwrap().data, bytes.to_fixed_bytes().unwrap())
+        // Destruct the executor
+        harness.event_emitted(
+            executor,
+            "Signed",
+            vec![bytes]
+        );
     })
 }
 

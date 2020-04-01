@@ -58,6 +58,13 @@ impl FixedSize {
             FixedSize::Array(array) => array.decode(ptr),
         }
     }
+
+    pub fn abi_name(&self) -> String {
+        match self {
+            FixedSize::Array(array) => array.abi_name(),
+            FixedSize::Base(base) => base.abi_name(),
+        }
+    }
 }
 
 impl Base {
@@ -71,6 +78,14 @@ impl Base {
 
     pub fn padded_size(&self) -> usize {
         32
+    }
+
+    pub fn abi_name(&self) -> String {
+        match self {
+            Base::U256 => "uint256".to_string(),
+            Base::Address => "address".to_string(),
+            Base::Byte => "byte".to_string(),
+        }
     }
 
     pub fn decode(&self, ptr: yul::Expression) -> Result<yul::Expression, CompileError> {
@@ -137,6 +152,14 @@ impl Array {
                 "Decoding of address arrays not supported",
             )),
         }
+    }
+
+    pub fn abi_name(&self) -> String {
+        if self.inner == Base::Byte {
+            return format!("bytes{}", self.dimension);
+        }
+
+        format!("{}[{}]", self.inner.abi_name(), self.dimension)
     }
 
     pub fn mstore_elem(
