@@ -1,6 +1,5 @@
 use crate::errors::CompileError;
 use crate::yul::namespace::scopes::*;
-
 use std::collections::HashMap;
 use vyper_parser::ast as vyp;
 use yultsur::*;
@@ -92,6 +91,10 @@ impl Base {
         Ok(expression! { calldataload([ptr]) })
     }
 
+    pub fn encode(&self, val: yul::Expression) -> Result<yul::Expression, CompileError> {
+        Ok(expression! { alloc_mstoren([val], 32) })
+    }
+
     pub fn mstore(
         &self,
         ptr: yul::Expression,
@@ -148,9 +151,15 @@ impl Array {
         match &self.inner {
             Base::Byte => Ok(expression! { ccopy([ptr], [size]) }),
             Base::U256 => Ok(expression! { ccopy([ptr], [size]) }),
-            Base::Address => Err(CompileError::static_str(
-                "Decoding of address arrays not supported",
-            )),
+            Base::Address => unimplemented!("Address array decoding"),
+        }
+    }
+
+    pub fn encode(&self, ptr: yul::Expression) -> Result<yul::Expression, CompileError> {
+        match &self.inner {
+            Base::Byte => Ok(ptr),
+            Base::U256 => Ok(ptr),
+            Base::Address => unimplemented!("Address array encoding")
         }
     }
 

@@ -49,27 +49,25 @@ fn function_call_case(
 
     if let Some(returns) = returns {
         let return_size = literal_expression! {(returns.padded_size())};
+        let function_call = expression! { [name]([params...]) };
 
         Ok(match returns {
-            FixedSize::Array(_) => case! {
+            FixedSize::Array(array) => case! {
                 case [selector] {
-                    (let return_ptr := [name]([params...]))
-                    (return(return_ptr, [return_size]))
+                    (return([array.encode(function_call)?], [return_size]))
                 }
             },
-            FixedSize::Base(_) => case! {
+            FixedSize::Base(base) => case! {
                 case [selector] {
-                    (let return_val := [name]([params...]))
-                    (mstore(0, return_val))
-                    (return(0, [return_size]))
+                    (return([base.encode(function_call)?], [return_size]))
                 }
             },
         })
     } else {
+        let function_call = statement! { [name]([params...]) };
+
         Ok(case! {
-            case [selector] {
-                ([name]([params...]))
-            }
+            case [selector] { [function_call] }
         })
     }
 }

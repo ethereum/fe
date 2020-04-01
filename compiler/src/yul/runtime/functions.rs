@@ -5,6 +5,7 @@ pub fn all() -> Vec<yul::Statement> {
     vec![
         avail(),
         alloc(),
+        alloc_mstoren(),
         free(),
         ccopy(),
         mcopy(),
@@ -34,6 +35,16 @@ pub fn alloc() -> yul::Statement {
             (ptr := mload(0x00))
             (if (eq(ptr, 0x00)) { (ptr := 0x20) })
             (mstore(0x00, (add(ptr, size))))
+        }
+    }
+}
+
+/// Stores a value in a newly allocated memory segment.
+pub fn alloc_mstoren() -> yul::Statement {
+    function_definition! {
+        function alloc_mstoren(val, size) -> ptr {
+            (ptr := alloc(size))
+            (mstoren(ptr, val, size))
         }
     }
 }
