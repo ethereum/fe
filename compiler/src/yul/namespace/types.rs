@@ -159,7 +159,7 @@ impl Array {
         match &self.inner {
             Base::Byte => Ok(ptr),
             Base::U256 => Ok(ptr),
-            Base::Address => unimplemented!("Address array encoding")
+            Base::Address => unimplemented!("Address array encoding"),
         }
     }
 
@@ -271,7 +271,7 @@ pub fn type_desc(
     typ: &vyp::TypeDesc,
 ) -> Result<Type, CompileError> {
     match typ {
-        vyp::TypeDesc::Base { base: "u256" } => Ok(Type::Base(Base::U256)),
+        vyp::TypeDesc::Base { base: "uint256" } => Ok(Type::Base(Base::U256)),
         vyp::TypeDesc::Base { base: "bytes" } => Ok(Type::Base(Base::Byte)),
         vyp::TypeDesc::Base { base: "address" } => Ok(Type::Base(Base::Address)),
         vyp::TypeDesc::Base { base } => {

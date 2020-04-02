@@ -1,9 +1,7 @@
 use crate::errors::CompileError;
 use crate::yul::mappers::expressions::{expr, expr_name_string};
 use crate::yul::mappers::types;
-use crate::yul::namespace::scopes::{
-    FunctionScope, Scope, Shared,
-};
+use crate::yul::namespace::scopes::{FunctionScope, Scope, Shared};
 use crate::yul::namespace::types::{Array, Base, Type};
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
@@ -61,7 +59,7 @@ fn var_decl_array(
 
 #[cfg(test)]
 mod tests {
-    
+
     use crate::yul::mappers::declarations::var_decl;
     use crate::yul::namespace::scopes::{
         ContractScope, FunctionDef, FunctionScope, ModuleScope, Shared,
@@ -99,7 +97,10 @@ mod tests {
         let scope = scope();
         scope.borrow_mut().add_base("bar".to_string(), Base::U256);
 
-        assert_eq!(map(Rc::clone(&scope), "foo: u256 = bar"), "let foo := bar");
+        assert_eq!(
+            map(Rc::clone(&scope), "foo: uint256 = bar"),
+            "let foo := bar"
+        );
 
         let foo_def = scope.borrow().def("foo".to_string()).unwrap();
         assert_eq!(foo_def, FunctionDef::Base(Base::U256))

@@ -1,8 +1,6 @@
 use crate::errors::CompileError;
 use crate::yul::mappers::{assignments, declarations, expressions, types};
-use crate::yul::namespace::scopes::{
-    ContractDef, ContractScope, FunctionScope, Scope, Shared,
-};
+use crate::yul::namespace::scopes::{ContractDef, ContractScope, FunctionScope, Scope, Shared};
 use crate::yul::namespace::types::FixedSize;
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
@@ -139,7 +137,9 @@ fn emit(scope: Shared<FunctionScope>, value: &vyp::Expr) -> Result<yul::Statemen
         return Err(CompileError::static_str("No definition found"));
     }
 
-    Err(CompileError::static_str("Invalid expression in emit statement"))
+    Err(CompileError::static_str(
+        "Invalid expression in emit statement",
+    ))
 }
 
 fn call_arg(

@@ -1,7 +1,7 @@
 use crate::errors::CompileError;
 use crate::yul::namespace::scopes::ContractDef;
 #[allow(unused_imports)]
-use crate::yul::namespace::types::{FixedSize, Base};
+use crate::yul::namespace::types::{Base, FixedSize};
 use std::collections::HashMap;
 use tiny_keccak::{Hasher, Keccak};
 use yultsur::*;
@@ -108,11 +108,7 @@ fn selector_literal_basic() {
 #[test]
 fn test_selector_literal() {
     assert_eq!(
-        selector_literal(
-            "bar".to_string(),
-            &vec![FixedSize::Base(Base::U256)]
-        )
-        .to_string(),
+        selector_literal("bar".to_string(), &vec![FixedSize::Base(Base::U256)]).to_string(),
         String::from("0x0423a132"),
     )
 }

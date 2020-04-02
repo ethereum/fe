@@ -1,7 +1,6 @@
 use crate::errors::CompileError;
 use vyper_parser as parser;
 
-
 mod json_builder;
 
 pub use json_builder::TypeDefs;

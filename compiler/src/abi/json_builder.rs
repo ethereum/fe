@@ -269,7 +269,7 @@ pub fn type_desc<'a>(
     }
 
     match typ {
-        vyp::TypeDesc::Base { base: "u256" } => Ok(VariableType::Uint256),
+        vyp::TypeDesc::Base { base: "uint256" } => Ok(VariableType::Uint256),
         vyp::TypeDesc::Base { base: "address" } => Ok(VariableType::Address),
         vyp::TypeDesc::Array { typ, dimension } => {
             if let vyp::TypeDesc::Base { base: "bytes" } = &typ.node {
@@ -297,7 +297,7 @@ mod tests {
         let toks = vyper_parser::get_parse_tokens("CustomType").unwrap();
         let vyp_type_desc = parsers::type_desc(&toks[..]).unwrap().1.node;
         let mut type_defs = HashMap::new();
-        type_defs.insert("CustomType", &vyp::TypeDesc::Base { base: "u256" });
+        type_defs.insert("CustomType", &vyp::TypeDesc::Base { base: "uint256" });
 
         let variable_type = type_desc(&type_defs, &vyp_type_desc).unwrap();
         assert_eq!(variable_type, VariableType::Uint256);
@@ -305,7 +305,7 @@ mod tests {
 
     #[test]
     fn test_type_desc_array() {
-        let toks = vyper_parser::get_parse_tokens("u256[5]").unwrap();
+        let toks = vyper_parser::get_parse_tokens("uint256[5]").unwrap();
         let vyp_type_desc = parsers::type_desc(&toks[..]).unwrap().1.node;
         let type_defs = HashMap::new();
 
@@ -319,8 +319,9 @@ mod tests {
 
     #[test]
     fn test_func_def() {
-        let toks = vyper_parser::get_parse_tokens("pub def foo(x: u256) -> u256[10]:\n   return x")
-            .unwrap();
+        let toks =
+            vyper_parser::get_parse_tokens("pub def foo(x: uint256) -> uint256[10]:\n   return x")
+                .unwrap();
         let vyp_func_def = parsers::func_def(&toks[..]).unwrap().1.node;
 
         let function = func_def(&HashMap::new(), &vyp_func_def).unwrap().unwrap();

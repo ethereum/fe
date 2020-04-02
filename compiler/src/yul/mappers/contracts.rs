@@ -1,10 +1,10 @@
 use crate::errors::CompileError;
 use crate::yul::mappers::{constructor, functions, types};
+use crate::yul::namespace::events::Event;
 use crate::yul::namespace::scopes::{ContractScope, ModuleScope, Scope, Shared};
 use crate::yul::namespace::types::{FixedSize, Type};
 use crate::yul::runtime::abi as runtime_abi;
 use crate::yul::runtime::functions as runtime_functions;
-use crate::yul::namespace::events::Event;
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
 use vyper_parser::span::Spanned;
@@ -81,7 +81,7 @@ fn contract_field(
 ) -> Result<(), CompileError> {
     match types::type_desc(Scope::Contract(Rc::clone(&scope)), typ)? {
         Type::Map(map) => scope.borrow_mut().add_map(name, map),
-        Type::Array{ .. } => unimplemented!("Array contract field"),
+        Type::Array { .. } => unimplemented!("Array contract field"),
         Type::Base(_) => unimplemented!("Base contract field"),
     };
 
@@ -98,7 +98,9 @@ fn event_def(
         .map(|f| event_field(Rc::clone(&scope), &f.node))
         .collect::<Result<Vec<FixedSize>, CompileError>>()?;
 
-    scope.borrow_mut().add_event(name.clone(), Event::new(name, fields));
+    scope
+        .borrow_mut()
+        .add_event(name.clone(), Event::new(name, fields));
 
     Ok(())
 }

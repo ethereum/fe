@@ -10,7 +10,6 @@ use std::str::FromStr;
 use stringreader::StringReader;
 use vyper_compiler as compiler;
 
-
 type Executor<'a> = evm::executor::StackExecutor<'a, 'a, evm::backend::MemoryBackend<'a>>;
 
 struct ContractHarness {
@@ -62,12 +61,7 @@ impl ContractHarness {
         }
     }
 
-    pub fn event_emitted(
-        &self,
-        executor: Executor,
-        name: &str,
-        output: Vec<ethabi::Token>
-    ) {
+    pub fn event_emitted(&self, executor: Executor, name: &str, output: Vec<ethabi::Token>) {
         let raw_logs = executor
             .deconstruct()
             .1
@@ -84,7 +78,12 @@ impl ContractHarness {
         let mut values = None;
         for raw_log in raw_logs {
             if let Ok(log) = event.parse_log(raw_log) {
-                values = Some(log.params.into_iter().map(|p| p.value).collect::<Vec<ethabi::Token>>());
+                values = Some(
+                    log.params
+                        .into_iter()
+                        .map(|p| p.value)
+                        .collect::<Vec<ethabi::Token>>(),
+                );
             }
         }
 
@@ -175,7 +174,7 @@ fn return_u256() {
             &mut executor,
             "bar",
             vec![u256_token(42)],
-            Some(u256_token(42))
+            Some(u256_token(42)),
         )
     })
 }
@@ -189,7 +188,7 @@ fn return_array() {
             &mut executor,
             "bar",
             vec![u256_token(42)],
-            Some(u256_array_token(vec![0, 0, 0, 42, 0]))
+            Some(u256_array_token(vec![0, 0, 0, 42, 0])),
         )
     })
 }
@@ -203,7 +202,7 @@ fn multi_param() {
             &mut executor,
             "bar",
             vec![u256_token(4), u256_token(42), u256_token(420)],
-            Some(u256_array_token(vec![4, 42, 420]))
+            Some(u256_array_token(vec![4, 42, 420])),
         )
     })
 }
@@ -217,28 +216,28 @@ fn u256_u256_map() {
             &mut executor,
             "write_bar",
             vec![u256_token(4), u256_token(42)],
-            None
+            None,
         );
 
         harness.test_function(
             &mut executor,
             "write_bar",
             vec![u256_token(420), u256_token(12)],
-            None
+            None,
         );
 
         harness.test_function(
             &mut executor,
             "read_bar",
             vec![u256_token(4)],
-            Some(u256_token(42))
+            Some(u256_token(42)),
         );
 
         harness.test_function(
             &mut executor,
             "read_bar",
             vec![u256_token(420)],
-            Some(u256_token(12))
+            Some(u256_token(12)),
         );
     })
 }
@@ -258,29 +257,19 @@ fn address_bytes10_map() {
             &mut executor,
             "write_bar",
             vec![address1.clone(), bytes1.clone()],
-            None
+            None,
         );
 
         harness.test_function(
             &mut executor,
             "write_bar",
             vec![address2.clone(), bytes2.clone()],
-            None
+            None,
         );
 
-        harness.test_function(
-            &mut executor,
-            "read_bar",
-            vec![address1],
-            Some(bytes1)
-        );
+        harness.test_function(&mut executor, "read_bar", vec![address1], Some(bytes1));
 
-        harness.test_function(
-            &mut executor,
-            "read_bar",
-            vec![address2],
-            Some(bytes2)
-        );
+        harness.test_function(&mut executor, "read_bar", vec![address2], Some(bytes2));
     })
 }
 
@@ -290,30 +279,21 @@ fn guest_book() {
         let mut harness = deploy_contract(&mut executor, "guest_book.vy");
 
         let sender = address_token("1234000000000000000000000000000000005678");
-        let bytes = bytes_token(iter::repeat("ten bytes.").take(10).collect::<String>().as_str());
+        let bytes = bytes_token(
+            iter::repeat("ten bytes.")
+                .take(10)
+                .collect::<String>()
+                .as_str(),
+        );
 
         harness.caller = sender.clone().to_address().unwrap();
 
-        harness.test_function(
-            &mut executor,
-            "sign",
-            vec![bytes.clone()],
-            None
-        );
+        harness.test_function(&mut executor, "sign", vec![bytes.clone()], None);
 
-        harness.test_function(
-            &mut executor,
-            "get_msg",
-            vec![sender],
-            Some(bytes.clone())
-        );
+        harness.test_function(&mut executor, "get_msg", vec![sender], Some(bytes.clone()));
 
         // Destruct the executor
-        harness.event_emitted(
-            executor,
-            "Signed",
-            vec![bytes]
-        );
+        harness.event_emitted(executor, "Signed", vec![bytes]);
     })
 }
 
@@ -331,7 +311,7 @@ fn return_sender() {
             "bar",
             // FIXME: There's an issue parsing functions with 0 params. This is here to mitigate that failure.
             vec![u256_token(42)],
-            Some(sender)
+            Some(sender),
         );
     })
 }

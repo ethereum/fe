@@ -1,5 +1,5 @@
 use crate::errors::CompileError;
-use crate::yul::namespace::types::{FixedSize};
+use crate::yul::namespace::types::FixedSize;
 use tiny_keccak::{Hasher, Keccak};
 use yultsur::*;
 
@@ -27,10 +27,7 @@ impl Event {
         keccak.update(signature.as_bytes());
         keccak.finalize(&mut topic);
 
-        Self {
-            topic,
-            fields
-        }
+        Self { topic, fields }
     }
 
     pub fn emit(&self, values: Vec<yul::Expression>) -> Result<yul::Statement, CompileError> {

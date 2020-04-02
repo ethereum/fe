@@ -1,5 +1,5 @@
 use crate::errors::CompileError;
-use crate::yul::mappers::{expressions};
+use crate::yul::mappers::expressions;
 use crate::yul::namespace::scopes::{ContractDef, FunctionDef, FunctionScope, Shared};
 use crate::yul::namespace::types::FixedSize;
 use std::rc::Rc;
@@ -88,7 +88,7 @@ fn assign_subscript_self(
     match scope.borrow().contract_def(name) {
         Some(ContractDef::Map { index, map }) => map.sstore(index, key, value),
         None => Err(CompileError::static_str("No definition found")),
-        _ => Err(CompileError::static_str("Invalid definition"))
+        _ => Err(CompileError::static_str("Invalid definition")),
     }
 }
 
@@ -113,7 +113,7 @@ mod tests {
     use crate::yul::mappers::assignments::assign;
     use crate::yul::namespace::scopes::{ContractScope, FunctionScope, ModuleScope, Shared};
     use crate::yul::namespace::types::{Array, Base};
-    
+
     use vyper_parser as parser;
     use vyper_parser::ast as vyp;
 

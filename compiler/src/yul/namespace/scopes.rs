@@ -1,5 +1,5 @@
-use crate::yul::namespace::types::{Type, FixedSize, Map, Base, Array};
 use crate::yul::namespace::events::Event;
+use crate::yul::namespace::types::{Array, Base, FixedSize, Map, Type};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
