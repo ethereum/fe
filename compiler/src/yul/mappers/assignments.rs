@@ -1,8 +1,6 @@
 use crate::errors::CompileError;
-use crate::yul::mappers::{expressions, types};
-use crate::yul::namespace::scopes::{
-    ContractDef, ContractScope, FunctionDef, FunctionScope, Scope, Shared,
-};
+use crate::yul::mappers::{expressions};
+use crate::yul::namespace::scopes::{ContractDef, FunctionDef, FunctionScope, Shared};
 use crate::yul::namespace::types::FixedSize;
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
@@ -117,8 +115,8 @@ fn assign_name(
 mod tests {
     use crate::yul::mappers::assignments::assign;
     use crate::yul::namespace::scopes::{ContractScope, FunctionScope, ModuleScope, Shared};
-    use crate::yul::namespace::types::{Array, Base, FixedSize, Map};
-    use std::rc::Rc;
+    use crate::yul::namespace::types::{Array, Base};
+    
     use vyper_parser as parser;
     use vyper_parser::ast as vyp;
 

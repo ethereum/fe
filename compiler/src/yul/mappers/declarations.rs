@@ -2,9 +2,9 @@ use crate::errors::CompileError;
 use crate::yul::mappers::expressions::{expr, expr_name_string};
 use crate::yul::mappers::types;
 use crate::yul::namespace::scopes::{
-    ContractDef, ContractScope, FunctionDef, FunctionScope, Scope, Shared,
+    FunctionScope, Scope, Shared,
 };
-use crate::yul::namespace::types::{Array, Base, FixedSize, Type};
+use crate::yul::namespace::types::{Array, Base, Type};
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
 use vyper_parser::span::Spanned;
@@ -52,7 +52,7 @@ fn var_decl_array(
 
     scope.borrow_mut().add_array(name.clone(), array);
 
-    if let Some(value) = value {
+    if let Some(_value) = value {
         Err(CompileError::static_str("Array copying not supported yet"))
     } else {
         Ok(statement! { let [identifier! {(name)}] := alloc([size]) })
@@ -61,12 +61,12 @@ fn var_decl_array(
 
 #[cfg(test)]
 mod tests {
-    use crate::yul::mappers::assignments::assign;
+    
     use crate::yul::mappers::declarations::var_decl;
     use crate::yul::namespace::scopes::{
         ContractScope, FunctionDef, FunctionScope, ModuleScope, Shared,
     };
-    use crate::yul::namespace::types::{Array, Base, FixedSize, Map, Type};
+    use crate::yul::namespace::types::{Array, Base, Type};
     use std::rc::Rc;
     use vyper_parser as parser;
     use vyper_parser::ast as vyp;

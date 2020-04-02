@@ -1,6 +1,6 @@
 use crate::errors::CompileError;
 use crate::yul::mappers::contracts;
-use crate::yul::namespace::scopes::{ModuleDef, ModuleScope, Shared};
+use crate::yul::namespace::scopes::{ModuleScope, Shared};
 use crate::yul::namespace::types;
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
@@ -51,8 +51,7 @@ fn type_def<'a>(
         let typ = types::type_desc(&scope.borrow().defs, &typ.node)?;
         scope
             .borrow_mut()
-            .defs
-            .insert(name.node.to_string(), ModuleDef::Type(typ));
+            .add_type_def(name.node.to_string(), typ);
         return Ok(());
     }
 

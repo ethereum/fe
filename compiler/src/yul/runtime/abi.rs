@@ -1,6 +1,6 @@
 use crate::errors::CompileError;
 use crate::yul::namespace::scopes::ContractDef;
-use crate::yul::namespace::types::{Array, Base, FixedSize, Type};
+use crate::yul::namespace::types::FixedSize;
 use std::collections::HashMap;
 use tiny_keccak::{Hasher, Keccak};
 use yultsur::*;
@@ -51,17 +51,10 @@ fn function_call_case(
         let return_size = literal_expression! {(returns.padded_size())};
         let function_call = expression! { [name]([params...]) };
 
-        Ok(match returns {
-            FixedSize::Array(array) => case! {
-                case [selector] {
-                    (return([array.encode(function_call)?], [return_size]))
-                }
-            },
-            FixedSize::Base(base) => case! {
-                case [selector] {
-                    (return([base.encode(function_call)?], [return_size]))
-                }
-            },
+        Ok(case! {
+            case [selector] {
+                (return([returns.encode(function_call)?], [return_size]))
+            }
         })
     } else {
         let function_call = statement! { [name]([params...]) };

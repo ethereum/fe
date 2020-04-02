@@ -37,13 +37,6 @@ pub struct Map {
 }
 
 impl FixedSize {
-    pub fn size(&self) -> usize {
-        match self {
-            FixedSize::Base(base) => base.size(),
-            FixedSize::Array(array) => array.size(),
-        }
-    }
-
     pub fn padded_size(&self) -> usize {
         match self {
             FixedSize::Base(base) => base.padded_size(),
@@ -55,6 +48,13 @@ impl FixedSize {
         match self {
             FixedSize::Base(base) => base.decode(ptr),
             FixedSize::Array(array) => array.decode(ptr),
+        }
+    }
+
+    pub fn encode(&self, ptr: yul::Expression) -> Result<yul::Expression, CompileError> {
+        match self {
+            FixedSize::Base(base) => base.encode(ptr),
+            FixedSize::Array(array) => array.encode(ptr),
         }
     }
 
@@ -263,26 +263,6 @@ pub fn type_desc_base<'a>(
         Type::Base(base) => Ok(base),
         Type::Array(_) => Err(CompileError::static_str("Arrays are not a base type")),
         Type::Map(_) => Err(CompileError::static_str("Maps are not a base type")),
-    }
-}
-
-pub fn type_desc_array<'a>(
-    defs: &HashMap<String, ModuleDef>,
-    typ: &'a vyp::TypeDesc<'a>,
-) -> Result<Array, CompileError> {
-    match type_desc(defs, typ)? {
-        Type::Array(array) => Ok(array),
-        _ => Err(CompileError::static_str("Not an array")),
-    }
-}
-
-pub fn type_desc_map<'a>(
-    defs: &HashMap<String, ModuleDef>,
-    typ: &'a vyp::TypeDesc<'a>,
-) -> Result<Map, CompileError> {
-    match type_desc(defs, typ)? {
-        Type::Map(map) => Ok(map),
-        _ => Err(CompileError::static_str("Not a map")),
     }
 }
 

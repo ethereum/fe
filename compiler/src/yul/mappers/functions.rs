@@ -1,10 +1,10 @@
 use crate::errors::CompileError;
 use crate::yul::mappers::{assignments, declarations, expressions, types};
 use crate::yul::namespace::scopes::{
-    ContractDef, ContractScope, FunctionDef, FunctionScope, Scope, Shared,
+    ContractDef, ContractScope, FunctionScope, Scope, Shared,
 };
 use crate::yul::namespace::types::FixedSize;
-use std::collections::HashMap;
+
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
 use vyper_parser::span::Spanned;
@@ -13,7 +13,7 @@ use yultsur::*;
 /// Builds a Yul function definition from a Vyper function definition.
 pub fn func_def<'a>(
     contract_scope: Shared<ContractScope>,
-    qual: &'a Option<Spanned<vyp::FuncQual>>,
+    _qual: &'a Option<Spanned<vyp::FuncQual>>,
     name: String,
     args: &'a Vec<Spanned<vyp::FuncDefArg<'a>>>,
     return_type: &'a Option<Spanned<vyp::TypeDesc>>,
@@ -156,7 +156,7 @@ fn call_arg(
             let (value, _) = expressions::expr(scope, value)?;
             Ok(value)
         }
-        vyp::CallArg::Kwarg(vyp::Kwarg { name, value }) => {
+        vyp::CallArg::Kwarg(vyp::Kwarg { name: _, value }) => {
             let (value, _) = expressions::expr(scope, &value.node)?;
             Ok(value)
         }

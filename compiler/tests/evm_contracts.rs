@@ -1,6 +1,6 @@
 use ethabi;
 use evm;
-use evm::backend::Log;
+
 use evm_runtime::Handler;
 use primitive_types::{H160, U256};
 use std::collections::BTreeMap;
@@ -9,7 +9,7 @@ use std::iter;
 use std::str::FromStr;
 use stringreader::StringReader;
 use vyper_compiler as compiler;
-use vyper_parser::tokenizer::Token;
+
 
 type Executor<'a> = evm::executor::StackExecutor<'a, 'a, evm::backend::MemoryBackend<'a>>;
 
@@ -153,10 +153,6 @@ fn bytes_token(s: &str) -> ethabi::Token {
 
 fn u256_array_token(v: Vec<usize>) -> ethabi::Token {
     ethabi::Token::FixedArray(v.into_iter().map(|n| u256_token(n)).collect())
-}
-
-fn address_array_token(v: Vec<&str>) -> ethabi::Token {
-    ethabi::Token::FixedArray(v.into_iter().map(|s| address_token(s)).collect())
 }
 
 #[test]

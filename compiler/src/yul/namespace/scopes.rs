@@ -22,10 +22,6 @@ pub enum ContractDef {
         index: usize,
         map: Map,
     },
-    Array {
-        index: usize,
-        array: Array,
-    },
     Event(Event),
 }
 
@@ -132,6 +128,7 @@ impl FunctionScope {
         }))
     }
 
+    #[allow(dead_code)]
     pub fn module_scope(&self) -> Shared<ModuleScope> {
         Rc::clone(&self.parent.borrow().parent)
     }

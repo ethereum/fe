@@ -1,5 +1,5 @@
 use crate::errors::CompileError;
-use crate::yul::namespace::scopes::{ContractDef, FunctionDef, FunctionScope, Scope, Shared};
+use crate::yul::namespace::scopes::{ContractDef, FunctionDef, FunctionScope, Shared};
 use crate::yul::namespace::types::{Base, FixedSize};
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
@@ -129,7 +129,7 @@ fn expr_subscript_self(
 }
 
 fn expr_attribute(
-    scope: Shared<FunctionScope>,
+    _scope: Shared<FunctionScope>,
     value: &vyp::Expr,
     name: String,
 ) -> Result<(yul::Expression, FixedSize), CompileError> {

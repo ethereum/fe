@@ -1,6 +1,6 @@
 use crate::errors::CompileError;
 use crate::yul::mappers::{constructor, functions, types};
-use crate::yul::namespace::scopes::{ContractDef, ContractScope, ModuleScope, Scope, Shared};
+use crate::yul::namespace::scopes::{ContractScope, ModuleScope, Scope, Shared};
 use crate::yul::namespace::types::{FixedSize, Type};
 use crate::yul::runtime::abi as runtime_abi;
 use crate::yul::runtime::functions as runtime_functions;
@@ -14,7 +14,7 @@ use yultsur::*;
 /// Builds a Yul object from a Vyper contract.
 pub fn contract_def(
     module_scope: Shared<ModuleScope>,
-    name: String,
+    _name: String,
     body: &Vec<Spanned<vyp::ContractStmt>>,
 ) -> Result<yul::Statement, CompileError> {
     let contract_scope = ContractScope::new(Rc::clone(&module_scope));
@@ -76,7 +76,7 @@ fn contract_stmt(
 
 fn contract_field(
     scope: Shared<ContractScope>,
-    qual: &Option<Spanned<vyp::ContractFieldQual>>,
+    _qual: &Option<Spanned<vyp::ContractFieldQual>>,
     name: String,
     typ: &vyp::TypeDesc,
 ) -> Result<(), CompileError> {
