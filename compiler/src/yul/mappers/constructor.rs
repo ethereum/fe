@@ -1,8 +1,6 @@
 use yultsur::*;
 
-/// Builds a code block that returns the runtime object.
-///
-/// TODO: Add real constructor code here.
+/// Builds a Yul block that returns the runtime object.
 pub fn code() -> yul::Code {
     let block = block! {
         (let size := datasize("runtime"))

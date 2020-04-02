@@ -244,9 +244,9 @@ impl Map {
     }
 }
 
-pub fn type_desc_fixed_size<'a>(
+pub fn type_desc_fixed_size(
     defs: &HashMap<String, ModuleDef>,
-    typ: &'a vyp::TypeDesc<'a>,
+    typ: &vyp::TypeDesc,
 ) -> Result<FixedSize, CompileError> {
     match type_desc(defs, typ)? {
         Type::Base(base) => Ok(FixedSize::Base(base)),
@@ -255,9 +255,9 @@ pub fn type_desc_fixed_size<'a>(
     }
 }
 
-pub fn type_desc_base<'a>(
+pub fn type_desc_base(
     defs: &HashMap<String, ModuleDef>,
-    typ: &'a vyp::TypeDesc<'a>,
+    typ: &vyp::TypeDesc,
 ) -> Result<Base, CompileError> {
     match type_desc(defs, typ)? {
         Type::Base(base) => Ok(base),
@@ -266,9 +266,9 @@ pub fn type_desc_base<'a>(
     }
 }
 
-pub fn type_desc<'a>(
+pub fn type_desc(
     defs: &HashMap<String, ModuleDef>,
-    typ: &'a vyp::TypeDesc<'a>,
+    typ: &vyp::TypeDesc,
 ) -> Result<Type, CompileError> {
     match typ {
         vyp::TypeDesc::Base { base: "u256" } => Ok(Type::Base(Base::U256)),

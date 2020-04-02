@@ -4,7 +4,6 @@ use crate::yul::namespace::scopes::{
     ContractDef, ContractScope, FunctionScope, Scope, Shared,
 };
 use crate::yul::namespace::types::FixedSize;
-
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
 use vyper_parser::span::Spanned;
@@ -68,7 +67,7 @@ pub fn func_def<'a>(
                 }
             }),
             // Arrays need to keep memory allocated after completing.
-            // TODO: Copy arrays to the lowest available pointer to save memory.
+            // FIXME: Copy arrays to the lowest available pointer to save memory.
             FixedSize::Array(array) => {
                 let size = literal_expression! {(array.size())};
 
@@ -120,7 +119,7 @@ fn func_stmt<'a>(
             assignments::assign(scope, targets, &value.node)
         }
         vyp::FuncStmt::Emit { value } => emit(scope, &value.node),
-        _ => Err(CompileError::static_str("Unsupported function statement")),
+        _ => unimplemented!("Function statement"),
     }
 }
 
@@ -137,14 +136,10 @@ fn emit(scope: Shared<FunctionScope>, value: &vyp::Expr) -> Result<yul::Statemen
             return event.emit(event_values);
         }
 
-        return Err(CompileError::static_str(
-            "No event definition found for emit statement",
-        ));
+        return Err(CompileError::static_str("No definition found"));
     }
 
-    Err(CompileError::static_str(
-        "Not a call expression in emit statement",
-    ))
+    Err(CompileError::static_str("Invalid expression in emit statement"))
 }
 
 fn call_arg(
@@ -172,5 +167,5 @@ fn func_return(
         return Ok(statement! { return_val := [value] });
     }
 
-    Err(CompileError::static_str("Empty returns not supported"))
+    unimplemented!("Empty returns")
 }

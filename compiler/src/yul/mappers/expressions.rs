@@ -18,7 +18,7 @@ pub fn expr(
         vyp::Expr::Attribute { value, attr } => {
             expr_attribute(scope, &value.node, attr.node.to_string())
         }
-        _ => Err(CompileError::static_str("Expression not supported")),
+        _ => unimplemented!("Expression"),
     }
 }
 
@@ -63,10 +63,11 @@ fn expr_name(
         Some(FunctionDef::Array(array)) => {
             Ok((identifier_expression! {(name)}, FixedSize::Array(array)))
         }
-        None => Err(CompileError::static_str("Function definition not found")),
+        None => Err(CompileError::static_str("No definition found")),
     }
 }
 
+// FIXME: The left side should be evaluated and then indexed.
 fn expr_subscript(
     scope: Shared<FunctionScope>,
     value: &vyp::Expr,
@@ -77,9 +78,7 @@ fn expr_subscript(
             expr_subscript_attribute(scope, &value.node, attr.node.to_string(), slices)
         }
         vyp::Expr::Name(name) => expr_subscript_name(scope, name.to_string(), slices),
-        _ => Err(CompileError::static_str(
-            "Subscript expression not supported",
-        )),
+        _ => unimplemented!("Expression subscript"),
     }
 }
 
@@ -94,10 +93,8 @@ fn expr_subscript_name(
         Some(FunctionDef::Array(array)) => {
             Ok((array.mload_elem(name, key)?, FixedSize::Base(array.inner)))
         }
-        None => Err(CompileError::static_str("Function definition not found")),
-        _ => Err(CompileError::static_str(
-            "Function definition not supported",
-        )),
+        None => Err(CompileError::static_str("No definition found")),
+        _ => Err(CompileError::static_str("Invalid definition")),
     }
 }
 
@@ -109,7 +106,7 @@ fn expr_subscript_attribute(
 ) -> Result<(yul::Expression, FixedSize), CompileError> {
     match expr_name_str(value)? {
         "self" => expr_subscript_self(scope, name, slices),
-        _ => Err(CompileError::static_str("Unknown attribute value")),
+        _ => Err(CompileError::static_str("Invalid attribute value")),
     }
 }
 
@@ -122,9 +119,8 @@ fn expr_subscript_self(
 
     match scope.borrow().contract_def(name) {
         Some(ContractDef::Map { index, map }) => Ok((map.sload(index, key)?, map.value)),
-        _ => Err(CompileError::static_str(
-            "Contract definition not supported",
-        )),
+        None => Err(CompileError::static_str("No definition found")),
+        _ => Err(CompileError::static_str("Invalid definition")),
     }
 }
 
@@ -135,14 +131,14 @@ fn expr_attribute(
 ) -> Result<(yul::Expression, FixedSize), CompileError> {
     match expr_name_str(value)? {
         "msg" => expr_msg(name),
-        _ => Err(CompileError::static_str("Unknown attribute value")),
+        _ => Err(CompileError::static_str("Invalid attribute value")),
     }
 }
 
 fn expr_msg(name: String) -> Result<(yul::Expression, FixedSize), CompileError> {
     match name.as_str() {
         "sender" => Ok((expression! { caller() }, FixedSize::Base(Base::Address))),
-        _ => Err(CompileError::static_str("Unknown attribute name")),
+        _ => Err(CompileError::static_str("Invalid attribute name")),
     }
 }
 

@@ -10,7 +10,6 @@ use vyper_parser::ast as vyp;
 pub type TypeDefs<'a> = HashMap<&'a str, &'a vyp::TypeDesc<'a>>;
 pub type TypeDef<'a> = (&'a str, &'a vyp::TypeDesc<'a>);
 
-/// TODO: Add support for events.
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub struct Contract {
     pub items: Vec<Item>,
@@ -132,7 +131,7 @@ pub fn module<'a>(module: &'a vyp::Module<'a>) -> Result<Vec<Contract>, CompileE
         .collect::<Vec<Contract>>())
 }
 
-/// Builds a contract ABI.
+/// Builds a contract.
 pub fn contract_def<'a>(
     type_defs: &'a TypeDefs<'a>,
     stmt: &'a vyp::ModuleStmt<'a>,
@@ -162,6 +161,7 @@ pub fn contract_def<'a>(
     Ok(None)
 }
 
+/// Builds an event item.
 pub fn event_def<'a>(
     type_defs: &'a TypeDefs<'a>,
     stmt: &'a vyp::ContractStmt<'a>,
@@ -195,7 +195,7 @@ pub fn event_field<'a>(
     })
 }
 
-/// Builds an ABI function element, returning None if the function is private.
+/// Builds a function item.
 pub fn func_def<'a>(
     type_defs: &'a TypeDefs<'a>,
     stmt: &'a vyp::ContractStmt<'a>,
@@ -248,7 +248,7 @@ pub fn func_def_arg<'a>(
     })
 }
 
-/// Creates a tuple for a type definition.
+/// Builds a type definition.
 pub fn type_def<'a>(stmt: &'a vyp::ModuleStmt<'a>) -> Result<Option<TypeDef<'a>>, CompileError> {
     if let vyp::ModuleStmt::TypeDef { name, typ } = stmt {
         return Ok(Some((name.node, &typ.node)));

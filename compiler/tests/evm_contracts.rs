@@ -156,7 +156,7 @@ fn u256_array_token(v: Vec<usize>) -> ethabi::Token {
 }
 
 #[test]
-fn test_evm_sanity() {
+fn evm_sanity() {
     with_executor(&|mut executor| {
         let address = H160::zero();
         let amount = U256::from(1000);

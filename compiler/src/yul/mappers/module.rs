@@ -7,7 +7,7 @@ use vyper_parser::ast as vyp;
 use yultsur::yul;
 
 /// Builds a vector of Yul contracts from a Vyper module.
-pub fn module<'a>(module: &'a vyp::Module<'a>) -> Result<Vec<yul::Object>, CompileError> {
+pub fn module(module: &vyp::Module) -> Result<Vec<yul::Object>, CompileError> {
     let scope = ModuleScope::new();
 
     Ok(module
@@ -26,36 +26,30 @@ pub fn module<'a>(module: &'a vyp::Module<'a>) -> Result<Vec<yul::Object>, Compi
         .collect::<Vec<yul::Object>>())
 }
 
-fn module_stmt<'a>(
+fn module_stmt(
     scope: Shared<ModuleScope>,
-    stmt: &'a vyp::ModuleStmt<'a>,
+    stmt: &vyp::ModuleStmt,
 ) -> Result<Option<yul::Statement>, CompileError> {
     match stmt {
-        vyp::ModuleStmt::TypeDef { .. } => {
-            type_def(scope, stmt)?;
+        vyp::ModuleStmt::TypeDef { name, typ } => {
+            type_def(scope, name.node.to_string(), &typ.node)?;
             Ok(None)
         }
         vyp::ModuleStmt::ContractDef { name, body } => {
             let contract = contracts::contract_def(scope, name.node.to_string(), body)?;
             Ok(Some(contract))
         }
-        _ => Err(CompileError::static_str("Unsupported module statement.")),
+        _ => unimplemented!("Module statement"),
     }
 }
 
-fn type_def<'a>(
+fn type_def(
     scope: Shared<ModuleScope>,
-    stmt: &'a vyp::ModuleStmt<'a>,
+    name: String,
+    typ: &vyp::TypeDesc,
 ) -> Result<(), CompileError> {
-    if let vyp::ModuleStmt::TypeDef { name, typ } = stmt {
-        let typ = types::type_desc(&scope.borrow().defs, &typ.node)?;
-        scope
-            .borrow_mut()
-            .add_type_def(name.node.to_string(), typ);
-        return Ok(());
-    }
+    let typ = types::type_desc(&scope.borrow().defs, &typ)?;
+    scope.borrow_mut().add_type_def(name, typ);
 
-    Err(CompileError::static_str(
-        "Type definition translation requires TypeDef.",
-    ))
+    Ok(())
 }

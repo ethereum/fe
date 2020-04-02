@@ -1,13 +1,12 @@
 use crate::errors::CompileError;
 use crate::yul::namespace::scopes::ContractDef;
-use crate::yul::namespace::types::FixedSize;
+#[allow(unused_imports)]
+use crate::yul::namespace::types::{FixedSize, Base};
 use std::collections::HashMap;
 use tiny_keccak::{Hasher, Keccak};
 use yultsur::*;
 
-/// Builds a switch statement from the contract ABI.
-/// The switch's expression is the 4 left-most bytes in the calldata and each case is
-/// defined as the keccak value of each function's signature (without return data).
+/// Builds a switch statement from the contract ABI that handles contract calls.
 pub fn switch(
     interface: &Vec<String>,
     defs: &HashMap<String, ContractDef>,
@@ -97,65 +96,23 @@ fn parameter_expressions(params: &Vec<FixedSize>) -> Result<Vec<yul::Expression>
     Ok(expressions)
 }
 
-/*
-#[cfg(test)]
-mod tests {
-    use crate::yul::runtime::abi::selector_literal;
-    use crate::yul::types;
-
-    /*
-    #[test]
-    fn test_selector_literal_basic() {
-        let json_abi = r#"[{"name": "foo", "type": "function", "inputs": [], "outputs": []}]"#;
-        let abi = ethabi::Contract::load(StringReader::new(json_abi)).expect("Unable to load abi.");
-        let ref foo = abi.functions["foo"][0];
-
-        assert_eq!(
-            selector_literal(foo.signature()).to_string(),
-            String::from("0xc2985578"),
-            "Incorrect selector"
-        )
-    }
-    */
-
-    #[test]
-    fn test_selector_literal() {
-        assert_eq!(
-            selector_literal(
-                "bar".to_string(),
-                &vec![FixedSize::Base(Base::U256)]
-            )
-            .to_string(),
-            String::from("0x0423a132"),
-        )
-    }
-
-    /*
-    #[test]
-    fn test_case() {
-        let json_abi = r#"[{"name": "foo", "type": "function", "inputs": [{ "name": "bar", "type": "uint256" }], "outputs": [{ "name": "baz", "type": "uint256" }]}]"#;
-        let abi = ethabi::Contract::load(StringReader::new(json_abi)).expect("Unable to load abi.");
-        let ref foo = abi.functions["foo"][0];
-
-        assert_eq!(
-            case(foo).expect("Unable to build case.").to_string(),
-            String::from("case 0x2fbebd38 { mstore(0, foo(calldataload(4))) return(0, 32) }"),
-        );
-    }
-
-    #[test]
-    fn test_switch_basic() {
-        let json_abi = r#"[{"name": "foo", "type": "function", "inputs": [], "outputs": []}]"#;
-        let abi = ethabi::Contract::load(StringReader::new(json_abi)).expect("Unable to load abi.");
-        let functions = abi.functions().collect();
-
-        assert_eq!(
-            switch(functions)
-                .expect("Unable to build selector")
-                .to_string(),
-            String::from("switch callval(0, 4) case 0xc2985578 { foo() } "),
-        )
-    }
-    */
+#[test]
+fn selector_literal_basic() {
+    assert_eq!(
+        selector_literal("foo".to_string(), &vec![]).to_string(),
+        String::from("0xc2985578"),
+        "Incorrect selector"
+    )
 }
-*/
+
+#[test]
+fn test_selector_literal() {
+    assert_eq!(
+        selector_literal(
+            "bar".to_string(),
+            &vec![FixedSize::Base(Base::U256)]
+        )
+        .to_string(),
+        String::from("0x0423a132"),
+    )
+}

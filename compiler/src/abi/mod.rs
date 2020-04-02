@@ -10,7 +10,6 @@ pub use json_builder::TypeDefs;
 ///
 /// This API should be rethought as it only provides the ABI for the first contract in the
 /// source file. See: https://github.com/ethereum/rust-vyper/issues/12
-/// TODO: Improve the JSON ABI builder API.
 pub fn build(src: &str) -> Result<String, CompileError> {
     let tokens = parser::get_parse_tokens(src).unwrap();
     let vyp_module = parser::parsers::file_input(&tokens[..]).unwrap().1.node;

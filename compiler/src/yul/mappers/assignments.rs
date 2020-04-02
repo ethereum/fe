@@ -43,7 +43,7 @@ fn assign_subscript(
             slices,
             value,
         ),
-        _ => Err(CompileError::static_str("Subscript target not supported")),
+        _ => Err(CompileError::static_str("Invalid subscript target")),
     }
 }
 
@@ -59,9 +59,7 @@ fn assign_subscript_name(
     match scope.borrow().def(name.clone()) {
         Some(FunctionDef::Array(array)) => array.mstore_elem(name, key, value),
         None => Err(CompileError::static_str("No definition found")),
-        _ => Err(CompileError::static_str(
-            "Definition not supported in subscript assignment",
-        )),
+        _ => Err(CompileError::static_str("Invalid definition")),
     }
 }
 
@@ -74,7 +72,7 @@ fn assign_subscript_attribute(
 ) -> Result<yul::Statement, CompileError> {
     match expressions::expr_name_str(target_value)? {
         "self" => assign_subscript_self(scope, name, slices, value),
-        _ => Err(CompileError::static_str("Unknown attribute value")),
+        _ => Err(CompileError::static_str("Invalid attribute value")),
     }
 }
 
@@ -89,9 +87,8 @@ fn assign_subscript_self(
 
     match scope.borrow().contract_def(name) {
         Some(ContractDef::Map { index, map }) => map.sstore(index, key, value),
-        _ => Err(CompileError::static_str(
-            "Contract definition not supported",
-        )),
+        None => Err(CompileError::static_str("No definition found")),
+        _ => Err(CompileError::static_str("Invalid definition"))
     }
 }
 

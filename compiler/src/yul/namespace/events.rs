@@ -1,7 +1,6 @@
 use crate::errors::CompileError;
 use crate::yul::namespace::types::{FixedSize};
 use tiny_keccak::{Hasher, Keccak};
-
 use yultsur::*;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -34,7 +33,6 @@ impl Event {
         }
     }
 
-    // This only supports byte and u256 arrays at the moment.
     pub fn emit(&self, values: Vec<yul::Expression>) -> Result<yul::Statement, CompileError> {
         if let (Some(FixedSize::Array(array)), Some(value)) = (self.fields.first(), values.first())
         {

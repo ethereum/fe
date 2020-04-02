@@ -4,7 +4,6 @@ use crate::yul::namespace::scopes::{ContractScope, ModuleScope, Scope, Shared};
 use crate::yul::namespace::types::{FixedSize, Type};
 use crate::yul::runtime::abi as runtime_abi;
 use crate::yul::runtime::functions as runtime_functions;
-
 use crate::yul::namespace::events::Event;
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
@@ -82,11 +81,8 @@ fn contract_field(
 ) -> Result<(), CompileError> {
     match types::type_desc(Scope::Contract(Rc::clone(&scope)), typ)? {
         Type::Map(map) => scope.borrow_mut().add_map(name, map),
-        _ => {
-            return Err(CompileError::static_str(
-                "Contract field type not supported",
-            ))
-        }
+        Type::Array{ .. } => unimplemented!("Array contract field"),
+        Type::Base(_) => unimplemented!("Base contract field"),
     };
 
     Ok(())
