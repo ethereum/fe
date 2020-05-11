@@ -116,14 +116,16 @@ fn with_executor(test: &dyn Fn(Executor)) {
     test(executor)
 }
 
-fn deploy_contract(executor: &mut Executor, name: &str) -> ContractHarness {
-    let src = fs::read_to_string(format!("tests/fixtures/{}", name))
+fn deploy_contract(executor: &mut Executor, fixture: &str, name: &str) -> ContractHarness {
+    let src = fs::read_to_string(format!("tests/fixtures/{}", fixture))
         .expect("Unable to read fixture file");
 
     let bytecode = compiler::evm::compile(&src).expect("Unable to compile to bytecode");
+    let json_abi = compiler::abi::build(&src)
+        .expect("Unable to build the module ABIs").0[name]
+        .json().expect("Unable to serialize the contract ABI.");
 
-    let json_abi = compiler::abi::build(&src).expect("Unable to build ABI");
-    let abi = ethabi::Contract::load(StringReader::new(&json_abi)).expect("Unable to load ABI");
+    let abi = ethabi::Contract::load(StringReader::new(&json_abi)).expect("Unable to load the ABI");
 
     if let evm::Capture::Exit(exit) = executor.create(
         H160::zero(),
@@ -168,7 +170,7 @@ fn evm_sanity() {
 #[test]
 fn return_u256() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "return_u256.vy");
+        let harness = deploy_contract(&mut executor, "return_u256.vy", "Foo");
 
         harness.test_function(
             &mut executor,
@@ -182,7 +184,7 @@ fn return_u256() {
 #[test]
 fn return_array() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "return_array.vy");
+        let harness = deploy_contract(&mut executor, "return_array.vy", "Foo");
 
         harness.test_function(
             &mut executor,
@@ -196,7 +198,7 @@ fn return_array() {
 #[test]
 fn multi_param() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "multi_param.vy");
+        let harness = deploy_contract(&mut executor, "multi_param.vy", "Foo");
 
         harness.test_function(
             &mut executor,
@@ -210,7 +212,7 @@ fn multi_param() {
 #[test]
 fn u256_u256_map() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "u256_u256_map.vy");
+        let harness = deploy_contract(&mut executor, "u256_u256_map.vy", "Foo");
 
         harness.test_function(
             &mut executor,
@@ -245,7 +247,7 @@ fn u256_u256_map() {
 #[test]
 fn address_bytes10_map() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "address_bytes10_map.vy");
+        let harness = deploy_contract(&mut executor, "address_bytes10_map.vy", "Foo");
 
         let address1 = address_token("0000000000000000000000000000000000000001");
         let bytes1 = bytes_token("ten bytes1");
@@ -276,7 +278,7 @@ fn address_bytes10_map() {
 #[test]
 fn guest_book() {
     with_executor(&|mut executor| {
-        let mut harness = deploy_contract(&mut executor, "guest_book.vy");
+        let mut harness = deploy_contract(&mut executor, "guest_book.vy", "GuestBook");
 
         let sender = address_token("1234000000000000000000000000000000005678");
         let bytes = bytes_token(
@@ -300,7 +302,7 @@ fn guest_book() {
 #[test]
 fn return_sender() {
     with_executor(&|mut executor| {
-        let mut harness = deploy_contract(&mut executor, "return_sender.vy");
+        let mut harness = deploy_contract(&mut executor, "return_sender.vy", "Foo");
 
         let sender = address_token("1234000000000000000000000000000000005678");
 
