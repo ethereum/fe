@@ -9,6 +9,7 @@ module Python
     mod = Module(stmt* body)
         | Interactive(stmt* body)
         | Expression(expr body)
+
         -- not really an actual node but useful in Jython's typesystem.
         | Suite(stmt* body)
 
