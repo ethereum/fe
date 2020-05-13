@@ -171,7 +171,7 @@ impl Serialize for VariableType {
 #[cfg(test)]
 mod tests {
     use crate::abi::elements::{
-        Contract, Event, EventField, FuncInput, FuncOutput, Function, FuncType, ModuleABIs,
+        Contract, Event, EventField, FuncInput, FuncOutput, FuncType, Function, ModuleABIs,
         VariableType,
     };
     use std::collections::HashMap;

@@ -1,5 +1,5 @@
 use crate::abi::elements::{
-    Contract, Event, EventField, FuncInput, FuncOutput, Function, FuncType, ModuleABIs,
+    Contract, Event, EventField, FuncInput, FuncOutput, FuncType, Function, ModuleABIs,
     VariableType,
 };
 use crate::errors::CompileError;

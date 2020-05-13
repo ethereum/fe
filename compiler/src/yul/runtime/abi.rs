@@ -24,7 +24,7 @@ pub fn dispatcher(
 
 fn dispatch_arm(
     name: String,
-    defs: &HashMap<String, ContractDef>
+    defs: &HashMap<String, ContractDef>,
 ) -> Result<yul::Case, CompileError> {
     if let Some(ContractDef::Function { params, returns }) = defs.get(&name) {
         let selector = selector(name.clone(), &params);
@@ -36,21 +36,18 @@ fn dispatch_arm(
 
             let selection_with_return = statement! { return([return_data], [return_size]) };
 
-            return Ok(case! { case [selector] { [selection_with_return] } })
+            return Ok(case! { case [selector] { [selection_with_return] } });
         }
 
         let selection = selection_as_statement(name, &params)?;
 
-        return Ok(case! { case [selector] { [selection] } })
+        return Ok(case! { case [selector] { [selection] } });
     }
 
     Err(CompileError::static_str("No definition for name"))
 }
 
-fn selector(
-    name: String,
-    params: &Vec<FixedSize>
-) -> yul::Literal {
+fn selector(name: String, params: &Vec<FixedSize>) -> yul::Literal {
     let signature = format!(
         "{}({})",
         name,
@@ -70,10 +67,7 @@ fn selector(
     literal! {(format!("0x{}", hex::encode(selector)))}
 }
 
-fn selection(
-    name: String,
-    params: &Vec<FixedSize>
-) -> Result<yul::Expression, CompileError> {
+fn selection(name: String, params: &Vec<FixedSize>) -> Result<yul::Expression, CompileError> {
     let mut ptr = 4;
     let mut decoded_params = vec![];
 
@@ -87,10 +81,9 @@ fn selection(
     Ok(expression! { [name]([decoded_params...]) })
 }
 
-
 fn selection_as_statement(
     name: String,
-    params: &Vec<FixedSize>
+    params: &Vec<FixedSize>,
 ) -> Result<yul::Statement, CompileError> {
     Ok(yul::Statement::Expression(selection(name, params)?))
 }

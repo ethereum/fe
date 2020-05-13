@@ -122,8 +122,10 @@ fn deploy_contract(executor: &mut Executor, fixture: &str, name: &str) -> Contra
 
     let bytecode = compiler::evm::compile(&src).expect("Unable to compile to bytecode");
     let json_abi = compiler::abi::build(&src)
-        .expect("Unable to build the module ABIs").0[name]
-        .json().expect("Unable to serialize the contract ABI.");
+        .expect("Unable to build the module ABIs")
+        .0[name]
+        .json()
+        .expect("Unable to serialize the contract ABI.");
 
     let abi = ethabi::Contract::load(StringReader::new(&json_abi)).expect("Unable to load the ABI");
 
