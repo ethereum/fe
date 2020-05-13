@@ -6,65 +6,51 @@ use std::collections::HashMap;
 use tiny_keccak::{Hasher, Keccak};
 use yultsur::*;
 
-/// Builds a switch statement from the contract ABI that handles contract calls.
-pub fn switch(
+/// Builds a switch statement that dispatches calls to the contract.
+pub fn dispatcher(
     interface: &Vec<String>,
     defs: &HashMap<String, ContractDef>,
 ) -> Result<yul::Statement, CompileError> {
-    let cases = interface
+    let arms = interface
         .into_iter()
-        .map(|name| case(name.to_owned(), defs))
+        .map(|name| dispatch_arm(name.to_owned(), defs))
         .collect::<Result<Vec<yul::Case>, CompileError>>()?;
 
     Ok(switch! {
         switch (cloadn(0, 4))
-        [cases...]
+        [arms...]
     })
 }
 
-fn case(name: String, defs: &HashMap<String, ContractDef>) -> Result<yul::Case, CompileError> {
-    if let Some(def) = defs.get(&name) {
-        return match def {
-            ContractDef::Function { params, returns } => {
-                function_call_case(name, params, returns.to_owned())
-            }
-            _ => Err(CompileError::static_str(
-                "Cannot create case from definition",
-            )),
-        };
+fn dispatch_arm(
+    name: String,
+    defs: &HashMap<String, ContractDef>
+) -> Result<yul::Case, CompileError> {
+    if let Some(ContractDef::Function { params, returns }) = defs.get(&name) {
+        let selector = selector(name.clone(), &params);
+
+        if let Some(returns) = returns {
+            let selection = selection(name, &params)?;
+            let return_data = returns.encode(selection)?;
+            let return_size = literal_expression! {(returns.padded_size())};
+
+            let selection_with_return = statement! { return([return_data], [return_size]) };
+
+            return Ok(case! { case [selector] { [selection_with_return] } })
+        }
+
+        let selection = selection_as_statement(name, &params)?;
+
+        return Ok(case! { case [selector] { [selection] } })
     }
 
     Err(CompileError::static_str("No definition for name"))
 }
 
-fn function_call_case(
+fn selector(
     name: String,
-    params: &Vec<FixedSize>,
-    returns: Option<FixedSize>,
-) -> Result<yul::Case, CompileError> {
-    let selector = selector_literal(name.clone(), &params);
-    let name = identifier! {(name)};
-    let params = parameter_expressions(&params)?;
-
-    if let Some(returns) = returns {
-        let return_size = literal_expression! {(returns.padded_size())};
-        let function_call = expression! { [name]([params...]) };
-
-        Ok(case! {
-            case [selector] {
-                (return([returns.encode(function_call)?], [return_size]))
-            }
-        })
-    } else {
-        let function_call = statement! { [name]([params...]) };
-
-        Ok(case! {
-            case [selector] { [function_call] }
-        })
-    }
-}
-
-fn selector_literal(name: String, params: &Vec<FixedSize>) -> yul::Literal {
+    params: &Vec<FixedSize>
+) -> yul::Literal {
     let signature = format!(
         "{}({})",
         name,
@@ -84,31 +70,43 @@ fn selector_literal(name: String, params: &Vec<FixedSize>) -> yul::Literal {
     literal! {(format!("0x{}", hex::encode(selector)))}
 }
 
-fn parameter_expressions(params: &Vec<FixedSize>) -> Result<Vec<yul::Expression>, CompileError> {
+fn selection(
+    name: String,
+    params: &Vec<FixedSize>
+) -> Result<yul::Expression, CompileError> {
     let mut ptr = 4;
-    let mut expressions = vec![];
+    let mut decoded_params = vec![];
 
     for param in params.iter() {
-        expressions.push(param.decode(literal_expression! {(ptr)})?);
+        decoded_params.push(param.decode(literal_expression! {(ptr)})?);
         ptr += param.padded_size();
     }
 
-    Ok(expressions)
+    let name = identifier! {(name)};
+
+    Ok(expression! { [name]([decoded_params...]) })
+}
+
+
+fn selection_as_statement(
+    name: String,
+    params: &Vec<FixedSize>
+) -> Result<yul::Statement, CompileError> {
+    Ok(yul::Statement::Expression(selection(name, params)?))
 }
 
 #[test]
-fn selector_literal_basic() {
+fn test_selector_literal_basic() {
     assert_eq!(
-        selector_literal("foo".to_string(), &vec![]).to_string(),
+        selector("foo".to_string(), &vec![]).to_string(),
         String::from("0xc2985578"),
-        "Incorrect selector"
     )
 }
 
 #[test]
 fn test_selector_literal() {
     assert_eq!(
-        selector_literal("bar".to_string(), &vec![FixedSize::Base(Base::U256)]).to_string(),
+        selector("bar".to_string(), &vec![FixedSize::Base(Base::U256)]).to_string(),
         String::from("0x0423a132"),
     )
 }

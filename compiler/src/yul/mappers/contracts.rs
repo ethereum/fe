@@ -27,7 +27,7 @@ pub fn contract_def(
         .collect::<Vec<yul::Statement>>();
 
     statements.append(&mut runtime_functions::all());
-    statements.push(runtime_abi::switch(
+    statements.push(runtime_abi::dispatcher(
         &contract_scope.borrow().interface,
         &contract_scope.borrow().defs,
     )?);
