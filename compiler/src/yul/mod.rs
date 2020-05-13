@@ -5,7 +5,7 @@ mod mappers;
 mod namespace;
 mod runtime;
 
-/// Builds Yul code from Vyper source.
+/// Compiles Vyper source code to Yul.
 pub fn compile(src: &str) -> Result<String, CompileError> {
     let tokens = parser::get_parse_tokens(src)?;
     let vyp_module = parser::parsers::file_input(&tokens[..])?.1.node;

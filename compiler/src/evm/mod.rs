@@ -3,7 +3,9 @@ use crate::yul;
 use serde_json;
 use solc;
 
-/// Compiles Yul source code into bytecode
+/// Compiles Vyper source code to bytecode.
+///
+/// This function uses Yul as an intermediate representation.
 pub fn compile(src: &str) -> Result<String, CompileError> {
     let solc_temp = include_str!("solc_temp.json");
     let yul_src = yul::compile(src)?.replace("\"", "\\\"");

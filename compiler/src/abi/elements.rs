@@ -6,6 +6,7 @@ use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
 
+/// Wrapper around a map of contract names to their ABIs.
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub struct ModuleABIs(pub HashMap<String, Contract>);
 
@@ -17,9 +18,12 @@ impl ModuleABIs {
     }
 }
 
+/// All public interfaces of Vyper contract.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Contract {
+    /// All events defined in a contract.
     pub events: Vec<Event>,
+    /// All public functions defined in a contract.
     pub functions: Vec<Function>,
 }
 
@@ -50,57 +54,81 @@ impl Serialize for Contract {
     }
 }
 
+/// An event interface.
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub struct Event {
+    /// The event's name.
     pub name: String,
-    // `typ` is always set to "event"
+    // FIXME: This attribute should be added when serialized instead of being defined in the struct.
+    /// The type of an event (Always "event").
     #[serde(rename = "type")]
     pub typ: String,
-    pub inputs: Vec<EventField>,
+    /// All event fields.
+    #[serde(rename = "inputs")]
+    pub fields: Vec<EventField>,
+    /// True if the event was declared as anonymous.
     pub anonymous: bool,
 }
 
+/// A single event field.
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub struct EventField {
+    /// The event field's name.
     pub name: String,
+    /// The type of an event (e.g. uint256, address, bytes100,...)
     #[serde(rename = "type")]
     pub typ: VariableType,
+    /// True if the field is part of the log’s topics, false if it is one of the log’s data segment.
     pub indexed: bool,
 }
 
+/// A function interface.
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub struct Function {
+    /// The function's name.
     pub name: String,
+    /// The type of a function (Function, Constructor, Receive, and Fallback)
     #[serde(rename = "type")]
-    pub typ: FunctionType,
+    pub typ: FuncType,
+    /// All function inputs.
     pub inputs: Vec<FuncInput>,
+    /// All function outputs.
     pub outputs: Vec<FuncOutput>,
 }
 
+/// A single function input.
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub struct FuncInput {
+    /// The input's name.
     pub name: String,
+    /// The input's type.
     #[serde(rename = "type")]
     pub typ: VariableType,
 }
 
+/// A single function output.
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub struct FuncOutput {
+    /// The output's name.
     pub name: String,
+    /// The output's type.
     #[serde(rename = "type")]
     pub typ: VariableType,
 }
 
+// FIXME: This should be removed in favor of separate structs for each function type.
+/// The type of a public function.
 #[allow(dead_code)]
 #[serde(rename_all = "lowercase")]
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub enum FunctionType {
+pub enum FuncType {
     Function,
     Constructor,
     Receive,
     Fallback,
 }
 
+/// The type of an event field or function input or output.
 #[derive(Debug, PartialEq, Clone)]
 pub enum VariableType {
     Uint256,
@@ -109,6 +137,7 @@ pub enum VariableType {
     FixedArray(Box<VariableType>, usize),
 }
 
+/// The mutability of public function.
 #[allow(dead_code)]
 #[serde(rename_all = "lowercase")]
 #[derive(Serialize, Debug, PartialEq, Clone)]
@@ -142,7 +171,7 @@ impl Serialize for VariableType {
 #[cfg(test)]
 mod tests {
     use crate::abi::elements::{
-        Contract, Event, EventField, FuncInput, FuncOutput, Function, FunctionType, ModuleABIs,
+        Contract, Event, EventField, FuncInput, FuncOutput, Function, FuncType, ModuleABIs,
         VariableType,
     };
     use std::collections::HashMap;
@@ -179,7 +208,7 @@ mod tests {
             events: vec![Event {
                 name: "event_name".to_string(),
                 typ: "event".to_string(),
-                inputs: vec![EventField {
+                fields: vec![EventField {
                     name: "input_name".to_string(),
                     typ: VariableType::Uint256,
                     indexed: true,
@@ -188,7 +217,7 @@ mod tests {
             }],
             functions: vec![Function {
                 name: "function_name".to_string(),
-                typ: FunctionType::Function,
+                typ: FuncType::Function,
                 inputs: vec![FuncInput {
                     name: "input_name".to_string(),
                     typ: VariableType::Address,

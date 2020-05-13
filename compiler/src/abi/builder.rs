@@ -1,5 +1,5 @@
 use crate::abi::elements::{
-    Contract, Event, EventField, FuncInput, FuncOutput, Function, FunctionType, ModuleABIs,
+    Contract, Event, EventField, FuncInput, FuncOutput, Function, FuncType, ModuleABIs,
     VariableType,
 };
 use crate::errors::CompileError;
@@ -56,7 +56,7 @@ fn event_def<'a>(
     stmt: &'a vyp::ContractStmt<'a>,
 ) -> Result<Event, CompileError> {
     if let vyp::ContractStmt::EventDef { name, fields } = stmt {
-        let inputs = fields
+        let fields = fields
             .iter()
             .map(|f| event_field(type_defs, &f.node))
             .collect::<Result<_, _>>()?;
@@ -64,7 +64,7 @@ fn event_def<'a>(
         return Ok(Event {
             name: name.node.to_string(),
             typ: "event".to_string(),
-            inputs,
+            fields,
             anonymous: false,
         });
     }
@@ -111,7 +111,7 @@ fn func_def<'a>(
 
         return Ok(Function {
             name: String::from(name.node),
-            typ: FunctionType::Function,
+            typ: FuncType::Function,
             inputs,
             outputs,
         });
