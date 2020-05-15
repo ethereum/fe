@@ -8,13 +8,21 @@ use std::collections::HashMap;
 
 /// Wrapper around a map of contract names to their ABIs.
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub struct ModuleABIs(pub HashMap<String, Contract>);
+pub struct ModuleABIs {
+    #[serde(flatten)]
+    pub contracts: HashMap<String, Contract>,
+}
 
 impl ModuleABIs {
+    pub fn new() -> Self {
+        Self {
+            contracts: HashMap::new(),
+        }
+    }
+
     /// Serialize the module into a JSON object that maps each contract in the module to its ABI.
     pub fn json(&self) -> Result<String, CompileError> {
-        serde_json::to_string(self)
-            .map_err(|_| CompileError::static_str("Unable to serialize contract to json"))
+        Ok(serde_json::to_string(self)?)
     }
 }
 
@@ -25,6 +33,15 @@ pub struct Contract {
     pub events: Vec<Event>,
     /// All public functions defined in a contract.
     pub functions: Vec<Function>,
+}
+
+impl Contract {
+    pub fn new() -> Self {
+        Self {
+            events: vec![],
+            functions: vec![],
+        }
+    }
 }
 
 impl Contract {
@@ -194,7 +211,7 @@ mod tests {
             },
         );
 
-        let json = ModuleABIs(contracts).json().unwrap();
+        let json = ModuleABIs { contracts }.json().unwrap();
 
         assert!(
             json == r#"{"contract1":[],"contract2":[]}"#

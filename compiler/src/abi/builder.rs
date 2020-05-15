@@ -5,71 +5,87 @@ use crate::abi::elements::{
 use crate::errors::CompileError;
 use std::collections::HashMap;
 use vyper_parser::ast as vyp;
+use vyper_parser::span::Spanned;
 
 type TypeDefs<'a> = HashMap<&'a str, &'a vyp::TypeDesc<'a>>;
-type TypeDef<'a> = (&'a str, &'a vyp::TypeDesc<'a>);
 
 /// Parse a map of contract ABIs from the input `module`.
 pub fn module<'a>(module: &'a vyp::Module<'a>) -> Result<ModuleABIs, CompileError> {
-    let type_defs = module
-        .body
-        .iter()
-        .filter(|s| is_type_def(&s.node))
-        .map(|s| type_def(&s.node))
-        .collect::<Result<TypeDefs<'a>, _>>()?;
+    let mut type_defs = TypeDefs::new();
 
-    Ok(ModuleABIs(
-        module
-            .body
-            .iter()
-            .filter(|s| is_contract_def(&s.node))
-            .map(|s| contract_def(&type_defs, &s.node))
-            .collect::<Result<HashMap<_, _>, _>>()?,
-    ))
+    module.body.iter().try_fold(ModuleABIs::new(), |mut m, s| {
+        match &s.node {
+            vyp::ModuleStmt::TypeDef { name, typ } => {
+                if type_defs.insert(name.node, &typ.node).is_some() {
+                    return Err(CompileError::static_str("duplicate type definition"));
+                }
+            }
+            vyp::ModuleStmt::ContractDef { name, body } => {
+                if m.contracts
+                    .insert(name.node.to_string(), contract_def(&type_defs, body)?)
+                    .is_some()
+                {
+                    return Err(CompileError::static_str("duplicate contract definition"));
+                }
+            }
+            _ => {}
+        };
+
+        Ok(m)
+    })
 }
 
 fn contract_def<'a>(
     type_defs: &'a TypeDefs<'a>,
-    stmt: &'a vyp::ModuleStmt<'a>,
-) -> Result<(String, Contract), CompileError> {
-    if let vyp::ModuleStmt::ContractDef { name, body } = stmt {
-        let functions = body
-            .iter()
-            .filter(|s| is_pub_fun_def(&s.node))
-            .map(|s| func_def(type_defs, &s.node))
-            .collect::<Result<_, _>>()?;
+    body: &'a Vec<Spanned<vyp::ContractStmt<'a>>>,
+) -> Result<Contract, CompileError> {
+    body.iter().try_fold(Contract::new(), |mut c, s| {
+        match &s.node {
+            vyp::ContractStmt::FuncDef {
+                qual,
+                name,
+                args,
+                return_type,
+                ..
+            } => {
+                if let Some(qual) = qual {
+                    if qual.node == vyp::FuncQual::Pub {
+                        c.functions.push(func_def(
+                            type_defs,
+                            name.node.to_string(),
+                            args,
+                            return_type,
+                        )?)
+                    }
+                }
+            }
+            vyp::ContractStmt::EventDef { name, fields } => {
+                c.events
+                    .push(event_def(type_defs, name.node.to_string(), fields)?)
+            }
+            vyp::ContractStmt::ContractField { .. } => {}
+        }
 
-        let events = body
-            .iter()
-            .filter(|s| is_event_def(&s.node))
-            .map(|s| event_def(type_defs, &s.node))
-            .collect::<Result<_, _>>()?;
-
-        return Ok((name.node.to_string(), Contract { functions, events }));
-    }
-
-    Err(CompileError::static_str("Not a contract definition"))
+        Ok(c)
+    })
 }
 
 fn event_def<'a>(
     type_defs: &'a TypeDefs<'a>,
-    stmt: &'a vyp::ContractStmt<'a>,
+    name: String,
+    fields: &'a Vec<Spanned<vyp::EventField<'a>>>,
 ) -> Result<Event, CompileError> {
-    if let vyp::ContractStmt::EventDef { name, fields } = stmt {
-        let fields = fields
-            .iter()
-            .map(|f| event_field(type_defs, &f.node))
-            .collect::<Result<_, _>>()?;
+    let fields = fields
+        .iter()
+        .map(|f| event_field(type_defs, &f.node))
+        .collect::<Result<_, _>>()?;
 
-        return Ok(Event {
-            name: name.node.to_string(),
-            typ: "event".to_string(),
-            fields,
-            anonymous: false,
-        });
-    }
-
-    Err(CompileError::static_str("Not an event definition"))
+    Ok(Event {
+        name,
+        typ: "event".to_string(),
+        fields,
+        anonymous: false,
+    })
 }
 
 fn event_field<'a>(
@@ -85,39 +101,30 @@ fn event_field<'a>(
 
 fn func_def<'a>(
     type_defs: &'a TypeDefs<'a>,
-    stmt: &'a vyp::ContractStmt<'a>,
+    name: String,
+    args: &'a Vec<Spanned<vyp::FuncDefArg<'a>>>,
+    return_type: &'a Option<Spanned<vyp::TypeDesc<'a>>>,
 ) -> Result<Function, CompileError> {
-    if let vyp::ContractStmt::FuncDef {
-        qual: _,
+    let inputs = args
+        .iter()
+        .map(|arg| func_def_arg(type_defs, &arg.node))
+        .collect::<Result<Vec<FuncInput>, CompileError>>()?;
+
+    let outputs = if let Some(return_type) = return_type {
+        vec![FuncOutput {
+            name: "".to_string(),
+            typ: type_desc(type_defs, &return_type.node)?,
+        }]
+    } else {
+        vec![]
+    };
+
+    Ok(Function {
         name,
-        args,
-        return_type,
-        body: _,
-    } = stmt
-    {
-        let inputs = args
-            .iter()
-            .map(|arg| func_def_arg(type_defs, &arg.node))
-            .collect::<Result<Vec<FuncInput>, CompileError>>()?;
-
-        let outputs = if let Some(return_type) = return_type {
-            vec![FuncOutput {
-                name: "".to_string(),
-                typ: type_desc(type_defs, &return_type.node)?,
-            }]
-        } else {
-            vec![]
-        };
-
-        return Ok(Function {
-            name: String::from(name.node),
-            typ: FuncType::Function,
-            inputs,
-            outputs,
-        });
-    }
-
-    Err(CompileError::static_str("Not a "))
+        typ: FuncType::Function,
+        inputs,
+        outputs,
+    })
 }
 
 fn func_def_arg<'a>(
@@ -130,27 +137,22 @@ fn func_def_arg<'a>(
     })
 }
 
-fn type_def<'a>(stmt: &'a vyp::ModuleStmt<'a>) -> Result<TypeDef<'a>, CompileError> {
-    if let vyp::ModuleStmt::TypeDef { name, typ } = stmt {
-        return Ok((name.node, &typ.node));
-    }
-
-    Err(CompileError::static_str("Not a TypeDef"))
-}
-
 fn type_desc<'a>(
     type_defs: &'a TypeDefs<'a>,
     typ: &'a vyp::TypeDesc<'a>,
 ) -> Result<VariableType, CompileError> {
     if let vyp::TypeDesc::Base { base } = typ {
         if let Some(custom_type) = type_defs.get(base) {
-            return type_desc(&HashMap::new(), custom_type);
+            return type_desc(type_defs, custom_type);
         }
     }
 
     match typ {
         vyp::TypeDesc::Base { base: "uint256" } => Ok(VariableType::Uint256),
         vyp::TypeDesc::Base { base: "address" } => Ok(VariableType::Address),
+        vyp::TypeDesc::Base { base } => {
+            Err(CompileError::str(format!("unrecognized type: {}", base)))
+        }
         vyp::TypeDesc::Array { typ, dimension } => {
             if let vyp::TypeDesc::Base { base: "bytes" } = &typ.node {
                 return Ok(VariableType::FixedBytes(*dimension));
@@ -159,43 +161,8 @@ fn type_desc<'a>(
             let inner = type_desc(type_defs, &typ.node)?;
             Ok(VariableType::FixedArray(Box::new(inner), *dimension))
         }
-        _ => Err(CompileError::static_str("Unrecognized Vyper type")),
+        vyp::TypeDesc::Map { .. } => Err(CompileError::static_str("maps not supported in ABI")),
     }
-}
-
-fn is_event_def(stmt: &vyp::ContractStmt) -> bool {
-    if let vyp::ContractStmt::EventDef { .. } = stmt {
-        return true;
-    }
-
-    false
-}
-
-fn is_pub_fun_def(stmt: &vyp::ContractStmt) -> bool {
-    if let vyp::ContractStmt::FuncDef {
-        qual: Some(qual), ..
-    } = stmt
-    {
-        return qual.node == vyp::FuncQual::Pub;
-    }
-
-    false
-}
-
-fn is_type_def(stmt: &vyp::ModuleStmt) -> bool {
-    if let vyp::ModuleStmt::TypeDef { .. } = stmt {
-        return true;
-    }
-
-    false
-}
-
-fn is_contract_def(stmt: &vyp::ModuleStmt) -> bool {
-    if let vyp::ModuleStmt::ContractDef { .. } = stmt {
-        return true;
-    }
-
-    false
 }
 
 #[cfg(test)]
@@ -224,7 +191,7 @@ mod tests {
             .node;
         let abis = builder::module(&module).expect("unable to build ABIs");
 
-        if let Some(abi) = abis.0.get("Foo") {
+        if let Some(abi) = abis.contracts.get("Foo") {
             assert_eq!(abi.events[0].name, "Food", "event name should be Food");
             assert_eq!(abi.functions.len(), 1, "too many functions in ABI");
             assert_eq!(
