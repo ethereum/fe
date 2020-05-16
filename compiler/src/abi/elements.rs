@@ -26,7 +26,7 @@ impl ModuleABIs {
     }
 }
 
-/// All public interfaces of Vyper contract.
+/// All public interfaces of a Vyper contract.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Contract {
     /// All events defined in a contract.
@@ -94,7 +94,7 @@ pub struct EventField {
     pub name: String,
     /// The type of an event (e.g. uint256, address, bytes100,...)
     #[serde(rename = "type")]
-    pub typ: VariableType,
+    pub typ: VarType,
     /// True if the field is part of the log’s topics, false if it is one of the log’s data segment.
     pub indexed: bool,
 }
@@ -120,7 +120,7 @@ pub struct FuncInput {
     pub name: String,
     /// The input's type.
     #[serde(rename = "type")]
-    pub typ: VariableType,
+    pub typ: VarType,
 }
 
 /// A single function output.
@@ -130,7 +130,7 @@ pub struct FuncOutput {
     pub name: String,
     /// The output's type.
     #[serde(rename = "type")]
-    pub typ: VariableType,
+    pub typ: VarType,
 }
 
 // FIXME: This should be removed in favor of separate structs for each function type.
@@ -147,14 +147,14 @@ pub enum FuncType {
 
 /// The type of an event field or function input or output.
 #[derive(Debug, PartialEq, Clone)]
-pub enum VariableType {
+pub enum VarType {
     Uint256,
     Address,
     FixedBytes(usize),
-    FixedArray(Box<VariableType>, usize),
+    FixedArray(Box<VarType>, usize),
 }
 
-/// The mutability of public function.
+/// The mutability of a public function.
 #[allow(dead_code)]
 #[serde(rename_all = "lowercase")]
 #[derive(Serialize, Debug, PartialEq, Clone)]
@@ -165,18 +165,18 @@ pub enum StateMutability {
     Payable,
 }
 
-impl fmt::Display for VariableType {
+impl fmt::Display for VarType {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         match self {
-            VariableType::Uint256 => write!(f, "uint256"),
-            VariableType::Address => write!(f, "address"),
-            VariableType::FixedBytes(size) => write!(f, "bytes{}", size),
-            VariableType::FixedArray(inner, dim) => write!(f, "{}[{}]", inner, dim),
+            VarType::Uint256 => write!(f, "uint256"),
+            VarType::Address => write!(f, "address"),
+            VarType::FixedBytes(size) => write!(f, "bytes{}", size),
+            VarType::FixedArray(inner, dim) => write!(f, "{}[{}]", inner, dim),
         }
     }
 }
 
-impl Serialize for VariableType {
+impl Serialize for VarType {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -189,7 +189,7 @@ impl Serialize for VariableType {
 mod tests {
     use crate::abi::elements::{
         Contract, Event, EventField, FuncInput, FuncOutput, FuncType, Function, ModuleABIs,
-        VariableType,
+        VarType,
     };
     use std::collections::HashMap;
 
@@ -227,7 +227,7 @@ mod tests {
                 typ: "event".to_string(),
                 fields: vec![EventField {
                     name: "input_name".to_string(),
-                    typ: VariableType::Uint256,
+                    typ: VarType::Uint256,
                     indexed: true,
                 }],
                 anonymous: false,
@@ -237,11 +237,11 @@ mod tests {
                 typ: FuncType::Function,
                 inputs: vec![FuncInput {
                     name: "input_name".to_string(),
-                    typ: VariableType::Address,
+                    typ: VarType::Address,
                 }],
                 outputs: vec![FuncOutput {
                     name: "output_name".to_string(),
-                    typ: VariableType::Uint256,
+                    typ: VarType::Uint256,
                 }],
             }],
         };
@@ -270,7 +270,7 @@ mod tests {
     #[test]
     fn fixed_bytes() {
         assert_eq!(
-            serde_json::to_string(&VariableType::FixedBytes(100)).unwrap(),
+            serde_json::to_string(&VarType::FixedBytes(100)).unwrap(),
             r#""bytes100""#
         )
     }
@@ -278,8 +278,8 @@ mod tests {
     #[test]
     fn fixed_array() {
         assert_eq!(
-            serde_json::to_string(&VariableType::FixedArray(
-                Box::new(VariableType::Address),
+            serde_json::to_string(&VarType::FixedArray(
+                Box::new(VarType::Address),
                 42
             ))
             .unwrap(),

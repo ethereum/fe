@@ -1,12 +1,16 @@
+//! Errors returned by the compilers and ABI builder.
+
 use vyper_parser::errors::ParseError;
 use vyper_parser::tokenizer::TokenizeError;
 
+/// Errors can either be an object or static reference.
 #[derive(Debug)]
 pub enum ErrorKind {
     StaticStr(&'static str),
     Str(String),
 }
 
+/// List of errors encountered during compilation.
 #[derive(Debug)]
 pub struct CompileError {
     errors: Vec<ErrorKind>,
@@ -17,12 +21,14 @@ impl CompileError {
         Self { errors: Vec::new() }
     }
 
+    /// Create a single error with a static string.
     pub fn static_str(s: &'static str) -> Self {
         Self {
             errors: vec![ErrorKind::StaticStr(s)],
         }
     }
 
+    /// Create a single error with a string object.
     pub fn str(s: String) -> Self {
         Self {
             errors: vec![ErrorKind::Str(s)],

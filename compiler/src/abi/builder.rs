@@ -1,6 +1,6 @@
 use crate::abi::elements::{
     Contract, Event, EventField, FuncInput, FuncOutput, FuncType, Function, ModuleABIs,
-    VariableType,
+    VarType,
 };
 use crate::errors::CompileError;
 use std::collections::HashMap;
@@ -140,7 +140,7 @@ fn func_def_arg<'a>(
 fn type_desc<'a>(
     type_defs: &'a TypeDefs<'a>,
     typ: &'a vyp::TypeDesc<'a>,
-) -> Result<VariableType, CompileError> {
+) -> Result<VarType, CompileError> {
     if let vyp::TypeDesc::Base { base } = typ {
         if let Some(custom_type) = type_defs.get(base) {
             return type_desc(type_defs, custom_type);

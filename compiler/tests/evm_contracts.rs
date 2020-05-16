@@ -61,6 +61,7 @@ impl ContractHarness {
         }
     }
 
+    // Executor must be passed by value to get emitted events.
     pub fn event_emitted(&self, executor: Executor, name: &str, output: Vec<ethabi::Token>) {
         let raw_logs = executor
             .deconstruct()
@@ -296,7 +297,6 @@ fn guest_book() {
 
         harness.test_function(&mut executor, "get_msg", vec![sender], Some(bytes.clone()));
 
-        // Destruct the executor
         harness.event_emitted(executor, "Signed", vec![bytes]);
     })
 }

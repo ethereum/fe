@@ -1,3 +1,5 @@
+//! Vyper to Yul compiler.
+
 use crate::errors::CompileError;
 use vyper_parser as parser;
 
@@ -5,7 +7,7 @@ mod mappers;
 mod namespace;
 mod runtime;
 
-/// Compiles Vyper source code to Yul.
+/// Compiles Vyper to Yul.
 pub fn compile(src: &str) -> Result<String, CompileError> {
     let tokens = parser::get_parse_tokens(src)?;
     let vyp_module = parser::parsers::file_input(&tokens[..])?.1.node;

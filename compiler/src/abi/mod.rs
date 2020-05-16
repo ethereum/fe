@@ -1,3 +1,5 @@
+//! Vyper to ABI builder.
+
 use crate::errors::CompileError;
 use vyper_parser as parser;
 
