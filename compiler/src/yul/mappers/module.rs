@@ -5,51 +5,45 @@ use crate::yul::namespace::types;
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
 use yultsur::yul;
+use vyper_parser::span::Spanned;
+use std::collections::HashMap;
+
+pub type YulContracts = HashMap<String, yul::Object>;
 
 /// Builds a vector of Yul contracts from a Vyper module.
-pub fn module(module: &vyp::Module) -> Result<Vec<yul::Object>, CompileError> {
+pub fn module(module: &vyp::Module) -> Result<YulContracts, CompileError> {
     let scope = ModuleScope::new();
 
-    Ok(module
+    module
         .body
         .iter()
-        .map(|stmt| module_stmt(Rc::clone(&scope), &stmt.node))
-        .collect::<Result<Vec<Option<yul::Statement>>, CompileError>>()?
-        .into_iter()
-        .filter_map(|statement| {
-            if let Some(yul::Statement::Object(object)) = statement {
-                return Some(object);
+        .try_fold(YulContracts::new(), |mut contracts, stmt| {
+            match &stmt.node {
+                vyp::ModuleStmt::TypeDef { .. } => type_def(Rc::clone(&scope), stmt)?,
+                vyp::ModuleStmt::ContractDef { name, .. } => {
+                    let contract = contracts::contract_def(Rc::clone(&scope), stmt)?;
+
+                    if contracts.insert(name.node.to_string(), contract).is_some() {
+                       return Err(CompileError::static_str("duplicate contract def"))
+                    }
+                }
+                vyp::ModuleStmt::FromImport { .. } => unimplemented!(),
+                vyp::ModuleStmt::SimpleImport { .. } => unimplemented!()
             }
 
-            None
+            Ok(contracts)
         })
-        .collect::<Vec<yul::Object>>())
-}
-
-fn module_stmt(
-    scope: Shared<ModuleScope>,
-    stmt: &vyp::ModuleStmt,
-) -> Result<Option<yul::Statement>, CompileError> {
-    match stmt {
-        vyp::ModuleStmt::TypeDef { name, typ } => {
-            type_def(scope, name.node.to_string(), &typ.node)?;
-            Ok(None)
-        }
-        vyp::ModuleStmt::ContractDef { name, body } => {
-            let contract = contracts::contract_def(scope, name.node.to_string(), body)?;
-            Ok(Some(contract))
-        }
-        _ => unimplemented!("Module statement"),
-    }
 }
 
 fn type_def(
     scope: Shared<ModuleScope>,
-    name: String,
-    typ: &vyp::TypeDesc,
+    def: &Spanned<vyp::ModuleStmt>
 ) -> Result<(), CompileError> {
-    let typ = types::type_desc(&scope.borrow().defs, &typ)?;
-    scope.borrow_mut().add_type_def(name, typ);
+    if let vyp::ModuleStmt::TypeDef { name, typ } = &def.node {
+        let typ = types::type_desc(&scope.borrow().defs, &typ.node)?;
+        scope.borrow_mut().add_type_def(name.node.to_string(), typ);
+        return Ok(());
+    }
 
-    Ok(())
+    unreachable!()
 }

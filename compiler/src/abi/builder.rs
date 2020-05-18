@@ -148,18 +148,18 @@ fn type_desc<'a>(
     }
 
     match typ {
-        vyp::TypeDesc::Base { base: "uint256" } => Ok(VariableType::Uint256),
-        vyp::TypeDesc::Base { base: "address" } => Ok(VariableType::Address),
+        vyp::TypeDesc::Base { base: "uint256" } => Ok(VarType::Uint256),
+        vyp::TypeDesc::Base { base: "address" } => Ok(VarType::Address),
         vyp::TypeDesc::Base { base } => {
             Err(CompileError::str(format!("unrecognized type: {}", base)))
         }
         vyp::TypeDesc::Array { typ, dimension } => {
             if let vyp::TypeDesc::Base { base: "bytes" } = &typ.node {
-                return Ok(VariableType::FixedBytes(*dimension));
+                return Ok(VarType::FixedBytes(*dimension));
             }
 
             let inner = type_desc(type_defs, &typ.node)?;
-            Ok(VariableType::FixedArray(Box::new(inner), *dimension))
+            Ok(VarType::FixedArray(Box::new(inner), *dimension))
         }
         vyp::TypeDesc::Map { .. } => Err(CompileError::static_str("maps not supported in ABI")),
     }
@@ -168,7 +168,7 @@ fn type_desc<'a>(
 #[cfg(test)]
 mod tests {
     use crate::abi::builder;
-    use crate::abi::elements::VariableType;
+    use crate::abi::elements::VarType;
     use vyper_parser::parsers;
 
     #[test]
@@ -200,12 +200,12 @@ mod tests {
             );
             assert_eq!(
                 abi.functions[0].inputs[0].typ,
-                VariableType::Uint256,
+                VarType::Uint256,
                 "function \"bar\" has incorrect input value"
             );
             assert_eq!(
                 abi.functions[0].outputs[0].typ,
-                VariableType::FixedArray(Box::new(VariableType::Uint256), 10),
+                VarType::FixedArray(Box::new(VarType::Uint256), 10),
                 "function \"bar\" has incorrect output type"
             );
         } else {

@@ -13,37 +13,39 @@ use yultsur::*;
 /// Builds a Yul object from a Vyper contract.
 pub fn contract_def(
     module_scope: Shared<ModuleScope>,
-    _name: String,
-    body: &Vec<Spanned<vyp::ContractStmt>>,
-) -> Result<yul::Statement, CompileError> {
-    let contract_scope = ContractScope::new(Rc::clone(&module_scope));
+    def: &Spanned<vyp::ModuleStmt>,
+) -> Result<yul::Object, CompileError> {
+    if let vyp::ModuleStmt::ContractDef { name: _, body } = &def.node {
+        let contract_scope = ContractScope::new(Rc::clone(&module_scope));
 
-    let mut statements = body
-        .iter()
-        .map(|stmt| contract_stmt(Rc::clone(&contract_scope), &stmt.node))
-        .collect::<Result<Vec<Option<yul::Statement>>, CompileError>>()?
-        .into_iter()
-        .filter_map(|stmt| stmt)
-        .collect::<Vec<yul::Statement>>();
+        let mut statements = body
+            .iter()
+            .map(|stmt| contract_stmt(Rc::clone(&contract_scope), &stmt.node))
+            .collect::<Result<Vec<Option<yul::Statement>>, CompileError>>()?
+            .into_iter()
+            .filter_map(|stmt| stmt)
+            .collect::<Vec<yul::Statement>>();
 
-    statements.append(&mut runtime_functions::all());
-    statements.push(runtime_abi::dispatcher(
-        &contract_scope.borrow().interface,
-        &contract_scope.borrow().defs,
-    )?);
+        statements.append(&mut runtime_functions::all());
+        statements.push(runtime_abi::dispatcher(
+            &contract_scope.borrow().interface,
+            &contract_scope.borrow().defs,
+        )?);
 
-    Ok(yul::Statement::Object(yul::Object {
-        // TODO: use actual name
-        name: identifier! { Contract },
-        code: constructor::code(),
-        objects: vec![yul::Object {
-            name: identifier! { runtime },
-            code: yul::Code {
-                block: yul::Block { statements },
-            },
-            objects: vec![],
-        }],
-    }))
+        return Ok(yul::Object {
+            name: identifier! { Contract },
+            code: constructor::code(),
+            objects: vec![yul::Object {
+                name: identifier! { runtime },
+                code: yul::Code {
+                    block: yul::Block { statements },
+                },
+                objects: vec![],
+            }],
+        });
+    }
+
+    unreachable!()
 }
 
 fn contract_stmt(
