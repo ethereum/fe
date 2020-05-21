@@ -2,8 +2,8 @@ use crate::errors::CompileError;
 use crate::yul::namespace::scopes::ContractDef;
 #[allow(unused_imports)]
 use crate::yul::namespace::types::{Base, FixedSize};
+use crate::abi::utils as abi_utils;
 use std::collections::HashMap;
-use tiny_keccak::{Hasher, Keccak};
 use yultsur::*;
 
 /// Builds a switch statement that dispatches calls to the contract.
@@ -48,23 +48,12 @@ fn dispatch_arm(
 }
 
 fn selector(name: String, params: &Vec<FixedSize>) -> yul::Literal {
-    let signature = format!(
-        "{}({})",
-        name,
-        params
-            .iter()
-            .map(|param| param.abi_name())
-            .collect::<Vec<String>>()
-            .join(",")
-    );
+    let params = params
+        .iter()
+        .map(|param| param.abi_name())
+        .collect::<Vec<String>>();
 
-    let mut keccak = Keccak::v256();
-    let mut selector = [0u8; 4];
-
-    keccak.update(signature.as_bytes());
-    keccak.finalize(&mut selector);
-
-    literal! {(format!("0x{}", hex::encode(selector)))}
+    literal! {(abi_utils::func_selector(name, params))}
 }
 
 fn selection(name: String, params: &Vec<FixedSize>) -> Result<yul::Expression, CompileError> {

@@ -4,6 +4,7 @@ use crate::errors::CompileError;
 use vyper_parser as parser;
 
 mod builder;
+pub mod utils;
 
 /// Elements used to define contract ABIs.
 pub mod elements;

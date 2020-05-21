@@ -1,31 +1,22 @@
 use crate::errors::CompileError;
 use crate::yul::namespace::types::FixedSize;
-use tiny_keccak::{Hasher, Keccak};
+use crate::abi::utils as abi_utils;
 use yultsur::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Event {
-    pub topic: [u8; 32],
+    pub topic: String,
     pub fields: Vec<FixedSize>,
 }
 
 impl Event {
     pub fn new(name: String, fields: Vec<FixedSize>) -> Self {
-        let signature = format!(
-            "{}({})",
-            name,
-            fields
+        let abi_fields = fields
                 .iter()
                 .map(|f| f.abi_name())
-                .collect::<Vec<String>>()
-                .join(",")
-        );
+                .collect::<Vec<String>>();
 
-        let mut keccak = Keccak::v256();
-        let mut topic = [0u8; 32];
-
-        keccak.update(signature.as_bytes());
-        keccak.finalize(&mut topic);
+        let topic = abi_utils::event_topic(name, abi_fields);
 
         Self { topic, fields }
     }
@@ -34,7 +25,7 @@ impl Event {
         if let (Some(FixedSize::Array(array)), Some(value)) = (self.fields.first(), values.first())
         {
             let size = literal_expression! {(array.padded_size())};
-            let topic = literal_expression! {(format!("0x{}", hex::encode(self.topic)))};
+            let topic = literal_expression! {(self.topic)};
 
             return Ok(statement! { log1([(*value).clone()], [size], [topic]) });
         }
