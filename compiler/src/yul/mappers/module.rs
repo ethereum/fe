@@ -2,11 +2,11 @@ use crate::errors::CompileError;
 use crate::yul::mappers::contracts;
 use crate::yul::namespace::scopes::{ModuleScope, Shared};
 use crate::yul::namespace::types;
+use std::collections::HashMap;
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
-use yultsur::yul;
 use vyper_parser::span::Spanned;
-use std::collections::HashMap;
+use yultsur::yul;
 
 pub type YulContracts = HashMap<String, yul::Object>;
 
@@ -24,11 +24,11 @@ pub fn module(module: &vyp::Module) -> Result<YulContracts, CompileError> {
                     let contract = contracts::contract_def(Rc::clone(&scope), stmt)?;
 
                     if contracts.insert(name.node.to_string(), contract).is_some() {
-                       return Err(CompileError::static_str("duplicate contract def"))
+                        return Err(CompileError::static_str("duplicate contract def"));
                     }
                 }
                 vyp::ModuleStmt::FromImport { .. } => unimplemented!(),
-                vyp::ModuleStmt::SimpleImport { .. } => unimplemented!()
+                vyp::ModuleStmt::SimpleImport { .. } => unimplemented!(),
             }
 
             Ok(contracts)
@@ -37,7 +37,7 @@ pub fn module(module: &vyp::Module) -> Result<YulContracts, CompileError> {
 
 fn type_def(
     scope: Shared<ModuleScope>,
-    def: &Spanned<vyp::ModuleStmt>
+    def: &Spanned<vyp::ModuleStmt>,
 ) -> Result<(), CompileError> {
     if let vyp::ModuleStmt::TypeDef { name, typ } = &def.node {
         let typ = types::type_desc(&scope.borrow().defs, &typ.node)?;

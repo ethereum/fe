@@ -1,7 +1,6 @@
 use crate::errors::CompileError;
 use crate::yul::mappers::expressions;
 use crate::yul::namespace::scopes::{ContractDef, FunctionDef, FunctionScope, Shared};
-use crate::yul::namespace::types::FixedSize;
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
 use vyper_parser::span::Spanned;
@@ -10,102 +9,119 @@ use yultsur::*;
 /// Builds a Yul statement from a Vyper assignment.
 pub fn assign(
     scope: Shared<FunctionScope>,
-    targets: &Vec<Spanned<vyp::Expr>>,
-    value: &vyp::Expr,
+    stmt: &Spanned<vyp::FuncStmt>,
 ) -> Result<yul::Statement, CompileError> {
-    let targets = targets.iter().map(|t| &t.node).collect::<Vec<&vyp::Expr>>();
+    if let vyp::FuncStmt::Assign { targets, value } = &stmt.node {
+        if targets.len() > 1 {
+            unimplemented!("multiple assignment targets")
+        }
 
-    match targets.first() {
-        Some(vyp::Expr::Name(name)) => assign_name(scope, name.to_string(), value),
-        Some(vyp::Expr::Subscript {
-            value: target,
-            slices,
-        }) => assign_subscript(scope, &target.node, &slices.node, value),
-        _ => Err(CompileError::static_str("Targets not supported")),
+        if let Some(first_target) = targets.first() {
+            return match &first_target.node {
+                vyp::Expr::Name(_) => assign_name(scope, first_target, value),
+                vyp::Expr::Subscript { .. } => assign_subscript(scope, first_target, value),
+                _ => unreachable!(),
+            };
+        }
     }
+
+    unreachable!()
 }
 
 fn assign_subscript(
     scope: Shared<FunctionScope>,
-    target: &vyp::Expr,
-    slices: &Vec<Spanned<vyp::Slice>>,
-    value: &vyp::Expr,
+    target: &Spanned<vyp::Expr>,
+    value: &Spanned<vyp::Expr>,
 ) -> Result<yul::Statement, CompileError> {
-    match target {
-        vyp::Expr::Name(name) => assign_subscript_name(scope, name.to_string(), slices, value),
-        vyp::Expr::Attribute {
-            value: target_value,
-            attr,
-        } => assign_subscript_attribute(
-            scope,
-            &target_value.node,
-            attr.node.to_string(),
-            slices,
-            value,
-        ),
-        _ => Err(CompileError::static_str("Invalid subscript target")),
+    if let vyp::Expr::Subscript {
+        value: target_value,
+        slices,
+    } = &target.node
+    {
+        return match &target_value.node {
+            vyp::Expr::Name(_) => assign_subscript_name(scope, target_value, slices, value),
+            vyp::Expr::Attribute { .. } => {
+                assign_subscript_attribute(scope, target_value, slices, value)
+            }
+            _ => Err(CompileError::static_str("invalid subscript target")),
+        };
     }
+
+    unreachable!()
 }
 
 fn assign_subscript_name(
     scope: Shared<FunctionScope>,
-    name: String,
-    slices: &Vec<Spanned<vyp::Slice>>,
-    value: &vyp::Expr,
+    target_value: &Spanned<vyp::Expr>,
+    slices: &Spanned<Vec<Spanned<vyp::Slice>>>,
+    value: &Spanned<vyp::Expr>,
 ) -> Result<yul::Statement, CompileError> {
-    let (key, _) = expressions::slices_index(Rc::clone(&scope), slices)?;
-    let (value, _) = expressions::expr(Rc::clone(&scope), value)?;
+    let name = expressions::expr_name_string(target_value)?;
 
-    match scope.borrow().def(name.clone()) {
-        Some(FunctionDef::Array(array)) => array.mstore_elem(name, key, value),
-        None => Err(CompileError::static_str("No definition found")),
-        _ => Err(CompileError::static_str("Invalid definition")),
+    let array_ptr = identifier_expression! {(name)};
+    let index = expressions::slices_index(Rc::clone(&scope), slices)?.expression;
+    let value = expressions::expr(Rc::clone(&scope), value)?.expression;
+
+    match scope.borrow().def(name) {
+        Some(FunctionDef::Array(array_type)) => array_type.mstore_elem(array_ptr, index, value),
+        Some(FunctionDef::Base(_)) => Err(CompileError::static_str(
+            "can't assign subscript value to base type",
+        )),
+        None => Err(CompileError::static_str("definition not found")),
     }
 }
 
 fn assign_subscript_attribute(
     scope: Shared<FunctionScope>,
-    target_value: &vyp::Expr,
-    name: String,
-    slices: &Vec<Spanned<vyp::Slice>>,
-    value: &vyp::Expr,
+    target_value: &Spanned<vyp::Expr>,
+    slices: &Spanned<Vec<Spanned<vyp::Slice>>>,
+    value: &Spanned<vyp::Expr>,
 ) -> Result<yul::Statement, CompileError> {
-    match expressions::expr_name_str(target_value)? {
-        "self" => assign_subscript_self(scope, name, slices, value),
-        _ => Err(CompileError::static_str("Invalid attribute value")),
+    if let vyp::Expr::Attribute {
+        value: target_value,
+        attr,
+    } = &target_value.node
+    {
+        return match expressions::expr_name_str(target_value)? {
+            "self" => assign_subscript_self(scope, attr, slices, value),
+            _ => Err(CompileError::static_str("unrecognized attribute value")),
+        };
     }
+
+    unreachable!()
 }
 
 fn assign_subscript_self(
     scope: Shared<FunctionScope>,
-    name: String,
-    slices: &Vec<Spanned<vyp::Slice>>,
-    value: &vyp::Expr,
+    attr: &Spanned<&str>,
+    slices: &Spanned<Vec<Spanned<vyp::Slice>>>,
+    value: &Spanned<vyp::Expr>,
 ) -> Result<yul::Statement, CompileError> {
-    let (key, _) = expressions::slices_index(Rc::clone(&scope), slices)?;
-    let (value, _) = expressions::expr(Rc::clone(&scope), value)?;
+    let name = attr.node.to_string();
+
+    let key = expressions::slices_index(Rc::clone(&scope), slices)?.expression;
+    let value = expressions::expr(Rc::clone(&scope), value)?.expression;
 
     match scope.borrow().contract_def(name) {
         Some(ContractDef::Map { index, map }) => map.sstore(index, key, value),
-        None => Err(CompileError::static_str("No definition found")),
-        _ => Err(CompileError::static_str("Invalid definition")),
+        None => Err(CompileError::static_str("definition not found")),
+        _ => Err(CompileError::static_str("invalid definition")),
     }
 }
 
 fn assign_name(
     scope: Shared<FunctionScope>,
-    name: String,
-    value: &vyp::Expr,
+    target: &Spanned<vyp::Expr>,
+    value: &Spanned<vyp::Expr>,
 ) -> Result<yul::Statement, CompileError> {
-    let identifier = identifier! {(name)};
-    let (value, value_type) = expressions::expr(Rc::clone(&scope), value)?;
+    if let vyp::Expr::Name(name) = target.node {
+        let identifier = identifier! {(name)};
+        let value = expressions::expr(scope, value)?.expression;
 
-    match value_type {
-        FixedSize::Array(array) => scope.borrow_mut().add_array(name, array),
-        FixedSize::Base(base) => scope.borrow_mut().add_base(name, base),
-    };
+        return Ok(statement! { [identifier] := [value] });
+    }
 
-    Ok(statement! { [identifier] := [value] })
+    unreachable!()
 }
 
 #[cfg(test)]
@@ -115,7 +131,6 @@ mod tests {
     use crate::yul::namespace::types::{Array, Base};
 
     use vyper_parser as parser;
-    use vyper_parser::ast as vyp;
 
     fn scope() -> Shared<FunctionScope> {
         let module_scope = ModuleScope::new();
@@ -124,19 +139,13 @@ mod tests {
     }
 
     fn map(scope: Shared<FunctionScope>, src: &str) -> String {
-        let tokens = parser::get_parse_tokens(src).expect("Couldn't parse assignment");
-        let stmt = &parser::parsers::assign_stmt(&tokens[..])
-            .expect("Couldn't build assignment AST")
-            .1
-            .node;
+        let tokens = parser::get_parse_tokens(src).expect("couldn't parse assignment");
+        let stmt = parser::parsers::assign_stmt(&tokens[..])
+            .expect("couldn't build assignment AST")
+            .1;
 
-        if let vyp::FuncStmt::Assign { targets, value } = stmt {
-            let assign = assign(scope, targets, &value.node).expect("Couldn't map assignment AST");
-
-            assign.to_string()
-        } else {
-            panic!("Didn't get an assignment")
-        }
+        let assign = assign(scope, &stmt).expect("couldn't map assignment AST");
+        assign.to_string()
     }
 
     #[test]

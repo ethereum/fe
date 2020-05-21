@@ -64,6 +64,13 @@ impl FixedSize {
             FixedSize::Base(base) => base.abi_name(),
         }
     }
+
+    pub fn into_type(self) -> Type {
+        match self {
+            FixedSize::Array(array) => Type::Array(array),
+            FixedSize::Base(base) => Type::Base(base),
+        }
+    }
 }
 
 impl Base {
@@ -173,27 +180,25 @@ impl Array {
 
     pub fn mstore_elem(
         &self,
-        name: String,
-        key: yul::Expression,
+        array_ptr: yul::Expression,
+        index: yul::Expression,
         value: yul::Expression,
     ) -> Result<yul::Statement, CompileError> {
-        let name = literal_expression! {(name)};
         let size = literal_expression! {(self.inner.size())};
-        let ptr = expression! { add([name], (mul([key],[size]))) };
+        let value_ptr = expression! { add([array_ptr], (mul([index], [size]))) };
 
-        self.inner.mstore(ptr, value)
+        self.inner.mstore(value_ptr, value)
     }
 
     pub fn mload_elem(
         &self,
-        name: String,
-        key: yul::Expression,
+        array_ptr: yul::Expression,
+        index: yul::Expression,
     ) -> Result<yul::Expression, CompileError> {
-        let name = literal_expression! {(name)};
         let size = literal_expression! {(self.inner.size())};
-        let ptr = expression! { add([name], (mul([key],[size]))) };
+        let value_ptr = expression! { add([array_ptr], (mul([index], [size]))) };
 
-        self.inner.mload(ptr)
+        self.inner.mload(value_ptr)
     }
 
     pub fn mcopy(
@@ -229,6 +234,7 @@ impl Map {
         }
     }
 
+    #[allow(dead_code)]
     pub fn sload(
         &self,
         index: usize,
@@ -251,7 +257,7 @@ pub fn type_desc_fixed_size(
     match type_desc(defs, typ)? {
         Type::Base(base) => Ok(FixedSize::Base(base)),
         Type::Array(array) => Ok(FixedSize::Array(array)),
-        Type::Map(_) => Err(CompileError::static_str("Maps are not fixed size")),
+        Type::Map(_) => Err(CompileError::static_str("maps are not fixed size")),
     }
 }
 
@@ -261,8 +267,8 @@ pub fn type_desc_base(
 ) -> Result<Base, CompileError> {
     match type_desc(defs, typ)? {
         Type::Base(base) => Ok(base),
-        Type::Array(_) => Err(CompileError::static_str("Arrays are not a base type")),
-        Type::Map(_) => Err(CompileError::static_str("Maps are not a base type")),
+        Type::Array(_) => Err(CompileError::static_str("arrays are not a base type")),
+        Type::Map(_) => Err(CompileError::static_str("maps are not a base type")),
     }
 }
 
@@ -279,7 +285,7 @@ pub fn type_desc(
                 return Ok(typ.clone());
             }
 
-            Err(CompileError::static_str("No type definition"))
+            Err(CompileError::static_str("no type definition"))
         }
         vyp::TypeDesc::Array { typ, dimension } => Ok(Type::Array(Array {
             inner: type_desc_base(defs, &typ.node)?,

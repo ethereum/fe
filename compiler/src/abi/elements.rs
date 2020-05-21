@@ -48,7 +48,7 @@ impl Contract {
     /// Serialize the contract into a valid JSON ABI.
     pub fn json(&self) -> Result<String, CompileError> {
         serde_json::to_string(self)
-            .map_err(|_| CompileError::static_str("Unable to serialize contract to json"))
+            .map_err(|_| CompileError::static_str("unable to serialize contract to json"))
     }
 }
 
@@ -188,8 +188,7 @@ impl Serialize for VarType {
 #[cfg(test)]
 mod tests {
     use crate::abi::elements::{
-        Contract, Event, EventField, FuncInput, FuncOutput, FuncType, Function, ModuleABIs,
-        VarType,
+        Contract, Event, EventField, FuncInput, FuncOutput, FuncType, Function, ModuleABIs, VarType,
     };
     use std::collections::HashMap;
 
@@ -278,11 +277,7 @@ mod tests {
     #[test]
     fn fixed_array() {
         assert_eq!(
-            serde_json::to_string(&VarType::FixedArray(
-                Box::new(VarType::Address),
-                42
-            ))
-            .unwrap(),
+            serde_json::to_string(&VarType::FixedArray(Box::new(VarType::Address), 42)).unwrap(),
             r#""address[42]""#
         )
     }

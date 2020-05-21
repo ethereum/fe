@@ -1,6 +1,5 @@
 use crate::errors::CompileError;
-use crate::yul::mappers::expressions::{expr, expr_name_string};
-use crate::yul::mappers::types;
+use crate::yul::mappers::{expressions, types};
 use crate::yul::namespace::scopes::{FunctionScope, Scope, Shared};
 use crate::yul::namespace::types::{Array, Base, Type};
 use std::rc::Rc;
@@ -11,50 +10,61 @@ use yultsur::*;
 /// Builds a Yul statement from a Vyper variable declaration
 pub fn var_decl(
     scope: Shared<FunctionScope>,
-    target: &vyp::Expr,
-    typ: &vyp::TypeDesc,
-    value: &Option<Spanned<vyp::Expr>>,
+    stmt: &Spanned<vyp::FuncStmt>,
 ) -> Result<yul::Statement, CompileError> {
-    match types::type_desc(Scope::Function(Rc::clone(&scope)), typ)? {
-        Type::Base(base) => var_decl_base(scope, target, base, value),
-        Type::Array(array) => var_decl_array(scope, target, array, value),
-        Type::Map(_) => Err(CompileError::static_str("Cannot declare map in function")),
+    if let vyp::FuncStmt::VarDecl { target, typ, value } = &stmt.node {
+        return match types::type_desc(Scope::Function(Rc::clone(&scope)), typ)? {
+            Type::Base(base) => var_decl_base(scope, target, value, base),
+            Type::Array(array) => var_decl_array(scope, target, value, array),
+            Type::Map(_) => Err(CompileError::static_str("cannot declare map in function")),
+        };
     }
+
+    unreachable!()
 }
 
 fn var_decl_base(
     scope: Shared<FunctionScope>,
-    target: &vyp::Expr,
-    base: Base,
+    target: &Spanned<vyp::Expr>,
     value: &Option<Spanned<vyp::Expr>>,
+    base: Base,
 ) -> Result<yul::Statement, CompileError> {
-    let name = expr_name_string(target)?;
-    scope.borrow_mut().add_base(name.clone(), base);
+    if let vyp::Expr::Name(name) = target.node {
+        scope.borrow_mut().add_base(name.to_string(), base);
 
-    if let Some(value) = value {
-        let (value, _) = expr(scope, &value.node)?;
-        Ok(statement! { let [identifier! {(name)}] := [value] })
-    } else {
-        Ok(statement! { let [identifier! {(name)}] := 0 })
+        let identifier = identifier! {(name)};
+
+        return Ok(if let Some(value) = value {
+            let value = expressions::expr(scope, &value)?.expression;
+            statement! { let [identifier] := [value] }
+        } else {
+            statement! { let [identifier] := 0 }
+        });
     }
+
+    unreachable!()
 }
 
 fn var_decl_array(
     scope: Shared<FunctionScope>,
-    target: &vyp::Expr,
-    array: Array,
+    target: &Spanned<vyp::Expr>,
     value: &Option<Spanned<vyp::Expr>>,
+    array: Array,
 ) -> Result<yul::Statement, CompileError> {
-    let name = expr_name_string(target)?;
-    let size = literal_expression! {(array.size())};
+    if let vyp::Expr::Name(name) = target.node {
+        let identifier = identifier! {(name)};
+        let size = literal_expression! {(array.size())};
 
-    scope.borrow_mut().add_array(name.clone(), array);
+        scope.borrow_mut().add_array(name.to_string(), array);
 
-    if let Some(_value) = value {
-        Err(CompileError::static_str("Array copying not supported yet"))
-    } else {
-        Ok(statement! { let [identifier! {(name)}] := alloc([size]) })
+        return Ok(if let Some(_) = value {
+            unimplemented!("array copying")
+        } else {
+            statement! { let [identifier] := alloc([size]) }
+        });
     }
+
+    unreachable!()
 }
 
 #[cfg(test)]
@@ -67,7 +77,6 @@ mod tests {
     use crate::yul::namespace::types::{Array, Base, Type};
     use std::rc::Rc;
     use vyper_parser as parser;
-    use vyper_parser::ast as vyp;
 
     fn scope() -> Shared<FunctionScope> {
         let module_scope = ModuleScope::new();
@@ -79,17 +88,11 @@ mod tests {
         let tokens = parser::get_parse_tokens(src).expect("Couldn't parse declaration");
         let stmt = &parser::parsers::vardecl_stmt(&tokens[..])
             .expect("Couldn't build declaration AST")
-            .1
-            .node;
+            .1;
 
-        if let vyp::FuncStmt::VarDecl { target, typ, value } = stmt {
-            let decl = var_decl(scope, &target.node, &typ.node, value)
-                .expect("Couldn't map declaration AST");
+        let decl = var_decl(scope, &stmt).expect("Couldn't map declaration AST");
 
-            decl.to_string()
-        } else {
-            panic!("Didn't get a declaration")
-        }
+        decl.to_string()
     }
 
     #[test]

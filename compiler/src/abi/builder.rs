@@ -1,6 +1,5 @@
 use crate::abi::elements::{
-    Contract, Event, EventField, FuncInput, FuncOutput, FuncType, Function, ModuleABIs,
-    VarType,
+    Contract, Event, EventField, FuncInput, FuncOutput, FuncType, Function, ModuleABIs, VarType,
 };
 use crate::errors::CompileError;
 use std::collections::HashMap;

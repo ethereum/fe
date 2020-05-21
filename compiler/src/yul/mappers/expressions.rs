@@ -1,152 +1,247 @@
 use crate::errors::CompileError;
 use crate::yul::namespace::scopes::{ContractDef, FunctionDef, FunctionScope, Shared};
-use crate::yul::namespace::types::{Base, FixedSize};
+use crate::yul::namespace::types::{Base, FixedSize, Map, Type};
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
-use vyper_parser::span::Spanned;
+use vyper_parser::span::{Span, Spanned};
 use yultsur::*;
+
+/// The location of an evaluated expression.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Location {
+    /// The expression's own value.
+    Value,
+    /// The expression points to some region in memory.
+    Memory,
+    /// The expression points to some region in storage.
+    Storage,
+}
+
+/// A Yul expression extended to include location and type.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ExtExpression {
+    pub expression: yul::Expression,
+    pub location: Location,
+    pub typ: Type,
+}
 
 /// Builds a Yul expression from a Vyper expression.
 pub fn expr(
     scope: Shared<FunctionScope>,
-    expr: &vyp::Expr,
-) -> Result<(yul::Expression, FixedSize), CompileError> {
-    match expr {
-        vyp::Expr::Name(name) => expr_name(scope, name.to_string()),
-        vyp::Expr::Num(num) => Ok((literal_expression! {(num)}, FixedSize::Base(Base::U256))),
-        vyp::Expr::Subscript { value, slices } => expr_subscript(scope, &value.node, &slices.node),
-        vyp::Expr::Attribute { value, attr } => {
-            expr_attribute(scope, &value.node, attr.node.to_string())
-        }
-        _ => unimplemented!("Expression"),
+    exp: &Spanned<vyp::Expr>,
+) -> Result<ExtExpression, CompileError> {
+    match &exp.node {
+        vyp::Expr::Name(_) => expr_name(scope, exp),
+        vyp::Expr::Num(_) => expr_num(exp),
+        vyp::Expr::Subscript { .. } => expr_subscript(scope, exp),
+        vyp::Expr::Attribute { .. } => expr_attribute(scope, exp),
+        vyp::Expr::Ternary { .. } => unimplemented!(),
+        vyp::Expr::BoolOperation { .. } => unimplemented!(),
+        vyp::Expr::BinOperation { .. } => unimplemented!(),
+        vyp::Expr::UnaryOperation { .. } => unimplemented!(),
+        vyp::Expr::CompOperation { .. } => unimplemented!(),
+        vyp::Expr::Call { .. } => unimplemented!(),
+        vyp::Expr::List { .. } => unimplemented!(),
+        vyp::Expr::ListComp { .. } => unimplemented!(),
+        vyp::Expr::Tuple { .. } => unimplemented!(),
+        vyp::Expr::Str(_) => unimplemented!(),
+        vyp::Expr::Ellipsis => unimplemented!(),
     }
 }
 
 /// Retrieves the &str value of a name expression.
-pub fn expr_name_str<'a>(expr: &'a vyp::Expr<'a>) -> Result<&'a str, CompileError> {
-    if let vyp::Expr::Name(name) = expr {
-        return Ok(*name);
+pub fn expr_name_str<'a>(exp: &Spanned<vyp::Expr<'a>>) -> Result<&'a str, CompileError> {
+    if let vyp::Expr::Name(name) = exp.node {
+        return Ok(name);
     }
 
-    Err(CompileError::static_str("Not a name expression."))
+    unreachable!()
 }
 
 /// Retrieves the &str value of a name expression and converts it to a String.
-pub fn expr_name_string(expr: &vyp::Expr) -> Result<String, CompileError> {
-    expr_name_str(expr).map(|name| name.to_string())
+pub fn expr_name_string(exp: &Spanned<vyp::Expr>) -> Result<String, CompileError> {
+    expr_name_str(exp).map(|name| name.to_string())
 }
 
 /// Builds a Yul expression from the first slice, if it is an index.
 pub fn slices_index(
     scope: Shared<FunctionScope>,
-    slices: &Vec<Spanned<vyp::Slice>>,
-) -> Result<(yul::Expression, FixedSize), CompileError> {
-    if let Some(first_slice) = slices.first() {
-        if let vyp::Slice::Index(index) = &first_slice.node {
-            return Ok(expr(scope, index)?);
-        }
-
-        return Err(CompileError::static_str("First slice is not an index"));
+    slices: &Spanned<Vec<Spanned<vyp::Slice>>>,
+) -> Result<ExtExpression, CompileError> {
+    if let Some(first_slice) = slices.node.first() {
+        return slice_index(scope, first_slice);
     }
 
-    return Err(CompileError::static_str("No slices in vector"));
+    unreachable!()
+}
+
+/// Creates a new spanned expression. Useful in cases where an `Expr` is nested within the node
+/// of a `Spanned` object.
+pub fn spanned_expression<'a>(span: &Span, exp: &vyp::Expr<'a>) -> Spanned<vyp::Expr<'a>> {
+    Spanned {
+        node: (*exp).clone(),
+        span: (*span).to_owned(),
+    }
+}
+
+pub fn slice_index(
+    scope: Shared<FunctionScope>,
+    slice: &Spanned<vyp::Slice>,
+) -> Result<ExtExpression, CompileError> {
+    if let vyp::Slice::Index(index) = &slice.node {
+        let spanned = spanned_expression(&slice.span, index.as_ref());
+        return expr(scope, &spanned);
+    }
+
+    unreachable!()
 }
 
 fn expr_name(
     scope: Shared<FunctionScope>,
-    name: String,
-) -> Result<(yul::Expression, FixedSize), CompileError> {
-    match scope.borrow().def(name.clone()) {
-        Some(FunctionDef::Base(base)) => {
-            Ok((identifier_expression! {(name)}, FixedSize::Base(base)))
-        }
-        Some(FunctionDef::Array(array)) => {
-            Ok((identifier_expression! {(name)}, FixedSize::Array(array)))
-        }
-        None => Err(CompileError::static_str("No definition found")),
+    exp: &Spanned<vyp::Expr>,
+) -> Result<ExtExpression, CompileError> {
+    if let vyp::Expr::Name(name) = exp.node {
+        let identifier = identifier_expression! {(name)};
+
+        return match scope.borrow().def(name.to_string()) {
+            Some(FunctionDef::Base(base)) => Ok(ExtExpression {
+                expression: identifier,
+                location: Location::Value,
+                typ: Type::Base(base),
+            }),
+            Some(FunctionDef::Array(array)) => Ok(ExtExpression {
+                expression: identifier,
+                location: Location::Memory,
+                typ: Type::Array(array),
+            }),
+            None => Err(CompileError::static_str("no definition found")),
+        };
     }
+
+    unreachable!()
 }
 
-// FIXME: The left side should be evaluated and then indexed.
+fn expr_num(exp: &Spanned<vyp::Expr>) -> Result<ExtExpression, CompileError> {
+    if let vyp::Expr::Num(num) = &exp.node {
+        return Ok(ExtExpression {
+            expression: literal_expression! {(num)},
+            location: Location::Value,
+            typ: Type::Base(Base::U256),
+        });
+    }
+
+    unreachable!()
+}
+
 fn expr_subscript(
     scope: Shared<FunctionScope>,
-    value: &vyp::Expr,
-    slices: &Vec<Spanned<vyp::Slice>>,
-) -> Result<(yul::Expression, FixedSize), CompileError> {
-    match value {
-        vyp::Expr::Attribute { value, attr } => {
-            expr_subscript_attribute(scope, &value.node, attr.node.to_string(), slices)
-        }
-        vyp::Expr::Name(name) => expr_subscript_name(scope, name.to_string(), slices),
-        _ => unimplemented!("Expression subscript"),
+    exp: &Spanned<vyp::Expr>,
+) -> Result<ExtExpression, CompileError> {
+    if let vyp::Expr::Subscript { value, slices } = &exp.node {
+        let value = expr(Rc::clone(&scope), value)?;
+        let index = slices_index(scope, slices)?;
+
+        return match (&value.typ, &value.location) {
+            (Type::Map(_), Location::Storage) => keyed_storage_map(value, index),
+            (Type::Array(_), Location::Storage) => unimplemented!(),
+            (Type::Array(_), Location::Memory) => indexed_memory_array(value, index),
+            (_, _) => unreachable!(),
+        };
     }
+
+    unreachable!()
 }
 
-fn expr_subscript_name(
-    scope: Shared<FunctionScope>,
-    name: String,
-    slices: &Vec<Spanned<vyp::Slice>>,
-) -> Result<(yul::Expression, FixedSize), CompileError> {
-    let (key, _) = slices_index(Rc::clone(&scope), slices)?;
+fn keyed_storage_map(
+    map: ExtExpression,
+    key: ExtExpression,
+) -> Result<ExtExpression, CompileError> {
+    if let Type::Map(Map {
+        key: _,
+        value: value_type,
+    }) = map.typ
+    {
+        let sptr = expression! { dualkeccak256([map.expression], [key.expression]) };
 
-    match scope.borrow().def(name.clone()) {
-        Some(FunctionDef::Array(array)) => {
-            Ok((array.mload_elem(name, key)?, FixedSize::Base(array.inner)))
-        }
-        None => Err(CompileError::static_str("No definition found")),
-        _ => Err(CompileError::static_str("Invalid definition")),
+        let (expression, location) = match value_type.clone() {
+            FixedSize::Array(array) => (array.scopy(sptr)?, Location::Memory),
+            FixedSize::Base(base) => (base.sload(sptr)?, Location::Value),
+        };
+
+        return Ok(ExtExpression {
+            expression,
+            location,
+            typ: value_type.into_type(),
+        });
     }
+
+    unreachable!()
 }
 
-fn expr_subscript_attribute(
-    scope: Shared<FunctionScope>,
-    value: &vyp::Expr,
-    name: String,
-    slices: &Vec<Spanned<vyp::Slice>>,
-) -> Result<(yul::Expression, FixedSize), CompileError> {
-    match expr_name_str(value)? {
-        "self" => expr_subscript_self(scope, name, slices),
-        _ => Err(CompileError::static_str("Invalid attribute value")),
+fn indexed_memory_array(
+    array: ExtExpression,
+    index: ExtExpression,
+) -> Result<ExtExpression, CompileError> {
+    if let Type::Array(array_type) = array.typ {
+        return Ok(ExtExpression {
+            expression: array_type.mload_elem(array.expression, index.expression)?,
+            location: Location::Value,
+            typ: Type::Base(array_type.inner),
+        });
     }
-}
 
-fn expr_subscript_self(
-    scope: Shared<FunctionScope>,
-    name: String,
-    slices: &Vec<Spanned<vyp::Slice>>,
-) -> Result<(yul::Expression, FixedSize), CompileError> {
-    let (key, _) = slices_index(Rc::clone(&scope), slices)?;
-
-    match scope.borrow().contract_def(name) {
-        Some(ContractDef::Map { index, map }) => Ok((map.sload(index, key)?, map.value)),
-        None => Err(CompileError::static_str("No definition found")),
-        _ => Err(CompileError::static_str("Invalid definition")),
-    }
+    unreachable!()
 }
 
 fn expr_attribute(
-    _scope: Shared<FunctionScope>,
-    value: &vyp::Expr,
-    name: String,
-) -> Result<(yul::Expression, FixedSize), CompileError> {
-    match expr_name_str(value)? {
-        "msg" => expr_msg(name),
-        _ => Err(CompileError::static_str("Invalid attribute value")),
+    scope: Shared<FunctionScope>,
+    exp: &Spanned<vyp::Expr>,
+) -> Result<ExtExpression, CompileError> {
+    if let vyp::Expr::Attribute { value, attr } = &exp.node {
+        return match expr_name_str(value)? {
+            "msg" => expr_attribute_msg(attr),
+            "self" => expr_attribute_self(scope, attr),
+            _ => Err(CompileError::static_str("invalid attribute value")),
+        };
+    }
+
+    unreachable!()
+}
+
+fn expr_attribute_msg(attr: &Spanned<&str>) -> Result<ExtExpression, CompileError> {
+    match attr.node {
+        "sender" => Ok(ExtExpression {
+            expression: expression! { caller() },
+            location: Location::Value,
+            typ: Type::Base(Base::Address),
+        }),
+        _ => Err(CompileError::static_str("invalid msg attribute name")),
     }
 }
 
-fn expr_msg(name: String) -> Result<(yul::Expression, FixedSize), CompileError> {
-    match name.as_str() {
-        "sender" => Ok((expression! { caller() }, FixedSize::Base(Base::Address))),
-        _ => Err(CompileError::static_str("Invalid attribute name")),
+fn expr_attribute_self(
+    scope: Shared<FunctionScope>,
+    attr: &Spanned<&str>,
+) -> Result<ExtExpression, CompileError> {
+    match scope.borrow().contract_def(attr.node.to_string()) {
+        Some(ContractDef::Map { index, map }) => Ok(ExtExpression {
+            expression: literal_expression! {(index)},
+            location: Location::Storage,
+            typ: Type::Map(map),
+        }),
+        Some(ContractDef::Function { .. }) => unimplemented!(),
+        Some(ContractDef::Event(_)) => {
+            Err(CompileError::static_str("invalid use of event definition"))
+        }
+        None => Err(CompileError::static_str("unknown contract definition")),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::yul::mappers::expressions::expr;
+    use crate::yul::mappers::expressions::{expr, ExtExpression, Location};
     use crate::yul::namespace::scopes::{ContractScope, FunctionScope, ModuleScope, Shared};
-    use crate::yul::namespace::types::{Array, Base, FixedSize, Map};
+    use crate::yul::namespace::types::{Array, Base, FixedSize, Map, Type};
     use std::rc::Rc;
     use vyper_parser as parser;
 
@@ -156,17 +251,13 @@ mod tests {
         FunctionScope::new(contract_scope)
     }
 
-    fn map(scope: Shared<FunctionScope>, src: &str) -> (String, FixedSize) {
+    fn map(scope: Shared<FunctionScope>, src: &str) -> ExtExpression {
         let tokens = parser::get_parse_tokens(src).expect("Couldn't parse expression");
-        let (expr, typ) = expr(
-            scope,
-            &parser::parsers::expr(&tokens[..])
-                .expect("Couldn't build expression AST")
-                .1
-                .node,
-        )
-        .expect("Couldn't map expression AST");
-        (expr.to_string(), typ)
+        let expression = &parser::parsers::expr(&tokens[..])
+            .expect("Couldn't build expression AST")
+            .1;
+
+        expr(scope, expression).expect("Couldn't map expression AST")
     }
 
     #[test]
@@ -180,13 +271,14 @@ mod tests {
             },
         );
 
+        let result = map(scope, "self.foo[3]");
+
         assert_eq!(
-            map(scope, "self.foo[3]"),
-            (
-                "sloadn(dualkeccak256(0, 3), 32)".to_string(),
-                FixedSize::Base(Base::U256)
-            )
-        )
+            result.expression.to_string(),
+            "sloadn(dualkeccak256(0, 3), 32)"
+        );
+        assert_eq!(result.location, Location::Value);
+        assert_eq!(result.typ, Type::Base(Base::U256));
     }
 
     #[test]
@@ -211,24 +303,28 @@ mod tests {
             },
         );
 
+        let foo_result = map(Rc::clone(&scope), "self.foo[42]");
+        let bar_result = map(scope, "self.bar[2]");
+
         assert_eq!(
-            map(Rc::clone(&scope), "self.foo[42]"),
-            (
-                "scopy(dualkeccak256(0, 42), 100)".to_string(),
-                FixedSize::Array(Array {
-                    dimension: 5,
-                    inner: Base::Address
-                })
-            )
+            foo_result.expression.to_string(),
+            "scopy(dualkeccak256(0, 42), 100)"
+        );
+        assert_eq!(foo_result.location, Location::Memory);
+        assert_eq!(
+            foo_result.typ,
+            Type::Array(Array {
+                dimension: 5,
+                inner: Base::Address
+            })
         );
 
         assert_eq!(
-            map(scope, "self.bar[2]"),
-            (
-                "sloadn(dualkeccak256(1, 2), 20)".to_string(),
-                FixedSize::Base(Base::Address)
-            )
-        )
+            bar_result.expression.to_string(),
+            "sloadn(dualkeccak256(1, 2), 20)"
+        );
+        assert_eq!(bar_result.location, Location::Value);
+        assert_eq!(bar_result.typ, Type::Base(Base::Address));
     }
 
     #[test]
@@ -254,25 +350,28 @@ mod tests {
         );
 
         scope.borrow_mut().add_base("index".to_string(), Base::U256);
+        let result = map(Rc::clone(&scope), "self.foo_map[bar_array[index]]");
 
         assert_eq!(
-            map(Rc::clone(&scope), "self.foo_map[bar_array[index]]"),
-            (
-                "scopy(dualkeccak256(0, mloadn(add(bar_array, mul(index, 1)), 1)), 160)"
-                    .to_string(),
-                FixedSize::Array(Array {
-                    dimension: 8,
-                    inner: Base::Address
-                })
-            )
+            result.expression.to_string(),
+            "scopy(dualkeccak256(0, mloadn(add(bar_array, mul(index, 1)), 1)), 160)"
+        );
+        assert_eq!(result.location, Location::Memory);
+        assert_eq!(
+            result.typ,
+            Type::Array(Array {
+                dimension: 8,
+                inner: Base::Address
+            })
         );
     }
 
     #[test]
     fn msg_sender() {
-        assert_eq!(
-            map(scope(), "msg.sender"),
-            ("caller()".to_string(), FixedSize::Base(Base::Address))
-        )
+        let result = map(scope(), "msg.sender");
+
+        assert_eq!(result.expression.to_string(), "caller()");
+        assert_eq!(result.location, Location::Value);
+        assert_eq!(result.typ, Type::Base(Base::Address));
     }
 }

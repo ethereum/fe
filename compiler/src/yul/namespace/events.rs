@@ -39,6 +39,6 @@ impl Event {
             return Ok(statement! { log1([(*value).clone()], [size], [topic]) });
         }
 
-        Err(CompileError::static_str("Can't create emit statement"))
+        Err(CompileError::static_str("can't create emit statement"))
     }
 }

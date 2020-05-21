@@ -13,18 +13,29 @@ use yultsur::*;
 /// Builds a Yul object from a Vyper contract.
 pub fn contract_def(
     module_scope: Shared<ModuleScope>,
-    def: &Spanned<vyp::ModuleStmt>,
+    stmt: &Spanned<vyp::ModuleStmt>,
 ) -> Result<yul::Object, CompileError> {
-    if let vyp::ModuleStmt::ContractDef { name: _, body } = &def.node {
-        let contract_scope = ContractScope::new(Rc::clone(&module_scope));
+    if let vyp::ModuleStmt::ContractDef { name: _, body } = &stmt.node {
+        let contract_scope = ContractScope::new(module_scope);
 
-        let mut statements = body
-            .iter()
-            .map(|stmt| contract_stmt(Rc::clone(&contract_scope), &stmt.node))
-            .collect::<Result<Vec<Option<yul::Statement>>, CompileError>>()?
-            .into_iter()
-            .filter_map(|stmt| stmt)
-            .collect::<Vec<yul::Statement>>();
+        let mut statements = body.iter().try_fold::<_, _, Result<_, CompileError>>(
+            vec![],
+            |mut statements, stmt| {
+                match &stmt.node {
+                    vyp::ContractStmt::ContractField { .. } => {
+                        contract_field(Rc::clone(&contract_scope), stmt)?
+                    }
+                    vyp::ContractStmt::EventDef { .. } => {
+                        event_def(Rc::clone(&contract_scope), stmt)?
+                    }
+                    vyp::ContractStmt::FuncDef { .. } => {
+                        statements.push(functions::func_def(Rc::clone(&contract_scope), stmt)?)
+                    }
+                };
+
+                Ok(statements)
+            },
+        )?;
 
         statements.append(&mut runtime_functions::all());
         statements.push(runtime_abi::dispatcher(
@@ -34,7 +45,7 @@ pub fn contract_def(
 
         return Ok(yul::Object {
             name: identifier! { Contract },
-            code: constructor::code(),
+            code: constructor::runtime(),
             objects: vec![yul::Object {
                 name: identifier! { runtime },
                 code: yul::Code {
@@ -48,68 +59,47 @@ pub fn contract_def(
     unreachable!()
 }
 
-fn contract_stmt(
-    scope: Shared<ContractScope>,
-    stmt: &vyp::ContractStmt,
-) -> Result<Option<yul::Statement>, CompileError> {
-    match stmt {
-        vyp::ContractStmt::ContractField { qual, name, typ } => {
-            contract_field(scope, qual, name.node.to_string(), &typ.node)?;
-            Ok(None)
-        }
-        vyp::ContractStmt::FuncDef {
-            qual,
-            name,
-            args,
-            return_type,
-            body,
-        } => {
-            let function =
-                functions::func_def(scope, qual, name.node.to_string(), args, return_type, body)?;
-            Ok(Some(function))
-        }
-        vyp::ContractStmt::EventDef { name, fields } => {
-            event_def(scope, name.node.to_string(), fields)?;
-            Ok(None)
-        }
-    }
-}
-
 fn contract_field(
     scope: Shared<ContractScope>,
-    _qual: &Option<Spanned<vyp::ContractFieldQual>>,
-    name: String,
-    typ: &vyp::TypeDesc,
+    stmt: &Spanned<vyp::ContractStmt>,
 ) -> Result<(), CompileError> {
-    match types::type_desc(Scope::Contract(Rc::clone(&scope)), typ)? {
-        Type::Map(map) => scope.borrow_mut().add_map(name, map),
-        Type::Array { .. } => unimplemented!("Array contract field"),
-        Type::Base(_) => unimplemented!("Base contract field"),
-    };
+    if let vyp::ContractStmt::ContractField { qual: _, name, typ } = &stmt.node {
+        match types::type_desc(Scope::Contract(Rc::clone(&scope)), typ)? {
+            Type::Map(map) => scope.borrow_mut().add_map(name.node.to_string(), map),
+            Type::Array { .. } => unimplemented!("Array contract field"),
+            Type::Base(_) => unimplemented!("Base contract field"),
+        };
 
-    Ok(())
+        return Ok(());
+    }
+
+    unreachable!()
 }
 
 fn event_def(
     scope: Shared<ContractScope>,
-    name: String,
-    fields: &Vec<Spanned<vyp::EventField>>,
+    stmt: &Spanned<vyp::ContractStmt>,
 ) -> Result<(), CompileError> {
-    let fields = fields
-        .iter()
-        .map(|f| event_field(Rc::clone(&scope), &f.node))
-        .collect::<Result<Vec<FixedSize>, CompileError>>()?;
+    if let vyp::ContractStmt::EventDef { name, fields } = &stmt.node {
+        let name = name.node.to_string();
+        let fields = fields
+            .iter()
+            .map(|field| event_field(Rc::clone(&scope), field))
+            .collect::<Result<Vec<FixedSize>, CompileError>>()?;
 
-    scope
-        .borrow_mut()
-        .add_event(name.clone(), Event::new(name, fields));
+        scope
+            .borrow_mut()
+            .add_event(name.clone(), Event::new(name, fields));
 
-    Ok(())
+        return Ok(());
+    }
+
+    unreachable!()
 }
 
 fn event_field(
     scope: Shared<ContractScope>,
-    field: &vyp::EventField,
+    field: &Spanned<vyp::EventField>,
 ) -> Result<FixedSize, CompileError> {
-    types::type_desc_fixed_size(Scope::Contract(scope), &field.typ.node)
+    types::type_desc_fixed_size(Scope::Contract(scope), &field.node.typ)
 }

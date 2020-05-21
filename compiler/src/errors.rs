@@ -38,13 +38,13 @@ impl CompileError {
 
 impl<'a> From<ParseError<'a>> for CompileError {
     fn from(_: ParseError<'a>) -> Self {
-        CompileError::static_str("Parser error")
+        CompileError::static_str("parser error")
     }
 }
 
 impl<'a> From<TokenizeError> for CompileError {
     fn from(_: TokenizeError) -> Self {
-        CompileError::static_str("Tokenize error")
+        CompileError::static_str("tokenize error")
     }
 }
 
@@ -56,6 +56,6 @@ impl<'a> From<serde_json::error::Error> for CompileError {
 
 impl<'a> From<ethabi::Error> for CompileError {
     fn from(e: ethabi::Error) -> Self {
-        CompileError::str(format!("Ethabi error: {}", e))
+        CompileError::str(format!("ethabi error: {}", e))
     }
 }

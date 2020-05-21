@@ -13,9 +13,13 @@ pub fn compile(src: &str) -> Result<String, CompileError> {
     let vyp_module = parser::parsers::file_input(&tokens[..])?.1.node;
 
     // TODO: Handle multiple contracts in one Vyper module cleanly.
-    if let Some(first_contract) = mappers::module::module(&vyp_module)?.values().into_iter().next() {
+    if let Some(first_contract) = mappers::module::module(&vyp_module)?
+        .values()
+        .into_iter()
+        .next()
+    {
         return Ok(first_contract.to_string());
     }
 
-    Err(CompileError::static_str("Unable to parse tokens."))
+    Err(CompileError::static_str("unable to parse tokens."))
 }

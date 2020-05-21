@@ -44,7 +44,7 @@ fn dispatch_arm(
         return Ok(case! { case [selector] { [selection] } });
     }
 
-    Err(CompileError::static_str("No definition for name"))
+    Err(CompileError::static_str("no definition for name"))
 }
 
 fn selector(name: String, params: &Vec<FixedSize>) -> yul::Literal {
