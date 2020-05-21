@@ -5,13 +5,13 @@ use serde::{
 
 use crate::span::Spanned;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Module<'a> {
     #[serde(borrow)]
     pub body: Vec<Spanned<ModuleStmt<'a>>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ModuleStmt<'a> {
     TypeDef {
         name: Spanned<&'a str>,
@@ -35,7 +35,7 @@ pub enum ModuleStmt<'a> {
     },
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum TypeDesc<'a> {
     Base {
         base: &'a str,
@@ -50,14 +50,14 @@ pub enum TypeDesc<'a> {
     },
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct SimpleImportName<'a> {
     #[serde(borrow)]
     pub path: Vec<Spanned<&'a str>>,
     pub alias: Option<Spanned<&'a str>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum FromImportPath<'a> {
     Absolute {
         #[serde(borrow)]
@@ -70,21 +70,21 @@ pub enum FromImportPath<'a> {
     },
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum FromImportNames<'a> {
     Star,
     #[serde(borrow)]
     List(Vec<Spanned<FromImportName<'a>>>),
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct FromImportName<'a> {
     #[serde(borrow)]
     pub name: Spanned<&'a str>,
     pub alias: Option<Spanned<&'a str>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ContractStmt<'a> {
     ContractField {
         qual: Option<Spanned<ContractFieldQual>>,
@@ -105,13 +105,13 @@ pub enum ContractStmt<'a> {
     },
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ContractFieldQual {
     Const,
     Pub,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct EventField<'a> {
     pub qual: Option<Spanned<EventFieldQual>>,
     #[serde(borrow)]
@@ -119,24 +119,24 @@ pub struct EventField<'a> {
     pub typ: Spanned<TypeDesc<'a>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum EventFieldQual {
     Idx,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum FuncQual {
     Pub,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct FuncDefArg<'a> {
     #[serde(borrow)]
     pub name: Spanned<&'a str>,
     pub typ: Spanned<TypeDesc<'a>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum FuncStmt<'a> {
     Return {
         #[serde(borrow)]
@@ -188,7 +188,7 @@ pub enum FuncStmt<'a> {
     Revert,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum Expr<'a> {
     Ternary {
         test: Box<Spanned<Expr<'a>>>,
@@ -242,7 +242,7 @@ pub enum Expr<'a> {
     Ellipsis,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum Slice<'a> {
     Slice {
         #[serde(borrow)]
@@ -253,21 +253,21 @@ pub enum Slice<'a> {
     Index(Box<Expr<'a>>),
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum CallArg<'a> {
     #[serde(borrow)]
     Arg(Expr<'a>),
     Kwarg(Kwarg<'a>),
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Kwarg<'a> {
     #[serde(borrow)]
     pub name: Spanned<&'a str>,
     pub value: Box<Spanned<Expr<'a>>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Comprehension<'a> {
     #[serde(borrow)]
     pub target: Box<Spanned<Expr<'a>>>,
@@ -275,13 +275,13 @@ pub struct Comprehension<'a> {
     pub ifs: Vec<Spanned<Expr<'a>>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum BoolOperator {
     And,
     Or,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum BinOperator {
     Add,
     Sub,
@@ -297,7 +297,7 @@ pub enum BinOperator {
     FloorDiv,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum UnaryOperator {
     Invert,
     Not,
@@ -305,7 +305,7 @@ pub enum UnaryOperator {
     USub,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum CompOperator {
     Eq,
     NotEq,

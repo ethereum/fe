@@ -34,7 +34,7 @@ impl Span {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Spanned<T> {
     pub node: T,
     pub span: Span,
