@@ -165,9 +165,9 @@ considered to represent the exact prioritization of work items.
 
 ### Short-term goals
 
-* [ ] Compile the AST of a basic greeter contract to YUL
-* [ ] Generate YUL source code from YUL AST objects (via [yultsur](https://github.com/axic/yultsur/))
-* [ ] Invoke the Solidity compiler with generated YUL source to produce a
+* [x] Compile the AST of a basic guest book contract to YUL
+* [x] Generate YUL source code from YUL AST objects (via [yultsur](https://github.com/axic/yultsur/))
+* [x] Invoke the Solidity compiler with generated YUL source to produce a
   compiled binary (via [solc-rust](https://github.com/axic/solc-rust))
 
 ### Long-term goals
