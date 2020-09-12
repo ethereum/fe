@@ -124,7 +124,16 @@ fn func_stmt(
         vyp::FuncStmt::VarDecl { .. } => declarations::var_decl(scope, stmt),
         vyp::FuncStmt::Assign { .. } => assignments::assign(scope, stmt),
         vyp::FuncStmt::Emit { .. } => emit(scope, stmt),
-        _ => unimplemented!(),
+        vyp::FuncStmt::AugAssign { .. } => unimplemented!(),
+        vyp::FuncStmt::For { .. } => unimplemented!(),
+        vyp::FuncStmt::While { .. } => unimplemented!(),
+        vyp::FuncStmt::If { .. } => unimplemented!(),
+        vyp::FuncStmt::Assert { .. } => unimplemented!(),
+        vyp::FuncStmt::Expr { .. } => unimplemented!(),
+        vyp::FuncStmt::Pass => unimplemented!(),
+        vyp::FuncStmt::Break => unimplemented!(),
+        vyp::FuncStmt::Continue => unimplemented!(),
+        vyp::FuncStmt::Revert => unimplemented!(),
     }
 }
 
