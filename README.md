@@ -1,4 +1,4 @@
-# Rust Vyper
+# Fe
 
 [![Build Status](https://circleci.com/gh/ethereum/rust-vyper.svg?style=shield)](https://circleci.com/gh/ethereum/rust-vyper)
 [![Coverage](https://codecov.io/gh/ethereum/rust-vyper/branch/master/graph/badge.svg)](https://codecov.io/gh/ethereum/rust-vyper)
