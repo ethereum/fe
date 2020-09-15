@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Grant Wuerker <gwuerker@gmail.com>"]
 edition = "2018"
 license = "Apache-2.0"
-repository = "https://github.com/ethereum/rust-vyper"
+repository = "https://github.com/ethereum/fe"
 description = "Compiler lib for Rust Vyper."
 
 [dependencies]

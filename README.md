@@ -1,12 +1,13 @@
 # Fe
 
-[![Build Status](https://circleci.com/gh/ethereum/rust-vyper.svg?style=shield)](https://circleci.com/gh/ethereum/rust-vyper)
-[![Coverage](https://codecov.io/gh/ethereum/rust-vyper/branch/master/graph/badge.svg)](https://codecov.io/gh/ethereum/rust-vyper)
+Fe is an emerging smart contract language for the Ethereum blockchain.
+
+[![Build Status](https://circleci.com/gh/ethereum/fe.svg?style=shield)](https://circleci.com/gh/ethereum/fe)
+[![Coverage](https://codecov.io/gh/ethereum/fe/branch/master/graph/badge.svg)](https://codecov.io/gh/ethereum/fe)
 
 ## Overview
 
-Fe is a next generation version of the Vyper smart contract language.
-Fe aims to achieve the goals of the [existing Vyper
+Fe is inspired by Vyper and aims to achieve the goals of the [existing Vyper
 project](https://github.com/vyperlang/vyper) along with the following
 additional goals:
 

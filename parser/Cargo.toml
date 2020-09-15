@@ -4,8 +4,8 @@ version = "0.1.0"
 authors = ["David Sanders <david@ethereum.org>"]
 edition = "2018"
 license = "Apache-2.0"
-repository = "https://github.com/davesque/rust-vyper"
-description = "Parser lib for Rust Vyper."
+repository = "https://github.com/davesque/fe"
+description = "Parser lib for Fe."
 
 [lib]
 crate-type = ["cdylib", "rlib"]
