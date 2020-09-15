@@ -1,9 +1,22 @@
 use crate::errors::CompileError;
-use crate::yul::namespace::scopes::{ContractDef, FunctionDef, FunctionScope, Shared};
-use crate::yul::namespace::types::{Base, FixedSize, Map, Type};
+use crate::yul::namespace::scopes::{
+    ContractDef,
+    FunctionDef,
+    FunctionScope,
+    Shared,
+};
+use crate::yul::namespace::types::{
+    Base,
+    FixedSize,
+    Map,
+    Type,
+};
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
-use vyper_parser::span::{Span, Spanned};
+use vyper_parser::span::{
+    Span,
+    Spanned,
+};
 use yultsur::*;
 
 /// The location of an evaluated expression.
@@ -75,8 +88,8 @@ pub fn slices_index(
     unreachable!()
 }
 
-/// Creates a new spanned expression. Useful in cases where an `Expr` is nested within the node
-/// of a `Spanned` object.
+/// Creates a new spanned expression. Useful in cases where an `Expr` is nested
+/// within the node of a `Spanned` object.
 pub fn spanned_expression<'a>(span: &Span, exp: &vyp::Expr<'a>) -> Spanned<vyp::Expr<'a>> {
     Spanned {
         node: (*exp).clone(),
@@ -239,9 +252,24 @@ fn expr_attribute_self(
 
 #[cfg(test)]
 mod tests {
-    use crate::yul::mappers::expressions::{expr, ExtExpression, Location};
-    use crate::yul::namespace::scopes::{ContractScope, FunctionScope, ModuleScope, Shared};
-    use crate::yul::namespace::types::{Array, Base, FixedSize, Map, Type};
+    use crate::yul::mappers::expressions::{
+        expr,
+        ExtExpression,
+        Location,
+    };
+    use crate::yul::namespace::scopes::{
+        ContractScope,
+        FunctionScope,
+        ModuleScope,
+        Shared,
+    };
+    use crate::yul::namespace::types::{
+        Array,
+        Base,
+        FixedSize,
+        Map,
+        Type,
+    };
     use std::rc::Rc;
     use vyper_parser as parser;
 

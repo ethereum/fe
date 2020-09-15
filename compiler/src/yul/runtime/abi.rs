@@ -1,8 +1,11 @@
+use crate::abi::utils as abi_utils;
 use crate::errors::CompileError;
 use crate::yul::namespace::scopes::ContractDef;
 #[allow(unused_imports)]
-use crate::yul::namespace::types::{Base, FixedSize};
-use crate::abi::utils as abi_utils;
+use crate::yul::namespace::types::{
+    Base,
+    FixedSize,
+};
 use std::collections::HashMap;
 use yultsur::*;
 

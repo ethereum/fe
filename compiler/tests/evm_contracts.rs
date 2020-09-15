@@ -1,8 +1,12 @@
+#![cfg(feature = "solc-backend")]
 use ethabi;
 use evm;
 
 use evm_runtime::Handler;
-use primitive_types::{H160, U256};
+use primitive_types::{
+    H160,
+    U256,
+};
 use std::collections::BTreeMap;
 use std::fs;
 use std::iter;
@@ -313,7 +317,8 @@ fn return_sender() {
         harness.test_function(
             &mut executor,
             "bar",
-            // FIXME: There's an issue parsing functions with 0 params. This is here to mitigate that failure.
+            // FIXME: There's an issue parsing functions with 0 params. This is here to mitigate
+            // that failure.
             vec![u256_token(42)],
             Some(sender),
         );

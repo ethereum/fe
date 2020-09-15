@@ -1,7 +1,18 @@
 use crate::errors::CompileError;
-use crate::yul::mappers::{expressions, types};
-use crate::yul::namespace::scopes::{FunctionScope, Scope, Shared};
-use crate::yul::namespace::types::{Array, Base, Type};
+use crate::yul::mappers::{
+    expressions,
+    types,
+};
+use crate::yul::namespace::scopes::{
+    FunctionScope,
+    Scope,
+    Shared,
+};
+use crate::yul::namespace::types::{
+    Array,
+    Base,
+    Type,
+};
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
 use vyper_parser::span::Spanned;
@@ -72,9 +83,17 @@ mod tests {
 
     use crate::yul::mappers::declarations::var_decl;
     use crate::yul::namespace::scopes::{
-        ContractScope, FunctionDef, FunctionScope, ModuleScope, Shared,
+        ContractScope,
+        FunctionDef,
+        FunctionScope,
+        ModuleScope,
+        Shared,
     };
-    use crate::yul::namespace::types::{Array, Base, Type};
+    use crate::yul::namespace::types::{
+        Array,
+        Base,
+        Type,
+    };
     use std::rc::Rc;
     use vyper_parser as parser;
 

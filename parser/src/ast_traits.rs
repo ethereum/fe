@@ -10,7 +10,7 @@ use crate::tokenizer::Token;
 impl TryFrom<&Token<'_>> for Spanned<ContractFieldQual> {
     type Error = &'static str;
 
-    #[cfg_attr(tarpaulin, skip)]
+    #[cfg_attr(tarpaulin, rustfmt::skip)]
     fn try_from(tok: &Token) -> Result<Self, Self::Error> {
         use ContractFieldQual::*;
 
@@ -27,7 +27,7 @@ impl TryFrom<&Token<'_>> for Spanned<ContractFieldQual> {
 impl TryFrom<&Token<'_>> for Spanned<EventFieldQual> {
     type Error = &'static str;
 
-    #[cfg_attr(tarpaulin, skip)]
+    #[cfg_attr(tarpaulin, rustfmt::skip)]
     fn try_from(tok: &Token) -> Result<Self, Self::Error> {
         Ok(match tok.string {
             "idx" => Spanned {
@@ -42,7 +42,7 @@ impl TryFrom<&Token<'_>> for Spanned<EventFieldQual> {
 impl TryFrom<&Token<'_>> for Spanned<FuncQual> {
     type Error = &'static str;
 
-    #[cfg_attr(tarpaulin, skip)]
+    #[cfg_attr(tarpaulin, rustfmt::skip)]
     fn try_from(tok: &Token) -> Result<Self, Self::Error> {
         Ok(match tok.string {
             "pub" => Spanned {
@@ -66,7 +66,7 @@ impl<'a> From<&'a Token<'a>> for Spanned<TypeDesc<'a>> {
 impl TryFrom<&Token<'_>> for Spanned<BoolOperator> {
     type Error = &'static str;
 
-    #[cfg_attr(tarpaulin, skip)]
+    #[cfg_attr(tarpaulin, rustfmt::skip)]
     fn try_from(tok: &Token) -> Result<Self, Self::Error> {
         use BoolOperator::*;
 
@@ -86,7 +86,7 @@ impl TryFrom<&Token<'_>> for Spanned<BoolOperator> {
 impl TryFrom<&Token<'_>> for Spanned<BinOperator> {
     type Error = &'static str;
 
-    #[cfg_attr(tarpaulin, skip)]
+    #[cfg_attr(tarpaulin, rustfmt::skip)]
     fn try_from(tok: &Token) -> Result<Self, Self::Error> {
         use BinOperator::*;
 
@@ -128,7 +128,7 @@ impl TryFrom<&Token<'_>> for Spanned<BinOperator> {
 impl TryFrom<&Token<'_>> for Spanned<UnaryOperator> {
     type Error = &'static str;
 
-    #[cfg_attr(tarpaulin, skip)]
+    #[cfg_attr(tarpaulin, rustfmt::skip)]
     fn try_from(tok: &Token) -> Result<Self, Self::Error> {
         use UnaryOperator::*;
 
@@ -150,7 +150,7 @@ impl TryFrom<&Token<'_>> for Spanned<UnaryOperator> {
 impl TryFrom<&[&Token<'_>]> for Spanned<CompOperator> {
     type Error = &'static str;
 
-    #[cfg_attr(tarpaulin, skip)]
+    #[cfg_attr(tarpaulin, rustfmt::skip)]
     fn try_from(toks: &[&Token]) -> Result<Self, Self::Error> {
         use CompOperator::*;
 
