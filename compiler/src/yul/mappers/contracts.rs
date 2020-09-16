@@ -1,8 +1,20 @@
 use crate::errors::CompileError;
-use crate::yul::mappers::{constructor, functions, types};
+use crate::yul::mappers::{
+    constructor,
+    functions,
+    types,
+};
 use crate::yul::namespace::events::Event;
-use crate::yul::namespace::scopes::{ContractScope, ModuleScope, Scope, Shared};
-use crate::yul::namespace::types::{FixedSize, Type};
+use crate::yul::namespace::scopes::{
+    ContractScope,
+    ModuleScope,
+    Scope,
+    Shared,
+};
+use crate::yul::namespace::types::{
+    FixedSize,
+    Type,
+};
 use crate::yul::runtime::abi as runtime_abi;
 use crate::yul::runtime::functions as runtime_functions;
 use std::rc::Rc;

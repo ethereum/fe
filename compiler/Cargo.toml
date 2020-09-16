@@ -7,6 +7,10 @@ license = "Apache-2.0"
 repository = "https://github.com/ethereum/fe"
 description = "Compiler lib for Rust Vyper."
 
+[features]
+# Includes the solidity compiler for Yul -> bytecode compilation.
+solc-backend = ["solc"]
+
 [dependencies]
 vyper-parser = {path = "../parser", version = "0.1.0"}
 serde_json = "1.0"
@@ -15,10 +19,11 @@ hex = "0.4"
 # This fork contains the shorthand macros and some other necessary updates.
 yultsur = { git = "https://github.com/g-r-a-n-t/yultsur" }
 # This fork supports concurrent compilation, which is required for Rust tests.
-solc = { git = "https://github.com/spalladino/solc-rust", branch="feature/solc-0.6.2" }
 ethabi = "11.0"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
 stringreader = "0.1"
+# Optional
+solc = { git = "https://github.com/spalladino/solc-rust", branch = "feature/solc-0.6.2", optional = true }
 
 [dev-dependencies]
 evm = "0.14"

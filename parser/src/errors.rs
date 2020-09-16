@@ -50,7 +50,7 @@ impl<'a> ParseError<'a> {
     }
 
     /// Format an error into a debug trace message.
-    #[cfg_attr(tarpaulin, skip)]
+    #[cfg_attr(tarpaulin, rustfmt::skip)]
     pub fn format_debug(&self, input: &str, show_err_no: bool) -> String {
         use std::iter::repeat;
 
@@ -97,7 +97,7 @@ impl<'a> ParseError<'a> {
     ///
     /// Uses the innermost error to build a user-facing error message and
     /// position.
-    #[cfg_attr(tarpaulin, skip)]
+    #[cfg_attr(tarpaulin, rustfmt::skip)]
     pub fn format_user(&self, input: &str) -> String {
         let deepest_error = self.errors.first().unwrap();
 
@@ -109,7 +109,7 @@ impl<'a> ParseError<'a> {
     }
 }
 
-#[cfg_attr(tarpaulin, skip)]
+#[cfg_attr(tarpaulin, rustfmt::skip)]
 #[cfg(test)]
 mod tests {
     use super::*;

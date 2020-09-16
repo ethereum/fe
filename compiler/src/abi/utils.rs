@@ -1,10 +1,15 @@
-use tiny_keccak::{Hasher, Keccak};
+use tiny_keccak::{
+    Hasher,
+    Keccak,
+};
 
-/// Formats the name and fields and calculates the 32 byte keccak256 value of the signature.
+/// Formats the name and fields and calculates the 32 byte keccak256 value of
+/// the signature.
 pub fn event_topic(name: String, fields: Vec<String>) -> String {
     sig_keccak256(name, fields, 32)
 }
-/// Formats the name and params and calculates the 4 byte keccak256 value of the signature.
+/// Formats the name and params and calculates the 4 byte keccak256 value of the
+/// signature.
 pub fn func_selector(name: String, params: Vec<String>) -> String {
     sig_keccak256(name, params, 4)
 }

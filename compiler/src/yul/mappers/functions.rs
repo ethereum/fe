@@ -1,7 +1,18 @@
 use crate::errors::CompileError;
 use crate::yul::mappers::expressions::spanned_expression;
-use crate::yul::mappers::{assignments, declarations, expressions, types};
-use crate::yul::namespace::scopes::{ContractDef, ContractScope, FunctionScope, Scope, Shared};
+use crate::yul::mappers::{
+    assignments,
+    declarations,
+    expressions,
+    types,
+};
+use crate::yul::namespace::scopes::{
+    ContractDef,
+    ContractScope,
+    FunctionScope,
+    Scope,
+    Shared,
+};
 use crate::yul::namespace::types::FixedSize;
 use std::rc::Rc;
 use vyper_parser::ast as vyp;
@@ -46,8 +57,8 @@ pub fn func_def(
             None
         };
 
-        // Add this function to the contract scope. This is used to generate the ABI and assists
-        // in declaring variables in other functions.
+        // Add this function to the contract scope. This is used to generate the ABI and
+        // assists in declaring variables in other functions.
         contract_scope
             .borrow_mut()
             .add_function(name.clone(), param_types, return_type.clone());

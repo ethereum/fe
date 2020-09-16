@@ -1,6 +1,6 @@
+use crate::abi::utils as abi_utils;
 use crate::errors::CompileError;
 use crate::yul::namespace::types::FixedSize;
-use crate::abi::utils as abi_utils;
 use yultsur::*;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -11,10 +11,7 @@ pub struct Event {
 
 impl Event {
     pub fn new(name: String, fields: Vec<FixedSize>) -> Self {
-        let abi_fields = fields
-                .iter()
-                .map(|f| f.abi_name())
-                .collect::<Vec<String>>();
+        let abi_fields = fields.iter().map(|f| f.abi_name()).collect::<Vec<String>>();
 
         let topic = abi_utils::event_topic(name, abi_fields);
 

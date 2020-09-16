@@ -3,7 +3,10 @@ use core::fmt;
 use serde::export::fmt::Error;
 use serde::export::Formatter;
 use serde::ser::SerializeSeq;
-use serde::{Serialize, Serializer};
+use serde::{
+    Serialize,
+    Serializer,
+};
 use std::collections::HashMap;
 
 /// Wrapper around a map of contract names to their ABIs.
@@ -20,7 +23,8 @@ impl ModuleABIs {
         }
     }
 
-    /// Serialize the module into a JSON object that maps each contract in the module to its ABI.
+    /// Serialize the module into a JSON object that maps each contract in the
+    /// module to its ABI.
     pub fn json(&self) -> Result<String, CompileError> {
         Ok(serde_json::to_string(self)?)
     }
@@ -76,7 +80,8 @@ impl Serialize for Contract {
 pub struct Event {
     /// The event's name.
     pub name: String,
-    // FIXME: This attribute should be added when serialized instead of being defined in the struct.
+    // FIXME: This attribute should be added when serialized instead of being defined in the
+    // struct.
     /// The type of an event (Always "event").
     #[serde(rename = "type")]
     pub typ: String,
@@ -95,7 +100,8 @@ pub struct EventField {
     /// The type of an event (e.g. uint256, address, bytes100,...)
     #[serde(rename = "type")]
     pub typ: VarType,
-    /// True if the field is part of the log’s topics, false if it is one of the log’s data segment.
+    /// True if the field is part of the log’s topics, false if it is one of the
+    /// log’s data segment.
     pub indexed: bool,
 }
 
@@ -133,7 +139,8 @@ pub struct FuncOutput {
     pub typ: VarType,
 }
 
-// FIXME: This should be removed in favor of separate structs for each function type.
+// FIXME: This should be removed in favor of separate structs for each function
+// type.
 /// The type of a public function.
 #[allow(dead_code)]
 #[serde(rename_all = "lowercase")]
@@ -188,7 +195,15 @@ impl Serialize for VarType {
 #[cfg(test)]
 mod tests {
     use crate::abi::elements::{
-        Contract, Event, EventField, FuncInput, FuncOutput, FuncType, Function, ModuleABIs, VarType,
+        Contract,
+        Event,
+        EventField,
+        FuncInput,
+        FuncOutput,
+        FuncType,
+        Function,
+        ModuleABIs,
+        VarType,
     };
     use std::collections::HashMap;
 

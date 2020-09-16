@@ -1,6 +1,9 @@
 use crate::errors::CompileError;
 use crate::yul::mappers::contracts;
-use crate::yul::namespace::scopes::{ModuleScope, Shared};
+use crate::yul::namespace::scopes::{
+    ModuleScope,
+    Shared,
+};
 use crate::yul::namespace::types;
 use std::collections::HashMap;
 use std::rc::Rc;
