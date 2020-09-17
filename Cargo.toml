@@ -1,12 +1,12 @@
 [package]
-name = "vyper"
+name = "fe"
 version = "0.1.0"
 authors = ["David Sanders <david@ethereum.org>"]
 edition = "2018"
 license = "Apache-2.0"
 repository = "https://github.com/ethereum/fe"
-description = "An implementation of the Vyper smart contract language"
-keywords = ["ethereum", "vyper", "yul", "smart", "contract"]
+description = "An implementation of the Fe smart contract language"
+keywords = ["ethereum", "fe", "yul", "smart", "contract", "compiler"]
 categories = ["cryptography::cryptocurrencies", "command-line-utilities", "development-tools"]
 readme = "README.md"
 
@@ -14,5 +14,5 @@ readme = "README.md"
 members = [".", "parser", "compiler"]
 
 [dependencies]
-vyper-parser = {path = "parser", version = "0.1.0"}
-vyper-compiler = {path = "compiler", version = "0.1.0"}
+fe-parser = {path = "parser", version = "0.1.0"}
+fe-compiler = {path = "compiler", version = "0.1.0"}

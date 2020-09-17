@@ -14,11 +14,11 @@ use crate::yul::namespace::types::{
     Type,
 };
 use std::rc::Rc;
-use vyper_parser::ast as vyp;
-use vyper_parser::span::Spanned;
+use fe_parser::ast as vyp;
+use fe_parser::span::Spanned;
 use yultsur::*;
 
-/// Builds a Yul statement from a Vyper variable declaration
+/// Builds a Yul statement from a Fe variable declaration
 pub fn var_decl(
     scope: Shared<FunctionScope>,
     stmt: &Spanned<vyp::FuncStmt>,
@@ -95,7 +95,7 @@ mod tests {
         Type,
     };
     use std::rc::Rc;
-    use vyper_parser as parser;
+    use fe_parser as parser;
 
     fn scope() -> Shared<FunctionScope> {
         let module_scope = ModuleScope::new();

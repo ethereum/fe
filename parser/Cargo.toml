@@ -1,5 +1,5 @@
 [package]
-name = "vyper-parser"
+name = "fe-parser"
 version = "0.1.0"
 authors = ["David Sanders <david@ethereum.org>"]
 edition = "2018"

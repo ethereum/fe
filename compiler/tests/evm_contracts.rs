@@ -12,7 +12,7 @@ use std::fs;
 use std::iter;
 use std::str::FromStr;
 use stringreader::StringReader;
-use vyper_compiler as compiler;
+use fe_compiler as compiler;
 
 type Executor<'a> = evm::executor::StackExecutor<'a, 'a, evm::backend::MemoryBackend<'a>>;
 

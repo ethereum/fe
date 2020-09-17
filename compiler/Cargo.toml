@@ -1,18 +1,18 @@
 [package]
-name = "vyper-compiler"
+name = "fe-compiler"
 version = "0.1.0"
 authors = ["Grant Wuerker <gwuerker@gmail.com>"]
 edition = "2018"
 license = "Apache-2.0"
 repository = "https://github.com/ethereum/fe"
-description = "Compiler lib for Rust Vyper."
+description = "Compiler lib for the Fe language."
 
 [features]
 # Includes the solidity compiler for Yul -> bytecode compilation.
 solc-backend = ["solc"]
 
 [dependencies]
-vyper-parser = {path = "../parser", version = "0.1.0"}
+fe-parser = {path = "../parser", version = "0.1.0"}
 serde_json = "1.0"
 serde = "1.0"
 hex = "0.4"

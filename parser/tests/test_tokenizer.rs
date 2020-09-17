@@ -6,8 +6,8 @@ mod utils;
 use serde::Serialize;
 use wasm_bindgen_test::wasm_bindgen_test;
 
-use vyper_parser::string_utils::StringPositions;
-use vyper_parser::tokenizer::{
+use fe_parser::string_utils::StringPositions;
+use fe_parser::tokenizer::{
     tokenize,
     Token,
     TokenType,
@@ -53,7 +53,7 @@ fn get_rust_token_json(input: &str) -> String {
     let tokens = tokenize(input).unwrap();
     let mut string_pos = StringPositions::new(input);
 
-    // Convert vyper tokens into python tokens
+    // Convert Fe tokens into python tokens
     let python_tokens = tokens
         .iter()
         .map(|tok| PythonTokenInfo::from_token_and_positions(tok, &mut string_pos))

@@ -1,7 +1,7 @@
 //! Errors returned by the compilers and ABI builder.
 
-use vyper_parser::errors::ParseError;
-use vyper_parser::tokenizer::TokenizeError;
+use fe_parser::errors::ParseError;
+use fe_parser::tokenizer::TokenizeError;
 
 /// Errors can either be an object or static reference.
 #[derive(Debug)]

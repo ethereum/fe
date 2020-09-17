@@ -7,7 +7,7 @@ mod utils;
 
 use wasm_bindgen_test::wasm_bindgen_test;
 
-use vyper_parser::tokenizer::wasm::tokenize;
+use fe_parser::tokenizer::wasm::tokenize;
 
 fn assert_fixture_is_valid(filename: &str, input: &str, expected_ser: &str) {
     let actual_ser = tokenize(input);

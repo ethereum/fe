@@ -1,4 +1,4 @@
-//! Modules for compiling Vyper and building ABIs.
+//! Modules for compiling Fe and building ABIs.
 
 pub mod abi;
 pub mod errors;
