@@ -18,11 +18,11 @@ use crate::yul::namespace::types::{
 use crate::yul::runtime::abi as runtime_abi;
 use crate::yul::runtime::functions as runtime_functions;
 use std::rc::Rc;
-use vyper_parser::ast as vyp;
-use vyper_parser::span::Spanned;
+use fe_parser::ast as vyp;
+use fe_parser::span::Spanned;
 use yultsur::*;
 
-/// Builds a Yul object from a Vyper contract.
+/// Builds a Yul object from a Fe contract.
 pub fn contract_def(
     module_scope: Shared<ModuleScope>,
     stmt: &Spanned<vyp::ModuleStmt>,

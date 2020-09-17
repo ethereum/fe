@@ -1,7 +1,7 @@
-//! Vyper to ABI builder.
+//! Fe to ABI builder.
 
 use crate::errors::CompileError;
-use vyper_parser as parser;
+use fe_parser as parser;
 
 mod builder;
 pub mod utils;

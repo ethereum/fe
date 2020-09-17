@@ -7,13 +7,13 @@ use crate::yul::namespace::scopes::{
 use crate::yul::namespace::types;
 use std::collections::HashMap;
 use std::rc::Rc;
-use vyper_parser::ast as vyp;
-use vyper_parser::span::Spanned;
+use fe_parser::ast as vyp;
+use fe_parser::span::Spanned;
 use yultsur::yul;
 
 pub type YulContracts = HashMap<String, yul::Object>;
 
-/// Builds a vector of Yul contracts from a Vyper module.
+/// Builds a vector of Yul contracts from a Fe module.
 pub fn module(module: &vyp::Module) -> Result<YulContracts, CompileError> {
     let scope = ModuleScope::new();
 

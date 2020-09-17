@@ -15,11 +15,11 @@ use crate::yul::namespace::scopes::{
 };
 use crate::yul::namespace::types::FixedSize;
 use std::rc::Rc;
-use vyper_parser::ast as vyp;
-use vyper_parser::span::Spanned;
+use fe_parser::ast as vyp;
+use fe_parser::span::Spanned;
 use yultsur::*;
 
-/// Builds a Yul function definition from a Vyper function definition.
+/// Builds a Yul function definition from a Fe function definition.
 pub fn func_def(
     contract_scope: Shared<ContractScope>,
     def: &Spanned<vyp::ContractStmt>,
@@ -63,7 +63,7 @@ pub fn func_def(
             .borrow_mut()
             .add_function(name.clone(), param_types, return_type.clone());
 
-        // Map all Vyper statements to Yul statements.
+        // Map all Fe statements to Yul statements.
         let function_name = identifier! {(name)};
         let function_statements = body
             .iter()

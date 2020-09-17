@@ -1,7 +1,7 @@
 use crate::errors::CompileError;
 use crate::yul::namespace::scopes::*;
 use std::collections::HashMap;
-use vyper_parser::ast as vyp;
+use fe_parser::ast as vyp;
 use yultsur::*;
 
 #[derive(Clone, Debug, PartialEq)]

@@ -6,20 +6,20 @@ mod utils;
 use wasm_bindgen_test::wasm_bindgen_test;
 
 use utils::to_ron_string_pretty;
-use vyper_parser::ast::Module;
-use vyper_parser::builders::{
+use fe_parser::ast::Module;
+use fe_parser::builders::{
     many0,
     many1,
     pair,
     terminated,
 };
-use vyper_parser::errors::ParseError;
-use vyper_parser::parsers::*;
-use vyper_parser::span::{
+use fe_parser::errors::ParseError;
+use fe_parser::parsers::*;
+use fe_parser::span::{
     Span,
     Spanned,
 };
-use vyper_parser::{
+use fe_parser::{
     get_parse_tokens,
     Cursor,
     ParseResult,

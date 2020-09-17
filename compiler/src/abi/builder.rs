@@ -11,8 +11,8 @@ use crate::abi::elements::{
 };
 use crate::errors::CompileError;
 use std::collections::HashMap;
-use vyper_parser::ast as vyp;
-use vyper_parser::span::Spanned;
+use fe_parser::ast as vyp;
+use fe_parser::span::Spanned;
 
 type TypeDefs<'a> = HashMap<&'a str, &'a vyp::TypeDesc<'a>>;
 
@@ -176,11 +176,11 @@ fn type_desc<'a>(
 mod tests {
     use crate::abi::builder;
     use crate::abi::elements::VarType;
-    use vyper_parser::parsers;
+    use fe_parser::parsers;
 
     #[test]
     fn module_function() {
-        let tokens = vyper_parser::get_parse_tokens(
+        let tokens = fe_parser::get_parse_tokens(
             "\
             \ncontract Foo:\
             \n  event Food:\

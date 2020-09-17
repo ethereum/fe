@@ -328,6 +328,46 @@ dependencies = [
 ]
 
 [[package]]
+name = "fe"
+version = "0.1.0"
+dependencies = [
+ "fe-compiler",
+ "fe-parser",
+]
+
+[[package]]
+name = "fe-compiler"
+version = "0.1.0"
+dependencies = [
+ "ethabi",
+ "evm",
+ "evm-runtime",
+ "fe-parser",
+ "hex",
+ "primitive-types",
+ "rand",
+ "serde",
+ "serde_json",
+ "solc",
+ "stringreader",
+ "tiny-keccak 2.0.1",
+ "yultsur",
+]
+
+[[package]]
+name = "fe-parser"
+version = "0.1.0"
+dependencies = [
+ "difference",
+ "regex",
+ "ron",
+ "serde",
+ "serde_json",
+ "wasm-bindgen",
+ "wasm-bindgen-test",
+]
+
+[[package]]
 name = "fixed-hash"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -895,46 +935,6 @@ name = "version_check"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "914b1a6776c4c929a602fafd8bc742e06365d4bcbe48c30f9cca5824f70dc9dd"
-
-[[package]]
-name = "vyper"
-version = "0.1.0"
-dependencies = [
- "vyper-compiler",
- "vyper-parser",
-]
-
-[[package]]
-name = "vyper-compiler"
-version = "0.1.0"
-dependencies = [
- "ethabi",
- "evm",
- "evm-runtime",
- "hex",
- "primitive-types",
- "rand",
- "serde",
- "serde_json",
- "solc",
- "stringreader",
- "tiny-keccak 2.0.1",
- "vyper-parser",
- "yultsur",
-]
-
-[[package]]
-name = "vyper-parser"
-version = "0.1.0"
-dependencies = [
- "difference",
- "regex",
- "ron",
- "serde",
- "serde_json",
- "wasm-bindgen",
- "wasm-bindgen-test",
-]
 
 [[package]]
 name = "wasi"

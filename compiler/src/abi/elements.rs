@@ -30,7 +30,7 @@ impl ModuleABIs {
     }
 }
 
-/// All public interfaces of a Vyper contract.
+/// All public interfaces of a Fe contract.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Contract {
     /// All events defined in a contract.

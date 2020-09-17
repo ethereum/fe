@@ -5,8 +5,8 @@ use crate::yul::namespace::types::{
     FixedSize,
     Type,
 };
-use vyper_parser::ast as vyp;
-use vyper_parser::span::Spanned;
+use fe_parser::ast as vyp;
+use fe_parser::span::Spanned;
 
 pub fn type_desc(scope: Scope, typ: &Spanned<vyp::TypeDesc>) -> Result<Type, CompileError> {
     types::type_desc(&scope.module_scope().borrow().defs, &typ.node)

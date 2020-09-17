@@ -4,7 +4,7 @@
 //! ## Usage
 //!
 //! ```rust
-//! use vyper_parser::tokenizer::tokenize;
+//! use fe_parser::tokenizer::tokenize;
 //!
 //! let source_string = r#"
 //! class Foo:

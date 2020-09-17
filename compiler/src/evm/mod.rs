@@ -1,11 +1,11 @@
-//! Vyper to EVM compiler.
+//! Fe to EVM compiler.
 
 use crate::errors::CompileError;
 use crate::yul;
 use serde_json;
 use solc;
 
-/// Compiles Vyper to bytecode. It uses Yul as an intermediate representation.
+/// Compiles Fe to bytecode. It uses Yul as an intermediate representation.
 pub fn compile(src: &str) -> Result<String, CompileError> {
     let solc_temp = include_str!("solc_temp.json");
     let yul_src = yul::compile(src)?.replace("\"", "\\\"");

@@ -12,8 +12,8 @@ use crate::yul::namespace::types::{
     Type,
 };
 use std::rc::Rc;
-use vyper_parser::ast as vyp;
-use vyper_parser::span::{
+use fe_parser::ast as vyp;
+use fe_parser::span::{
     Span,
     Spanned,
 };
@@ -38,7 +38,7 @@ pub struct ExtExpression {
     pub typ: Type,
 }
 
-/// Builds a Yul expression from a Vyper expression.
+/// Builds a Yul expression from a Fe expression.
 pub fn expr(
     scope: Shared<FunctionScope>,
     exp: &Spanned<vyp::Expr>,
@@ -271,7 +271,7 @@ mod tests {
         Type,
     };
     use std::rc::Rc;
-    use vyper_parser as parser;
+    use fe_parser as parser;
 
     fn scope() -> Shared<FunctionScope> {
         let module_scope = ModuleScope::new();
