@@ -17,9 +17,9 @@ use crate::yul::namespace::types::{
 };
 use crate::yul::runtime::abi as runtime_abi;
 use crate::yul::runtime::functions as runtime_functions;
-use std::rc::Rc;
 use fe_parser::ast as vyp;
 use fe_parser::span::Spanned;
+use std::rc::Rc;
 use yultsur::*;
 
 /// Builds a Yul object from a Fe contract.

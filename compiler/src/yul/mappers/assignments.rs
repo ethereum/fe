@@ -6,9 +6,9 @@ use crate::yul::namespace::scopes::{
     FunctionScope,
     Shared,
 };
-use std::rc::Rc;
 use fe_parser::ast as vyp;
 use fe_parser::span::Spanned;
+use std::rc::Rc;
 use yultsur::*;
 
 /// Builds a Yul statement from a Fe assignment.

@@ -3,6 +3,7 @@ use ethabi;
 use evm;
 
 use evm_runtime::Handler;
+use fe_compiler as compiler;
 use primitive_types::{
     H160,
     U256,
@@ -12,7 +13,6 @@ use std::fs;
 use std::iter;
 use std::str::FromStr;
 use stringreader::StringReader;
-use fe_compiler as compiler;
 
 type Executor<'a> = evm::executor::StackExecutor<'a, 'a, evm::backend::MemoryBackend<'a>>;
 

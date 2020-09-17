@@ -11,12 +11,12 @@ use crate::yul::namespace::types::{
     Map,
     Type,
 };
-use std::rc::Rc;
 use fe_parser::ast as vyp;
 use fe_parser::span::{
     Span,
     Spanned,
 };
+use std::rc::Rc;
 use yultsur::*;
 
 /// The location of an evaluated expression.
@@ -270,8 +270,8 @@ mod tests {
         Map,
         Type,
     };
-    use std::rc::Rc;
     use fe_parser as parser;
+    use std::rc::Rc;
 
     fn scope() -> Shared<FunctionScope> {
         let module_scope = ModuleScope::new();

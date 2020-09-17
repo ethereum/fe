@@ -13,9 +13,9 @@ use crate::yul::namespace::types::{
     Base,
     Type,
 };
-use std::rc::Rc;
 use fe_parser::ast as vyp;
 use fe_parser::span::Spanned;
+use std::rc::Rc;
 use yultsur::*;
 
 /// Builds a Yul statement from a Fe variable declaration
@@ -94,8 +94,8 @@ mod tests {
         Base,
         Type,
     };
-    use std::rc::Rc;
     use fe_parser as parser;
+    use std::rc::Rc;
 
     fn scope() -> Shared<FunctionScope> {
         let module_scope = ModuleScope::new();
