@@ -10,9 +10,9 @@ use crate::abi::elements::{
     VarType,
 };
 use crate::errors::CompileError;
-use std::collections::HashMap;
 use fe_parser::ast as vyp;
 use fe_parser::span::Spanned;
+use std::collections::HashMap;
 
 type TypeDefs<'a> = HashMap<&'a str, &'a vyp::TypeDesc<'a>>;
 

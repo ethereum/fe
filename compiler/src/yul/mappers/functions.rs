@@ -14,9 +14,9 @@ use crate::yul::namespace::scopes::{
     Shared,
 };
 use crate::yul::namespace::types::FixedSize;
-use std::rc::Rc;
 use fe_parser::ast as vyp;
 use fe_parser::span::Spanned;
+use std::rc::Rc;
 use yultsur::*;
 
 /// Builds a Yul function definition from a Fe function definition.

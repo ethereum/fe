@@ -5,7 +5,6 @@ mod utils;
 
 use wasm_bindgen_test::wasm_bindgen_test;
 
-use utils::to_ron_string_pretty;
 use fe_parser::ast::Module;
 use fe_parser::builders::{
     many0,
@@ -24,6 +23,7 @@ use fe_parser::{
     Cursor,
     ParseResult,
 };
+use utils::to_ron_string_pretty;
 
 /// Convert a parser into one that can parse all tokens in a source file
 /// (including the default `ENDMARKER` token).

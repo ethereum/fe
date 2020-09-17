@@ -5,10 +5,10 @@ use crate::yul::namespace::scopes::{
     Shared,
 };
 use crate::yul::namespace::types;
-use std::collections::HashMap;
-use std::rc::Rc;
 use fe_parser::ast as vyp;
 use fe_parser::span::Spanned;
+use std::collections::HashMap;
+use std::rc::Rc;
 use yultsur::yul;
 
 pub type YulContracts = HashMap<String, yul::Object>;
