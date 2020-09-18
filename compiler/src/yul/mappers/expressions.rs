@@ -62,9 +62,9 @@ pub fn expr(
     }
 }
 
-pub fn expr_bin_operation<'a>(
+pub fn expr_bin_operation(
     scope: Shared<FunctionScope>,
-    exp: &Spanned<fe::Expr<'a>>,
+    exp: &Spanned<fe::Expr>,
 ) -> Result<ExtExpression, CompileError> {
     if let fe::Expr::BinOperation { left, op, right } = &exp.node {
         let yul_left = expr(Rc::clone(&scope), left)?.expression;
