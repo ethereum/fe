@@ -68,7 +68,7 @@ fn var_decl_array(
 
         scope.borrow_mut().add_array(name.to_string(), array);
 
-        return Ok(if let Some(_) = value {
+        return Ok(if value.is_some() {
             unimplemented!("array copying")
         } else {
             statement! { let [identifier] := alloc([size]) }

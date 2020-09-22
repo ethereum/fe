@@ -16,6 +16,12 @@ pub struct ModuleABIs {
     pub contracts: HashMap<String, Contract>,
 }
 
+impl Default for ModuleABIs {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ModuleABIs {
     pub fn new() -> Self {
         Self {
@@ -37,6 +43,12 @@ pub struct Contract {
     pub events: Vec<Event>,
     /// All public functions defined in a contract.
     pub functions: Vec<Function>,
+}
+
+impl Default for Contract {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Contract {

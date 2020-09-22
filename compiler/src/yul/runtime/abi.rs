@@ -11,11 +11,11 @@ use yultsur::*;
 
 /// Builds a switch statement that dispatches calls to the contract.
 pub fn dispatcher(
-    interface: &Vec<String>,
+    interface: &[String],
     defs: &HashMap<String, ContractDef>,
 ) -> Result<yul::Statement, CompileError> {
     let arms = interface
-        .into_iter()
+        .iter()
         .map(|name| dispatch_arm(name.to_owned(), defs))
         .collect::<Result<Vec<yul::Case>, CompileError>>()?;
 
@@ -50,7 +50,7 @@ fn dispatch_arm(
     Err(CompileError::static_str("no definition for name"))
 }
 
-fn selector(name: String, params: &Vec<FixedSize>) -> yul::Literal {
+fn selector(name: String, params: &[FixedSize]) -> yul::Literal {
     let params = params
         .iter()
         .map(|param| param.abi_name())
@@ -59,7 +59,7 @@ fn selector(name: String, params: &Vec<FixedSize>) -> yul::Literal {
     literal! {(abi_utils::func_selector(name, params))}
 }
 
-fn selection(name: String, params: &Vec<FixedSize>) -> Result<yul::Expression, CompileError> {
+fn selection(name: String, params: &[FixedSize]) -> Result<yul::Expression, CompileError> {
     let mut ptr = 4;
     let mut decoded_params = vec![];
 
@@ -75,7 +75,7 @@ fn selection(name: String, params: &Vec<FixedSize>) -> Result<yul::Expression, C
 
 fn selection_as_statement(
     name: String,
-    params: &Vec<FixedSize>,
+    params: &[FixedSize],
 ) -> Result<yul::Statement, CompileError> {
     Ok(yul::Statement::Expression(selection(name, params)?))
 }

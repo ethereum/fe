@@ -44,7 +44,7 @@ pub fn module<'a>(module: &'a vyp::Module<'a>) -> Result<ModuleABIs, CompileErro
 
 fn contract_def<'a>(
     type_defs: &'a TypeDefs<'a>,
-    body: &'a Vec<Spanned<vyp::ContractStmt<'a>>>,
+    body: &[Spanned<vyp::ContractStmt<'a>>],
 ) -> Result<Contract, CompileError> {
     body.iter().try_fold(Contract::new(), |mut c, s| {
         match &s.node {
@@ -80,7 +80,7 @@ fn contract_def<'a>(
 fn event_def<'a>(
     type_defs: &'a TypeDefs<'a>,
     name: String,
-    fields: &'a Vec<Spanned<vyp::EventField<'a>>>,
+    fields: &[Spanned<vyp::EventField<'a>>],
 ) -> Result<Event, CompileError> {
     let fields = fields
         .iter()
@@ -109,7 +109,7 @@ fn event_field<'a>(
 fn func_def<'a>(
     type_defs: &'a TypeDefs<'a>,
     name: String,
-    args: &'a Vec<Spanned<vyp::FuncDefArg<'a>>>,
+    args: &[Spanned<vyp::FuncDefArg<'a>>],
     return_type: &'a Option<Spanned<vyp::TypeDesc<'a>>>,
 ) -> Result<Function, CompileError> {
     let inputs = args
