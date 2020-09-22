@@ -2,7 +2,7 @@
 
 Fe is an emerging smart contract language for the Ethereum blockchain.
 
-[![Build Status](https://circleci.com/gh/ethereum/fe.svg?style=shield)](https://circleci.com/gh/ethereum/fe)
+[![Build Status](https://github.com/ethereum/fe/workflows/CI/badge.svg)](https://github.com/ethereum/fe/actions)
 [![Coverage](https://codecov.io/gh/ethereum/fe/branch/master/graph/badge.svg)](https://codecov.io/gh/ethereum/fe)
 
 ## Overview
