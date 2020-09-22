@@ -177,3 +177,8 @@ considered to represent the exact prioritization of work items.
 * Implement a YUL compiler in Rust to eliminate the need to interact with the
   Solidity compiler
 * Formally verify the Fe compiler using the language specification
+
+## Community
+
+Twitter: [@official_fe](https://twitter.com/official_fe)
+Chat: [gitter/ethereum/fe](http://gitter.im/ethereum/fe)
