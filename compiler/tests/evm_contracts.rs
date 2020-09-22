@@ -8,6 +8,7 @@ use primitive_types::{
     H160,
     U256,
 };
+use rstest::rstest;
 use std::collections::BTreeMap;
 use std::fs;
 use std::iter;
@@ -184,6 +185,29 @@ fn return_u256() {
             "bar",
             vec![u256_token(42)],
             Some(u256_token(42)),
+        )
+    })
+}
+
+#[rstest(fixture_file, input, expected,
+    case("return_addition_u256.vy", vec![42, 42], Some(84)),
+    case("return_subtraction_u256.vy", vec![42, 42], Some(0)),
+    case("return_multiplication_u256.vy", vec![42, 42], Some(1764)),
+    case("return_division_u256.vy", vec![42, 42], Some(1)),
+)]
+fn test_method_return(fixture_file: &str, input: Vec<usize>, expected: Option<usize>) {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, fixture_file, "Foo");
+
+        harness.test_function(
+            &mut executor,
+            "bar",
+            input
+                .clone()
+                .into_iter()
+                .map(|val| u256_token(val))
+                .collect(),
+            expected.map(|val| u256_token(val)),
         )
     })
 }
