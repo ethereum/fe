@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+
+  coverage:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: coverage with tarpaulin
+      run: |
+        ./coverage.sh --out Xml
+        bash <(curl -s https://codecov.io/bash)
+
+  lint:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install latest nightly
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: nightly
+        override: true
+        components: rustfmt, clippy
+    - name: Build
+      run: cargo build --verbose
+    - name: Lint with rustfmt
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+
+    - name: Lint with clippy
+      uses: actions-rs/cargo@v1
+      with:
+        command: clippy
+        args: --all-targets --all-features
+
+  test:
+
+    # TODO: Need to enable Mac and Windows builds [ubuntu-latest, macos-latest windows-latest]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install latest nightly
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: nightly
+        override: true
+        components: rustfmt, clippy
+    - name: Run tests
+      run: cargo test --workspace --verbose
+
+  wasm-test:
+      runs-on: ubuntu-latest
+      container: davesque/rust-wasm
+      steps:
+      - uses: actions/checkout@v2
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+      - name: Run WASM tests
+        run: wasm-pack test --node -- --workspace
