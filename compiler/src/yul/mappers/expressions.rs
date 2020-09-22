@@ -50,7 +50,7 @@ pub fn expr(
         vyp::Expr::Attribute { .. } => expr_attribute(scope, exp),
         vyp::Expr::Ternary { .. } => unimplemented!(),
         vyp::Expr::BoolOperation { .. } => unimplemented!(),
-        vyp::Expr::BinOperation { .. } => unimplemented!(),
+        vyp::Expr::BinOperation { .. } => expr_bin_operation(scope, exp),
         vyp::Expr::UnaryOperation { .. } => unimplemented!(),
         vyp::Expr::CompOperation { .. } => unimplemented!(),
         vyp::Expr::Call { .. } => unimplemented!(),
@@ -60,6 +60,42 @@ pub fn expr(
         vyp::Expr::Str(_) => unimplemented!(),
         vyp::Expr::Ellipsis => unimplemented!(),
     }
+}
+
+pub fn expr_bin_operation<'a>(
+    scope: Shared<FunctionScope>,
+    exp: &Spanned<vyp::Expr<'a>>,
+) -> Result<ExtExpression, CompileError> {
+    if let vyp::Expr::BinOperation { left, op, right } = &exp.node {
+        let yul_left = expr(Rc::clone(&scope), left)?.expression;
+        let yul_right = expr(Rc::clone(&scope), right)?.expression;
+
+        return match op.node {
+            vyp::BinOperator::Add => Ok(ExtExpression {
+                expression: expression! { add([yul_left], [yul_right]) },
+                location: Location::Value,
+                typ: Type::Base(Base::U256),
+            }),
+            vyp::BinOperator::Sub => Ok(ExtExpression {
+                expression: expression! { sub([yul_left], [yul_right]) },
+                location: Location::Value,
+                typ: Type::Base(Base::U256),
+            }),
+            vyp::BinOperator::Mult => Ok(ExtExpression {
+                expression: expression! { mul([yul_left], [yul_right]) },
+                location: Location::Value,
+                typ: Type::Base(Base::U256),
+            }),
+            vyp::BinOperator::Div => Ok(ExtExpression {
+                expression: expression! { div([yul_left], [yul_right]) },
+                location: Location::Value,
+                typ: Type::Base(Base::U256),
+            }),
+            _ => unimplemented!(),
+        };
+    }
+
+    unreachable!()
 }
 
 /// Retrieves the &str value of a name expression.
@@ -271,6 +307,7 @@ mod tests {
         Type,
     };
     use fe_parser as parser;
+    use rstest::rstest;
     use std::rc::Rc;
 
     fn scope() -> Shared<FunctionScope> {
@@ -401,5 +438,19 @@ mod tests {
         assert_eq!(result.expression.to_string(), "caller()");
         assert_eq!(result.location, Location::Value);
         assert_eq!(result.typ, Type::Base(Base::Address));
+    }
+
+    #[rstest(
+        expression,
+        expected_yul,
+        case("1+1", "add(1, 1)"),
+        case("1-1", "sub(1, 1)"),
+        case("1*1", "mul(1, 1)"),
+        case("1/1", "div(1, 1)")
+    )]
+    fn arithmetic_expression(expression: &str, expected_yul: &str) {
+        let result = map(scope(), expression);
+
+        assert_eq!(result.expression.to_string(), expected_yul);
     }
 }

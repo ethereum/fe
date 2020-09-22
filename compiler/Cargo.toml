@@ -24,6 +24,7 @@ tiny-keccak = { version = "2.0", features = ["keccak"] }
 stringreader = "0.1"
 # Optional
 solc = { git = "https://github.com/spalladino/solc-rust", branch = "feature/solc-0.6.2", optional = true }
+rstest = "0.6.4"
 
 [dev-dependencies]
 evm = "0.14"

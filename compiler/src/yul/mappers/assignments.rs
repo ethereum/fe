@@ -142,6 +142,7 @@ mod tests {
         Array,
         Base,
     };
+    use rstest::rstest;
 
     use fe_parser as parser;
 
@@ -167,6 +168,20 @@ mod tests {
         scope.borrow_mut().add_base("bar".to_string(), Base::U256);
 
         assert_eq!(map(scope, "foo = bar"), "foo := bar")
+    }
+
+    #[rstest(
+        assignment,
+        expected_yul,
+        case("foo = 1 + 1", "foo := add(1, 1)"),
+        case("foo = 1 - 1", "foo := sub(1, 1)"),
+        case("foo = 1 * 1", "foo := mul(1, 1)"),
+        case("foo = 1 / 1", "foo := div(1, 1)")
+    )]
+    fn assign_arithmetic_expression(assignment: &str, expected_yul: &str) {
+        let scope = scope();
+
+        assert_eq!(map(scope, assignment), expected_yul)
     }
 
     #[test]
