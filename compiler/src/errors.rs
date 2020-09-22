@@ -16,6 +16,12 @@ pub struct CompileError {
     errors: Vec<ErrorKind>,
 }
 
+impl Default for CompileError {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CompileError {
     pub fn new() -> Self {
         Self { errors: Vec::new() }

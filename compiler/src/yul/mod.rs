@@ -13,11 +13,7 @@ pub fn compile(src: &str) -> Result<String, CompileError> {
     let vyp_module = parser::parsers::file_input(&tokens[..])?.1.node;
 
     // TODO: Handle multiple contracts in one Fe module cleanly.
-    if let Some(first_contract) = mappers::module::module(&vyp_module)?
-        .values()
-        .into_iter()
-        .next()
-    {
+    if let Some(first_contract) = mappers::module::module(&vyp_module)?.values().next() {
         return Ok(first_contract.to_string());
     }
 

@@ -998,7 +998,7 @@ pub fn if_stmt_builder<'a>(
                     None => body.last().unwrap(),
                 };
                 let span = Span::from_pair(keyword, last_stmt);
-                let or_else = or_else.unwrap_or_else(|| vec![]);
+                let or_else = or_else.unwrap_or_else(Vec::new);
 
                 Ok((
                     input,
@@ -1044,7 +1044,7 @@ pub fn while_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
         None => body.last().unwrap(),
     };
     let span = Span::from_pair(while_kw, last_stmt);
-    let or_else = or_else.unwrap_or_else(|| vec![]);
+    let or_else = or_else.unwrap_or_else(Vec::new);
 
     Ok((
         input,
@@ -1073,7 +1073,7 @@ pub fn for_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
         None => body.last().unwrap(),
     };
     let span = Span::from_pair(for_kw, last_stmt);
-    let or_else = or_else.unwrap_or_else(|| vec![]);
+    let or_else = or_else.unwrap_or_else(Vec::new);
 
     Ok((
         input,
@@ -1661,7 +1661,7 @@ pub fn index_tail(input: Cursor) -> ParseResult<Tail> {
 pub fn call_tail(input: Cursor) -> ParseResult<Tail> {
     map(
         map(delimited(op("("), opt(args), op(")")), |spanned| Spanned {
-            node: spanned.node.unwrap_or_else(|| vec![]),
+            node: spanned.node.unwrap_or_else(Vec::new),
             span: spanned.span,
         }),
         Tail::Call,
