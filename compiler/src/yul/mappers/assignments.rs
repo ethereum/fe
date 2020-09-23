@@ -173,10 +173,17 @@ mod tests {
     #[rstest(
         assignment,
         expected_yul,
-        case("foo = 1 + 1", "foo := add(1, 1)"),
-        case("foo = 1 - 1", "foo := sub(1, 1)"),
-        case("foo = 1 * 1", "foo := mul(1, 1)"),
-        case("foo = 1 / 1", "foo := div(1, 1)")
+        case("foo = 1 + 2", "foo := add(1, 2)"),
+        case("foo = 1 - 2", "foo := sub(1, 2)"),
+        case("foo = 1 * 2", "foo := mul(1, 2)"),
+        case("foo = 1 / 2", "foo := div(1, 2)"),
+        case("foo = 1 ** 2", "foo := exp(1, 2)"),
+        case("foo = 1 % 2", "foo := mod(1, 2)"),
+        case("foo = 1 & 2", "foo := and(1, 2)"),
+        case("foo = 1 | 2", "foo := or(1, 2)"),
+        case("foo = 1 ^ 2", "foo := xor(1, 2)"),
+        case("foo = 1 << 2", "foo := shl(2, 1)"),
+        case("foo = 1 >> 2", "foo := shr(2, 1)")
     )]
     fn assign_arithmetic_expression(assignment: &str, expected_yul: &str) {
         let scope = scope();

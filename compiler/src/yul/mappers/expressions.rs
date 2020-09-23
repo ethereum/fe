@@ -91,6 +91,41 @@ pub fn expr_bin_operation<'a>(
                 location: Location::Value,
                 typ: Type::Base(Base::U256),
             }),
+            vyp::BinOperator::BitAnd => Ok(ExtExpression {
+                expression: expression! { and([yul_left], [yul_right]) },
+                location: Location::Value,
+                typ: Type::Base(Base::U256),
+            }),
+            vyp::BinOperator::BitOr => Ok(ExtExpression {
+                expression: expression! { or([yul_left], [yul_right]) },
+                location: Location::Value,
+                typ: Type::Base(Base::U256),
+            }),
+            vyp::BinOperator::BitXor => Ok(ExtExpression {
+                expression: expression! { xor([yul_left], [yul_right]) },
+                location: Location::Value,
+                typ: Type::Base(Base::U256),
+            }),
+            vyp::BinOperator::LShift => Ok(ExtExpression {
+                expression: expression! { shl([yul_right], [yul_left]) },
+                location: Location::Value,
+                typ: Type::Base(Base::U256),
+            }),
+            vyp::BinOperator::RShift => Ok(ExtExpression {
+                expression: expression! { shr([yul_right], [yul_left]) },
+                location: Location::Value,
+                typ: Type::Base(Base::U256),
+            }),
+            vyp::BinOperator::Mod => Ok(ExtExpression {
+                expression: expression! { mod([yul_left], [yul_right]) },
+                location: Location::Value,
+                typ: Type::Base(Base::U256),
+            }),
+            vyp::BinOperator::Pow => Ok(ExtExpression {
+                expression: expression! { exp([yul_left], [yul_right]) },
+                location: Location::Value,
+                typ: Type::Base(Base::U256),
+            }),
             _ => unimplemented!(),
         };
     }
@@ -443,10 +478,17 @@ mod tests {
     #[rstest(
         expression,
         expected_yul,
-        case("1+1", "add(1, 1)"),
-        case("1-1", "sub(1, 1)"),
-        case("1*1", "mul(1, 1)"),
-        case("1/1", "div(1, 1)")
+        case("1 + 2 ", "add(1, 2)"),
+        case("1 - 2", "sub(1, 2)"),
+        case("1 * 2", "mul(1, 2)"),
+        case("1 / 2", "div(1, 2)"),
+        case("1 ** 2", "exp(1, 2)"),
+        case("5 % 2", "mod(5, 2)"),
+        case("1 & 2", "and(1, 2)"),
+        case("1 | 2", "or(1, 2)"),
+        case("1 ^ 2", "xor(1, 2)"),
+        case("1 << 2", "shl(2, 1)"),
+        case("1 >> 2", "shr(2, 1)")
     )]
     fn arithmetic_expression(expression: &str, expected_yul: &str) {
         let result = map(scope(), expression);
