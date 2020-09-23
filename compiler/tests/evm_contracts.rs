@@ -194,6 +194,19 @@ fn return_u256() {
     case("return_subtraction_u256.vy", vec![42, 42], Some(0)),
     case("return_multiplication_u256.vy", vec![42, 42], Some(1764)),
     case("return_division_u256.vy", vec![42, 42], Some(1)),
+    case("return_pow_u256.vy", vec![2, 0], Some(1)),
+    case("return_pow_u256.vy", vec![2, 4], Some(16)),
+    case("return_mod_u256.vy", vec![5, 0], Some(0)),
+    case("return_mod_u256.vy", vec![5, 2], Some(1)),
+    case("return_mod_u256.vy", vec![5, 3], Some(2)),
+    case("return_mod_u256.vy", vec![5, 5], Some(0)),
+    case("return_bitwiseand_u256.vy", vec![12, 25], Some(8)),
+    case("return_bitwiseor_u256.vy", vec![12, 25], Some(29)),
+    case("return_bitwisexor_u256.vy", vec![12, 25], Some(21)),
+    case("return_bitwiseshl_u256.vy", vec![212, 0], Some(212)),
+    case("return_bitwiseshl_u256.vy", vec![212, 1], Some(424)),
+    case("return_bitwiseshr_u256.vy", vec![212, 0], Some(212)),
+    case("return_bitwiseshr_u256.vy", vec![212, 1], Some(106)),
 )]
 fn test_method_return(fixture_file: &str, input: Vec<usize>, expected: Option<usize>) {
     with_executor(&|mut executor| {
