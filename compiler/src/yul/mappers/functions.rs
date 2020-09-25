@@ -14,7 +14,7 @@ use crate::yul::namespace::scopes::{
     Shared,
 };
 use crate::yul::namespace::types::FixedSize;
-use fe_parser::ast as vyp;
+use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use std::rc::Rc;
 use yultsur::*;
@@ -22,9 +22,9 @@ use yultsur::*;
 /// Builds a Yul function definition from a Fe function definition.
 pub fn func_def(
     contract_scope: Shared<ContractScope>,
-    def: &Spanned<vyp::ContractStmt>,
+    def: &Spanned<fe::ContractStmt>,
 ) -> Result<yul::Statement, CompileError> {
-    if let vyp::ContractStmt::FuncDef {
+    if let fe::ContractStmt::FuncDef {
         qual: _,
         name,
         args,
@@ -113,7 +113,7 @@ pub fn func_def(
 
 fn func_def_arg(
     scope: Shared<FunctionScope>,
-    arg: &Spanned<vyp::FuncDefArg>,
+    arg: &Spanned<fe::FuncDefArg>,
 ) -> Result<(yul::Identifier, FixedSize), CompileError> {
     let name = arg.node.name.node.to_string();
     let typ = types::type_desc_fixed_size(Scope::Function(Rc::clone(&scope)), &arg.node.typ)?;
@@ -128,32 +128,32 @@ fn func_def_arg(
 
 fn func_stmt(
     scope: Shared<FunctionScope>,
-    stmt: &Spanned<vyp::FuncStmt>,
+    stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<yul::Statement, CompileError> {
     match &stmt.node {
-        vyp::FuncStmt::Return { .. } => func_return(scope, stmt),
-        vyp::FuncStmt::VarDecl { .. } => declarations::var_decl(scope, stmt),
-        vyp::FuncStmt::Assign { .. } => assignments::assign(scope, stmt),
-        vyp::FuncStmt::Emit { .. } => emit(scope, stmt),
-        vyp::FuncStmt::AugAssign { .. } => unimplemented!(),
-        vyp::FuncStmt::For { .. } => unimplemented!(),
-        vyp::FuncStmt::While { .. } => unimplemented!(),
-        vyp::FuncStmt::If { .. } => unimplemented!(),
-        vyp::FuncStmt::Assert { .. } => unimplemented!(),
-        vyp::FuncStmt::Expr { .. } => unimplemented!(),
-        vyp::FuncStmt::Pass => unimplemented!(),
-        vyp::FuncStmt::Break => unimplemented!(),
-        vyp::FuncStmt::Continue => unimplemented!(),
-        vyp::FuncStmt::Revert => unimplemented!(),
+        fe::FuncStmt::Return { .. } => func_return(scope, stmt),
+        fe::FuncStmt::VarDecl { .. } => declarations::var_decl(scope, stmt),
+        fe::FuncStmt::Assign { .. } => assignments::assign(scope, stmt),
+        fe::FuncStmt::Emit { .. } => emit(scope, stmt),
+        fe::FuncStmt::AugAssign { .. } => unimplemented!(),
+        fe::FuncStmt::For { .. } => unimplemented!(),
+        fe::FuncStmt::While { .. } => unimplemented!(),
+        fe::FuncStmt::If { .. } => unimplemented!(),
+        fe::FuncStmt::Assert { .. } => unimplemented!(),
+        fe::FuncStmt::Expr { .. } => unimplemented!(),
+        fe::FuncStmt::Pass => unimplemented!(),
+        fe::FuncStmt::Break => unimplemented!(),
+        fe::FuncStmt::Continue => unimplemented!(),
+        fe::FuncStmt::Revert => unimplemented!(),
     }
 }
 
 fn emit(
     scope: Shared<FunctionScope>,
-    stmt: &Spanned<vyp::FuncStmt>,
+    stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<yul::Statement, CompileError> {
-    if let vyp::FuncStmt::Emit { value } = &stmt.node {
-        if let vyp::Expr::Call { func, args } = &value.node {
+    if let fe::FuncStmt::Emit { value } = &stmt.node {
+        if let fe::Expr::Call { func, args } = &value.node {
             let event_name = expressions::expr_name_string(func)?;
             let event_values = args
                 .node
@@ -178,14 +178,14 @@ fn emit(
 
 fn call_arg(
     scope: Shared<FunctionScope>,
-    arg: &Spanned<vyp::CallArg>,
+    arg: &Spanned<fe::CallArg>,
 ) -> Result<yul::Expression, CompileError> {
     match &arg.node {
-        vyp::CallArg::Arg(value) => {
+        fe::CallArg::Arg(value) => {
             let spanned = spanned_expression(&arg.span, value);
             Ok(expressions::expr(scope, &spanned)?.expression)
         }
-        vyp::CallArg::Kwarg(vyp::Kwarg { name: _, value }) => {
+        fe::CallArg::Kwarg(fe::Kwarg { name: _, value }) => {
             Ok(expressions::expr(scope, value)?.expression)
         }
     }
@@ -193,9 +193,9 @@ fn call_arg(
 
 fn func_return(
     scope: Shared<FunctionScope>,
-    stmt: &Spanned<vyp::FuncStmt>,
+    stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<yul::Statement, CompileError> {
-    if let vyp::FuncStmt::Return { value } = &stmt.node {
+    if let fe::FuncStmt::Return { value } = &stmt.node {
         match value {
             Some(value) => {
                 let ext = expressions::expr(scope, value)?;

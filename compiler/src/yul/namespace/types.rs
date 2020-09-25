@@ -1,6 +1,6 @@
 use crate::errors::CompileError;
 use crate::yul::namespace::scopes::*;
-use fe_parser::ast as vyp;
+use fe_parser::ast as fe;
 use std::collections::HashMap;
 use yultsur::*;
 
@@ -252,7 +252,7 @@ impl Map {
 
 pub fn type_desc_fixed_size(
     defs: &HashMap<String, ModuleDef>,
-    typ: &vyp::TypeDesc,
+    typ: &fe::TypeDesc,
 ) -> Result<FixedSize, CompileError> {
     match type_desc(defs, typ)? {
         Type::Base(base) => Ok(FixedSize::Base(base)),
@@ -263,7 +263,7 @@ pub fn type_desc_fixed_size(
 
 pub fn type_desc_base(
     defs: &HashMap<String, ModuleDef>,
-    typ: &vyp::TypeDesc,
+    typ: &fe::TypeDesc,
 ) -> Result<Base, CompileError> {
     match type_desc(defs, typ)? {
         Type::Base(base) => Ok(base),
@@ -274,24 +274,24 @@ pub fn type_desc_base(
 
 pub fn type_desc(
     defs: &HashMap<String, ModuleDef>,
-    typ: &vyp::TypeDesc,
+    typ: &fe::TypeDesc,
 ) -> Result<Type, CompileError> {
     match typ {
-        vyp::TypeDesc::Base { base: "u256" } => Ok(Type::Base(Base::U256)),
-        vyp::TypeDesc::Base { base: "bytes" } => Ok(Type::Base(Base::Byte)),
-        vyp::TypeDesc::Base { base: "address" } => Ok(Type::Base(Base::Address)),
-        vyp::TypeDesc::Base { base } => {
+        fe::TypeDesc::Base { base: "u256" } => Ok(Type::Base(Base::U256)),
+        fe::TypeDesc::Base { base: "bytes" } => Ok(Type::Base(Base::Byte)),
+        fe::TypeDesc::Base { base: "address" } => Ok(Type::Base(Base::Address)),
+        fe::TypeDesc::Base { base } => {
             if let Some(ModuleDef::Type(typ)) = defs.get(base.to_owned()) {
                 return Ok(typ.clone());
             }
 
             Err(CompileError::static_str("no type definition"))
         }
-        vyp::TypeDesc::Array { typ, dimension } => Ok(Type::Array(Array {
+        fe::TypeDesc::Array { typ, dimension } => Ok(Type::Array(Array {
             inner: type_desc_base(defs, &typ.node)?,
             dimension: *dimension,
         })),
-        vyp::TypeDesc::Map { from, to } => Ok(Type::Map(Map {
+        fe::TypeDesc::Map { from, to } => Ok(Type::Map(Map {
             key: type_desc_fixed_size(defs, &from.node)?,
             value: type_desc_fixed_size(defs, &to.node)?,
         })),

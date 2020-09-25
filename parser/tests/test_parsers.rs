@@ -134,10 +134,10 @@ macro_rules! parser_fixture_tests {
             use super::*;
 
             fn get_fixture_content(fixture_name: &str) -> (String, PathBuf) {
-                let vyper_fixtures_path = env::var("VYPER_FIXTURES_PATH")
-                    .expect("must set VYPER_FIXTURES_PATH env var to write fixtures");
+                let fe_fixtures_path = env::var("FE_FIXTURES_PATH")
+                    .expect("must set FE_FIXTURES_PATH env var to write fixtures");
 
-                let mut path = PathBuf::from(vyper_fixtures_path);
+                let mut path = PathBuf::from(fe_fixtures_path);
                 path.push(fixture_name);
 
                 let content = fs::read_to_string(&path)

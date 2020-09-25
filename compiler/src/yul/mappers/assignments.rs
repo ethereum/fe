@@ -6,7 +6,7 @@ use crate::yul::namespace::scopes::{
     FunctionScope,
     Shared,
 };
-use fe_parser::ast as vyp;
+use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use std::rc::Rc;
 use yultsur::*;
@@ -14,17 +14,17 @@ use yultsur::*;
 /// Builds a Yul statement from a Fe assignment.
 pub fn assign(
     scope: Shared<FunctionScope>,
-    stmt: &Spanned<vyp::FuncStmt>,
+    stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<yul::Statement, CompileError> {
-    if let vyp::FuncStmt::Assign { targets, value } = &stmt.node {
+    if let fe::FuncStmt::Assign { targets, value } = &stmt.node {
         if targets.len() > 1 {
             unimplemented!("multiple assignment targets")
         }
 
         if let Some(first_target) = targets.first() {
             return match &first_target.node {
-                vyp::Expr::Name(_) => assign_name(scope, first_target, value),
-                vyp::Expr::Subscript { .. } => assign_subscript(scope, first_target, value),
+                fe::Expr::Name(_) => assign_name(scope, first_target, value),
+                fe::Expr::Subscript { .. } => assign_subscript(scope, first_target, value),
                 _ => unreachable!(),
             };
         }
@@ -35,17 +35,17 @@ pub fn assign(
 
 fn assign_subscript(
     scope: Shared<FunctionScope>,
-    target: &Spanned<vyp::Expr>,
-    value: &Spanned<vyp::Expr>,
+    target: &Spanned<fe::Expr>,
+    value: &Spanned<fe::Expr>,
 ) -> Result<yul::Statement, CompileError> {
-    if let vyp::Expr::Subscript {
+    if let fe::Expr::Subscript {
         value: target_value,
         slices,
     } = &target.node
     {
         return match &target_value.node {
-            vyp::Expr::Name(_) => assign_subscript_name(scope, target_value, slices, value),
-            vyp::Expr::Attribute { .. } => {
+            fe::Expr::Name(_) => assign_subscript_name(scope, target_value, slices, value),
+            fe::Expr::Attribute { .. } => {
                 assign_subscript_attribute(scope, target_value, slices, value)
             }
             _ => Err(CompileError::static_str("invalid subscript target")),
@@ -57,9 +57,9 @@ fn assign_subscript(
 
 fn assign_subscript_name(
     scope: Shared<FunctionScope>,
-    target_value: &Spanned<vyp::Expr>,
-    slices: &Spanned<Vec<Spanned<vyp::Slice>>>,
-    value: &Spanned<vyp::Expr>,
+    target_value: &Spanned<fe::Expr>,
+    slices: &Spanned<Vec<Spanned<fe::Slice>>>,
+    value: &Spanned<fe::Expr>,
 ) -> Result<yul::Statement, CompileError> {
     let name = expressions::expr_name_string(target_value)?;
 
@@ -78,11 +78,11 @@ fn assign_subscript_name(
 
 fn assign_subscript_attribute(
     scope: Shared<FunctionScope>,
-    target_value: &Spanned<vyp::Expr>,
-    slices: &Spanned<Vec<Spanned<vyp::Slice>>>,
-    value: &Spanned<vyp::Expr>,
+    target_value: &Spanned<fe::Expr>,
+    slices: &Spanned<Vec<Spanned<fe::Slice>>>,
+    value: &Spanned<fe::Expr>,
 ) -> Result<yul::Statement, CompileError> {
-    if let vyp::Expr::Attribute {
+    if let fe::Expr::Attribute {
         value: target_value,
         attr,
     } = &target_value.node
@@ -99,8 +99,8 @@ fn assign_subscript_attribute(
 fn assign_subscript_self(
     scope: Shared<FunctionScope>,
     attr: &Spanned<&str>,
-    slices: &Spanned<Vec<Spanned<vyp::Slice>>>,
-    value: &Spanned<vyp::Expr>,
+    slices: &Spanned<Vec<Spanned<fe::Slice>>>,
+    value: &Spanned<fe::Expr>,
 ) -> Result<yul::Statement, CompileError> {
     let name = attr.node.to_string();
 
@@ -116,10 +116,10 @@ fn assign_subscript_self(
 
 fn assign_name(
     scope: Shared<FunctionScope>,
-    target: &Spanned<vyp::Expr>,
-    value: &Spanned<vyp::Expr>,
+    target: &Spanned<fe::Expr>,
+    value: &Spanned<fe::Expr>,
 ) -> Result<yul::Statement, CompileError> {
-    if let vyp::Expr::Name(name) = target.node {
+    if let fe::Expr::Name(name) = target.node {
         let identifier = identifier! {(name)};
         let value = expressions::expr(scope, value)?.expression;
 

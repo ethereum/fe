@@ -17,7 +17,7 @@ use crate::yul::namespace::types::{
 };
 use crate::yul::runtime::abi as runtime_abi;
 use crate::yul::runtime::functions as runtime_functions;
-use fe_parser::ast as vyp;
+use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use std::rc::Rc;
 use yultsur::*;
@@ -25,22 +25,22 @@ use yultsur::*;
 /// Builds a Yul object from a Fe contract.
 pub fn contract_def(
     module_scope: Shared<ModuleScope>,
-    stmt: &Spanned<vyp::ModuleStmt>,
+    stmt: &Spanned<fe::ModuleStmt>,
 ) -> Result<yul::Object, CompileError> {
-    if let vyp::ModuleStmt::ContractDef { name: _, body } = &stmt.node {
+    if let fe::ModuleStmt::ContractDef { name: _, body } = &stmt.node {
         let contract_scope = ContractScope::new(module_scope);
 
         let mut statements = body.iter().try_fold::<_, _, Result<_, CompileError>>(
             vec![],
             |mut statements, stmt| {
                 match &stmt.node {
-                    vyp::ContractStmt::ContractField { .. } => {
+                    fe::ContractStmt::ContractField { .. } => {
                         contract_field(Rc::clone(&contract_scope), stmt)?
                     }
-                    vyp::ContractStmt::EventDef { .. } => {
+                    fe::ContractStmt::EventDef { .. } => {
                         event_def(Rc::clone(&contract_scope), stmt)?
                     }
-                    vyp::ContractStmt::FuncDef { .. } => {
+                    fe::ContractStmt::FuncDef { .. } => {
                         statements.push(functions::func_def(Rc::clone(&contract_scope), stmt)?)
                     }
                 };
@@ -73,9 +73,9 @@ pub fn contract_def(
 
 fn contract_field(
     scope: Shared<ContractScope>,
-    stmt: &Spanned<vyp::ContractStmt>,
+    stmt: &Spanned<fe::ContractStmt>,
 ) -> Result<(), CompileError> {
-    if let vyp::ContractStmt::ContractField { qual: _, name, typ } = &stmt.node {
+    if let fe::ContractStmt::ContractField { qual: _, name, typ } = &stmt.node {
         match types::type_desc(Scope::Contract(Rc::clone(&scope)), typ)? {
             Type::Map(map) => scope.borrow_mut().add_map(name.node.to_string(), map),
             Type::Array { .. } => unimplemented!("Array contract field"),
@@ -90,9 +90,9 @@ fn contract_field(
 
 fn event_def(
     scope: Shared<ContractScope>,
-    stmt: &Spanned<vyp::ContractStmt>,
+    stmt: &Spanned<fe::ContractStmt>,
 ) -> Result<(), CompileError> {
-    if let vyp::ContractStmt::EventDef { name, fields } = &stmt.node {
+    if let fe::ContractStmt::EventDef { name, fields } = &stmt.node {
         let name = name.node.to_string();
         let fields = fields
             .iter()
@@ -111,7 +111,7 @@ fn event_def(
 
 fn event_field(
     scope: Shared<ContractScope>,
-    field: &Spanned<vyp::EventField>,
+    field: &Spanned<fe::EventField>,
 ) -> Result<FixedSize, CompileError> {
     types::type_desc_fixed_size(Scope::Contract(scope), &field.node.typ)
 }

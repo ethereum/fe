@@ -178,7 +178,7 @@ fn evm_sanity() {
 #[test]
 fn return_u256() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "return_u256.vy", "Foo");
+        let harness = deploy_contract(&mut executor, "return_u256.fe", "Foo");
 
         harness.test_function(
             &mut executor,
@@ -190,23 +190,23 @@ fn return_u256() {
 }
 
 #[rstest(fixture_file, input, expected,
-    case("return_addition_u256.vy", vec![42, 42], Some(84)),
-    case("return_subtraction_u256.vy", vec![42, 42], Some(0)),
-    case("return_multiplication_u256.vy", vec![42, 42], Some(1764)),
-    case("return_division_u256.vy", vec![42, 42], Some(1)),
-    case("return_pow_u256.vy", vec![2, 0], Some(1)),
-    case("return_pow_u256.vy", vec![2, 4], Some(16)),
-    case("return_mod_u256.vy", vec![5, 0], Some(0)),
-    case("return_mod_u256.vy", vec![5, 2], Some(1)),
-    case("return_mod_u256.vy", vec![5, 3], Some(2)),
-    case("return_mod_u256.vy", vec![5, 5], Some(0)),
-    case("return_bitwiseand_u256.vy", vec![12, 25], Some(8)),
-    case("return_bitwiseor_u256.vy", vec![12, 25], Some(29)),
-    case("return_bitwisexor_u256.vy", vec![12, 25], Some(21)),
-    case("return_bitwiseshl_u256.vy", vec![212, 0], Some(212)),
-    case("return_bitwiseshl_u256.vy", vec![212, 1], Some(424)),
-    case("return_bitwiseshr_u256.vy", vec![212, 0], Some(212)),
-    case("return_bitwiseshr_u256.vy", vec![212, 1], Some(106)),
+    case("return_addition_u256.fe", vec![42, 42], Some(84)),
+    case("return_subtraction_u256.fe", vec![42, 42], Some(0)),
+    case("return_multiplication_u256.fe", vec![42, 42], Some(1764)),
+    case("return_division_u256.fe", vec![42, 42], Some(1)),
+    case("return_pow_u256.fe", vec![2, 0], Some(1)),
+    case("return_pow_u256.fe", vec![2, 4], Some(16)),
+    case("return_mod_u256.fe", vec![5, 0], Some(0)),
+    case("return_mod_u256.fe", vec![5, 2], Some(1)),
+    case("return_mod_u256.fe", vec![5, 3], Some(2)),
+    case("return_mod_u256.fe", vec![5, 5], Some(0)),
+    case("return_bitwiseand_u256.fe", vec![12, 25], Some(8)),
+    case("return_bitwiseor_u256.fe", vec![12, 25], Some(29)),
+    case("return_bitwisexor_u256.fe", vec![12, 25], Some(21)),
+    case("return_bitwiseshl_u256.fe", vec![212, 0], Some(212)),
+    case("return_bitwiseshl_u256.fe", vec![212, 1], Some(424)),
+    case("return_bitwiseshr_u256.fe", vec![212, 0], Some(212)),
+    case("return_bitwiseshr_u256.fe", vec![212, 1], Some(106)),
 )]
 fn test_method_return(fixture_file: &str, input: Vec<usize>, expected: Option<usize>) {
     with_executor(&|mut executor| {
@@ -228,7 +228,7 @@ fn test_method_return(fixture_file: &str, input: Vec<usize>, expected: Option<us
 #[test]
 fn return_array() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "return_array.vy", "Foo");
+        let harness = deploy_contract(&mut executor, "return_array.fe", "Foo");
 
         harness.test_function(
             &mut executor,
@@ -242,7 +242,7 @@ fn return_array() {
 #[test]
 fn multi_param() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "multi_param.vy", "Foo");
+        let harness = deploy_contract(&mut executor, "multi_param.fe", "Foo");
 
         harness.test_function(
             &mut executor,
@@ -256,7 +256,7 @@ fn multi_param() {
 #[test]
 fn u256_u256_map() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "u256_u256_map.vy", "Foo");
+        let harness = deploy_contract(&mut executor, "u256_u256_map.fe", "Foo");
 
         harness.test_function(
             &mut executor,
@@ -291,7 +291,7 @@ fn u256_u256_map() {
 #[test]
 fn address_bytes10_map() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "address_bytes10_map.vy", "Foo");
+        let harness = deploy_contract(&mut executor, "address_bytes10_map.fe", "Foo");
 
         let address1 = address_token("0000000000000000000000000000000000000001");
         let bytes1 = bytes_token("ten bytes1");
@@ -322,7 +322,7 @@ fn address_bytes10_map() {
 #[test]
 fn guest_book() {
     with_executor(&|mut executor| {
-        let mut harness = deploy_contract(&mut executor, "guest_book.vy", "GuestBook");
+        let mut harness = deploy_contract(&mut executor, "guest_book.fe", "GuestBook");
 
         let sender = address_token("1234000000000000000000000000000000005678");
         let bytes = bytes_token(
@@ -345,7 +345,7 @@ fn guest_book() {
 #[test]
 fn return_sender() {
     with_executor(&|mut executor| {
-        let mut harness = deploy_contract(&mut executor, "return_sender.vy", "Foo");
+        let mut harness = deploy_contract(&mut executor, "return_sender.fe", "Foo");
 
         let sender = address_token("1234000000000000000000000000000000005678");
 

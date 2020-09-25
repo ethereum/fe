@@ -10,24 +10,24 @@ use crate::abi::elements::{
     VarType,
 };
 use crate::errors::CompileError;
-use fe_parser::ast as vyp;
+use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use std::collections::HashMap;
 
-type TypeDefs<'a> = HashMap<&'a str, &'a vyp::TypeDesc<'a>>;
+type TypeDefs<'a> = HashMap<&'a str, &'a fe::TypeDesc<'a>>;
 
 /// Parse a map of contract ABIs from the input `module`.
-pub fn module<'a>(module: &'a vyp::Module<'a>) -> Result<ModuleABIs, CompileError> {
+pub fn module<'a>(module: &'a fe::Module<'a>) -> Result<ModuleABIs, CompileError> {
     let mut type_defs = TypeDefs::new();
 
     module.body.iter().try_fold(ModuleABIs::new(), |mut m, s| {
         match &s.node {
-            vyp::ModuleStmt::TypeDef { name, typ } => {
+            fe::ModuleStmt::TypeDef { name, typ } => {
                 if type_defs.insert(name.node, &typ.node).is_some() {
                     return Err(CompileError::static_str("duplicate type definition"));
                 }
             }
-            vyp::ModuleStmt::ContractDef { name, body } => {
+            fe::ModuleStmt::ContractDef { name, body } => {
                 if m.contracts
                     .insert(name.node.to_string(), contract_def(&type_defs, body)?)
                     .is_some()
@@ -44,11 +44,11 @@ pub fn module<'a>(module: &'a vyp::Module<'a>) -> Result<ModuleABIs, CompileErro
 
 fn contract_def<'a>(
     type_defs: &'a TypeDefs<'a>,
-    body: &[Spanned<vyp::ContractStmt<'a>>],
+    body: &[Spanned<fe::ContractStmt<'a>>],
 ) -> Result<Contract, CompileError> {
     body.iter().try_fold(Contract::new(), |mut c, s| {
         match &s.node {
-            vyp::ContractStmt::FuncDef {
+            fe::ContractStmt::FuncDef {
                 qual,
                 name,
                 args,
@@ -56,7 +56,7 @@ fn contract_def<'a>(
                 ..
             } => {
                 if let Some(qual) = qual {
-                    if qual.node == vyp::FuncQual::Pub {
+                    if qual.node == fe::FuncQual::Pub {
                         c.functions.push(func_def(
                             type_defs,
                             name.node.to_string(),
@@ -66,11 +66,11 @@ fn contract_def<'a>(
                     }
                 }
             }
-            vyp::ContractStmt::EventDef { name, fields } => {
+            fe::ContractStmt::EventDef { name, fields } => {
                 c.events
                     .push(event_def(type_defs, name.node.to_string(), fields)?)
             }
-            vyp::ContractStmt::ContractField { .. } => {}
+            fe::ContractStmt::ContractField { .. } => {}
         }
 
         Ok(c)
@@ -80,7 +80,7 @@ fn contract_def<'a>(
 fn event_def<'a>(
     type_defs: &'a TypeDefs<'a>,
     name: String,
-    fields: &[Spanned<vyp::EventField<'a>>],
+    fields: &[Spanned<fe::EventField<'a>>],
 ) -> Result<Event, CompileError> {
     let fields = fields
         .iter()
@@ -97,7 +97,7 @@ fn event_def<'a>(
 
 fn event_field<'a>(
     type_defs: &'a TypeDefs<'a>,
-    field: &'a vyp::EventField<'a>,
+    field: &'a fe::EventField<'a>,
 ) -> Result<EventField, CompileError> {
     Ok(EventField {
         name: String::from(field.name.node),
@@ -109,8 +109,8 @@ fn event_field<'a>(
 fn func_def<'a>(
     type_defs: &'a TypeDefs<'a>,
     name: String,
-    args: &[Spanned<vyp::FuncDefArg<'a>>],
-    return_type: &'a Option<Spanned<vyp::TypeDesc<'a>>>,
+    args: &[Spanned<fe::FuncDefArg<'a>>],
+    return_type: &'a Option<Spanned<fe::TypeDesc<'a>>>,
 ) -> Result<Function, CompileError> {
     let inputs = args
         .iter()
@@ -136,7 +136,7 @@ fn func_def<'a>(
 
 fn func_def_arg<'a>(
     type_defs: &'a TypeDefs<'a>,
-    arg: &'a vyp::FuncDefArg<'a>,
+    arg: &'a fe::FuncDefArg<'a>,
 ) -> Result<FuncInput, CompileError> {
     Ok(FuncInput {
         name: String::from(arg.name.node),
@@ -146,29 +146,29 @@ fn func_def_arg<'a>(
 
 fn type_desc<'a>(
     type_defs: &'a TypeDefs<'a>,
-    typ: &'a vyp::TypeDesc<'a>,
+    typ: &'a fe::TypeDesc<'a>,
 ) -> Result<VarType, CompileError> {
-    if let vyp::TypeDesc::Base { base } = typ {
+    if let fe::TypeDesc::Base { base } = typ {
         if let Some(custom_type) = type_defs.get(base) {
             return type_desc(type_defs, custom_type);
         }
     }
 
     match typ {
-        vyp::TypeDesc::Base { base: "u256" } => Ok(VarType::Uint256),
-        vyp::TypeDesc::Base { base: "address" } => Ok(VarType::Address),
-        vyp::TypeDesc::Base { base } => {
+        fe::TypeDesc::Base { base: "u256" } => Ok(VarType::Uint256),
+        fe::TypeDesc::Base { base: "address" } => Ok(VarType::Address),
+        fe::TypeDesc::Base { base } => {
             Err(CompileError::str(format!("unrecognized type: {}", base)))
         }
-        vyp::TypeDesc::Array { typ, dimension } => {
-            if let vyp::TypeDesc::Base { base: "bytes" } = &typ.node {
+        fe::TypeDesc::Array { typ, dimension } => {
+            if let fe::TypeDesc::Base { base: "bytes" } = &typ.node {
                 return Ok(VarType::FixedBytes(*dimension));
             }
 
             let inner = type_desc(type_defs, &typ.node)?;
             Ok(VarType::FixedArray(Box::new(inner), *dimension))
         }
-        vyp::TypeDesc::Map { .. } => Err(CompileError::static_str("maps not supported in ABI")),
+        fe::TypeDesc::Map { .. } => Err(CompileError::static_str("maps not supported in ABI")),
     }
 }
 
