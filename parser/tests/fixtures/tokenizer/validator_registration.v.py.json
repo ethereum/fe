@@ -1,10 +1,10 @@
-MIN_DEPOSIT_AMOUNT: constant(uint256) = 1000000000  # Gwei
-DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
-MAX_DEPOSIT_COUNT: constant(uint256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1
-PUBKEY_LENGTH: constant(uint256) = 48  # bytes
-WITHDRAWAL_CREDENTIALS_LENGTH: constant(uint256) = 32  # bytes
-AMOUNT_LENGTH: constant(uint256) = 8  # bytes
-SIGNATURE_LENGTH: constant(uint256) = 96  # bytes
+MIN_DEPOSIT_AMOUNT: constant(u256) = 1000000000  # Gwei
+DEPOSIT_CONTRACT_TREE_DEPTH: constant(u256) = 32
+MAX_DEPOSIT_COUNT: constant(u256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1
+PUBKEY_LENGTH: constant(u256) = 48  # bytes
+WITHDRAWAL_CREDENTIALS_LENGTH: constant(u256) = 32  # bytes
+AMOUNT_LENGTH: constant(u256) = 8  # bytes
+SIGNATURE_LENGTH: constant(u256) = 96  # bytes
 
 DepositEvent: event({
     pubkey: bytes[48],
@@ -15,7 +15,7 @@ DepositEvent: event({
 })
 
 branch: bytes32[DEPOSIT_CONTRACT_TREE_DEPTH]
-deposit_count: uint256
+deposit_count: u256
 
 # Compute hashes in empty sparse Merkle tree
 zero_hashes: bytes32[DEPOSIT_CONTRACT_TREE_DEPTH]
@@ -27,12 +27,12 @@ def __init__():
 
 @private
 @constant
-def to_little_endian_64(value: uint256) -> bytes[8]:
-    # Reversing bytes using bitwise uint256 manipulations
+def to_little_endian_64(value: u256) -> bytes[8]:
+    # Reversing bytes using bitwise u256 manipulations
     # Note: array accesses of bytes[] are not currently supported in Vyper
     # Note: this function is only called when `value < 2**64`
-    y: uint256 = 0
-    x: uint256 = value
+    y: u256 = 0
+    x: u256 = value
     for _ in range(8):
         y = shift(y, 8)
         y = y + bitwise_and(x, 255)
@@ -45,7 +45,7 @@ def to_little_endian_64(value: uint256) -> bytes[8]:
 def get_hash_tree_root() -> bytes32:
     zero_bytes32: bytes32 = 0x0000000000000000000000000000000000000000000000000000000000000000
     node: bytes32 = zero_bytes32
-    size: uint256 = self.deposit_count
+    size: u256 = self.deposit_count
     for height in range(DEPOSIT_CONTRACT_TREE_DEPTH):
         if bitwise_and(size, 1) == 1:  # More gas efficient than `size % 2 == 1`
             node = sha256(concat(self.branch[height], node))
@@ -70,7 +70,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
     assert self.deposit_count < MAX_DEPOSIT_COUNT
 
     # Validate deposit data
-    deposit_amount: uint256 = msg.value / as_wei_value(1, "gwei")
+    deposit_amount: u256 = msg.value / as_wei_value(1, "gwei")
     assert deposit_amount >= MIN_DEPOSIT_AMOUNT
     assert len(pubkey) == PUBKEY_LENGTH
     assert len(withdrawal_credentials) == WITHDRAWAL_CREDENTIALS_LENGTH
@@ -94,7 +94,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
 
     # Add `DepositData` hash tree root to Merkle tree (update a single `branch` node)
     self.deposit_count += 1
-    size: uint256 = self.deposit_count
+    size: u256 = self.deposit_count
     for height in range(DEPOSIT_CONTRACT_TREE_DEPTH):
         if bitwise_and(size, 1) == 1:  # More gas efficient than `size % 2 == 1`
             self.branch[height] = node
@@ -114,7 +114,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       1,
       18
     ],
-    "line": "MIN_DEPOSIT_AMOUNT: constant(uint256) = 1000000000  # Gwei\n"
+    "line": "MIN_DEPOSIT_AMOUNT: constant(u256) = 1000000000  # Gwei\n"
   },
   {
     "typ": "OP",
@@ -127,7 +127,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       1,
       19
     ],
-    "line": "MIN_DEPOSIT_AMOUNT: constant(uint256) = 1000000000  # Gwei\n"
+    "line": "MIN_DEPOSIT_AMOUNT: constant(u256) = 1000000000  # Gwei\n"
   },
   {
     "typ": "NAME",
@@ -140,7 +140,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       1,
       28
     ],
-    "line": "MIN_DEPOSIT_AMOUNT: constant(uint256) = 1000000000  # Gwei\n"
+    "line": "MIN_DEPOSIT_AMOUNT: constant(u256) = 1000000000  # Gwei\n"
   },
   {
     "typ": "OP",
@@ -153,85 +153,85 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       1,
       29
     ],
-    "line": "MIN_DEPOSIT_AMOUNT: constant(uint256) = 1000000000  # Gwei\n"
+    "line": "MIN_DEPOSIT_AMOUNT: constant(u256) = 1000000000  # Gwei\n"
   },
   {
     "typ": "NAME",
-    "string": "uint256",
+    "string": "u256",
     "start": [
       1,
       29
     ],
     "end": [
       1,
-      36
+      33
     ],
-    "line": "MIN_DEPOSIT_AMOUNT: constant(uint256) = 1000000000  # Gwei\n"
+    "line": "MIN_DEPOSIT_AMOUNT: constant(u256) = 1000000000  # Gwei\n"
   },
   {
     "typ": "OP",
     "string": ")",
     "start": [
       1,
-      36
+      33
     ],
     "end": [
       1,
-      37
+      34
     ],
-    "line": "MIN_DEPOSIT_AMOUNT: constant(uint256) = 1000000000  # Gwei\n"
+    "line": "MIN_DEPOSIT_AMOUNT: constant(u256) = 1000000000  # Gwei\n"
   },
   {
     "typ": "OP",
     "string": "=",
     "start": [
       1,
-      38
+      35
     ],
     "end": [
       1,
-      39
+      36
     ],
-    "line": "MIN_DEPOSIT_AMOUNT: constant(uint256) = 1000000000  # Gwei\n"
+    "line": "MIN_DEPOSIT_AMOUNT: constant(u256) = 1000000000  # Gwei\n"
   },
   {
     "typ": "NUMBER",
     "string": "1000000000",
     "start": [
       1,
-      40
+      37
     ],
     "end": [
       1,
-      50
+      47
     ],
-    "line": "MIN_DEPOSIT_AMOUNT: constant(uint256) = 1000000000  # Gwei\n"
+    "line": "MIN_DEPOSIT_AMOUNT: constant(u256) = 1000000000  # Gwei\n"
   },
   {
     "typ": "COMMENT",
     "string": "# Gwei",
     "start": [
       1,
-      52
+      49
     ],
     "end": [
       1,
-      58
+      55
     ],
-    "line": "MIN_DEPOSIT_AMOUNT: constant(uint256) = 1000000000  # Gwei\n"
+    "line": "MIN_DEPOSIT_AMOUNT: constant(u256) = 1000000000  # Gwei\n"
   },
   {
     "typ": "NEWLINE",
     "string": "\n",
     "start": [
       1,
-      58
+      55
     ],
     "end": [
       2,
       0
     ],
-    "line": "MIN_DEPOSIT_AMOUNT: constant(uint256) = 1000000000  # Gwei\n"
+    "line": "MIN_DEPOSIT_AMOUNT: constant(u256) = 1000000000  # Gwei\n"
   },
   {
     "typ": "NAME",
@@ -244,7 +244,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       2,
       27
     ],
-    "line": "DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32\n"
+    "line": "DEPOSIT_CONTRACT_TREE_DEPTH: constant(u256) = 32\n"
   },
   {
     "typ": "OP",
@@ -257,7 +257,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       2,
       28
     ],
-    "line": "DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32\n"
+    "line": "DEPOSIT_CONTRACT_TREE_DEPTH: constant(u256) = 32\n"
   },
   {
     "typ": "NAME",
@@ -270,7 +270,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       2,
       37
     ],
-    "line": "DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32\n"
+    "line": "DEPOSIT_CONTRACT_TREE_DEPTH: constant(u256) = 32\n"
   },
   {
     "typ": "OP",
@@ -283,72 +283,72 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       2,
       38
     ],
-    "line": "DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32\n"
+    "line": "DEPOSIT_CONTRACT_TREE_DEPTH: constant(u256) = 32\n"
   },
   {
     "typ": "NAME",
-    "string": "uint256",
+    "string": "u256",
     "start": [
       2,
       38
     ],
     "end": [
       2,
-      45
+      42
     ],
-    "line": "DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32\n"
+    "line": "DEPOSIT_CONTRACT_TREE_DEPTH: constant(u256) = 32\n"
   },
   {
     "typ": "OP",
     "string": ")",
     "start": [
       2,
-      45
+      42
     ],
     "end": [
       2,
-      46
+      43
     ],
-    "line": "DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32\n"
+    "line": "DEPOSIT_CONTRACT_TREE_DEPTH: constant(u256) = 32\n"
   },
   {
     "typ": "OP",
     "string": "=",
     "start": [
       2,
-      47
+      44
     ],
     "end": [
       2,
-      48
+      45
     ],
-    "line": "DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32\n"
+    "line": "DEPOSIT_CONTRACT_TREE_DEPTH: constant(u256) = 32\n"
   },
   {
     "typ": "NUMBER",
     "string": "32",
     "start": [
       2,
-      49
+      46
     ],
     "end": [
       2,
-      51
+      48
     ],
-    "line": "DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32\n"
+    "line": "DEPOSIT_CONTRACT_TREE_DEPTH: constant(u256) = 32\n"
   },
   {
     "typ": "NEWLINE",
     "string": "\n",
     "start": [
       2,
-      51
+      48
     ],
     "end": [
       3,
       0
     ],
-    "line": "DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32\n"
+    "line": "DEPOSIT_CONTRACT_TREE_DEPTH: constant(u256) = 32\n"
   },
   {
     "typ": "NAME",
@@ -361,7 +361,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       3,
       17
     ],
-    "line": "MAX_DEPOSIT_COUNT: constant(uint256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1\n"
+    "line": "MAX_DEPOSIT_COUNT: constant(u256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1\n"
   },
   {
     "typ": "OP",
@@ -374,7 +374,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       3,
       18
     ],
-    "line": "MAX_DEPOSIT_COUNT: constant(uint256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1\n"
+    "line": "MAX_DEPOSIT_COUNT: constant(u256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1\n"
   },
   {
     "typ": "NAME",
@@ -387,7 +387,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       3,
       27
     ],
-    "line": "MAX_DEPOSIT_COUNT: constant(uint256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1\n"
+    "line": "MAX_DEPOSIT_COUNT: constant(u256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1\n"
   },
   {
     "typ": "OP",
@@ -400,85 +400,85 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       3,
       28
     ],
-    "line": "MAX_DEPOSIT_COUNT: constant(uint256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1\n"
+    "line": "MAX_DEPOSIT_COUNT: constant(u256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1\n"
   },
   {
     "typ": "NAME",
-    "string": "uint256",
+    "string": "u256",
     "start": [
       3,
       28
     ],
     "end": [
       3,
-      35
+      32
     ],
-    "line": "MAX_DEPOSIT_COUNT: constant(uint256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1\n"
+    "line": "MAX_DEPOSIT_COUNT: constant(u256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1\n"
   },
   {
     "typ": "OP",
     "string": ")",
     "start": [
       3,
-      35
+      32
     ],
     "end": [
       3,
-      36
+      33
     ],
-    "line": "MAX_DEPOSIT_COUNT: constant(uint256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1\n"
+    "line": "MAX_DEPOSIT_COUNT: constant(u256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1\n"
   },
   {
     "typ": "OP",
     "string": "=",
     "start": [
       3,
-      37
+      34
     ],
     "end": [
       3,
-      38
+      35
     ],
-    "line": "MAX_DEPOSIT_COUNT: constant(uint256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1\n"
+    "line": "MAX_DEPOSIT_COUNT: constant(u256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1\n"
   },
   {
     "typ": "NUMBER",
     "string": "4294967295",
     "start": [
       3,
-      39
+      36
     ],
     "end": [
       3,
-      49
+      46
     ],
-    "line": "MAX_DEPOSIT_COUNT: constant(uint256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1\n"
+    "line": "MAX_DEPOSIT_COUNT: constant(u256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1\n"
   },
   {
     "typ": "COMMENT",
     "string": "# 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1",
     "start": [
       3,
-      50
+      47
     ],
     "end": [
       3,
-      86
+      83
     ],
-    "line": "MAX_DEPOSIT_COUNT: constant(uint256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1\n"
+    "line": "MAX_DEPOSIT_COUNT: constant(u256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1\n"
   },
   {
     "typ": "NEWLINE",
     "string": "\n",
     "start": [
       3,
-      86
+      83
     ],
     "end": [
       4,
       0
     ],
-    "line": "MAX_DEPOSIT_COUNT: constant(uint256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1\n"
+    "line": "MAX_DEPOSIT_COUNT: constant(u256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1\n"
   },
   {
     "typ": "NAME",
@@ -491,7 +491,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       4,
       13
     ],
-    "line": "PUBKEY_LENGTH: constant(uint256) = 48  # bytes\n"
+    "line": "PUBKEY_LENGTH: constant(u256) = 48  # bytes\n"
   },
   {
     "typ": "OP",
@@ -504,7 +504,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       4,
       14
     ],
-    "line": "PUBKEY_LENGTH: constant(uint256) = 48  # bytes\n"
+    "line": "PUBKEY_LENGTH: constant(u256) = 48  # bytes\n"
   },
   {
     "typ": "NAME",
@@ -517,7 +517,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       4,
       23
     ],
-    "line": "PUBKEY_LENGTH: constant(uint256) = 48  # bytes\n"
+    "line": "PUBKEY_LENGTH: constant(u256) = 48  # bytes\n"
   },
   {
     "typ": "OP",
@@ -530,85 +530,85 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       4,
       24
     ],
-    "line": "PUBKEY_LENGTH: constant(uint256) = 48  # bytes\n"
+    "line": "PUBKEY_LENGTH: constant(u256) = 48  # bytes\n"
   },
   {
     "typ": "NAME",
-    "string": "uint256",
+    "string": "u256",
     "start": [
       4,
       24
     ],
     "end": [
       4,
-      31
+      28
     ],
-    "line": "PUBKEY_LENGTH: constant(uint256) = 48  # bytes\n"
+    "line": "PUBKEY_LENGTH: constant(u256) = 48  # bytes\n"
   },
   {
     "typ": "OP",
     "string": ")",
     "start": [
       4,
-      31
+      28
     ],
     "end": [
       4,
-      32
+      29
     ],
-    "line": "PUBKEY_LENGTH: constant(uint256) = 48  # bytes\n"
+    "line": "PUBKEY_LENGTH: constant(u256) = 48  # bytes\n"
   },
   {
     "typ": "OP",
     "string": "=",
     "start": [
       4,
-      33
+      30
     ],
     "end": [
       4,
-      34
+      31
     ],
-    "line": "PUBKEY_LENGTH: constant(uint256) = 48  # bytes\n"
+    "line": "PUBKEY_LENGTH: constant(u256) = 48  # bytes\n"
   },
   {
     "typ": "NUMBER",
     "string": "48",
     "start": [
       4,
-      35
+      32
     ],
     "end": [
       4,
-      37
+      34
     ],
-    "line": "PUBKEY_LENGTH: constant(uint256) = 48  # bytes\n"
+    "line": "PUBKEY_LENGTH: constant(u256) = 48  # bytes\n"
   },
   {
     "typ": "COMMENT",
     "string": "# bytes",
     "start": [
       4,
-      39
+      36
     ],
     "end": [
       4,
-      46
+      43
     ],
-    "line": "PUBKEY_LENGTH: constant(uint256) = 48  # bytes\n"
+    "line": "PUBKEY_LENGTH: constant(u256) = 48  # bytes\n"
   },
   {
     "typ": "NEWLINE",
     "string": "\n",
     "start": [
       4,
-      46
+      43
     ],
     "end": [
       5,
       0
     ],
-    "line": "PUBKEY_LENGTH: constant(uint256) = 48  # bytes\n"
+    "line": "PUBKEY_LENGTH: constant(u256) = 48  # bytes\n"
   },
   {
     "typ": "NAME",
@@ -621,7 +621,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       5,
       29
     ],
-    "line": "WITHDRAWAL_CREDENTIALS_LENGTH: constant(uint256) = 32  # bytes\n"
+    "line": "WITHDRAWAL_CREDENTIALS_LENGTH: constant(u256) = 32  # bytes\n"
   },
   {
     "typ": "OP",
@@ -634,7 +634,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       5,
       30
     ],
-    "line": "WITHDRAWAL_CREDENTIALS_LENGTH: constant(uint256) = 32  # bytes\n"
+    "line": "WITHDRAWAL_CREDENTIALS_LENGTH: constant(u256) = 32  # bytes\n"
   },
   {
     "typ": "NAME",
@@ -647,7 +647,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       5,
       39
     ],
-    "line": "WITHDRAWAL_CREDENTIALS_LENGTH: constant(uint256) = 32  # bytes\n"
+    "line": "WITHDRAWAL_CREDENTIALS_LENGTH: constant(u256) = 32  # bytes\n"
   },
   {
     "typ": "OP",
@@ -660,85 +660,85 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       5,
       40
     ],
-    "line": "WITHDRAWAL_CREDENTIALS_LENGTH: constant(uint256) = 32  # bytes\n"
+    "line": "WITHDRAWAL_CREDENTIALS_LENGTH: constant(u256) = 32  # bytes\n"
   },
   {
     "typ": "NAME",
-    "string": "uint256",
+    "string": "u256",
     "start": [
       5,
       40
     ],
     "end": [
       5,
-      47
+      44
     ],
-    "line": "WITHDRAWAL_CREDENTIALS_LENGTH: constant(uint256) = 32  # bytes\n"
+    "line": "WITHDRAWAL_CREDENTIALS_LENGTH: constant(u256) = 32  # bytes\n"
   },
   {
     "typ": "OP",
     "string": ")",
     "start": [
       5,
-      47
+      44
     ],
     "end": [
       5,
-      48
+      45
     ],
-    "line": "WITHDRAWAL_CREDENTIALS_LENGTH: constant(uint256) = 32  # bytes\n"
+    "line": "WITHDRAWAL_CREDENTIALS_LENGTH: constant(u256) = 32  # bytes\n"
   },
   {
     "typ": "OP",
     "string": "=",
     "start": [
       5,
-      49
+      46
     ],
     "end": [
       5,
-      50
+      47
     ],
-    "line": "WITHDRAWAL_CREDENTIALS_LENGTH: constant(uint256) = 32  # bytes\n"
+    "line": "WITHDRAWAL_CREDENTIALS_LENGTH: constant(u256) = 32  # bytes\n"
   },
   {
     "typ": "NUMBER",
     "string": "32",
     "start": [
       5,
-      51
+      48
     ],
     "end": [
       5,
-      53
+      50
     ],
-    "line": "WITHDRAWAL_CREDENTIALS_LENGTH: constant(uint256) = 32  # bytes\n"
+    "line": "WITHDRAWAL_CREDENTIALS_LENGTH: constant(u256) = 32  # bytes\n"
   },
   {
     "typ": "COMMENT",
     "string": "# bytes",
     "start": [
       5,
-      55
+      52
     ],
     "end": [
       5,
-      62
+      59
     ],
-    "line": "WITHDRAWAL_CREDENTIALS_LENGTH: constant(uint256) = 32  # bytes\n"
+    "line": "WITHDRAWAL_CREDENTIALS_LENGTH: constant(u256) = 32  # bytes\n"
   },
   {
     "typ": "NEWLINE",
     "string": "\n",
     "start": [
       5,
-      62
+      59
     ],
     "end": [
       6,
       0
     ],
-    "line": "WITHDRAWAL_CREDENTIALS_LENGTH: constant(uint256) = 32  # bytes\n"
+    "line": "WITHDRAWAL_CREDENTIALS_LENGTH: constant(u256) = 32  # bytes\n"
   },
   {
     "typ": "NAME",
@@ -751,7 +751,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       6,
       13
     ],
-    "line": "AMOUNT_LENGTH: constant(uint256) = 8  # bytes\n"
+    "line": "AMOUNT_LENGTH: constant(u256) = 8  # bytes\n"
   },
   {
     "typ": "OP",
@@ -764,7 +764,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       6,
       14
     ],
-    "line": "AMOUNT_LENGTH: constant(uint256) = 8  # bytes\n"
+    "line": "AMOUNT_LENGTH: constant(u256) = 8  # bytes\n"
   },
   {
     "typ": "NAME",
@@ -777,7 +777,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       6,
       23
     ],
-    "line": "AMOUNT_LENGTH: constant(uint256) = 8  # bytes\n"
+    "line": "AMOUNT_LENGTH: constant(u256) = 8  # bytes\n"
   },
   {
     "typ": "OP",
@@ -790,85 +790,85 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       6,
       24
     ],
-    "line": "AMOUNT_LENGTH: constant(uint256) = 8  # bytes\n"
+    "line": "AMOUNT_LENGTH: constant(u256) = 8  # bytes\n"
   },
   {
     "typ": "NAME",
-    "string": "uint256",
+    "string": "u256",
     "start": [
       6,
       24
     ],
     "end": [
       6,
-      31
+      28
     ],
-    "line": "AMOUNT_LENGTH: constant(uint256) = 8  # bytes\n"
+    "line": "AMOUNT_LENGTH: constant(u256) = 8  # bytes\n"
   },
   {
     "typ": "OP",
     "string": ")",
     "start": [
       6,
-      31
+      28
     ],
     "end": [
       6,
-      32
+      29
     ],
-    "line": "AMOUNT_LENGTH: constant(uint256) = 8  # bytes\n"
+    "line": "AMOUNT_LENGTH: constant(u256) = 8  # bytes\n"
   },
   {
     "typ": "OP",
     "string": "=",
     "start": [
       6,
-      33
+      30
     ],
     "end": [
       6,
-      34
+      31
     ],
-    "line": "AMOUNT_LENGTH: constant(uint256) = 8  # bytes\n"
+    "line": "AMOUNT_LENGTH: constant(u256) = 8  # bytes\n"
   },
   {
     "typ": "NUMBER",
     "string": "8",
     "start": [
       6,
-      35
+      32
     ],
     "end": [
       6,
-      36
+      33
     ],
-    "line": "AMOUNT_LENGTH: constant(uint256) = 8  # bytes\n"
+    "line": "AMOUNT_LENGTH: constant(u256) = 8  # bytes\n"
   },
   {
     "typ": "COMMENT",
     "string": "# bytes",
     "start": [
       6,
-      38
+      35
     ],
     "end": [
       6,
-      45
+      42
     ],
-    "line": "AMOUNT_LENGTH: constant(uint256) = 8  # bytes\n"
+    "line": "AMOUNT_LENGTH: constant(u256) = 8  # bytes\n"
   },
   {
     "typ": "NEWLINE",
     "string": "\n",
     "start": [
       6,
-      45
+      42
     ],
     "end": [
       7,
       0
     ],
-    "line": "AMOUNT_LENGTH: constant(uint256) = 8  # bytes\n"
+    "line": "AMOUNT_LENGTH: constant(u256) = 8  # bytes\n"
   },
   {
     "typ": "NAME",
@@ -881,7 +881,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       7,
       16
     ],
-    "line": "SIGNATURE_LENGTH: constant(uint256) = 96  # bytes\n"
+    "line": "SIGNATURE_LENGTH: constant(u256) = 96  # bytes\n"
   },
   {
     "typ": "OP",
@@ -894,7 +894,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       7,
       17
     ],
-    "line": "SIGNATURE_LENGTH: constant(uint256) = 96  # bytes\n"
+    "line": "SIGNATURE_LENGTH: constant(u256) = 96  # bytes\n"
   },
   {
     "typ": "NAME",
@@ -907,7 +907,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       7,
       26
     ],
-    "line": "SIGNATURE_LENGTH: constant(uint256) = 96  # bytes\n"
+    "line": "SIGNATURE_LENGTH: constant(u256) = 96  # bytes\n"
   },
   {
     "typ": "OP",
@@ -920,85 +920,85 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       7,
       27
     ],
-    "line": "SIGNATURE_LENGTH: constant(uint256) = 96  # bytes\n"
+    "line": "SIGNATURE_LENGTH: constant(u256) = 96  # bytes\n"
   },
   {
     "typ": "NAME",
-    "string": "uint256",
+    "string": "u256",
     "start": [
       7,
       27
     ],
     "end": [
       7,
-      34
+      31
     ],
-    "line": "SIGNATURE_LENGTH: constant(uint256) = 96  # bytes\n"
+    "line": "SIGNATURE_LENGTH: constant(u256) = 96  # bytes\n"
   },
   {
     "typ": "OP",
     "string": ")",
     "start": [
       7,
-      34
+      31
     ],
     "end": [
       7,
-      35
+      32
     ],
-    "line": "SIGNATURE_LENGTH: constant(uint256) = 96  # bytes\n"
+    "line": "SIGNATURE_LENGTH: constant(u256) = 96  # bytes\n"
   },
   {
     "typ": "OP",
     "string": "=",
     "start": [
       7,
-      36
+      33
     ],
     "end": [
       7,
-      37
+      34
     ],
-    "line": "SIGNATURE_LENGTH: constant(uint256) = 96  # bytes\n"
+    "line": "SIGNATURE_LENGTH: constant(u256) = 96  # bytes\n"
   },
   {
     "typ": "NUMBER",
     "string": "96",
     "start": [
       7,
-      38
+      35
     ],
     "end": [
       7,
-      40
+      37
     ],
-    "line": "SIGNATURE_LENGTH: constant(uint256) = 96  # bytes\n"
+    "line": "SIGNATURE_LENGTH: constant(u256) = 96  # bytes\n"
   },
   {
     "typ": "COMMENT",
     "string": "# bytes",
     "start": [
       7,
-      42
+      39
     ],
     "end": [
       7,
-      49
+      46
     ],
-    "line": "SIGNATURE_LENGTH: constant(uint256) = 96  # bytes\n"
+    "line": "SIGNATURE_LENGTH: constant(u256) = 96  # bytes\n"
   },
   {
     "typ": "NEWLINE",
     "string": "\n",
     "start": [
       7,
-      49
+      46
     ],
     "end": [
       8,
       0
     ],
-    "line": "SIGNATURE_LENGTH: constant(uint256) = 96  # bytes\n"
+    "line": "SIGNATURE_LENGTH: constant(u256) = 96  # bytes\n"
   },
   {
     "typ": "NL",
@@ -1765,7 +1765,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       18,
       13
     ],
-    "line": "deposit_count: uint256\n"
+    "line": "deposit_count: u256\n"
   },
   {
     "typ": "OP",
@@ -1778,33 +1778,33 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       18,
       14
     ],
-    "line": "deposit_count: uint256\n"
+    "line": "deposit_count: u256\n"
   },
   {
     "typ": "NAME",
-    "string": "uint256",
+    "string": "u256",
     "start": [
       18,
       15
     ],
     "end": [
       18,
-      22
+      19
     ],
-    "line": "deposit_count: uint256\n"
+    "line": "deposit_count: u256\n"
   },
   {
     "typ": "NEWLINE",
     "string": "\n",
     "start": [
       18,
-      22
+      19
     ],
     "end": [
       19,
       0
     ],
-    "line": "deposit_count: uint256\n"
+    "line": "deposit_count: u256\n"
   },
   {
     "typ": "NL",
@@ -2740,7 +2740,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       30,
       3
     ],
-    "line": "def to_little_endian_64(value: uint256) -> bytes[8]:\n"
+    "line": "def to_little_endian_64(value: u256) -> bytes[8]:\n"
   },
   {
     "typ": "NAME",
@@ -2753,7 +2753,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       30,
       23
     ],
-    "line": "def to_little_endian_64(value: uint256) -> bytes[8]:\n"
+    "line": "def to_little_endian_64(value: u256) -> bytes[8]:\n"
   },
   {
     "typ": "OP",
@@ -2766,7 +2766,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       30,
       24
     ],
-    "line": "def to_little_endian_64(value: uint256) -> bytes[8]:\n"
+    "line": "def to_little_endian_64(value: u256) -> bytes[8]:\n"
   },
   {
     "typ": "NAME",
@@ -2779,7 +2779,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       30,
       29
     ],
-    "line": "def to_little_endian_64(value: uint256) -> bytes[8]:\n"
+    "line": "def to_little_endian_64(value: u256) -> bytes[8]:\n"
   },
   {
     "typ": "OP",
@@ -2792,150 +2792,150 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       30,
       30
     ],
-    "line": "def to_little_endian_64(value: uint256) -> bytes[8]:\n"
+    "line": "def to_little_endian_64(value: u256) -> bytes[8]:\n"
   },
   {
     "typ": "NAME",
-    "string": "uint256",
+    "string": "u256",
     "start": [
       30,
       31
     ],
     "end": [
       30,
-      38
+      35
     ],
-    "line": "def to_little_endian_64(value: uint256) -> bytes[8]:\n"
+    "line": "def to_little_endian_64(value: u256) -> bytes[8]:\n"
   },
   {
     "typ": "OP",
     "string": ")",
     "start": [
       30,
-      38
+      35
     ],
     "end": [
       30,
-      39
+      36
     ],
-    "line": "def to_little_endian_64(value: uint256) -> bytes[8]:\n"
+    "line": "def to_little_endian_64(value: u256) -> bytes[8]:\n"
   },
   {
     "typ": "OP",
     "string": "->",
     "start": [
       30,
-      40
+      37
     ],
     "end": [
       30,
-      42
+      39
     ],
-    "line": "def to_little_endian_64(value: uint256) -> bytes[8]:\n"
+    "line": "def to_little_endian_64(value: u256) -> bytes[8]:\n"
   },
   {
     "typ": "NAME",
     "string": "bytes",
     "start": [
       30,
-      43
+      40
     ],
     "end": [
       30,
-      48
+      45
     ],
-    "line": "def to_little_endian_64(value: uint256) -> bytes[8]:\n"
+    "line": "def to_little_endian_64(value: u256) -> bytes[8]:\n"
   },
   {
     "typ": "OP",
     "string": "[",
     "start": [
       30,
-      48
+      45
     ],
     "end": [
       30,
-      49
+      46
     ],
-    "line": "def to_little_endian_64(value: uint256) -> bytes[8]:\n"
+    "line": "def to_little_endian_64(value: u256) -> bytes[8]:\n"
   },
   {
     "typ": "NUMBER",
     "string": "8",
     "start": [
       30,
-      49
+      46
     ],
     "end": [
       30,
-      50
+      47
     ],
-    "line": "def to_little_endian_64(value: uint256) -> bytes[8]:\n"
+    "line": "def to_little_endian_64(value: u256) -> bytes[8]:\n"
   },
   {
     "typ": "OP",
     "string": "]",
     "start": [
       30,
-      50
+      47
     ],
     "end": [
       30,
-      51
+      48
     ],
-    "line": "def to_little_endian_64(value: uint256) -> bytes[8]:\n"
+    "line": "def to_little_endian_64(value: u256) -> bytes[8]:\n"
   },
   {
     "typ": "OP",
     "string": ":",
     "start": [
       30,
-      51
+      48
     ],
     "end": [
       30,
-      52
+      49
     ],
-    "line": "def to_little_endian_64(value: uint256) -> bytes[8]:\n"
+    "line": "def to_little_endian_64(value: u256) -> bytes[8]:\n"
   },
   {
     "typ": "NEWLINE",
     "string": "\n",
     "start": [
       30,
-      52
+      49
     ],
     "end": [
       31,
       0
     ],
-    "line": "def to_little_endian_64(value: uint256) -> bytes[8]:\n"
+    "line": "def to_little_endian_64(value: u256) -> bytes[8]:\n"
   },
   {
     "typ": "COMMENT",
-    "string": "# Reversing bytes using bitwise uint256 manipulations",
+    "string": "# Reversing bytes using bitwise u256 manipulations",
     "start": [
       31,
       4
     ],
     "end": [
       31,
-      57
+      54
     ],
-    "line": "    # Reversing bytes using bitwise uint256 manipulations\n"
+    "line": "    # Reversing bytes using bitwise u256 manipulations\n"
   },
   {
     "typ": "NL",
     "string": "\n",
     "start": [
       31,
-      57
+      54
     ],
     "end": [
       32,
       0
     ],
-    "line": "    # Reversing bytes using bitwise uint256 manipulations\n"
+    "line": "    # Reversing bytes using bitwise u256 manipulations\n"
   },
   {
     "typ": "COMMENT",
@@ -3000,7 +3000,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       34,
       4
     ],
-    "line": "    y: uint256 = 0\n"
+    "line": "    y: u256 = 0\n"
   },
   {
     "typ": "NAME",
@@ -3013,7 +3013,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       34,
       5
     ],
-    "line": "    y: uint256 = 0\n"
+    "line": "    y: u256 = 0\n"
   },
   {
     "typ": "OP",
@@ -3026,59 +3026,59 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       34,
       6
     ],
-    "line": "    y: uint256 = 0\n"
+    "line": "    y: u256 = 0\n"
   },
   {
     "typ": "NAME",
-    "string": "uint256",
+    "string": "u256",
     "start": [
       34,
       7
     ],
     "end": [
       34,
-      14
+      11
     ],
-    "line": "    y: uint256 = 0\n"
+    "line": "    y: u256 = 0\n"
   },
   {
     "typ": "OP",
     "string": "=",
     "start": [
       34,
-      15
+      12
     ],
     "end": [
       34,
-      16
+      13
     ],
-    "line": "    y: uint256 = 0\n"
+    "line": "    y: u256 = 0\n"
   },
   {
     "typ": "NUMBER",
     "string": "0",
     "start": [
       34,
-      17
+      14
     ],
     "end": [
       34,
-      18
+      15
     ],
-    "line": "    y: uint256 = 0\n"
+    "line": "    y: u256 = 0\n"
   },
   {
     "typ": "NEWLINE",
     "string": "\n",
     "start": [
       34,
-      18
+      15
     ],
     "end": [
       35,
       0
     ],
-    "line": "    y: uint256 = 0\n"
+    "line": "    y: u256 = 0\n"
   },
   {
     "typ": "NAME",
@@ -3091,7 +3091,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       35,
       5
     ],
-    "line": "    x: uint256 = value\n"
+    "line": "    x: u256 = value\n"
   },
   {
     "typ": "OP",
@@ -3104,59 +3104,59 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       35,
       6
     ],
-    "line": "    x: uint256 = value\n"
+    "line": "    x: u256 = value\n"
   },
   {
     "typ": "NAME",
-    "string": "uint256",
+    "string": "u256",
     "start": [
       35,
       7
     ],
     "end": [
       35,
-      14
+      11
     ],
-    "line": "    x: uint256 = value\n"
+    "line": "    x: u256 = value\n"
   },
   {
     "typ": "OP",
     "string": "=",
     "start": [
       35,
-      15
+      12
     ],
     "end": [
       35,
-      16
+      13
     ],
-    "line": "    x: uint256 = value\n"
+    "line": "    x: u256 = value\n"
   },
   {
     "typ": "NAME",
     "string": "value",
     "start": [
       35,
-      17
+      14
     ],
     "end": [
       35,
-      22
+      19
     ],
-    "line": "    x: uint256 = value\n"
+    "line": "    x: u256 = value\n"
   },
   {
     "typ": "NEWLINE",
     "string": "\n",
     "start": [
       35,
-      22
+      19
     ],
     "end": [
       36,
       0
     ],
-    "line": "    x: uint256 = value\n"
+    "line": "    x: u256 = value\n"
   },
   {
     "typ": "NAME",
@@ -4339,7 +4339,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       48,
       8
     ],
-    "line": "    size: uint256 = self.deposit_count\n"
+    "line": "    size: u256 = self.deposit_count\n"
   },
   {
     "typ": "OP",
@@ -4352,85 +4352,85 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       48,
       9
     ],
-    "line": "    size: uint256 = self.deposit_count\n"
+    "line": "    size: u256 = self.deposit_count\n"
   },
   {
     "typ": "NAME",
-    "string": "uint256",
+    "string": "u256",
     "start": [
       48,
       10
     ],
     "end": [
       48,
-      17
+      14
     ],
-    "line": "    size: uint256 = self.deposit_count\n"
+    "line": "    size: u256 = self.deposit_count\n"
   },
   {
     "typ": "OP",
     "string": "=",
     "start": [
       48,
-      18
+      15
     ],
     "end": [
       48,
-      19
+      16
     ],
-    "line": "    size: uint256 = self.deposit_count\n"
+    "line": "    size: u256 = self.deposit_count\n"
   },
   {
     "typ": "NAME",
     "string": "self",
     "start": [
       48,
-      20
+      17
     ],
     "end": [
       48,
-      24
+      21
     ],
-    "line": "    size: uint256 = self.deposit_count\n"
+    "line": "    size: u256 = self.deposit_count\n"
   },
   {
     "typ": "OP",
     "string": ".",
     "start": [
       48,
-      24
+      21
     ],
     "end": [
       48,
-      25
+      22
     ],
-    "line": "    size: uint256 = self.deposit_count\n"
+    "line": "    size: u256 = self.deposit_count\n"
   },
   {
     "typ": "NAME",
     "string": "deposit_count",
     "start": [
       48,
-      25
+      22
     ],
     "end": [
       48,
-      38
+      35
     ],
-    "line": "    size: uint256 = self.deposit_count\n"
+    "line": "    size: u256 = self.deposit_count\n"
   },
   {
     "typ": "NEWLINE",
     "string": "\n",
     "start": [
       48,
-      38
+      35
     ],
     "end": [
       49,
       0
     ],
-    "line": "    size: uint256 = self.deposit_count\n"
+    "line": "    size: u256 = self.deposit_count\n"
   },
   {
     "typ": "NAME",
@@ -6783,7 +6783,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       73,
       18
     ],
-    "line": "    deposit_amount: uint256 = msg.value / as_wei_value(1, \"gwei\")\n"
+    "line": "    deposit_amount: u256 = msg.value / as_wei_value(1, \"gwei\")\n"
   },
   {
     "typ": "OP",
@@ -6796,176 +6796,176 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       73,
       19
     ],
-    "line": "    deposit_amount: uint256 = msg.value / as_wei_value(1, \"gwei\")\n"
+    "line": "    deposit_amount: u256 = msg.value / as_wei_value(1, \"gwei\")\n"
   },
   {
     "typ": "NAME",
-    "string": "uint256",
+    "string": "u256",
     "start": [
       73,
       20
     ],
     "end": [
       73,
-      27
+      24
     ],
-    "line": "    deposit_amount: uint256 = msg.value / as_wei_value(1, \"gwei\")\n"
+    "line": "    deposit_amount: u256 = msg.value / as_wei_value(1, \"gwei\")\n"
   },
   {
     "typ": "OP",
     "string": "=",
     "start": [
       73,
-      28
+      25
     ],
     "end": [
       73,
-      29
+      26
     ],
-    "line": "    deposit_amount: uint256 = msg.value / as_wei_value(1, \"gwei\")\n"
+    "line": "    deposit_amount: u256 = msg.value / as_wei_value(1, \"gwei\")\n"
   },
   {
     "typ": "NAME",
     "string": "msg",
     "start": [
       73,
-      30
+      27
     ],
     "end": [
       73,
-      33
+      30
     ],
-    "line": "    deposit_amount: uint256 = msg.value / as_wei_value(1, \"gwei\")\n"
+    "line": "    deposit_amount: u256 = msg.value / as_wei_value(1, \"gwei\")\n"
   },
   {
     "typ": "OP",
     "string": ".",
     "start": [
       73,
-      33
+      30
     ],
     "end": [
       73,
-      34
+      31
     ],
-    "line": "    deposit_amount: uint256 = msg.value / as_wei_value(1, \"gwei\")\n"
+    "line": "    deposit_amount: u256 = msg.value / as_wei_value(1, \"gwei\")\n"
   },
   {
     "typ": "NAME",
     "string": "value",
     "start": [
       73,
-      34
+      31
     ],
     "end": [
       73,
-      39
+      36
     ],
-    "line": "    deposit_amount: uint256 = msg.value / as_wei_value(1, \"gwei\")\n"
+    "line": "    deposit_amount: u256 = msg.value / as_wei_value(1, \"gwei\")\n"
   },
   {
     "typ": "OP",
     "string": "/",
     "start": [
       73,
-      40
+      37
     ],
     "end": [
       73,
-      41
+      38
     ],
-    "line": "    deposit_amount: uint256 = msg.value / as_wei_value(1, \"gwei\")\n"
+    "line": "    deposit_amount: u256 = msg.value / as_wei_value(1, \"gwei\")\n"
   },
   {
     "typ": "NAME",
     "string": "as_wei_value",
     "start": [
       73,
-      42
+      39
     ],
     "end": [
       73,
-      54
+      51
     ],
-    "line": "    deposit_amount: uint256 = msg.value / as_wei_value(1, \"gwei\")\n"
+    "line": "    deposit_amount: u256 = msg.value / as_wei_value(1, \"gwei\")\n"
   },
   {
     "typ": "OP",
     "string": "(",
     "start": [
       73,
-      54
+      51
     ],
     "end": [
       73,
-      55
+      52
     ],
-    "line": "    deposit_amount: uint256 = msg.value / as_wei_value(1, \"gwei\")\n"
+    "line": "    deposit_amount: u256 = msg.value / as_wei_value(1, \"gwei\")\n"
   },
   {
     "typ": "NUMBER",
     "string": "1",
     "start": [
       73,
-      55
+      52
     ],
     "end": [
       73,
-      56
+      53
     ],
-    "line": "    deposit_amount: uint256 = msg.value / as_wei_value(1, \"gwei\")\n"
+    "line": "    deposit_amount: u256 = msg.value / as_wei_value(1, \"gwei\")\n"
   },
   {
     "typ": "OP",
     "string": ",",
     "start": [
       73,
-      56
+      53
     ],
     "end": [
       73,
-      57
+      54
     ],
-    "line": "    deposit_amount: uint256 = msg.value / as_wei_value(1, \"gwei\")\n"
+    "line": "    deposit_amount: u256 = msg.value / as_wei_value(1, \"gwei\")\n"
   },
   {
     "typ": "STRING",
     "string": "\"gwei\"",
     "start": [
       73,
-      58
+      55
     ],
     "end": [
       73,
-      64
+      61
     ],
-    "line": "    deposit_amount: uint256 = msg.value / as_wei_value(1, \"gwei\")\n"
+    "line": "    deposit_amount: u256 = msg.value / as_wei_value(1, \"gwei\")\n"
   },
   {
     "typ": "OP",
     "string": ")",
     "start": [
       73,
-      64
+      61
     ],
     "end": [
       73,
-      65
+      62
     ],
-    "line": "    deposit_amount: uint256 = msg.value / as_wei_value(1, \"gwei\")\n"
+    "line": "    deposit_amount: u256 = msg.value / as_wei_value(1, \"gwei\")\n"
   },
   {
     "typ": "NEWLINE",
     "string": "\n",
     "start": [
       73,
-      65
+      62
     ],
     "end": [
       74,
       0
     ],
-    "line": "    deposit_amount: uint256 = msg.value / as_wei_value(1, \"gwei\")\n"
+    "line": "    deposit_amount: u256 = msg.value / as_wei_value(1, \"gwei\")\n"
   },
   {
     "typ": "NAME",
@@ -9773,7 +9773,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       97,
       8
     ],
-    "line": "    size: uint256 = self.deposit_count\n"
+    "line": "    size: u256 = self.deposit_count\n"
   },
   {
     "typ": "OP",
@@ -9786,85 +9786,85 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
       97,
       9
     ],
-    "line": "    size: uint256 = self.deposit_count\n"
+    "line": "    size: u256 = self.deposit_count\n"
   },
   {
     "typ": "NAME",
-    "string": "uint256",
+    "string": "u256",
     "start": [
       97,
       10
     ],
     "end": [
       97,
-      17
+      14
     ],
-    "line": "    size: uint256 = self.deposit_count\n"
+    "line": "    size: u256 = self.deposit_count\n"
   },
   {
     "typ": "OP",
     "string": "=",
     "start": [
       97,
-      18
+      15
     ],
     "end": [
       97,
-      19
+      16
     ],
-    "line": "    size: uint256 = self.deposit_count\n"
+    "line": "    size: u256 = self.deposit_count\n"
   },
   {
     "typ": "NAME",
     "string": "self",
     "start": [
       97,
-      20
+      17
     ],
     "end": [
       97,
-      24
+      21
     ],
-    "line": "    size: uint256 = self.deposit_count\n"
+    "line": "    size: u256 = self.deposit_count\n"
   },
   {
     "typ": "OP",
     "string": ".",
     "start": [
       97,
-      24
+      21
     ],
     "end": [
       97,
-      25
+      22
     ],
-    "line": "    size: uint256 = self.deposit_count\n"
+    "line": "    size: u256 = self.deposit_count\n"
   },
   {
     "typ": "NAME",
     "string": "deposit_count",
     "start": [
       97,
-      25
+      22
     ],
     "end": [
       97,
-      38
+      35
     ],
-    "line": "    size: uint256 = self.deposit_count\n"
+    "line": "    size: u256 = self.deposit_count\n"
   },
   {
     "typ": "NEWLINE",
     "string": "\n",
     "start": [
       97,
-      38
+      35
     ],
     "end": [
       98,
       0
     ],
-    "line": "    size: uint256 = self.deposit_count\n"
+    "line": "    size: u256 = self.deposit_count\n"
   },
   {
     "typ": "NAME",

@@ -155,7 +155,7 @@ fn type_desc<'a>(
     }
 
     match typ {
-        vyp::TypeDesc::Base { base: "uint256" } => Ok(VarType::Uint256),
+        vyp::TypeDesc::Base { base: "u256" } => Ok(VarType::Uint256),
         vyp::TypeDesc::Base { base: "address" } => Ok(VarType::Address),
         vyp::TypeDesc::Base { base } => {
             Err(CompileError::str(format!("unrecognized type: {}", base)))
@@ -184,10 +184,10 @@ mod tests {
             "\
             \ncontract Foo:\
             \n  event Food:\
-            \n    idx barge: uint256
-            \n  def baz(x: uint256) -> uint256:\
+            \n    idx barge: u256
+            \n  def baz(x: u256) -> u256:\
             \n    pass\
-            \n  pub def bar(x: uint256) -> uint256[10]:\
+            \n  pub def bar(x: u256) -> u256[10]:\
             \n    pass",
         )
         .expect("unable to parse contract");

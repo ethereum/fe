@@ -277,7 +277,7 @@ pub fn type_desc(
     typ: &vyp::TypeDesc,
 ) -> Result<Type, CompileError> {
     match typ {
-        vyp::TypeDesc::Base { base: "uint256" } => Ok(Type::Base(Base::U256)),
+        vyp::TypeDesc::Base { base: "u256" } => Ok(Type::Base(Base::U256)),
         vyp::TypeDesc::Base { base: "bytes" } => Ok(Type::Base(Base::Byte)),
         vyp::TypeDesc::Base { base: "address" } => Ok(Type::Base(Base::Address)),
         vyp::TypeDesc::Base { base } => {

@@ -109,7 +109,7 @@ pub struct Event {
 pub struct EventField {
     /// The event field's name.
     pub name: String,
-    /// The type of an event (e.g. uint256, address, bytes100,...)
+    /// The type of an event (e.g. u256, address, bytes100,...)
     #[serde(rename = "type")]
     pub typ: VarType,
     /// True if the field is part of the log’s topics, false if it is one of the

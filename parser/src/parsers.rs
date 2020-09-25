@@ -613,7 +613,7 @@ pub fn type_def(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
     ))
 }
 
-/// Parse a type description e.g. "uint256" or "map<address, bool>".
+/// Parse a type description e.g. "u256" or "map<address, bool>".
 pub fn type_desc(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
     alt((map_type, base_type))(input)
 }
@@ -626,7 +626,7 @@ pub fn map_type(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
 /// Parse a map type ending with a right-shift token.
 ///
 /// Example:
-/// map<address, map<uint256, bool>>
+/// map<address, map<u256, bool>>
 pub fn map_type_double(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
     let (input, map_kw_1) = name("map")(input)?;
     let (input, _) = op("<")(input)?;
@@ -664,7 +664,7 @@ pub fn map_type_double(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
 /// Parse a map type ending with a greater-than token.
 ///
 /// Example:
-/// map< address, map<uint256, map<bool, int128>> >
+/// map< address, map<u256, map<bool, int128>> >
 pub fn map_type_single(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
     let (input, map_kw) = name("map")(input)?;
     let (input, _) = op("<")(input)?;
