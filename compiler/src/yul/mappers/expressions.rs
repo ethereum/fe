@@ -11,7 +11,7 @@ use crate::yul::namespace::types::{
     Map,
     Type,
 };
-use fe_parser::ast as vyp;
+use fe_parser::ast as fe;
 use fe_parser::span::{
     Span,
     Spanned,
@@ -41,87 +41,87 @@ pub struct ExtExpression {
 /// Builds a Yul expression from a Fe expression.
 pub fn expr(
     scope: Shared<FunctionScope>,
-    exp: &Spanned<vyp::Expr>,
+    exp: &Spanned<fe::Expr>,
 ) -> Result<ExtExpression, CompileError> {
     match &exp.node {
-        vyp::Expr::Name(_) => expr_name(scope, exp),
-        vyp::Expr::Num(_) => expr_num(exp),
-        vyp::Expr::Subscript { .. } => expr_subscript(scope, exp),
-        vyp::Expr::Attribute { .. } => expr_attribute(scope, exp),
-        vyp::Expr::Ternary { .. } => unimplemented!(),
-        vyp::Expr::BoolOperation { .. } => unimplemented!(),
-        vyp::Expr::BinOperation { .. } => expr_bin_operation(scope, exp),
-        vyp::Expr::UnaryOperation { .. } => unimplemented!(),
-        vyp::Expr::CompOperation { .. } => unimplemented!(),
-        vyp::Expr::Call { .. } => unimplemented!(),
-        vyp::Expr::List { .. } => unimplemented!(),
-        vyp::Expr::ListComp { .. } => unimplemented!(),
-        vyp::Expr::Tuple { .. } => unimplemented!(),
-        vyp::Expr::Str(_) => unimplemented!(),
-        vyp::Expr::Ellipsis => unimplemented!(),
+        fe::Expr::Name(_) => expr_name(scope, exp),
+        fe::Expr::Num(_) => expr_num(exp),
+        fe::Expr::Subscript { .. } => expr_subscript(scope, exp),
+        fe::Expr::Attribute { .. } => expr_attribute(scope, exp),
+        fe::Expr::Ternary { .. } => unimplemented!(),
+        fe::Expr::BoolOperation { .. } => unimplemented!(),
+        fe::Expr::BinOperation { .. } => expr_bin_operation(scope, exp),
+        fe::Expr::UnaryOperation { .. } => unimplemented!(),
+        fe::Expr::CompOperation { .. } => unimplemented!(),
+        fe::Expr::Call { .. } => unimplemented!(),
+        fe::Expr::List { .. } => unimplemented!(),
+        fe::Expr::ListComp { .. } => unimplemented!(),
+        fe::Expr::Tuple { .. } => unimplemented!(),
+        fe::Expr::Str(_) => unimplemented!(),
+        fe::Expr::Ellipsis => unimplemented!(),
     }
 }
 
 pub fn expr_bin_operation<'a>(
     scope: Shared<FunctionScope>,
-    exp: &Spanned<vyp::Expr<'a>>,
+    exp: &Spanned<fe::Expr<'a>>,
 ) -> Result<ExtExpression, CompileError> {
-    if let vyp::Expr::BinOperation { left, op, right } = &exp.node {
+    if let fe::Expr::BinOperation { left, op, right } = &exp.node {
         let yul_left = expr(Rc::clone(&scope), left)?.expression;
         let yul_right = expr(Rc::clone(&scope), right)?.expression;
 
         return match op.node {
-            vyp::BinOperator::Add => Ok(ExtExpression {
+            fe::BinOperator::Add => Ok(ExtExpression {
                 expression: expression! { add([yul_left], [yul_right]) },
                 location: Location::Value,
                 typ: Type::Base(Base::U256),
             }),
-            vyp::BinOperator::Sub => Ok(ExtExpression {
+            fe::BinOperator::Sub => Ok(ExtExpression {
                 expression: expression! { sub([yul_left], [yul_right]) },
                 location: Location::Value,
                 typ: Type::Base(Base::U256),
             }),
-            vyp::BinOperator::Mult => Ok(ExtExpression {
+            fe::BinOperator::Mult => Ok(ExtExpression {
                 expression: expression! { mul([yul_left], [yul_right]) },
                 location: Location::Value,
                 typ: Type::Base(Base::U256),
             }),
-            vyp::BinOperator::Div => Ok(ExtExpression {
+            fe::BinOperator::Div => Ok(ExtExpression {
                 expression: expression! { div([yul_left], [yul_right]) },
                 location: Location::Value,
                 typ: Type::Base(Base::U256),
             }),
-            vyp::BinOperator::BitAnd => Ok(ExtExpression {
+            fe::BinOperator::BitAnd => Ok(ExtExpression {
                 expression: expression! { and([yul_left], [yul_right]) },
                 location: Location::Value,
                 typ: Type::Base(Base::U256),
             }),
-            vyp::BinOperator::BitOr => Ok(ExtExpression {
+            fe::BinOperator::BitOr => Ok(ExtExpression {
                 expression: expression! { or([yul_left], [yul_right]) },
                 location: Location::Value,
                 typ: Type::Base(Base::U256),
             }),
-            vyp::BinOperator::BitXor => Ok(ExtExpression {
+            fe::BinOperator::BitXor => Ok(ExtExpression {
                 expression: expression! { xor([yul_left], [yul_right]) },
                 location: Location::Value,
                 typ: Type::Base(Base::U256),
             }),
-            vyp::BinOperator::LShift => Ok(ExtExpression {
+            fe::BinOperator::LShift => Ok(ExtExpression {
                 expression: expression! { shl([yul_right], [yul_left]) },
                 location: Location::Value,
                 typ: Type::Base(Base::U256),
             }),
-            vyp::BinOperator::RShift => Ok(ExtExpression {
+            fe::BinOperator::RShift => Ok(ExtExpression {
                 expression: expression! { shr([yul_right], [yul_left]) },
                 location: Location::Value,
                 typ: Type::Base(Base::U256),
             }),
-            vyp::BinOperator::Mod => Ok(ExtExpression {
+            fe::BinOperator::Mod => Ok(ExtExpression {
                 expression: expression! { mod([yul_left], [yul_right]) },
                 location: Location::Value,
                 typ: Type::Base(Base::U256),
             }),
-            vyp::BinOperator::Pow => Ok(ExtExpression {
+            fe::BinOperator::Pow => Ok(ExtExpression {
                 expression: expression! { exp([yul_left], [yul_right]) },
                 location: Location::Value,
                 typ: Type::Base(Base::U256),
@@ -134,8 +134,8 @@ pub fn expr_bin_operation<'a>(
 }
 
 /// Retrieves the &str value of a name expression.
-pub fn expr_name_str<'a>(exp: &Spanned<vyp::Expr<'a>>) -> Result<&'a str, CompileError> {
-    if let vyp::Expr::Name(name) = exp.node {
+pub fn expr_name_str<'a>(exp: &Spanned<fe::Expr<'a>>) -> Result<&'a str, CompileError> {
+    if let fe::Expr::Name(name) = exp.node {
         return Ok(name);
     }
 
@@ -143,14 +143,14 @@ pub fn expr_name_str<'a>(exp: &Spanned<vyp::Expr<'a>>) -> Result<&'a str, Compil
 }
 
 /// Retrieves the &str value of a name expression and converts it to a String.
-pub fn expr_name_string(exp: &Spanned<vyp::Expr>) -> Result<String, CompileError> {
+pub fn expr_name_string(exp: &Spanned<fe::Expr>) -> Result<String, CompileError> {
     expr_name_str(exp).map(|name| name.to_string())
 }
 
 /// Builds a Yul expression from the first slice, if it is an index.
 pub fn slices_index(
     scope: Shared<FunctionScope>,
-    slices: &Spanned<Vec<Spanned<vyp::Slice>>>,
+    slices: &Spanned<Vec<Spanned<fe::Slice>>>,
 ) -> Result<ExtExpression, CompileError> {
     if let Some(first_slice) = slices.node.first() {
         return slice_index(scope, first_slice);
@@ -161,7 +161,7 @@ pub fn slices_index(
 
 /// Creates a new spanned expression. Useful in cases where an `Expr` is nested
 /// within the node of a `Spanned` object.
-pub fn spanned_expression<'a>(span: &Span, exp: &vyp::Expr<'a>) -> Spanned<vyp::Expr<'a>> {
+pub fn spanned_expression<'a>(span: &Span, exp: &fe::Expr<'a>) -> Spanned<fe::Expr<'a>> {
     Spanned {
         node: (*exp).clone(),
         span: (*span).to_owned(),
@@ -170,9 +170,9 @@ pub fn spanned_expression<'a>(span: &Span, exp: &vyp::Expr<'a>) -> Spanned<vyp::
 
 pub fn slice_index(
     scope: Shared<FunctionScope>,
-    slice: &Spanned<vyp::Slice>,
+    slice: &Spanned<fe::Slice>,
 ) -> Result<ExtExpression, CompileError> {
-    if let vyp::Slice::Index(index) = &slice.node {
+    if let fe::Slice::Index(index) = &slice.node {
         let spanned = spanned_expression(&slice.span, index.as_ref());
         return expr(scope, &spanned);
     }
@@ -182,9 +182,9 @@ pub fn slice_index(
 
 fn expr_name(
     scope: Shared<FunctionScope>,
-    exp: &Spanned<vyp::Expr>,
+    exp: &Spanned<fe::Expr>,
 ) -> Result<ExtExpression, CompileError> {
-    if let vyp::Expr::Name(name) = exp.node {
+    if let fe::Expr::Name(name) = exp.node {
         let identifier = identifier_expression! {(name)};
 
         return match scope.borrow().def(name.to_string()) {
@@ -205,8 +205,8 @@ fn expr_name(
     unreachable!()
 }
 
-fn expr_num(exp: &Spanned<vyp::Expr>) -> Result<ExtExpression, CompileError> {
-    if let vyp::Expr::Num(num) = &exp.node {
+fn expr_num(exp: &Spanned<fe::Expr>) -> Result<ExtExpression, CompileError> {
+    if let fe::Expr::Num(num) = &exp.node {
         return Ok(ExtExpression {
             expression: literal_expression! {(num)},
             location: Location::Value,
@@ -219,9 +219,9 @@ fn expr_num(exp: &Spanned<vyp::Expr>) -> Result<ExtExpression, CompileError> {
 
 fn expr_subscript(
     scope: Shared<FunctionScope>,
-    exp: &Spanned<vyp::Expr>,
+    exp: &Spanned<fe::Expr>,
 ) -> Result<ExtExpression, CompileError> {
-    if let vyp::Expr::Subscript { value, slices } = &exp.node {
+    if let fe::Expr::Subscript { value, slices } = &exp.node {
         let value = expr(Rc::clone(&scope), value)?;
         let index = slices_index(scope, slices)?;
 
@@ -279,9 +279,9 @@ fn indexed_memory_array(
 
 fn expr_attribute(
     scope: Shared<FunctionScope>,
-    exp: &Spanned<vyp::Expr>,
+    exp: &Spanned<fe::Expr>,
 ) -> Result<ExtExpression, CompileError> {
-    if let vyp::Expr::Attribute { value, attr } = &exp.node {
+    if let fe::Expr::Attribute { value, attr } = &exp.node {
         return match expr_name_str(value)? {
             "msg" => expr_attribute_msg(attr),
             "self" => expr_attribute_self(scope, attr),

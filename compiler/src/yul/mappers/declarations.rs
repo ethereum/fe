@@ -13,7 +13,7 @@ use crate::yul::namespace::types::{
     Base,
     Type,
 };
-use fe_parser::ast as vyp;
+use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use std::rc::Rc;
 use yultsur::*;
@@ -21,9 +21,9 @@ use yultsur::*;
 /// Builds a Yul statement from a Fe variable declaration
 pub fn var_decl(
     scope: Shared<FunctionScope>,
-    stmt: &Spanned<vyp::FuncStmt>,
+    stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<yul::Statement, CompileError> {
-    if let vyp::FuncStmt::VarDecl { target, typ, value } = &stmt.node {
+    if let fe::FuncStmt::VarDecl { target, typ, value } = &stmt.node {
         return match types::type_desc(Scope::Function(Rc::clone(&scope)), typ)? {
             Type::Base(base) => var_decl_base(scope, target, value, base),
             Type::Array(array) => var_decl_array(scope, target, value, array),
@@ -36,11 +36,11 @@ pub fn var_decl(
 
 fn var_decl_base(
     scope: Shared<FunctionScope>,
-    target: &Spanned<vyp::Expr>,
-    value: &Option<Spanned<vyp::Expr>>,
+    target: &Spanned<fe::Expr>,
+    value: &Option<Spanned<fe::Expr>>,
     base: Base,
 ) -> Result<yul::Statement, CompileError> {
-    if let vyp::Expr::Name(name) = target.node {
+    if let fe::Expr::Name(name) = target.node {
         scope.borrow_mut().add_base(name.to_string(), base);
 
         let identifier = identifier! {(name)};
@@ -58,11 +58,11 @@ fn var_decl_base(
 
 fn var_decl_array(
     scope: Shared<FunctionScope>,
-    target: &Spanned<vyp::Expr>,
-    value: &Option<Spanned<vyp::Expr>>,
+    target: &Spanned<fe::Expr>,
+    value: &Option<Spanned<fe::Expr>>,
     array: Array,
 ) -> Result<yul::Statement, CompileError> {
-    if let vyp::Expr::Name(name) = target.node {
+    if let fe::Expr::Name(name) = target.node {
         let identifier = identifier! {(name)};
         let size = literal_expression! {(array.size())};
 
