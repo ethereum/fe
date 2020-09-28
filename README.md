@@ -124,6 +124,8 @@ We wish to provide a complete language specification with the following parts:
 * Sections of informal prose to aid in understanding of the grammar, semantics,
   their relationship, and the context in which they operate.
 
+A work in progress draft of the specification can be found [here](https://github.com/ethereum/fe/blob/master/spec/index.md).
+
 A secondary goal to providing a specification document could be to also provide
 an executable specification via tools such as the [K
 framework](http://www.kframework.org/index.php/Main_Page).  Providing such an
