@@ -52,7 +52,7 @@ pub fn expr(
         fe::Expr::BoolOperation { .. } => unimplemented!(),
         fe::Expr::BinOperation { .. } => expr_bin_operation(scope, exp),
         fe::Expr::UnaryOperation { .. } => unimplemented!(),
-        fe::Expr::CompOperation { .. } => unimplemented!(),
+        fe::Expr::CompOperation { .. } => expr_comp_operation(scope, exp),
         fe::Expr::Call { .. } => unimplemented!(),
         fe::Expr::List { .. } => unimplemented!(),
         fe::Expr::ListComp { .. } => unimplemented!(),
@@ -125,6 +125,52 @@ pub fn expr_bin_operation<'a>(
                 expression: expression! { exp([yul_left], [yul_right]) },
                 location: Location::Value,
                 typ: Type::Base(Base::U256),
+            }),
+            _ => unimplemented!(),
+        };
+    }
+
+    unreachable!()
+}
+
+pub fn expr_comp_operation(
+    scope: Shared<FunctionScope>,
+    exp: &Spanned<fe::Expr>,
+) -> Result<ExtExpression, CompileError> {
+    if let fe::Expr::CompOperation { left, op, right } = &exp.node {
+        let yul_left = expr(Rc::clone(&scope), left)?.expression;
+        let yul_right = expr(Rc::clone(&scope), right)?.expression;
+
+        return match op.node {
+            fe::CompOperator::Eq => Ok(ExtExpression {
+                expression: expression! { eq([yul_left], [yul_right]) },
+                location: Location::Value,
+                typ: Type::Base(Base::Bool),
+            }),
+            fe::CompOperator::NotEq => Ok(ExtExpression {
+                expression: expression! { iszero([expression! { eq([yul_left], [yul_right]) }]) },
+                location: Location::Value,
+                typ: Type::Base(Base::Bool),
+            }),
+            fe::CompOperator::Lt => Ok(ExtExpression {
+                expression: expression! { lt([yul_left], [yul_right]) },
+                location: Location::Value,
+                typ: Type::Base(Base::Bool),
+            }),
+            fe::CompOperator::LtE => Ok(ExtExpression {
+                expression: expression! { iszero([expression! {gt([yul_left], [yul_right])}]) },
+                location: Location::Value,
+                typ: Type::Base(Base::Bool),
+            }),
+            fe::CompOperator::Gt => Ok(ExtExpression {
+                expression: expression! { gt([yul_left], [yul_right]) },
+                location: Location::Value,
+                typ: Type::Base(Base::Bool),
+            }),
+            fe::CompOperator::GtE => Ok(ExtExpression {
+                expression: expression! { iszero([expression! {lt([yul_left], [yul_right])}]) },
+                location: Location::Value,
+                typ: Type::Base(Base::Bool),
             }),
             _ => unimplemented!(),
         };
@@ -491,6 +537,22 @@ mod tests {
         case("1 >> 2", "shr(2, 1)")
     )]
     fn arithmetic_expression(expression: &str, expected_yul: &str) {
+        let result = map(scope(), expression);
+
+        assert_eq!(result.expression.to_string(), expected_yul);
+    }
+
+    #[rstest(
+        expression,
+        expected_yul,
+        case("1 == 2 ", "eq(1, 2)"),
+        case("1 != 2 ", "iszero(eq(1, 2))"),
+        case("1 < 2 ", "lt(1, 2)"),
+        case("1 <= 2 ", "iszero(gt(1, 2))"),
+        case("1 > 2 ", "gt(1, 2)"),
+        case("1 >= 2 ", "iszero(lt(1, 2))")
+    )]
+    fn comparision_expression(expression: &str, expected_yul: &str) {
         let result = map(scope(), expression);
 
         assert_eq!(result.expression.to_string(), expected_yul);

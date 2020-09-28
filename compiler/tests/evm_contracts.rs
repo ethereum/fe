@@ -156,6 +156,10 @@ fn address_token(s: &str) -> ethabi::Token {
     ethabi::Token::Address(H160::from_str(s).expect("Couldn't create address from string"))
 }
 
+fn bool_token(val: bool) -> ethabi::Token {
+    ethabi::Token::Bool(val)
+}
+
 fn bytes_token(s: &str) -> ethabi::Token {
     ethabi::Token::FixedBytes(ethabi::FixedBytes::from(s))
 }
@@ -190,28 +194,44 @@ fn return_u256() {
 }
 
 #[rstest(fixture_file, input, expected,
-    case("return_addition_u256.fe", vec![42, 42], Some(84)),
-    case("return_subtraction_u256.fe", vec![42, 42], Some(0)),
-    case("return_multiplication_u256.fe", vec![42, 42], Some(1764)),
-    case("return_division_u256.fe", vec![42, 42], Some(1)),
-    case("return_pow_u256.fe", vec![2, 0], Some(1)),
-    case("return_pow_u256.fe", vec![2, 4], Some(16)),
-    case("return_mod_u256.fe", vec![5, 0], Some(0)),
-    case("return_mod_u256.fe", vec![5, 2], Some(1)),
-    case("return_mod_u256.fe", vec![5, 3], Some(2)),
-    case("return_mod_u256.fe", vec![5, 5], Some(0)),
-    case("return_bitwiseand_u256.fe", vec![12, 25], Some(8)),
-    case("return_bitwiseor_u256.fe", vec![12, 25], Some(29)),
-    case("return_bitwisexor_u256.fe", vec![12, 25], Some(21)),
-    case("return_bitwiseshl_u256.fe", vec![212, 0], Some(212)),
-    case("return_bitwiseshl_u256.fe", vec![212, 1], Some(424)),
-    case("return_bitwiseshr_u256.fe", vec![212, 0], Some(212)),
-    case("return_bitwiseshr_u256.fe", vec![212, 1], Some(106)),
+    case("return_addition_u256.fe", vec![42, 42], Some(u256_token(84))),
+    case("return_subtraction_u256.fe", vec![42, 42], Some(u256_token(0))),
+    case("return_multiplication_u256.fe", vec![42, 42], Some(u256_token(1764))),
+    case("return_division_u256.fe", vec![42, 42], Some(u256_token(1))),
+    case("return_pow_u256.fe", vec![2, 0], Some(u256_token(1))),
+    case("return_pow_u256.fe", vec![2, 4], Some(u256_token(16))),
+    case("return_mod_u256.fe", vec![5, 0], Some(u256_token(0))),
+    case("return_mod_u256.fe", vec![5, 2], Some(u256_token(1))),
+    case("return_mod_u256.fe", vec![5, 3], Some(u256_token(2))),
+    case("return_mod_u256.fe", vec![5, 5], Some(u256_token(0))),
+    case("return_bitwiseand_u256.fe", vec![12, 25], Some(u256_token(8))),
+    case("return_bitwiseor_u256.fe", vec![12, 25], Some(u256_token(29))),
+    case("return_bitwisexor_u256.fe", vec![12, 25], Some(u256_token(21))),
+    case("return_bitwiseshl_u256.fe", vec![212, 0], Some(u256_token(212))),
+    case("return_bitwiseshl_u256.fe", vec![212, 1], Some(u256_token(424))),
+    case("return_bitwiseshr_u256.fe", vec![212, 0], Some(u256_token(212))),
+    case("return_bitwiseshr_u256.fe", vec![212, 1], Some(u256_token(106))),
+    // //comparision operators
+    case("return_eq_u256.fe", vec![1, 1], Some(bool_token(true))),
+    case("return_eq_u256.fe", vec![1, 2], Some(bool_token(false))),
+    case("return_noteq_u256.fe", vec![1, 1], Some(bool_token(false))),
+    case("return_noteq_u256.fe", vec![1, 2], Some(bool_token(true))),
+    case("return_lt_u256.fe", vec![1, 2], Some(bool_token(true))),
+    case("return_lt_u256.fe", vec![1, 1], Some(bool_token(false))),
+    case("return_lt_u256.fe", vec![2, 1], Some(bool_token(false))),
+    case("return_lte_u256.fe", vec![1, 2], Some(bool_token(true))),
+    case("return_lte_u256.fe", vec![1, 1], Some(bool_token(true))),
+    case("return_lte_u256.fe", vec![2, 1], Some(bool_token(false))),
+    case("return_gt_u256.fe", vec![2, 1], Some(bool_token(true))),
+    case("return_gt_u256.fe", vec![1, 1], Some(bool_token(false))),
+    case("return_gt_u256.fe", vec![1, 2], Some(bool_token(false))),
+    case("return_gte_u256.fe", vec![2, 1], Some(bool_token(true))),
+    case("return_gte_u256.fe", vec![1, 1], Some(bool_token(true))),
+    case("return_gte_u256.fe", vec![1, 2], Some(bool_token(false))),
 )]
-fn test_method_return(fixture_file: &str, input: Vec<usize>, expected: Option<usize>) {
+fn test_method_return(fixture_file: &str, input: Vec<usize>, expected: Option<ethabi::Token>) {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, fixture_file, "Foo");
-
         harness.test_function(
             &mut executor,
             "bar",
@@ -220,7 +240,7 @@ fn test_method_return(fixture_file: &str, input: Vec<usize>, expected: Option<us
                 .into_iter()
                 .map(|val| u256_token(val))
                 .collect(),
-            expected.map(|val| u256_token(val)),
+            expected.clone(),
         )
     })
 }
