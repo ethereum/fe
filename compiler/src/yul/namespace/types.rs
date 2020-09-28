@@ -20,6 +20,7 @@ pub enum FixedSize {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Base {
     U256,
+    Bool,
     Byte,
     Address,
 }
@@ -77,6 +78,7 @@ impl Base {
     pub fn size(&self) -> usize {
         match self {
             Base::U256 => 32,
+            Base::Bool => 1,
             Base::Byte => 1,
             Base::Address => 20,
         }
@@ -91,6 +93,7 @@ impl Base {
             Base::U256 => "uint256".to_string(),
             Base::Address => "address".to_string(),
             Base::Byte => "byte".to_string(),
+            Base::Bool => "bool".to_string(),
         }
     }
 
@@ -156,6 +159,7 @@ impl Array {
         let size = literal_expression! {(self.size())};
 
         match &self.inner {
+            Base::Bool => Ok(expression! { ccopy([ptr], [size]) }),
             Base::Byte => Ok(expression! { ccopy([ptr], [size]) }),
             Base::U256 => Ok(expression! { ccopy([ptr], [size]) }),
             Base::Address => unimplemented!("Address array decoding"),
@@ -164,6 +168,7 @@ impl Array {
 
     pub fn encode(&self, ptr: yul::Expression) -> Result<yul::Expression, CompileError> {
         match &self.inner {
+            Base::Bool => Ok(ptr),
             Base::Byte => Ok(ptr),
             Base::U256 => Ok(ptr),
             Base::Address => unimplemented!("Address array encoding"),
@@ -278,13 +283,13 @@ pub fn type_desc(
 ) -> Result<Type, CompileError> {
     match typ {
         fe::TypeDesc::Base { base: "u256" } => Ok(Type::Base(Base::U256)),
+        fe::TypeDesc::Base { base: "bool" } => Ok(Type::Base(Base::Bool)),
         fe::TypeDesc::Base { base: "bytes" } => Ok(Type::Base(Base::Byte)),
         fe::TypeDesc::Base { base: "address" } => Ok(Type::Base(Base::Address)),
         fe::TypeDesc::Base { base } => {
             if let Some(ModuleDef::Type(typ)) = defs.get(base.to_owned()) {
                 return Ok(typ.clone());
             }
-
             Err(CompileError::static_str("no type definition"))
         }
         fe::TypeDesc::Array { typ, dimension } => Ok(Type::Array(Array {

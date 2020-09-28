@@ -168,6 +168,7 @@ pub enum FuncType {
 #[derive(Debug, PartialEq, Clone)]
 pub enum VarType {
     Uint256,
+    Bool,
     Address,
     FixedBytes(usize),
     FixedArray(Box<VarType>, usize),
@@ -187,6 +188,7 @@ pub enum StateMutability {
 impl fmt::Display for VarType {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         match self {
+            VarType::Bool => write!(f, "bool"),
             VarType::Uint256 => write!(f, "uint256"),
             VarType::Address => write!(f, "address"),
             VarType::FixedBytes(size) => write!(f, "bytes{}", size),

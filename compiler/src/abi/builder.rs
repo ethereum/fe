@@ -156,6 +156,7 @@ fn type_desc<'a>(
 
     match typ {
         fe::TypeDesc::Base { base: "u256" } => Ok(VarType::Uint256),
+        fe::TypeDesc::Base { base: "bool" } => Ok(VarType::Bool),
         fe::TypeDesc::Base { base: "address" } => Ok(VarType::Address),
         fe::TypeDesc::Base { base } => {
             Err(CompileError::str(format!("unrecognized type: {}", base)))
