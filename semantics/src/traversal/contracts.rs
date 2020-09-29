@@ -28,6 +28,7 @@ pub fn contract_def(
 ) -> Result<(), SemanticError> {
     if let fe::ModuleStmt::ContractDef { name: _, body } = &stmt.node {
         let contract_scope = ContractScope::new(module_scope);
+        let mut functions = vec![];
 
         for stmt in body.iter() {
             match &stmt.node {
@@ -36,10 +37,14 @@ pub fn contract_def(
                 }
                 fe::ContractStmt::EventDef { .. } => event_def(Rc::clone(&contract_scope), stmt)?,
                 fe::ContractStmt::FuncDef { .. } => {
-                    functions::func_def(Rc::clone(&contract_scope), Rc::clone(&context), stmt)?
+                    let function =
+                        functions::func_def(Rc::clone(&contract_scope), Rc::clone(&context), stmt)?;
+                    functions.push(function)
                 }
             };
         }
+
+        context.borrow_mut().add_contract(stmt, functions);
 
         return Ok(());
     }

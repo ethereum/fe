@@ -39,7 +39,7 @@ static ADDR_BYTES_MAP_STO: ExpressionAttributes = ExpressionAttributes {
             inner: Base::Byte,
         }),
     }),
-    location: Location::Storage,
+    location: Location::Storage { index: 0 },
 };
 
 fn mock_spanned_expr(start: usize, end: usize) -> Spanned<fe::Expr<'static>> {

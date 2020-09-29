@@ -7,4 +7,5 @@ pub enum SemanticError {
     UnrecognizedValue,
     InvalidDeclaration,
     InvalidType,
+    NotIdexable,
 }

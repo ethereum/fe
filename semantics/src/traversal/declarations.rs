@@ -4,7 +4,7 @@ use crate::namespace::scopes::{
     Scope,
     Shared,
 };
-use crate::namespace::types::Type;
+use crate::namespace::types::FixedSize;
 use crate::traversal::{
     expressions,
     types,
@@ -22,17 +22,17 @@ pub fn var_decl(
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::VarDecl { target, typ, value } = &stmt.node {
         let name = expressions::expr_name_string(target)?;
-        let declared_type = types::type_desc(Scope::Function(Rc::clone(&scope)), typ)?;
+        let declared_type = types::type_desc_fixed_size(Scope::Function(Rc::clone(&scope)), typ)?;
         if let Some(value) = value {
-            let _value_type = expressions::expr(Rc::clone(&scope), context, value);
+            let _value_type = expressions::expr(Rc::clone(&scope), Rc::clone(&context), value);
             // TODO: Perform type checking
         }
 
-        match declared_type {
-            Type::Base(base) => scope.borrow_mut().add_base(name, base),
-            Type::Array(array) => scope.borrow_mut().add_array(name, array),
-            Type::Map(_) => return Err(SemanticError::InvalidDeclaration),
+        match declared_type.clone() {
+            FixedSize::Base(base) => scope.borrow_mut().add_base(name, base),
+            FixedSize::Array(array) => scope.borrow_mut().add_array(name, array),
         };
+        context.borrow_mut().add_declaration(stmt, declared_type);
 
         return Ok(());
     }
@@ -62,7 +62,7 @@ mod tests {
     }
 
     fn analyze(scope: Shared<FunctionScope>, src: &str) -> Context {
-        let context = Context::new();
+        let context = Context::new_shared();
         let tokens = parser::get_parse_tokens(src).expect("Couldn't parse expression");
         let statement = &parser::parsers::vardecl_stmt(&tokens[..])
             .expect("Couldn't build statement AST")
@@ -77,7 +77,7 @@ mod tests {
 
     #[test]
     fn simple_var_decl() {
-        let statement = "foo: uint256 = 26 + 42";
+        let statement = "foo: u256 = 26 + 42";
         let scope = scope();
         let context = analyze(Rc::clone(&scope), statement);
         assert_eq!(context.expressions.len(), 3);

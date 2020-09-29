@@ -24,10 +24,12 @@ pub fn assign(
 
         if let Some(target) = targets.first() {
             match &target.node {
-                fe::Expr::Name(_) => assign_name(scope, context, target, value)?,
-                fe::Expr::Subscript { .. } => assign_subscript(scope, context, target, value)?,
-                _ => unimplemented!(),
-            };
+                fe::Expr::Name(_) => assign_name(scope, Rc::clone(&context), target, value)?,
+                fe::Expr::Subscript { .. } => {
+                    assign_subscript(scope, Rc::clone(&context), target, value)?
+                }
+                _ => return Err(SemanticError::UnassignableExpression),
+            }
         }
 
         return Ok(());
@@ -47,96 +49,20 @@ fn assign_subscript(
     value: &Spanned<fe::Expr>,
 ) -> Result<(), SemanticError> {
     if let fe::Expr::Subscript {
-        value: target_value,
+        value: target,
         slices,
     } = &target.node
     {
-        match &target_value.node {
-            fe::Expr::Name(_) => {
-                assign_subscript_name(scope, context, target_value, slices, value)?;
-            }
-            fe::Expr::Attribute { .. } => {
-                assign_subscript_attribute(scope, context, target_value, slices, value)?;
-            }
-            _ => return Err(SemanticError::UnassignableExpression),
-        };
+        let _target_attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), target)?;
+        let _value_attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), value)?;
+        let _index_attributes = expressions::slices_index(scope, context, slices)?;
+
+        // TODO: perform type checking
 
         return Ok(());
     }
 
     unreachable!()
-}
-
-/// Gather context information for named subscript assignments and check for
-/// type errors.
-///
-/// e.g. `foo[42] = "bar"`
-fn assign_subscript_name(
-    scope: Shared<FunctionScope>,
-    context: Shared<Context>,
-    _target_value: &Spanned<fe::Expr>,
-    slices: &Spanned<Vec<Spanned<fe::Slice>>>,
-    value: &Spanned<fe::Expr>,
-) -> Result<(), SemanticError> {
-    expressions::expr(Rc::clone(&scope), Rc::clone(&context), value)?;
-    expressions::slices_index(scope, context, slices)?;
-
-    // TODO: perform type checking
-    // let name = expressions::expr_name_string(target_value)?;
-    // match scope.borrow().def(name) {
-    //   ...
-    // }
-
-    Ok(())
-}
-
-/// Gather context information for attribute subscript assignments and check for
-/// type errors.
-///
-/// e.g. `self.foo[42] = "bar"`
-fn assign_subscript_attribute(
-    scope: Shared<FunctionScope>,
-    context: Shared<Context>,
-    target_value: &Spanned<fe::Expr>,
-    slices: &Spanned<Vec<Spanned<fe::Slice>>>,
-    value: &Spanned<fe::Expr>,
-) -> Result<(), SemanticError> {
-    if let fe::Expr::Attribute {
-        value: target_value,
-        attr,
-    } = &target_value.node
-    {
-        match expressions::expr_name_str(target_value)? {
-            "self" => assign_subscript_self(scope, context, attr, slices, value)?,
-            _ => return Err(SemanticError::UnrecognizedValue),
-        };
-
-        return Ok(());
-    }
-
-    unreachable!()
-}
-
-/// Gather context information for self attribute subscript assignments and
-/// check for type errors.
-///
-/// e.g. `self.foo[42] = "bar"`
-fn assign_subscript_self(
-    scope: Shared<FunctionScope>,
-    context: Shared<Context>,
-    _attr: &Spanned<&str>,
-    slices: &Spanned<Vec<Spanned<fe::Slice>>>,
-    value: &Spanned<fe::Expr>,
-) -> Result<(), SemanticError> {
-    let _value_attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), value)?;
-    let _index_attributes = expressions::slices_index(scope, context, slices)?;
-
-    // TODO:: Perform type checking
-    // match scope.borrow().contract_def(name) {
-    //   ...
-    // };
-
-    Ok(())
 }
 
 /// Gather context information for named assignments and check for type errors.
@@ -145,10 +71,11 @@ fn assign_subscript_self(
 fn assign_name(
     scope: Shared<FunctionScope>,
     context: Shared<Context>,
-    _target: &Spanned<fe::Expr>,
+    target: &Spanned<fe::Expr>,
     value: &Spanned<fe::Expr>,
 ) -> Result<(), SemanticError> {
-    let _attributes = expressions::expr(scope, context, value)?;
+    let _target_attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), target)?;
+    let _value_attributes = expressions::expr(scope, context, value)?;
 
     // TODO:: Perform type checking
 
@@ -163,6 +90,12 @@ mod tests {
         ModuleScope,
         Shared,
     };
+    use crate::namespace::types::{
+        Array,
+        Base,
+        FixedSize,
+        Map,
+    };
     use crate::traversal::assignments::assign;
     use crate::Context;
     use fe_parser as parser;
@@ -172,11 +105,29 @@ mod tests {
     fn scope() -> Shared<FunctionScope> {
         let module_scope = ModuleScope::new();
         let contract_scope = ContractScope::new(module_scope);
-        FunctionScope::new(contract_scope)
+        contract_scope.borrow_mut().add_map(
+            "foobar".to_string(),
+            Map {
+                key: FixedSize::Base(Base::U256),
+                value: FixedSize::Base(Base::U256),
+            },
+        );
+        let function_scope = FunctionScope::new(contract_scope);
+        function_scope
+            .borrow_mut()
+            .add_base("foo".to_string(), Base::U256);
+        function_scope.borrow_mut().add_array(
+            "bar".to_string(),
+            Array {
+                inner: Base::U256,
+                dimension: 100,
+            },
+        );
+        function_scope
     }
 
     fn analyze(scope: Shared<FunctionScope>, src: &str) -> Context {
-        let context = Context::new();
+        let context = Context::new_shared();
         let tokens = parser::get_parse_tokens(src).expect("Couldn't parse expression");
         let assignment = &parser::parsers::assign_stmt(&tokens[..])
             .expect("Couldn't build assigment AST")
@@ -192,9 +143,9 @@ mod tests {
     #[rstest(
         assignment,
         expected_num_expr_attrs,
-        case("foo = 42", 1),
-        case("foo[26] = 42", 2),
-        case("self.foo[26 + 26] = 42", 4)
+        case("foo = 42", 2),
+        case("bar[26] = 42", 3),
+        case("self.foobar[26 + 26] = 42", 5)
     )]
     fn assigns(assignment: &str, expected_num_expr_attrs: usize) {
         let context = analyze(scope(), assignment);

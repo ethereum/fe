@@ -41,7 +41,7 @@ pub fn expr(
         fe::Expr::BoolOperation { .. } => unimplemented!(),
         fe::Expr::BinOperation { .. } => expr_bin_operation(scope, Rc::clone(&context), exp)?,
         fe::Expr::UnaryOperation { .. } => unimplemented!(),
-        fe::Expr::CompOperation { .. } => unimplemented!(),
+        fe::Expr::CompOperation { .. } => expr_comp_operation(scope, Rc::clone(&context), exp)?,
         fe::Expr::Call { .. } => unimplemented!(),
         fe::Expr::List { .. } => unimplemented!(),
         fe::Expr::ListComp { .. } => unimplemented!(),
@@ -155,7 +155,7 @@ fn expr_subscript(
                         key: _,
                         value: FixedSize::Base(base),
                     }),
-                location: Location::Storage,
+                location: Location::Storage { .. },
             } => ExpressionAttributes {
                 typ: Type::Base(base),
                 location: Location::Value,
@@ -166,14 +166,14 @@ fn expr_subscript(
                         key: _,
                         value: FixedSize::Array(array),
                     }),
-                location: Location::Storage,
+                location: Location::Storage { .. },
             } => ExpressionAttributes {
                 typ: Type::Array(array),
                 location: Location::Memory,
             },
             ExpressionAttributes {
                 typ: Type::Array(_),
-                location: Location::Storage,
+                location: Location::Storage { .. },
             } => unimplemented!(),
             ExpressionAttributes {
                 typ:
@@ -225,8 +225,8 @@ fn expr_attribute_self(
     attr: &Spanned<&str>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     match scope.borrow().contract_def(attr.node.to_string()) {
-        Some(ContractDef::Map { index: _, map }) => Ok(ExpressionAttributes {
-            location: Location::Storage,
+        Some(ContractDef::Map { index, map }) => Ok(ExpressionAttributes {
+            location: Location::Storage { index },
             typ: Type::Map(map),
         }),
         Some(ContractDef::Function { .. }) => unimplemented!(),
@@ -249,6 +249,27 @@ fn expr_bin_operation(
         // for now we assume these are the only possible attributes
         return Ok(ExpressionAttributes {
             typ: Type::Base(Base::U256),
+            location: Location::Value,
+        });
+    }
+
+    unreachable!()
+}
+
+fn expr_comp_operation(
+    scope: Shared<FunctionScope>,
+    context: Shared<Context>,
+    exp: &Spanned<fe::Expr>,
+) -> Result<ExpressionAttributes, SemanticError> {
+    if let fe::Expr::CompOperation { left, op: _, right } = &exp.node {
+        let _left_attributes = expr(Rc::clone(&scope), Rc::clone(&context), left);
+        let _right_attributes = expr(Rc::clone(&scope), Rc::clone(&context), right);
+
+        // TODO: Perform type checking
+
+        // for now we assume these are the only possible attributes
+        return Ok(ExpressionAttributes {
+            typ: Type::Base(Base::Bool),
             location: Location::Value,
         });
     }
@@ -305,7 +326,7 @@ mod tests {
             key: FixedSize::Base(Base::Address),
             value: FixedSize::Base(Base::U256),
         }),
-        location: Location::Storage,
+        location: Location::Storage { index: 0 },
     };
 
     fn scope() -> Shared<FunctionScope> {
@@ -315,7 +336,7 @@ mod tests {
     }
 
     fn analyze(scope: Shared<FunctionScope>, src: &str) -> Context {
-        let context = Context::new();
+        let context = Context::new_shared();
         let tokens = parser::get_parse_tokens(src).expect("Couldn't parse expression");
         let expression = &parser::parsers::expr(&tokens[..])
             .expect("Couldn't build expression AST")

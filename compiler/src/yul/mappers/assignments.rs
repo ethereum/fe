@@ -1,19 +1,18 @@
 use crate::errors::CompileError;
 use crate::yul::mappers::expressions;
-use crate::yul::namespace::scopes::{
-    ContractDef,
-    FunctionDef,
-    FunctionScope,
-    Shared,
-};
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
-use std::rc::Rc;
+use fe_semantics::namespace::types::Type;
+use fe_semantics::{
+    Context,
+    ExpressionAttributes,
+    Location,
+};
 use yultsur::*;
 
 /// Builds a Yul statement from a Fe assignment.
 pub fn assign(
-    scope: Shared<FunctionScope>,
+    context: &Context,
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<yul::Statement, CompileError> {
     if let fe::FuncStmt::Assign { targets, value } = &stmt.node {
@@ -23,8 +22,8 @@ pub fn assign(
 
         if let Some(first_target) = targets.first() {
             return match &first_target.node {
-                fe::Expr::Name(_) => assign_name(scope, first_target, value),
-                fe::Expr::Subscript { .. } => assign_subscript(scope, first_target, value),
+                fe::Expr::Name(_) => assign_name(context, first_target, value),
+                fe::Expr::Subscript { .. } => assign_subscript(context, first_target, value),
                 _ => unreachable!(),
             };
         }
@@ -34,19 +33,19 @@ pub fn assign(
 }
 
 fn assign_subscript(
-    scope: Shared<FunctionScope>,
+    context: &Context,
     target: &Spanned<fe::Expr>,
     value: &Spanned<fe::Expr>,
 ) -> Result<yul::Statement, CompileError> {
     if let fe::Expr::Subscript {
-        value: target_value,
+        value: target,
         slices,
     } = &target.node
     {
-        return match &target_value.node {
-            fe::Expr::Name(_) => assign_subscript_name(scope, target_value, slices, value),
+        return match &target.node {
+            fe::Expr::Name(_) => assign_subscript_name(context, target, slices, value),
             fe::Expr::Attribute { .. } => {
-                assign_subscript_attribute(scope, target_value, slices, value)
+                assign_subscript_attribute(context, target, slices, value)
             }
             _ => Err(CompileError::static_str("invalid subscript target")),
         };
@@ -56,74 +55,65 @@ fn assign_subscript(
 }
 
 fn assign_subscript_name(
-    scope: Shared<FunctionScope>,
-    target_value: &Spanned<fe::Expr>,
+    context: &Context,
+    target: &Spanned<fe::Expr>,
     slices: &Spanned<Vec<Spanned<fe::Slice>>>,
     value: &Spanned<fe::Expr>,
 ) -> Result<yul::Statement, CompileError> {
-    let name = expressions::expr_name_string(target_value)?;
+    if let Some(target_attributes) = context.get_expression(target) {
+        let target = identifier_expression! { (expressions::expr_name_string(target)?) };
+        let index = expressions::slices_index(context, slices)?;
+        let value = expressions::expr(context, value)?;
 
-    let array_ptr = identifier_expression! {(name)};
-    let index = expressions::slices_index(Rc::clone(&scope), slices)?.expression;
-    let value = expressions::expr(Rc::clone(&scope), value)?.expression;
-
-    match scope.borrow().def(name) {
-        Some(FunctionDef::Array(array_type)) => array_type.mstore_elem(array_ptr, index, value),
-        Some(FunctionDef::Base(_)) => Err(CompileError::static_str(
-            "can't assign subscript value to base type",
-        )),
-        None => Err(CompileError::static_str("definition not found")),
-    }
-}
-
-fn assign_subscript_attribute(
-    scope: Shared<FunctionScope>,
-    target_value: &Spanned<fe::Expr>,
-    slices: &Spanned<Vec<Spanned<fe::Slice>>>,
-    value: &Spanned<fe::Expr>,
-) -> Result<yul::Statement, CompileError> {
-    if let fe::Expr::Attribute {
-        value: target_value,
-        attr,
-    } = &target_value.node
-    {
-        return match expressions::expr_name_str(target_value)? {
-            "self" => assign_subscript_self(scope, attr, slices, value),
-            _ => Err(CompileError::static_str("unrecognized attribute value")),
+        return match target_attributes.typ.to_owned() {
+            Type::Array(array) => Ok(array.mstore_elem(target, index, value)),
+            _ => unreachable!(),
         };
     }
 
     unreachable!()
 }
 
-fn assign_subscript_self(
-    scope: Shared<FunctionScope>,
-    attr: &Spanned<&str>,
+fn assign_subscript_attribute(
+    context: &Context,
+    target: &Spanned<fe::Expr>,
     slices: &Spanned<Vec<Spanned<fe::Slice>>>,
     value: &Spanned<fe::Expr>,
 ) -> Result<yul::Statement, CompileError> {
-    let name = attr.node.to_string();
+    if let Some(target_attributes) = context.get_expression(target) {
+        let key = expressions::slices_index(context, slices)?;
+        let value = expressions::expr(context, value)?;
 
-    let key = expressions::slices_index(Rc::clone(&scope), slices)?.expression;
-    let value = expressions::expr(Rc::clone(&scope), value)?.expression;
-
-    match scope.borrow().contract_def(name) {
-        Some(ContractDef::Map { index, map }) => map.sstore(index, key, value),
-        None => Err(CompileError::static_str("definition not found")),
-        _ => Err(CompileError::static_str("invalid definition")),
+        return match target_attributes {
+            ExpressionAttributes {
+                typ: Type::Map(map),
+                location: Location::Storage { index },
+            } => Ok(map.sstore(*index, key, value)),
+            ExpressionAttributes {
+                typ: Type::Base(_),
+                location: Location::Storage { .. },
+            } => unimplemented!(),
+            ExpressionAttributes {
+                typ: Type::Array(_),
+                location: Location::Storage { .. },
+            } => unimplemented!(),
+            _ => unreachable!(),
+        };
     }
+
+    unreachable!()
 }
 
 fn assign_name(
-    scope: Shared<FunctionScope>,
+    context: &Context,
     target: &Spanned<fe::Expr>,
     value: &Spanned<fe::Expr>,
 ) -> Result<yul::Statement, CompileError> {
     if let fe::Expr::Name(name) = target.node {
-        let identifier = identifier! {(name)};
-        let value = expressions::expr(scope, value)?.expression;
+        let target = identifier! {(name)};
+        let value = expressions::expr(context, value)?;
 
-        return Ok(statement! { [identifier] := [value] });
+        return Ok(statement! { [target] := [value] });
     }
 
     unreachable!()
@@ -132,42 +122,42 @@ fn assign_name(
 #[cfg(test)]
 mod tests {
     use crate::yul::mappers::assignments::assign;
-    use crate::yul::namespace::scopes::{
-        ContractScope,
-        FunctionScope,
-        ModuleScope,
-        Shared,
-    };
-    use crate::yul::namespace::types::{
+    use fe_parser as parser;
+    use fe_semantics::namespace::types::{
         Array,
         Base,
+        Type,
+    };
+    use fe_semantics::test_utils::ContextHarness;
+    use fe_semantics::{
+        Context,
+        ExpressionAttributes,
+        Location,
     };
     use rstest::rstest;
 
-    use fe_parser as parser;
-
-    fn scope() -> Shared<FunctionScope> {
-        let module_scope = ModuleScope::new();
-        let contract_scope = ContractScope::new(module_scope);
-        FunctionScope::new(contract_scope)
-    }
-
-    fn map(scope: Shared<FunctionScope>, src: &str) -> String {
+    fn map(context: &Context, src: &str) -> String {
         let tokens = parser::get_parse_tokens(src).expect("couldn't parse assignment");
         let stmt = parser::parsers::assign_stmt(&tokens[..])
             .expect("couldn't build assignment AST")
             .1;
 
-        let assign = assign(scope, &stmt).expect("couldn't map assignment AST");
+        let assign = assign(context, &stmt).expect("couldn't map assignment AST");
         assign.to_string()
     }
 
     #[test]
     fn assign_u256() {
-        let scope = scope();
-        scope.borrow_mut().add_base("bar".to_string(), Base::U256);
+        let mut harness = ContextHarness::new("foo = bar");
+        harness.add_expression(
+            "foo",
+            ExpressionAttributes {
+                typ: Type::Base(Base::U256),
+                location: Location::Value,
+            },
+        );
 
-        assert_eq!(map(scope, "foo = bar"), "foo := bar")
+        assert_eq!(map(&harness.context, &harness.src), "foo := bar")
     }
 
     #[rstest(
@@ -186,24 +176,25 @@ mod tests {
         case("foo = 1 >> 2", "foo := shr(2, 1)")
     )]
     fn assign_arithmetic_expression(assignment: &str, expected_yul: &str) {
-        let scope = scope();
-
-        assert_eq!(map(scope, assignment), expected_yul)
+        assert_eq!(map(&Context::new(), assignment), expected_yul)
     }
 
     #[test]
     fn assign_subscript_u256() {
-        let scope = scope();
-        scope.borrow_mut().add_array(
-            "foo".to_string(),
-            Array {
-                dimension: 10,
-                inner: Base::U256,
+        let mut harness = ContextHarness::new("foo[4] = 2");
+        harness.add_expression(
+            "foo",
+            ExpressionAttributes {
+                typ: Type::Array(Array {
+                    dimension: 10,
+                    inner: Base::U256,
+                }),
+                location: Location::Memory,
             },
         );
 
         assert_eq!(
-            map(scope, "foo[4] = 2"),
+            map(&harness.context, &harness.src),
             "mstoren(add(foo, mul(4, 32)), 2, 32)"
         )
     }

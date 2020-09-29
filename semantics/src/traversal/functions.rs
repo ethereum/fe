@@ -13,7 +13,10 @@ use crate::traversal::{
     expressions,
     types,
 };
-use crate::Context;
+use crate::{
+    Context,
+    FunctionAttributes,
+};
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use std::rc::Rc;
@@ -24,7 +27,7 @@ pub fn func_def(
     contract_scope: Shared<ContractScope>,
     context: Shared<Context>,
     def: &Spanned<fe::ContractStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<FunctionAttributes, SemanticError> {
     if let fe::ContractStmt::FuncDef {
         qual: _,
         name,
@@ -39,21 +42,31 @@ pub fn func_def(
         let param_types = args
             .iter()
             .map(|arg| func_def_arg(Rc::clone(&function_scope), arg))
-            .collect::<Result<_, _>>()?;
+            .collect::<Result<Vec<_>, _>>()?;
         let return_type = return_type
             .as_ref()
             .map(|r| types::type_desc_fixed_size(Scope::Function(Rc::clone(&function_scope)), &r))
             .transpose()?;
 
-        contract_scope
-            .borrow_mut()
-            .add_function(name, param_types, return_type);
+        contract_scope.borrow_mut().add_function(
+            name.clone(),
+            param_types.clone(),
+            return_type.clone(),
+        );
+
+        let attributes = FunctionAttributes {
+            name,
+            param_types,
+            return_type,
+        };
+
+        context.borrow_mut().add_function(def, attributes.clone());
 
         for stmt in body.iter() {
             func_stmt(Rc::clone(&function_scope), Rc::clone(&context), stmt)?
         }
 
-        return Ok(());
+        return Ok(attributes);
     }
 
     unreachable!()
@@ -184,7 +197,7 @@ mod tests {
     }
 
     fn analyze(scope: Shared<ContractScope>, src: &str) -> Context {
-        let context = Context::new();
+        let context = Context::new_shared();
         let tokens = parser::get_parse_tokens(src).expect("Couldn't parse expression");
         let def = &parser::parsers::func_def(&tokens[..])
             .expect("Couldn't build func def AST")
@@ -201,7 +214,7 @@ mod tests {
     fn simple_func_def() {
         let scope = scope();
         let func_def = "\
-        def foo(x: uint256) -> uint256:\
+        def foo(x: u256) -> u256:\
             return x + x\
         ";
         let context = analyze(Rc::clone(&scope), func_def);
