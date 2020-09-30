@@ -17,6 +17,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Cache Rust dependencies
+      uses: actions/cache@v1.1.2
+      with:
+        path: target
+        key: ${{ runner.OS }}-build-${{ hashFiles('**/Cargo.lock') }}
     - name: coverage with tarpaulin
       run: |
         ./coverage.sh --out Xml
@@ -27,7 +32,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Install system dependencies
+      run: |
+        sudo apt-get install -y libboost-all-dev
     - uses: actions/checkout@v2
+    - name: Cache Rust dependencies
+      uses: actions/cache@v1.1.2
+      with:
+        path: target
+        key: ${{ runner.OS }}-build-${{ hashFiles('**/Cargo.lock') }}
     - name: Install latest nightly
       uses: actions-rs/toolchain@v1
       with:
@@ -55,6 +68,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - name: Cache Rust dependencies
+      uses: actions/cache@v1.1.2
+      with:
+        path: target
+        key: ${{ runner.OS }}-build-${{ hashFiles('**/Cargo.lock') }}
+    - name: Install system dependencies
+      run: |
+        sudo apt-get install -y libboost-all-dev
     - name: Install latest nightly
       uses: actions-rs/toolchain@v1
       with:
@@ -63,7 +84,7 @@ jobs:
         override: true
         components: rustfmt, clippy
     - name: Run tests
-      run: cargo test --workspace --verbose
+      run: cargo test --workspace --features solc-backend --verbose
 
   wasm-test:
       runs-on: ubuntu-latest

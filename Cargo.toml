@@ -13,6 +13,9 @@ readme = "README.md"
 [workspace]
 members = [".", "parser", "compiler"]
 
+[features]
+solc-backend = ["fe-compiler/solc-backend"]
+
 [dependencies]
 fe-parser = {path = "parser", version = "0.1.0"}
 fe-compiler = {path = "compiler", version = "0.1.0"}
