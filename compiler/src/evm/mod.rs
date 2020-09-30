@@ -2,8 +2,6 @@
 
 use crate::errors::CompileError;
 use crate::yul;
-use serde_json;
-use solc;
 
 /// Compiles Fe to bytecode. It uses Yul as an intermediate representation.
 pub fn compile(src: &str) -> Result<String, CompileError> {
