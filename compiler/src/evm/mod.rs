@@ -3,12 +3,16 @@
 use crate::errors::CompileError;
 use crate::yul;
 
+pub struct CompilerOutput {
+    pub yul: String,
+    pub bytecode: String,
+}
+
 /// Compiles Fe to bytecode. It uses Yul as an intermediate representation.
-pub fn compile(src: &str) -> Result<String, CompileError> {
+pub fn compile(src: &str) -> Result<CompilerOutput, CompileError> {
     let solc_temp = include_str!("solc_temp.json");
     let yul_src = yul::compile(src)?.replace("\"", "\\\"");
     let input = solc_temp.replace("{src}", &yul_src);
-
     let raw_output = solc::compile(&input);
     let output: serde_json::Value = serde_json::from_str(&raw_output)?;
 
@@ -19,7 +23,10 @@ pub fn compile(src: &str) -> Result<String, CompileError> {
         return Err(CompileError::str(output.to_string()));
     }
 
-    Ok(bytecode)
+    Ok(CompilerOutput {
+        yul: yul_src,
+        bytecode,
+    })
 }
 
 #[test]

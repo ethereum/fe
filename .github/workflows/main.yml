@@ -60,7 +60,8 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: clippy
-        args: --all-targets --all-features -- -D warnings
+        # TODO: Turn --all-features back on when CI supports building solc
+        args: --all-targets -- -D warnings
 
   test:
 

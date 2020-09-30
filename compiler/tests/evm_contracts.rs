@@ -126,7 +126,7 @@ fn deploy_contract(executor: &mut Executor, fixture: &str, name: &str) -> Contra
     let src = fs::read_to_string(format!("tests/fixtures/{}", fixture))
         .expect("Unable to read fixture file");
 
-    let bytecode = compiler::evm::compile(&src).expect("Unable to compile to bytecode");
+    let output = compiler::evm::compile(&src).expect("Unable to compile to bytecode");
     let json_abi = compiler::abi::build(&src)
         .expect("Unable to build the module ABIs")
         .contracts[name]
@@ -139,7 +139,7 @@ fn deploy_contract(executor: &mut Executor, fixture: &str, name: &str) -> Contra
         H160::zero(),
         evm_runtime::CreateScheme::Dynamic,
         U256::zero(),
-        hex::decode(bytecode).unwrap(),
+        hex::decode(output.bytecode).unwrap(),
         None,
     ) {
         return ContractHarness::new(exit.1.expect("Unable to retrieve contract address"), abi);
