@@ -21,16 +21,14 @@ jobs:
       uses: actions/cache@v1.1.2
       with:
         path: target
-        key: ${{ runner.OS }}-build-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.OS }}-build-v1-${{ hashFiles('**/Cargo.lock') }}
     - name: coverage with tarpaulin
       run: |
         ./coverage.sh --out Xml
         bash <(curl -s https://codecov.io/bash)
 
   lint:
-
     runs-on: ubuntu-latest
-
     steps:
     - name: Install system dependencies
       run: |
@@ -40,7 +38,7 @@ jobs:
       uses: actions/cache@v1.1.2
       with:
         path: target
-        key: ${{ runner.OS }}-build-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.OS }}-build-v1-${{ hashFiles('**/Cargo.lock') }}
     - name: Install latest nightly
       uses: actions-rs/toolchain@v1
       with:
@@ -48,33 +46,41 @@ jobs:
         toolchain: nightly
         override: true
         components: rustfmt, clippy
-    - name: Build
-      run: cargo build --verbose
     - name: Lint with rustfmt
       uses: actions-rs/cargo@v1
       with:
         command: fmt
         args: --all -- --check
-
+    - name: Build
+      run: cargo build --all-features --verbose
     - name: Lint with clippy
       uses: actions-rs/cargo@v1
       with:
         command: clippy
-        # TODO: Turn --all-features back on when CI supports building solc
-        args: --all-targets -- -D warnings
+        args: --all-targets --all-features -- -D warnings
 
   test:
-
-    # TODO: Need to enable Mac and Windows builds [ubuntu-latest, macos-latest windows-latest]
-    runs-on: ubuntu-latest
+    # Build & Test runs on all platforms
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+        - os: macOS-latest
     steps:
     - uses: actions/checkout@v2
     - name: Cache Rust dependencies
       uses: actions/cache@v1.1.2
       with:
-        path: target
-        key: ${{ runner.OS }}-build-${{ hashFiles('**/Cargo.lock') }}
-    - name: Install system dependencies
+        path: |
+          target
+        key: ${{ runner.OS }}-build-v1-${{ hashFiles('**/Cargo.lock') }}
+    - name: Install Mac System dependencies
+      if: startsWith(matrix.os,'macOS')
+      run: |
+        brew install boost
+    - name: Install Linux dependencies
+      if: startsWith(matrix.os,'ubuntu')
       run: |
         sudo apt-get install -y libboost-all-dev
     - name: Install latest nightly
@@ -83,7 +89,8 @@ jobs:
         profile: minimal
         toolchain: nightly
         override: true
-        components: rustfmt, clippy
+    - name: Build
+      run: cargo build --all-features --verbose
     - name: Run tests
       run: cargo test --workspace --features solc-backend --verbose
 
