@@ -179,21 +179,9 @@ fn evm_sanity() {
     })
 }
 
-#[test]
-fn return_u256() {
-    with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "return_u256.fe", "Foo");
-
-        harness.test_function(
-            &mut executor,
-            "bar",
-            vec![u256_token(42)],
-            Some(u256_token(42)),
-        )
-    })
-}
-
 #[rstest(fixture_file, input, expected,
+    case("return_identity_u256.fe", vec![42], Some(u256_token(42))),
+    // binary operators
     case("return_addition_u256.fe", vec![42, 42], Some(u256_token(84))),
     case("return_subtraction_u256.fe", vec![42, 42], Some(u256_token(0))),
     case("return_multiplication_u256.fe", vec![42, 42], Some(u256_token(1764))),
@@ -211,7 +199,7 @@ fn return_u256() {
     case("return_bitwiseshl_u256.fe", vec![212, 1], Some(u256_token(424))),
     case("return_bitwiseshr_u256.fe", vec![212, 0], Some(u256_token(212))),
     case("return_bitwiseshr_u256.fe", vec![212, 1], Some(u256_token(106))),
-    // //comparision operators
+    // comparision operators
     case("return_eq_u256.fe", vec![1, 1], Some(bool_token(true))),
     case("return_eq_u256.fe", vec![1, 2], Some(bool_token(false))),
     case("return_noteq_u256.fe", vec![1, 1], Some(bool_token(false))),
