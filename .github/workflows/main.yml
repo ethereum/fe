@@ -11,30 +11,40 @@ env:
 
 jobs:
 
-  coverage:
+  # coverage:
 
-    runs-on: ubuntu-latest
+  #   runs-on: ubuntu-latest
 
-    steps:
-    - uses: actions/checkout@v2
-    - name: Cache Rust dependencies
-      uses: actions/cache@v1.1.2
-      with:
-        path: target
-        key: ${{ runner.OS }}-build-${{ hashFiles('**/Cargo.lock') }}
-    - name: coverage with tarpaulin
-      run: |
-        ./coverage.sh --out Xml
-        bash <(curl -s https://codecov.io/bash)
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Cache Rust dependencies
+  #     uses: actions/cache@v1.1.2
+  #     with:
+  #       path: target
+  #       key: ${{ runner.OS }}-build-${{ hashFiles('**/Cargo.lock') }}
+  #   - name: coverage with tarpaulin
+  #     run: |
+  #       ./coverage.sh --out Xml
+  #       bash <(curl -s https://codecov.io/bash)
 
   lint:
 
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
-    - name: Install system dependencies
+    # - name: Install system dependencies
+    #   run: |
+    #     sudo apt-get install -y libboost-all-dev
+    - name: Install Z3
+      uses: pavpanchekha/setup-z3@v1.2
+    # - name: disable z3
+    #   run: cmake .. -DUSE_CVC4=OFF -DUSE_Z3=OFF
+    - name: set up boost for windows
+      #if: matrix.os == 'windows-latest' || matrix.os == 'windows-2016'
       run: |
-        sudo apt-get install -y libboost-all-dev
+        echo "::set-env name=BOOST_ROOT::$env:BOOST_ROOT_1_72_0"
+        echo "::set-env name=BOOST_INCLUDEDIR::${{ env.BOOST_ROOT }}\boost\include"
+        echo "::set-env name=BOOST_LIBRARYDIR::${{ env.BOOST_ROOT }}\lib"
     - uses: actions/checkout@v2
     - name: Cache Rust dependencies
       uses: actions/cache@v1.1.2
@@ -63,40 +73,40 @@ jobs:
         # TODO: Turn --all-features back on when CI supports building solc
         args: --all-targets -- -D warnings
 
-  test:
+  # test:
 
-    # TODO: Need to enable Mac and Windows builds [ubuntu-latest, macos-latest windows-latest]
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Cache Rust dependencies
-      uses: actions/cache@v1.1.2
-      with:
-        path: target
-        key: ${{ runner.OS }}-build-${{ hashFiles('**/Cargo.lock') }}
-    - name: Install system dependencies
-      run: |
-        sudo apt-get install -y libboost-all-dev
-    - name: Install latest nightly
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: nightly
-        override: true
-        components: rustfmt, clippy
-    - name: Run tests
-      run: cargo test --workspace --features solc-backend --verbose
+  #   # TODO: Need to enable Mac and Windows builds [ubuntu-latest, macos-latest windows-latest]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Cache Rust dependencies
+  #     uses: actions/cache@v1.1.2
+  #     with:
+  #       path: target
+  #       key: ${{ runner.OS }}-build-${{ hashFiles('**/Cargo.lock') }}
+  #   - name: Install system dependencies
+  #     run: |
+  #       sudo apt-get install -y libboost-all-dev
+  #   - name: Install latest nightly
+  #     uses: actions-rs/toolchain@v1
+  #     with:
+  #       profile: minimal
+  #       toolchain: nightly
+  #       override: true
+  #       components: rustfmt, clippy
+  #   - name: Run tests
+  #     run: cargo test --workspace --features solc-backend --verbose
 
-  wasm-test:
-      runs-on: ubuntu-latest
-      container: davesque/rust-wasm
-      steps:
-      - uses: actions/checkout@v2
-      - name: Install latest nightly
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          override: true
-      - name: Run WASM tests
-        run: wasm-pack test --node -- --workspace
+  # wasm-test:
+  #     runs-on: ubuntu-latest
+  #     container: davesque/rust-wasm
+  #     steps:
+  #     - uses: actions/checkout@v2
+  #     - name: Install latest nightly
+  #       uses: actions-rs/toolchain@v1
+  #       with:
+  #         profile: minimal
+  #         toolchain: nightly
+  #         override: true
+  #     - name: Run WASM tests
+  #       run: wasm-pack test --node -- --workspace
