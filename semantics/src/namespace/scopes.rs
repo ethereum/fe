@@ -1,5 +1,5 @@
-use crate::yul::namespace::events::Event;
-use crate::yul::namespace::types::{
+use crate::namespace::events::Event;
+use crate::namespace::types::{
     Array,
     Base,
     FixedSize,
@@ -95,7 +95,7 @@ impl ContractScope {
     }
 
     pub fn def(&self, name: String) -> Option<ContractDef> {
-        self.defs.get(&name).map(|d| (*d).clone())
+        self.defs.get(&name).map(|def| (*def).clone())
     }
 
     pub fn add_map(&mut self, name: String, map: Map) {
@@ -147,7 +147,7 @@ impl FunctionScope {
     }
 
     pub fn def(&self, name: String) -> Option<FunctionDef> {
-        self.defs.get(&name).map(|d| (*d).clone())
+        self.defs.get(&name).map(|def| (*def).clone())
     }
 
     pub fn add_array(&mut self, name: String, array: Array) {

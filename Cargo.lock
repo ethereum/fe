@@ -344,6 +344,7 @@ dependencies = [
  "evm",
  "evm-runtime",
  "fe-parser",
+ "fe-semantics",
  "hex",
  "primitive-types",
  "rand",
@@ -367,6 +368,17 @@ dependencies = [
  "serde_json",
  "wasm-bindgen",
  "wasm-bindgen-test",
+]
+
+[[package]]
+name = "fe-semantics"
+version = "0.1.0"
+dependencies = [
+ "fe-parser",
+ "hex",
+ "rstest",
+ "tiny-keccak 2.0.1",
+ "yultsur",
 ]
 
 [[package]]

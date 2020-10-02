@@ -1,5 +1,6 @@
-use crate::errors::CompileError;
-use crate::yul::namespace::scopes::*;
+#![allow(dead_code)]
+use crate::errors::SemanticError;
+use crate::namespace::scopes::*;
 use fe_parser::ast as fe;
 use std::collections::HashMap;
 use yultsur::*;
@@ -45,14 +46,14 @@ impl FixedSize {
         }
     }
 
-    pub fn decode(&self, ptr: yul::Expression) -> Result<yul::Expression, CompileError> {
+    pub fn decode(&self, ptr: yul::Expression) -> yul::Expression {
         match self {
             FixedSize::Base(base) => base.decode(ptr),
             FixedSize::Array(array) => array.decode(ptr),
         }
     }
 
-    pub fn encode(&self, ptr: yul::Expression) -> Result<yul::Expression, CompileError> {
+    pub fn encode(&self, ptr: yul::Expression) -> yul::Expression {
         match self {
             FixedSize::Base(base) => base.encode(ptr),
             FixedSize::Array(array) => array.encode(ptr),
@@ -97,44 +98,36 @@ impl Base {
         }
     }
 
-    pub fn decode(&self, ptr: yul::Expression) -> Result<yul::Expression, CompileError> {
-        Ok(expression! { calldataload([ptr]) })
+    pub fn decode(&self, ptr: yul::Expression) -> yul::Expression {
+        expression! { calldataload([ptr]) }
     }
 
-    pub fn encode(&self, val: yul::Expression) -> Result<yul::Expression, CompileError> {
-        Ok(expression! { alloc_mstoren([val], 32) })
+    pub fn encode(&self, val: yul::Expression) -> yul::Expression {
+        expression! { alloc_mstoren([val], 32) }
     }
 
-    pub fn mstore(
-        &self,
-        ptr: yul::Expression,
-        value: yul::Expression,
-    ) -> Result<yul::Statement, CompileError> {
+    pub fn mstore(&self, ptr: yul::Expression, value: yul::Expression) -> yul::Statement {
         let size = literal_expression! {(self.size())};
 
-        Ok(statement! { mstoren([ptr], [value], [size]) })
+        statement! { mstoren([ptr], [value], [size]) }
     }
 
-    pub fn mload(&self, ptr: yul::Expression) -> Result<yul::Expression, CompileError> {
+    pub fn mload(&self, ptr: yul::Expression) -> yul::Expression {
         let size = literal_expression! {(self.size())};
 
-        Ok(expression! { mloadn([ptr], [size]) })
+        expression! { mloadn([ptr], [size]) }
     }
 
-    pub fn sstore(
-        &self,
-        ptr: yul::Expression,
-        value: yul::Expression,
-    ) -> Result<yul::Statement, CompileError> {
+    pub fn sstore(&self, ptr: yul::Expression, value: yul::Expression) -> yul::Statement {
         let size = literal_expression! {(self.size())};
 
-        Ok(statement! { sstoren([ptr], [value], [size]) })
+        statement! { sstoren([ptr], [value], [size]) }
     }
 
-    pub fn sload(&self, ptr: yul::Expression) -> Result<yul::Expression, CompileError> {
+    pub fn sload(&self, ptr: yul::Expression) -> yul::Expression {
         let size = literal_expression! {(self.size())};
 
-        Ok(expression! { sloadn([ptr], [size]) })
+        expression! { sloadn([ptr], [size]) }
     }
 }
 
@@ -155,22 +148,22 @@ impl Array {
         self.dimension * self.inner.padded_size()
     }
 
-    pub fn decode(&self, ptr: yul::Expression) -> Result<yul::Expression, CompileError> {
+    pub fn decode(&self, ptr: yul::Expression) -> yul::Expression {
         let size = literal_expression! {(self.size())};
 
         match &self.inner {
-            Base::Bool => Ok(expression! { ccopy([ptr], [size]) }),
-            Base::Byte => Ok(expression! { ccopy([ptr], [size]) }),
-            Base::U256 => Ok(expression! { ccopy([ptr], [size]) }),
+            Base::Bool => expression! { ccopy([ptr], [size]) },
+            Base::Byte => expression! { ccopy([ptr], [size]) },
+            Base::U256 => expression! { ccopy([ptr], [size]) },
             Base::Address => unimplemented!("Address array decoding"),
         }
     }
 
-    pub fn encode(&self, ptr: yul::Expression) -> Result<yul::Expression, CompileError> {
+    pub fn encode(&self, ptr: yul::Expression) -> yul::Expression {
         match &self.inner {
-            Base::Bool => Ok(ptr),
-            Base::Byte => Ok(ptr),
-            Base::U256 => Ok(ptr),
+            Base::Bool => ptr,
+            Base::Byte => ptr,
+            Base::U256 => ptr,
             Base::Address => unimplemented!("Address array encoding"),
         }
     }
@@ -188,7 +181,7 @@ impl Array {
         array_ptr: yul::Expression,
         index: yul::Expression,
         value: yul::Expression,
-    ) -> Result<yul::Statement, CompileError> {
+    ) -> yul::Statement {
         let size = literal_expression! {(self.inner.size())};
         let value_ptr = expression! { add([array_ptr], (mul([index], [size]))) };
 
@@ -199,27 +192,23 @@ impl Array {
         &self,
         array_ptr: yul::Expression,
         index: yul::Expression,
-    ) -> Result<yul::Expression, CompileError> {
+    ) -> yul::Expression {
         let size = literal_expression! {(self.inner.size())};
         let value_ptr = expression! { add([array_ptr], (mul([index], [size]))) };
 
         self.inner.mload(value_ptr)
     }
 
-    pub fn mcopy(
-        &self,
-        mptr: yul::Expression,
-        sptr: yul::Expression,
-    ) -> Result<yul::Statement, CompileError> {
+    pub fn mcopy(&self, mptr: yul::Expression, sptr: yul::Expression) -> yul::Statement {
         let size = literal_expression! {(self.size())};
 
-        Ok(statement! { mcopy([mptr], [sptr], [size]) })
+        statement! { mcopy([mptr], [sptr], [size]) }
     }
 
-    pub fn scopy(&self, sptr: yul::Expression) -> Result<yul::Expression, CompileError> {
+    pub fn scopy(&self, sptr: yul::Expression) -> yul::Expression {
         let size = literal_expression! {(self.size())};
 
-        Ok(expression! { scopy([sptr], [size]) })
+        expression! { scopy([sptr], [size]) }
     }
 }
 
@@ -229,7 +218,7 @@ impl Map {
         index: usize,
         key: yul::Expression,
         value: yul::Expression,
-    ) -> Result<yul::Statement, CompileError> {
+    ) -> yul::Statement {
         let index = literal_expression! {(index)};
         let sptr = expression! { dualkeccak256([index], [key]) };
 
@@ -240,11 +229,7 @@ impl Map {
     }
 
     #[allow(dead_code)]
-    pub fn sload(
-        &self,
-        index: usize,
-        key: yul::Expression,
-    ) -> Result<yul::Expression, CompileError> {
+    pub fn sload(&self, index: usize, key: yul::Expression) -> yul::Expression {
         let index = literal_expression! {(index)};
         let sptr = expression! { dualkeccak256([index], [key]) };
 
@@ -258,29 +243,29 @@ impl Map {
 pub fn type_desc_fixed_size(
     defs: &HashMap<String, ModuleDef>,
     typ: &fe::TypeDesc,
-) -> Result<FixedSize, CompileError> {
+) -> Result<FixedSize, SemanticError> {
     match type_desc(defs, typ)? {
         Type::Base(base) => Ok(FixedSize::Base(base)),
         Type::Array(array) => Ok(FixedSize::Array(array)),
-        Type::Map(_) => Err(CompileError::static_str("maps are not fixed size")),
+        Type::Map(_) => Err(SemanticError::InvalidType),
     }
 }
 
 pub fn type_desc_base(
     defs: &HashMap<String, ModuleDef>,
     typ: &fe::TypeDesc,
-) -> Result<Base, CompileError> {
+) -> Result<Base, SemanticError> {
     match type_desc(defs, typ)? {
         Type::Base(base) => Ok(base),
-        Type::Array(_) => Err(CompileError::static_str("arrays are not a base type")),
-        Type::Map(_) => Err(CompileError::static_str("maps are not a base type")),
+        Type::Array(_) => Err(SemanticError::InvalidType),
+        Type::Map(_) => Err(SemanticError::InvalidType),
     }
 }
 
 pub fn type_desc(
     defs: &HashMap<String, ModuleDef>,
     typ: &fe::TypeDesc,
-) -> Result<Type, CompileError> {
+) -> Result<Type, SemanticError> {
     match typ {
         fe::TypeDesc::Base { base: "u256" } => Ok(Type::Base(Base::U256)),
         fe::TypeDesc::Base { base: "bool" } => Ok(Type::Base(Base::Bool)),
@@ -290,7 +275,8 @@ pub fn type_desc(
             if let Some(ModuleDef::Type(typ)) = defs.get(base.to_owned()) {
                 return Ok(typ.clone());
             }
-            Err(CompileError::static_str("no type definition"))
+
+            Err(SemanticError::UnrecognizedValue)
         }
         fe::TypeDesc::Array { typ, dimension } => Ok(Type::Array(Array {
             inner: type_desc_base(defs, &typ.node)?,

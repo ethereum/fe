@@ -2,6 +2,7 @@
 
 use fe_parser::errors::ParseError;
 use fe_parser::tokenizer::TokenizeError;
+use fe_semantics::errors::SemanticError;
 
 /// Errors can either be an object or static reference.
 #[derive(Debug)]
@@ -63,5 +64,11 @@ impl<'a> From<serde_json::error::Error> for CompileError {
 impl<'a> From<ethabi::Error> for CompileError {
     fn from(e: ethabi::Error) -> Self {
         CompileError::str(format!("ethabi error: {}", e))
+    }
+}
+
+impl<'a> From<SemanticError> for CompileError {
+    fn from(e: SemanticError) -> Self {
+        CompileError::str(format!("semantic error: {:?}", e))
     }
 }

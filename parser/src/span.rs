@@ -4,7 +4,7 @@ use serde::{
 };
 
 /// An exclusive span of byte offsets in a source file.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Copy, Clone, Hash, Eq)]
 pub struct Span {
     /// A byte offset specifying the inclusive start of a span.
     pub start: usize,
