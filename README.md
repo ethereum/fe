@@ -5,6 +5,10 @@ Fe is an emerging smart contract language for the Ethereum blockchain.
 [![Build Status](https://github.com/ethereum/fe/workflows/CI/badge.svg)](https://github.com/ethereum/fe/actions)
 [![Coverage](https://codecov.io/gh/ethereum/fe/branch/master/graph/badge.svg)](https://codecov.io/gh/ethereum/fe)
 
+## Getting started
+
+- [Build the compiler](docs/build.md)
+
 ## Overview
 
 Fe is inspired by Vyper and aims to achieve the goals of the [existing Vyper
@@ -165,13 +169,14 @@ considered to represent the exact prioritization of work items.
     dimensions, etc.)
 * [x] Finish writing parsers for the Fe EBNF grammar
 * [x] Parse a basic greeter contract to AST
-
-### Short-term goals
-
 * [x] Compile the AST of a basic guest book contract to YUL
 * [x] Generate YUL source code from YUL AST objects (via [yultsur](https://github.com/axic/yultsur/))
 * [x] Invoke the Solidity compiler with generated YUL source to produce a
   compiled binary (via [solc-rust](https://github.com/axic/solc-rust))
+
+### Short-term goals
+
+* [ ] Implement an [ERC20 token contract](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/ERC20.sol) in Fe and compile it.
 
 ### Long-term goals
 
