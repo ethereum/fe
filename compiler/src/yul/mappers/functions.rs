@@ -30,11 +30,11 @@ pub fn func_def(
         let function_name = identifier! {(name.node)};
         let param_names = args
             .iter()
-            .map(|a| func_def_arg(a))
+            .map(|arg| func_def_arg(arg))
             .collect::<Result<Vec<_>, _>>()?;
         let function_statements = body
             .iter()
-            .map(|s| func_stmt(context, s))
+            .map(|statement| func_stmt(context, statement))
             .collect::<Result<Vec<_>, _>>()?;
 
         // Different return types require slightly different functions.

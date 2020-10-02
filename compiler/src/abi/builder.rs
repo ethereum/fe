@@ -84,7 +84,7 @@ fn event_def<'a>(
 ) -> Result<Event, CompileError> {
     let fields = fields
         .iter()
-        .map(|f| event_field(type_defs, &f.node))
+        .map(|field| event_field(type_defs, &field.node))
         .collect::<Result<_, _>>()?;
 
     Ok(Event {

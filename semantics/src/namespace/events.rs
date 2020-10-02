@@ -13,7 +13,10 @@ pub struct Event {
 
 impl Event {
     pub fn new(name: String, fields: Vec<FixedSize>) -> Self {
-        let abi_fields = fields.iter().map(|f| f.abi_name()).collect::<Vec<String>>();
+        let abi_fields = fields
+            .iter()
+            .map(|field| field.abi_name())
+            .collect::<Vec<String>>();
         let topic = event_topic(name, abi_fields);
 
         Self { topic, fields }

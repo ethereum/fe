@@ -10,7 +10,7 @@ use yultsur::*;
 pub fn dispatcher(attributes: Vec<FunctionAttributes>) -> Result<yul::Statement, CompileError> {
     let arms = attributes
         .iter()
-        .map(|a| dispatch_arm(a.to_owned()))
+        .map(|arm| dispatch_arm(arm.to_owned()))
         .collect::<Result<Vec<yul::Case>, CompileError>>()?;
 
     Ok(switch! {

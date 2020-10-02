@@ -55,6 +55,9 @@ pub struct Context {
     emits: HashMap<Span, Event>,
     functions: HashMap<Span, FunctionAttributes>,
     declarations: HashMap<Span, FixedSize>,
+    // We will want to attribute more information to contracts. Things like events, public fields,
+    // public functions, and runtime functions will all be needed during mapping. These things
+    // should be grouped together under a new `ContractAttributes` struct.
     contracts: HashMap<Span, Vec<FunctionAttributes>>,
 }
 

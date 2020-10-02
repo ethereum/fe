@@ -45,7 +45,9 @@ pub fn func_def(
             .collect::<Result<Vec<_>, _>>()?;
         let return_type = return_type
             .as_ref()
-            .map(|r| types::type_desc_fixed_size(Scope::Function(Rc::clone(&function_scope)), &r))
+            .map(|typ| {
+                types::type_desc_fixed_size(Scope::Function(Rc::clone(&function_scope)), &typ)
+            })
             .transpose()?;
 
         contract_scope.borrow_mut().add_function(
