@@ -59,7 +59,7 @@ jobs:
         override: true
         components: rustfmt, clippy
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --all-features --verbose
     - name: Lint with rustfmt
       uses: actions-rs/cargo@v1
       with:
