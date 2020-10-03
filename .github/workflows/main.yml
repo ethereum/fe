@@ -20,8 +20,11 @@ jobs:
     - name: Cache Rust dependencies
       uses: actions/cache@v1.1.2
       with:
-        path: target
-        key: ${{ runner.OS }}-build-v1-${{ hashFiles('**/Cargo.lock') }}
+        # There's a problem with caching serde, hence we exclude it here
+        path: |
+          target
+          !target/**/*serde*
+        key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
     - name: coverage with tarpaulin
       run: |
         ./coverage.sh --out Xml
@@ -37,8 +40,11 @@ jobs:
     - name: Cache Rust dependencies
       uses: actions/cache@v1.1.2
       with:
-        path: target
-        key: ${{ runner.OS }}-build-v1-${{ hashFiles('**/Cargo.lock') }}
+        # There's a problem with caching serde, hence we exclude it here
+        path: |
+          target
+          !target/**/*serde*
+        key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
     - name: Install latest nightly
       uses: actions-rs/toolchain@v1
       with:
@@ -72,9 +78,11 @@ jobs:
     - name: Cache Rust dependencies
       uses: actions/cache@v1.1.2
       with:
+        # There's a problem with caching serde, hence we exclude it here
         path: |
           target
-        key: ${{ runner.OS }}-build-v1-${{ hashFiles('**/Cargo.lock') }}
+          !target/**/*serde*
+        key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
     - name: Install Mac System dependencies
       if: startsWith(matrix.os,'macOS')
       run: |
