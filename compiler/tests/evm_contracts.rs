@@ -180,6 +180,7 @@ fn evm_sanity() {
 }
 
 #[rstest(fixture_file, input, expected,
+    case("return_u256.fe", vec![], Some(u256_token(42))),
     case("return_identity_u256.fe", vec![42], Some(u256_token(42))),
     // binary operators
     case("return_addition_u256.fe", vec![42, 42], Some(u256_token(84))),

@@ -569,7 +569,10 @@ pub fn func_def(input: Cursor) -> ParseResult<Spanned<ContractStmt>> {
 }
 
 pub fn arg_list(input: Cursor) -> ParseResult<Vec<Spanned<FuncDefArg>>> {
-    separated(arg_def, op(","), true)(input)
+    match input[0] {
+        Token { string: ")", .. } => Ok((input, vec![])),
+        _ => separated(arg_def, op(","), true)(input),
+    }
 }
 
 pub fn arg_def(input: Cursor) -> ParseResult<Spanned<FuncDefArg>> {
