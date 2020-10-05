@@ -119,7 +119,7 @@ fn expr_name(
                 location: Location::Memory,
                 typ: Type::Array(array),
             }),
-            None => Err(SemanticError::UnrecognizedValue),
+            None => Err(SemanticError::UndefinedValue),
         };
     }
 
@@ -203,7 +203,7 @@ fn expr_attribute(
         return match expr_name_str(value)? {
             "msg" => expr_attribute_msg(attr),
             "self" => expr_attribute_self(scope, attr),
-            _ => Err(SemanticError::UnrecognizedValue),
+            _ => Err(SemanticError::UndefinedValue),
         };
     }
 
@@ -216,7 +216,7 @@ fn expr_attribute_msg(attr: &Spanned<&str>) -> Result<ExpressionAttributes, Sema
             location: Location::Value,
             typ: Type::Base(Base::Address),
         }),
-        _ => Err(SemanticError::UnrecognizedValue),
+        _ => Err(SemanticError::UndefinedValue),
     }
 }
 
