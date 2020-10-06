@@ -24,8 +24,11 @@ pub fn var_decl(
         let name = expressions::expr_name_string(target)?;
         let declared_type = types::type_desc_fixed_size(Scope::Function(Rc::clone(&scope)), typ)?;
         if let Some(value) = value {
-            let _value_type = expressions::expr(Rc::clone(&scope), Rc::clone(&context), value);
-            // TODO: Perform type checking
+            let value_attributes =
+                expressions::expr(Rc::clone(&scope), Rc::clone(&context), value)?;
+            if declared_type.clone().into_type() != value_attributes.typ {
+                return Err(SemanticError::TypeError);
+            }
         }
 
         match declared_type.clone() {
@@ -42,6 +45,7 @@ pub fn var_decl(
 
 #[cfg(test)]
 mod tests {
+    use crate::errors::SemanticError;
     use crate::namespace::scopes::{
         ContractScope,
         FunctionDef,
@@ -61,29 +65,39 @@ mod tests {
         FunctionScope::new(contract_scope)
     }
 
-    fn analyze(scope: Shared<FunctionScope>, src: &str) -> Context {
+    fn analyze(scope: Shared<FunctionScope>, src: &str) -> Result<Context, SemanticError> {
         let context = Context::new_shared();
         let tokens = parser::get_parse_tokens(src).expect("Couldn't parse expression");
         let statement = &parser::parsers::vardecl_stmt(&tokens[..])
             .expect("Couldn't build statement AST")
             .1;
 
-        var_decl(scope, Rc::clone(&context), statement).expect("Couldn't map assignment AST");
-        Rc::try_unwrap(context)
+        var_decl(scope, Rc::clone(&context), statement)?;
+        Ok(Rc::try_unwrap(context)
             .map_err(|_| "")
             .unwrap()
-            .into_inner()
+            .into_inner())
     }
 
     #[test]
-    fn simple_var_decl() {
+    fn simple_decl() {
         let statement = "foo: u256 = 26 + 42";
         let scope = scope();
-        let context = analyze(Rc::clone(&scope), statement);
+        let context = analyze(Rc::clone(&scope), statement).expect("analysis failed");
         assert_eq!(context.expressions.len(), 3);
         assert_eq!(
             scope.borrow().def("foo".to_string()),
             Some(FunctionDef::Base(Base::U256))
+        );
+    }
+
+    #[test]
+    fn type_error_decl() {
+        let statement = "foo: u256[100] = 26";
+        let result = analyze(scope(), statement);
+        assert_eq!(
+            result.expect_err("analysis didn't fail"),
+            SemanticError::TypeError
         );
     }
 }

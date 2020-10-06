@@ -1,4 +1,5 @@
 use crate::errors::SemanticError;
+use crate::namespace::operations;
 use crate::namespace::scopes::{
     FunctionScope,
     Shared,
@@ -53,11 +54,15 @@ fn assign_subscript(
         slices,
     } = &target.node
     {
-        let _target_attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), target)?;
-        let _value_attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), value)?;
-        let _index_attributes = expressions::slices_index(scope, context, slices)?;
+        let target_attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), target)?;
+        let value_attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), value)?;
+        let index_attributes = expressions::slices_index(scope, context, slices)?;
 
-        // TODO: perform type checking
+        let indexed_type = operations::index(target_attributes.typ, index_attributes.typ)?;
+
+        if indexed_type != value_attributes.typ {
+            return Err(SemanticError::TypeError);
+        }
 
         return Ok(());
     }
@@ -74,16 +79,19 @@ fn assign_name(
     target: &Spanned<fe::Expr>,
     value: &Spanned<fe::Expr>,
 ) -> Result<(), SemanticError> {
-    let _target_attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), target)?;
-    let _value_attributes = expressions::expr(scope, context, value)?;
+    let target_attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), target)?;
+    let value_attributes = expressions::expr(scope, context, value)?;
 
-    // TODO:: Perform type checking
+    if target_attributes.typ != value_attributes.typ {
+        return Err(SemanticError::TypeError);
+    }
 
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::errors::SemanticError;
     use crate::namespace::scopes::{
         ContractScope,
         FunctionScope,
@@ -102,6 +110,10 @@ mod tests {
     use rstest::rstest;
     use std::rc::Rc;
 
+    // comes with a few values in scope:
+    // - self.foobar: Map<u256, u256>
+    // - foo: u256
+    // - bar: u256[100]
     fn scope() -> Shared<FunctionScope> {
         let module_scope = ModuleScope::new();
         let contract_scope = ContractScope::new(module_scope);
@@ -126,18 +138,18 @@ mod tests {
         function_scope
     }
 
-    fn analyze(scope: Shared<FunctionScope>, src: &str) -> Context {
+    fn analyze(scope: Shared<FunctionScope>, src: &str) -> Result<Context, SemanticError> {
         let context = Context::new_shared();
         let tokens = parser::get_parse_tokens(src).expect("Couldn't parse expression");
         let assignment = &parser::parsers::assign_stmt(&tokens[..])
             .expect("Couldn't build assigment AST")
             .1;
 
-        assign(scope, Rc::clone(&context), assignment).expect("Couldn't map assignment AST");
-        Rc::try_unwrap(context)
+        assign(scope, Rc::clone(&context), assignment)?;
+        Ok(Rc::try_unwrap(context)
             .map_err(|_| "")
             .unwrap()
-            .into_inner()
+            .into_inner())
     }
 
     #[rstest(
@@ -147,8 +159,26 @@ mod tests {
         case("bar[26] = 42", 3),
         case("self.foobar[26 + 26] = 42", 5)
     )]
-    fn assigns(assignment: &str, expected_num_expr_attrs: usize) {
-        let context = analyze(scope(), assignment);
+    fn basic_assigns(assignment: &str, expected_num_expr_attrs: usize) {
+        let context = analyze(scope(), assignment).expect("failed to analyze the assignment");
         assert_eq!(context.expressions.len(), expected_num_expr_attrs)
+    }
+
+    #[rstest(assignment, case("bar = 42"), case("self.foobar[42] = bar"))]
+    fn type_error_assigns(assignment: &str) {
+        let result = analyze(scope(), assignment);
+        assert_eq!(
+            result.expect_err("semantic analysis did not return an error"),
+            SemanticError::TypeError
+        )
+    }
+
+    #[rstest(assignment, case("self.foobar = foo"))]
+    fn unassignable_assigns(assignment: &str) {
+        let result = analyze(scope(), assignment);
+        assert_eq!(
+            result.expect_err("semantic analysis did not return an error"),
+            SemanticError::UnassignableExpression
+        )
     }
 }

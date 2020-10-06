@@ -247,7 +247,7 @@ pub fn type_desc_fixed_size(
     match type_desc(defs, typ)? {
         Type::Base(base) => Ok(FixedSize::Base(base)),
         Type::Array(array) => Ok(FixedSize::Array(array)),
-        Type::Map(_) => Err(SemanticError::InvalidType),
+        Type::Map(_) => Err(SemanticError::TypeError),
     }
 }
 
@@ -257,8 +257,8 @@ pub fn type_desc_base(
 ) -> Result<Base, SemanticError> {
     match type_desc(defs, typ)? {
         Type::Base(base) => Ok(base),
-        Type::Array(_) => Err(SemanticError::InvalidType),
-        Type::Map(_) => Err(SemanticError::InvalidType),
+        Type::Array(_) => Err(SemanticError::TypeError),
+        Type::Map(_) => Err(SemanticError::TypeError),
     }
 }
 
@@ -276,7 +276,7 @@ pub fn type_desc(
                 return Ok(typ.clone());
             }
 
-            Err(SemanticError::UnrecognizedValue)
+            Err(SemanticError::UndefinedValue)
         }
         fe::TypeDesc::Array { typ, dimension } => Ok(Type::Array(Array {
             inner: type_desc_base(defs, &typ.node)?,
