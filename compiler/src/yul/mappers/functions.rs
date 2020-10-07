@@ -99,8 +99,16 @@ fn func_stmt(
         fe::FuncStmt::Pass => unimplemented!(),
         fe::FuncStmt::Break => unimplemented!(),
         fe::FuncStmt::Continue => unimplemented!(),
-        fe::FuncStmt::Revert => unimplemented!(),
+        fe::FuncStmt::Revert => revert(stmt),
     }
+}
+
+fn revert(stmt: &Spanned<fe::FuncStmt>) -> Result<yul::Statement, CompileError> {
+    if let fe::FuncStmt::Revert = &stmt.node {
+        return Ok(statement! { revert(0, 0) });
+    }
+
+    unreachable!()
 }
 
 fn emit(context: &Context, stmt: &Spanned<fe::FuncStmt>) -> Result<yul::Statement, CompileError> {

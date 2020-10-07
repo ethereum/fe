@@ -188,6 +188,20 @@ fn evm_sanity() {
     })
 }
 
+#[test]
+fn test_revert() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "revert.fe", "Foo");
+
+        let exit = harness.capture_call(&mut executor, "bar", &vec![]);
+
+        assert!(matches!(
+            exit,
+            evm::Capture::Exit((evm::ExitReason::Revert(_), _))
+        ))
+    })
+}
+
 #[rstest(fixture_file, input, expected,
     case("return_u256.fe", vec![], Some(u256_token(42))),
     case("return_identity_u256.fe", vec![42], Some(u256_token(42))),
