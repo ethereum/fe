@@ -108,7 +108,7 @@ fn func_stmt(
         fe::FuncStmt::Pass => unimplemented!(),
         fe::FuncStmt::Break => unimplemented!(),
         fe::FuncStmt::Continue => unimplemented!(),
-        fe::FuncStmt::Revert => unimplemented!(),
+        fe::FuncStmt::Revert => Ok(()),
     }
 }
 
