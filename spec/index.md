@@ -431,9 +431,7 @@ Here are examples of these operators being used.
 212 >> 1 == 106
 ```
 
-## 4.2.2 Comparision Operators
-
-## Comparison Operators
+### 4.2.2 Comparision Operators
 
 > **<sup>Syntax</sup>**\
 > _ComparisonExpression_ :\
