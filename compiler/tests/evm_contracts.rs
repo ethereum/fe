@@ -32,13 +32,12 @@ impl ContractHarness {
         }
     }
 
-    pub fn test_function(
+    pub fn capture_call(
         &self,
         executor: &mut Executor,
         name: &str,
-        input: Vec<ethabi::Token>,
-        output: Option<ethabi::Token>,
-    ) {
+        input: &Vec<ethabi::Token>,
+    ) -> evm::Capture<(evm::ExitReason, Vec<u8>), std::convert::Infallible> {
         let function = &self.abi.functions[name][0];
 
         let context = evm::Context {
@@ -51,9 +50,19 @@ impl ContractHarness {
             .encode_input(input.as_slice())
             .expect("Unable to encode input");
 
-        if let evm::Capture::Exit(exit) =
-            executor.call(self.address.clone(), None, input, None, false, context)
-        {
+        executor.call(self.address.clone(), None, input, None, false, context)
+    }
+
+    pub fn test_function(
+        &self,
+        executor: &mut Executor,
+        name: &str,
+        input: Vec<ethabi::Token>,
+        output: Option<ethabi::Token>,
+    ) {
+        let function = &self.abi.functions[name][0];
+
+        if let evm::Capture::Exit(exit) = self.capture_call(executor, name, &input) {
             if let Some(output) = output {
                 let actual_output = &function
                     .decode_output(&exit.1)
