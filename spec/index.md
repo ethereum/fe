@@ -532,7 +532,7 @@ Type   | Minimum            | Maximum
 `i32`  | -(2<sup>31</sup>)  | 2<sup>31</sup>-1
 `i64`  | -(2<sup>63</sup>)  | 2<sup>63</sup>-1
 `i128` | -(2<sup>127</sup>) | 2<sup>127</sup>-1
-`i256` | -(2<sup>355</sup>) | 2<sup>355</sup>-1
+`i256` | -(2<sup>255</sup>) | 2<sup>255</sup>-1
 
 
 ### 5.1.1.4. Textual types

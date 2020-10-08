@@ -1,0 +1,104 @@
+contract ERC20:
+    _balances: map<address, u256>
+    _allowances: map<address, map<address, u256>>
+
+    _totalSupply: u256
+
+    _name: string
+    _symbol: string
+    _decimals: u8
+
+    event Approval:
+        idx owner: address
+        idx spender: address
+        value: u256
+
+    event Transfer:
+        idx from: address
+        idx to: address
+        value: u256
+
+    def __init__(name: string, symbol: string):
+        self._name = name
+        self._symbol = symbol
+        self._decimals = 18
+
+    pub def name() -> string:
+        return self._name
+
+    pub def symbol() -> string:
+        return self._symbol
+
+    pub def decimals() -> u8:
+        return self._decimals
+
+    pub def totalSupply() -> u256:
+        return self._totalSupply
+
+    pub def balanceOf(account: address) -> u256:
+        return self._balances[account]
+
+    pub def transfer(recipient: address, amount: u256) -> bool:
+        self._transfer(msg.sender, recipient, amount)
+        return true
+
+    pub def allowance(owner: address, spender: address) -> u256:
+        return self._allowances[owner][spender]
+
+    pub def approve(spender: address, amount: u256) -> bool:
+        self._approve(msg.sender, spender, amount)
+        return true
+
+    pub def transferFrom(sender: address, recipient: address, amount: u256) -> bool:
+        self._transfer(sender, recipient, amount)
+        self._approve(sender, msg.sender, self._allowances[sender][msg.sender] - amount)
+        return true
+
+    pub def increaseAllowance(spender: address, addedValue: u256) -> bool:
+        self._approve(msg.sender, spender, self._allowances[msg.sender][spender] + addedValue)
+        return true
+
+    pub def decreaseAllowance(spender: address, subtractedValue: u256) -> bool:
+        self._approve(msg.sender, spender, self._allowances[msg.sender][spender] - subtractedValue)
+        return true
+
+    def _transfer(sender: address, recipient: address, amount: u256):
+        assert sender != address(0)
+        assert recipient != address(0)
+
+        self._beforeTokenTransfer(sender, recipient, amount)
+
+        self._balances[sender] = self._balances[sender] - amount
+        self._balances[recipient] = self._balances[recipient] + amount
+        emit Transfer(sender, recipient, amount)
+
+    def _mint(account: address, amount: u256):
+        assert account != address(0)
+
+        self._beforeTokenTransfer(address(0), account, amount)
+
+        self._totalSupply = self._totalSupply + amount
+        self._balances[account] = self._balances[account] + amount
+        emit Transfer(address(0), account, amount)
+
+    def _burn(account: address, amount: u256):
+        assert account != address(0)
+
+        self._beforeTokenTransfer(account, address(0), amount)
+
+        self._balances[account] = self._balances[account] - amount
+        self._totalSupply = self._totalSupply - amount
+        emit Transfer(account, address(0), amount)
+
+    def _approve(owner: address, spender: address, amount: u256):
+        assert owner != address(0)
+        assert spender != address(0)
+
+        self._allowances[owner][spender] = amount
+        emit Approval(owner, spender, amount)
+
+    def _setupDecimals(decimals_: u8):
+        self._decimals = decimals_
+
+    def _beforeTokenTransfer(from: address, to: address, amount: u256):
+        pass
