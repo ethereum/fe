@@ -34,11 +34,18 @@ pub struct Array {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Map {
-    pub key: FixedSize,
-    pub value: FixedSize,
+    pub key: Base,
+    pub value: Box<Type>,
 }
 
 impl FixedSize {
+    pub fn size(&self) -> usize {
+        match self {
+            FixedSize::Base(base) => base.size(),
+            FixedSize::Array(array) => array.size(),
+        }
+    }
+
     pub fn padded_size(&self) -> usize {
         match self {
             FixedSize::Base(base) => base.padded_size(),
@@ -136,6 +143,10 @@ impl Array {
         self.dimension * self.inner.size()
     }
 
+    pub fn to_fixed_size(&self) -> FixedSize {
+        FixedSize::Array(self.clone())
+    }
+
     pub fn padded_size(&self) -> usize {
         if self.inner == Base::Byte {
             if self.dimension % 32 == 0 {
@@ -215,27 +226,17 @@ impl Array {
 impl Map {
     pub fn sstore(
         &self,
-        index: usize,
+        index: yul::Expression,
         key: yul::Expression,
         value: yul::Expression,
     ) -> yul::Statement {
         let index = literal_expression! {(index)};
         let sptr = expression! { dualkeccak256([index], [key]) };
 
-        match &self.value {
-            FixedSize::Array(array) => array.mcopy(value, sptr),
-            FixedSize::Base(base) => base.sstore(sptr, value),
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn sload(&self, index: usize, key: yul::Expression) -> yul::Expression {
-        let index = literal_expression! {(index)};
-        let sptr = expression! { dualkeccak256([index], [key]) };
-
-        match &self.value {
-            FixedSize::Array(array) => array.scopy(sptr),
-            FixedSize::Base(base) => base.sload(sptr),
+        match &*self.value {
+            Type::Array(array) => array.mcopy(value, sptr),
+            Type::Base(base) => base.sstore(sptr, value),
+            Type::Map(_) => unimplemented!(),
         }
     }
 }
@@ -283,8 +284,8 @@ pub fn type_desc(
             dimension: *dimension,
         })),
         fe::TypeDesc::Map { from, to } => Ok(Type::Map(Map {
-            key: type_desc_fixed_size(defs, &from.node)?,
-            value: type_desc_fixed_size(defs, &to.node)?,
+            key: type_desc_base(defs, &from.node)?,
+            value: Box::new(type_desc(defs, &to.node)?),
         })),
     }
 }

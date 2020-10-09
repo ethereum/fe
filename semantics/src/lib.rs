@@ -39,6 +39,13 @@ pub struct ExpressionAttributes {
     pub location: Location,
 }
 
+impl ExpressionAttributes {
+    /// Convenience method for matching type and location.
+    pub fn to_tuple(&self) -> (Type, Location) {
+        (self.typ.clone(), self.location.clone())
+    }
+}
+
 /// Contains contextual information relating to a function definition AST node.
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionAttributes {

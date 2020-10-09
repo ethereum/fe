@@ -26,11 +26,11 @@ fn index_array(array: Array, index: Type) -> Result<Type, SemanticError> {
 }
 
 fn index_map(map: Map, index: Type) -> Result<Type, SemanticError> {
-    if index != map.key.into_type() {
+    if index != Type::Base(map.key) {
         return Err(SemanticError::TypeError);
     }
 
-    Ok(map.value.into_type())
+    Ok(*map.value)
 }
 
 #[cfg(test)]
@@ -40,7 +40,6 @@ mod tests {
     use crate::namespace::types::{
         Array,
         Base,
-        FixedSize,
         Map,
         Type,
     };
@@ -50,19 +49,22 @@ mod tests {
         inner: Base::U256,
         dimension: 100,
     });
-    const U256_BOOL_MAP: Type = Type::Map(Map {
-        key: FixedSize::Base(Base::U256),
-        value: FixedSize::Base(Base::Bool),
-    });
     const U256: Type = Type::Base(Base::U256);
     const BOOL: Type = Type::Base(Base::Bool);
+
+    fn u256_bool_map() -> Type {
+        Type::Map(Map {
+            key: Base::U256,
+            value: Box::new(Type::Base(Base::Bool)),
+        })
+    }
 
     #[rstest(
         value,
         index,
         expected,
         case(U256_ARRAY, U256, U256),
-        case(U256_BOOL_MAP, U256, BOOL)
+        case(u256_bool_map(), U256, BOOL)
     )]
     fn basic_index(value: Type, index: Type, expected: Type) {
         let actual = operations::index(value, index).expect("failed to get expected type");
@@ -73,8 +75,8 @@ mod tests {
         value,
         index,
         case(U256_ARRAY, BOOL),
-        case(U256_BOOL_MAP, BOOL),
-        case(U256_BOOL_MAP, U256_ARRAY)
+        case(u256_bool_map(), BOOL),
+        case(u256_bool_map(), U256_ARRAY)
     )]
     fn type_error_index(value: Type, index: Type) {
         let actual = operations::index(value, index).expect_err("didn't fail");

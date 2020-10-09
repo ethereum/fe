@@ -2,7 +2,10 @@
 use ethabi;
 use evm;
 
-use evm_runtime::Handler;
+use evm_runtime::{
+    ExitReason,
+    Handler,
+};
 use fe_compiler as compiler;
 use primitive_types::{
     H160,
@@ -62,10 +65,12 @@ impl ContractHarness {
     ) {
         let function = &self.abi.functions[name][0];
 
-        if let evm::Capture::Exit(exit) = self.capture_call(executor, name, &input) {
+        if let evm::Capture::Exit((ExitReason::Succeed(_), actual_output)) =
+            self.capture_call(executor, name, &input)
+        {
             if let Some(output) = output {
                 let actual_output = &function
-                    .decode_output(&exit.1)
+                    .decode_output(&actual_output)
                     .expect("Unable to decode output.")[0];
 
                 assert_eq!(&output, actual_output)
@@ -383,13 +388,97 @@ fn return_sender() {
 
         harness.caller = sender.clone().to_address().unwrap();
 
+        harness.test_function(&mut executor, "bar", vec![], Some(sender));
+    })
+}
+
+#[test]
+fn nested_map() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "nested_map.fe", "Foo");
+
+        let address1 = address_token("1000000000000000000000000000000000000001");
+        let address2 = address_token("2000000000000000000000000000000000000002");
+        let address3 = address_token("3000000000000000000000000000000000000003");
+
+        // write bar (address -> address -> u256)
         harness.test_function(
             &mut executor,
-            "bar",
-            // FIXME: There's an issue parsing functions with 0 params. This is here to mitigate
-            // that failure.
-            vec![u256_token(42)],
-            Some(sender),
+            "write_bar",
+            vec![address1.clone(), address2.clone(), u256_token(12)],
+            None,
+        );
+        harness.test_function(
+            &mut executor,
+            "write_bar",
+            vec![address1.clone(), address3.clone(), u256_token(13)],
+            None,
+        );
+        harness.test_function(
+            &mut executor,
+            "write_bar",
+            vec![address2.clone(), address1.clone(), u256_token(21)],
+            None,
+        );
+
+        // write baz (address -> u256 -> bool)
+        harness.test_function(
+            &mut executor,
+            "write_baz",
+            vec![address1.clone(), u256_token(26), bool_token(true)],
+            None,
+        );
+        harness.test_function(
+            &mut executor,
+            "write_baz",
+            vec![address2.clone(), u256_token(42), bool_token(true)],
+            None,
+        );
+        harness.test_function(
+            &mut executor,
+            "write_baz",
+            vec![address2.clone(), u256_token(100), bool_token(false)],
+            None,
+        );
+
+        // read bar
+        harness.test_function(
+            &mut executor,
+            "read_bar",
+            vec![address1.clone(), address2.clone()],
+            Some(u256_token(12)),
+        );
+        harness.test_function(
+            &mut executor,
+            "read_bar",
+            vec![address1.clone(), address3.clone()],
+            Some(u256_token(13)),
+        );
+        harness.test_function(
+            &mut executor,
+            "read_bar",
+            vec![address2.clone(), address1.clone()],
+            Some(u256_token(21)),
+        );
+
+        // read baz
+        harness.test_function(
+            &mut executor,
+            "read_baz",
+            vec![address1.clone(), u256_token(26)],
+            Some(bool_token(true)),
+        );
+        harness.test_function(
+            &mut executor,
+            "read_baz",
+            vec![address2.clone(), u256_token(42)],
+            Some(bool_token(true)),
+        );
+        harness.test_function(
+            &mut executor,
+            "read_baz",
+            vec![address2.clone(), u256_token(100)],
+            Some(bool_token(false)),
         );
     })
 }

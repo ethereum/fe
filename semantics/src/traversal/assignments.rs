@@ -101,8 +101,8 @@ mod tests {
     use crate::namespace::types::{
         Array,
         Base,
-        FixedSize,
         Map,
+        Type,
     };
     use crate::traversal::assignments::assign;
     use crate::Context;
@@ -120,8 +120,8 @@ mod tests {
         contract_scope.borrow_mut().add_map(
             "foobar".to_string(),
             Map {
-                key: FixedSize::Base(Base::U256),
-                value: FixedSize::Base(Base::U256),
+                key: Base::U256,
+                value: Box::new(Type::Base(Base::U256)),
             },
         );
         let function_scope = FunctionScope::new(contract_scope);

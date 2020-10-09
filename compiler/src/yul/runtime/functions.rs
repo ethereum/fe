@@ -24,6 +24,7 @@ pub fn avail() -> yul::Statement {
     function_definition! {
         function avail() -> ptr {
             (ptr := mload(0x00))
+            (if (eq(ptr, 0x00)) { (ptr := 0x20) })
         }
     }
 }
