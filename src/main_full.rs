@@ -38,12 +38,14 @@ pub fn main() {
         .arg(
             Arg::with_name("output-dir")
                 .short("o")
+                .long("output-dir")
                 .help("The directory to store the compiler output e.g /tmp/output")
                 .takes_value(true),
         )
         .arg(
             Arg::with_name("emit")
                 .short("e")
+                .long("emit")
                 .help("Comma seperated compile targets e.g. -e=bytecode,yul")
                 .default_value("bytecode")
                 .use_delimiter(true)
