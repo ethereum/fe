@@ -20,7 +20,9 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 arg_enum! {
     #[derive(PartialEq, Debug)]
     pub enum CompilationTarget {
+        Ast,
         Bytecode,
+        Tokens,
         Yul,
     }
 }
@@ -92,9 +94,17 @@ fn compile(src_file: &str, output_dir: &str, targets: Vec<CompilationTarget>) ->
 
     for target in targets {
         match target {
+            CompilationTarget::Ast => {
+                let mut file_ast = fs::File::create(output_dir.join("out.ast"))?;
+                file_ast.write_all(output.ast.as_bytes())?;
+            }
             CompilationTarget::Bytecode => {
                 let mut file_bytecode = fs::File::create(output_dir.join("out.bin"))?;
                 file_bytecode.write_all(output.bytecode.as_bytes())?;
+            }
+            CompilationTarget::Tokens => {
+                let mut file_tokens = fs::File::create(output_dir.join("out.tokens"))?;
+                file_tokens.write_all(output.tokens.as_bytes())?;
             }
             CompilationTarget::Yul => {
                 let mut file_yul = fs::File::create(output_dir.join("out.yul"))?;
