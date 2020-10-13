@@ -203,6 +203,7 @@ fn test_revert() {
 }
 
 #[rstest(fixture_file, input, expected,
+    case("return_u256_from_called_fn.fe", vec![], Some(u256_token(42))),
     case("return_u256.fe", vec![], Some(u256_token(42))),
     case("return_identity_u256.fe", vec![42], Some(u256_token(42))),
     // binary operators

@@ -14,7 +14,7 @@ pub enum ErrorKind {
 /// List of errors encountered during compilation.
 #[derive(Debug)]
 pub struct CompileError {
-    errors: Vec<ErrorKind>,
+    pub errors: Vec<ErrorKind>,
 }
 
 impl Default for CompileError {
