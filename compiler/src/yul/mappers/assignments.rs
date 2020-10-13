@@ -5,7 +5,6 @@ use fe_parser::span::Spanned;
 use fe_semantics::namespace::types::Type;
 use fe_semantics::{
     Context,
-    ExpressionAttributes,
     Location,
 };
 use yultsur::*;
@@ -42,63 +41,20 @@ fn assign_subscript(
         slices,
     } = &target.node
     {
-        return match &target.node {
-            fe::Expr::Name(_) => assign_subscript_name(context, target, slices, value),
-            fe::Expr::Attribute { .. } => {
-                assign_subscript_attribute(context, target, slices, value)
-            }
-            _ => Err(CompileError::static_str("invalid subscript target")),
-        };
-    }
+        if let Some(target_attributes) = context.get_expression(target) {
+            let target = expressions::expr(context, target)?;
+            let index = expressions::slices_index(context, slices)?;
+            let value = expressions::expr(context, value)?;
 
-    unreachable!()
-}
-
-fn assign_subscript_name(
-    context: &Context,
-    target: &Spanned<fe::Expr>,
-    slices: &Spanned<Vec<Spanned<fe::Slice>>>,
-    value: &Spanned<fe::Expr>,
-) -> Result<yul::Statement, CompileError> {
-    if let Some(target_attributes) = context.get_expression(target) {
-        let target = identifier_expression! { (expressions::expr_name_string(target)?) };
-        let index = expressions::slices_index(context, slices)?;
-        let value = expressions::expr(context, value)?;
-
-        return match target_attributes.typ.to_owned() {
-            Type::Array(array) => Ok(array.mstore_elem(target, index, value)),
-            _ => unreachable!(),
-        };
-    }
-
-    unreachable!()
-}
-
-fn assign_subscript_attribute(
-    context: &Context,
-    target: &Spanned<fe::Expr>,
-    slices: &Spanned<Vec<Spanned<fe::Slice>>>,
-    value: &Spanned<fe::Expr>,
-) -> Result<yul::Statement, CompileError> {
-    if let Some(target_attributes) = context.get_expression(target) {
-        let key = expressions::slices_index(context, slices)?;
-        let value = expressions::expr(context, value)?;
-
-        return match target_attributes {
-            ExpressionAttributes {
-                typ: Type::Map(map),
-                location: Location::Storage { index },
-            } => Ok(map.sstore(*index, key, value)),
-            ExpressionAttributes {
-                typ: Type::Base(_),
-                location: Location::Storage { .. },
-            } => unimplemented!(),
-            ExpressionAttributes {
-                typ: Type::Array(_),
-                location: Location::Storage { .. },
-            } => unimplemented!(),
-            _ => unreachable!(),
-        };
+            return match target_attributes.to_tuple() {
+                (Type::Map(map), _) => Ok(map.sstore(target, index, value)),
+                (Type::Array(array), Location::Memory) => {
+                    Ok(array.mstore_elem(target, index, value))
+                }
+                (Type::Array(_), Location::Storage { .. }) => unimplemented!(),
+                _ => unreachable!(),
+            };
+        }
     }
 
     unreachable!()

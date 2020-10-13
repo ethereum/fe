@@ -7,7 +7,6 @@ use fe_semantics;
 use fe_semantics::namespace::types::{
     Array,
     Base,
-    FixedSize,
     Map,
     Type,
 };
@@ -31,16 +30,18 @@ static BYTES_MEM: ExpressionAttributes = ExpressionAttributes {
     location: Location::Memory,
 };
 
-static ADDR_BYTES_MAP_STO: ExpressionAttributes = ExpressionAttributes {
-    typ: Type::Map(Map {
-        key: FixedSize::Base(Base::Address),
-        value: FixedSize::Array(Array {
-            dimension: 100,
-            inner: Base::Byte,
+fn addr_bytes_map_sto() -> ExpressionAttributes {
+    ExpressionAttributes {
+        typ: Type::Map(Map {
+            key: Base::Address,
+            value: Box::new(Type::Array(Array {
+                dimension: 100,
+                inner: Base::Byte,
+            })),
         }),
-    }),
-    location: Location::Storage { index: 0 },
-};
+        location: Location::Storage { index: 0 },
+    }
+}
 
 fn mock_spanned_expr(start: usize, end: usize) -> Spanned<fe::Expr<'static>> {
     Spanned {
@@ -72,7 +73,7 @@ fn guest_book_analysis() {
         (200, 210, &ADDR_VAL),
         (214, 222, &BYTES_MEM),
         (253, 261, &BYTES_MEM),
-        (326, 341, &ADDR_BYTES_MAP_STO),
+        (326, 341, &addr_bytes_map_sto()),
         (326, 347, &BYTES_MEM),
         (342, 346, &ADDR_VAL),
     ] {

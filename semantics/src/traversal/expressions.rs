@@ -5,13 +5,10 @@ use crate::namespace::scopes::{
     FunctionScope,
     Shared,
 };
-use crate::namespace::types::{
-    Array,
-    Map,
-};
+
+use crate::namespace::operations;
 use crate::namespace::types::{
     Base,
-    FixedSize,
     Type,
 };
 use crate::{
@@ -144,52 +141,24 @@ fn expr_subscript(
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::Subscript { value, slices } = &exp.node {
         let value_attributes = expr(Rc::clone(&scope), Rc::clone(&context), value)?;
-        let _index_attributes = slices_index(scope, context, slices)?;
+        let index_attributes = slices_index(scope, context, slices)?;
 
-        // TODO: Perform type checking
-
-        let attributes = match value_attributes {
-            ExpressionAttributes {
-                typ:
-                    Type::Map(Map {
-                        key: _,
-                        value: FixedSize::Base(base),
-                    }),
-                location: Location::Storage { .. },
-            } => ExpressionAttributes {
-                typ: Type::Base(base),
-                location: Location::Value,
-            },
-            ExpressionAttributes {
-                typ:
-                    Type::Map(Map {
-                        key: _,
-                        value: FixedSize::Array(array),
-                    }),
-                location: Location::Storage { .. },
-            } => ExpressionAttributes {
-                typ: Type::Array(array),
-                location: Location::Memory,
-            },
-            ExpressionAttributes {
-                typ: Type::Array(_),
-                location: Location::Storage { .. },
-            } => unimplemented!(),
-            ExpressionAttributes {
-                typ:
-                    Type::Array(Array {
-                        dimension: _,
-                        inner,
-                    }),
-                location: Location::Memory,
-            } => ExpressionAttributes {
-                typ: Type::Base(inner),
-                location: Location::Value,
-            },
-            _ => unimplemented!(),
+        let typ = operations::index(value_attributes.typ.clone(), index_attributes.typ)?;
+        let location = match value_attributes.typ {
+            Type::Map(map) => {
+                match *map.value {
+                    Type::Base(_) => Location::Value,
+                    Type::Array(_) => Location::Memory,
+                    // Index value is ignored. We may want to introduce a new location
+                    // variant named StorageRuntime or something to suit this case.
+                    Type::Map(_) => Location::Storage { index: 0 },
+                }
+            }
+            Type::Array(_) => Location::Value,
+            Type::Base(_) => unreachable!(),
         };
 
-        return Ok(attributes);
+        return Ok(ExpressionAttributes { typ, location });
     }
 
     unreachable!()
@@ -316,7 +285,6 @@ mod tests {
     use crate::namespace::types::{
         Array,
         Base,
-        FixedSize,
         Map,
         Type,
     };
@@ -349,13 +317,15 @@ mod tests {
         location: Location::Memory,
     };
 
-    static ADDR_U256_MAP_STO: ExpressionAttributes = ExpressionAttributes {
-        typ: Type::Map(Map {
-            key: FixedSize::Base(Base::Address),
-            value: FixedSize::Base(Base::U256),
-        }),
-        location: Location::Storage { index: 0 },
-    };
+    fn addr_u256_map_sto() -> ExpressionAttributes {
+        ExpressionAttributes {
+            typ: Type::Map(Map {
+                key: Base::Address,
+                value: Box::new(Type::Base(Base::U256)),
+            }),
+            location: Location::Storage { index: 0 },
+        }
+    }
 
     fn scope() -> Shared<FunctionScope> {
         let module_scope = ModuleScope::new();
@@ -396,7 +366,7 @@ mod tests {
         case(
             "self.my_addr_u256_map[my_addr_array[42]] + 26",
             &[
-                (0, 21, &ADDR_U256_MAP_STO), (22, 35, &ADDR_ARRAY_MEM), (36, 38, &U256_VAL),
+                (0, 21, &addr_u256_map_sto()), (22, 35, &ADDR_ARRAY_MEM), (36, 38, &U256_VAL),
                 (43, 45, &U256_VAL), (22, 39, &ADDR_VAL), (0, 40, &U256_VAL), (0, 45, &U256_VAL)
             ]
         ),
@@ -416,8 +386,8 @@ mod tests {
         scope.borrow_mut().contract_scope().borrow_mut().add_map(
             "my_addr_u256_map".to_string(),
             Map {
-                key: FixedSize::Base(Base::Address),
-                value: FixedSize::Base(Base::U256),
+                key: Base::Address,
+                value: Box::new(Type::Base(Base::U256)),
             },
         );
 

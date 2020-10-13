@@ -1,7 +1,6 @@
 //! Delete this file once the erc20 contract can be compiled and add a new
 //! test in evm_contracts that validates the behavior of the erc20 contract.
 
-use fe_parser;
 use std::fs;
 
 #[test]

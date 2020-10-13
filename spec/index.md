@@ -496,26 +496,28 @@ limited capabilities.
 
 The list of types is:
 
-* Primitive types:
-    * [Boolean] — `true` or `false`
-    * [Numeric] — integer
-* Sequence types:
-    * [Tuple]
-    * [Array]
-    * [Bytes]
-* User-defined types:
-    * [Struct]
-    * [Enum]
-    * [Contract]
+* Data types
+    * Base types:
+        * [Boolean] — `true` or `false`
+        * [Address] - Ethereum address
+        * [Numeric] — integer
+    * Reference types:
+        * [Tuple]
+        * [Array]
+        * [Bytes]
+        * [Struct]
+        * [Enum]
+        * [HashMap]
+* Other types:
     * [Event]
-* Function types:
+    * [Contract]
     * [Function]
-* Map types:
-    * [HashMap]
 
 ### 5.1.1.1 Boolean type
 
-The `bool` type is a datatype which can be either `true` or `false`.
+The `bool` type is a data type which can be either `true` or `false`.
+
+Example:
 
 ```rust
 x = true
@@ -580,13 +582,15 @@ MISSING
 
 ### 5.1.1.11. HashMap type
 
-MISSING
+Maps a key to a value.
 
-Example
+Example:
 
 ```
 map<TKey,TValue>
 ```
+
+Where TKey is a base type and TValue is any data type.
 
 ### 5.1.1.12. Bytes type
 

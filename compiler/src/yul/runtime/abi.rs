@@ -70,7 +70,7 @@ fn selection_as_statement(
 #[test]
 fn test_selector_literal_basic() {
     assert_eq!(
-        selector("foo".to_string(), &vec![]).to_string(),
+        selector("foo".to_string(), &[]).to_string(),
         String::from("0xc2985578"),
     )
 }
@@ -78,7 +78,7 @@ fn test_selector_literal_basic() {
 #[test]
 fn test_selector_literal() {
     assert_eq!(
-        selector("bar".to_string(), &vec![FixedSize::Base(Base::U256)]).to_string(),
+        selector("bar".to_string(), &[FixedSize::Base(Base::U256)]).to_string(),
         String::from("0x0423a132"),
     )
 }

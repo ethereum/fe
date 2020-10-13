@@ -1,4 +1,5 @@
 use crate::errors::CompileError;
+use crate::yul::mappers::operations;
 use fe_parser::ast as fe;
 use fe_parser::span::{
     Span,
@@ -6,7 +7,6 @@ use fe_parser::span::{
 };
 use fe_semantics::namespace::types::{
     Array,
-    FixedSize,
     Map,
     Type,
 };
@@ -176,14 +176,10 @@ fn expr_subscript(
             let value = expr(context, value)?;
             let index = slices_index(context, slices)?;
 
-            return match (&value_attributes.typ, &value_attributes.location) {
-                (Type::Map(map), Location::Storage { .. }) => {
-                    keyed_storage_map(value, index, map.to_owned())
-                }
+            return match value_attributes.to_tuple() {
+                (Type::Map(map), Location::Storage { .. }) => keyed_storage_map(value, index, map),
                 (Type::Array(_), Location::Storage { .. }) => unimplemented!(),
-                (Type::Array(array), Location::Memory) => {
-                    indexed_memory_array(value, index, array.to_owned())
-                }
+                (Type::Array(array), Location::Memory) => indexed_memory_array(value, index, array),
                 (_, _) => unreachable!(),
             };
         }
@@ -195,13 +191,14 @@ fn expr_subscript(
 fn keyed_storage_map(
     map: yul::Expression,
     key: yul::Expression,
-    map_type: Map,
+    typ: Map,
 ) -> Result<yul::Expression, CompileError> {
     let sptr = expression! { dualkeccak256([map], [key]) };
 
-    match map_type.value {
-        FixedSize::Array(array) => Ok(array.scopy(sptr)),
-        FixedSize::Base(base) => Ok(base.sload(sptr)),
+    match *typ.value {
+        Type::Array(array) => Ok(operations::scopy(array.to_fixed_size(), sptr)),
+        Type::Base(base) => Ok(operations::sload(base, sptr)),
+        Type::Map(_) => Ok(sptr),
     }
 }
 
@@ -258,7 +255,6 @@ mod tests {
     use fe_semantics::namespace::types::{
         Array,
         Base,
-        FixedSize,
         Map,
         Type,
     };
@@ -287,8 +283,8 @@ mod tests {
             "self.foo",
             ExpressionAttributes {
                 typ: Type::Map(Map {
-                    key: FixedSize::Base(Base::Address),
-                    value: FixedSize::Base(Base::U256),
+                    key: Base::Address,
+                    value: Box::new(Type::Base(Base::U256)),
                 }),
                 location: Location::Storage { index: 0 },
             },
@@ -296,7 +292,7 @@ mod tests {
 
         let result = map(&harness.context, &harness.src);
 
-        assert_eq!(result.to_string(), "sloadn(dualkeccak256(0, 3), 32)");
+        assert_eq!(result, "sloadn(dualkeccak256(0, 3), 32)");
     }
 
     #[test]
@@ -306,11 +302,11 @@ mod tests {
             "self.foo_map",
             ExpressionAttributes {
                 typ: Type::Map(Map {
-                    key: FixedSize::Base(Base::Byte),
-                    value: FixedSize::Array(Array {
+                    key: Base::Byte,
+                    value: Box::new(Type::Array(Array {
                         dimension: 8,
                         inner: Base::Address,
-                    }),
+                    })),
                 }),
                 location: Location::Storage { index: 0 },
             },
@@ -330,7 +326,7 @@ mod tests {
         let result = map(&harness.context, &harness.src);
 
         assert_eq!(
-            result.to_string(),
+            result,
             "scopy(dualkeccak256(0, mloadn(add(bar_array, mul(index, 1)), 1)), 160)"
         );
     }
