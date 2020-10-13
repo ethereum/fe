@@ -1,5 +1,5 @@
 use crate::errors::CompileError;
-use crate::yul::mappers::expressions::spanned_expression;
+use crate::yul::mappers::expressions::call_arg;
 use crate::yul::mappers::{
     assignments,
     declarations,
@@ -133,19 +133,6 @@ fn emit(context: &Context, stmt: &Spanned<fe::FuncStmt>) -> Result<yul::Statemen
     }
 
     unreachable!()
-}
-
-fn call_arg(
-    context: &Context,
-    arg: &Spanned<fe::CallArg>,
-) -> Result<yul::Expression, CompileError> {
-    match &arg.node {
-        fe::CallArg::Arg(value) => {
-            let spanned = spanned_expression(&arg.span, value);
-            expressions::expr(context, &spanned)
-        }
-        fe::CallArg::Kwarg(fe::Kwarg { name: _, value }) => expressions::expr(context, value),
-    }
 }
 
 fn func_return(

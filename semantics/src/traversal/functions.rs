@@ -43,6 +43,7 @@ pub fn func_def(
             .iter()
             .map(|arg| func_def_arg(Rc::clone(&function_scope), arg))
             .collect::<Result<Vec<_>, _>>()?;
+
         let return_type = return_type
             .as_ref()
             .map(|typ| {

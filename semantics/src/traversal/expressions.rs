@@ -39,7 +39,7 @@ pub fn expr(
         fe::Expr::BinOperation { .. } => expr_bin_operation(scope, Rc::clone(&context), exp)?,
         fe::Expr::UnaryOperation { .. } => unimplemented!(),
         fe::Expr::CompOperation { .. } => expr_comp_operation(scope, Rc::clone(&context), exp)?,
-        fe::Expr::Call { .. } => expr_call(scope, exp)?,
+        fe::Expr::Call { .. } => expr_call(scope, Rc::clone(&context), exp)?,
         fe::Expr::List { .. } => unimplemented!(),
         fe::Expr::ListComp { .. } => unimplemented!(),
         fe::Expr::Tuple { .. } => unimplemented!(),
@@ -225,22 +225,60 @@ fn expr_bin_operation(
     unreachable!()
 }
 
+pub fn call_arg(
+    scope: Shared<FunctionScope>,
+    context: Shared<Context>,
+    arg: &Spanned<fe::CallArg>,
+) -> Result<ExpressionAttributes, SemanticError> {
+    match &arg.node {
+        fe::CallArg::Arg(value) => {
+            let spanned = spanned_expression(&arg.span, value);
+            expr(scope, context, &spanned)
+        }
+        fe::CallArg::Kwarg(fe::Kwarg { name: _, value }) => expr(scope, context, value),
+    }
+}
+
 fn expr_call(
     scope: Shared<FunctionScope>,
+    context: Shared<Context>,
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
-    if let fe::Expr::Call { args: _, func } = &exp.node {
+    if let fe::Expr::Call { args, func } = &exp.node {
+        let argument_attributes: Vec<ExpressionAttributes> = args
+            .node
+            .iter()
+            // Side effect: Performs semantic analysis on each call arg and adds its attributes to
+            // the context
+            .map(|argument| call_arg(scope.clone(), context.clone(), argument))
+            .collect::<Result<_, _>>()?;
+
+        let argument_types: Vec<Type> = argument_attributes
+            .iter()
+            .map(|attributes| attributes.typ.clone())
+            .collect();
+
         if let fe::Expr::Attribute { value: _, attr } = &func.node {
             let contract_scope = &scope.borrow().parent;
             let called_func = contract_scope.borrow().def(attr.node.to_string());
             return match called_func {
                 Some(ContractDef::Function {
-                    params: _,
+                    params,
                     returns: Some(return_type),
-                }) => Ok(ExpressionAttributes {
-                    typ: return_type.into_type(),
-                    location: Location::Value,
-                }),
+                }) => {
+                    let param_types: Vec<Type> = params
+                        .iter()
+                        .map(|param| param.clone().into_type())
+                        .collect();
+                    if param_types != argument_types {
+                        return Err(SemanticError::TypeError);
+                    }
+
+                    return Ok(ExpressionAttributes {
+                        typ: return_type.into_type(),
+                        location: Location::Value,
+                    });
+                }
                 Some(ContractDef::Function {
                     params: _,
                     returns: None,

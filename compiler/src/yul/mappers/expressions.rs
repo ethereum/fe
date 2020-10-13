@@ -29,7 +29,7 @@ pub fn expr(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressio
         fe::Expr::BinOperation { .. } => expr_bin_operation(context, exp),
         fe::Expr::UnaryOperation { .. } => unimplemented!(),
         fe::Expr::CompOperation { .. } => expr_comp_operation(context, exp),
-        fe::Expr::Call { .. } => expr_call(exp),
+        fe::Expr::Call { .. } => expr_call(context, exp),
         fe::Expr::List { .. } => unimplemented!(),
         fe::Expr::ListComp { .. } => unimplemented!(),
         fe::Expr::Tuple { .. } => unimplemented!(),
@@ -38,11 +38,34 @@ pub fn expr(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressio
     }
 }
 
-pub fn expr_call(exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
-    if let fe::Expr::Call { args: _, func } = &exp.node {
+pub fn call_arg(
+    context: &Context,
+    arg: &Spanned<fe::CallArg>,
+) -> Result<yul::Expression, CompileError> {
+    match &arg.node {
+        fe::CallArg::Arg(value) => {
+            let spanned = spanned_expression(&arg.span, value);
+            expr(context, &spanned)
+        }
+        fe::CallArg::Kwarg(fe::Kwarg { name: _, value }) => expr(context, value),
+    }
+}
+
+pub fn expr_call(
+    context: &Context,
+    exp: &Spanned<fe::Expr>,
+) -> Result<yul::Expression, CompileError> {
+    if let fe::Expr::Call { args, func } = &exp.node {
         if let fe::Expr::Attribute { value: _, attr } = &func.node {
+            let arguments = &args.node;
+            let yul_args: Vec<yul::Expression> = arguments
+                .iter()
+                .map(|val| call_arg(context, val))
+                .collect::<Result<_, _>>()?;
+
             let func_name = identifier! { (attr.node) };
-            return Ok(expression! { [func_name]() });
+
+            return Ok(expression! { [func_name]([yul_args...]) });
         }
     }
 
