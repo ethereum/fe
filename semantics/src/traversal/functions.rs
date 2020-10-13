@@ -166,7 +166,7 @@ fn func_return(
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::Return { value: Some(value) } = &stmt.node {
-        let _attributes = expressions::expr(scope, context, value);
+        let _attributes = expressions::expr(scope, context, value)?;
 
         // TODO: Perform type checking
 

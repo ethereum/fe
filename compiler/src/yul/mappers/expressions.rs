@@ -29,13 +29,24 @@ pub fn expr(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressio
         fe::Expr::BinOperation { .. } => expr_bin_operation(context, exp),
         fe::Expr::UnaryOperation { .. } => unimplemented!(),
         fe::Expr::CompOperation { .. } => expr_comp_operation(context, exp),
-        fe::Expr::Call { .. } => unimplemented!(),
+        fe::Expr::Call { .. } => expr_call(exp),
         fe::Expr::List { .. } => unimplemented!(),
         fe::Expr::ListComp { .. } => unimplemented!(),
         fe::Expr::Tuple { .. } => unimplemented!(),
         fe::Expr::Str(_) => unimplemented!(),
         fe::Expr::Ellipsis => unimplemented!(),
     }
+}
+
+pub fn expr_call(exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
+    if let fe::Expr::Call { args: _, func } = &exp.node {
+        if let fe::Expr::Attribute { value: _, attr } = &func.node {
+            let func_name = identifier! { (attr.node) };
+            return Ok(expression! { [func_name]() });
+        }
+    }
+
+    unreachable!()
 }
 
 pub fn expr_comp_operation(

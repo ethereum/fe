@@ -42,7 +42,7 @@ pub fn expr(
         fe::Expr::BinOperation { .. } => expr_bin_operation(scope, Rc::clone(&context), exp)?,
         fe::Expr::UnaryOperation { .. } => unimplemented!(),
         fe::Expr::CompOperation { .. } => expr_comp_operation(scope, Rc::clone(&context), exp)?,
-        fe::Expr::Call { .. } => unimplemented!(),
+        fe::Expr::Call { .. } => expr_call(scope, exp)?,
         fe::Expr::List { .. } => unimplemented!(),
         fe::Expr::ListComp { .. } => unimplemented!(),
         fe::Expr::Tuple { .. } => unimplemented!(),
@@ -251,6 +251,34 @@ fn expr_bin_operation(
             typ: Type::Base(Base::U256),
             location: Location::Value,
         });
+    }
+
+    unreachable!()
+}
+
+fn expr_call(
+    scope: Shared<FunctionScope>,
+    exp: &Spanned<fe::Expr>,
+) -> Result<ExpressionAttributes, SemanticError> {
+    if let fe::Expr::Call { args: _, func } = &exp.node {
+        if let fe::Expr::Attribute { value: _, attr } = &func.node {
+            let contract_scope = &scope.borrow().parent;
+            let called_func = contract_scope.borrow().def(attr.node.to_string());
+            return match called_func {
+                Some(ContractDef::Function {
+                    params: _,
+                    returns: Some(return_type),
+                }) => Ok(ExpressionAttributes {
+                    typ: return_type.into_type(),
+                    location: Location::Value,
+                }),
+                Some(ContractDef::Function {
+                    params: _,
+                    returns: None,
+                }) => Err(SemanticError::NotAnExpression),
+                _ => unreachable!(),
+            };
+        }
     }
 
     unreachable!()
