@@ -12,12 +12,12 @@ contract Ownable:
     return self._owner
   
   pub def renounceOwnership():
-    assert msg.sender == owner
-    _owner = address(0)
+    assert msg.sender == self._owner
+    self._owner = address(0)
     emit OwnershipTransferred(msg.sender, address(0))
   
   pub def transferOwnership(newOwner: address):
-    assert msg.sender == owner
+    assert msg.sender == self._owner
     assert newOwner != address(0)
-    _owner = newOwner
+    self._owner = newOwner
     emit OwnershipTransferred(msg.sender, newOwner)
