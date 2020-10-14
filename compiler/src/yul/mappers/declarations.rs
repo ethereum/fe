@@ -4,6 +4,7 @@ use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use fe_semantics::namespace::types::{
     Array,
+    FeSized,
     FixedSize,
 };
 use fe_semantics::Context;

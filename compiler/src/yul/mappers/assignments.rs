@@ -1,8 +1,14 @@
 use crate::errors::CompileError;
 use crate::yul::mappers::expressions;
+use crate::yul::mappers::operations;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
-use fe_semantics::namespace::types::Type;
+use fe_semantics::namespace::types::{
+    Array,
+    FeSized,
+    Map,
+    Type,
+};
 use fe_semantics::{
     Context,
     Location,
@@ -47,9 +53,9 @@ fn assign_subscript(
             let value = expressions::expr(context, value)?;
 
             return match target_attributes.to_tuple() {
-                (Type::Map(map), _) => Ok(map.sstore(target, index, value)),
+                (Type::Map(map), _) => assign_map(map, target, index, value),
                 (Type::Array(array), Location::Memory) => {
-                    Ok(array.mstore_elem(target, index, value))
+                    assign_mem_array(array, target, index, value)
                 }
                 (Type::Array(_), Location::Storage { .. }) => unimplemented!(),
                 _ => unreachable!(),
@@ -58,6 +64,33 @@ fn assign_subscript(
     }
 
     unreachable!()
+}
+
+fn assign_map(
+    map: Map,
+    target: yul::Expression,
+    index: yul::Expression,
+    value: yul::Expression,
+) -> Result<yul::Statement, CompileError> {
+    let sptr = expression! { dualkeccak256([target], [index]) };
+
+    match *map.value {
+        Type::Array(array) => Ok(operations::mem_to_sto(array, sptr, value)),
+        Type::Base(base) => Ok(operations::val_to_sto(base, sptr, value)),
+        Type::Map(_) => unreachable!(),
+    }
+}
+
+fn assign_mem_array(
+    array: Array,
+    target: yul::Expression,
+    index: yul::Expression,
+    value: yul::Expression,
+) -> Result<yul::Statement, CompileError> {
+    let inner_size = literal_expression! { (array.inner.size()) };
+    let mptr = expression! { add([target], (mul([index], [inner_size]))) };
+
+    Ok(operations::val_to_mem(array.inner, mptr, value))
 }
 
 fn assign_name(
