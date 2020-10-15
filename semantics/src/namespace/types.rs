@@ -5,6 +5,10 @@ use fe_parser::ast as fe;
 use std::collections::HashMap;
 use yultsur::*;
 
+pub trait FeSized {
+    fn size(&self) -> usize;
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Type {
     Base(Base),
@@ -38,14 +42,16 @@ pub struct Map {
     pub value: Box<Type>,
 }
 
-impl FixedSize {
-    pub fn size(&self) -> usize {
+impl FeSized for FixedSize {
+    fn size(&self) -> usize {
         match self {
             FixedSize::Base(base) => base.size(),
             FixedSize::Array(array) => array.size(),
         }
     }
+}
 
+impl FixedSize {
     pub fn padded_size(&self) -> usize {
         match self {
             FixedSize::Base(base) => base.padded_size(),
@@ -82,8 +88,8 @@ impl FixedSize {
     }
 }
 
-impl Base {
-    pub fn size(&self) -> usize {
+impl FeSized for Base {
+    fn size(&self) -> usize {
         match self {
             Base::U256 => 32,
             Base::Bool => 1,
@@ -91,7 +97,9 @@ impl Base {
             Base::Address => 20,
         }
     }
+}
 
+impl Base {
     pub fn padded_size(&self) -> usize {
         32
     }
@@ -112,37 +120,15 @@ impl Base {
     pub fn encode(&self, val: yul::Expression) -> yul::Expression {
         expression! { alloc_mstoren([val], 32) }
     }
+}
 
-    pub fn mstore(&self, ptr: yul::Expression, value: yul::Expression) -> yul::Statement {
-        let size = literal_expression! {(self.size())};
-
-        statement! { mstoren([ptr], [value], [size]) }
-    }
-
-    pub fn mload(&self, ptr: yul::Expression) -> yul::Expression {
-        let size = literal_expression! {(self.size())};
-
-        expression! { mloadn([ptr], [size]) }
-    }
-
-    pub fn sstore(&self, ptr: yul::Expression, value: yul::Expression) -> yul::Statement {
-        let size = literal_expression! {(self.size())};
-
-        statement! { sstoren([ptr], [value], [size]) }
-    }
-
-    pub fn sload(&self, ptr: yul::Expression) -> yul::Expression {
-        let size = literal_expression! {(self.size())};
-
-        expression! { sloadn([ptr], [size]) }
+impl FeSized for Array {
+    fn size(&self) -> usize {
+        self.dimension * self.inner.size()
     }
 }
 
 impl Array {
-    pub fn size(&self) -> usize {
-        self.dimension * self.inner.size()
-    }
-
     pub fn to_fixed_size(&self) -> FixedSize {
         FixedSize::Array(self.clone())
     }
@@ -185,59 +171,6 @@ impl Array {
         }
 
         format!("{}[{}]", self.inner.abi_name(), self.dimension)
-    }
-
-    pub fn mstore_elem(
-        &self,
-        array_ptr: yul::Expression,
-        index: yul::Expression,
-        value: yul::Expression,
-    ) -> yul::Statement {
-        let size = literal_expression! {(self.inner.size())};
-        let value_ptr = expression! { add([array_ptr], (mul([index], [size]))) };
-
-        self.inner.mstore(value_ptr, value)
-    }
-
-    pub fn mload_elem(
-        &self,
-        array_ptr: yul::Expression,
-        index: yul::Expression,
-    ) -> yul::Expression {
-        let size = literal_expression! {(self.inner.size())};
-        let value_ptr = expression! { add([array_ptr], (mul([index], [size]))) };
-
-        self.inner.mload(value_ptr)
-    }
-
-    pub fn mcopy(&self, mptr: yul::Expression, sptr: yul::Expression) -> yul::Statement {
-        let size = literal_expression! {(self.size())};
-
-        statement! { mcopy([mptr], [sptr], [size]) }
-    }
-
-    pub fn scopy(&self, sptr: yul::Expression) -> yul::Expression {
-        let size = literal_expression! {(self.size())};
-
-        expression! { scopy([sptr], [size]) }
-    }
-}
-
-impl Map {
-    pub fn sstore(
-        &self,
-        index: yul::Expression,
-        key: yul::Expression,
-        value: yul::Expression,
-    ) -> yul::Statement {
-        let index = literal_expression! {(index)};
-        let sptr = expression! { dualkeccak256([index], [key]) };
-
-        match &*self.value {
-            Type::Array(array) => array.mcopy(value, sptr),
-            Type::Base(base) => base.sstore(sptr, value),
-            Type::Map(_) => unimplemented!(),
-        }
     }
 }
 

@@ -7,6 +7,7 @@ use fe_parser::span::{
 };
 use fe_semantics::namespace::types::{
     Array,
+    FeSized,
     Map,
     Type,
 };
@@ -177,9 +178,13 @@ fn expr_subscript(
             let index = slices_index(context, slices)?;
 
             return match value_attributes.to_tuple() {
-                (Type::Map(map), Location::Storage { .. }) => keyed_storage_map(value, index, map),
+                (Type::Map(map), Location::Storage { .. }) => {
+                    Ok(keyed_storage_map(map, value, index))
+                }
                 (Type::Array(_), Location::Storage { .. }) => unimplemented!(),
-                (Type::Array(array), Location::Memory) => indexed_memory_array(value, index, array),
+                (Type::Array(array), Location::Memory) => {
+                    Ok(indexed_memory_array(array, value, index))
+                }
                 (_, _) => unreachable!(),
             };
         }
@@ -188,26 +193,25 @@ fn expr_subscript(
     unreachable!()
 }
 
-fn keyed_storage_map(
-    map: yul::Expression,
-    key: yul::Expression,
-    typ: Map,
-) -> Result<yul::Expression, CompileError> {
+fn keyed_storage_map(typ: Map, map: yul::Expression, key: yul::Expression) -> yul::Expression {
     let sptr = expression! { dualkeccak256([map], [key]) };
 
     match *typ.value {
-        Type::Array(array) => Ok(operations::scopy(array.to_fixed_size(), sptr)),
-        Type::Base(base) => Ok(operations::sload(base, sptr)),
-        Type::Map(_) => Ok(sptr),
+        Type::Array(array) => operations::sto_to_mem(array, sptr),
+        Type::Base(base) => operations::sto_to_val(base, sptr),
+        Type::Map(_) => sptr,
     }
 }
 
 fn indexed_memory_array(
+    typ: Array,
     array: yul::Expression,
     index: yul::Expression,
-    array_type: Array,
-) -> Result<yul::Expression, CompileError> {
-    Ok(array_type.mload_elem(array, index))
+) -> yul::Expression {
+    let inner_size = literal_expression! { (typ.inner.size()) };
+    let mptr = expression! { add([array], (mul([index], [inner_size]))) };
+
+    operations::mem_to_val(typ.inner, mptr)
 }
 
 fn expr_attribute(

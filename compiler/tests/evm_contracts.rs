@@ -76,7 +76,7 @@ impl ContractHarness {
                 assert_eq!(&output, actual_output)
             }
         } else {
-            panic!("Failed to run function")
+            panic!("Failed to run \"{}\"", name)
         }
     }
 
