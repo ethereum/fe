@@ -7,13 +7,13 @@ use crate::namespace::scopes::{
     Shared,
 };
 use crate::namespace::types::FixedSize;
+use crate::traversal::_utils::spanned_expression;
 use crate::traversal::{
     assignments,
     declarations,
     expressions,
     types,
 };
-use crate::traversal::_utils::spanned_expression;
 use crate::{
     Context,
     FunctionAttributes,

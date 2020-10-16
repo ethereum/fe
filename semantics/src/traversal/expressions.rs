@@ -11,16 +11,18 @@ use crate::namespace::types::{
     Base,
     Type,
 };
+use crate::traversal::_utils::{
+    expression_attributes_to_types,
+    fixed_sizes_to_types,
+    spanned_expression,
+};
 use crate::{
     Context,
     ExpressionAttributes,
     Location,
 };
-use crate::traversal::_utils::spanned_expression;
 use fe_parser::ast as fe;
-use fe_parser::span::{
-    Spanned,
-};
+use fe_parser::span::Spanned;
 use std::rc::Rc;
 
 /// Gather context information for expressions and check for type errors.
@@ -78,7 +80,6 @@ pub fn slices_index(
 
     unreachable!()
 }
-
 
 /// Gather context information for an index and check for type errors.
 pub fn slice_index(
@@ -245,11 +246,6 @@ fn expr_call(
             .map(|argument| call_arg(scope.clone(), context.clone(), argument))
             .collect::<Result<_, _>>()?;
 
-        let argument_types: Vec<Type> = argument_attributes
-            .iter()
-            .map(|attributes| attributes.typ.clone())
-            .collect();
-
         if let fe::Expr::Attribute { value: _, attr } = &func.node {
             let contract_scope = &scope.borrow().parent;
             let called_func = contract_scope.borrow().def(attr.node.to_string());
@@ -258,11 +254,9 @@ fn expr_call(
                     params,
                     returns: Some(return_type),
                 }) => {
-                    let param_types: Vec<Type> = params
-                        .iter()
-                        .map(|param| param.clone().into_type())
-                        .collect();
-                    if param_types != argument_types {
+                    if fixed_sizes_to_types(params)
+                        != expression_attributes_to_types(argument_attributes)
+                    {
                         return Err(SemanticError::TypeError);
                     }
 
