@@ -210,7 +210,7 @@ def answer_to_life_the_universe_and_everything() -> u256:
 
 These two terms are often used interchangeably, and what they are attempting to convey is the answer to the question "Can this item be used at this location?"
 
-Fe knows two different types of visibility for functions and state variables: `public` and `private`. Visibility of `private` is the default and is used if no other visiblity is specified. 
+Fe knows two different types of visibility for functions and state variables: `public` and `private`. Visibility of `private` is the default and is used if no other visiblity is specified.
 
 **Public:** External functions are part of the contract interface, which means they can be called from other contracts and via transactions.
 
@@ -502,11 +502,12 @@ The list of types is:
         * [Address] - Ethereum address
         * [Numeric] — integer
     * Reference types:
-        * [Tuple]
-        * [Array]
-        * [Bytes]
-        * [Struct]
-        * [Enum]
+        * Sequence types
+            * [Tuple]
+            * [Array]
+            * [Bytes]
+            * [Struct]
+            * [Enum]
         * [HashMap]
 * Other types:
     * [Event]
@@ -598,8 +599,129 @@ MISSING
 
 ### 5.1.1.13. Event types
 
-An *event type* is the type denotated by the name of an [`event` item].
+An *event type* is the type denoted by the name of an [`event` item].
 
+## 6. Data Layout
+
+There are three places where data can be stored on the EVM:
+
+- **stack**: 256-bit values placed on the stack that are loaded using `DUP` operations. 
+- **storage**: 256-bit address space where 256-bit values can be stored. Accessing higher
+storage slots does not increase gas cost.
+- **memory**: 256-bit address space where 256-bit values can be stored. Accessing higher
+memory slots increases gas cost.
+
+Each data type described in section 5 can be stored in these locations. How data is stored is 
+described in this section.
+
+### 6.1. Stack
+
+The following can be stored on the stack:
+
+- base type values
+- pointers to sequence type values
+
+The size of values stored on the stack must not exceed 256 bits. Since all base types are less than
+or equal to 256 bits in size, we store them on the stack. Pointers to values stored in memory may 
+also be stored on the stack.
+
+Example:
+
+```python
+# function scope
+foo: u256 = 42 # foo is stored on the stack
+bar: u256[100] # bar is a memory pointer stored on the stack
+```
+
+### 6.2. Storage
+
+All data types can be stored in storage.
+
+#### 6.2.1. Constant size values in storage
+
+Storage pointers for constant size values are determined at compile time.  
+
+Example:
+
+```python
+# contract scope
+foo: u256 # foo is assigned a static pointer by the compiler
+```
+
+The value of a base type in storage is found by simply loading the value from storage at the
+given pointer.
+
+To find an element inside of a sequence type, the relative location of the element is added to the
+given pointer.
+
+#### 6.2.2. Maps in storage
+
+Maps are not assigned pointers, because they do not have a location in storage. They are instead 
+assigned a nonce that is used to derive the location of keyed values during runtime.
+
+Example:
+
+``` python
+# contract scope
+bar: map<address, u256> # bar is assigned a static index by the compiler
+baz: map<address, map<address, u256>> # baz is assigned a static index by the compiler
+```
+
+The expression `bar[0x00]` would resolve to the hash of both bar's nonce and the key value 
+.i.e. `keccak256(<bar nonce>, 0x00)`. Similarly, the expression `baz[0x00][0x01]` would resolve to 
+a nested hash i.e. `keccak256(keccak256(<baz nonce>, 0x00), 0x01)`.
+
+### 6.3. Memory
+
+Only sequence types can be stored in memory.
+
+The first memory slot (`0x00`) is used to keep track of the lowest available memory slot. Newly 
+allocated segments begin at the value given by this slot. When more memory has been allocated,
+this value stored in `0x00` in increased.
+
+#### 6.3.1. Sequence types in memory
+
+Sequence type values may exceed the 256-bit stack slot size, so we store them in memory and 
+reference them using pointers kept on the stack.
+
+Example:
+
+```python
+# function scope
+foo: u256[100] # foo is a pointer that references 100 * 32 bytes in memory. 
+```
+
+To find an element inside of a sequence type, the relative location of the element is added to the
+given pointer.
+
+### 6.4. Function calls
+
+Constant size values stored on the stack or in memory can be passed into and returned by functions.
+
+Memory is owned by a function if it is allocated in the function call or in the function's body.
+When a function exits, all memory owned by the function is freed.
+
+Example:
+
+```python
+# function scope
+
+my_array_0: u256[100] # allocate 100 * 32 bytes
+my_address: address # new address value kept on the stack
+
+# call a function `my_func` with the following arguments
+# - `my_array` a pointer to an array owned by the current function
+# - `my_address` a value stored on the stack
+# - `new_array()` a pointer to a new array
+# `my_func` does not return anything
+my_func(my_array, my_address, new_array())
+
+# The lowest available memory slot is implicitly passed into `my_func`. When `my_func` exits, this
+# slot and all slots after it are freed. This means that the segment of memory containing `my_array` 
+# will remain intact, while the segment of memory allocated by `my_array()` will be freed. This is
+# OK because there are no longer any pointers on the stack referencing the segment of memory 
+# allocated by `new_array()`, as it is consumed by `my_func`.
+```
 
 [IDENTIFIER]: #22-identifiers
 [_EndOfHeader_]: #24-end-of-header
