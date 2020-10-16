@@ -13,6 +13,7 @@ use crate::traversal::{
     expressions,
     types,
 };
+use crate::traversal::_utils::spanned_expression;
 use crate::{
     Context,
     FunctionAttributes,
@@ -148,7 +149,7 @@ fn call_arg(
 ) -> Result<(), SemanticError> {
     match &arg.node {
         fe::CallArg::Arg(value) => {
-            let spanned = expressions::spanned_expression(&arg.span, value);
+            let spanned = spanned_expression(&arg.span, value);
             let _attributes = expressions::expr(scope, context, &spanned)?;
             // TODO: Perform type checking
         }
