@@ -8,7 +8,6 @@ edition = "2018"
 
 [dependencies]
 fe-parser = {path = "../parser", version = "0.1.0"}
-yultsur = { git = "https://github.com/g-r-a-n-t/yultsur" }
 rstest = "0.6.4"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
 hex = "0.4"

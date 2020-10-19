@@ -3,6 +3,7 @@
 use crate::errors::CompileError;
 
 mod mappers;
+mod operations;
 mod runtime;
 
 pub struct CompilerOutput {
