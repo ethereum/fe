@@ -1,8 +1,12 @@
 use crate::abi::utils as abi_utils;
 use crate::errors::CompileError;
+use crate::yul::operations;
 #[cfg(test)]
 use fe_semantics::namespace::types::Base;
-use fe_semantics::namespace::types::FixedSize;
+use fe_semantics::namespace::types::{
+    AbiEncoding,
+    FixedSize,
+};
 use fe_semantics::FunctionAttributes;
 use yultsur::*;
 
@@ -24,7 +28,7 @@ fn dispatch_arm(attributes: FunctionAttributes) -> Result<yul::Case, CompileErro
 
     if let Some(return_type) = attributes.return_type {
         let selection = selection(attributes.name, &attributes.param_types)?;
-        let return_data = return_type.encode(selection);
+        let return_data = operations::encode(return_type.to_owned(), selection);
         let return_size = literal_expression! {(return_type.padded_size())};
 
         let selection_with_return = statement! { return([return_data], [return_size]) };
@@ -51,7 +55,10 @@ fn selection(name: String, params: &[FixedSize]) -> Result<yul::Expression, Comp
     let mut decoded_params = vec![];
 
     for param in params.iter() {
-        decoded_params.push(param.decode(literal_expression! {(ptr)}));
+        decoded_params.push(operations::decode(
+            param.to_owned(),
+            literal_expression! { (ptr) },
+        ));
         ptr += param.padded_size();
     }
 

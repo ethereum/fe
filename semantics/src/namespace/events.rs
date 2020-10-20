@@ -1,9 +1,11 @@
-use crate::namespace::types::FixedSize;
+use crate::namespace::types::{
+    AbiEncoding,
+    FixedSize,
+};
 use tiny_keccak::{
     Hasher,
     Keccak,
 };
-use yultsur::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Event {
@@ -20,18 +22,6 @@ impl Event {
         let topic = event_topic(name, abi_fields);
 
         Self { topic, fields }
-    }
-
-    pub fn emit(&self, values: Vec<yul::Expression>) -> yul::Statement {
-        if let (Some(FixedSize::Array(array)), Some(value)) = (self.fields.first(), values.first())
-        {
-            let size = literal_expression! {(array.padded_size())};
-            let topic = literal_expression! {(self.topic)};
-
-            return statement! { log1([(*value).clone()], [size], [topic]) };
-        }
-
-        unimplemented!()
     }
 }
 

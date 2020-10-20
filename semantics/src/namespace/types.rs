@@ -1,12 +1,19 @@
-#![allow(dead_code)]
 use crate::errors::SemanticError;
 use crate::namespace::scopes::*;
 use fe_parser::ast as fe;
 use std::collections::HashMap;
-use yultsur::*;
 
 pub trait FeSized {
+    /// Constant size of the type.
     fn size(&self) -> usize;
+}
+
+pub trait AbiEncoding {
+    /// Name of the type as it appears in the Json ABI.
+    fn abi_name(&self) -> String;
+
+    /// Size of the type with ABI encoding padding.
+    fn padded_size(&self) -> usize;
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -51,35 +58,23 @@ impl FeSized for FixedSize {
     }
 }
 
-impl FixedSize {
-    pub fn padded_size(&self) -> usize {
-        match self {
-            FixedSize::Base(base) => base.padded_size(),
-            FixedSize::Array(array) => array.padded_size(),
-        }
-    }
-
-    pub fn decode(&self, ptr: yul::Expression) -> yul::Expression {
-        match self {
-            FixedSize::Base(base) => base.decode(ptr),
-            FixedSize::Array(array) => array.decode(ptr),
-        }
-    }
-
-    pub fn encode(&self, ptr: yul::Expression) -> yul::Expression {
-        match self {
-            FixedSize::Base(base) => base.encode(ptr),
-            FixedSize::Array(array) => array.encode(ptr),
-        }
-    }
-
-    pub fn abi_name(&self) -> String {
+impl AbiEncoding for FixedSize {
+    fn abi_name(&self) -> String {
         match self {
             FixedSize::Array(array) => array.abi_name(),
             FixedSize::Base(base) => base.abi_name(),
         }
     }
 
+    fn padded_size(&self) -> usize {
+        match self {
+            FixedSize::Base(base) => base.padded_size(),
+            FixedSize::Array(array) => array.padded_size(),
+        }
+    }
+}
+
+impl FixedSize {
     pub fn into_type(self) -> Type {
         match self {
             FixedSize::Array(array) => Type::Array(array),
@@ -99,12 +94,8 @@ impl FeSized for Base {
     }
 }
 
-impl Base {
-    pub fn padded_size(&self) -> usize {
-        32
-    }
-
-    pub fn abi_name(&self) -> String {
+impl AbiEncoding for Base {
+    fn abi_name(&self) -> String {
         match self {
             Base::U256 => "uint256".to_string(),
             Base::Address => "address".to_string(),
@@ -113,12 +104,8 @@ impl Base {
         }
     }
 
-    pub fn decode(&self, ptr: yul::Expression) -> yul::Expression {
-        expression! { calldataload([ptr]) }
-    }
-
-    pub fn encode(&self, val: yul::Expression) -> yul::Expression {
-        expression! { alloc_mstoren([val], 32) }
+    fn padded_size(&self) -> usize {
+        32
     }
 }
 
@@ -128,12 +115,16 @@ impl FeSized for Array {
     }
 }
 
-impl Array {
-    pub fn to_fixed_size(&self) -> FixedSize {
-        FixedSize::Array(self.clone())
+impl AbiEncoding for Array {
+    fn abi_name(&self) -> String {
+        if self.inner == Base::Byte {
+            return format!("bytes{}", self.dimension);
+        }
+
+        format!("{}[{}]", self.inner.abi_name(), self.dimension)
     }
 
-    pub fn padded_size(&self) -> usize {
+    fn padded_size(&self) -> usize {
         if self.inner == Base::Byte {
             if self.dimension % 32 == 0 {
                 return self.dimension;
@@ -144,33 +135,11 @@ impl Array {
 
         self.dimension * self.inner.padded_size()
     }
+}
 
-    pub fn decode(&self, ptr: yul::Expression) -> yul::Expression {
-        let size = literal_expression! {(self.size())};
-
-        match &self.inner {
-            Base::Bool => expression! { ccopy([ptr], [size]) },
-            Base::Byte => expression! { ccopy([ptr], [size]) },
-            Base::U256 => expression! { ccopy([ptr], [size]) },
-            Base::Address => unimplemented!("Address array decoding"),
-        }
-    }
-
-    pub fn encode(&self, ptr: yul::Expression) -> yul::Expression {
-        match &self.inner {
-            Base::Bool => ptr,
-            Base::Byte => ptr,
-            Base::U256 => ptr,
-            Base::Address => unimplemented!("Address array encoding"),
-        }
-    }
-
-    pub fn abi_name(&self) -> String {
-        if self.inner == Base::Byte {
-            return format!("bytes{}", self.dimension);
-        }
-
-        format!("{}[{}]", self.inner.abi_name(), self.dimension)
+impl Array {
+    pub fn to_fixed_size(&self) -> FixedSize {
+        FixedSize::Array(self.clone())
     }
 }
 

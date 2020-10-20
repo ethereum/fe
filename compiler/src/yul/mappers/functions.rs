@@ -5,6 +5,7 @@ use crate::yul::mappers::{
     declarations,
     expressions,
 };
+use crate::yul::operations;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use fe_semantics::namespace::types::{
@@ -124,7 +125,7 @@ fn emit(context: &Context, stmt: &Spanned<fe::FuncStmt>) -> Result<yul::Statemen
                 .collect::<Result<_, _>>()?;
 
             if let Some(event) = context.get_emit(stmt) {
-                return Ok(event.emit(event_values));
+                return Ok(operations::emit_event(event.to_owned(), event_values));
             }
 
             return Err(CompileError::static_str("missing event definition"));
