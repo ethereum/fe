@@ -7,6 +7,7 @@ use crate::namespace::scopes::{
     Shared,
 };
 use crate::namespace::types::FixedSize;
+use crate::traversal::_utils::spanned_expression;
 use crate::traversal::{
     assignments,
     declarations,
@@ -43,6 +44,7 @@ pub fn func_def(
             .iter()
             .map(|arg| func_def_arg(Rc::clone(&function_scope), arg))
             .collect::<Result<Vec<_>, _>>()?;
+
         let return_type = return_type
             .as_ref()
             .map(|typ| {
@@ -147,7 +149,7 @@ fn call_arg(
 ) -> Result<(), SemanticError> {
     match &arg.node {
         fe::CallArg::Arg(value) => {
-            let spanned = expressions::spanned_expression(&arg.span, value);
+            let spanned = spanned_expression(&arg.span, value);
             let _attributes = expressions::expr(scope, context, &spanned)?;
             // TODO: Perform type checking
         }

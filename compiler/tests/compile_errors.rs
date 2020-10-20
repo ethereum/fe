@@ -11,6 +11,10 @@ use std::fs;
     case(
         "return_call_to_fn_without_return.fe",
         "[Str(\"semantic error: NotAnExpression\")]"
+    ),
+    case(
+        "return_call_to_fn_with_param_type_mismatch.fe",
+        "[Str(\"semantic error: TypeError\")]"
     )
 )]
 fn test_compile_errors(fixture_file: &str, error: &str) {
