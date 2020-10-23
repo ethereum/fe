@@ -81,7 +81,7 @@ impl ContractHarness {
     }
 
     // Executor must be passed by value to get emitted events.
-    pub fn event_emitted(&self, executor: Executor, name: &str, output: Vec<ethabi::Token>) {
+    pub fn events_emitted(&self, executor: Executor, events: Vec<(&str, Vec<ethabi::Token>)>) {
         let raw_logs = executor
             .deconstruct()
             .1
@@ -89,28 +89,30 @@ impl ContractHarness {
             .map(|l| ethabi::RawLog::from((l.topics, l.data)))
             .collect::<Vec<ethabi::RawLog>>();
 
-        let event = self
-            .abi
-            .events()
-            .find(|e| e.name.eq(name))
-            .expect("Unable to find event for name");
+        for (name, output) in events {
+            let event = self
+                .abi
+                .events()
+                .find(|e| e.name.eq(name))
+                .expect("Unable to find event for name");
 
-        let mut values = None;
-        for raw_log in raw_logs {
-            if let Ok(log) = event.parse_log(raw_log) {
-                values = Some(
-                    log.params
-                        .into_iter()
-                        .map(|p| p.value)
-                        .collect::<Vec<ethabi::Token>>(),
-                );
+            let mut values = None;
+            for raw_log in raw_logs.clone() {
+                if let Ok(log) = event.parse_log(raw_log) {
+                    values = Some(
+                        log.params
+                            .into_iter()
+                            .map(|p| p.value)
+                            .collect::<Vec<ethabi::Token>>(),
+                    );
+                }
             }
-        }
 
-        if let Some(values) = values {
-            assert_eq!(values, output)
-        } else {
-            panic!("No logs for event")
+            if let Some(values) = values {
+                assert_eq!(values, output)
+            } else {
+                panic!("No logs for event")
+            }
         }
     }
 }
@@ -377,7 +379,7 @@ fn guest_book() {
 
         harness.test_function(&mut executor, "get_msg", vec![sender], Some(bytes.clone()));
 
-        harness.event_emitted(executor, "Signed", vec![bytes]);
+        harness.events_emitted(executor, vec![("Signed", vec![bytes])]);
     })
 }
 
@@ -481,6 +483,51 @@ fn nested_map() {
             "read_baz",
             vec![address2.clone(), u256_token(100)],
             Some(bool_token(false)),
+        );
+    })
+}
+
+#[test]
+fn events() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "events.fe", "Foo");
+
+        let addr1 = address_token("1234000000000000000000000000000000005678");
+        let addr2 = address_token("9123000000000000000000000000000000004567");
+        let addr_array = ethabi::Token::FixedArray(vec![addr1.clone(), addr2.clone()]);
+        let bytes = bytes_token(
+            iter::repeat("ten bytes.")
+                .take(10)
+                .collect::<String>()
+                .as_str(),
+        );
+
+        harness.test_function(&mut executor, "emit_nums", vec![], None);
+        harness.test_function(&mut executor, "emit_bases", vec![addr1.clone()], None);
+        harness.test_function(
+            &mut executor,
+            "emit_mix",
+            vec![addr1.clone(), bytes.clone()],
+            None,
+        );
+        harness.test_function(
+            &mut executor,
+            "emit_addresses",
+            vec![addr1.clone(), addr2.clone()],
+            None,
+        );
+
+        harness.events_emitted(
+            executor,
+            vec![
+                ("Nums", vec![u256_token(26), u256_token(42)]),
+                ("Bases", vec![u256_token(26), addr1.clone()]),
+                (
+                    "Mix",
+                    vec![u256_token(26), addr1.clone(), u256_token(42), bytes],
+                ),
+                ("Addresses", vec![addr_array]),
+            ],
         );
     })
 }

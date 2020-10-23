@@ -251,6 +251,7 @@ fn expr_call(
             let called_func = contract_scope.borrow().def(attr.node.to_string());
             return match called_func {
                 Some(ContractDef::Function {
+                    is_public: _,
                     params,
                     returns: Some(return_type),
                 }) => {
@@ -265,10 +266,9 @@ fn expr_call(
                         location: Location::Value,
                     });
                 }
-                Some(ContractDef::Function {
-                    params: _,
-                    returns: None,
-                }) => Err(SemanticError::NotAnExpression),
+                Some(ContractDef::Function { returns: None, .. }) => {
+                    Err(SemanticError::NotAnExpression)
+                }
                 _ => unreachable!(),
             };
         }

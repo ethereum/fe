@@ -20,6 +20,7 @@ pub enum ModuleDef {
 #[derive(Clone, Debug, PartialEq)]
 pub enum ContractDef {
     Function {
+        is_public: bool,
         params: Vec<FixedSize>,
         returns: Option<FixedSize>,
     },
@@ -112,12 +113,19 @@ impl ContractScope {
     pub fn add_function(
         &mut self,
         name: String,
+        is_public: bool,
         params: Vec<FixedSize>,
         returns: Option<FixedSize>,
     ) {
         self.interface.push(name.clone());
-        self.defs
-            .insert(name, ContractDef::Function { params, returns });
+        self.defs.insert(
+            name,
+            ContractDef::Function {
+                is_public,
+                params,
+                returns,
+            },
+        );
     }
 
     pub fn add_event(&mut self, name: String, event: Event) {

@@ -32,6 +32,22 @@ pub enum Location {
     Value,
 }
 
+/// Operations that need to be made available during runtime.
+#[derive(Clone, Debug, PartialEq)]
+pub enum RuntimeOperations {
+    /// Encode a set of fixed sized values.
+    AbiEncode { params: Vec<FixedSize> },
+}
+
+/// Contains contextual information relating to a contract AST node.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ContractAttributes {
+    /// Operations that need to be added to the runtime.
+    pub runtime_operations: Vec<RuntimeOperations>,
+    /// Public functions that have been defined by the user.
+    pub public_functions: Vec<FunctionAttributes>,
+}
+
 /// Contains contextual information relating to an expression AST node.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExpressionAttributes {
@@ -62,10 +78,7 @@ pub struct Context {
     emits: HashMap<Span, Event>,
     functions: HashMap<Span, FunctionAttributes>,
     declarations: HashMap<Span, FixedSize>,
-    // We will want to attribute more information to contracts. Things like events, public fields,
-    // public functions, and runtime functions will all be needed during mapping. These things
-    // should be grouped together under a new `ContractAttributes` struct.
-    contracts: HashMap<Span, Vec<FunctionAttributes>>,
+    contracts: HashMap<Span, ContractAttributes>,
 }
 
 impl Context {
@@ -135,16 +148,13 @@ impl Context {
     pub fn add_contract(
         &mut self,
         spanned: &Spanned<fe::ModuleStmt>,
-        functions: Vec<FunctionAttributes>,
+        attributes: ContractAttributes,
     ) {
-        self.contracts.insert(spanned.span, functions);
+        self.contracts.insert(spanned.span, attributes);
     }
 
     /// Get information that has been attributed to a contract definition node.
-    pub fn get_contract(
-        &self,
-        spanned: &Spanned<fe::ModuleStmt>,
-    ) -> Option<&Vec<FunctionAttributes>> {
+    pub fn get_contract(&self, spanned: &Spanned<fe::ModuleStmt>) -> Option<&ContractAttributes> {
         self.contracts.get(&spanned.span)
     }
 }

@@ -1,6 +1,7 @@
 use crate::errors::SemanticError;
 use crate::namespace::events::Event;
 use crate::namespace::scopes::{
+    ContractDef,
     ContractScope,
     ModuleScope,
     Scope,
@@ -14,7 +15,12 @@ use crate::traversal::{
     functions,
     types,
 };
-use crate::Context;
+use crate::{
+    Context,
+    ContractAttributes,
+    FunctionAttributes,
+    RuntimeOperations,
+};
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use std::rc::Rc;
@@ -28,23 +34,61 @@ pub fn contract_def(
 ) -> Result<(), SemanticError> {
     if let fe::ModuleStmt::ContractDef { name: _, body } = &stmt.node {
         let contract_scope = ContractScope::new(module_scope);
-        let mut functions = vec![];
 
         for stmt in body.iter() {
             match &stmt.node {
                 fe::ContractStmt::ContractField { .. } => {
                     contract_field(Rc::clone(&contract_scope), stmt)?
                 }
-                fe::ContractStmt::EventDef { .. } => event_def(Rc::clone(&contract_scope), stmt)?,
+                fe::ContractStmt::EventDef { .. } => {
+                    event_def(Rc::clone(&contract_scope), stmt)?;
+                }
                 fe::ContractStmt::FuncDef { .. } => {
-                    let function =
-                        functions::func_def(Rc::clone(&contract_scope), Rc::clone(&context), stmt)?;
-                    functions.push(function)
+                    functions::func_def(Rc::clone(&contract_scope), Rc::clone(&context), stmt)?;
                 }
             };
         }
 
-        context.borrow_mut().add_contract(stmt, functions);
+        let mut runtime_operations = vec![];
+        let mut public_functions = vec![];
+
+        for (name, def) in contract_scope.borrow().defs.iter() {
+            match def {
+                ContractDef::Event(event) => {
+                    runtime_operations.push(RuntimeOperations::AbiEncode {
+                        params: event.fields.clone(),
+                    })
+                }
+                ContractDef::Function {
+                    is_public,
+                    params,
+                    returns,
+                } => {
+                    if *is_public {
+                        public_functions.push(FunctionAttributes {
+                            name: name.clone(),
+                            param_types: params.clone(),
+                            return_type: returns.clone(),
+                        });
+                        if let Some(returns) = returns.clone() {
+                            runtime_operations.push(RuntimeOperations::AbiEncode {
+                                params: vec![returns],
+                            })
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        runtime_operations.dedup();
+
+        let attributes = ContractAttributes {
+            runtime_operations,
+            public_functions,
+        };
+
+        context.borrow_mut().add_contract(stmt, attributes);
 
         return Ok(());
     }

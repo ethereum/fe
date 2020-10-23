@@ -28,9 +28,9 @@ pub fn func_def(
     contract_scope: Shared<ContractScope>,
     context: Shared<Context>,
     def: &Spanned<fe::ContractStmt>,
-) -> Result<FunctionAttributes, SemanticError> {
+) -> Result<(), SemanticError> {
     if let fe::ContractStmt::FuncDef {
-        qual: _,
+        qual,
         name,
         args,
         return_type,
@@ -52,8 +52,11 @@ pub fn func_def(
             })
             .transpose()?;
 
+        let is_public = qual.is_some();
+
         contract_scope.borrow_mut().add_function(
             name.clone(),
+            is_public,
             param_types.clone(),
             return_type.clone(),
         );
@@ -64,13 +67,13 @@ pub fn func_def(
             return_type,
         };
 
-        context.borrow_mut().add_function(def, attributes.clone());
+        context.borrow_mut().add_function(def, attributes);
 
         for stmt in body.iter() {
             func_stmt(Rc::clone(&function_scope), Rc::clone(&context), stmt)?
         }
 
-        return Ok(attributes);
+        return Ok(());
     }
 
     unreachable!()
@@ -226,6 +229,7 @@ mod tests {
         assert_eq!(
             scope.borrow().def("foo".to_string()),
             Some(ContractDef::Function {
+                is_public: false,
                 params: vec![FixedSize::Base(Base::U256)],
                 returns: Some(FixedSize::Base(Base::U256))
             })
