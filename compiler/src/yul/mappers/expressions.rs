@@ -23,6 +23,7 @@ pub fn expr(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressio
     match &exp.node {
         fe::Expr::Name(_) => expr_name(context, exp),
         fe::Expr::Num(_) => expr_num(exp),
+        fe::Expr::Bool(_) => expr_bool(exp),
         fe::Expr::Subscript { .. } => expr_subscript(context, exp),
         fe::Expr::Attribute { .. } => expr_attribute(context, exp),
         fe::Expr::Ternary { .. } => unimplemented!(),
@@ -186,6 +187,14 @@ fn expr_name(_context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Express
 fn expr_num(exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
     if let fe::Expr::Num(num) = &exp.node {
         return Ok(literal_expression! {(num)});
+    }
+
+    unreachable!()
+}
+
+fn expr_bool(exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
+    if let fe::Expr::Bool(val) = &exp.node {
+        return Ok(literal_expression! {(val)});
     }
 
     unreachable!()

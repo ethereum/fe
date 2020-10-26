@@ -1426,6 +1426,14 @@ pub fn slice(input: Cursor) -> ParseResult<Spanned<Slice>> {
 
 pub fn atom(input: Cursor) -> ParseResult<Spanned<Expr>> {
     alt((
+        map(name("true"), |tok| Spanned {
+            node: Expr::Bool(true),
+            span: tok.span,
+        }),
+        map(name("false"), |tok| Spanned {
+            node: Expr::Bool(false),
+            span: tok.span,
+        }),
         list,
         map(group, |exp| Spanned {
             node: exp.node.node,

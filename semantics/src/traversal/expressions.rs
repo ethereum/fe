@@ -34,6 +34,7 @@ pub fn expr(
     let attributes = match &exp.node {
         fe::Expr::Name(_) => expr_name(scope, exp)?,
         fe::Expr::Num(_) => expr_num(exp)?,
+        fe::Expr::Bool(_) => expr_bool(exp)?,
         fe::Expr::Subscript { .. } => expr_subscript(scope, Rc::clone(&context), exp)?,
         fe::Expr::Attribute { .. } => expr_attribute(scope, exp)?,
         fe::Expr::Ternary { .. } => unimplemented!(),
@@ -111,6 +112,17 @@ fn expr_name(
             }),
             None => Err(SemanticError::UndefinedValue),
         };
+    }
+
+    unreachable!()
+}
+
+fn expr_bool(exp: &Spanned<fe::Expr>) -> Result<ExpressionAttributes, SemanticError> {
+    if let fe::Expr::Bool(_) = &exp.node {
+        return Ok(ExpressionAttributes {
+            location: Location::Value,
+            typ: Type::Base(Base::Bool),
+        });
     }
 
     unreachable!()
