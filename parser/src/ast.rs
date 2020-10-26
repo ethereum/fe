@@ -236,6 +236,7 @@ pub enum Expr<'a> {
     Tuple {
         elts: Vec<Spanned<Expr<'a>>>,
     },
+    Bool(bool),
     Name(&'a str),
     Num(&'a str),
     Str(Vec<&'a str>),
