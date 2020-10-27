@@ -1,3 +1,4 @@
+use crate::yul::runtime::functions;
 use fe_semantics::namespace::events::Event;
 use fe_semantics::namespace::types::{
     AbiEncoding,
@@ -62,41 +63,23 @@ pub fn mem_to_val<T: FeSized>(typ: T, mptr: yul::Expression) -> yul::Expression 
 }
 
 /// Logs an event.
-///
-/// Note: Currently this only supports events that log a single array value.
-pub fn emit_event(event: Event, values: Vec<yul::Expression>) -> yul::Statement {
-    if let (Some(FixedSize::Array(array)), Some(value)) = (event.fields.first(), values.first()) {
-        let size = literal_expression! {(array.padded_size())};
-        let topic = literal_expression! {(event.topic)};
+pub fn emit_event(event: Event, vals: Vec<yul::Expression>) -> yul::Statement {
+    let size = literal_expression! { (event.fields.iter().fold(0, |size, field| size + field.abi_size())) };
+    let topic = literal_expression! { (event.topic) };
+    let encoded_val = encode(event.fields, vals);
 
-        return statement! { log1([(*value).clone()], [size], [topic]) };
-    }
-
-    unimplemented!()
+    return statement! { log1([encoded_val], [size], [topic]) };
 }
 
-/// Encode a sized value.
-///
-/// Note: This currently only works for base values and u256 and byte arrays.
-/// The reason why it only works for these array types is because the tightly
-/// packed array format we use is the same as the ABI encoding.
-pub fn encode(typ: FixedSize, val: yul::Expression) -> yul::Expression {
-    match typ {
-        FixedSize::Base(_) => expression! { alloc_mstoren([val], 32) },
-        FixedSize::Array(array) => {
-            if array.inner == Base::U256 || array.inner == Base::Byte {
-                return val;
-            }
-
-            unimplemented!()
-        }
-    }
+/// Encode sized values.
+pub fn encode(types: Vec<FixedSize>, vals: Vec<yul::Expression>) -> yul::Expression {
+    let func_name = functions::abi_encode_name(types.iter().map(|typ| typ.abi_name()).collect());
+    expression! { [func_name]([vals...]) }
 }
 
 /// Decode a sized value.
 ///
-/// The same note over `decode` holds true for this. We are only able to encode
-/// u256 and byte array types.
+/// We currently support byte and u256 arrays and all base types.
 pub fn decode(typ: FixedSize, ptr: yul::Expression) -> yul::Expression {
     let size = literal_expression! { (typ.size()) };
 
@@ -109,5 +92,40 @@ pub fn decode(typ: FixedSize, ptr: yul::Expression) -> yul::Expression {
 
             unimplemented!()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::yul::operations::{
+        emit_event,
+        encode,
+    };
+    use fe_semantics::namespace::events::Event;
+    use fe_semantics::namespace::types::{
+        Base,
+        FixedSize,
+    };
+    use yultsur::*;
+
+    #[test]
+    fn test_encode() {
+        assert_eq!(
+            encode(vec![FixedSize::Base(Base::U256)], vec![expression! { 42 }]).to_string(),
+            "abi_encode_uint256(42)"
+        )
+    }
+
+    #[test]
+    fn test_emit_event() {
+        let event = Event::new(
+            "MyEvent".to_string(),
+            vec![FixedSize::Base(Base::U256), FixedSize::Base(Base::Address)],
+        );
+
+        assert_eq!(
+            emit_event(event, vec![expression! { 26 }, expression! { 0x00 }]).to_string(),
+            "log1(abi_encode_uint256_address(26, 0x00), 64, 0x74bffa18f2b20140b65de9264a54040b23ab0a34e7643d52f67f7fb18be9bbcb)"
+        )
     }
 }

@@ -28,8 +28,8 @@ fn dispatch_arm(attributes: FunctionAttributes) -> Result<yul::Case, CompileErro
 
     if let Some(return_type) = attributes.return_type {
         let selection = selection(attributes.name, &attributes.param_types)?;
-        let return_data = operations::encode(return_type.to_owned(), selection);
-        let return_size = literal_expression! {(return_type.padded_size())};
+        let return_data = operations::encode(vec![return_type.to_owned()], vec![selection]);
+        let return_size = literal_expression! {(return_type.abi_size())};
 
         let selection_with_return = statement! { return([return_data], [return_size]) };
 
@@ -59,7 +59,7 @@ fn selection(name: String, params: &[FixedSize]) -> Result<yul::Expression, Comp
             param.to_owned(),
             literal_expression! { (ptr) },
         ));
-        ptr += param.padded_size();
+        ptr += param.abi_size();
     }
 
     let name = identifier! {(name)};

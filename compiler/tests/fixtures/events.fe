@@ -1,0 +1,32 @@
+contract Foo:
+    event Nums:
+        idx num1: u256
+        idx num2: u256
+
+    event Bases:
+        idx num: u256
+        idx addr: address
+
+    event Mix:
+        idx num1: u256
+        idx addr: address
+        idx num2: u256
+        idx my_bytes: bytes[100]
+
+    event Addresses:
+        idx addrs: address[2]
+
+    pub def emit_nums():
+        emit Nums(26, 42)
+
+    pub def emit_bases(addr: address):
+        emit Bases(26, addr)
+
+    pub def emit_mix(addr: address, my_bytes: bytes[100]):
+        emit Mix(26, addr, 42, my_bytes)
+
+    pub def emit_addresses(addr1: address, addr2: address):
+        addrs: address[2]
+        addrs[0] = addr1
+        addrs[1] = addr2
+        emit Addresses(addrs)

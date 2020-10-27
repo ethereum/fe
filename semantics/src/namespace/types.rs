@@ -3,17 +3,44 @@ use crate::namespace::scopes::*;
 use fe_parser::ast as fe;
 use std::collections::HashMap;
 
+/// The type has a constant size known to the compiler.
 pub trait FeSized {
     /// Constant size of the type.
     fn size(&self) -> usize;
 }
 
-pub trait AbiEncoding {
+/// The padding on an ABI type.
+pub enum AbiPadding {
+    /// The element is padded on the left with some number of bytes.
+    Left { size: usize },
+    /// The element is padded on the right with some number of bytes.
+    Right { size: usize },
+    /// There is no padding. For example, `u256` are already 32 bytes, so there
+    /// is no need to pad them.
+    None,
+}
+
+/// The type of an ABI element.
+pub enum AbiType {
+    /// Arrays are recursively encoded and consist of a single type.
+    UniformRecursive { child: FixedSize, count: usize },
+    /// Single values that do not require recursive encoding.
+    Terminal,
+}
+
+/// Information relevant to ABI encoding.
+pub trait AbiEncoding: FeSized {
     /// Name of the type as it appears in the Json ABI.
     fn abi_name(&self) -> String;
 
     /// Size of the type with ABI encoding padding.
-    fn padded_size(&self) -> usize;
+    fn abi_size(&self) -> usize;
+
+    /// Padding on the encoded data, if any.
+    fn abi_padding(&self) -> AbiPadding;
+
+    /// ABI type, either recursive or terminal.
+    fn abi_type(&self) -> AbiType;
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -66,10 +93,24 @@ impl AbiEncoding for FixedSize {
         }
     }
 
-    fn padded_size(&self) -> usize {
+    fn abi_size(&self) -> usize {
         match self {
-            FixedSize::Base(base) => base.padded_size(),
-            FixedSize::Array(array) => array.padded_size(),
+            FixedSize::Base(base) => base.abi_size(),
+            FixedSize::Array(array) => array.abi_size(),
+        }
+    }
+
+    fn abi_padding(&self) -> AbiPadding {
+        match self {
+            FixedSize::Base(base) => base.abi_padding(),
+            FixedSize::Array(array) => array.abi_padding(),
+        }
+    }
+
+    fn abi_type(&self) -> AbiType {
+        match self {
+            FixedSize::Base(base) => base.abi_type(),
+            FixedSize::Array(array) => array.abi_type(),
         }
     }
 }
@@ -104,8 +145,26 @@ impl AbiEncoding for Base {
         }
     }
 
-    fn padded_size(&self) -> usize {
-        32
+    fn abi_size(&self) -> usize {
+        match self {
+            Base::U256 => 32,
+            Base::Bool => 32,
+            Base::Byte => 1,
+            Base::Address => 32,
+        }
+    }
+
+    fn abi_padding(&self) -> AbiPadding {
+        match self {
+            Base::U256 => AbiPadding::None,
+            Base::Bool => AbiPadding::Left { size: 31 },
+            Base::Byte => AbiPadding::None,
+            Base::Address => AbiPadding::Left { size: 12 },
+        }
+    }
+
+    fn abi_type(&self) -> AbiType {
+        AbiType::Terminal
     }
 }
 
@@ -124,7 +183,7 @@ impl AbiEncoding for Array {
         format!("{}[{}]", self.inner.abi_name(), self.dimension)
     }
 
-    fn padded_size(&self) -> usize {
+    fn abi_size(&self) -> usize {
         if self.inner == Base::Byte {
             if self.dimension % 32 == 0 {
                 return self.dimension;
@@ -133,7 +192,24 @@ impl AbiEncoding for Array {
             return (32 - (self.dimension % 32)) + self.dimension;
         }
 
-        self.dimension * self.inner.padded_size()
+        self.dimension * self.inner.abi_size()
+    }
+
+    fn abi_padding(&self) -> AbiPadding {
+        if self.inner == Base::Byte {
+            return AbiPadding::Right {
+                size: self.abi_size() - self.size(),
+            };
+        }
+
+        AbiPadding::None
+    }
+
+    fn abi_type(&self) -> AbiType {
+        AbiType::UniformRecursive {
+            child: FixedSize::Base(self.inner.clone()),
+            count: self.dimension,
+        }
     }
 }
 
