@@ -60,11 +60,11 @@ pub fn contract_def(
                     })
                 }
                 ContractDef::Function {
-                    is_public,
+                    is_public: true,
                     params,
                     returns,
                 } => {
-                    if *is_public {
+                    if name != "__init__" {
                         public_functions.push(FunctionAttributes {
                             name: name.clone(),
                             param_types: params.clone(),

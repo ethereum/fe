@@ -2,6 +2,7 @@
 
 use crate::errors::CompileError;
 
+mod constructor;
 mod mappers;
 mod operations;
 mod runtime;

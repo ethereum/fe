@@ -45,7 +45,7 @@ impl ContractHarness {
         let function = &self.abi.functions[name][0];
 
         let context = evm::Context {
-            address: H160::zero(),
+            address: self.address.clone(),
             caller: self.caller.clone(),
             apparent_value: U256::zero(),
         };
@@ -139,7 +139,12 @@ fn with_executor(test: &dyn Fn(Executor)) {
     test(executor)
 }
 
-fn deploy_contract(executor: &mut Executor, fixture: &str, name: &str) -> ContractHarness {
+fn deploy_contract(
+    executor: &mut Executor,
+    fixture: &str,
+    name: &str,
+    init_params: Vec<ethabi::Token>,
+) -> ContractHarness {
     let src = fs::read_to_string(format!("tests/fixtures/{}", fixture))
         .expect("Unable to read fixture file");
 
@@ -155,12 +160,16 @@ fn deploy_contract(executor: &mut Executor, fixture: &str, name: &str) -> Contra
     let caller = address_token("1000000000000000000000000000000000000001")
         .to_address()
         .unwrap();
+    let mut init_code = hex::decode(output.bytecode).unwrap();
+    if let Some(constructor) = &abi.constructor {
+        init_code = constructor.encode_input(init_code, &init_params).unwrap()
+    }
 
     if let evm::Capture::Exit(exit) = executor.create(
         caller.clone(),
         evm_runtime::CreateScheme::Legacy { caller },
         U256::zero(),
-        hex::decode(output.bytecode).unwrap(),
+        init_code,
         None,
     ) {
         return ContractHarness::new(exit.1.expect("Unable to retrieve contract address"), abi);
@@ -203,7 +212,7 @@ fn evm_sanity() {
 #[test]
 fn test_revert() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "revert.fe", "Foo");
+        let harness = deploy_contract(&mut executor, "revert.fe", "Foo", vec![]);
 
         let exit = harness.capture_call(&mut executor, "bar", &vec![]);
 
@@ -259,7 +268,7 @@ fn test_revert() {
 )]
 fn test_method_return(fixture_file: &str, input: Vec<usize>, expected: Option<ethabi::Token>) {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, fixture_file, "Foo");
+        let harness = deploy_contract(&mut executor, fixture_file, "Foo", vec![]);
         harness.test_function(
             &mut executor,
             "bar",
@@ -276,7 +285,7 @@ fn test_method_return(fixture_file: &str, input: Vec<usize>, expected: Option<et
 #[test]
 fn return_array() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "return_array.fe", "Foo");
+        let harness = deploy_contract(&mut executor, "return_array.fe", "Foo", vec![]);
 
         harness.test_function(
             &mut executor,
@@ -290,7 +299,7 @@ fn return_array() {
 #[test]
 fn multi_param() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "multi_param.fe", "Foo");
+        let harness = deploy_contract(&mut executor, "multi_param.fe", "Foo", vec![]);
 
         harness.test_function(
             &mut executor,
@@ -304,7 +313,7 @@ fn multi_param() {
 #[test]
 fn u256_u256_map() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "u256_u256_map.fe", "Foo");
+        let harness = deploy_contract(&mut executor, "u256_u256_map.fe", "Foo", vec![]);
 
         harness.test_function(
             &mut executor,
@@ -339,7 +348,7 @@ fn u256_u256_map() {
 #[test]
 fn address_bytes10_map() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "address_bytes10_map.fe", "Foo");
+        let harness = deploy_contract(&mut executor, "address_bytes10_map.fe", "Foo", vec![]);
 
         let address1 = address_token("0000000000000000000000000000000000000001");
         let bytes1 = bytes_token("ten bytes1");
@@ -370,7 +379,7 @@ fn address_bytes10_map() {
 #[test]
 fn guest_book() {
     with_executor(&|mut executor| {
-        let mut harness = deploy_contract(&mut executor, "guest_book.fe", "GuestBook");
+        let mut harness = deploy_contract(&mut executor, "guest_book.fe", "GuestBook", vec![]);
 
         let sender = address_token("1234000000000000000000000000000000005678");
         let bytes = bytes_token(
@@ -393,7 +402,7 @@ fn guest_book() {
 #[test]
 fn return_sender() {
     with_executor(&|mut executor| {
-        let mut harness = deploy_contract(&mut executor, "return_sender.fe", "Foo");
+        let mut harness = deploy_contract(&mut executor, "return_sender.fe", "Foo", vec![]);
 
         let sender = address_token("1234000000000000000000000000000000005678");
 
@@ -406,7 +415,7 @@ fn return_sender() {
 #[test]
 fn nested_map() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "nested_map.fe", "Foo");
+        let harness = deploy_contract(&mut executor, "nested_map.fe", "Foo", vec![]);
 
         let address1 = address_token("1000000000000000000000000000000000000001");
         let address2 = address_token("2000000000000000000000000000000000000002");
@@ -497,7 +506,7 @@ fn nested_map() {
 #[test]
 fn events() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "events.fe", "Foo");
+        let harness = deploy_contract(&mut executor, "events.fe", "Foo", vec![]);
 
         let addr1 = address_token("1234000000000000000000000000000000005678");
         let addr2 = address_token("9123000000000000000000000000000000004567");
@@ -536,5 +545,19 @@ fn events() {
                 ("Addresses", vec![addr_array]),
             ],
         );
+    })
+}
+
+#[test]
+fn constructor() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(
+            &mut executor,
+            "constructor.fe",
+            "Foo",
+            vec![u256_token(26), u256_token(42)],
+        );
+
+        harness.test_function(&mut executor, "read_bar", vec![], Some(u256_token(68)));
     })
 }

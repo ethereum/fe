@@ -314,7 +314,9 @@ pub fn type_desc(
                 return Ok(typ.clone());
             }
 
-            Err(SemanticError::UndefinedValue)
+            Err(SemanticError::UndefinedValue {
+                value: base.to_string(),
+            })
         }
         fe::TypeDesc::Array { typ, dimension } => Ok(Type::Array(Array {
             inner: type_desc_base(defs, &typ.node)?,

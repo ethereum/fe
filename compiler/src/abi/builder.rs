@@ -126,9 +126,15 @@ fn func_def<'a>(
         vec![]
     };
 
+    let (name, typ) = if name == "__init__" {
+        ("".to_string(), FuncType::Constructor)
+    } else {
+        (name, FuncType::Function)
+    };
+
     Ok(Function {
         name,
-        typ: FuncType::Function,
+        typ,
         inputs,
         outputs,
     })
@@ -187,7 +193,9 @@ mod tests {
             \ncontract Foo:\
             \n  event Food:\
             \n    idx barge: u256
-            \n  def baz(x: u256) -> u256:\
+            \n  pub def __init__(x: address):\
+            \n    pass\
+            \n  def baz(x: address) -> u256:\
             \n    pass\
             \n  pub def bar(x: u256) -> u256[10]:\
             \n    pass",
@@ -202,18 +210,24 @@ mod tests {
 
         if let Some(abi) = abis.contracts.get("Foo") {
             assert_eq!(abi.events[0].name, "Food", "event name should be Food");
-            assert_eq!(abi.functions.len(), 1, "too many functions in ABI");
+            assert_eq!(abi.functions.len(), 2, "too many functions in ABI");
+            assert_eq!(abi.functions[0].name, "", "constructor not found in ABI");
             assert_eq!(
-                abi.functions[0].name, "bar",
+                abi.functions[0].inputs[0].typ,
+                VarType::Address,
+                "constructor has incorrect input value"
+            );
+            assert_eq!(
+                abi.functions[1].name, "bar",
                 "function \"bar\" not found in ABI"
             );
             assert_eq!(
-                abi.functions[0].inputs[0].typ,
+                abi.functions[1].inputs[0].typ,
                 VarType::Uint256,
                 "function \"bar\" has incorrect input value"
             );
             assert_eq!(
-                abi.functions[0].outputs[0].typ,
+                abi.functions[1].outputs[0].typ,
                 VarType::FixedArray(Box::new(VarType::Uint256), 10),
                 "function \"bar\" has incorrect output type"
             );
