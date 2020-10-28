@@ -52,8 +52,12 @@ pub fn func_def(
             })
             .transpose()?;
 
-        let is_public = qual.is_some();
+        match return_type {
+            Some(_) => validate_all_paths_return_or_revert(&body)?,
+            None => validate_no_path_returns(&body)?,
+        }
 
+        let is_public = qual.is_some();
         contract_scope.borrow_mut().add_function(
             name.clone(),
             is_public,
@@ -77,6 +81,38 @@ pub fn func_def(
     }
 
     unreachable!()
+}
+
+fn validate_all_paths_return_or_revert(
+    body: &[Spanned<fe::FuncStmt>],
+) -> Result<(), SemanticError> {
+    // This will need to become more sophisticated when we introduce branching logic
+    // because we then need to follow different code paths and check that they
+    // all return or revert.
+    for statement in body {
+        if let fe::FuncStmt::Return { .. } = &statement.node {
+            return Ok(());
+        }
+
+        if let fe::FuncStmt::Revert { .. } = &statement.node {
+            return Ok(());
+        }
+    }
+
+    Err(SemanticError::MissingReturn)
+}
+
+fn validate_no_path_returns(body: &[Spanned<fe::FuncStmt>]) -> Result<(), SemanticError> {
+    // This will need to become more sophisticated when we introduce branching logic
+    // because we then need to follow different code paths and check that none
+    // of it returns.
+    for statement in body {
+        if let fe::FuncStmt::Return { .. } = &statement.node {
+            return Err(SemanticError::UnexpectedReturn);
+        }
+    }
+
+    Ok(())
 }
 
 fn func_def_arg(

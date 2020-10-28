@@ -8,6 +8,9 @@ use std::fs;
 #[rstest(
     fixture_file,
     error,
+    case("mismatch_return_type.fe", "[Str(\"semantic error: TypeError\")]"),
+    case("unexpected_return.fe", "[Str(\"semantic error: UnexpectedReturn\")]"),
+    case("missing_return.fe", "[Str(\"semantic error: MissingReturn\")]"),
     case(
         "return_call_to_fn_without_return.fe",
         "[Str(\"semantic error: NotAnExpression\")]"

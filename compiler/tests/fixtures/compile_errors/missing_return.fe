@@ -1,0 +1,5 @@
+contract Foo:
+    baz: map<u256, u256>
+
+    pub def bar() -> u256:
+        self.baz[0] = 1
