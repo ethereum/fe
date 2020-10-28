@@ -1,0 +1,4 @@
+contract Foo:
+
+    pub def bar() -> address:
+        return 1
