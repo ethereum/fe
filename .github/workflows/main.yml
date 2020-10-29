@@ -72,7 +72,8 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
-        - os: macOS-latest
+        # Ignoring Mac until we find a solution to: https://github.com/ethereum/fe/pull/106/checks?check_run_id=1322145918
+        # - os: macOS-latest
     steps:
     - uses: actions/checkout@v2
     - name: Cache Rust dependencies
