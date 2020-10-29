@@ -150,10 +150,13 @@ fn deploy_contract(executor: &mut Executor, fixture: &str, name: &str) -> Contra
         .expect("Unable to serialize the contract ABI.");
 
     let abi = ethabi::Contract::load(StringReader::new(&json_abi)).expect("Unable to load the ABI");
+    let caller = address_token("1000000000000000000000000000000000000001")
+        .to_address()
+        .unwrap();
 
     if let evm::Capture::Exit(exit) = executor.create(
-        H160::zero(),
-        evm_runtime::CreateScheme::Dynamic,
+        caller.clone(),
+        evm_runtime::CreateScheme::Legacy { caller },
         U256::zero(),
         hex::decode(output.bytecode).unwrap(),
         None,
