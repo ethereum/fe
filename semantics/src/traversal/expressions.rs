@@ -366,7 +366,7 @@ mod tests {
     fn scope() -> Shared<FunctionScope> {
         let module_scope = ModuleScope::new();
         let contract_scope = ContractScope::new(module_scope);
-        FunctionScope::new(contract_scope)
+        FunctionScope::new(Span::new(0, 0), contract_scope)
     }
 
     fn analyze(scope: Shared<FunctionScope>, src: &str) -> Context {

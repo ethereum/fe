@@ -10,6 +10,8 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use fe_parser::span::Span;
+
 pub type Shared<T> = Rc<RefCell<T>>;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -52,6 +54,7 @@ pub struct ContractScope {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionScope {
+    pub span: Span,
     pub parent: Shared<ContractScope>,
     pub defs: HashMap<String, FunctionDef>,
 }
@@ -134,8 +137,9 @@ impl ContractScope {
 }
 
 impl FunctionScope {
-    pub fn new(parent: Shared<ContractScope>) -> Shared<Self> {
+    pub fn new(span: Span, parent: Shared<ContractScope>) -> Shared<Self> {
         Rc::new(RefCell::new(FunctionScope {
+            span,
             parent,
             defs: HashMap::new(),
         }))
