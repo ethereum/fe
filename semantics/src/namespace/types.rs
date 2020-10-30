@@ -48,12 +48,14 @@ pub enum Type {
     Base(Base),
     Array(Array),
     Map(Map),
+    Tuple(Tuple),
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum FixedSize {
     Base(Base),
     Array(Array),
+    Tuple(Tuple),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -76,11 +78,17 @@ pub struct Map {
     pub value: Box<Type>,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct Tuple {
+    pub items: Vec<Base>,
+}
+
 impl FeSized for FixedSize {
     fn size(&self) -> usize {
         match self {
             FixedSize::Base(base) => base.size(),
             FixedSize::Array(array) => array.size(),
+            FixedSize::Tuple(tuple) => tuple.size(),
         }
     }
 }
@@ -90,6 +98,7 @@ impl AbiEncoding for FixedSize {
         match self {
             FixedSize::Array(array) => array.abi_name(),
             FixedSize::Base(base) => base.abi_name(),
+            FixedSize::Tuple(tuple) => tuple.abi_name(),
         }
     }
 
@@ -97,6 +106,7 @@ impl AbiEncoding for FixedSize {
         match self {
             FixedSize::Base(base) => base.abi_size(),
             FixedSize::Array(array) => array.abi_size(),
+            FixedSize::Tuple(tuple) => tuple.abi_size(),
         }
     }
 
@@ -104,6 +114,7 @@ impl AbiEncoding for FixedSize {
         match self {
             FixedSize::Base(base) => base.abi_padding(),
             FixedSize::Array(array) => array.abi_padding(),
+            FixedSize::Tuple(tuple) => tuple.abi_padding(),
         }
     }
 
@@ -111,6 +122,7 @@ impl AbiEncoding for FixedSize {
         match self {
             FixedSize::Base(base) => base.abi_type(),
             FixedSize::Array(array) => array.abi_type(),
+            FixedSize::Tuple(tuple) => tuple.abi_type(),
         }
     }
 }
@@ -120,7 +132,18 @@ impl FixedSize {
         match self {
             FixedSize::Array(array) => Type::Array(array),
             FixedSize::Base(base) => Type::Base(base),
+            FixedSize::Tuple(tuple) => Type::Tuple(tuple),
         }
+    }
+
+    pub fn is_empty_tuple(&self) -> bool {
+        if let FixedSize::Tuple(tuple) = self {
+            if tuple.size() == 0 {
+                return true;
+            }
+        }
+
+        false
     }
 }
 
@@ -219,6 +242,40 @@ impl Array {
     }
 }
 
+impl Tuple {
+    pub fn empty() -> Tuple {
+        Tuple { items: vec![] }
+    }
+
+    pub fn to_fixed_size(&self) -> FixedSize {
+        FixedSize::Tuple(self.clone())
+    }
+}
+
+impl FeSized for Tuple {
+    fn size(&self) -> usize {
+        self.items.iter().map(|typ| typ.size()).sum()
+    }
+}
+
+impl AbiEncoding for Tuple {
+    fn abi_name(&self) -> String {
+        unimplemented!();
+    }
+
+    fn abi_size(&self) -> usize {
+        unimplemented!();
+    }
+
+    fn abi_padding(&self) -> AbiPadding {
+        unimplemented!();
+    }
+
+    fn abi_type(&self) -> AbiType {
+        unimplemented!();
+    }
+}
+
 pub fn type_desc_fixed_size(
     defs: &HashMap<String, ModuleDef>,
     typ: &fe::TypeDesc,
@@ -226,6 +283,7 @@ pub fn type_desc_fixed_size(
     match type_desc(defs, typ)? {
         Type::Base(base) => Ok(FixedSize::Base(base)),
         Type::Array(array) => Ok(FixedSize::Array(array)),
+        Type::Tuple(tuple) => Ok(FixedSize::Tuple(tuple)),
         Type::Map(_) => Err(SemanticError::TypeError),
     }
 }
@@ -238,6 +296,7 @@ pub fn type_desc_base(
         Type::Base(base) => Ok(base),
         Type::Array(_) => Err(SemanticError::TypeError),
         Type::Map(_) => Err(SemanticError::TypeError),
+        Type::Tuple(_) => Err(SemanticError::TypeError),
     }
 }
 
@@ -264,6 +323,12 @@ pub fn type_desc(
         fe::TypeDesc::Map { from, to } => Ok(Type::Map(Map {
             key: type_desc_base(defs, &from.node)?,
             value: Box::new(type_desc(defs, &to.node)?),
+        })),
+        fe::TypeDesc::Tuple { items } => Ok(Type::Tuple(Tuple {
+            items: items
+                .iter()
+                .map(|typ| type_desc_base(defs, &typ.node))
+                .collect::<Result<_, _>>()?,
         })),
     }
 }

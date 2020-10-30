@@ -78,6 +78,7 @@ fn assign_map(
         Type::Array(array) => Ok(operations::mem_to_sto(array, sptr, value)),
         Type::Base(base) => Ok(operations::val_to_sto(base, sptr, value)),
         Type::Map(_) => unreachable!(),
+        Type::Tuple(_) => unimplemented!(),
     }
 }
 

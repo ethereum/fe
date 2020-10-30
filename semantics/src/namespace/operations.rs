@@ -13,7 +13,8 @@ pub fn index(value: Type, index: Type) -> Result<Type, SemanticError> {
     match value {
         Type::Array(array) => index_array(array, index),
         Type::Map(map) => index_map(map, index),
-        Type::Base(_) => Err(SemanticError::TypeError),
+        Type::Base(_) => Err(SemanticError::NotSubscriptable),
+        Type::Tuple(_) => Err(SemanticError::NotSubscriptable),
     }
 }
 

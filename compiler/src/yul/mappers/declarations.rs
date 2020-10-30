@@ -19,6 +19,7 @@ pub fn var_decl(
         return match typ {
             FixedSize::Base(_) => var_decl_base(context, stmt),
             FixedSize::Array(array) => var_decl_array(context, stmt, array.to_owned()),
+            FixedSize::Tuple(_) => unimplemented!(),
         };
     }
 

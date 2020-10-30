@@ -92,6 +92,7 @@ pub fn decode(typ: FixedSize, ptr: yul::Expression) -> yul::Expression {
 
             unimplemented!()
         }
+        FixedSize::Tuple(_) => unimplemented!(),
     }
 }
 

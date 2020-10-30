@@ -42,39 +42,41 @@ pub fn func_def(
             .collect::<Result<Vec<_>, _>>()?;
 
         // Different return types require slightly different functions.
-        if let Some(return_type) = attributes.return_type.to_owned() {
-            return match return_type {
-                // Base types are returned by value. All memory used by the function is cleared.
-                FixedSize::Base(_) => Ok(function_definition! {
-                    function [function_name]([param_names...]) -> return_val {
-                        (let ptr := avail())
-                        [function_statements...]
-                        (free(ptr))
-                    }
-                }),
-                // Arrays need to keep memory allocated after completing.
-                // FIXME: Copy arrays to the lowest available pointer to save memory.
-                FixedSize::Array(array) => {
-                    let size = literal_expression! {(array.size())};
-
-                    Ok(function_definition! {
-                        function [function_name]([param_names...]) -> return_val {
-                            [function_statements...]
-                            (free((add(return_val, [size]))))
-                        }
-                    })
+        return match attributes.return_type.to_owned() {
+            // Base types are returned by value. All memory used by the function is cleared.
+            FixedSize::Base(_) => Ok(function_definition! {
+                function [function_name]([param_names...]) -> return_val {
+                    (let ptr := avail())
+                    [function_statements...]
+                    (free(ptr))
                 }
-            };
-        }
+            }),
+            // Arrays need to keep memory allocated after completing.
+            FixedSize::Array(array) => {
+                let size = literal_expression! {(array.size())};
 
-        // Nothing is returned. All memory used by the function is freed.
-        return Ok(function_definition! {
-            function [function_name]([param_names...]) {
-                (let ptr := avail())
-                [function_statements...]
-                (free(ptr))
+                Ok(function_definition! {
+                    function [function_name]([param_names...]) -> return_val {
+                        [function_statements...]
+                        (free((add(return_val, [size]))))
+                    }
+                })
             }
-        });
+            FixedSize::Tuple(tuple) => {
+                if tuple.size() == 0 {
+                    // Nothing is returned. All memory used by the function is freed.
+                    return Ok(function_definition! {
+                        function [function_name]([param_names...]) {
+                            (let ptr := avail())
+                            [function_statements...]
+                            (free(ptr))
+                        }
+                    });
+                }
+
+                unimplemented!();
+            }
+        };
     }
 
     unreachable!()

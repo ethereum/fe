@@ -34,6 +34,7 @@ pub fn var_decl(
         match declared_type.clone() {
             FixedSize::Base(base) => scope.borrow_mut().add_base(name, base),
             FixedSize::Array(array) => scope.borrow_mut().add_array(name, array),
+            FixedSize::Tuple(_) => unimplemented!(),
         };
         context.borrow_mut().add_declaration(stmt, declared_type);
 
