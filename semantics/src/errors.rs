@@ -5,6 +5,7 @@
 pub enum SemanticError {
     MissingReturn,
     NotAnExpression,
+    NotSubscriptable,
     UnassignableExpression,
     UndefinedValue,
     UnexpectedReturn,

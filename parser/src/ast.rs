@@ -48,6 +48,9 @@ pub enum TypeDesc<'a> {
         from: Box<Spanned<TypeDesc<'a>>>,
         to: Box<Spanned<TypeDesc<'a>>>,
     },
+    Tuple {
+        items: Vec<Spanned<TypeDesc<'a>>>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]

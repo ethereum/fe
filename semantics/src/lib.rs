@@ -67,7 +67,7 @@ impl ExpressionAttributes {
 pub struct FunctionAttributes {
     pub name: String,
     pub param_types: Vec<FixedSize>,
-    pub return_type: Option<FixedSize>,
+    pub return_type: FixedSize,
 }
 
 /// Contains contextual information about a Fe module and can be queried using

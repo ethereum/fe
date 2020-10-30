@@ -170,6 +170,7 @@ fn type_desc<'a>(
             Ok(VarType::FixedArray(Box::new(inner), *dimension))
         }
         fe::TypeDesc::Map { .. } => Err(CompileError::static_str("maps not supported in ABI")),
+        fe::TypeDesc::Tuple { .. } => unimplemented!(),
     }
 }
 

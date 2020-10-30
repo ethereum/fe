@@ -157,10 +157,12 @@ fn expr_subscript(
                     // Index value is ignored. We may want to introduce a new location
                     // variant named StorageRuntime or something to suit this case.
                     Type::Map(_) => Location::Storage { index: 0 },
+                    Type::Tuple(_) => Location::Memory,
                 }
             }
             Type::Array(_) => Location::Value,
-            Type::Base(_) => unreachable!(),
+            Type::Base(_) => return Err(SemanticError::NotSubscriptable),
+            Type::Tuple(_) => return Err(SemanticError::NotSubscriptable),
         };
 
         return Ok(ExpressionAttributes { typ, location });
@@ -261,11 +263,11 @@ fn expr_call(
         if let fe::Expr::Attribute { value: _, attr } = &func.node {
             let contract_scope = &scope.borrow().parent;
             let called_func = contract_scope.borrow().def(attr.node.to_string());
-            return match called_func {
+            match called_func {
                 Some(ContractDef::Function {
                     is_public: _,
                     params,
-                    returns: Some(return_type),
+                    returns: return_type,
                 }) => {
                     if fixed_sizes_to_types(params)
                         != expression_attributes_to_types(argument_attributes)
@@ -277,9 +279,6 @@ fn expr_call(
                         typ: return_type.into_type(),
                         location: Location::Value,
                     });
-                }
-                Some(ContractDef::Function { returns: None, .. }) => {
-                    Err(SemanticError::NotAnExpression)
                 }
                 _ => unreachable!(),
             };

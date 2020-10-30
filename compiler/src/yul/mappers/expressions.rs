@@ -232,6 +232,7 @@ fn keyed_storage_map(typ: Map, map: yul::Expression, key: yul::Expression) -> yu
         Type::Array(array) => operations::sto_to_mem(array, sptr),
         Type::Base(base) => operations::sto_to_val(base, sptr),
         Type::Map(_) => sptr,
+        Type::Tuple(_) => unimplemented!(),
     }
 }
 

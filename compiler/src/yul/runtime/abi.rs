@@ -26,10 +26,11 @@ pub fn dispatcher(attributes: Vec<FunctionAttributes>) -> Result<yul::Statement,
 fn dispatch_arm(attributes: FunctionAttributes) -> Result<yul::Case, CompileError> {
     let selector = selector(attributes.name.clone(), &attributes.param_types);
 
-    if let Some(return_type) = attributes.return_type {
+    if !attributes.return_type.is_empty_tuple() {
         let selection = selection(attributes.name, &attributes.param_types)?;
-        let return_data = operations::encode(vec![return_type.to_owned()], vec![selection]);
-        let return_size = literal_expression! {(return_type.abi_size())};
+        let return_data =
+            operations::encode(vec![attributes.return_type.to_owned()], vec![selection]);
+        let return_size = literal_expression! {(attributes.return_type.abi_size())};
 
         let selection_with_return = statement! { return([return_data], [return_size]) };
 

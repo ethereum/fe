@@ -6,7 +6,10 @@ use crate::namespace::scopes::{
     Scope,
     Shared,
 };
-use crate::namespace::types::FixedSize;
+use crate::namespace::types::{
+    FixedSize,
+    Tuple,
+};
 use crate::traversal::_utils::spanned_expression;
 use crate::traversal::{
     assignments,
@@ -50,11 +53,16 @@ pub fn func_def(
             .map(|typ| {
                 types::type_desc_fixed_size(Scope::Function(Rc::clone(&function_scope)), &typ)
             })
-            .transpose()?;
+            .transpose()?
+            .unwrap_or_else(|| Tuple::empty().to_fixed_size());
 
-        match return_type {
-            Some(_) => validate_all_paths_return_or_revert(&body)?,
-            None => validate_no_path_returns(&body)?,
+        // If the return type is an empty tuple we do not have to validate any further
+        // at this point because both returning (explicit) or not returning (implicit
+        // return) are valid syntax.
+        // If the return type is anything else, we do need to ensure that all code paths
+        // return or revert.
+        if !return_type.is_empty_tuple() {
+            validate_all_paths_return_or_revert(&body)?
         }
 
         let is_public = qual.is_some();
@@ -102,19 +110,6 @@ fn validate_all_paths_return_or_revert(
     Err(SemanticError::MissingReturn)
 }
 
-fn validate_no_path_returns(body: &[Spanned<fe::FuncStmt>]) -> Result<(), SemanticError> {
-    // This will need to become more sophisticated when we introduce branching logic
-    // because we then need to follow different code paths and check that none
-    // of it returns.
-    for statement in body {
-        if let fe::FuncStmt::Return { .. } = &statement.node {
-            return Err(SemanticError::UnexpectedReturn);
-        }
-    }
-
-    Ok(())
-}
-
 fn func_def_arg(
     scope: Shared<FunctionScope>,
     arg: &Spanned<fe::FuncDefArg>,
@@ -125,6 +120,7 @@ fn func_def_arg(
     match typ.clone() {
         FixedSize::Base(base) => scope.borrow_mut().add_base(name, base),
         FixedSize::Array(array) => scope.borrow_mut().add_array(name, array),
+        FixedSize::Tuple(_) => unimplemented!(),
     }
 
     Ok(typ)
@@ -210,14 +206,11 @@ fn func_return(
         let attributes = expressions::expr(scope.clone(), context.clone(), value)?;
 
         match context.borrow().get_function(scope.borrow().span) {
-            Some(fn_attr) => match fn_attr.return_type.clone() {
-                Some(return_type) => {
-                    if return_type.into_type() != attributes.typ {
-                        return Err(SemanticError::TypeError);
-                    }
+            Some(fn_attr) => {
+                if fn_attr.return_type.clone().into_type() != attributes.typ {
+                    return Err(SemanticError::TypeError);
                 }
-                None => return Err(SemanticError::UnexpectedReturn),
-            },
+            }
             None => unreachable!(),
         }
 
@@ -277,7 +270,7 @@ mod tests {
             Some(ContractDef::Function {
                 is_public: false,
                 params: vec![FixedSize::Base(Base::U256)],
-                returns: Some(FixedSize::Base(Base::U256))
+                returns: FixedSize::Base(Base::U256)
             })
         );
     }

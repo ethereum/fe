@@ -24,7 +24,7 @@ pub enum ContractDef {
     Function {
         is_public: bool,
         params: Vec<FixedSize>,
-        returns: Option<FixedSize>,
+        returns: FixedSize,
     },
     Map {
         index: usize,
@@ -118,7 +118,7 @@ impl ContractScope {
         name: String,
         is_public: bool,
         params: Vec<FixedSize>,
-        returns: Option<FixedSize>,
+        returns: FixedSize,
     ) {
         self.interface.push(name.clone());
         self.defs.insert(

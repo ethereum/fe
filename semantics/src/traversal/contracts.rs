@@ -70,9 +70,9 @@ pub fn contract_def(
                             param_types: params.clone(),
                             return_type: returns.clone(),
                         });
-                        if let Some(returns) = returns.clone() {
+                        if !returns.is_empty_tuple() {
                             runtime_operations.push(RuntimeOperations::AbiEncode {
-                                params: vec![returns],
+                                params: vec![returns.clone()],
                             })
                         }
                     }
@@ -105,6 +105,7 @@ fn contract_field(
             Type::Map(map) => scope.borrow_mut().add_map(name.node.to_string(), map),
             Type::Array { .. } => unimplemented!(),
             Type::Base(_) => unimplemented!(),
+            Type::Tuple(_) => unimplemented!(),
         };
 
         return Ok(());
