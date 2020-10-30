@@ -37,7 +37,7 @@ pub fn func_def(
         body,
     } = &def.node
     {
-        let function_scope = FunctionScope::new(Rc::clone(&contract_scope));
+        let function_scope = FunctionScope::new(def.span, Rc::clone(&contract_scope));
 
         let name = name.node.to_string();
         let param_types = args
@@ -207,9 +207,19 @@ fn func_return(
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::Return { value: Some(value) } = &stmt.node {
-        let _attributes = expressions::expr(scope, context, value)?;
+        let attributes = expressions::expr(scope.clone(), context.clone(), value)?;
 
-        // TODO: Perform type checking
+        match context.borrow().get_function(scope.borrow().span) {
+            Some(fn_attr) => match fn_attr.return_type.clone() {
+                Some(return_type) => {
+                    if return_type.into_type() != attributes.typ {
+                        return Err(SemanticError::TypeError);
+                    }
+                }
+                None => return Err(SemanticError::UnexpectedReturn),
+            },
+            None => unreachable!(),
+        }
 
         return Ok(());
     }

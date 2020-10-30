@@ -107,6 +107,7 @@ mod tests {
     use crate::traversal::assignments::assign;
     use crate::Context;
     use fe_parser as parser;
+    use fe_parser::span::Span;
     use rstest::rstest;
     use std::rc::Rc;
 
@@ -124,7 +125,7 @@ mod tests {
                 value: Box::new(Type::Base(Base::U256)),
             },
         );
-        let function_scope = FunctionScope::new(contract_scope);
+        let function_scope = FunctionScope::new(Span::new(0, 0), contract_scope);
         function_scope
             .borrow_mut()
             .add_base("foo".to_string(), Base::U256);
