@@ -45,3 +45,9 @@ impl<T> From<&Spanned<T>> for Span {
         spanned.span
     }
 }
+
+impl<T> From<&Box<Spanned<T>>> for Span {
+    fn from(spanned: &Box<Spanned<T>>) -> Self {
+        spanned.span
+    }
+}

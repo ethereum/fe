@@ -106,8 +106,8 @@ impl Context {
     }
 
     /// Get information that has been attributed to an expression node.
-    pub fn get_expression(&self, spanned: &Spanned<fe::Expr>) -> Option<&ExpressionAttributes> {
-        self.expressions.get(&spanned.span)
+    pub fn get_expression<T: Into<Span>>(&self, span: T) -> Option<&ExpressionAttributes> {
+        self.expressions.get(&span.into())
     }
 
     /// Attribute contextual information to an emit statement node.
@@ -116,8 +116,8 @@ impl Context {
     }
 
     /// Get information that has been attributed to an emit statement node.
-    pub fn get_emit(&self, spanned: &Spanned<fe::FuncStmt>) -> Option<&Event> {
-        self.emits.get(&spanned.span)
+    pub fn get_emit<T: Into<Span>>(&self, span: T) -> Option<&Event> {
+        self.emits.get(&span.into())
     }
 
     /// Attribute contextual information to a function definition node.
@@ -130,8 +130,8 @@ impl Context {
     }
 
     /// Get information that has been attributed to a function definition node.
-    pub fn get_function(&self, spanned: &Spanned<fe::ContractStmt>) -> Option<&FunctionAttributes> {
-        self.functions.get(&spanned.span)
+    pub fn get_function<T: Into<Span>>(&self, span: T) -> Option<&FunctionAttributes> {
+        self.functions.get(&span.into())
     }
 
     /// Attribute contextual information to a declaration node.
@@ -140,8 +140,8 @@ impl Context {
     }
 
     /// Get information that has been attributed to a declaration node.
-    pub fn get_declaration(&self, spanned: &Spanned<fe::FuncStmt>) -> Option<&FixedSize> {
-        self.declarations.get(&spanned.span)
+    pub fn get_declaration<T: Into<Span>>(&self, span: T) -> Option<&FixedSize> {
+        self.declarations.get(&span.into())
     }
 
     /// Attribute contextual information to a contract definition node.
@@ -154,8 +154,8 @@ impl Context {
     }
 
     /// Get information that has been attributed to a contract definition node.
-    pub fn get_contract(&self, spanned: &Spanned<fe::ModuleStmt>) -> Option<&ContractAttributes> {
-        self.contracts.get(&spanned.span)
+    pub fn get_contract<T: Into<Span>>(&self, span: T) -> Option<&ContractAttributes> {
+        self.contracts.get(&span.into())
     }
 }
 
