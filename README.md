@@ -1,5 +1,5 @@
-# Fe
-
+ ![](https://raw.githubusercontent.com/ethereum/fe/master/logo/fe_svg/fe_source.svg)
+ 
 Fe is an emerging smart contract language for the Ethereum blockchain.
 
 [![Build Status](https://github.com/ethereum/fe/workflows/CI/badge.svg)](https://github.com/ethereum/fe/actions)
