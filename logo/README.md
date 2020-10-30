@@ -1,6 +1,6 @@
 # Fe Programming Language Logo Design
 
-![](https://raw.githubusercontent.com/daniniguez/fe/33577650efea7b0a4a1f3569ee45774c89723bd8/logo/fe_svg/fe_source.svg)
+![](https://raw.githubusercontent.com/ethereum/fe/master/logo/fe_svg/fe_source.svg)
 
 ## Background
 
