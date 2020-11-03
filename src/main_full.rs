@@ -14,6 +14,8 @@ use clap::{
     Arg,
 };
 
+use fe_compiler::evm::CompileStage;
+
 const DEFAULT_OUTPUT_DIR_NAME: &str = "output";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -89,7 +91,7 @@ fn compile(src_file: &str, output_dir: &str, targets: Vec<CompilationTarget>) ->
 
     let contents = fs::read_to_string(src_file)?;
 
-    let output = fe_compiler::evm::compile(&contents)
+    let output = fe_compiler::evm::compile(&contents, to_compile_stage(&targets))
         .map_err(|e| Error::new(ErrorKind::Other, format!("{:?}", e)))?;
 
     for target in targets {
@@ -114,4 +116,14 @@ fn compile(src_file: &str, output_dir: &str, targets: Vec<CompilationTarget>) ->
     }
 
     Ok(())
+}
+
+fn to_compile_stage(targets: &[CompilationTarget]) -> CompileStage {
+    for target in targets {
+        if let CompilationTarget::Bytecode = target {
+            return CompileStage::AllUpToBytecode;
+        }
+    }
+
+    CompileStage::AllUpToYul
 }
