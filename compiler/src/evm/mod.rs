@@ -10,11 +10,26 @@ pub struct CompilerOutput {
     pub bytecode: String,
 }
 
+pub enum CompileStage {
+    AllUpToYul,
+    AllUpToBytecode,
+}
+
 /// Compiles Fe to bytecode. It uses Yul as an intermediate representation.
-pub fn compile(src: &str) -> Result<CompilerOutput, CompileError> {
+pub fn compile(src: &str, targets: CompileStage) -> Result<CompilerOutput, CompileError> {
     let solc_temp = include_str!("solc_temp.json");
     let yul_output = yul::compile(src)?;
     let yul_src = yul_output.yul.replace("\"", "\\\"");
+
+    if let CompileStage::AllUpToYul = targets {
+        return Ok(CompilerOutput {
+            ast: yul_output.ast,
+            bytecode: String::new(),
+            tokens: yul_output.tokens,
+            yul: yul_src,
+        });
+    }
+
     let input = solc_temp.replace("{src}", &yul_src);
     let raw_output = solc::compile(&input);
     let output: serde_json::Value = serde_json::from_str(&raw_output)?;
