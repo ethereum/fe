@@ -83,6 +83,15 @@ pub struct Tuple {
     pub items: Vec<Base>,
 }
 
+impl Type {
+    pub fn is_empty_tuple(&self) -> bool {
+        if let Type::Tuple(tuple) = &self {
+            return tuple.is_empty();
+        }
+        false
+    }
+}
+
 impl FeSized for FixedSize {
     fn size(&self) -> usize {
         match self {
@@ -138,9 +147,7 @@ impl FixedSize {
 
     pub fn is_empty_tuple(&self) -> bool {
         if let FixedSize::Tuple(tuple) = self {
-            if tuple.size() == 0 {
-                return true;
-            }
+            return tuple.is_empty();
         }
 
         false
@@ -245,6 +252,10 @@ impl Array {
 impl Tuple {
     pub fn empty() -> Tuple {
         Tuple { items: vec![] }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.size() == 0
     }
 
     pub fn to_fixed_size(&self) -> FixedSize {

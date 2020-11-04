@@ -224,6 +224,9 @@ fn test_revert() {
 }
 
 #[rstest(fixture_file, input, expected,
+    case("call_statement_without_args.fe", vec![], Some(u256_token(100))),
+    case("call_statement_with_args.fe", vec![], Some(u256_token(100))),
+    case("call_statement_with_args_2.fe", vec![], Some(u256_token(100))),
     case("return_bool_true.fe", vec![], Some(bool_token(true))),
     case("return_bool_false.fe", vec![], Some(bool_token(false))),
     case("return_u256_from_called_fn_with_args.fe", vec![], Some(u256_token(200))),

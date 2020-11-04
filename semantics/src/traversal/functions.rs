@@ -141,12 +141,25 @@ fn func_stmt(
         fe::FuncStmt::While { .. } => unimplemented!(),
         fe::FuncStmt::If { .. } => unimplemented!(),
         fe::FuncStmt::Assert { .. } => unimplemented!(),
-        fe::FuncStmt::Expr { .. } => unimplemented!(),
+        fe::FuncStmt::Expr { .. } => expr(scope, context, stmt),
         fe::FuncStmt::Pass => unimplemented!(),
         fe::FuncStmt::Break => unimplemented!(),
         fe::FuncStmt::Continue => unimplemented!(),
         fe::FuncStmt::Revert => Ok(()),
     }
+}
+
+fn expr(
+    scope: Shared<FunctionScope>,
+    context: Shared<Context>,
+    stmt: &Spanned<fe::FuncStmt>,
+) -> Result<(), SemanticError> {
+    if let fe::FuncStmt::Expr { value } = &stmt.node {
+        let spanned = spanned_expression(&stmt.span, value);
+        let _attributes = expressions::expr(scope, context, &spanned)?;
+    }
+
+    Ok(())
 }
 
 fn emit(

@@ -1,4 +1,5 @@
 use crate::errors::CompileError;
+use crate::yul::mappers::_utils::spanned_expression;
 use crate::yul::mappers::expressions::call_arg;
 use crate::yul::mappers::{
     assignments,
@@ -101,12 +102,28 @@ fn func_stmt(
         fe::FuncStmt::While { .. } => unimplemented!(),
         fe::FuncStmt::If { .. } => unimplemented!(),
         fe::FuncStmt::Assert { .. } => unimplemented!(),
-        fe::FuncStmt::Expr { .. } => unimplemented!(),
+        fe::FuncStmt::Expr { .. } => expr(context, stmt),
         fe::FuncStmt::Pass => unimplemented!(),
         fe::FuncStmt::Break => unimplemented!(),
         fe::FuncStmt::Continue => unimplemented!(),
         fe::FuncStmt::Revert => revert(stmt),
     }
+}
+
+fn expr(context: &Context, stmt: &Spanned<fe::FuncStmt>) -> Result<yul::Statement, CompileError> {
+    if let fe::FuncStmt::Expr { value } = &stmt.node {
+        let spanned = spanned_expression(&stmt.span, value);
+        let expr = expressions::expr(context, &spanned)?;
+        if let Some(attributes) = context.get_expression(stmt.span) {
+            if attributes.typ.is_empty_tuple() {
+                return Ok(yul::Statement::Expression(expr));
+            } else {
+                return Ok(statement! { pop([expr])});
+            }
+        }
+    }
+
+    unreachable!()
 }
 
 fn revert(stmt: &Spanned<fe::FuncStmt>) -> Result<yul::Statement, CompileError> {
