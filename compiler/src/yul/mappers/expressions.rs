@@ -1,10 +1,8 @@
 use crate::errors::CompileError;
+use crate::yul::mappers::_utils::spanned_expression;
 use crate::yul::operations;
 use fe_parser::ast as fe;
-use fe_parser::span::{
-    Span,
-    Spanned,
-};
+use fe_parser::span::Spanned;
 use fe_semantics::namespace::types::{
     Array,
     FeSized,
@@ -153,15 +151,6 @@ pub fn slices_index(
     }
 
     unreachable!()
-}
-
-/// Creates a new spanned expression. Useful in cases where an `Expr` is nested
-/// within the node of a `Spanned` object.
-pub fn spanned_expression<'a>(span: &Span, exp: &fe::Expr<'a>) -> Spanned<fe::Expr<'a>> {
-    Spanned {
-        node: (*exp).clone(),
-        span: (*span).to_owned(),
-    }
 }
 
 pub fn slice_index(
