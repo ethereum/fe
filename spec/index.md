@@ -621,9 +621,9 @@ The following can be stored on the stack:
 - base type values
 - pointers to sequence type values
 
-The size of values stored on the stack must not exceed 256 bits. Since all base types are less than
-or equal to 256 bits in size, we store them on the stack. Pointers to values stored in memory may 
-also be stored on the stack.
+The size of each value stored on the stack must not exceed 256 bits. Since all base types are less 
+than or equal to 256 bits in size, we store them on the stack. Pointers to values stored in memory 
+may also be stored on the stack.
 
 Example:
 
@@ -663,8 +663,8 @@ Example:
 
 ``` python
 # contract scope
-bar: map<address, u256> # bar is assigned a static index by the compiler
-baz: map<address, map<address, u256>> # baz is assigned a static index by the compiler
+bar: map<address, u256> # bar is assigned a static nonce by the compiler
+baz: map<address, map<address, u256>> # baz is assigned a static nonce by the compiler
 ```
 
 The expression `bar[0x00]` would resolve to the hash of both bar's nonce and the key value 
@@ -677,7 +677,9 @@ Only sequence types can be stored in memory.
 
 The first memory slot (`0x00`) is used to keep track of the lowest available memory slot. Newly 
 allocated segments begin at the value given by this slot. When more memory has been allocated,
-this value stored in `0x00` in increased.
+the value stored in `0x00` is increased.
+
+We do not free memory after it is allocated.
 
 #### 6.3.1. Sequence types in memory
 
@@ -688,7 +690,7 @@ Example:
 
 ```python
 # function scope
-foo: u256[100] # foo is a pointer that references 100 * 32 bytes in memory. 
+foo: u256[100] # foo is a pointer that references 100 * 256 bits in memory. 
 ```
 
 To find an element inside of a sequence type, the relative location of the element is added to the
@@ -697,31 +699,6 @@ given pointer.
 ### 6.4. Function calls
 
 Constant size values stored on the stack or in memory can be passed into and returned by functions.
-
-Memory is owned by a function if it is allocated in the function call or in the function's body.
-When a function exits, all memory owned by the function is freed.
-
-Example:
-
-```python
-# function scope
-
-my_array_0: u256[100] # allocate 100 * 32 bytes
-my_address: address # new address value kept on the stack
-
-# call a function `my_func` with the following arguments
-# - `my_array` a pointer to an array owned by the current function
-# - `my_address` a value stored on the stack
-# - `new_array()` a pointer to a new array
-# `my_func` does not return anything
-my_func(my_array, my_address, new_array())
-
-# The lowest available memory slot is implicitly passed into `my_func`. When `my_func` exits, this
-# slot and all slots after it are freed. This means that the segment of memory containing `my_array` 
-# will remain intact, while the segment of memory allocated by `my_array()` will be freed. This is
-# OK because there are no longer any pointers on the stack referencing the segment of memory 
-# allocated by `new_array()`, as it is consumed by `my_func`.
-```
 
 [IDENTIFIER]: #22-identifiers
 [_EndOfHeader_]: #24-end-of-header
