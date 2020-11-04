@@ -7,7 +7,7 @@ pub enum SemanticError {
     NotAnExpression,
     NotSubscriptable,
     UnassignableExpression,
-    UndefinedValue,
+    UndefinedValue { value: String },
     UnexpectedReturn,
     TypeError,
 }

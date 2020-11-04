@@ -77,10 +77,10 @@ pub fn encode(types: Vec<FixedSize>, vals: Vec<yul::Expression>) -> yul::Express
     expression! { [func_name]([vals...]) }
 }
 
-/// Decode a sized value.
+/// Decode a sized value in calldata.
 ///
 /// We currently support byte and u256 arrays and all base types.
-pub fn decode(typ: FixedSize, ptr: yul::Expression) -> yul::Expression {
+pub fn decode_calldata(typ: FixedSize, ptr: yul::Expression) -> yul::Expression {
     let size = literal_expression! { (typ.size()) };
 
     match typ {
@@ -88,6 +88,23 @@ pub fn decode(typ: FixedSize, ptr: yul::Expression) -> yul::Expression {
         FixedSize::Array(array) => {
             if array.inner == Base::U256 || array.inner == Base::Byte {
                 return expression! { ccopy([ptr], [size]) };
+            }
+
+            unimplemented!()
+        }
+        FixedSize::Tuple(_) => unimplemented!(),
+    }
+}
+
+/// Decode a sized value in memory.
+///
+/// We currently support byte and u256 arrays and all base types.
+pub fn decode_mem(typ: FixedSize, ptr: yul::Expression) -> yul::Expression {
+    match typ {
+        FixedSize::Base(_) => expression! { mload([ptr]) },
+        FixedSize::Array(array) => {
+            if array.inner == Base::U256 || array.inner == Base::Byte {
+                return ptr;
             }
 
             unimplemented!()

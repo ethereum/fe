@@ -56,7 +56,7 @@ fn selection(name: String, params: &[FixedSize]) -> Result<yul::Expression, Comp
     let mut decoded_params = vec![];
 
     for param in params.iter() {
-        decoded_params.push(operations::decode(
+        decoded_params.push(operations::decode_calldata(
             param.to_owned(),
             literal_expression! { (ptr) },
         ));

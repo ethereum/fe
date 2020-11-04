@@ -1,8 +1,6 @@
 use crate::errors::CompileError;
-use crate::yul::mappers::{
-    constructor,
-    functions,
-};
+use crate::yul::constructor;
+use crate::yul::mappers::functions;
 use crate::yul::runtime::abi as runtime_abi;
 use crate::yul::runtime::functions as runtime_functions;
 use fe_parser::ast as fe;
@@ -21,21 +19,26 @@ pub fn contract_def(
     if let (Some(attributes), fe::ModuleStmt::ContractDef { name: _, body }) =
         (context.get_contract(stmt), &stmt.node)
     {
-        let mut statements = body.iter().try_fold::<_, _, Result<_, CompileError>>(
-            vec![],
-            |mut statements, stmt| {
-                match &stmt.node {
-                    fe::ContractStmt::ContractField { .. } => {}
-                    fe::ContractStmt::EventDef { .. } => {}
-                    fe::ContractStmt::FuncDef { .. } => {
-                        statements.push(functions::func_def(context, stmt)?)
-                    }
-                };
+        let mut init = None;
+        let mut user_functions = vec![];
 
-                Ok(statements)
-            },
-        )?;
+        for stmt in body.iter() {
+            if let (Some(attributes), fe::ContractStmt::FuncDef { name, .. }) =
+                (context.get_function(stmt), &stmt.node)
+            {
+                if name.node == "__init__" {
+                    init = Some((
+                        functions::func_def(context, stmt)?,
+                        attributes.param_types.clone(),
+                    ))
+                } else {
+                    user_functions.push(functions::func_def(context, stmt)?)
+                }
+            }
+        }
 
+        let mut statements = vec![];
+        statements.append(&mut user_functions);
         statements.append(&mut runtime_functions::std());
         statements.append(&mut build_runtime_functions(
             attributes.runtime_operations.to_owned(),
@@ -46,7 +49,7 @@ pub fn contract_def(
 
         return Ok(yul::Object {
             name: identifier! { Contract },
-            code: constructor::runtime(),
+            code: constructor::build(init),
             objects: vec![yul::Object {
                 name: identifier! { runtime },
                 code: yul::Code {

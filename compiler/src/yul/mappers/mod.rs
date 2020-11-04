@@ -1,5 +1,4 @@
 mod assignments;
-mod constructor;
 mod contracts;
 mod declarations;
 mod expressions;
