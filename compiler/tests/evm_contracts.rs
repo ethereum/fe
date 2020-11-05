@@ -223,6 +223,27 @@ fn test_revert() {
     })
 }
 
+#[test]
+fn test_assert() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "assert.fe", "Foo", vec![]);
+
+        let exit1 = harness.capture_call(&mut executor, "bar", &vec![u256_token(4)]);
+
+        assert!(matches!(
+            exit1,
+            evm::Capture::Exit((evm::ExitReason::Revert(_), _))
+        ));
+
+        let exit2 = harness.capture_call(&mut executor, "bar", &vec![u256_token(42)]);
+
+        assert!(matches!(
+            exit2,
+            evm::Capture::Exit((evm::ExitReason::Succeed(_), _))
+        ))
+    })
+}
+
 #[rstest(fixture_file, input, expected,
     case("call_statement_without_args.fe", vec![], Some(u256_token(100))),
     case("call_statement_with_args.fe", vec![], Some(u256_token(100))),

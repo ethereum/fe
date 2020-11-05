@@ -101,7 +101,7 @@ fn func_stmt(
         fe::FuncStmt::For { .. } => unimplemented!(),
         fe::FuncStmt::While { .. } => unimplemented!(),
         fe::FuncStmt::If { .. } => unimplemented!(),
-        fe::FuncStmt::Assert { .. } => unimplemented!(),
+        fe::FuncStmt::Assert { .. } => assert(context, stmt),
         fe::FuncStmt::Expr { .. } => expr(context, stmt),
         fe::FuncStmt::Pass => unimplemented!(),
         fe::FuncStmt::Break => unimplemented!(),
@@ -153,6 +153,16 @@ fn emit(context: &Context, stmt: &Spanned<fe::FuncStmt>) -> Result<yul::Statemen
         return Err(CompileError::static_str(
             "emit statements must contain a call expression",
         ));
+    }
+
+    unreachable!()
+}
+
+fn assert(context: &Context, stmt: &Spanned<fe::FuncStmt>) -> Result<yul::Statement, CompileError> {
+    if let fe::FuncStmt::Assert { test, msg: _ } = &stmt.node {
+        let test = expressions::expr(context, test)?;
+
+        return Ok(statement! { if (iszero([test])) { (revert(0, 0)) } });
     }
 
     unreachable!()
