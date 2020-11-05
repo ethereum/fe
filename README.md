@@ -1,4 +1,5 @@
- ![](https://raw.githubusercontent.com/ethereum/fe/master/logo/fe_svg/fe_source.svg)
+
+<img src="https://raw.githubusercontent.com/ethereum/fe/master/logo/fe_svg/fe_source.svg" width="150px">
  
 Fe is an emerging smart contract language for the Ethereum blockchain.
 
@@ -7,7 +8,7 @@ Fe is an emerging smart contract language for the Ethereum blockchain.
 
 ## Getting started
 
-- [Build the compiler](docs/build.md)
+- [Build the compiler](https://github.com/ethereum/fe/blob/master/docs/build.md)
 
 ## Overview
 
@@ -187,5 +188,5 @@ considered to represent the exact prioritization of work items.
 
 ## Community
 
-Twitter: [@official_fe](https://twitter.com/official_fe)
-Chat: [gitter/ethereum/fe](http://gitter.im/ethereum/fe)
+- Twitter: [@official_fe](https://twitter.com/official_fe)
+- Chat: [gitter/ethereum/fe](http://gitter.im/ethereum/fe)
