@@ -1,0 +1,3 @@
+contract Foo:
+    pub def bar(baz: u256):
+        assert baz > 5

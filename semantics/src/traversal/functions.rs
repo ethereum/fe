@@ -7,8 +7,10 @@ use crate::namespace::scopes::{
     Shared,
 };
 use crate::namespace::types::{
+    Base,
     FixedSize,
     Tuple,
+    Type,
 };
 use crate::traversal::_utils::spanned_expression;
 use crate::traversal::{
@@ -140,7 +142,7 @@ fn func_stmt(
         fe::FuncStmt::For { .. } => unimplemented!(),
         fe::FuncStmt::While { .. } => unimplemented!(),
         fe::FuncStmt::If { .. } => unimplemented!(),
-        fe::FuncStmt::Assert { .. } => unimplemented!(),
+        fe::FuncStmt::Assert { .. } => assert(scope, context, stmt),
         fe::FuncStmt::Expr { .. } => expr(scope, context, stmt),
         fe::FuncStmt::Pass => unimplemented!(),
         fe::FuncStmt::Break => unimplemented!(),
@@ -182,6 +184,27 @@ fn emit(
 
         for arg in args.node.iter() {
             call_arg(Rc::clone(&scope), Rc::clone(&context), arg)?;
+        }
+
+        return Ok(());
+    }
+
+    unreachable!()
+}
+
+fn assert(
+    scope: Shared<FunctionScope>,
+    context: Shared<Context>,
+    stmt: &Spanned<fe::FuncStmt>,
+) -> Result<(), SemanticError> {
+    if let fe::FuncStmt::Assert { test, msg } = &stmt.node {
+        let test_attributes = expressions::expr(scope.clone(), context.clone(), test)?;
+        if test_attributes.typ != Type::Base(Base::Bool) {
+            return Err(SemanticError::TypeError);
+        }
+        if let Some(msg) = msg {
+            // TODO: type check for a string once strings are supported
+            let _msg_attributes = expressions::expr(scope, context, msg)?;
         }
 
         return Ok(());
