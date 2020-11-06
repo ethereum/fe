@@ -13,6 +13,11 @@ use std::fs;
     case("unexpected_return.fe", "[Str(\"semantic error: TypeError\")]"),
     case("missing_return.fe", "[Str(\"semantic error: MissingReturn\")]"),
     case(
+        "missing_return_in_else.fe",
+        "[Str(\"semantic error: MissingReturn\")]"
+    ),
+    case("strict_boolean_if_else.fe", "[Str(\"semantic error: TypeError\")]"),
+    case(
         "return_call_to_fn_without_return.fe",
         "[Str(\"semantic error: TypeError\")]"
     ),

@@ -245,6 +245,9 @@ fn test_assert() {
 }
 
 #[rstest(fixture_file, input, expected,
+    case("if_statement.fe", vec![6], Some(u256_token(1))),
+    case("if_statement.fe", vec![4], Some(u256_token(0))),
+    case("if_statement_2.fe", vec![6], Some(u256_token(1))),
     case("call_statement_without_args.fe", vec![], Some(u256_token(100))),
     case("call_statement_with_args.fe", vec![], Some(u256_token(100))),
     case("call_statement_with_args_2.fe", vec![], Some(u256_token(100))),

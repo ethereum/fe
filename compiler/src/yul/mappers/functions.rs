@@ -16,6 +16,16 @@ use fe_semantics::namespace::types::{
 use fe_semantics::Context;
 use yultsur::*;
 
+pub fn multiple_func_stmt(
+    context: &Context,
+    statements: &[Spanned<fe::FuncStmt>],
+) -> Result<Vec<yul::Statement>, CompileError> {
+    statements
+        .iter()
+        .map(|statement| func_stmt(context, statement))
+        .collect::<Result<Vec<_>, _>>()
+}
+
 /// Builds a Yul function definition from a Fe function definition.
 pub fn func_def(
     context: &Context,
@@ -37,10 +47,7 @@ pub fn func_def(
             .iter()
             .map(|arg| func_def_arg(arg))
             .collect::<Result<Vec<_>, _>>()?;
-        let function_statements = body
-            .iter()
-            .map(|statement| func_stmt(context, statement))
-            .collect::<Result<Vec<_>, _>>()?;
+        let function_statements = multiple_func_stmt(context, body)?;
 
         // Different return types require slightly different functions.
         return match attributes.return_type.to_owned() {
@@ -100,7 +107,7 @@ fn func_stmt(
         fe::FuncStmt::AugAssign { .. } => unimplemented!(),
         fe::FuncStmt::For { .. } => unimplemented!(),
         fe::FuncStmt::While { .. } => unimplemented!(),
-        fe::FuncStmt::If { .. } => unimplemented!(),
+        fe::FuncStmt::If { .. } => if_statement(context, stmt),
         fe::FuncStmt::Assert { .. } => assert(context, stmt),
         fe::FuncStmt::Expr { .. } => expr(context, stmt),
         fe::FuncStmt::Pass => unimplemented!(),
@@ -108,6 +115,30 @@ fn func_stmt(
         fe::FuncStmt::Continue => unimplemented!(),
         fe::FuncStmt::Revert => revert(stmt),
     }
+}
+
+fn if_statement(
+    context: &Context,
+    stmt: &Spanned<fe::FuncStmt>,
+) -> Result<yul::Statement, CompileError> {
+    if let fe::FuncStmt::If {
+        test,
+        body,
+        or_else,
+    } = &stmt.node
+    {
+        let yul_test = expressions::expr(context, &test)?;
+        let yul_body = multiple_func_stmt(context, body)?;
+        let yul_or_else = multiple_func_stmt(context, or_else)?;
+
+        return Ok(switch! {
+            switch ([yul_test])
+            (case 1 {[yul_body...]})
+            (case 0 {[yul_or_else...]})
+        });
+    }
+
+    unreachable!()
 }
 
 fn expr(context: &Context, stmt: &Spanned<fe::FuncStmt>) -> Result<yul::Statement, CompileError> {

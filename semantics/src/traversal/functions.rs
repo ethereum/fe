@@ -94,18 +94,29 @@ pub fn func_def(
 }
 
 fn validate_all_paths_return_or_revert(
-    body: &[Spanned<fe::FuncStmt>],
+    block: &[Spanned<fe::FuncStmt>],
 ) -> Result<(), SemanticError> {
-    // This will need to become more sophisticated when we introduce branching logic
-    // because we then need to follow different code paths and check that they
-    // all return or revert.
-    for statement in body {
+    for statement in block.iter().rev() {
         if let fe::FuncStmt::Return { .. } = &statement.node {
             return Ok(());
         }
 
         if let fe::FuncStmt::Revert { .. } = &statement.node {
             return Ok(());
+        }
+
+        if let fe::FuncStmt::If {
+            test: _,
+            body,
+            or_else,
+        } = &statement.node
+        {
+            let body_returns = validate_all_paths_return_or_revert(body).is_ok();
+            let or_else_returns =
+                or_else.is_empty() || validate_all_paths_return_or_revert(or_else).is_ok();
+            if body_returns && or_else_returns {
+                return Ok(());
+            }
         }
     }
 
@@ -141,7 +152,7 @@ fn func_stmt(
         fe::FuncStmt::AugAssign { .. } => unimplemented!(),
         fe::FuncStmt::For { .. } => unimplemented!(),
         fe::FuncStmt::While { .. } => unimplemented!(),
-        fe::FuncStmt::If { .. } => unimplemented!(),
+        fe::FuncStmt::If { .. } => if_statement(scope, context, stmt),
         fe::FuncStmt::Assert { .. } => assert(scope, context, stmt),
         fe::FuncStmt::Expr { .. } => expr(scope, context, stmt),
         fe::FuncStmt::Pass => unimplemented!(),
@@ -149,6 +160,26 @@ fn func_stmt(
         fe::FuncStmt::Continue => unimplemented!(),
         fe::FuncStmt::Revert => Ok(()),
     }
+}
+
+fn if_statement(
+    scope: Shared<FunctionScope>,
+    context: Shared<Context>,
+    stmt: &Spanned<fe::FuncStmt>,
+) -> Result<(), SemanticError> {
+    if let fe::FuncStmt::If {
+        test,
+        body: _,
+        or_else: _,
+    } = &stmt.node
+    {
+        let attributes = expressions::expr(scope, context, &test)?;
+        if let Type::Base(Base::Bool) = attributes.typ {
+            return Ok(());
+        }
+    }
+
+    Err(SemanticError::TypeError)
 }
 
 fn expr(
