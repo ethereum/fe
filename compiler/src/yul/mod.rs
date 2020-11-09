@@ -25,8 +25,8 @@ pub fn compile(src: &str) -> Result<CompilerOutput, CompileError> {
         .next()
     {
         return Ok(CompilerOutput {
-            tokens: format!("{:?}", tokens),
-            ast: format!("{:?}", fe_module),
+            tokens: format!("{:#?}", tokens),
+            ast: format!("{:#?}", fe_module),
             yul: first_contract.to_string(),
         });
     }
