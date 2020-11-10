@@ -40,6 +40,10 @@ cat > target/doc/index.html <<EOF
 </html>
 EOF
 
+cat > target/doc/CNAME <<EOF
+fe.ethereum.org
+EOF
+
 # Add changes to git.
 git add -f target/doc
 
