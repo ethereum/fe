@@ -172,6 +172,7 @@ pub enum VarType {
     Address,
     FixedBytes(usize),
     FixedArray(Box<VarType>, usize),
+    String,
 }
 
 /// The mutability of a public function.
@@ -193,6 +194,7 @@ impl fmt::Display for VarType {
             VarType::Address => write!(f, "address"),
             VarType::FixedBytes(size) => write!(f, "bytes{}", size),
             VarType::FixedArray(inner, dim) => write!(f, "{}[{}]", inner, dim),
+            VarType::String => write!(f, "string"),
         }
     }
 }

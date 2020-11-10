@@ -9,37 +9,68 @@ pub trait FeSized {
     fn size(&self) -> usize;
 }
 
-/// The padding on an ABI type.
-pub enum AbiPadding {
-    /// The element is padded on the left with some number of bytes.
-    Left { size: usize },
-    /// The element is padded on the right with some number of bytes.
-    Right { size: usize },
-    /// There is no padding. For example, `u256` are already 32 bytes, so there
-    /// is no need to pad them.
-    None,
+/// The size of uint element in the ABI encoding.
+///
+/// Example: The values inside of a byte array have a padded size of 1 byte and
+/// a data size of 1 byte, whereas the values inside of an address array have
+/// a padded size of 32 bytes and a data size of 20 bytes. These sizes are
+/// needed by our encoding/decoding functions to properly read and write data.
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+pub struct AbiUintSize {
+    ///
+    pub data_size: usize,
+    pub padded_size: usize,
 }
 
-/// The type of an ABI element.
+/// The size of an array.
+///
+/// Can either be statically-sized with a fixed value known by the compiler
+/// or a dynamically-sized with the value not being known until runtime.
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+pub enum AbiArraySize {
+    Static { size: usize },
+    Dynamic,
+}
+
+/// The type of an element in terms of the ABI spec.
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
 pub enum AbiType {
-    /// Arrays are recursively encoded and consist of a single type.
-    UniformRecursive { child: FixedSize, count: usize },
-    /// Single values that do not require recursive encoding.
-    Terminal,
+    /// Array elements consist of a dynamically- or statically-sized set of
+    /// uints.
+    Array {
+        inner: Box<AbiType>,
+        size: AbiArraySize,
+    },
+    /// All elements are encoded as a uint or set of uints.
+    Uint { size: AbiUintSize },
+}
+
+/// Data can be decoded from memory or calldata.
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+pub enum AbiDecodeLocation {
+    Calldata,
+    Memory,
 }
 
 /// Information relevant to ABI encoding.
-pub trait AbiEncoding: FeSized {
+pub trait AbiEncoding {
     /// Name of the type as it appears in the Json ABI.
     fn abi_name(&self) -> String;
 
-    /// Size of the type with ABI encoding padding.
-    fn abi_size(&self) -> usize;
+    /// A name that uses identifier-friendly characters and avoids collisions.
+    /// This is used internally for generating encoding/decoding functions.
+    ///
+    /// Examples:
+    /// - `address[100]` cannot be used in an identifier, so we use the safe
+    /// name address100 instead.
+    /// - All strings are represented as "string" in the Json ABI. This is
+    /// is not compatible with our internal ABI functions because our decoding
+    /// function will need to account for maximum sizes. Therefore, we can
+    /// not use the same decoding function for two `string`s with different
+    /// max sizes and we need to differentiate the two.
+    fn abi_safe_name(&self) -> String;
 
-    /// Padding on the encoded data, if any.
-    fn abi_padding(&self) -> AbiPadding;
-
-    /// ABI type, either recursive or terminal.
+    /// The ABI type of a Fe type.
     fn abi_type(&self) -> AbiType;
 }
 
@@ -49,16 +80,18 @@ pub enum Type {
     Array(Array),
     Map(Map),
     Tuple(Tuple),
+    String(FeString),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
 pub enum FixedSize {
     Base(Base),
     Array(Array),
     Tuple(Tuple),
+    String(FeString),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
 pub enum Base {
     U256,
     Bool,
@@ -66,7 +99,7 @@ pub enum Base {
     Address,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
 pub struct Array {
     pub dimension: usize,
     pub inner: Base,
@@ -78,9 +111,14 @@ pub struct Map {
     pub value: Box<Type>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
 pub struct Tuple {
     pub items: Vec<Base>,
+}
+
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+pub struct FeString {
+    pub max_size: usize,
 }
 
 impl Type {
@@ -98,6 +136,7 @@ impl FeSized for FixedSize {
             FixedSize::Base(base) => base.size(),
             FixedSize::Array(array) => array.size(),
             FixedSize::Tuple(tuple) => tuple.size(),
+            FixedSize::String(string) => string.size(),
         }
     }
 }
@@ -108,22 +147,16 @@ impl AbiEncoding for FixedSize {
             FixedSize::Array(array) => array.abi_name(),
             FixedSize::Base(base) => base.abi_name(),
             FixedSize::Tuple(tuple) => tuple.abi_name(),
+            FixedSize::String(string) => string.abi_name(),
         }
     }
 
-    fn abi_size(&self) -> usize {
+    fn abi_safe_name(&self) -> String {
         match self {
-            FixedSize::Base(base) => base.abi_size(),
-            FixedSize::Array(array) => array.abi_size(),
-            FixedSize::Tuple(tuple) => tuple.abi_size(),
-        }
-    }
-
-    fn abi_padding(&self) -> AbiPadding {
-        match self {
-            FixedSize::Base(base) => base.abi_padding(),
-            FixedSize::Array(array) => array.abi_padding(),
-            FixedSize::Tuple(tuple) => tuple.abi_padding(),
+            FixedSize::Array(array) => array.abi_safe_name(),
+            FixedSize::Base(base) => base.abi_safe_name(),
+            FixedSize::Tuple(tuple) => tuple.abi_safe_name(),
+            FixedSize::String(string) => string.abi_safe_name(),
         }
     }
 
@@ -132,6 +165,7 @@ impl AbiEncoding for FixedSize {
             FixedSize::Base(base) => base.abi_type(),
             FixedSize::Array(array) => array.abi_type(),
             FixedSize::Tuple(tuple) => tuple.abi_type(),
+            FixedSize::String(string) => string.abi_type(),
         }
     }
 }
@@ -142,6 +176,7 @@ impl FixedSize {
             FixedSize::Array(array) => Type::Array(array),
             FixedSize::Base(base) => Type::Base(base),
             FixedSize::Tuple(tuple) => Type::Tuple(tuple),
+            FixedSize::String(string) => Type::String(string),
         }
     }
 
@@ -175,26 +210,37 @@ impl AbiEncoding for Base {
         }
     }
 
-    fn abi_size(&self) -> usize {
-        match self {
-            Base::U256 => 32,
-            Base::Bool => 32,
-            Base::Byte => 1,
-            Base::Address => 32,
-        }
-    }
-
-    fn abi_padding(&self) -> AbiPadding {
-        match self {
-            Base::U256 => AbiPadding::None,
-            Base::Bool => AbiPadding::Left { size: 31 },
-            Base::Byte => AbiPadding::None,
-            Base::Address => AbiPadding::Left { size: 12 },
-        }
+    fn abi_safe_name(&self) -> String {
+        self.abi_name()
     }
 
     fn abi_type(&self) -> AbiType {
-        AbiType::Terminal
+        match self {
+            Base::Bool => AbiType::Uint {
+                size: AbiUintSize {
+                    data_size: 1,
+                    padded_size: 32,
+                },
+            },
+            Base::U256 => AbiType::Uint {
+                size: AbiUintSize {
+                    data_size: 32,
+                    padded_size: 32,
+                },
+            },
+            Base::Address => AbiType::Uint {
+                size: AbiUintSize {
+                    data_size: 20,
+                    padded_size: 32,
+                },
+            },
+            Base::Byte => AbiType::Uint {
+                size: AbiUintSize {
+                    data_size: 1,
+                    padded_size: 1,
+                },
+            },
+        }
     }
 }
 
@@ -213,32 +259,20 @@ impl AbiEncoding for Array {
         format!("{}[{}]", self.inner.abi_name(), self.dimension)
     }
 
-    fn abi_size(&self) -> usize {
+    fn abi_safe_name(&self) -> String {
         if self.inner == Base::Byte {
-            if self.dimension % 32 == 0 {
-                return self.dimension;
-            }
-
-            return (32 - (self.dimension % 32)) + self.dimension;
+            return format!("bytes{}", self.dimension);
         }
 
-        self.dimension * self.inner.abi_size()
-    }
-
-    fn abi_padding(&self) -> AbiPadding {
-        if self.inner == Base::Byte {
-            return AbiPadding::Right {
-                size: self.abi_size() - self.size(),
-            };
-        }
-
-        AbiPadding::None
+        format!("{}{}", self.inner.abi_name(), self.dimension)
     }
 
     fn abi_type(&self) -> AbiType {
-        AbiType::UniformRecursive {
-            child: FixedSize::Base(self.inner.clone()),
-            count: self.dimension,
+        AbiType::Array {
+            inner: Box::new(self.inner.abi_type()),
+            size: AbiArraySize::Static {
+                size: self.dimension,
+            },
         }
     }
 }
@@ -274,16 +308,40 @@ impl AbiEncoding for Tuple {
         unimplemented!();
     }
 
-    fn abi_size(&self) -> usize {
-        unimplemented!();
-    }
-
-    fn abi_padding(&self) -> AbiPadding {
+    fn abi_safe_name(&self) -> String {
         unimplemented!();
     }
 
     fn abi_type(&self) -> AbiType {
         unimplemented!();
+    }
+}
+
+impl FeSized for FeString {
+    fn size(&self) -> usize {
+        self.max_size + 32
+    }
+}
+
+impl AbiEncoding for FeString {
+    fn abi_name(&self) -> String {
+        "string".to_string()
+    }
+
+    fn abi_safe_name(&self) -> String {
+        format!("string{}", self.max_size)
+    }
+
+    fn abi_type(&self) -> AbiType {
+        AbiType::Array {
+            inner: Box::new(AbiType::Uint {
+                size: AbiUintSize {
+                    data_size: 1,
+                    padded_size: 1,
+                },
+            }),
+            size: AbiArraySize::Dynamic,
+        }
     }
 }
 
@@ -295,6 +353,7 @@ pub fn type_desc_fixed_size(
         Type::Base(base) => Ok(FixedSize::Base(base)),
         Type::Array(array) => Ok(FixedSize::Array(array)),
         Type::Tuple(tuple) => Ok(FixedSize::Tuple(tuple)),
+        Type::String(string) => Ok(FixedSize::String(string)),
         Type::Map(_) => Err(SemanticError::TypeError),
     }
 }
@@ -308,6 +367,7 @@ pub fn type_desc_base(
         Type::Array(_) => Err(SemanticError::TypeError),
         Type::Map(_) => Err(SemanticError::TypeError),
         Type::Tuple(_) => Err(SemanticError::TypeError),
+        Type::String(_) => Err(SemanticError::TypeError),
     }
 }
 
@@ -320,6 +380,12 @@ pub fn type_desc(
         fe::TypeDesc::Base { base: "bool" } => Ok(Type::Base(Base::Bool)),
         fe::TypeDesc::Base { base: "bytes" } => Ok(Type::Base(Base::Byte)),
         fe::TypeDesc::Base { base: "address" } => Ok(Type::Base(Base::Address)),
+        fe::TypeDesc::Base { base } if &base[..6] == "string" => {
+            let max_size = base[6..]
+                .parse::<u32>()
+                .map_err(|_| SemanticError::TypeError)? as usize;
+            Ok(Type::String(FeString { max_size }))
+        }
         fe::TypeDesc::Base { base } => {
             if let Some(ModuleDef::Type(typ)) = defs.get(base.to_owned()) {
                 return Ok(typ.clone());

@@ -15,6 +15,7 @@ pub fn index(value: Type, index: Type) -> Result<Type, SemanticError> {
         Type::Map(map) => index_map(map, index),
         Type::Base(_) => Err(SemanticError::NotSubscriptable),
         Type::Tuple(_) => Err(SemanticError::NotSubscriptable),
+        Type::String(_) => Err(SemanticError::NotSubscriptable),
     }
 }
 

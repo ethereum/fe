@@ -1,3 +1,4 @@
+#![feature(iterator_fold_self)]
 //! Modules for compiling Fe and building ABIs.
 
 pub mod abi;

@@ -128,13 +128,13 @@ mod tests {
         let function_scope = BlockScope::from_contract_scope(Span::new(0, 0), contract_scope);
         function_scope
             .borrow_mut()
-            .add_base("foo".to_string(), Base::U256);
-        function_scope.borrow_mut().add_array(
+            .add_var("foo".to_string(), Type::Base(Base::U256));
+        function_scope.borrow_mut().add_var(
             "bar".to_string(),
-            Array {
+            Type::Array(Array {
                 inner: Base::U256,
                 dimension: 100,
-            },
+            }),
         );
         function_scope
     }

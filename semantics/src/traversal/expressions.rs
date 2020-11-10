@@ -102,14 +102,20 @@ fn expr_name(
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::Name(name) = exp.node {
         return match scope.borrow().def(name.to_string()) {
-            Some(BlockDef::Base(base)) => Ok(ExpressionAttributes {
+            Some(BlockDef::Variable(Type::Base(base))) => Ok(ExpressionAttributes {
                 location: Location::Value,
                 typ: Type::Base(base),
             }),
-            Some(BlockDef::Array(array)) => Ok(ExpressionAttributes {
+            Some(BlockDef::Variable(Type::Array(array))) => Ok(ExpressionAttributes {
                 location: Location::Memory,
                 typ: Type::Array(array),
             }),
+            Some(BlockDef::Variable(Type::String(string))) => Ok(ExpressionAttributes {
+                location: Location::Memory,
+                typ: Type::String(string),
+            }),
+            Some(BlockDef::Variable(Type::Tuple(_))) => unimplemented!(),
+            Some(BlockDef::Variable(Type::Map(_))) => unreachable!(),
             None => Err(SemanticError::UndefinedValue {
                 value: name.to_string(),
             }),
@@ -160,11 +166,13 @@ fn expr_subscript(
                     // variant named StorageRuntime or something to suit this case.
                     Type::Map(_) => Location::Storage { index: 0 },
                     Type::Tuple(_) => Location::Memory,
+                    Type::String(_) => Location::Memory,
                 }
             }
             Type::Array(_) => Location::Value,
             Type::Base(_) => return Err(SemanticError::NotSubscriptable),
             Type::Tuple(_) => return Err(SemanticError::NotSubscriptable),
+            Type::String(_) => return Err(SemanticError::NotSubscriptable),
         };
 
         return Ok(ExpressionAttributes { typ, location });
@@ -416,13 +424,13 @@ mod tests {
         let scope = scope();
         scope
             .borrow_mut()
-            .add_base("my_addr".to_string(), Base::Address);
-        scope.borrow_mut().add_array(
+            .add_var("my_addr".to_string(), Type::Base(Base::Address));
+        scope.borrow_mut().add_var(
             "my_addr_array".to_string(),
-            Array {
+            Type::Array(Array {
                 dimension: 100,
                 inner: Base::Address,
-            },
+            }),
         );
         scope.borrow_mut().contract_scope().borrow_mut().add_map(
             "my_addr_u256_map".to_string(),

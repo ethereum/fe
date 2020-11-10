@@ -1,7 +1,5 @@
 use crate::namespace::events::Event;
 use crate::namespace::types::{
-    Array,
-    Base,
     FixedSize,
     Map,
     Type,
@@ -35,8 +33,7 @@ pub enum ContractDef {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum BlockDef {
-    Base(Base),
-    Array(Array),
+    Variable(Type),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -209,12 +206,8 @@ impl BlockScope {
         }
     }
 
-    pub fn add_array(&mut self, name: String, array: Array) {
-        self.defs.insert(name, BlockDef::Array(array));
-    }
-
-    pub fn add_base(&mut self, name: String, base: Base) {
-        self.defs.insert(name, BlockDef::Base(base));
+    pub fn add_var(&mut self, name: String, typ: Type) {
+        self.defs.insert(name, BlockDef::Variable(typ));
     }
 }
 
@@ -226,7 +219,10 @@ mod tests {
         ContractScope,
         ModuleScope,
     };
-    use crate::namespace::types::Base;
+    use crate::namespace::types::{
+        Base,
+        Type,
+    };
     use fe_parser::span::Span;
 
     #[test]
@@ -258,9 +254,9 @@ mod tests {
             BlockScope::from_contract_scope(Span::new(0, 0), contract_scope.clone());
         block_scope_1
             .borrow_mut()
-            .add_base("some_thing".to_string(), Base::Bool);
+            .add_var("some_thing".to_string(), Type::Base(Base::Bool));
         assert_eq!(
-            Some(BlockDef::Base(Base::Bool)),
+            Some(BlockDef::Variable(Type::Base(Base::Bool))),
             block_scope_1.borrow().def("some_thing".to_string())
         );
     }
@@ -274,9 +270,9 @@ mod tests {
         let block_scope_2 = BlockScope::from_block_scope(Span::new(0, 0), block_scope_1.clone());
         block_scope_1
             .borrow_mut()
-            .add_base("some_thing".to_string(), Base::Bool);
+            .add_var("some_thing".to_string(), Type::Base(Base::Bool));
         assert_eq!(
-            Some(BlockDef::Base(Base::Bool)),
+            Some(BlockDef::Variable(Type::Base(Base::Bool))),
             block_scope_2.borrow().def("some_thing".to_string())
         );
     }
@@ -290,7 +286,7 @@ mod tests {
         let block_scope_2 = BlockScope::from_block_scope(Span::new(0, 0), block_scope_1.clone());
         block_scope_2
             .borrow_mut()
-            .add_base("some_thing".to_string(), Base::Bool);
+            .add_var("some_thing".to_string(), Type::Base(Base::Bool));
         assert_eq!(None, block_scope_1.borrow().def("some_thing".to_string()));
     }
 }

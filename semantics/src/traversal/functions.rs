@@ -137,11 +137,7 @@ fn func_def_arg(
     let name = arg.node.name.node.to_string();
     let typ = types::type_desc_fixed_size(Scope::Block(Rc::clone(&scope)), &arg.node.typ)?;
 
-    match typ.clone() {
-        FixedSize::Base(base) => scope.borrow_mut().add_base(name, base),
-        FixedSize::Array(array) => scope.borrow_mut().add_array(name, array),
-        FixedSize::Tuple(_) => unimplemented!(),
-    }
+    scope.borrow_mut().add_var(name, typ.clone().into_type());
 
     Ok(typ)
 }
