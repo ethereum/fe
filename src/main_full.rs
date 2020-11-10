@@ -14,6 +14,7 @@ use clap::{
     Arg,
 };
 
+use crate::_utils::pretty_curly_print;
 use fe_compiler::evm::CompileStage;
 
 const DEFAULT_OUTPUT_DIR_NAME: &str = "output";
@@ -110,7 +111,7 @@ fn compile(src_file: &str, output_dir: &str, targets: Vec<CompilationTarget>) ->
             }
             CompilationTarget::Yul => {
                 let mut file_yul = fs::File::create(output_dir.join("out.yul"))?;
-                file_yul.write_all(output.yul.as_bytes())?;
+                file_yul.write_all(pretty_curly_print(&output.yul, 4).as_bytes())?;
             }
         }
     }

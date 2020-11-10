@@ -2,6 +2,8 @@
 #![doc(include = "../README.md")]
 
 #[cfg(feature = "solc-backend")]
+mod _utils;
+#[cfg(feature = "solc-backend")]
 mod main_full;
 
 #[cfg(not(feature = "solc-backend"))]
