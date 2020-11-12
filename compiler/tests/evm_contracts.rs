@@ -245,6 +245,7 @@ fn test_assert() {
 }
 
 #[rstest(fixture_file, input, expected,
+    case("while_loop.fe", vec![], Some(u256_token(3))),
     case("if_statement.fe", vec![6], Some(u256_token(1))),
     case("if_statement.fe", vec![4], Some(u256_token(0))),
     case("if_statement_2.fe", vec![6], Some(u256_token(1))),
