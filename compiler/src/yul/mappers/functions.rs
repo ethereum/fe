@@ -106,7 +106,7 @@ fn func_stmt(
         fe::FuncStmt::Emit { .. } => emit(context, stmt),
         fe::FuncStmt::AugAssign { .. } => unimplemented!(),
         fe::FuncStmt::For { .. } => unimplemented!(),
-        fe::FuncStmt::While { .. } => unimplemented!(),
+        fe::FuncStmt::While { .. } => while_loop(context, stmt),
         fe::FuncStmt::If { .. } => if_statement(context, stmt),
         fe::FuncStmt::Assert { .. } => assert(context, stmt),
         fe::FuncStmt::Expr { .. } => expr(context, stmt),
@@ -215,6 +215,30 @@ fn func_return(
             }
             None => return Ok(statement! { leave }),
         }
+    }
+
+    unreachable!()
+}
+
+fn while_loop(
+    context: &Context,
+    stmt: &Spanned<fe::FuncStmt>,
+) -> Result<yul::Statement, CompileError> {
+    if let fe::FuncStmt::While {
+        test,
+        body,
+        or_else: _,
+    } = &stmt.node
+    {
+        let test = expressions::expr(context, test)?;
+        let yul_body = multiple_func_stmt(context, body)?;
+
+        return Ok(block_statement! {
+            (for {} ([test]) {}
+            {
+                [yul_body...]
+            })
+        });
     }
 
     unreachable!()

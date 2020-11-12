@@ -151,7 +151,7 @@ fn func_stmt(
         fe::FuncStmt::Emit { .. } => emit(scope, context, stmt),
         fe::FuncStmt::AugAssign { .. } => unimplemented!(),
         fe::FuncStmt::For { .. } => unimplemented!(),
-        fe::FuncStmt::While { .. } => unimplemented!(),
+        fe::FuncStmt::While { .. } => while_loop(scope, context, stmt),
         fe::FuncStmt::If { .. } => if_statement(scope, context, stmt),
         fe::FuncStmt::Assert { .. } => assert(scope, context, stmt),
         fe::FuncStmt::Expr { .. } => expr(scope, context, stmt),
@@ -162,24 +162,52 @@ fn func_stmt(
     }
 }
 
+fn verify_is_boolean(
+    scope: Shared<FunctionScope>,
+    context: Shared<Context>,
+    expr: &Spanned<fe::Expr>,
+) -> Result<(), SemanticError> {
+    let attributes = expressions::expr(scope, context, expr)?;
+    if let Type::Base(Base::Bool) = attributes.typ {
+        return Ok(());
+    }
+
+    Err(SemanticError::TypeError)
+}
+
 fn if_statement(
     scope: Shared<FunctionScope>,
     context: Shared<Context>,
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
-    if let fe::FuncStmt::If {
-        test,
-        body: _,
-        or_else: _,
-    } = &stmt.node
-    {
-        let attributes = expressions::expr(scope, context, &test)?;
-        if let Type::Base(Base::Bool) = attributes.typ {
-            return Ok(());
-        }
+    match &stmt.node {
+        fe::FuncStmt::If {
+            test,
+            body: _,
+            or_else: _,
+        } => verify_is_boolean(scope, context, test),
+        _ => unreachable!(),
     }
+}
 
-    Err(SemanticError::TypeError)
+fn while_loop(
+    scope: Shared<FunctionScope>,
+    context: Shared<Context>,
+    stmt: &Spanned<fe::FuncStmt>,
+) -> Result<(), SemanticError> {
+    match &stmt.node {
+        fe::FuncStmt::While {
+            test,
+            body: _,
+            or_else,
+        } => {
+            if !or_else.is_empty() {
+                unimplemented!();
+            }
+            verify_is_boolean(scope, context, test)
+        }
+        _ => unreachable!(),
+    }
 }
 
 fn expr(
@@ -229,10 +257,7 @@ fn assert(
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::Assert { test, msg } = &stmt.node {
-        let test_attributes = expressions::expr(scope.clone(), context.clone(), test)?;
-        if test_attributes.typ != Type::Base(Base::Bool) {
-            return Err(SemanticError::TypeError);
-        }
+        verify_is_boolean(scope.clone(), context.clone(), test)?;
         if let Some(msg) = msg {
             // TODO: type check for a string once strings are supported
             let _msg_attributes = expressions::expr(scope, context, msg)?;
