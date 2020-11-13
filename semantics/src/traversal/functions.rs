@@ -83,14 +83,23 @@ pub fn func_def(
 
         context.borrow_mut().add_function(def, attributes);
 
-        for stmt in body.iter() {
-            func_stmt(Rc::clone(&function_scope), Rc::clone(&context), stmt)?
-        }
+        traverse_statements(function_scope.clone(), context, body)?;
 
         return Ok(());
     }
 
     unreachable!()
+}
+
+fn traverse_statements(
+    scope: Shared<FunctionScope>,
+    context: Shared<Context>,
+    body: &[Spanned<fe::FuncStmt>],
+) -> Result<(), SemanticError> {
+    for stmt in body.iter() {
+        func_stmt(Rc::clone(&scope), Rc::clone(&context), stmt)?
+    }
+    Ok(())
 }
 
 fn validate_all_paths_return_or_revert(
@@ -183,9 +192,13 @@ fn if_statement(
     match &stmt.node {
         fe::FuncStmt::If {
             test,
-            body: _,
-            or_else: _,
-        } => verify_is_boolean(scope, context, test),
+            body,
+            or_else,
+        } => {
+            traverse_statements(scope.clone(), context.clone(), body)?;
+            traverse_statements(scope.clone(), context.clone(), or_else)?;
+            verify_is_boolean(scope, context, test)
+        }
         _ => unreachable!(),
     }
 }
@@ -198,12 +211,13 @@ fn while_loop(
     match &stmt.node {
         fe::FuncStmt::While {
             test,
-            body: _,
+            body,
             or_else,
         } => {
             if !or_else.is_empty() {
                 unimplemented!();
             }
+            traverse_statements(scope.clone(), context.clone(), body)?;
             verify_is_boolean(scope, context, test)
         }
         _ => unreachable!(),
