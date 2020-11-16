@@ -1,7 +1,7 @@
 use crate::errors::SemanticError;
 use crate::namespace::operations;
 use crate::namespace::scopes::{
-    FunctionScope,
+    BlockScope,
     Shared,
 };
 use crate::traversal::expressions;
@@ -14,7 +14,7 @@ use std::rc::Rc;
 ///
 /// e.g. `foo[42] = "bar"`, `self.foo[42] = "bar"`, `foo = 42`
 pub fn assign(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     context: Shared<Context>,
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
@@ -44,7 +44,7 @@ pub fn assign(
 ///
 /// e.g. `foo[42] = "bar"`, `self.foo[42] = "bar"`
 fn assign_subscript(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     context: Shared<Context>,
     target: &Spanned<fe::Expr>,
     value: &Spanned<fe::Expr>,
@@ -74,7 +74,7 @@ fn assign_subscript(
 ///
 /// e.g. `foo = 42`
 fn assign_name(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     context: Shared<Context>,
     target: &Spanned<fe::Expr>,
     value: &Spanned<fe::Expr>,
@@ -93,8 +93,8 @@ fn assign_name(
 mod tests {
     use crate::errors::SemanticError;
     use crate::namespace::scopes::{
+        BlockScope,
         ContractScope,
-        FunctionScope,
         ModuleScope,
         Shared,
     };
@@ -115,7 +115,7 @@ mod tests {
     // - self.foobar: Map<u256, u256>
     // - foo: u256
     // - bar: u256[100]
-    fn scope() -> Shared<FunctionScope> {
+    fn scope() -> Shared<BlockScope> {
         let module_scope = ModuleScope::new();
         let contract_scope = ContractScope::new(module_scope);
         contract_scope.borrow_mut().add_map(
@@ -125,7 +125,7 @@ mod tests {
                 value: Box::new(Type::Base(Base::U256)),
             },
         );
-        let function_scope = FunctionScope::new(Span::new(0, 0), contract_scope);
+        let function_scope = BlockScope::from_contract_scope(Span::new(0, 0), contract_scope);
         function_scope
             .borrow_mut()
             .add_base("foo".to_string(), Base::U256);
@@ -139,7 +139,7 @@ mod tests {
         function_scope
     }
 
-    fn analyze(scope: Shared<FunctionScope>, src: &str) -> Result<Context, SemanticError> {
+    fn analyze(scope: Shared<BlockScope>, src: &str) -> Result<Context, SemanticError> {
         let context = Context::new_shared();
         let tokens = parser::get_parse_tokens(src).expect("Couldn't parse expression");
         let assignment = &parser::parsers::assign_stmt(&tokens[..])

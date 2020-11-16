@@ -34,7 +34,7 @@ pub enum ContractDef {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum FunctionDef {
+pub enum BlockDef {
     Base(Base),
     Array(Array),
 }
@@ -53,17 +53,23 @@ pub struct ContractScope {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct FunctionScope {
+pub struct BlockScope {
     pub span: Span,
-    pub parent: Shared<ContractScope>,
-    pub defs: HashMap<String, FunctionDef>,
+    pub parent: BlockScopeParent,
+    pub defs: HashMap<String, BlockDef>,
 }
 
 #[allow(dead_code)]
 pub enum Scope {
     Module(Shared<ModuleScope>),
     Contract(Shared<ContractScope>),
-    Function(Shared<FunctionScope>),
+    Block(Shared<BlockScope>),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum BlockScopeParent {
+    Contract(Shared<ContractScope>),
+    Block(Shared<BlockScope>),
 }
 
 impl Scope {
@@ -71,7 +77,7 @@ impl Scope {
         match self {
             Scope::Module(scope) => Rc::clone(scope),
             Scope::Contract(scope) => Rc::clone(&scope.borrow().parent),
-            Scope::Function(scope) => Rc::clone(&scope.borrow().parent.borrow().parent),
+            Scope::Block(scope) => Rc::clone(&scope.borrow().contract_scope().borrow().parent),
         }
     }
 }
@@ -136,9 +142,17 @@ impl ContractScope {
     }
 }
 
-impl FunctionScope {
-    pub fn new(span: Span, parent: Shared<ContractScope>) -> Shared<Self> {
-        Rc::new(RefCell::new(FunctionScope {
+impl BlockScope {
+    pub fn from_contract_scope(span: Span, parent: Shared<ContractScope>) -> Shared<Self> {
+        BlockScope::new(span, BlockScopeParent::Contract(parent))
+    }
+
+    pub fn from_block_scope(span: Span, parent: Shared<BlockScope>) -> Shared<Self> {
+        BlockScope::new(span, BlockScopeParent::Block(parent))
+    }
+
+    pub fn new(span: Span, parent: BlockScopeParent) -> Shared<Self> {
+        Rc::new(RefCell::new(BlockScope {
             span,
             parent,
             defs: HashMap::new(),
@@ -147,26 +161,136 @@ impl FunctionScope {
 
     #[allow(dead_code)]
     pub fn module_scope(&self) -> Shared<ModuleScope> {
-        Rc::clone(&self.parent.borrow().parent)
+        Rc::clone(&self.contract_scope().borrow().parent)
     }
 
+    /// Return the contract scope and its immediate block scope child
+    fn find_scope_boundary(&self) -> (Shared<ContractScope>, Shared<BlockScope>) {
+        let mut parent = self.parent.clone();
+        let mut last_block_scope = Rc::new(RefCell::new(self.clone()));
+        loop {
+            parent = match parent {
+                BlockScopeParent::Block(ref scope) => {
+                    last_block_scope = scope.clone();
+                    scope.borrow().parent.clone()
+                }
+                BlockScopeParent::Contract(ref scope) => return (scope.clone(), last_block_scope),
+            }
+        }
+    }
+
+    /// Return the contract scope that the block scope inherits from
     pub fn contract_scope(&self) -> Shared<ContractScope> {
-        Rc::clone(&self.parent)
+        let (contract_scope, _) = self.find_scope_boundary();
+        contract_scope
+    }
+
+    /// Return the block scope that is associated with the function block
+    pub fn function_scope(&self) -> Shared<BlockScope> {
+        let (_, function_scope) = self.find_scope_boundary();
+        function_scope
     }
 
     pub fn contract_def(&self, name: String) -> Option<ContractDef> {
         self.contract_scope().borrow().def(name)
     }
 
-    pub fn def(&self, name: String) -> Option<FunctionDef> {
-        self.defs.get(&name).map(|def| (*def).clone())
+    /// Lookup definition in current or inherited block scope
+    pub fn def(&self, name: String) -> Option<BlockDef> {
+        let block_def = self.defs.get(&name).map(|def| (*def).clone());
+        if block_def.is_none() {
+            if let BlockScopeParent::Block(scope) = &self.parent {
+                scope.borrow().def(name)
+            } else {
+                None
+            }
+        } else {
+            block_def
+        }
     }
 
     pub fn add_array(&mut self, name: String, array: Array) {
-        self.defs.insert(name, FunctionDef::Array(array));
+        self.defs.insert(name, BlockDef::Array(array));
     }
 
     pub fn add_base(&mut self, name: String, base: Base) {
-        self.defs.insert(name, FunctionDef::Base(base));
+        self.defs.insert(name, BlockDef::Base(base));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::namespace::scopes::{
+        BlockDef,
+        BlockScope,
+        ContractScope,
+        ModuleScope,
+    };
+    use crate::namespace::types::Base;
+    use fe_parser::span::Span;
+
+    #[test]
+    fn test_scope_resolution_on_first_level_block_scope() {
+        let module_scope = ModuleScope::new();
+        let contract_scope = ContractScope::new(module_scope);
+        let block_scope_1 =
+            BlockScope::from_contract_scope(Span::new(0, 0), contract_scope.clone());
+        assert_eq!(block_scope_1, block_scope_1.borrow().function_scope());
+        assert_eq!(contract_scope, block_scope_1.borrow().contract_scope());
+    }
+
+    #[test]
+    fn test_scope_resolution_on_second_level_block_scope() {
+        let module_scope = ModuleScope::new();
+        let contract_scope = ContractScope::new(module_scope);
+        let block_scope_1 =
+            BlockScope::from_contract_scope(Span::new(0, 0), contract_scope.clone());
+        let block_scope_2 = BlockScope::from_block_scope(Span::new(0, 0), block_scope_1.clone());
+        assert_eq!(block_scope_1, block_scope_2.borrow().function_scope());
+        assert_eq!(contract_scope, block_scope_2.borrow().contract_scope());
+    }
+
+    #[test]
+    fn test_1st_level_def_lookup_on_1st_level_block_scope() {
+        let module_scope = ModuleScope::new();
+        let contract_scope = ContractScope::new(module_scope);
+        let block_scope_1 =
+            BlockScope::from_contract_scope(Span::new(0, 0), contract_scope.clone());
+        block_scope_1
+            .borrow_mut()
+            .add_base("some_thing".to_string(), Base::Bool);
+        assert_eq!(
+            Some(BlockDef::Base(Base::Bool)),
+            block_scope_1.borrow().def("some_thing".to_string())
+        );
+    }
+
+    #[test]
+    fn test_1st_level_def_lookup_on_2nd_level_block_scope() {
+        let module_scope = ModuleScope::new();
+        let contract_scope = ContractScope::new(module_scope);
+        let block_scope_1 =
+            BlockScope::from_contract_scope(Span::new(0, 0), contract_scope.clone());
+        let block_scope_2 = BlockScope::from_block_scope(Span::new(0, 0), block_scope_1.clone());
+        block_scope_1
+            .borrow_mut()
+            .add_base("some_thing".to_string(), Base::Bool);
+        assert_eq!(
+            Some(BlockDef::Base(Base::Bool)),
+            block_scope_2.borrow().def("some_thing".to_string())
+        );
+    }
+
+    #[test]
+    fn test_2nd_level_def_lookup_on_1nd_level_block_scope_fails() {
+        let module_scope = ModuleScope::new();
+        let contract_scope = ContractScope::new(module_scope);
+        let block_scope_1 =
+            BlockScope::from_contract_scope(Span::new(0, 0), contract_scope.clone());
+        let block_scope_2 = BlockScope::from_block_scope(Span::new(0, 0), block_scope_1.clone());
+        block_scope_2
+            .borrow_mut()
+            .add_base("some_thing".to_string(), Base::Bool);
+        assert_eq!(None, block_scope_1.borrow().def("some_thing".to_string()));
     }
 }
