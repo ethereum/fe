@@ -1,8 +1,8 @@
 use crate::errors::SemanticError;
 use crate::namespace::scopes::{
+    BlockScope,
     ContractDef,
     ContractScope,
-    FunctionScope,
     Scope,
     Shared,
 };
@@ -42,7 +42,7 @@ pub fn func_def(
         body,
     } = &def.node
     {
-        let function_scope = FunctionScope::new(def.span, Rc::clone(&contract_scope));
+        let function_scope = BlockScope::from_contract_scope(def.span, Rc::clone(&contract_scope));
 
         let name = name.node.to_string();
         let param_types = args
@@ -52,9 +52,7 @@ pub fn func_def(
 
         let return_type = return_type
             .as_ref()
-            .map(|typ| {
-                types::type_desc_fixed_size(Scope::Function(Rc::clone(&function_scope)), &typ)
-            })
+            .map(|typ| types::type_desc_fixed_size(Scope::Block(Rc::clone(&function_scope)), &typ))
             .transpose()?
             .unwrap_or_else(|| Tuple::empty().to_fixed_size());
 
@@ -83,7 +81,7 @@ pub fn func_def(
 
         context.borrow_mut().add_function(def, attributes);
 
-        traverse_statements(function_scope.clone(), context, body)?;
+        traverse_statements(function_scope, context, body)?;
 
         return Ok(());
     }
@@ -92,7 +90,7 @@ pub fn func_def(
 }
 
 fn traverse_statements(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     context: Shared<Context>,
     body: &[Spanned<fe::FuncStmt>],
 ) -> Result<(), SemanticError> {
@@ -133,11 +131,11 @@ fn validate_all_paths_return_or_revert(
 }
 
 fn func_def_arg(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     arg: &Spanned<fe::FuncDefArg>,
 ) -> Result<FixedSize, SemanticError> {
     let name = arg.node.name.node.to_string();
-    let typ = types::type_desc_fixed_size(Scope::Function(Rc::clone(&scope)), &arg.node.typ)?;
+    let typ = types::type_desc_fixed_size(Scope::Block(Rc::clone(&scope)), &arg.node.typ)?;
 
     match typ.clone() {
         FixedSize::Base(base) => scope.borrow_mut().add_base(name, base),
@@ -149,7 +147,7 @@ fn func_def_arg(
 }
 
 fn func_stmt(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     context: Shared<Context>,
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
@@ -172,7 +170,7 @@ fn func_stmt(
 }
 
 fn verify_is_boolean(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     context: Shared<Context>,
     expr: &Spanned<fe::Expr>,
 ) -> Result<(), SemanticError> {
@@ -185,7 +183,7 @@ fn verify_is_boolean(
 }
 
 fn if_statement(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     context: Shared<Context>,
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
@@ -195,8 +193,10 @@ fn if_statement(
             body,
             or_else,
         } => {
-            traverse_statements(scope.clone(), context.clone(), body)?;
-            traverse_statements(scope.clone(), context.clone(), or_else)?;
+            let body_scope = BlockScope::from_block_scope(stmt.span, scope.clone());
+            traverse_statements(body_scope, context.clone(), body)?;
+            let or_else_scope = BlockScope::from_block_scope(stmt.span, scope.clone());
+            traverse_statements(or_else_scope, context.clone(), or_else)?;
             verify_is_boolean(scope, context, test)
         }
         _ => unreachable!(),
@@ -204,7 +204,7 @@ fn if_statement(
 }
 
 fn while_loop(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     context: Shared<Context>,
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
@@ -217,7 +217,8 @@ fn while_loop(
             if !or_else.is_empty() {
                 unimplemented!();
             }
-            traverse_statements(scope.clone(), context.clone(), body)?;
+            let body_scope = BlockScope::from_block_scope(stmt.span, scope.clone());
+            traverse_statements(body_scope, context.clone(), body)?;
             verify_is_boolean(scope, context, test)
         }
         _ => unreachable!(),
@@ -225,7 +226,7 @@ fn while_loop(
 }
 
 fn expr(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     context: Shared<Context>,
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
@@ -238,7 +239,7 @@ fn expr(
 }
 
 fn emit(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     context: Shared<Context>,
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
@@ -266,7 +267,7 @@ fn emit(
 }
 
 fn assert(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     context: Shared<Context>,
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
@@ -284,7 +285,7 @@ fn assert(
 }
 
 fn call_arg(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     context: Shared<Context>,
     arg: &Spanned<fe::CallArg>,
 ) -> Result<(), SemanticError> {
@@ -304,14 +305,17 @@ fn call_arg(
 }
 
 fn func_return(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     context: Shared<Context>,
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::Return { value: Some(value) } = &stmt.node {
         let attributes = expressions::expr(scope.clone(), context.clone(), value)?;
 
-        match context.borrow().get_function(scope.borrow().span) {
+        match context
+            .borrow()
+            .get_function(scope.borrow().function_scope().borrow().span)
+        {
             Some(fn_attr) => {
                 if fn_attr.return_type.clone().into_type() != attributes.typ {
                     return Err(SemanticError::TypeError);

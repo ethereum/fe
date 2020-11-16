@@ -9,6 +9,14 @@ use std::fs;
 #[rstest(
     fixture_file,
     error,
+    case(
+        "not_in_scope.fe",
+        "[Str(\"semantic error: UndefinedValue { value: \\\"y\\\" }\")]"
+    ),
+    case(
+        "not_in_scope_2.fe",
+        "[Str(\"semantic error: UndefinedValue { value: \\\"y\\\" }\")]"
+    ),
     case("mismatch_return_type.fe", "[Str(\"semantic error: TypeError\")]"),
     case("unexpected_return.fe", "[Str(\"semantic error: TypeError\")]"),
     case("missing_return.fe", "[Str(\"semantic error: MissingReturn\")]"),

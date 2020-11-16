@@ -1,8 +1,8 @@
 use crate::errors::SemanticError;
 use crate::namespace::scopes::{
+    BlockDef,
+    BlockScope,
     ContractDef,
-    FunctionDef,
-    FunctionScope,
     Shared,
 };
 
@@ -27,7 +27,7 @@ use std::rc::Rc;
 
 /// Gather context information for expressions and check for type errors.
 pub fn expr(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     context: Shared<Context>,
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
@@ -71,7 +71,7 @@ pub fn expr_name_string(exp: &Spanned<fe::Expr>) -> Result<String, SemanticError
 
 /// Gather context information for an index and check for type errors.
 pub fn slices_index(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     context: Shared<Context>,
     slices: &Spanned<Vec<Spanned<fe::Slice>>>,
 ) -> Result<ExpressionAttributes, SemanticError> {
@@ -84,7 +84,7 @@ pub fn slices_index(
 
 /// Gather context information for an index and check for type errors.
 pub fn slice_index(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     context: Shared<Context>,
     slice: &Spanned<fe::Slice>,
 ) -> Result<ExpressionAttributes, SemanticError> {
@@ -97,16 +97,16 @@ pub fn slice_index(
 }
 
 fn expr_name(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::Name(name) = exp.node {
         return match scope.borrow().def(name.to_string()) {
-            Some(FunctionDef::Base(base)) => Ok(ExpressionAttributes {
+            Some(BlockDef::Base(base)) => Ok(ExpressionAttributes {
                 location: Location::Value,
                 typ: Type::Base(base),
             }),
-            Some(FunctionDef::Array(array)) => Ok(ExpressionAttributes {
+            Some(BlockDef::Array(array)) => Ok(ExpressionAttributes {
                 location: Location::Memory,
                 typ: Type::Array(array),
             }),
@@ -142,7 +142,7 @@ fn expr_num(exp: &Spanned<fe::Expr>) -> Result<ExpressionAttributes, SemanticErr
 }
 
 fn expr_subscript(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     context: Shared<Context>,
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
@@ -174,7 +174,7 @@ fn expr_subscript(
 }
 
 fn expr_attribute(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::Attribute { value, attr } = &exp.node {
@@ -203,7 +203,7 @@ fn expr_attribute_msg(attr: &Spanned<&str>) -> Result<ExpressionAttributes, Sema
 }
 
 fn expr_attribute_self(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     attr: &Spanned<&str>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     match scope.borrow().contract_def(attr.node.to_string()) {
@@ -218,7 +218,7 @@ fn expr_attribute_self(
 }
 
 fn expr_bin_operation(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     context: Shared<Context>,
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
@@ -239,7 +239,7 @@ fn expr_bin_operation(
 }
 
 pub fn call_arg(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     context: Shared<Context>,
     arg: &Spanned<fe::CallArg>,
 ) -> Result<ExpressionAttributes, SemanticError> {
@@ -253,7 +253,7 @@ pub fn call_arg(
 }
 
 fn expr_call(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     context: Shared<Context>,
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
@@ -267,7 +267,7 @@ fn expr_call(
             .collect::<Result<_, _>>()?;
 
         if let fe::Expr::Attribute { value: _, attr } = &func.node {
-            let contract_scope = &scope.borrow().parent;
+            let contract_scope = &scope.borrow().contract_scope();
             let called_func = contract_scope.borrow().def(attr.node.to_string());
             match called_func {
                 Some(ContractDef::Function {
@@ -295,7 +295,7 @@ fn expr_call(
 }
 
 fn expr_comp_operation(
-    scope: Shared<FunctionScope>,
+    scope: Shared<BlockScope>,
     context: Shared<Context>,
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
@@ -318,8 +318,8 @@ fn expr_comp_operation(
 #[cfg(test)]
 mod tests {
     use crate::namespace::scopes::{
+        BlockScope,
         ContractScope,
-        FunctionScope,
         ModuleScope,
         Shared,
     };
@@ -368,13 +368,13 @@ mod tests {
         }
     }
 
-    fn scope() -> Shared<FunctionScope> {
+    fn scope() -> Shared<BlockScope> {
         let module_scope = ModuleScope::new();
         let contract_scope = ContractScope::new(module_scope);
-        FunctionScope::new(Span::new(0, 0), contract_scope)
+        BlockScope::from_contract_scope(Span::new(0, 0), contract_scope)
     }
 
-    fn analyze(scope: Shared<FunctionScope>, src: &str) -> Context {
+    fn analyze(scope: Shared<BlockScope>, src: &str) -> Context {
         let context = Context::new_shared();
         let tokens = parser::get_parse_tokens(src).expect("Couldn't parse expression");
         let expression = &parser::parsers::expr(&tokens[..])
