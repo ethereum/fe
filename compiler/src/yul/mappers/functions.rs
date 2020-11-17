@@ -111,7 +111,7 @@ fn func_stmt(
         fe::FuncStmt::Assert { .. } => assert(context, stmt),
         fe::FuncStmt::Expr { .. } => expr(context, stmt),
         fe::FuncStmt::Pass => unimplemented!(),
-        fe::FuncStmt::Break => unimplemented!(),
+        fe::FuncStmt::Break => break_statement(context, stmt),
         fe::FuncStmt::Continue => unimplemented!(),
         fe::FuncStmt::Revert => revert(stmt),
     }
@@ -194,6 +194,17 @@ fn assert(context: &Context, stmt: &Spanned<fe::FuncStmt>) -> Result<yul::Statem
         let test = expressions::expr(context, test)?;
 
         return Ok(statement! { if (iszero([test])) { (revert(0, 0)) } });
+    }
+
+    unreachable!()
+}
+
+fn break_statement(
+    _context: &Context,
+    stmt: &Spanned<fe::FuncStmt>,
+) -> Result<yul::Statement, CompileError> {
+    if let fe::FuncStmt::Break {} = &stmt.node {
+        return Ok(statement! { break });
     }
 
     unreachable!()

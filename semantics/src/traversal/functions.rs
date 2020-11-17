@@ -1,6 +1,7 @@
 use crate::errors::SemanticError;
 use crate::namespace::scopes::{
     BlockScope,
+    BlockScopeType,
     ContractDef,
     ContractScope,
     Scope,
@@ -163,7 +164,7 @@ fn func_stmt(
         fe::FuncStmt::Assert { .. } => assert(scope, context, stmt),
         fe::FuncStmt::Expr { .. } => expr(scope, context, stmt),
         fe::FuncStmt::Pass => unimplemented!(),
-        fe::FuncStmt::Break => unimplemented!(),
+        fe::FuncStmt::Break => break_statement(scope, context, stmt),
         fe::FuncStmt::Continue => unimplemented!(),
         fe::FuncStmt::Revert => Ok(()),
     }
@@ -182,6 +183,21 @@ fn verify_is_boolean(
     Err(SemanticError::TypeError)
 }
 
+fn break_statement(
+    scope: Shared<BlockScope>,
+    _context: Shared<Context>,
+    stmt: &Spanned<fe::FuncStmt>,
+) -> Result<(), SemanticError> {
+    if let fe::FuncStmt::Break {} = &stmt.node {
+        if scope.borrow().inherits_type(BlockScopeType::Loop) {
+            return Ok(());
+        } else {
+            return Err(SemanticError::BreakWithoutLoop);
+        }
+    }
+    unreachable!()
+}
+
 fn if_statement(
     scope: Shared<BlockScope>,
     context: Shared<Context>,
@@ -193,9 +209,11 @@ fn if_statement(
             body,
             or_else,
         } => {
-            let body_scope = BlockScope::from_block_scope(stmt.span, scope.clone());
+            let body_scope =
+                BlockScope::from_block_scope(stmt.span, BlockScopeType::IfElse, scope.clone());
             traverse_statements(body_scope, context.clone(), body)?;
-            let or_else_scope = BlockScope::from_block_scope(stmt.span, scope.clone());
+            let or_else_scope =
+                BlockScope::from_block_scope(stmt.span, BlockScopeType::IfElse, scope.clone());
             traverse_statements(or_else_scope, context.clone(), or_else)?;
             verify_is_boolean(scope, context, test)
         }
@@ -217,7 +235,8 @@ fn while_loop(
             if !or_else.is_empty() {
                 unimplemented!();
             }
-            let body_scope = BlockScope::from_block_scope(stmt.span, scope.clone());
+            let body_scope =
+                BlockScope::from_block_scope(stmt.span, BlockScopeType::Loop, scope.clone());
             traverse_statements(body_scope, context.clone(), body)?;
             verify_is_boolean(scope, context, test)
         }

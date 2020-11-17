@@ -57,6 +57,7 @@ pub struct BlockScope {
     pub span: Span,
     pub parent: BlockScopeParent,
     pub defs: HashMap<String, BlockDef>,
+    pub typ: BlockScopeType,
 }
 
 #[allow(dead_code)]
@@ -70,6 +71,13 @@ pub enum Scope {
 pub enum BlockScopeParent {
     Contract(Shared<ContractScope>),
     Block(Shared<BlockScope>),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum BlockScopeType {
+    Function,
+    IfElse,
+    Loop,
 }
 
 impl Scope {
@@ -144,18 +152,27 @@ impl ContractScope {
 
 impl BlockScope {
     pub fn from_contract_scope(span: Span, parent: Shared<ContractScope>) -> Shared<Self> {
-        BlockScope::new(span, BlockScopeParent::Contract(parent))
+        BlockScope::new(
+            span,
+            BlockScopeType::Function,
+            BlockScopeParent::Contract(parent),
+        )
     }
 
-    pub fn from_block_scope(span: Span, parent: Shared<BlockScope>) -> Shared<Self> {
-        BlockScope::new(span, BlockScopeParent::Block(parent))
+    pub fn from_block_scope(
+        span: Span,
+        typ: BlockScopeType,
+        parent: Shared<BlockScope>,
+    ) -> Shared<Self> {
+        BlockScope::new(span, typ, BlockScopeParent::Block(parent))
     }
 
-    pub fn new(span: Span, parent: BlockScopeParent) -> Shared<Self> {
+    pub fn new(span: Span, typ: BlockScopeType, parent: BlockScopeParent) -> Shared<Self> {
         Rc::new(RefCell::new(BlockScope {
             span,
             parent,
             defs: HashMap::new(),
+            typ,
         }))
     }
 
@@ -216,6 +233,18 @@ impl BlockScope {
     pub fn add_base(&mut self, name: String, base: Base) {
         self.defs.insert(name, BlockDef::Base(base));
     }
+
+    /// Return true if the scope or any of its parents is of the given type
+    pub fn inherits_type(&self, typ: BlockScopeType) -> bool {
+        if self.typ != typ {
+            if let BlockScopeParent::Block(scope) = &self.parent {
+                return scope.borrow().inherits_type(typ);
+            } else {
+                return false;
+            }
+        }
+        true
+    }
 }
 
 #[cfg(test)]
@@ -223,6 +252,7 @@ mod tests {
     use crate::namespace::scopes::{
         BlockDef,
         BlockScope,
+        BlockScopeType,
         ContractScope,
         ModuleScope,
     };
@@ -245,7 +275,11 @@ mod tests {
         let contract_scope = ContractScope::new(module_scope);
         let block_scope_1 =
             BlockScope::from_contract_scope(Span::new(0, 0), contract_scope.clone());
-        let block_scope_2 = BlockScope::from_block_scope(Span::new(0, 0), block_scope_1.clone());
+        let block_scope_2 = BlockScope::from_block_scope(
+            Span::new(0, 0),
+            BlockScopeType::IfElse,
+            block_scope_1.clone(),
+        );
         assert_eq!(block_scope_1, block_scope_2.borrow().function_scope());
         assert_eq!(contract_scope, block_scope_2.borrow().contract_scope());
     }
@@ -271,7 +305,11 @@ mod tests {
         let contract_scope = ContractScope::new(module_scope);
         let block_scope_1 =
             BlockScope::from_contract_scope(Span::new(0, 0), contract_scope.clone());
-        let block_scope_2 = BlockScope::from_block_scope(Span::new(0, 0), block_scope_1.clone());
+        let block_scope_2 = BlockScope::from_block_scope(
+            Span::new(0, 0),
+            BlockScopeType::IfElse,
+            block_scope_1.clone(),
+        );
         block_scope_1
             .borrow_mut()
             .add_base("some_thing".to_string(), Base::Bool);
@@ -287,10 +325,76 @@ mod tests {
         let contract_scope = ContractScope::new(module_scope);
         let block_scope_1 =
             BlockScope::from_contract_scope(Span::new(0, 0), contract_scope.clone());
-        let block_scope_2 = BlockScope::from_block_scope(Span::new(0, 0), block_scope_1.clone());
+        let block_scope_2 = BlockScope::from_block_scope(
+            Span::new(0, 0),
+            BlockScopeType::IfElse,
+            block_scope_1.clone(),
+        );
         block_scope_2
             .borrow_mut()
             .add_base("some_thing".to_string(), Base::Bool);
         assert_eq!(None, block_scope_1.borrow().def("some_thing".to_string()));
+    }
+
+    #[test]
+    fn test_inherits_type() {
+        let module_scope = ModuleScope::new();
+        let contract_scope = ContractScope::new(module_scope);
+        let block_scope_1 =
+            BlockScope::from_contract_scope(Span::new(0, 0), contract_scope.clone());
+        assert_eq!(
+            true,
+            block_scope_1
+                .borrow()
+                .inherits_type(BlockScopeType::Function)
+        );
+        assert_eq!(
+            false,
+            block_scope_1.borrow().inherits_type(BlockScopeType::IfElse)
+        );
+        assert_eq!(
+            false,
+            block_scope_1.borrow().inherits_type(BlockScopeType::Loop)
+        );
+
+        let block_scope_2 = BlockScope::from_block_scope(
+            Span::new(0, 0),
+            BlockScopeType::IfElse,
+            block_scope_1.clone(),
+        );
+        assert_eq!(
+            true,
+            block_scope_2
+                .borrow()
+                .inherits_type(BlockScopeType::Function)
+        );
+        assert_eq!(
+            true,
+            block_scope_2.borrow().inherits_type(BlockScopeType::IfElse)
+        );
+        assert_eq!(
+            false,
+            block_scope_2.borrow().inherits_type(BlockScopeType::Loop)
+        );
+
+        let block_scope_3 = BlockScope::from_block_scope(
+            Span::new(0, 0),
+            BlockScopeType::Loop,
+            block_scope_2.clone(),
+        );
+        assert_eq!(
+            true,
+            block_scope_3
+                .borrow()
+                .inherits_type(BlockScopeType::Function)
+        );
+        assert_eq!(
+            true,
+            block_scope_3.borrow().inherits_type(BlockScopeType::IfElse)
+        );
+        assert_eq!(
+            true,
+            block_scope_3.borrow().inherits_type(BlockScopeType::Loop)
+        );
     }
 }
