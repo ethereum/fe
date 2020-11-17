@@ -9,6 +9,11 @@ use std::fs;
 #[rstest(
     fixture_file,
     error,
+    case("break_without_loop.fe", "[Str(\"semantic error: BreakWithoutLoop\")]"),
+    case(
+        "break_without_loop_2.fe",
+        "[Str(\"semantic error: BreakWithoutLoop\")]"
+    ),
     case(
         "not_in_scope.fe",
         "[Str(\"semantic error: UndefinedValue { value: \\\"y\\\" }\")]"
