@@ -210,11 +210,11 @@ fn if_statement(
             or_else,
         } => {
             let body_scope =
-                BlockScope::from_block_scope(stmt.span, BlockScopeType::IfElse, scope.clone());
-            traverse_statements(body_scope, context.clone(), body)?;
+                BlockScope::from_block_scope(stmt.span, BlockScopeType::IfElse, Rc::clone(&scope));
+            traverse_statements(body_scope, Rc::clone(&context), body)?;
             let or_else_scope =
-                BlockScope::from_block_scope(stmt.span, BlockScopeType::IfElse, scope.clone());
-            traverse_statements(or_else_scope, context.clone(), or_else)?;
+                BlockScope::from_block_scope(stmt.span, BlockScopeType::IfElse, Rc::clone(&scope));
+            traverse_statements(or_else_scope, Rc::clone(&context), or_else)?;
             verify_is_boolean(scope, context, test)
         }
         _ => unreachable!(),
@@ -236,8 +236,8 @@ fn while_loop(
                 unimplemented!();
             }
             let body_scope =
-                BlockScope::from_block_scope(stmt.span, BlockScopeType::Loop, scope.clone());
-            traverse_statements(body_scope, context.clone(), body)?;
+                BlockScope::from_block_scope(stmt.span, BlockScopeType::Loop, Rc::clone(&scope));
+            traverse_statements(body_scope, Rc::clone(&context), body)?;
             verify_is_boolean(scope, context, test)
         }
         _ => unreachable!(),
@@ -291,7 +291,7 @@ fn assert(
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::Assert { test, msg } = &stmt.node {
-        verify_is_boolean(scope.clone(), context.clone(), test)?;
+        verify_is_boolean(Rc::clone(&scope), Rc::clone(&context), test)?;
         if let Some(msg) = msg {
             // TODO: type check for a string once strings are supported
             let _msg_attributes = expressions::expr(scope, context, msg)?;
@@ -329,7 +329,7 @@ fn func_return(
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::Return { value: Some(value) } = &stmt.node {
-        let attributes = expressions::expr(scope.clone(), context.clone(), value)?;
+        let attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), value)?;
 
         match context
             .borrow()

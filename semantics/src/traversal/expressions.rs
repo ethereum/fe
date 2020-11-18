@@ -263,7 +263,7 @@ fn expr_call(
             .iter()
             // Side effect: Performs semantic analysis on each call arg and adds its attributes to
             // the context
-            .map(|argument| call_arg(scope.clone(), context.clone(), argument))
+            .map(|argument| call_arg(Rc::clone(&scope), Rc::clone(&context), argument))
             .collect::<Result<_, _>>()?;
 
         if let fe::Expr::Attribute { value: _, attr } = &func.node {
