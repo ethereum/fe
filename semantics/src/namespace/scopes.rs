@@ -188,10 +188,12 @@ impl BlockScope {
         loop {
             parent = match parent {
                 BlockScopeParent::Block(ref scope) => {
-                    last_block_scope = scope.clone();
+                    last_block_scope = Rc::clone(&scope);
                     scope.borrow().parent.clone()
                 }
-                BlockScopeParent::Contract(ref scope) => return (scope.clone(), last_block_scope),
+                BlockScopeParent::Contract(ref scope) => {
+                    return (Rc::clone(&scope), last_block_scope)
+                }
             }
         }
     }
@@ -258,13 +260,14 @@ mod tests {
     };
     use crate::namespace::types::Base;
     use fe_parser::span::Span;
+    use std::rc::Rc;
 
     #[test]
     fn test_scope_resolution_on_first_level_block_scope() {
         let module_scope = ModuleScope::new();
         let contract_scope = ContractScope::new(module_scope);
         let block_scope_1 =
-            BlockScope::from_contract_scope(Span::new(0, 0), contract_scope.clone());
+            BlockScope::from_contract_scope(Span::new(0, 0), Rc::clone(&contract_scope));
         assert_eq!(block_scope_1, block_scope_1.borrow().function_scope());
         assert_eq!(contract_scope, block_scope_1.borrow().contract_scope());
     }
@@ -274,11 +277,11 @@ mod tests {
         let module_scope = ModuleScope::new();
         let contract_scope = ContractScope::new(module_scope);
         let block_scope_1 =
-            BlockScope::from_contract_scope(Span::new(0, 0), contract_scope.clone());
+            BlockScope::from_contract_scope(Span::new(0, 0), Rc::clone(&contract_scope));
         let block_scope_2 = BlockScope::from_block_scope(
             Span::new(0, 0),
             BlockScopeType::IfElse,
-            block_scope_1.clone(),
+            Rc::clone(&block_scope_1),
         );
         assert_eq!(block_scope_1, block_scope_2.borrow().function_scope());
         assert_eq!(contract_scope, block_scope_2.borrow().contract_scope());
@@ -289,7 +292,7 @@ mod tests {
         let module_scope = ModuleScope::new();
         let contract_scope = ContractScope::new(module_scope);
         let block_scope_1 =
-            BlockScope::from_contract_scope(Span::new(0, 0), contract_scope.clone());
+            BlockScope::from_contract_scope(Span::new(0, 0), Rc::clone(&contract_scope));
         block_scope_1
             .borrow_mut()
             .add_base("some_thing".to_string(), Base::Bool);
@@ -304,11 +307,11 @@ mod tests {
         let module_scope = ModuleScope::new();
         let contract_scope = ContractScope::new(module_scope);
         let block_scope_1 =
-            BlockScope::from_contract_scope(Span::new(0, 0), contract_scope.clone());
+            BlockScope::from_contract_scope(Span::new(0, 0), Rc::clone(&contract_scope));
         let block_scope_2 = BlockScope::from_block_scope(
             Span::new(0, 0),
             BlockScopeType::IfElse,
-            block_scope_1.clone(),
+            Rc::clone(&block_scope_1),
         );
         block_scope_1
             .borrow_mut()
@@ -324,11 +327,11 @@ mod tests {
         let module_scope = ModuleScope::new();
         let contract_scope = ContractScope::new(module_scope);
         let block_scope_1 =
-            BlockScope::from_contract_scope(Span::new(0, 0), contract_scope.clone());
+            BlockScope::from_contract_scope(Span::new(0, 0), Rc::clone(&contract_scope));
         let block_scope_2 = BlockScope::from_block_scope(
             Span::new(0, 0),
             BlockScopeType::IfElse,
-            block_scope_1.clone(),
+            Rc::clone(&block_scope_1),
         );
         block_scope_2
             .borrow_mut()
@@ -341,7 +344,7 @@ mod tests {
         let module_scope = ModuleScope::new();
         let contract_scope = ContractScope::new(module_scope);
         let block_scope_1 =
-            BlockScope::from_contract_scope(Span::new(0, 0), contract_scope.clone());
+            BlockScope::from_contract_scope(Span::new(0, 0), Rc::clone(&contract_scope));
         assert_eq!(
             true,
             block_scope_1
@@ -360,7 +363,7 @@ mod tests {
         let block_scope_2 = BlockScope::from_block_scope(
             Span::new(0, 0),
             BlockScopeType::IfElse,
-            block_scope_1.clone(),
+            Rc::clone(&block_scope_1),
         );
         assert_eq!(
             true,
@@ -380,7 +383,7 @@ mod tests {
         let block_scope_3 = BlockScope::from_block_scope(
             Span::new(0, 0),
             BlockScopeType::Loop,
-            block_scope_2.clone(),
+            Rc::clone(&block_scope_2),
         );
         assert_eq!(
             true,
