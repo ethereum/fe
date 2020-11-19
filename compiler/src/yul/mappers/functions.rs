@@ -112,7 +112,7 @@ fn func_stmt(
         fe::FuncStmt::Expr { .. } => expr(context, stmt),
         fe::FuncStmt::Pass => unimplemented!(),
         fe::FuncStmt::Break => break_statement(context, stmt),
-        fe::FuncStmt::Continue => unimplemented!(),
+        fe::FuncStmt::Continue => continue_statement(context, stmt),
         fe::FuncStmt::Revert => revert(stmt),
     }
 }
@@ -205,6 +205,17 @@ fn break_statement(
 ) -> Result<yul::Statement, CompileError> {
     if let fe::FuncStmt::Break {} = &stmt.node {
         return Ok(statement! { break });
+    }
+
+    unreachable!()
+}
+
+fn continue_statement(
+    _context: &Context,
+    stmt: &Spanned<fe::FuncStmt>,
+) -> Result<yul::Statement, CompileError> {
+    if let fe::FuncStmt::Continue {} = &stmt.node {
+        return Ok(statement! { continue });
     }
 
     unreachable!()

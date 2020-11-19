@@ -4,6 +4,7 @@
 #[derive(Debug, PartialEq)]
 pub enum SemanticError {
     BreakWithoutLoop,
+    ContinueWithoutLoop,
     MissingReturn,
     NotAnExpression,
     NotSubscriptable,

@@ -165,7 +165,7 @@ fn func_stmt(
         fe::FuncStmt::Expr { .. } => expr(scope, context, stmt),
         fe::FuncStmt::Pass => unimplemented!(),
         fe::FuncStmt::Break => break_statement(scope, context, stmt),
-        fe::FuncStmt::Continue => unimplemented!(),
+        fe::FuncStmt::Continue => continue_statement(scope, context, stmt),
         fe::FuncStmt::Revert => Ok(()),
     }
 }
@@ -189,13 +189,31 @@ fn break_statement(
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::Break {} = &stmt.node {
-        if scope.borrow().inherits_type(BlockScopeType::Loop) {
-            return Ok(());
-        } else {
-            return Err(SemanticError::BreakWithoutLoop);
-        }
+        return verify_loop_in_scope(scope, SemanticError::BreakWithoutLoop);
     }
     unreachable!()
+}
+
+fn continue_statement(
+    scope: Shared<BlockScope>,
+    _context: Shared<Context>,
+    stmt: &Spanned<fe::FuncStmt>,
+) -> Result<(), SemanticError> {
+    if let fe::FuncStmt::Continue {} = &stmt.node {
+        return verify_loop_in_scope(scope, SemanticError::ContinueWithoutLoop);
+    }
+    unreachable!()
+}
+
+fn verify_loop_in_scope(
+    scope: Shared<BlockScope>,
+    error: SemanticError,
+) -> Result<(), SemanticError> {
+    if scope.borrow().inherits_type(BlockScopeType::Loop) {
+        Ok(())
+    } else {
+        Err(error)
+    }
 }
 
 fn if_statement(
