@@ -1,9 +1,10 @@
 use crate::abi::utils as abi_utils;
 use crate::errors::CompileError;
-use crate::yul::operations;
+use crate::yul::abi::operations as abi_operations;
 #[cfg(test)]
 use fe_semantics::namespace::types::Base;
 use fe_semantics::namespace::types::{
+    AbiDecodeLocation,
     AbiEncoding,
     FixedSize,
 };
@@ -28,13 +29,22 @@ fn dispatch_arm(attributes: FunctionAttributes) -> Result<yul::Case, CompileErro
 
     if !attributes.return_type.is_empty_tuple() {
         let selection = selection(attributes.name, &attributes.param_types)?;
-        let return_data =
-            operations::encode(vec![attributes.return_type.to_owned()], vec![selection]);
-        let return_size = literal_expression! {(attributes.return_type.abi_size())};
+        let return_data = abi_operations::encode(
+            vec![attributes.return_type.clone()],
+            vec![expression! { raw_return }],
+        );
+
+        let return_size = abi_operations::encode_size(
+            vec![attributes.return_type],
+            vec![expression! { raw_return }],
+        );
 
         let selection_with_return = statement! { return([return_data], [return_size]) };
 
-        return Ok(case! { case [selector] { [selection_with_return] } });
+        return Ok(case! { case [selector] {
+            (let raw_return := [selection])
+            ([selection_with_return])
+        } });
     }
 
     let selection = selection_as_statement(attributes.name, &attributes.param_types)?;
@@ -52,18 +62,13 @@ fn selector(name: String, params: &[FixedSize]) -> yul::Literal {
 }
 
 fn selection(name: String, params: &[FixedSize]) -> Result<yul::Expression, CompileError> {
-    let mut ptr = 4;
-    let mut decoded_params = vec![];
+    let decoded_params = abi_operations::decode(
+        params.to_owned(),
+        literal_expression! { 4 },
+        AbiDecodeLocation::Calldata,
+    );
 
-    for param in params.iter() {
-        decoded_params.push(operations::decode_calldata(
-            param.to_owned(),
-            literal_expression! { (ptr) },
-        ));
-        ptr += param.abi_size();
-    }
-
-    let name = identifier! {(name)};
+    let name = identifier! { (name) };
 
     Ok(expression! { [name]([decoded_params...]) })
 }

@@ -1,11 +1,6 @@
-use crate::yul::runtime::functions;
+use crate::yul::abi::operations as abi_operations;
 use fe_semantics::namespace::events::Event;
-use fe_semantics::namespace::types::{
-    AbiEncoding,
-    Base,
-    FeSized,
-    FixedSize,
-};
+use fe_semantics::namespace::types::FeSized;
 use yultsur::*;
 
 /// Loads a value from storage.
@@ -64,60 +59,29 @@ pub fn mem_to_val<T: FeSized>(typ: T, mptr: yul::Expression) -> yul::Expression 
 
 /// Logs an event.
 pub fn emit_event(event: Event, vals: Vec<yul::Expression>) -> yul::Statement {
-    let size = literal_expression! { (event.fields.iter().fold(0, |size, field| size + field.abi_size())) };
     let topic = literal_expression! { (event.topic) };
-    let encoded_val = encode(event.fields, vals);
+    let encoding = abi_operations::encode(event.fields.clone(), vals.clone());
+    let size = abi_operations::encode_size(event.fields, vals);
 
-    return statement! { log1([encoded_val], [size], [topic]) };
+    return statement! { log1([encoding], [size], [topic]) };
 }
 
-/// Encode sized values.
-pub fn encode(types: Vec<FixedSize>, vals: Vec<yul::Expression>) -> yul::Expression {
-    let func_name = functions::abi_encode_name(types.iter().map(|typ| typ.abi_name()).collect());
-    expression! { [func_name]([vals...]) }
-}
-
-/// Decode a sized value in calldata.
-///
-/// We currently support byte and u256 arrays and all base types.
-pub fn decode_calldata(typ: FixedSize, ptr: yul::Expression) -> yul::Expression {
-    let size = literal_expression! { (typ.size()) };
-
-    match typ {
-        FixedSize::Base(_) => expression! { calldataload([ptr]) },
-        FixedSize::Array(array) => {
-            if array.inner == Base::U256 || array.inner == Base::Byte {
-                return expression! { ccopy([ptr], [size]) };
-            }
-
-            unimplemented!()
-        }
-        FixedSize::Tuple(_) => unimplemented!(),
+/// Sums a list of expressions using nested add operations.
+pub fn sum(vals: Vec<yul::Expression>) -> yul::Expression {
+    if vals.is_empty() {
+        return expression! { 0 };
     }
-}
 
-/// Decode a sized value in memory.
-///
-/// We currently support byte and u256 arrays and all base types.
-pub fn decode_mem(typ: FixedSize, ptr: yul::Expression) -> yul::Expression {
-    match typ {
-        FixedSize::Base(_) => expression! { mload([ptr]) },
-        FixedSize::Array(array) => {
-            if array.inner == Base::U256 || array.inner == Base::Byte {
-                return ptr;
-            }
-
-            unimplemented!()
-        }
-        FixedSize::Tuple(_) => unimplemented!(),
-    }
+    vals.into_iter()
+        .fold_first(|val1, val2| expression! { add([val1], [val2]) })
+        .unwrap()
 }
 
 #[cfg(test)]
 mod tests {
     use crate::yul::operations::{
         emit_event,
-        encode,
+        sum,
     };
     use fe_semantics::namespace::events::Event;
     use fe_semantics::namespace::types::{
@@ -125,14 +89,6 @@ mod tests {
         FixedSize,
     };
     use yultsur::*;
-
-    #[test]
-    fn test_encode() {
-        assert_eq!(
-            encode(vec![FixedSize::Base(Base::U256)], vec![expression! { 42 }]).to_string(),
-            "abi_encode_uint256(42)"
-        )
-    }
 
     #[test]
     fn test_emit_event() {
@@ -143,7 +99,20 @@ mod tests {
 
         assert_eq!(
             emit_event(event, vec![expression! { 26 }, expression! { 0x00 }]).to_string(),
-            "log1(abi_encode_uint256_address(26, 0x00), 64, 0x74bffa18f2b20140b65de9264a54040b23ab0a34e7643d52f67f7fb18be9bbcb)"
+            "log1(abi_encode_uint256_address(26, 0x00), add(64, 0), 0x74bffa18f2b20140b65de9264a54040b23ab0a34e7643d52f67f7fb18be9bbcb)"
+        )
+    }
+
+    #[test]
+    fn test_sum() {
+        assert_eq!(
+            sum(vec![
+                expression! { 42 },
+                expression! { 26 },
+                expression! { 22 }
+            ])
+            .to_string(),
+            "add(add(42, 26), 22)"
         )
     }
 }

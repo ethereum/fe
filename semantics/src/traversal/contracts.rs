@@ -8,6 +8,7 @@ use crate::namespace::scopes::{
     Shared,
 };
 use crate::namespace::types::{
+    AbiDecodeLocation,
     FixedSize,
     Type,
 };
@@ -70,9 +71,22 @@ pub fn contract_def(
                             param_types: params.clone(),
                             return_type: returns.clone(),
                         });
+                        for param in params {
+                            runtime_operations.push(RuntimeOperations::AbiDecode {
+                                param: param.clone(),
+                                location: AbiDecodeLocation::Calldata,
+                            })
+                        }
                         if !returns.is_empty_tuple() {
                             runtime_operations.push(RuntimeOperations::AbiEncode {
                                 params: vec![returns.clone()],
+                            })
+                        }
+                    } else {
+                        for param in params {
+                            runtime_operations.push(RuntimeOperations::AbiDecode {
+                                param: param.clone(),
+                                location: AbiDecodeLocation::Memory,
                             })
                         }
                     }
@@ -81,6 +95,7 @@ pub fn contract_def(
             }
         }
 
+        runtime_operations.sort();
         runtime_operations.dedup();
 
         let attributes = ContractAttributes {
@@ -106,6 +121,7 @@ fn contract_field(
             Type::Array { .. } => unimplemented!(),
             Type::Base(_) => unimplemented!(),
             Type::Tuple(_) => unimplemented!(),
+            Type::String(_) => unimplemented!(),
         };
 
         return Ok(());

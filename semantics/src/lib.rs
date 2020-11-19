@@ -12,6 +12,7 @@ use crate::errors::SemanticError;
 use crate::namespace::events::Event;
 use crate::namespace::scopes::Shared;
 use crate::namespace::types::{
+    AbiDecodeLocation,
     FixedSize,
     Type,
 };
@@ -33,10 +34,15 @@ pub enum Location {
 }
 
 /// Operations that need to be made available during runtime.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
 pub enum RuntimeOperations {
     /// Encode a set of fixed sized values.
     AbiEncode { params: Vec<FixedSize> },
+    /// Decode a value.
+    AbiDecode {
+        param: FixedSize,
+        location: AbiDecodeLocation,
+    },
 }
 
 /// Contains contextual information relating to a contract AST node.

@@ -9,10 +9,6 @@ use crate::yul::mappers::{
 use crate::yul::operations;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
-use fe_semantics::namespace::types::{
-    FeSized,
-    FixedSize,
-};
 use fe_semantics::Context;
 use yultsur::*;
 
@@ -49,41 +45,18 @@ pub fn func_def(
             .collect::<Result<Vec<_>, _>>()?;
         let function_statements = multiple_func_stmt(context, body)?;
 
-        // Different return types require slightly different functions.
-        return match attributes.return_type.to_owned() {
-            // Base types are returned by value. All memory used by the function is cleared.
-            FixedSize::Base(_) => Ok(function_definition! {
-                function [function_name]([param_names...]) -> return_val {
-                    (let ptr := avail())
+        return if attributes.return_type.is_empty_tuple() {
+            Ok(function_definition! {
+                function [function_name]([param_names...]) {
                     [function_statements...]
-                    (free(ptr))
                 }
-            }),
-            // Arrays need to keep memory allocated after completing.
-            FixedSize::Array(array) => {
-                let size = literal_expression! {(array.size())};
-
-                Ok(function_definition! {
-                    function [function_name]([param_names...]) -> return_val {
-                        [function_statements...]
-                        (free((add(return_val, [size]))))
-                    }
-                })
-            }
-            FixedSize::Tuple(tuple) => {
-                if tuple.size() == 0 {
-                    // Nothing is returned. All memory used by the function is freed.
-                    return Ok(function_definition! {
-                        function [function_name]([param_names...]) {
-                            (let ptr := avail())
-                            [function_statements...]
-                            (free(ptr))
-                        }
-                    });
+            })
+        } else {
+            Ok(function_definition! {
+                function [function_name]([param_names...]) -> return_val {
+                    [function_statements...]
                 }
-
-                unimplemented!();
-            }
+            })
         };
     }
 
@@ -215,17 +188,17 @@ fn func_return(
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<yul::Statement, CompileError> {
     if let fe::FuncStmt::Return { value } = &stmt.node {
-        match value {
+        return match value {
             Some(value) => {
                 let value = expressions::expr(context, value)?;
 
-                return Ok(yul::Statement::Block(block! {
+                return Ok(block_statement! {
                     (return_val := [value])
                     (leave)
-                }));
+                });
             }
-            None => return Ok(statement! { leave }),
-        }
+            None => Ok(statement! { leave }),
+        };
     }
 
     unreachable!()

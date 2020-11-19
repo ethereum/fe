@@ -4,7 +4,6 @@ use crate::namespace::scopes::{
     Scope,
     Shared,
 };
-use crate::namespace::types::FixedSize;
 use crate::traversal::{
     expressions,
     types,
@@ -31,11 +30,9 @@ pub fn var_decl(
             }
         }
 
-        match declared_type.clone() {
-            FixedSize::Base(base) => scope.borrow_mut().add_base(name, base),
-            FixedSize::Array(array) => scope.borrow_mut().add_array(name, array),
-            FixedSize::Tuple(_) => unimplemented!(),
-        };
+        scope
+            .borrow_mut()
+            .add_var(name, declared_type.clone().into_type());
         context.borrow_mut().add_declaration(stmt, declared_type);
 
         return Ok(());
@@ -54,7 +51,10 @@ mod tests {
         ModuleScope,
         Shared,
     };
-    use crate::namespace::types::Base;
+    use crate::namespace::types::{
+        Base,
+        Type,
+    };
     use crate::traversal::declarations::var_decl;
     use crate::Context;
     use fe_parser as parser;
@@ -89,7 +89,7 @@ mod tests {
         assert_eq!(context.expressions.len(), 3);
         assert_eq!(
             scope.borrow().def("foo".to_string()),
-            Some(BlockDef::Base(Base::U256))
+            Some(BlockDef::Variable(Type::Base(Base::U256)))
         );
     }
 

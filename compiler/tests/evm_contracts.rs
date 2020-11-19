@@ -66,18 +66,18 @@ impl ContractHarness {
     ) {
         let function = &self.abi.functions[name][0];
 
-        if let evm::Capture::Exit((ExitReason::Succeed(_), actual_output)) =
-            self.capture_call(executor, name, &input)
-        {
-            if let Some(output) = output {
-                let actual_output = &function
-                    .decode_output(&actual_output)
-                    .expect("Unable to decode output.")[0];
+        match self.capture_call(executor, name, &input) {
+            evm::Capture::Exit((ExitReason::Succeed(_), actual_output)) => {
+                if let Some(output) = output {
+                    let actual_output = &function
+                        .decode_output(&actual_output)
+                        .expect(&format!("unable to decode output: {:?}", &actual_output))[0];
 
-                assert_eq!(&output, actual_output)
+                    assert_eq!(&output, actual_output)
+                }
             }
-        } else {
-            panic!("Failed to run \"{}\"", name)
+            evm::Capture::Exit((reason, _)) => panic!("failed to run \"{}\": {:?}", name, reason),
+            _ => panic!("trap"),
         }
     }
 
@@ -95,7 +95,7 @@ impl ContractHarness {
                 .abi
                 .events()
                 .find(|e| e.name.eq(name))
-                .expect("Unable to find event for name");
+                .expect("unable to find event for name");
 
             let mut values = None;
             for raw_log in raw_logs.clone() {
@@ -112,7 +112,7 @@ impl ContractHarness {
             if let Some(values) = values {
                 assert_eq!(values, output)
             } else {
-                panic!("No logs for event")
+                panic!("no logs for event")
             }
         }
     }
@@ -180,6 +180,10 @@ fn deploy_contract(
 
 fn u256_token(n: usize) -> ethabi::Token {
     ethabi::Token::Uint(U256::from(n))
+}
+
+fn string_token(s: &str) -> ethabi::Token {
+    ethabi::Token::String(s.to_string())
 }
 
 fn address_token(s: &str) -> ethabi::Token {
@@ -590,5 +594,44 @@ fn constructor() {
         );
 
         harness.test_function(&mut executor, "read_bar", vec![], Some(u256_token(68)));
+    })
+}
+
+#[test]
+fn strings() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(
+            &mut executor,
+            "strings.fe",
+            "Foo",
+            vec![
+                string_token("string 1"),
+                address_token("1000000000000000000000000000000000000001"),
+                string_token("string 2"),
+                u256_token(42),
+                string_token("string 3"),
+            ],
+        );
+
+        harness.test_function(
+            &mut executor,
+            "bar",
+            vec![string_token("string 4"), string_token("string 5")],
+            Some(string_token("string 5")),
+        );
+
+        harness.events_emitted(
+            executor,
+            vec![(
+                "MyEvent",
+                vec![
+                    string_token("string 2"),
+                    u256_token(42),
+                    string_token("string 1"),
+                    string_token("string 3"),
+                    address_token("1000000000000000000000000000000000000001"),
+                ],
+            )],
+        );
     })
 }
