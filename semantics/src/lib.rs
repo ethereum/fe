@@ -28,7 +28,11 @@ use std::rc::Rc;
 /// Indicates where an expression is stored.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Location {
-    Storage { index: usize },
+    /// A storage value may not have a nonce known at compile time, so it is
+    /// optional.
+    Storage {
+        nonce: Option<usize>,
+    },
     Memory,
     Value,
 }
@@ -59,12 +63,61 @@ pub struct ContractAttributes {
 pub struct ExpressionAttributes {
     pub typ: Type,
     pub location: Location,
+    pub move_location: Option<Location>,
 }
 
 impl ExpressionAttributes {
-    /// Convenience method for matching type and location.
-    pub fn to_tuple(&self) -> (Type, Location) {
-        (self.typ.clone(), self.location.clone())
+    pub fn new(typ: Type, location: Location) -> Self {
+        Self {
+            typ,
+            location,
+            move_location: None,
+        }
+    }
+
+    /// Updates the expression attributes with a move to the type's default
+    /// location. Returns an error for map types.
+    ///
+    /// Base types are moved to the stack and reference types are moved to a
+    /// segment of memory.
+    pub fn with_default_move(mut self) -> Result<Self, SemanticError> {
+        let move_location = match self.typ {
+            Type::Base(_) => Location::Value,
+            Type::Array(_) => Location::Memory,
+            Type::Tuple(_) => Location::Memory,
+            Type::String(_) => Location::Memory,
+            Type::Map(_) => return Err(SemanticError::CannotMove),
+        };
+
+        if self.location != move_location {
+            self.move_location = Some(move_location)
+        }
+
+        Ok(self)
+    }
+
+    /// Updates the expression attributes with a move to the stack. Returns an
+    /// error if the type cannot be moved there.
+    pub fn with_value_move(mut self) -> Result<Self, SemanticError> {
+        match self.typ {
+            Type::Base(_) => {}
+            _ => return Err(SemanticError::CannotMove),
+        }
+
+        if self.location != Location::Value {
+            self.move_location = Some(Location::Value);
+        }
+
+        Ok(self)
+    }
+
+    /// The final location of an expression after a possible move.
+    pub fn final_location(&self) -> Location {
+        if let Some(location) = self.move_location.clone() {
+            return location;
+        }
+
+        self.location.clone()
     }
 }
 
@@ -221,6 +274,12 @@ pub mod test_utils {
                 node: fe::Expr::Name("foo"),
             };
             self.context.add_expression(&mock_spanned, attributes)
+        }
+
+        pub fn add_expressions(&mut self, substrs: Vec<&str>, attributes: ExpressionAttributes) {
+            for substr in substrs {
+                self.add_expression(substr, attributes.clone())
+            }
         }
 
         pub fn add_declaration(&mut self, substr: &str, typ: FixedSize) {

@@ -1,6 +1,9 @@
 use crate::yul::abi::operations as abi_operations;
 use fe_semantics::namespace::events::Event;
-use fe_semantics::namespace::types::FeSized;
+use fe_semantics::namespace::types::{
+    Array,
+    FeSized,
+};
 use yultsur::*;
 
 /// Loads a value from storage.
@@ -75,6 +78,23 @@ pub fn sum(vals: Vec<yul::Expression>) -> yul::Expression {
     vals.into_iter()
         .fold_first(|val1, val2| expression! { add([val1], [val2]) })
         .unwrap()
+}
+
+/// Hashes the storage nonce of a map with a key to determine the value's
+/// location in storage.
+pub fn keyed_map(map: yul::Expression, key: yul::Expression) -> yul::Expression {
+    expression! { dualkeccak256([map], [key]) }
+}
+
+/// Finds the location of an array element base on the element size, element
+/// index, and array location.
+pub fn indexed_array(
+    typ: Array,
+    array: yul::Expression,
+    index: yul::Expression,
+) -> yul::Expression {
+    let inner_size = literal_expression! { (typ.inner.size()) };
+    expression! { add([array], (mul([index], [inner_size]))) }
 }
 
 #[cfg(test)]

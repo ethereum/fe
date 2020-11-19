@@ -2,6 +2,7 @@ use crate::errors::SemanticError;
 use crate::namespace::scopes::*;
 use fe_parser::ast as fe;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 
 /// The type has a constant size known to the compiler.
 pub trait FeSized {
@@ -142,6 +143,17 @@ impl Type {
     }
 }
 
+impl From<FixedSize> for Type {
+    fn from(value: FixedSize) -> Self {
+        match value {
+            FixedSize::Array(array) => Type::Array(array),
+            FixedSize::Base(base) => Type::Base(base),
+            FixedSize::Tuple(tuple) => Type::Tuple(tuple),
+            FixedSize::String(string) => Type::String(string),
+        }
+    }
+}
+
 impl FeSized for FixedSize {
     fn size(&self) -> usize {
         match self {
@@ -196,13 +208,8 @@ impl AbiEncoding for FixedSize {
 }
 
 impl FixedSize {
-    pub fn into_type(self) -> Type {
-        match self {
-            FixedSize::Array(array) => Type::Array(array),
-            FixedSize::Base(base) => Type::Base(base),
-            FixedSize::Tuple(tuple) => Type::Tuple(tuple),
-            FixedSize::String(string) => Type::String(string),
-        }
+    pub fn empty_tuple() -> Self {
+        FixedSize::Tuple(Tuple::empty())
     }
 
     pub fn is_empty_tuple(&self) -> bool {
@@ -211,6 +218,20 @@ impl FixedSize {
         }
 
         false
+    }
+}
+
+impl TryFrom<Type> for FixedSize {
+    type Error = SemanticError;
+
+    fn try_from(value: Type) -> Result<Self, SemanticError> {
+        match value {
+            Type::Array(array) => Ok(FixedSize::Array(array)),
+            Type::Base(base) => Ok(FixedSize::Base(base)),
+            Type::Tuple(tuple) => Ok(FixedSize::Tuple(tuple)),
+            Type::String(string) => Ok(FixedSize::String(string)),
+            Type::Map(_) => Err(SemanticError::TypeError),
+        }
     }
 }
 

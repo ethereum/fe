@@ -82,10 +82,15 @@ mod tests {
         Array,
         Base,
         FixedSize,
+        Type,
         U256,
     };
     use fe_semantics::test_utils::ContextHarness;
-    use fe_semantics::Context;
+    use fe_semantics::{
+        Context,
+        ExpressionAttributes,
+        Location,
+    };
 
     fn map(context: &Context, src: &str) -> String {
         let tokens = parser::get_parse_tokens(src).expect("Couldn't parse declaration");
@@ -102,6 +107,10 @@ mod tests {
     fn decl_u256() {
         let mut harness = ContextHarness::new("foo: u256 = bar");
         harness.add_declaration("foo: u256 = bar", FixedSize::Base(U256));
+        harness.add_expression(
+            "bar",
+            ExpressionAttributes::new(Type::Base(U256), Location::Value),
+        );
 
         assert_eq!(map(&harness.context, &harness.src), "let foo := bar");
     }

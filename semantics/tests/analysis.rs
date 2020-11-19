@@ -17,30 +17,44 @@ use fe_semantics::{
 
 const GUEST_BOOK: &str = include_str!("fixtures/guest_book.fe");
 
-static ADDR_VAL: ExpressionAttributes = ExpressionAttributes {
-    typ: Type::Base(Base::Address),
-    location: Location::Value,
-};
+fn addr_val() -> ExpressionAttributes {
+    ExpressionAttributes::new(Type::Base(Base::Address), Location::Value)
+}
 
-static BYTES_MEM: ExpressionAttributes = ExpressionAttributes {
-    typ: Type::Array(Array {
-        dimension: 100,
-        inner: Base::Byte,
-    }),
-    location: Location::Memory,
-};
+fn bytes_sto_moved() -> ExpressionAttributes {
+    let mut expression = ExpressionAttributes::new(
+        Type::Array(Array {
+            dimension: 100,
+            inner: Base::Byte,
+        }),
+        Location::Storage { nonce: None },
+    );
+
+    expression.move_location = Some(Location::Memory);
+    expression
+}
+
+fn bytes_mem() -> ExpressionAttributes {
+    ExpressionAttributes::new(
+        Type::Array(Array {
+            dimension: 100,
+            inner: Base::Byte,
+        }),
+        Location::Memory,
+    )
+}
 
 fn addr_bytes_map_sto() -> ExpressionAttributes {
-    ExpressionAttributes {
-        typ: Type::Map(Map {
+    ExpressionAttributes::new(
+        Type::Map(Map {
             key: Base::Address,
             value: Box::new(Type::Array(Array {
                 dimension: 100,
                 inner: Base::Byte,
             })),
         }),
-        location: Location::Storage { index: 0 },
-    }
+        Location::Storage { nonce: Some(0) },
+    )
 }
 
 fn mock_spanned_expr(start: usize, end: usize) -> Spanned<fe::Expr<'static>> {
@@ -70,12 +84,12 @@ fn guest_book_analysis() {
     let context = fe_semantics::analysis(&fe_module).expect("failed to perform semantic analysis");
 
     for (start, end, expected) in &[
-        (200, 210, &ADDR_VAL),
-        (214, 222, &BYTES_MEM),
-        (253, 261, &BYTES_MEM),
+        (200, 210, &addr_val()),
+        (214, 222, &bytes_mem()),
+        (253, 261, &bytes_mem()),
         (326, 341, &addr_bytes_map_sto()),
-        (326, 347, &BYTES_MEM),
-        (342, 346, &ADDR_VAL),
+        (326, 347, &bytes_sto_moved()),
+        (342, 346, &addr_val()),
     ] {
         assert_eq!(
             context.get_expression(&mock_spanned_expr(*start, *end)),

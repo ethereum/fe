@@ -652,5 +652,28 @@ fn strings() {
                 ],
             )],
         );
-    })
+    });
+}
+
+#[test]
+fn sized_vals_in_sto() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "sized_vals_in_sto.fe", "Foo", vec![]);
+
+        let num = uint_token(68);
+        let nums = u256_array_token((0..42).into_iter().collect());
+        let string = string_token("there are 26 protons in fe");
+
+        harness.test_function(&mut executor, "write_num", vec![num.clone()], None);
+        harness.test_function(&mut executor, "read_num", vec![], Some(num.clone()));
+
+        harness.test_function(&mut executor, "write_nums", vec![nums.clone()], None);
+        harness.test_function(&mut executor, "read_nums", vec![], Some(nums.clone()));
+
+        harness.test_function(&mut executor, "write_str", vec![string.clone()], None);
+        harness.test_function(&mut executor, "read_str", vec![], Some(string.clone()));
+
+        harness.test_function(&mut executor, "emit_event", vec![], None);
+        harness.events_emitted(executor, vec![("MyEvent", vec![num, nums, string])]);
+    });
 }

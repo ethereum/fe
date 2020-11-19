@@ -4,6 +4,7 @@ use crate::namespace::scopes::{
     Scope,
     Shared,
 };
+use crate::namespace::types::Type;
 use crate::traversal::{
     expressions,
     types,
@@ -25,14 +26,12 @@ pub fn var_decl(
         if let Some(value) = value {
             let value_attributes =
                 expressions::expr(Rc::clone(&scope), Rc::clone(&context), value)?;
-            if declared_type.clone().into_type() != value_attributes.typ {
+            if Type::from(declared_type.clone()) != value_attributes.typ {
                 return Err(SemanticError::TypeError);
             }
         }
 
-        scope
-            .borrow_mut()
-            .add_var(name, declared_type.clone().into_type());
+        scope.borrow_mut().add_var(name, declared_type.clone());
         context.borrow_mut().add_declaration(stmt, declared_type);
 
         return Ok(());
@@ -52,19 +51,18 @@ mod tests {
         Shared,
     };
     use crate::namespace::types::{
-        Type,
+        FixedSize,
         U256,
     };
     use crate::traversal::declarations::var_decl;
     use crate::Context;
     use fe_parser as parser;
-    use fe_parser::span::Span;
     use std::rc::Rc;
 
     fn scope() -> Shared<BlockScope> {
         let module_scope = ModuleScope::new();
         let contract_scope = ContractScope::new(module_scope);
-        BlockScope::from_contract_scope(Span::new(0, 0), contract_scope)
+        BlockScope::from_contract_scope(contract_scope)
     }
 
     fn analyze(scope: Shared<BlockScope>, src: &str) -> Result<Context, SemanticError> {
@@ -89,7 +87,7 @@ mod tests {
         assert_eq!(context.expressions.len(), 3);
         assert_eq!(
             scope.borrow().def("foo".to_string()),
-            Some(BlockDef::Variable(Type::Base(U256)))
+            Some(BlockDef::Variable(FixedSize::Base(U256)))
         );
     }
 
