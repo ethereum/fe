@@ -1,8 +1,6 @@
 use crate::abi::utils as abi_utils;
 use crate::errors::CompileError;
 use crate::yul::abi::operations as abi_operations;
-#[cfg(test)]
-use fe_semantics::namespace::types::Base;
 use fe_semantics::namespace::types::{
     AbiDecodeLocation,
     AbiEncoding,
@@ -79,18 +77,27 @@ fn selection_as_statement(name: String, params: &[FixedSize]) -> yul::Statement 
     yul::Statement::Expression(selection(name, params))
 }
 
-#[test]
-fn test_selector_literal_basic() {
-    assert_eq!(
-        selector("foo".to_string(), &[]).to_string(),
-        String::from("0xc2985578"),
-    )
-}
+#[cfg(test)]
+mod tests {
+    use crate::yul::runtime::abi_dispatcher::selector;
+    use fe_semantics::namespace::types::{
+        FixedSize,
+        U256,
+    };
 
-#[test]
-fn test_selector_literal() {
-    assert_eq!(
-        selector("bar".to_string(), &[FixedSize::Base(Base::U256)]).to_string(),
-        String::from("0x0423a132"),
-    )
+    #[test]
+    fn test_selector_literal_basic() {
+        assert_eq!(
+            selector("foo".to_string(), &[]).to_string(),
+            String::from("0xc2985578"),
+        )
+    }
+
+    #[test]
+    fn test_selector_literal() {
+        assert_eq!(
+            selector("bar".to_string(), &[FixedSize::Base(U256)]).to_string(),
+            String::from("0x0423a132"),
+        )
+    }
 }

@@ -82,6 +82,7 @@ mod tests {
         Array,
         Base,
         FixedSize,
+        U256,
     };
     use fe_semantics::test_utils::ContextHarness;
     use fe_semantics::Context;
@@ -100,7 +101,7 @@ mod tests {
     #[test]
     fn decl_u256() {
         let mut harness = ContextHarness::new("foo: u256 = bar");
-        harness.add_declaration("foo: u256 = bar", FixedSize::Base(Base::U256));
+        harness.add_declaration("foo: u256 = bar", FixedSize::Base(U256));
 
         assert_eq!(map(&harness.context, &harness.src), "let foo := bar");
     }

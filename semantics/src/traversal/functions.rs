@@ -372,8 +372,8 @@ mod tests {
         Shared,
     };
     use crate::namespace::types::{
-        Base,
         FixedSize,
+        U256,
     };
     use crate::traversal::functions::func_def;
     use crate::Context;
@@ -412,8 +412,8 @@ mod tests {
             scope.borrow().def("foo".to_string()),
             Some(ContractDef::Function {
                 is_public: false,
-                params: vec![FixedSize::Base(Base::U256)],
-                returns: FixedSize::Base(Base::U256)
+                params: vec![FixedSize::Base(U256)],
+                returns: FixedSize::Base(U256)
             })
         );
     }

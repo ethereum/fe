@@ -93,11 +93,23 @@ pub enum FixedSize {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
 pub enum Base {
-    U256,
+    Numeric(Integer),
     Bool,
     Byte,
     Address,
 }
+
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+pub enum Integer {
+    U256,
+    U128,
+    U64,
+    U32,
+    U16,
+    U8,
+}
+
+pub const U256: Base = Base::Numeric(Integer::U256);
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
 pub struct Array {
@@ -137,6 +149,19 @@ impl FeSized for FixedSize {
             FixedSize::Array(array) => array.size(),
             FixedSize::Tuple(tuple) => tuple.size(),
             FixedSize::String(string) => string.size(),
+        }
+    }
+}
+
+impl FeSized for Integer {
+    fn size(&self) -> usize {
+        match self {
+            Integer::U8 => 1,
+            Integer::U16 => 2,
+            Integer::U32 => 4,
+            Integer::U64 => 8,
+            Integer::U128 => 16,
+            Integer::U256 => 32,
         }
     }
 }
@@ -192,7 +217,7 @@ impl FixedSize {
 impl FeSized for Base {
     fn size(&self) -> usize {
         match self {
-            Base::U256 => 32,
+            Base::Numeric(integer) => integer.size(),
             Base::Bool => 1,
             Base::Byte => 1,
             Base::Address => 20,
@@ -203,7 +228,12 @@ impl FeSized for Base {
 impl AbiEncoding for Base {
     fn abi_name(&self) -> String {
         match self {
-            Base::U256 => "uint256".to_string(),
+            Base::Numeric(Integer::U256) => "uint256".to_string(),
+            Base::Numeric(Integer::U128) => "uint128".to_string(),
+            Base::Numeric(Integer::U64) => "uint64".to_string(),
+            Base::Numeric(Integer::U32) => "uint32".to_string(),
+            Base::Numeric(Integer::U16) => "uint16".to_string(),
+            Base::Numeric(Integer::U8) => "uint8".to_string(),
             Base::Address => "address".to_string(),
             Base::Byte => "byte".to_string(),
             Base::Bool => "bool".to_string(),
@@ -222,10 +252,42 @@ impl AbiEncoding for Base {
                     padded_size: 32,
                 },
             },
-            Base::U256 => AbiType::Uint {
-                size: AbiUintSize {
-                    data_size: 32,
-                    padded_size: 32,
+            Base::Numeric(size) => match size {
+                Integer::U256 => AbiType::Uint {
+                    size: AbiUintSize {
+                        data_size: 32,
+                        padded_size: 32,
+                    },
+                },
+                Integer::U128 => AbiType::Uint {
+                    size: AbiUintSize {
+                        data_size: 16,
+                        padded_size: 32,
+                    },
+                },
+                Integer::U64 => AbiType::Uint {
+                    size: AbiUintSize {
+                        data_size: 8,
+                        padded_size: 32,
+                    },
+                },
+                Integer::U32 => AbiType::Uint {
+                    size: AbiUintSize {
+                        data_size: 4,
+                        padded_size: 32,
+                    },
+                },
+                Integer::U16 => AbiType::Uint {
+                    size: AbiUintSize {
+                        data_size: 2,
+                        padded_size: 32,
+                    },
+                },
+                Integer::U8 => AbiType::Uint {
+                    size: AbiUintSize {
+                        data_size: 1,
+                        padded_size: 32,
+                    },
                 },
             },
             Base::Address => AbiType::Uint {
@@ -376,7 +438,12 @@ pub fn type_desc(
     typ: &fe::TypeDesc,
 ) -> Result<Type, SemanticError> {
     match typ {
-        fe::TypeDesc::Base { base: "u256" } => Ok(Type::Base(Base::U256)),
+        fe::TypeDesc::Base { base: "u256" } => Ok(Type::Base(U256)),
+        fe::TypeDesc::Base { base: "u128" } => Ok(Type::Base(Base::Numeric(Integer::U128))),
+        fe::TypeDesc::Base { base: "u64" } => Ok(Type::Base(Base::Numeric(Integer::U64))),
+        fe::TypeDesc::Base { base: "u32" } => Ok(Type::Base(Base::Numeric(Integer::U32))),
+        fe::TypeDesc::Base { base: "u16" } => Ok(Type::Base(Base::Numeric(Integer::U16))),
+        fe::TypeDesc::Base { base: "u8" } => Ok(Type::Base(Base::Numeric(Integer::U8))),
         fe::TypeDesc::Base { base: "bool" } => Ok(Type::Base(Base::Bool)),
         fe::TypeDesc::Base { base: "bytes" } => Ok(Type::Base(Base::Byte)),
         fe::TypeDesc::Base { base: "address" } => Ok(Type::Base(Base::Address)),

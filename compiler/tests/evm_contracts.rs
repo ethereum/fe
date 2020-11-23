@@ -257,8 +257,8 @@ fn test_assert() {
     case("if_statement.fe", vec![4], Some(uint_token(0))),
     case("if_statement_2.fe", vec![6], Some(uint_token(1))),
     case("if_statement_with_block_declaration.fe", vec![], Some(uint_token(1))),
-    case("ternary_expression.fe", vec![6], Some(u256_token(1))),
-    case("ternary_expression.fe", vec![4], Some(u256_token(0))),
+    case("ternary_expression.fe", vec![6], Some(uint_token(1))),
+    case("ternary_expression.fe", vec![4], Some(uint_token(0))),
     case("call_statement_without_args.fe", vec![], Some(uint_token(100))),
     case("call_statement_with_args.fe", vec![], Some(uint_token(100))),
     case("call_statement_with_args_2.fe", vec![], Some(uint_token(100))),
@@ -268,8 +268,14 @@ fn test_assert() {
     case("return_u256_from_called_fn.fe", vec![], Some(uint_token(42))),
     case("return_u256.fe", vec![], Some(uint_token(42))),
     case("return_identity_u256.fe", vec![42], Some(uint_token(42))),
+    case("return_identity_u128.fe", vec![42], Some(uint_token(42))),
+    case("return_identity_u64.fe", vec![42], Some(uint_token(42))),
+    case("return_identity_u32.fe", vec![42], Some(uint_token(42))),
+    case("return_identity_u16.fe", vec![42], Some(uint_token(42))),
+    case("return_identity_u8.fe", vec![42], Some(uint_token(42))),
     // binary operators
     case("return_addition_u256.fe", vec![42, 42], Some(uint_token(84))),
+    case("return_addition_u128.fe", vec![42, 42], Some(uint_token(84))),
     case("return_subtraction_u256.fe", vec![42, 42], Some(uint_token(0))),
     case("return_multiplication_u256.fe", vec![42, 42], Some(uint_token(1764))),
     case("return_division_u256.fe", vec![42, 42], Some(uint_token(1))),
@@ -280,6 +286,7 @@ fn test_assert() {
     case("return_mod_u256.fe", vec![5, 3], Some(uint_token(2))),
     case("return_mod_u256.fe", vec![5, 5], Some(uint_token(0))),
     case("return_bitwiseand_u256.fe", vec![12, 25], Some(uint_token(8))),
+    case("return_bitwiseand_u128.fe", vec![12, 25], Some(uint_token(8))),
     case("return_bitwiseor_u256.fe", vec![12, 25], Some(uint_token(29))),
     case("return_bitwisexor_u256.fe", vec![12, 25], Some(uint_token(21))),
     case("return_bitwiseshl_u256.fe", vec![212, 0], Some(uint_token(212))),
@@ -294,6 +301,7 @@ fn test_assert() {
     case("return_lt_u256.fe", vec![1, 2], Some(bool_token(true))),
     case("return_lt_u256.fe", vec![1, 1], Some(bool_token(false))),
     case("return_lt_u256.fe", vec![2, 1], Some(bool_token(false))),
+    case("return_lt_u128.fe", vec![1, 2], Some(bool_token(true))),
     case("return_lte_u256.fe", vec![1, 2], Some(bool_token(true))),
     case("return_lte_u256.fe", vec![1, 1], Some(bool_token(true))),
     case("return_lte_u256.fe", vec![2, 1], Some(bool_token(false))),
@@ -348,10 +356,18 @@ fn multi_param() {
     })
 }
 
-#[test]
-fn u256_u256_map() {
+#[rstest(
+    fixture_file,
+    case("u256_u256_map.fe"),
+    case("u128_u128_map.fe"),
+    case("u64_u64_map.fe"),
+    case("u32_u32_map.fe"),
+    case("u16_u16_map.fe"),
+    case("u8_u8_map.fe")
+)]
+fn test_map(fixture_file: &str) {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "u256_u256_map.fe", "Foo", vec![]);
+        let harness = deploy_contract(&mut executor, fixture_file, "Foo", vec![]);
 
         harness.test_function(
             &mut executor,

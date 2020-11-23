@@ -10,6 +10,7 @@ use crate::namespace::operations;
 use crate::namespace::types::{
     Base,
     Type,
+    U256,
 };
 use crate::traversal::_utils::{
     expression_attributes_to_types,
@@ -140,7 +141,7 @@ fn expr_num(exp: &Spanned<fe::Expr>) -> Result<ExpressionAttributes, SemanticErr
     if let fe::Expr::Num(_) = &exp.node {
         return Ok(ExpressionAttributes {
             location: Location::Value,
-            typ: Type::Base(Base::U256),
+            typ: Type::Base(U256),
         });
     }
 
@@ -231,19 +232,30 @@ fn expr_bin_operation(
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::BinOperation { left, op: _, right } = &exp.node {
-        let _left_attributes = expr(Rc::clone(&scope), Rc::clone(&context), left);
-        let _right_attributes = expr(Rc::clone(&scope), Rc::clone(&context), right);
+        let left_attributes = expr(Rc::clone(&scope), Rc::clone(&context), left)?;
+        let right_attributes = expr(Rc::clone(&scope), Rc::clone(&context), right)?;
 
-        // TODO: Perform type checking
+        validate_types_equal(&left_attributes, &right_attributes)?;
 
         // for now we assume these are the only possible attributes
         return Ok(ExpressionAttributes {
-            typ: Type::Base(Base::U256),
+            typ: right_attributes.typ,
             location: Location::Value,
         });
     }
 
     unreachable!()
+}
+
+fn validate_types_equal(
+    expression_a: &ExpressionAttributes,
+    expression_b: &ExpressionAttributes,
+) -> Result<(), SemanticError> {
+    if expression_a.typ == expression_b.typ {
+        Ok(())
+    } else {
+        Err(SemanticError::TypeError)
+    }
 }
 
 pub fn call_arg(
@@ -308,10 +320,10 @@ fn expr_comp_operation(
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::CompOperation { left, op: _, right } = &exp.node {
-        let _left_attributes = expr(Rc::clone(&scope), Rc::clone(&context), left);
-        let _right_attributes = expr(Rc::clone(&scope), Rc::clone(&context), right);
+        let left_attributes = expr(Rc::clone(&scope), Rc::clone(&context), left)?;
+        let right_attributes = expr(Rc::clone(&scope), Rc::clone(&context), right)?;
 
-        // TODO: Perform type checking
+        validate_types_equal(&left_attributes, &right_attributes)?;
 
         // for now we assume these are the only possible attributes
         return Ok(ExpressionAttributes {
@@ -364,6 +376,7 @@ mod tests {
         Base,
         Map,
         Type,
+        U256,
     };
     use crate::traversal::expressions::expr;
     use crate::{
@@ -377,7 +390,7 @@ mod tests {
     use std::rc::Rc;
 
     static U256_VAL: ExpressionAttributes = ExpressionAttributes {
-        typ: Type::Base(Base::U256),
+        typ: Type::Base(U256),
         location: Location::Value,
     };
 
@@ -398,7 +411,7 @@ mod tests {
         ExpressionAttributes {
             typ: Type::Map(Map {
                 key: Base::Address,
-                value: Box::new(Type::Base(Base::U256)),
+                value: Box::new(Type::Base(U256)),
             }),
             location: Location::Storage { index: 0 },
         }
@@ -464,7 +477,7 @@ mod tests {
             "my_addr_u256_map".to_string(),
             Map {
                 key: Base::Address,
-                value: Box::new(Type::Base(Base::U256)),
+                value: Box::new(Type::Base(U256)),
             },
         );
 

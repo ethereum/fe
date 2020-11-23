@@ -87,15 +87,15 @@ mod tests {
     };
     use fe_semantics::namespace::types::{
         AbiDecodeLocation,
-        Base,
         FeString,
+        U256,
     };
     use yultsur::*;
 
     #[test]
     fn test_encode() {
         assert_eq!(
-            encode(vec![Base::U256], vec![expression! { 42 }]).to_string(),
+            encode(vec![U256], vec![expression! { 42 }]).to_string(),
             "abi_encode_uint256(42)"
         )
     }
@@ -103,7 +103,7 @@ mod tests {
     #[test]
     fn test_encode_size() {
         assert_eq!(
-            encode_size(vec![Base::U256], vec![expression! { 42 }]).to_string(),
+            encode_size(vec![U256], vec![expression! { 42 }]).to_string(),
             "add(32, 0)"
         )
     }

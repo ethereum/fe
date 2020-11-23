@@ -100,9 +100,9 @@ mod tests {
     };
     use crate::namespace::types::{
         Array,
-        Base,
         Map,
         Type,
+        U256,
     };
     use crate::traversal::assignments::assign;
     use crate::Context;
@@ -121,18 +121,18 @@ mod tests {
         contract_scope.borrow_mut().add_map(
             "foobar".to_string(),
             Map {
-                key: Base::U256,
-                value: Box::new(Type::Base(Base::U256)),
+                key: U256,
+                value: Box::new(Type::Base(U256)),
             },
         );
         let function_scope = BlockScope::from_contract_scope(Span::new(0, 0), contract_scope);
         function_scope
             .borrow_mut()
-            .add_var("foo".to_string(), Type::Base(Base::U256));
+            .add_var("foo".to_string(), Type::Base(U256));
         function_scope.borrow_mut().add_var(
             "bar".to_string(),
             Type::Array(Array {
-                inner: Base::U256,
+                inner: U256,
                 dimension: 100,
             }),
         );

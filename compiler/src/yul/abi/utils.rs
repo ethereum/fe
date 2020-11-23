@@ -84,13 +84,14 @@ mod tests {
         Base,
         FeString,
         FixedSize,
+        U256,
     };
 
     #[test]
     fn test_encode_name() {
         assert_eq!(
             encode_name(&vec![
-                FixedSize::Base(Base::U256),
+                FixedSize::Base(U256),
                 FixedSize::Array(Array {
                     inner: Base::Byte,
                     dimension: 100
@@ -104,7 +105,7 @@ mod tests {
     #[test]
     fn test_decode_name_u256_calldata() {
         assert_eq!(
-            decode_name(&Base::U256, AbiDecodeLocation::Calldata).to_string(),
+            decode_name(&U256, AbiDecodeLocation::Calldata).to_string(),
             "abi_decode_uint256_calldata"
         )
     }
@@ -121,10 +122,10 @@ mod tests {
     fn test_head_offsets() {
         let types = vec![
             FixedSize::Array(Array {
-                inner: Base::U256,
+                inner: U256,
                 dimension: 42,
             }),
-            FixedSize::Base(Base::U256),
+            FixedSize::Base(U256),
             FixedSize::String(FeString { max_size: 26 }),
             FixedSize::Base(Base::Address),
         ];

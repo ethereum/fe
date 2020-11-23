@@ -45,7 +45,12 @@ use std::fs;
     case(
         "return_call_to_fn_with_param_type_mismatch.fe",
         "[Str(\"semantic error: TypeError\")]"
-    )
+    ),
+    case(
+        "return_addition_with_mixed_types.fe",
+        "[Str(\"semantic error: TypeError\")]"
+    ),
+    case("return_lt_mixed_types.fe", "[Str(\"semantic error: TypeError\")]")
 )]
 fn test_compile_errors(fixture_file: &str, error: &str) {
     let src = fs::read_to_string(format!("tests/fixtures/compile_errors/{}", fixture_file))

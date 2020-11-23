@@ -52,8 +52,8 @@ mod tests {
         Shared,
     };
     use crate::namespace::types::{
-        Base,
         Type,
+        U256,
     };
     use crate::traversal::declarations::var_decl;
     use crate::Context;
@@ -89,7 +89,7 @@ mod tests {
         assert_eq!(context.expressions.len(), 3);
         assert_eq!(
             scope.borrow().def("foo".to_string()),
-            Some(BlockDef::Variable(Type::Base(Base::U256)))
+            Some(BlockDef::Variable(Type::Base(U256)))
         );
     }
 
