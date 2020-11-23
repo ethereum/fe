@@ -168,6 +168,11 @@ pub enum FuncType {
 #[derive(Debug, PartialEq, Clone)]
 pub enum VarType {
     Uint256,
+    Uint128,
+    Uint64,
+    Uint32,
+    Uint16,
+    Uint8,
     Bool,
     Address,
     FixedBytes(usize),
@@ -191,6 +196,11 @@ impl fmt::Display for VarType {
         match self {
             VarType::Bool => write!(f, "bool"),
             VarType::Uint256 => write!(f, "uint256"),
+            VarType::Uint128 => write!(f, "uint128"),
+            VarType::Uint64 => write!(f, "uint64"),
+            VarType::Uint32 => write!(f, "uint32"),
+            VarType::Uint16 => write!(f, "uint16"),
+            VarType::Uint8 => write!(f, "uint8"),
             VarType::Address => write!(f, "address"),
             VarType::FixedBytes(size) => write!(f, "bytes{}", size),
             VarType::FixedArray(inner, dim) => write!(f, "{}[{}]", inner, dim),

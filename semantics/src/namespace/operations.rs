@@ -1,9 +1,9 @@
 use crate::errors::SemanticError;
 use crate::namespace::types::{
     Array,
-    Base,
     Map,
     Type,
+    U256,
 };
 
 /// Finds the type of an indexed expression.
@@ -20,7 +20,7 @@ pub fn index(value: Type, index: Type) -> Result<Type, SemanticError> {
 }
 
 fn index_array(array: Array, index: Type) -> Result<Type, SemanticError> {
-    if index != Type::Base(Base::U256) {
+    if index != Type::Base(U256) {
         return Err(SemanticError::TypeError);
     }
 
@@ -44,19 +44,20 @@ mod tests {
         Base,
         Map,
         Type,
+        U256,
     };
     use rstest::rstest;
 
-    const U256_ARRAY: Type = Type::Array(Array {
-        inner: Base::U256,
+    const U256_ARRAY_TYPE: Type = Type::Array(Array {
+        inner: U256,
         dimension: 100,
     });
-    const U256: Type = Type::Base(Base::U256);
-    const BOOL: Type = Type::Base(Base::Bool);
+    const U256_TYPE: Type = Type::Base(U256);
+    const BOOL_TYPE: Type = Type::Base(Base::Bool);
 
     fn u256_bool_map() -> Type {
         Type::Map(Map {
-            key: Base::U256,
+            key: U256,
             value: Box::new(Type::Base(Base::Bool)),
         })
     }
@@ -65,8 +66,8 @@ mod tests {
         value,
         index,
         expected,
-        case(U256_ARRAY, U256, U256),
-        case(u256_bool_map(), U256, BOOL)
+        case(U256_ARRAY_TYPE, U256_TYPE, U256_TYPE),
+        case(u256_bool_map(), U256_TYPE, BOOL_TYPE)
     )]
     fn basic_index(value: Type, index: Type, expected: Type) {
         let actual = operations::index(value, index).expect("failed to get expected type");
@@ -76,9 +77,9 @@ mod tests {
     #[rstest(
         value,
         index,
-        case(U256_ARRAY, BOOL),
-        case(u256_bool_map(), BOOL),
-        case(u256_bool_map(), U256_ARRAY)
+        case(U256_ARRAY_TYPE, BOOL_TYPE),
+        case(u256_bool_map(), BOOL_TYPE),
+        case(u256_bool_map(), U256_ARRAY_TYPE)
     )]
     fn type_error_index(value: Type, index: Type) {
         let actual = operations::index(value, index).expect_err("didn't fail");

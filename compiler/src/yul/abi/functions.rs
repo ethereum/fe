@@ -228,12 +228,13 @@ mod tests {
         AbiDecodeLocation,
         Base,
         FeString,
+        U256,
     };
 
     #[test]
     fn test_encode() {
         assert_eq!(
-            encode(vec![Base::U256, Base::Address]).to_string(),
+            encode(vec![U256, Base::Address]).to_string(),
             "function abi_encode_uint256_address(val_0, val_1) -> ptr { ptr := avail() pop(alloc_mstoren(val_0, 32)) pop(alloc_mstoren(val_1, 32)) }"
         )
     }
@@ -257,7 +258,7 @@ mod tests {
     #[test]
     fn test_decode_u256_mem() {
         assert_eq!(
-            decode(Base::U256, AbiDecodeLocation::Memory).to_string(),
+            decode(U256, AbiDecodeLocation::Memory).to_string(),
             "function abi_decode_uint256_mem(start, head_ptr) -> val { val := mload(head_ptr) }"
         )
     }

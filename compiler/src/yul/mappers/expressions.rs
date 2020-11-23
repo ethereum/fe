@@ -303,6 +303,7 @@ mod tests {
         Base,
         Map,
         Type,
+        U256,
     };
     use fe_semantics::test_utils::ContextHarness;
     use fe_semantics::{
@@ -330,7 +331,7 @@ mod tests {
             ExpressionAttributes {
                 typ: Type::Map(Map {
                     key: Base::Address,
-                    value: Box::new(Type::Base(Base::U256)),
+                    value: Box::new(Type::Base(U256)),
                 }),
                 location: Location::Storage { index: 0 },
             },

@@ -162,6 +162,11 @@ fn type_desc<'a>(
 
     match typ {
         fe::TypeDesc::Base { base: "u256" } => Ok(VarType::Uint256),
+        fe::TypeDesc::Base { base: "u128" } => Ok(VarType::Uint128),
+        fe::TypeDesc::Base { base: "u64" } => Ok(VarType::Uint64),
+        fe::TypeDesc::Base { base: "u32" } => Ok(VarType::Uint32),
+        fe::TypeDesc::Base { base: "u16" } => Ok(VarType::Uint16),
+        fe::TypeDesc::Base { base: "u8" } => Ok(VarType::Uint8),
         fe::TypeDesc::Base { base: "bool" } => Ok(VarType::Bool),
         fe::TypeDesc::Base { base: "address" } => Ok(VarType::Address),
         fe::TypeDesc::Base { base } if &base[..6] == "string" => Ok(VarType::String),

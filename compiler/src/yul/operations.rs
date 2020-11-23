@@ -87,6 +87,7 @@ mod tests {
     use fe_semantics::namespace::types::{
         Base,
         FixedSize,
+        U256,
     };
     use yultsur::*;
 
@@ -94,7 +95,7 @@ mod tests {
     fn test_emit_event() {
         let event = Event::new(
             "MyEvent".to_string(),
-            vec![FixedSize::Base(Base::U256), FixedSize::Base(Base::Address)],
+            vec![FixedSize::Base(U256), FixedSize::Base(Base::Address)],
         );
 
         assert_eq!(

@@ -116,8 +116,8 @@ mod tests {
     use fe_parser as parser;
     use fe_semantics::namespace::types::{
         Array,
-        Base,
         Type,
+        U256,
     };
     use fe_semantics::test_utils::ContextHarness;
     use fe_semantics::{
@@ -143,7 +143,7 @@ mod tests {
         harness.add_expression(
             "foo",
             ExpressionAttributes {
-                typ: Type::Base(Base::U256),
+                typ: Type::Base(U256),
                 location: Location::Value,
             },
         );
@@ -178,7 +178,7 @@ mod tests {
             ExpressionAttributes {
                 typ: Type::Array(Array {
                     dimension: 10,
-                    inner: Base::U256,
+                    inner: U256,
                 }),
                 location: Location::Memory,
             },
