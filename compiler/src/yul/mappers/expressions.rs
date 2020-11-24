@@ -276,13 +276,18 @@ fn expr_ternary(
     context: &Context,
     exp: &Spanned<fe::Expr>,
 ) -> Result<yul::Expression, CompileError> {
-    if let fe::Expr::Ternary {test, if_expr, else_expr} = &exp.node {
+    if let fe::Expr::Ternary {
+        test,
+        if_expr,
+        else_expr,
+    } = &exp.node
+    {
         let yul_test_expr = expr(context, test)?;
         let yul_if_expr = expr_comp_operation(context, if_expr)?;
         let yul_else_exp = expr(context, else_expr)?;
 
-        // TODO: Need to find a way to return an expression that comprises all 3 of above.
-        // Dummy return to make it compile.
+        // TODO: Need to find a way to return an expression that comprises all 3 of
+        // above. Dummy return to make it compile.
         return Ok(literal_expression! {(1)});
     }
     unreachable!()
