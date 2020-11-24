@@ -24,7 +24,7 @@ pub fn expr(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressio
         fe::Expr::Bool(_) => expr_bool(exp),
         fe::Expr::Subscript { .. } => expr_subscript(context, exp),
         fe::Expr::Attribute { .. } => expr_attribute(context, exp),
-        fe::Expr::Ternary { .. } => unimplemented!(),
+        fe::Expr::Ternary { .. } => expr_ternary(context, exp),
         fe::Expr::BoolOperation { .. } => unimplemented!(),
         fe::Expr::BinOperation { .. } => expr_bin_operation(context, exp),
         fe::Expr::UnaryOperation { .. } => unimplemented!(),
@@ -270,6 +270,22 @@ fn expr_attribute_self(
         }) => Ok(literal_expression! { (index) }),
         _ => unimplemented!(),
     }
+}
+
+fn expr_ternary(
+    context: &Context,
+    exp: &Spanned<fe::Expr>,
+) -> Result<yul::Expression, CompileError> {
+    if let fe::Expr::Ternary {test, if_expr, else_expr} = &exp.node {
+        let yul_test_expr = expr(context, test)?;
+        let yul_if_expr = expr_comp_operation(context, if_expr)?;
+        let yul_else_exp = expr(context, else_expr)?;
+
+        // TODO: Need to find a way to return an expression that comprises all 3 of above.
+        // Dummy return to make it compile.
+        return Ok(literal_expression! {(1)});
+    }
+    unreachable!()
 }
 
 #[cfg(test)]
