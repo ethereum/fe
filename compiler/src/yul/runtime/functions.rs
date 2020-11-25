@@ -21,19 +21,6 @@ pub fn std() -> Vec<yul::Statement> {
     ]
 }
 
-/// Evaluates the ternary expression and returns the result.
-pub fn ternary() -> yul::Statement {
-    function_definition! {
-        function ternary(test, if_expr, else_expr) -> result {
-            ([switch! {
-                switch test
-                (case 1 {(result := if_expr)})
-                (case 0 {(result := else_expr)})
-            }])
-        }
-    }
-}
-
 /// Returns the highest available pointer.
 pub fn avail() -> yul::Statement {
     function_definition! {
@@ -185,18 +172,15 @@ pub fn ceil32() -> yul::Statement {
     }
 }
 
-mod tests {
-    use yultsur::*;
-
-    #[test]
-    fn test_ternary_definition() {
-        assert_eq!(
-            function_definition! {
-                function ternary(test, if_expr, else_expr) -> result {
-                    ([switch! { switch test (case 1 {(result := if_expr)}) (case 0 {(result := else_expr)}) }])
-                }
-            }.to_string(),
-            r#"function ternary(test, if_expr, else_expr) -> result { switch test case 1 { result := if_expr } case 0 { result := else_expr }  }"#
-        );
+/// Evaluates the ternary expression and returns the result.
+pub fn ternary() -> yul::Statement {
+    function_definition! {
+        function ternary(test, if_expr, else_expr) -> result {
+            ([switch! {
+                switch test
+                (case 1 {(result := if_expr)})
+                (case 0 {(result := else_expr)})
+            }])
+        }
     }
 }
