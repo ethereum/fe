@@ -16,7 +16,7 @@ pub fn dispatcher(attributes: Vec<FunctionAttributes>) -> Result<yul::Statement,
     let arms = attributes
         .iter()
         .map(|arm| dispatch_arm(arm.to_owned()))
-        .collect::<Result<Vec<yul::Case>, CompileError>>()?;
+        .collect::<Vec<_>>();
 
     Ok(switch! {
         switch (cloadn(0, 4))
@@ -24,11 +24,11 @@ pub fn dispatcher(attributes: Vec<FunctionAttributes>) -> Result<yul::Statement,
     })
 }
 
-fn dispatch_arm(attributes: FunctionAttributes) -> Result<yul::Case, CompileError> {
+fn dispatch_arm(attributes: FunctionAttributes) -> yul::Case {
     let selector = selector(attributes.name.clone(), &attributes.param_types);
 
     if !attributes.return_type.is_empty_tuple() {
-        let selection = selection(attributes.name, &attributes.param_types)?;
+        let selection = selection(attributes.name, &attributes.param_types);
         let return_data = abi_operations::encode(
             vec![attributes.return_type.clone()],
             vec![expression! { raw_return }],
@@ -41,15 +41,17 @@ fn dispatch_arm(attributes: FunctionAttributes) -> Result<yul::Case, CompileErro
 
         let selection_with_return = statement! { return([return_data], [return_size]) };
 
-        return Ok(case! { case [selector] {
-            (let raw_return := [selection])
-            ([selection_with_return])
-        } });
+        return case! {
+            case [selector] {
+                (let raw_return := [selection])
+                ([selection_with_return])
+            }
+        };
     }
 
-    let selection = selection_as_statement(attributes.name, &attributes.param_types)?;
+    let selection = selection_as_statement(attributes.name, &attributes.param_types);
 
-    Ok(case! { case [selector] { [selection] } })
+    case! { case [selector] { [selection] } }
 }
 
 fn selector(name: String, params: &[FixedSize]) -> yul::Literal {
@@ -61,7 +63,7 @@ fn selector(name: String, params: &[FixedSize]) -> yul::Literal {
     literal! {(abi_utils::func_selector(name, params))}
 }
 
-fn selection(name: String, params: &[FixedSize]) -> Result<yul::Expression, CompileError> {
+fn selection(name: String, params: &[FixedSize]) -> yul::Expression {
     let decoded_params = abi_operations::decode(
         params.to_owned(),
         literal_expression! { 4 },
@@ -70,14 +72,11 @@ fn selection(name: String, params: &[FixedSize]) -> Result<yul::Expression, Comp
 
     let name = identifier! { (name) };
 
-    Ok(expression! { [name]([decoded_params...]) })
+    expression! { [name]([decoded_params...]) }
 }
 
-fn selection_as_statement(
-    name: String,
-    params: &[FixedSize],
-) -> Result<yul::Statement, CompileError> {
-    Ok(yul::Statement::Expression(selection(name, params)?))
+fn selection_as_statement(name: String, params: &[FixedSize]) -> yul::Statement {
+    yul::Statement::Expression(selection(name, params))
 }
 
 #[test]

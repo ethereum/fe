@@ -55,7 +55,7 @@ fn assign_subscript(
             return match target_attributes.to_tuple() {
                 (Type::Map(map), _) => assign_map(map, target, index, value),
                 (Type::Array(array), Location::Memory) => {
-                    assign_mem_array(array, target, index, value)
+                    Ok(assign_mem_array(array, target, index, value))
                 }
                 (Type::Array(_), Location::Storage { .. }) => unimplemented!(),
                 _ => unreachable!(),
@@ -88,11 +88,11 @@ fn assign_mem_array(
     target: yul::Expression,
     index: yul::Expression,
     value: yul::Expression,
-) -> Result<yul::Statement, CompileError> {
+) -> yul::Statement {
     let inner_size = literal_expression! { (array.inner.size()) };
     let mptr = expression! { add([target], (mul([index], [inner_size]))) };
 
-    Ok(operations::val_to_mem(array.inner, mptr, value))
+    operations::val_to_mem(array.inner, mptr, value)
 }
 
 fn assign_name(

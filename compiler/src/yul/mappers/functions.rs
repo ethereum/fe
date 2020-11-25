@@ -39,10 +39,7 @@ pub fn func_def(
     ) = (context.get_function(def).to_owned(), &def.node)
     {
         let function_name = identifier! {(name.node)};
-        let param_names = args
-            .iter()
-            .map(|arg| func_def_arg(arg))
-            .collect::<Result<Vec<_>, _>>()?;
+        let param_names = args.iter().map(|arg| func_def_arg(arg)).collect::<Vec<_>>();
         let function_statements = multiple_func_stmt(context, body)?;
 
         return if attributes.return_type.is_empty_tuple() {
@@ -63,9 +60,9 @@ pub fn func_def(
     unreachable!()
 }
 
-fn func_def_arg(arg: &Spanned<fe::FuncDefArg>) -> Result<yul::Identifier, CompileError> {
+fn func_def_arg(arg: &Spanned<fe::FuncDefArg>) -> yul::Identifier {
     let name = arg.node.name.node.to_string();
-    Ok(identifier! {(name)})
+    identifier! {(name)}
 }
 
 fn func_stmt(
