@@ -11,14 +11,14 @@ x if y else z
   ),
   Spanned(
     node: Ternary(
-      test: Spanned(
+      if_expr: Spanned(
         node: Name("x"),
         span: Span(
           start: 2,
           end: 3,
         ),
       ),
-      if_expr: Spanned(
+      test: Spanned(
         node: Name("y"),
         span: Span(
           start: 7,

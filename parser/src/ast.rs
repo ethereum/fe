@@ -194,8 +194,8 @@ pub enum FuncStmt<'a> {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum Expr<'a> {
     Ternary {
-        test: Box<Spanned<Expr<'a>>>,
         if_expr: Box<Spanned<Expr<'a>>>,
+        test: Box<Spanned<Expr<'a>>>,
         else_expr: Box<Spanned<Expr<'a>>>,
     },
     BoolOperation {
