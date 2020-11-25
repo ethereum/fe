@@ -334,7 +334,7 @@ fn expr_ternary(
         else_expr,
     } = &exp.node
     {
-        let test_attributes = expr_comp_operation(Rc::clone(&scope), Rc::clone(&context), test)?;
+        let test_attributes = expr(Rc::clone(&scope), Rc::clone(&context), test)?;
         let if_expr_attributes = expr(Rc::clone(&scope), Rc::clone(&context), if_expr)?;
         let else_expr_attributes = expr(Rc::clone(&scope), Rc::clone(&context), else_expr)?;
 

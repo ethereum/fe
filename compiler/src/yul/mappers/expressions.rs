@@ -282,7 +282,7 @@ fn expr_ternary(
         else_expr,
     } = &exp.node
     {
-        let yul_test_expr = expr_comp_operation(context, test)?;
+        let yul_test_expr = expr(context, test)?;
         let yul_if_expr = expr(context, if_expr)?;
         let yul_else_expr = expr(context, else_expr)?;
 
