@@ -178,7 +178,7 @@ fn deploy_contract(
     panic!("Failed to create contract")
 }
 
-fn u256_token(n: usize) -> ethabi::Token {
+fn uint_token(n: usize) -> ethabi::Token {
     ethabi::Token::Uint(U256::from(n))
 }
 
@@ -199,7 +199,7 @@ fn bytes_token(s: &str) -> ethabi::Token {
 }
 
 fn u256_array_token(v: Vec<usize>) -> ethabi::Token {
-    ethabi::Token::FixedArray(v.into_iter().map(|n| u256_token(n)).collect())
+    ethabi::Token::FixedArray(v.into_iter().map(|n| uint_token(n)).collect())
 }
 
 #[test]
@@ -232,14 +232,14 @@ fn test_assert() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, "assert.fe", "Foo", vec![]);
 
-        let exit1 = harness.capture_call(&mut executor, "bar", &vec![u256_token(4)]);
+        let exit1 = harness.capture_call(&mut executor, "bar", &vec![uint_token(4)]);
 
         assert!(matches!(
             exit1,
             evm::Capture::Exit((evm::ExitReason::Revert(_), _))
         ));
 
-        let exit2 = harness.capture_call(&mut executor, "bar", &vec![u256_token(42)]);
+        let exit2 = harness.capture_call(&mut executor, "bar", &vec![uint_token(42)]);
 
         assert!(matches!(
             exit2,
@@ -249,43 +249,43 @@ fn test_assert() {
 }
 
 #[rstest(fixture_file, input, expected,
-    case("while_loop_with_continue.fe", vec![], Some(u256_token(1))),
-    case("while_loop.fe", vec![], Some(u256_token(3))),
-    case("while_loop_with_break.fe", vec![], Some(u256_token(1))),
-    case("while_loop_with_break_2.fe", vec![], Some(u256_token(1))),
-    case("if_statement.fe", vec![6], Some(u256_token(1))),
-    case("if_statement.fe", vec![4], Some(u256_token(0))),
-    case("if_statement_2.fe", vec![6], Some(u256_token(1))),
-    case("if_statement_with_block_declaration.fe", vec![], Some(u256_token(1))),
+    case("while_loop_with_continue.fe", vec![], Some(uint_token(1))),
+    case("while_loop.fe", vec![], Some(uint_token(3))),
+    case("while_loop_with_break.fe", vec![], Some(uint_token(1))),
+    case("while_loop_with_break_2.fe", vec![], Some(uint_token(1))),
+    case("if_statement.fe", vec![6], Some(uint_token(1))),
+    case("if_statement.fe", vec![4], Some(uint_token(0))),
+    case("if_statement_2.fe", vec![6], Some(uint_token(1))),
+    case("if_statement_with_block_declaration.fe", vec![], Some(uint_token(1))),
     case("ternary_expression.fe", vec![6], Some(u256_token(1))),
     case("ternary_expression.fe", vec![4], Some(u256_token(0))),
-    case("call_statement_without_args.fe", vec![], Some(u256_token(100))),
-    case("call_statement_with_args.fe", vec![], Some(u256_token(100))),
-    case("call_statement_with_args_2.fe", vec![], Some(u256_token(100))),
+    case("call_statement_without_args.fe", vec![], Some(uint_token(100))),
+    case("call_statement_with_args.fe", vec![], Some(uint_token(100))),
+    case("call_statement_with_args_2.fe", vec![], Some(uint_token(100))),
     case("return_bool_true.fe", vec![], Some(bool_token(true))),
     case("return_bool_false.fe", vec![], Some(bool_token(false))),
-    case("return_u256_from_called_fn_with_args.fe", vec![], Some(u256_token(200))),
-    case("return_u256_from_called_fn.fe", vec![], Some(u256_token(42))),
-    case("return_u256.fe", vec![], Some(u256_token(42))),
-    case("return_identity_u256.fe", vec![42], Some(u256_token(42))),
+    case("return_u256_from_called_fn_with_args.fe", vec![], Some(uint_token(200))),
+    case("return_u256_from_called_fn.fe", vec![], Some(uint_token(42))),
+    case("return_u256.fe", vec![], Some(uint_token(42))),
+    case("return_identity_u256.fe", vec![42], Some(uint_token(42))),
     // binary operators
-    case("return_addition_u256.fe", vec![42, 42], Some(u256_token(84))),
-    case("return_subtraction_u256.fe", vec![42, 42], Some(u256_token(0))),
-    case("return_multiplication_u256.fe", vec![42, 42], Some(u256_token(1764))),
-    case("return_division_u256.fe", vec![42, 42], Some(u256_token(1))),
-    case("return_pow_u256.fe", vec![2, 0], Some(u256_token(1))),
-    case("return_pow_u256.fe", vec![2, 4], Some(u256_token(16))),
-    case("return_mod_u256.fe", vec![5, 0], Some(u256_token(0))),
-    case("return_mod_u256.fe", vec![5, 2], Some(u256_token(1))),
-    case("return_mod_u256.fe", vec![5, 3], Some(u256_token(2))),
-    case("return_mod_u256.fe", vec![5, 5], Some(u256_token(0))),
-    case("return_bitwiseand_u256.fe", vec![12, 25], Some(u256_token(8))),
-    case("return_bitwiseor_u256.fe", vec![12, 25], Some(u256_token(29))),
-    case("return_bitwisexor_u256.fe", vec![12, 25], Some(u256_token(21))),
-    case("return_bitwiseshl_u256.fe", vec![212, 0], Some(u256_token(212))),
-    case("return_bitwiseshl_u256.fe", vec![212, 1], Some(u256_token(424))),
-    case("return_bitwiseshr_u256.fe", vec![212, 0], Some(u256_token(212))),
-    case("return_bitwiseshr_u256.fe", vec![212, 1], Some(u256_token(106))),
+    case("return_addition_u256.fe", vec![42, 42], Some(uint_token(84))),
+    case("return_subtraction_u256.fe", vec![42, 42], Some(uint_token(0))),
+    case("return_multiplication_u256.fe", vec![42, 42], Some(uint_token(1764))),
+    case("return_division_u256.fe", vec![42, 42], Some(uint_token(1))),
+    case("return_pow_u256.fe", vec![2, 0], Some(uint_token(1))),
+    case("return_pow_u256.fe", vec![2, 4], Some(uint_token(16))),
+    case("return_mod_u256.fe", vec![5, 0], Some(uint_token(0))),
+    case("return_mod_u256.fe", vec![5, 2], Some(uint_token(1))),
+    case("return_mod_u256.fe", vec![5, 3], Some(uint_token(2))),
+    case("return_mod_u256.fe", vec![5, 5], Some(uint_token(0))),
+    case("return_bitwiseand_u256.fe", vec![12, 25], Some(uint_token(8))),
+    case("return_bitwiseor_u256.fe", vec![12, 25], Some(uint_token(29))),
+    case("return_bitwisexor_u256.fe", vec![12, 25], Some(uint_token(21))),
+    case("return_bitwiseshl_u256.fe", vec![212, 0], Some(uint_token(212))),
+    case("return_bitwiseshl_u256.fe", vec![212, 1], Some(uint_token(424))),
+    case("return_bitwiseshr_u256.fe", vec![212, 0], Some(uint_token(212))),
+    case("return_bitwiseshr_u256.fe", vec![212, 1], Some(uint_token(106))),
     // comparision operators
     case("return_eq_u256.fe", vec![1, 1], Some(bool_token(true))),
     case("return_eq_u256.fe", vec![1, 2], Some(bool_token(false))),
@@ -313,7 +313,7 @@ fn test_method_return(fixture_file: &str, input: Vec<usize>, expected: Option<et
             input
                 .clone()
                 .into_iter()
-                .map(|val| u256_token(val))
+                .map(|val| uint_token(val))
                 .collect(),
             expected.clone(),
         )
@@ -328,7 +328,7 @@ fn return_array() {
         harness.test_function(
             &mut executor,
             "bar",
-            vec![u256_token(42)],
+            vec![uint_token(42)],
             Some(u256_array_token(vec![0, 0, 0, 42, 0])),
         )
     })
@@ -342,7 +342,7 @@ fn multi_param() {
         harness.test_function(
             &mut executor,
             "bar",
-            vec![u256_token(4), u256_token(42), u256_token(420)],
+            vec![uint_token(4), uint_token(42), uint_token(420)],
             Some(u256_array_token(vec![4, 42, 420])),
         )
     })
@@ -356,29 +356,29 @@ fn u256_u256_map() {
         harness.test_function(
             &mut executor,
             "write_bar",
-            vec![u256_token(4), u256_token(42)],
+            vec![uint_token(4), uint_token(42)],
             None,
         );
 
         harness.test_function(
             &mut executor,
             "write_bar",
-            vec![u256_token(420), u256_token(12)],
+            vec![uint_token(420), uint_token(12)],
             None,
         );
 
         harness.test_function(
             &mut executor,
             "read_bar",
-            vec![u256_token(4)],
-            Some(u256_token(42)),
+            vec![uint_token(4)],
+            Some(uint_token(42)),
         );
 
         harness.test_function(
             &mut executor,
             "read_bar",
-            vec![u256_token(420)],
-            Some(u256_token(12)),
+            vec![uint_token(420)],
+            Some(uint_token(12)),
         );
     })
 }
@@ -463,19 +463,19 @@ fn nested_map() {
         harness.test_function(
             &mut executor,
             "write_bar",
-            vec![address1.clone(), address2.clone(), u256_token(12)],
+            vec![address1.clone(), address2.clone(), uint_token(12)],
             None,
         );
         harness.test_function(
             &mut executor,
             "write_bar",
-            vec![address1.clone(), address3.clone(), u256_token(13)],
+            vec![address1.clone(), address3.clone(), uint_token(13)],
             None,
         );
         harness.test_function(
             &mut executor,
             "write_bar",
-            vec![address2.clone(), address1.clone(), u256_token(21)],
+            vec![address2.clone(), address1.clone(), uint_token(21)],
             None,
         );
 
@@ -483,19 +483,19 @@ fn nested_map() {
         harness.test_function(
             &mut executor,
             "write_baz",
-            vec![address1.clone(), u256_token(26), bool_token(true)],
+            vec![address1.clone(), uint_token(26), bool_token(true)],
             None,
         );
         harness.test_function(
             &mut executor,
             "write_baz",
-            vec![address2.clone(), u256_token(42), bool_token(true)],
+            vec![address2.clone(), uint_token(42), bool_token(true)],
             None,
         );
         harness.test_function(
             &mut executor,
             "write_baz",
-            vec![address2.clone(), u256_token(100), bool_token(false)],
+            vec![address2.clone(), uint_token(100), bool_token(false)],
             None,
         );
 
@@ -504,38 +504,38 @@ fn nested_map() {
             &mut executor,
             "read_bar",
             vec![address1.clone(), address2.clone()],
-            Some(u256_token(12)),
+            Some(uint_token(12)),
         );
         harness.test_function(
             &mut executor,
             "read_bar",
             vec![address1.clone(), address3.clone()],
-            Some(u256_token(13)),
+            Some(uint_token(13)),
         );
         harness.test_function(
             &mut executor,
             "read_bar",
             vec![address2.clone(), address1.clone()],
-            Some(u256_token(21)),
+            Some(uint_token(21)),
         );
 
         // read baz
         harness.test_function(
             &mut executor,
             "read_baz",
-            vec![address1.clone(), u256_token(26)],
+            vec![address1.clone(), uint_token(26)],
             Some(bool_token(true)),
         );
         harness.test_function(
             &mut executor,
             "read_baz",
-            vec![address2.clone(), u256_token(42)],
+            vec![address2.clone(), uint_token(42)],
             Some(bool_token(true)),
         );
         harness.test_function(
             &mut executor,
             "read_baz",
-            vec![address2.clone(), u256_token(100)],
+            vec![address2.clone(), uint_token(100)],
             Some(bool_token(false)),
         );
     })
@@ -574,11 +574,11 @@ fn events() {
         harness.events_emitted(
             executor,
             vec![
-                ("Nums", vec![u256_token(26), u256_token(42)]),
-                ("Bases", vec![u256_token(26), addr1.clone()]),
+                ("Nums", vec![uint_token(26), uint_token(42)]),
+                ("Bases", vec![uint_token(26), addr1.clone()]),
                 (
                     "Mix",
-                    vec![u256_token(26), addr1.clone(), u256_token(42), bytes],
+                    vec![uint_token(26), addr1.clone(), uint_token(42), bytes],
                 ),
                 ("Addresses", vec![addr_array]),
             ],
@@ -593,10 +593,10 @@ fn constructor() {
             &mut executor,
             "constructor.fe",
             "Foo",
-            vec![u256_token(26), u256_token(42)],
+            vec![uint_token(26), uint_token(42)],
         );
 
-        harness.test_function(&mut executor, "read_bar", vec![], Some(u256_token(68)));
+        harness.test_function(&mut executor, "read_bar", vec![], Some(uint_token(68)));
     })
 }
 
@@ -611,7 +611,7 @@ fn strings() {
                 string_token("string 1"),
                 address_token("1000000000000000000000000000000000000001"),
                 string_token("string 2"),
-                u256_token(42),
+                uint_token(42),
                 string_token("string 3"),
             ],
         );
@@ -629,7 +629,7 @@ fn strings() {
                 "MyEvent",
                 vec![
                     string_token("string 2"),
-                    u256_token(42),
+                    uint_token(42),
                     string_token("string 1"),
                     string_token("string 3"),
                     address_token("1000000000000000000000000000000000000001"),
