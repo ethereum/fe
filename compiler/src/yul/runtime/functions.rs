@@ -17,7 +17,21 @@ pub fn std() -> Vec<yul::Statement> {
         sstoren(),
         dualkeccak256(),
         ceil32(),
+        ternary(),
     ]
+}
+
+/// Evaluates the ternary expression and returns the result.
+pub fn ternary() -> yul::Statement {
+    function_definition! {
+        function ternary(test, if_expr, else_expr) -> result {
+            ([switch! {
+                switch test
+                (case 1 {(result := if_expr)})
+                (case 0 {(result := else_expr)})
+            }])
+        }
+    }
 }
 
 /// Returns the highest available pointer.
@@ -162,11 +176,27 @@ pub fn dualkeccak256() -> yul::Statement {
     }
 }
 
-/// Rounds a 256 bit value up to the naerest multiple of 32.
+/// Rounds a 256 bit value up to the nearest multiple of 32.
 pub fn ceil32() -> yul::Statement {
     function_definition! {
         function ceil32(n) -> return_val {
             (return_val := mul((div((add(n, 31)), 32)), 32))
         }
+    }
+}
+
+mod tests {
+    use yultsur::*;
+
+    #[test]
+    fn test_ternary_definition() {
+        assert_eq!(
+            function_definition! {
+                function ternary(test, if_expr, else_expr) -> result {
+                    ([switch! { switch test (case 1 {(result := if_expr)}) (case 0 {(result := else_expr)}) }])
+                }
+            }.to_string(),
+            r#"function ternary(test, if_expr, else_expr) -> result { switch test case 1 { result := if_expr } case 0 { result := else_expr }  }"#
+        );
     }
 }
