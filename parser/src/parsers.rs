@@ -1140,29 +1140,29 @@ pub fn exprs(input: Cursor) -> ParseResult<Spanned<Expr>> {
 }
 
 pub fn expr(input: Cursor) -> ParseResult<Spanned<Expr>> {
-    let (input, test) = disjunct(input)?;
+    let (input, if_expr) = disjunct(input)?;
     let (input, ternary) = opt(|input| {
         let (input, _) = name("if")(input)?;
-        let (input, if_expr) = disjunct(input)?;
+        let (input, test) = disjunct(input)?;
         let (input, _) = name("else")(input)?;
         let (input, else_expr) = expr(input)?;
-        Ok((input, (if_expr, else_expr)))
+        Ok((input, (test, else_expr)))
     })(input)?;
 
     let result = match ternary {
-        Some((if_expr, else_expr)) => {
-            let span = Span::from_pair(&test, &else_expr);
+        Some((test, else_expr)) => {
+            let span = Span::from_pair(&if_expr, &else_expr);
 
             Spanned {
                 node: Expr::Ternary {
-                    test: Box::new(test),
                     if_expr: Box::new(if_expr),
+                    test: Box::new(test),
                     else_expr: Box::new(else_expr),
                 },
                 span,
             }
         }
-        None => test,
+        None => if_expr,
     };
 
     Ok((input, result))

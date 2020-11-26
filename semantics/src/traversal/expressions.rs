@@ -37,7 +37,7 @@ pub fn expr(
         fe::Expr::Bool(_) => expr_bool(exp)?,
         fe::Expr::Subscript { .. } => expr_subscript(scope, Rc::clone(&context), exp)?,
         fe::Expr::Attribute { .. } => expr_attribute(scope, exp)?,
-        fe::Expr::Ternary { .. } => unimplemented!(),
+        fe::Expr::Ternary { .. } => expr_ternary(scope, Rc::clone(&context), exp)?,
         fe::Expr::BoolOperation { .. } => unimplemented!(),
         fe::Expr::BinOperation { .. } => expr_bin_operation(scope, Rc::clone(&context), exp)?,
         fe::Expr::UnaryOperation { .. } => unimplemented!(),
@@ -320,6 +320,34 @@ fn expr_comp_operation(
         });
     }
 
+    unreachable!()
+}
+
+fn expr_ternary(
+    scope: Shared<BlockScope>,
+    context: Shared<Context>,
+    exp: &Spanned<fe::Expr>,
+) -> Result<ExpressionAttributes, SemanticError> {
+    if let fe::Expr::Ternary {
+        if_expr,
+        test,
+        else_expr,
+    } = &exp.node
+    {
+        let test_attributes = expr(Rc::clone(&scope), Rc::clone(&context), test)?;
+        let if_expr_attributes = expr(Rc::clone(&scope), Rc::clone(&context), if_expr)?;
+        let else_expr_attributes = expr(Rc::clone(&scope), Rc::clone(&context), else_expr)?;
+
+        // Make sure the `test_attributes` is a boolean type.
+        if let Type::Base(Base::Bool) = test_attributes.typ {
+            // Should have the same return Type
+            if if_expr_attributes == else_expr_attributes {
+                // can return else_expr_attributes as well.
+                return Ok(if_expr_attributes);
+            }
+        }
+        return Err(SemanticError::TypeError);
+    }
     unreachable!()
 }
 
