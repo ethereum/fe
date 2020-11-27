@@ -49,6 +49,12 @@ pub fn contract_def(
             };
         }
 
+        for stmt in body.iter() {
+            if let fe::ContractStmt::FuncDef { .. } = &stmt.node {
+                functions::func_body(Rc::clone(&contract_scope), Rc::clone(&context), stmt)?;
+            };
+        }
+
         let mut runtime_operations = vec![];
         let mut public_functions = vec![];
 
@@ -63,6 +69,7 @@ pub fn contract_def(
                     is_public: true,
                     param_types,
                     return_type,
+                    scope: _,
                 } => {
                     if name != "__init__" {
                         public_functions.push(FunctionAttributes {

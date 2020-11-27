@@ -315,6 +315,7 @@ fn expr_call(
                     is_public: _,
                     param_types,
                     return_type,
+                    scope: _,
                 }) => {
                     if fixed_sizes_to_types(param_types)
                         != expression_attributes_to_types(argument_attributes)

@@ -29,7 +29,7 @@ use fe_parser::span::Spanned;
 use std::rc::Rc;
 
 /// Gather context information for a function definition and check for type
-/// errors.
+/// errors. Does not inspect the function body.
 pub fn func_def(
     contract_scope: Shared<ContractScope>,
     context: Shared<Context>,
@@ -40,7 +40,7 @@ pub fn func_def(
         name,
         args,
         return_type,
-        body,
+        body: _,
     } = &def.node
     {
         let function_scope = BlockScope::from_contract_scope(Rc::clone(&contract_scope));
@@ -59,21 +59,13 @@ pub fn func_def(
 
         function_scope.borrow_mut().return_type = return_type.clone();
 
-        // If the return type is an empty tuple we do not have to validate any further
-        // at this point because both returning (explicit) or not returning (implicit
-        // return) are valid syntax.
-        // If the return type is anything else, we do need to ensure that all code paths
-        // return or revert.
-        if !return_type.is_empty_tuple() {
-            validate_all_paths_return_or_revert(&body)?
-        }
-
         let is_public = qual.is_some();
         contract_scope.borrow_mut().add_function(
             name.clone(),
             is_public,
             param_types.clone(),
             return_type.clone(),
+            Rc::clone(&function_scope),
         );
 
         let attributes = FunctionAttributes {
@@ -84,7 +76,45 @@ pub fn func_def(
 
         context.borrow_mut().add_function(def, attributes);
 
-        traverse_statements(function_scope, context, body)?;
+        return Ok(());
+    }
+
+    unreachable!();
+}
+
+/// Gather context information for a function body and check for type errors.
+pub fn func_body(
+    contract_scope: Shared<ContractScope>,
+    context: Shared<Context>,
+    def: &Spanned<fe::ContractStmt>,
+) -> Result<(), SemanticError> {
+    if let fe::ContractStmt::FuncDef {
+        qual: _,
+        name,
+        args: _,
+        return_type: _,
+        body,
+    } = &def.node
+    {
+        let name = name.node.to_string();
+        if let Some(ContractDef::Function {
+            is_public: _,
+            param_types: _,
+            return_type,
+            scope,
+        }) = contract_scope.borrow().def(name)
+        {
+            // If the return type is an empty tuple we do not have to validate any further
+            // at this point because both returning (explicit) or not returning (implicit
+            // return) are valid syntax.
+            // If the return type is anything else, we do need to ensure that all code paths
+            // return or revert.
+            if !return_type.is_empty_tuple() {
+                validate_all_paths_return_or_revert(&body)?
+            }
+
+            traverse_statements(Rc::clone(&scope), Rc::clone(&context), body)?;
+        }
 
         return Ok(());
     }
@@ -362,6 +392,9 @@ fn func_return(
 #[cfg(test)]
 mod tests {
     use crate::namespace::scopes::{
+        BlockScope,
+        BlockScopeParent,
+        BlockScopeType,
         ContractDef,
         ContractScope,
         ModuleScope,
@@ -371,7 +404,10 @@ mod tests {
         FixedSize,
         U256,
     };
-    use crate::traversal::functions::func_def;
+    use crate::traversal::functions::{
+        func_body,
+        func_def,
+    };
     use crate::Context;
     use fe_parser as parser;
     use std::rc::Rc;
@@ -388,7 +424,8 @@ mod tests {
             .expect("Couldn't build func def AST")
             .1;
 
-        func_def(scope, Rc::clone(&context), def).expect("Couldn't map func def AST");
+        func_def(Rc::clone(&scope), Rc::clone(&context), def).expect("Couldn't map func def AST");
+        func_body(scope, Rc::clone(&context), def).expect("Couldn't map func body AST");
         Rc::try_unwrap(context)
             .map_err(|_| "")
             .unwrap()
@@ -404,13 +441,24 @@ mod tests {
         ";
         let context = analyze(Rc::clone(&scope), func_def);
         assert_eq!(context.expressions.len(), 3);
-        assert_eq!(
-            scope.borrow().def("foo".to_string()),
-            Some(ContractDef::Function {
-                is_public: false,
-                param_types: vec![FixedSize::Base(U256)],
-                return_type: FixedSize::Base(U256)
-            })
-        );
+
+        if let Some(ContractDef::Function {
+            is_public,
+            param_types,
+            return_type,
+            scope,
+        }) = scope.borrow().def("foo".to_string())
+        {
+            assert_eq!(is_public, false);
+            assert_eq!(param_types, vec![FixedSize::Base(U256)]);
+            assert_eq!(return_type, FixedSize::Base(U256));
+            assert!(matches!(*scope.borrow(), BlockScope {
+                typ: BlockScopeType::Function,
+                parent: BlockScopeParent::Contract(_),
+                ..
+            }))
+        } else {
+            assert!(false, "Did not return expected definition")
+        };
     }
 }
