@@ -20,6 +20,7 @@ pub enum ContractDef {
         is_public: bool,
         param_types: Vec<FixedSize>,
         return_type: FixedSize,
+        scope: Shared<BlockScope>,
     },
     Field {
         nonce: usize,
@@ -131,6 +132,7 @@ impl ContractScope {
         is_public: bool,
         param_types: Vec<FixedSize>,
         return_type: FixedSize,
+        scope: Shared<BlockScope>,
     ) {
         self.interface.push(name.clone());
         self.defs.insert(
@@ -139,6 +141,7 @@ impl ContractScope {
                 is_public,
                 param_types,
                 return_type,
+                scope,
             },
         );
     }

@@ -1,7 +1,8 @@
 contract Foo:
 
-    pub def foo() -> u256:
-        return 42
-
+    # We intentionally define `bar` before `foo` to test that order isn't important
     pub def bar() -> u256:
         return self.foo()
+
+    pub def foo() -> u256:
+        return 42
