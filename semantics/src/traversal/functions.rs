@@ -43,7 +43,7 @@ pub fn func_def(
         body,
     } = &def.node
     {
-        let function_scope = BlockScope::from_contract_scope(def.span, Rc::clone(&contract_scope));
+        let function_scope = BlockScope::from_contract_scope(Rc::clone(&contract_scope));
 
         let name = name.node.to_string();
         let param_types = args
@@ -56,6 +56,8 @@ pub fn func_def(
             .map(|typ| types::type_desc_fixed_size(Scope::Block(Rc::clone(&function_scope)), &typ))
             .transpose()?
             .unwrap_or_else(|| Tuple::empty().to_fixed_size());
+
+        function_scope.borrow_mut().return_type = return_type.clone();
 
         // If the return type is an empty tuple we do not have to validate any further
         // at this point because both returning (explicit) or not returning (implicit
@@ -138,7 +140,7 @@ fn func_def_arg(
     let name = arg.node.name.node.to_string();
     let typ = types::type_desc_fixed_size(Scope::Block(Rc::clone(&scope)), &arg.node.typ)?;
 
-    scope.borrow_mut().add_var(name, typ.clone().into_type());
+    scope.borrow_mut().add_var(name, typ.clone());
 
     Ok(typ)
 }
@@ -224,10 +226,10 @@ fn if_statement(
             or_else,
         } => {
             let body_scope =
-                BlockScope::from_block_scope(stmt.span, BlockScopeType::IfElse, Rc::clone(&scope));
+                BlockScope::from_block_scope(BlockScopeType::IfElse, Rc::clone(&scope));
             traverse_statements(body_scope, Rc::clone(&context), body)?;
             let or_else_scope =
-                BlockScope::from_block_scope(stmt.span, BlockScopeType::IfElse, Rc::clone(&scope));
+                BlockScope::from_block_scope(BlockScopeType::IfElse, Rc::clone(&scope));
             traverse_statements(or_else_scope, Rc::clone(&context), or_else)?;
             verify_is_boolean(scope, context, test)
         }
@@ -249,8 +251,7 @@ fn while_loop(
             if !or_else.is_empty() {
                 unimplemented!();
             }
-            let body_scope =
-                BlockScope::from_block_scope(stmt.span, BlockScopeType::Loop, Rc::clone(&scope));
+            let body_scope = BlockScope::from_block_scope(BlockScopeType::Loop, Rc::clone(&scope));
             traverse_statements(body_scope, Rc::clone(&context), body)?;
             verify_is_boolean(scope, context, test)
         }
@@ -325,7 +326,9 @@ fn call_arg(
     match &arg.node {
         fe::CallArg::Arg(value) => {
             let spanned = spanned_expression(&arg.span, value);
-            let _attributes = expressions::expr(scope, context, &spanned)?;
+            let _attributes =
+                expressions::expr_with_default_move(scope, Rc::clone(&context), &spanned)?;
+
             // TODO: Perform type checking
         }
         fe::CallArg::Kwarg(fe::Kwarg { name: _, value }) => {
@@ -343,18 +346,11 @@ fn func_return(
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::Return { value: Some(value) } = &stmt.node {
-        let attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), value)?;
+        let attributes =
+            expressions::expr_with_default_move(Rc::clone(&scope), Rc::clone(&context), value)?;
 
-        match context
-            .borrow()
-            .get_function(scope.borrow().function_scope().borrow().span)
-        {
-            Some(fn_attr) => {
-                if fn_attr.return_type.clone().into_type() != attributes.typ {
-                    return Err(SemanticError::TypeError);
-                }
-            }
-            None => unreachable!(),
+        if attributes.typ != scope.borrow().func_return_type().into() {
+            return Err(SemanticError::TypeError);
         }
 
         return Ok(());
@@ -412,8 +408,8 @@ mod tests {
             scope.borrow().def("foo".to_string()),
             Some(ContractDef::Function {
                 is_public: false,
-                params: vec![FixedSize::Base(U256)],
-                returns: FixedSize::Base(U256)
+                param_types: vec![FixedSize::Base(U256)],
+                return_type: FixedSize::Base(U256)
             })
         );
     }

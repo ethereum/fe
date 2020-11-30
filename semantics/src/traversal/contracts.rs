@@ -10,7 +10,6 @@ use crate::namespace::scopes::{
 use crate::namespace::types::{
     AbiDecodeLocation,
     FixedSize,
-    Type,
 };
 use crate::traversal::{
     functions,
@@ -62,28 +61,28 @@ pub fn contract_def(
                 }
                 ContractDef::Function {
                     is_public: true,
-                    params,
-                    returns,
+                    param_types,
+                    return_type,
                 } => {
                     if name != "__init__" {
                         public_functions.push(FunctionAttributes {
                             name: name.clone(),
-                            param_types: params.clone(),
-                            return_type: returns.clone(),
+                            param_types: param_types.clone(),
+                            return_type: return_type.clone(),
                         });
-                        for param in params {
+                        for param in param_types {
                             runtime_operations.push(RuntimeOperations::AbiDecode {
                                 param: param.clone(),
                                 location: AbiDecodeLocation::Calldata,
                             })
                         }
-                        if !returns.is_empty_tuple() {
+                        if !return_type.is_empty_tuple() {
                             runtime_operations.push(RuntimeOperations::AbiEncode {
-                                params: vec![returns.clone()],
+                                params: vec![return_type.clone()],
                             })
                         }
                     } else {
-                        for param in params {
+                        for param in param_types {
                             runtime_operations.push(RuntimeOperations::AbiDecode {
                                 param: param.clone(),
                                 location: AbiDecodeLocation::Memory,
@@ -116,13 +115,8 @@ fn contract_field(
     stmt: &Spanned<fe::ContractStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::ContractStmt::ContractField { qual: _, name, typ } = &stmt.node {
-        match types::type_desc(Scope::Contract(Rc::clone(&scope)), typ)? {
-            Type::Map(map) => scope.borrow_mut().add_map(name.node.to_string(), map),
-            Type::Array { .. } => unimplemented!(),
-            Type::Base(_) => unimplemented!(),
-            Type::Tuple(_) => unimplemented!(),
-            Type::String(_) => unimplemented!(),
-        };
+        let typ = types::type_desc(Scope::Contract(Rc::clone(&scope)), typ)?;
+        scope.borrow_mut().add_field(name.node.to_string(), typ);
 
         return Ok(());
     }

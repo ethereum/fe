@@ -26,8 +26,5 @@ pub fn expression_attributes_to_types(attributes: Vec<ExpressionAttributes>) -> 
 }
 
 pub fn fixed_sizes_to_types(sizes: Vec<FixedSize>) -> Vec<Type> {
-    sizes
-        .iter()
-        .map(|param| param.clone().into_type())
-        .collect()
+    sizes.iter().map(|param| param.clone().into()).collect()
 }

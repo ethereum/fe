@@ -8,8 +8,8 @@ pub enum SemanticError {
     MissingReturn,
     NotAnExpression,
     NotSubscriptable,
-    UnassignableExpression,
     UndefinedValue { value: String },
     UnexpectedReturn,
     TypeError,
+    CannotMove,
 }

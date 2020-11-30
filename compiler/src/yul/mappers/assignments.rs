@@ -3,16 +3,12 @@ use crate::yul::mappers::expressions;
 use crate::yul::operations;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
-use fe_semantics::namespace::types::{
-    Array,
-    FeSized,
-    Map,
-    Type,
-};
+use fe_semantics::namespace::types::FixedSize;
 use fe_semantics::{
     Context,
     Location,
 };
+use std::convert::TryInto;
 use yultsur::*;
 
 /// Builds a Yul statement from a Fe assignment.
@@ -26,88 +22,67 @@ pub fn assign(
         }
 
         if let Some(first_target) = targets.first() {
-            return match &first_target.node {
-                fe::Expr::Name(_) => assign_name(context, first_target, value),
-                fe::Expr::Subscript { .. } => assign_subscript(context, first_target, value),
-                _ => unreachable!(),
-            };
+            if let (Some(target_attributes), Some(value_attributes)) = (
+                context.get_expression(first_target),
+                context.get_expression(value),
+            ) {
+                let target = expressions::expr(&context, first_target)?;
+                let value = expressions::expr(&context, value)?;
+
+                let typ: FixedSize = target_attributes.typ.to_owned().try_into()?;
+
+                return Ok(
+                    match (
+                        value_attributes.final_location(),
+                        target_attributes.final_location(),
+                    ) {
+                        (Location::Memory, Location::Storage { .. }) => {
+                            operations::mem_to_sto(typ, target, value)
+                        }
+                        (Location::Memory, Location::Value) => {
+                            let target = expr_as_ident(target)?;
+                            let value = operations::mem_to_val(typ, value);
+                            statement! { [target] := [value] }
+                        }
+                        (Location::Memory, Location::Memory) => unimplemented!("memory copying"),
+                        (Location::Storage { .. }, Location::Storage { .. }) => {
+                            unimplemented!("storage copying")
+                        }
+                        (Location::Storage { .. }, Location::Value) => {
+                            let target = expr_as_ident(target)?;
+                            let value = operations::sto_to_val(typ, value);
+                            statement! { [target] := [value] }
+                        }
+                        (Location::Storage { .. }, Location::Memory) => {
+                            let target = expr_as_ident(target)?;
+                            let mptr = operations::sto_to_mem(typ, value);
+                            statement! { [target] := [mptr] }
+                        }
+                        (Location::Value, Location::Memory) => {
+                            operations::val_to_mem(typ, target, value)
+                        }
+                        (Location::Value, Location::Storage { .. }) => {
+                            operations::val_to_sto(typ, target, value)
+                        }
+                        (Location::Value, Location::Value) => {
+                            let target = expr_as_ident(target)?;
+                            statement! { [target] := [value] }
+                        }
+                    },
+                );
+            }
         }
     }
 
     unreachable!()
 }
 
-fn assign_subscript(
-    context: &Context,
-    target: &Spanned<fe::Expr>,
-    value: &Spanned<fe::Expr>,
-) -> Result<yul::Statement, CompileError> {
-    if let fe::Expr::Subscript {
-        value: target,
-        slices,
-    } = &target.node
-    {
-        if let Some(target_attributes) = context.get_expression(target) {
-            let target = expressions::expr(context, target)?;
-            let index = expressions::slices_index(context, slices)?;
-            let value = expressions::expr(context, value)?;
-
-            return match target_attributes.to_tuple() {
-                (Type::Map(map), _) => assign_map(map, target, index, value),
-                (Type::Array(array), Location::Memory) => {
-                    Ok(assign_mem_array(array, target, index, value))
-                }
-                (Type::Array(_), Location::Storage { .. }) => unimplemented!(),
-                _ => unreachable!(),
-            };
-        }
+fn expr_as_ident(expr: yul::Expression) -> Result<yul::Identifier, CompileError> {
+    if let yul::Expression::Identifier(ident) = expr {
+        return Ok(ident);
     }
 
-    unreachable!()
-}
-
-fn assign_map(
-    map: Map,
-    target: yul::Expression,
-    index: yul::Expression,
-    value: yul::Expression,
-) -> Result<yul::Statement, CompileError> {
-    let sptr = expression! { dualkeccak256([target], [index]) };
-
-    match *map.value {
-        Type::Array(array) => Ok(operations::mem_to_sto(array, sptr, value)),
-        Type::Base(base) => Ok(operations::val_to_sto(base, sptr, value)),
-        Type::Map(_) => unreachable!(),
-        Type::Tuple(_) => unimplemented!(),
-        Type::String(_) => unimplemented!(),
-    }
-}
-
-fn assign_mem_array(
-    array: Array,
-    target: yul::Expression,
-    index: yul::Expression,
-    value: yul::Expression,
-) -> yul::Statement {
-    let inner_size = literal_expression! { (array.inner.size()) };
-    let mptr = expression! { add([target], (mul([index], [inner_size]))) };
-
-    operations::val_to_mem(array.inner, mptr, value)
-}
-
-fn assign_name(
-    context: &Context,
-    target: &Spanned<fe::Expr>,
-    value: &Spanned<fe::Expr>,
-) -> Result<yul::Statement, CompileError> {
-    if let fe::Expr::Name(name) = target.node {
-        let target = identifier! {(name)};
-        let value = expressions::expr(context, value)?;
-
-        return Ok(statement! { [target] := [value] });
-    }
-
-    unreachable!()
+    Err(CompileError::static_str("expression is not an identifier"))
 }
 
 #[cfg(test)]
@@ -140,12 +115,9 @@ mod tests {
     #[test]
     fn assign_u256() {
         let mut harness = ContextHarness::new("foo = bar");
-        harness.add_expression(
-            "foo",
-            ExpressionAttributes {
-                typ: Type::Base(U256),
-                location: Location::Value,
-            },
+        harness.add_expressions(
+            vec!["foo", "bar"],
+            ExpressionAttributes::new(Type::Base(U256), Location::Value),
         );
 
         assert_eq!(map(&harness.context, &harness.src), "foo := bar")
@@ -167,21 +139,38 @@ mod tests {
         case("foo = 1 >> 2", "foo := shr(2, 1)")
     )]
     fn assign_arithmetic_expression(assignment: &str, expected_yul: &str) {
-        assert_eq!(map(&Context::new(), assignment), expected_yul)
+        let mut harness = ContextHarness::new(assignment);
+        harness.add_expressions(
+            vec!["foo", "1", "2", &assignment[6..]],
+            ExpressionAttributes::new(Type::Base(U256), Location::Value),
+        );
+
+        assert_eq!(map(&harness.context, assignment), expected_yul)
     }
 
     #[test]
     fn assign_subscript_u256() {
         let mut harness = ContextHarness::new("foo[4] = 2");
+
+        harness.add_expressions(
+            vec!["2", "4"],
+            ExpressionAttributes::new(Type::Base(U256), Location::Value),
+        );
+
+        harness.add_expression(
+            "foo[4]",
+            ExpressionAttributes::new(Type::Base(U256), Location::Memory),
+        );
+
         harness.add_expression(
             "foo",
-            ExpressionAttributes {
-                typ: Type::Array(Array {
+            ExpressionAttributes::new(
+                Type::Array(Array {
                     dimension: 10,
                     inner: U256,
                 }),
-                location: Location::Memory,
-            },
+                Location::Memory,
+            ),
         );
 
         assert_eq!(

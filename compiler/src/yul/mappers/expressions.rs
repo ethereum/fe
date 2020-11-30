@@ -4,37 +4,73 @@ use crate::yul::operations;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use fe_semantics::namespace::types::{
-    Array,
-    FeSized,
-    Map,
+    FixedSize,
     Type,
 };
 use fe_semantics::{
     Context,
-    ExpressionAttributes,
     Location,
+};
+use std::convert::TryFrom;
+use tiny_keccak::{
+    Hasher,
+    Keccak,
 };
 use yultsur::*;
 
 /// Builds a Yul expression from a Fe expression.
 pub fn expr(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
-    match &exp.node {
-        fe::Expr::Name(_) => expr_name(context, exp),
-        fe::Expr::Num(_) => expr_num(exp),
-        fe::Expr::Bool(_) => expr_bool(exp),
-        fe::Expr::Subscript { .. } => expr_subscript(context, exp),
-        fe::Expr::Attribute { .. } => expr_attribute(context, exp),
-        fe::Expr::Ternary { .. } => expr_ternary(context, exp),
-        fe::Expr::BoolOperation { .. } => unimplemented!(),
-        fe::Expr::BinOperation { .. } => expr_bin_operation(context, exp),
-        fe::Expr::UnaryOperation { .. } => unimplemented!(),
-        fe::Expr::CompOperation { .. } => expr_comp_operation(context, exp),
-        fe::Expr::Call { .. } => expr_call(context, exp),
-        fe::Expr::List { .. } => unimplemented!(),
-        fe::Expr::ListComp { .. } => unimplemented!(),
-        fe::Expr::Tuple { .. } => unimplemented!(),
-        fe::Expr::Str(_) => unimplemented!(),
-        fe::Expr::Ellipsis => unimplemented!(),
+    if let Some(attributes) = context.get_expression(exp) {
+        let expression = match &exp.node {
+            fe::Expr::Name(_) => expr_name(context, exp),
+            fe::Expr::Num(_) => expr_num(exp),
+            fe::Expr::Bool(_) => expr_bool(exp),
+            fe::Expr::Subscript { .. } => expr_subscript(context, exp),
+            fe::Expr::Attribute { .. } => expr_attribute(context, exp),
+            fe::Expr::Ternary { .. } => expr_ternary(context, exp),
+            fe::Expr::BoolOperation { .. } => unimplemented!(),
+            fe::Expr::BinOperation { .. } => expr_bin_operation(context, exp),
+            fe::Expr::UnaryOperation { .. } => unimplemented!(),
+            fe::Expr::CompOperation { .. } => expr_comp_operation(context, exp),
+            fe::Expr::Call { .. } => expr_call(context, exp),
+            fe::Expr::List { .. } => unimplemented!(),
+            fe::Expr::ListComp { .. } => unimplemented!(),
+            fe::Expr::Tuple { .. } => unimplemented!(),
+            fe::Expr::Str(_) => unimplemented!(),
+            fe::Expr::Ellipsis => unimplemented!(),
+        }?;
+
+        match (
+            attributes.location.to_owned(),
+            attributes.move_location.to_owned(),
+        ) {
+            (from, Some(to)) => move_expression(
+                expression,
+                FixedSize::try_from(attributes.typ.to_owned())?,
+                from,
+                to,
+            ),
+            (_, None) => Ok(expression),
+        }
+    } else {
+        Err(CompileError::static_str("missing expression attributes"))
+    }
+}
+
+fn move_expression(
+    val: yul::Expression,
+    typ: FixedSize,
+    from: Location,
+    to: Location,
+) -> Result<yul::Expression, CompileError> {
+    match (from.clone(), to.clone()) {
+        (Location::Storage { .. }, Location::Value) => Ok(operations::sto_to_val(typ, val)),
+        (Location::Memory { .. }, Location::Value) => Ok(operations::mem_to_val(typ, val)),
+        (Location::Storage { .. }, Location::Memory) => Ok(operations::sto_to_mem(typ, val)),
+        _ => Err(CompileError::str(format!(
+            "invalid expression move: {:?} {:?}",
+            from, to
+        ))),
     }
 }
 
@@ -82,17 +118,11 @@ pub fn expr_comp_operation(
 
         return match op.node {
             fe::CompOperator::Eq => Ok(expression! { eq([yul_left], [yul_right]) }),
-            fe::CompOperator::NotEq => {
-                Ok(expression! { iszero([expression! { eq([yul_left], [yul_right]) }]) })
-            }
+            fe::CompOperator::NotEq => Ok(expression! { iszero((eq([yul_left], [yul_right]))) }),
             fe::CompOperator::Lt => Ok(expression! { lt([yul_left], [yul_right]) }),
-            fe::CompOperator::LtE => {
-                Ok(expression! { iszero([expression! {gt([yul_left], [yul_right])}]) })
-            }
+            fe::CompOperator::LtE => Ok(expression! { iszero((gt([yul_left], [yul_right]))) }),
             fe::CompOperator::Gt => Ok(expression! { gt([yul_left], [yul_right]) }),
-            fe::CompOperator::GtE => {
-                Ok(expression! { iszero([expression! {lt([yul_left], [yul_right])}]) })
-            }
+            fe::CompOperator::GtE => Ok(expression! { iszero((lt([yul_left], [yul_right]))) }),
             _ => unimplemented!(),
         };
     }
@@ -198,43 +228,17 @@ fn expr_subscript(
             let value = expr(context, value)?;
             let index = slices_index(context, slices)?;
 
-            return match value_attributes.to_tuple() {
-                (Type::Map(map), Location::Storage { .. }) => {
-                    Ok(keyed_storage_map(map, value, index))
-                }
-                (Type::Array(_), Location::Storage { .. }) => unimplemented!(),
-                (Type::Array(array), Location::Memory) => {
-                    Ok(indexed_memory_array(array, value, index))
-                }
-                (_, _) => unreachable!(),
+            return match value_attributes.typ.to_owned() {
+                Type::Map(_) => Ok(operations::keyed_map(value, index)),
+                Type::Array(array) => Ok(operations::indexed_array(array, value, index)),
+                _ => Err(CompileError::static_str("invalid attributes")),
             };
         }
+
+        return Err(CompileError::static_str("missing attributes"));
     }
 
     unreachable!()
-}
-
-fn keyed_storage_map(typ: Map, map: yul::Expression, key: yul::Expression) -> yul::Expression {
-    let sptr = expression! { dualkeccak256([map], [key]) };
-
-    match *typ.value {
-        Type::Array(array) => operations::sto_to_mem(array, sptr),
-        Type::Base(base) => operations::sto_to_val(base, sptr),
-        Type::Map(_) => sptr,
-        Type::Tuple(_) => unimplemented!(),
-        Type::String(_) => unimplemented!(),
-    }
-}
-
-fn indexed_memory_array(
-    typ: Array,
-    array: yul::Expression,
-    index: yul::Expression,
-) -> yul::Expression {
-    let inner_size = literal_expression! { (typ.inner.size()) };
-    let mptr = expression! { add([array], (mul([index], [inner_size]))) };
-
-    operations::mem_to_val(typ.inner, mptr)
 }
 
 fn expr_attribute(
@@ -245,7 +249,7 @@ fn expr_attribute(
         return match expr_name_str(value)? {
             "msg" => expr_attribute_msg(attr),
             "self" => expr_attribute_self(context, exp),
-            _ => Err(CompileError::static_str("invalid attribute value")),
+            _ => Err(CompileError::static_str("invalid attributes")),
         };
     }
 
@@ -263,13 +267,32 @@ fn expr_attribute_self(
     context: &Context,
     exp: &Spanned<fe::Expr>,
 ) -> Result<yul::Expression, CompileError> {
-    match context.get_expression(exp) {
-        Some(ExpressionAttributes {
-            typ: Type::Map(_),
-            location: Location::Storage { index },
-        }) => Ok(literal_expression! { (index) }),
-        _ => unimplemented!(),
+    if let Some(attributes) = context.get_expression(exp) {
+        let nonce = if let Location::Storage { nonce: Some(nonce) } = attributes.location {
+            nonce
+        } else {
+            return Err(CompileError::static_str("invalid attributes"));
+        };
+
+        return match attributes.typ {
+            Type::Map(_) => Ok(literal_expression! { (nonce) }),
+            _ => Ok(nonce_to_ptr(nonce)),
+        };
     }
+
+    Err(CompileError::static_str("missing attributes"))
+}
+
+/// Converts a storage nonce into a pointer based on the keccak256 hash
+pub fn nonce_to_ptr(nonce: usize) -> yul::Expression {
+    let mut keccak = Keccak::v256();
+    let mut ptr = [0u8; 32];
+
+    keccak.update(nonce.to_string().as_bytes());
+    keccak.finalize(&mut ptr);
+
+    let ptr = format!("0x{}", hex::encode(&ptr[0..32]));
+    literal_expression! { (ptr) }
 }
 
 fn expr_ternary(
@@ -326,16 +349,27 @@ mod tests {
     #[test]
     fn map_sload_u256() {
         let mut harness = ContextHarness::new("self.foo[3]");
+
+        harness.add_expression(
+            "3",
+            ExpressionAttributes::new(Type::Base(U256), Location::Value),
+        );
+
         harness.add_expression(
             "self.foo",
-            ExpressionAttributes {
-                typ: Type::Map(Map {
+            ExpressionAttributes::new(
+                Type::Map(Map {
                     key: Base::Address,
                     value: Box::new(Type::Base(U256)),
                 }),
-                location: Location::Storage { index: 0 },
-            },
+                Location::Storage { nonce: Some(0) },
+            ),
         );
+
+        let mut attributes =
+            ExpressionAttributes::new(Type::Base(U256), Location::Storage { nonce: None });
+        attributes.move_location = Some(Location::Value);
+        harness.add_expression("self.foo[3]", attributes);
 
         let result = map(&harness.context, &harness.src);
 
@@ -345,42 +379,67 @@ mod tests {
     #[test]
     fn map_sload_w_array_elem() {
         let mut harness = ContextHarness::new("self.foo_map[bar_array[index]]");
+
+        let foo_key = Base::Address;
+        let foo_value = Type::Array(Array {
+            dimension: 8,
+            inner: Base::Address,
+        });
+        let bar_value = Type::Base(Base::Address);
+
         harness.add_expression(
             "self.foo_map",
-            ExpressionAttributes {
-                typ: Type::Map(Map {
-                    key: Base::Byte,
-                    value: Box::new(Type::Array(Array {
-                        dimension: 8,
-                        inner: Base::Address,
-                    })),
+            ExpressionAttributes::new(
+                Type::Map(Map {
+                    key: foo_key,
+                    value: Box::new(foo_value.clone()),
                 }),
-                location: Location::Storage { index: 0 },
-            },
+                Location::Storage { nonce: Some(0) },
+            ),
         );
 
         harness.add_expression(
             "bar_array",
-            ExpressionAttributes {
-                typ: Type::Array(Array {
+            ExpressionAttributes::new(
+                Type::Array(Array {
                     dimension: 100,
-                    inner: Base::Byte,
+                    inner: Base::Address,
                 }),
-                location: Location::Memory,
-            },
+                Location::Memory,
+            ),
         );
+
+        harness.add_expression(
+            "index",
+            ExpressionAttributes::new(Type::Base(U256), Location::Value),
+        );
+
+        let mut attributes = ExpressionAttributes::new(bar_value, Location::Memory);
+        attributes.move_location = Some(Location::Value);
+        harness.add_expression("bar_array[index]", attributes);
+
+        let mut attributes =
+            ExpressionAttributes::new(foo_value, Location::Storage { nonce: None });
+        attributes.move_location = Some(Location::Memory);
+        harness.add_expression("self.foo_map[bar_array[index]]", attributes);
 
         let result = map(&harness.context, &harness.src);
 
         assert_eq!(
             result,
-            "scopy(dualkeccak256(0, mloadn(add(bar_array, mul(index, 1)), 1)), 160)"
+            "scopy(dualkeccak256(0, mloadn(add(bar_array, mul(index, 20)), 20)), 160)"
         );
     }
 
     #[test]
     fn msg_sender() {
-        let result = map(&Context::new(), "msg.sender");
+        let mut harness = ContextHarness::new("msg.sender");
+        harness.add_expression(
+            "msg.sender",
+            ExpressionAttributes::new(Type::Base(Base::Address), Location::Value),
+        );
+
+        let result = map(&harness.context, "msg.sender");
 
         assert_eq!(result, "caller()");
     }
@@ -388,12 +447,12 @@ mod tests {
     #[rstest(
         expression,
         expected_yul,
-        case("1 + 2 ", "add(1, 2)"),
+        case("1 + 2", "add(1, 2)"),
         case("1 - 2", "sub(1, 2)"),
         case("1 * 2", "mul(1, 2)"),
         case("1 / 2", "div(1, 2)"),
         case("1 ** 2", "exp(1, 2)"),
-        case("5 % 2", "mod(5, 2)"),
+        case("1 % 2", "mod(1, 2)"),
         case("1 & 2", "and(1, 2)"),
         case("1 | 2", "or(1, 2)"),
         case("1 ^ 2", "xor(1, 2)"),
@@ -401,7 +460,13 @@ mod tests {
         case("1 >> 2", "shr(2, 1)")
     )]
     fn arithmetic_expression(expression: &str, expected_yul: &str) {
-        let result = map(&Context::new(), expression);
+        let mut harness = ContextHarness::new(expression);
+        harness.add_expressions(
+            vec!["1", "2", expression],
+            ExpressionAttributes::new(Type::Base(U256), Location::Value),
+        );
+
+        let result = map(&harness.context, expression);
 
         assert_eq!(result, expected_yul);
     }
@@ -409,15 +474,25 @@ mod tests {
     #[rstest(
         expression,
         expected_yul,
-        case("1 == 2 ", "eq(1, 2)"),
-        case("1 != 2 ", "iszero(eq(1, 2))"),
-        case("1 < 2 ", "lt(1, 2)"),
-        case("1 <= 2 ", "iszero(gt(1, 2))"),
-        case("1 > 2 ", "gt(1, 2)"),
-        case("1 >= 2 ", "iszero(lt(1, 2))")
+        case("1 == 2", "eq(1, 2)"),
+        case("1 != 2", "iszero(eq(1, 2))"),
+        case("1 < 2", "lt(1, 2)"),
+        case("1 <= 2", "iszero(gt(1, 2))"),
+        case("1 > 2", "gt(1, 2)"),
+        case("1 >= 2", "iszero(lt(1, 2))")
     )]
-    fn comparision_expression(expression: &str, expected_yul: &str) {
-        let result = map(&Context::new(), expression);
+    fn comparison_expression(expression: &str, expected_yul: &str) {
+        let mut harness = ContextHarness::new(expression);
+        harness.add_expressions(
+            vec!["1", "2"],
+            ExpressionAttributes::new(Type::Base(U256), Location::Value),
+        );
+        harness.add_expression(
+            expression,
+            ExpressionAttributes::new(Type::Base(Base::Bool), Location::Value),
+        );
+
+        let result = map(&harness.context, expression);
 
         assert_eq!(result, expected_yul);
     }
