@@ -8,6 +8,7 @@ use fe_semantics::namespace::types::{
     Type,
 };
 use fe_semantics::{
+    CallType,
     Context,
     Location,
 };
@@ -91,18 +92,29 @@ pub fn expr_call(
     context: &Context,
     exp: &Spanned<fe::Expr>,
 ) -> Result<yul::Expression, CompileError> {
-    if let fe::Expr::Call { args, func } = &exp.node {
-        if let fe::Expr::Attribute { value: _, attr } = &func.node {
-            let arguments = &args.node;
-            let yul_args: Vec<yul::Expression> = arguments
-                .iter()
-                .map(|val| call_arg(context, val))
-                .collect::<Result<_, _>>()?;
+    if let (Some(call_type), fe::Expr::Call { args, .. }) = (context.get_call(exp), &exp.node) {
+        let yul_args: Vec<yul::Expression> = args
+            .node
+            .iter()
+            .map(|val| call_arg(context, val))
+            .collect::<Result<_, _>>()?;
 
-            let func_name = identifier! { (attr.node) };
+        return match call_type {
+            CallType::SelfFunction { name } => {
+                let func_name = identifier! { (name) };
 
-            return Ok(expression! { [func_name]([yul_args...]) });
-        }
+                Ok(expression! { [func_name]([yul_args...]) })
+            }
+            CallType::TypeConstructor => {
+                if let Some(first_arg) = yul_args.first() {
+                    Ok(first_arg.to_owned())
+                } else {
+                    Err(CompileError::static_str(
+                        "type constructor expected a single parameter",
+                    ))
+                }
+            }
+        };
     }
 
     unreachable!()

@@ -273,6 +273,7 @@ fn test_assert() {
     case("return_identity_u32.fe", vec![42], Some(uint_token(42))),
     case("return_identity_u16.fe", vec![42], Some(uint_token(42))),
     case("return_identity_u8.fe", vec![42], Some(uint_token(42))),
+    case("return_u128_cast.fe", vec![], Some(uint_token(42))),
     // binary operators
     case("return_addition_u256.fe", vec![42, 42], Some(uint_token(84))),
     case("return_addition_u128.fe", vec![42, 42], Some(uint_token(84))),

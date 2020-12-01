@@ -121,6 +121,13 @@ impl ExpressionAttributes {
     }
 }
 
+/// The type of a function call.
+#[derive(Clone, Debug, PartialEq)]
+pub enum CallType {
+    TypeConstructor,
+    SelfFunction { name: String },
+}
+
 /// Contains contextual information relating to a function definition AST node.
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionAttributes {
@@ -138,6 +145,7 @@ pub struct Context {
     functions: HashMap<Span, FunctionAttributes>,
     declarations: HashMap<Span, FixedSize>,
     contracts: HashMap<Span, ContractAttributes>,
+    calls: HashMap<Span, CallType>,
 }
 
 impl Context {
@@ -152,6 +160,7 @@ impl Context {
             functions: HashMap::new(),
             declarations: HashMap::new(),
             contracts: HashMap::new(),
+            calls: HashMap::new(),
         }
     }
 
@@ -215,6 +224,16 @@ impl Context {
     /// Get information that has been attributed to a contract definition node.
     pub fn get_contract<T: Into<Span>>(&self, span: T) -> Option<&ContractAttributes> {
         self.contracts.get(&span.into())
+    }
+
+    /// Attribute contextual information to a call expression node.
+    pub fn add_call(&mut self, spanned: &Spanned<fe::Expr>, call_type: CallType) {
+        self.calls.insert(spanned.span, call_type);
+    }
+
+    /// Get information that has been attributed to a call expression node.
+    pub fn get_call<T: Into<Span>>(&self, span: T) -> Option<&CallType> {
+        self.calls.get(&span.into())
     }
 }
 
