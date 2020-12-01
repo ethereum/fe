@@ -43,9 +43,10 @@ pub fn func_def(
         body: _,
     } = &def.node
     {
-        let function_scope = BlockScope::from_contract_scope(Rc::clone(&contract_scope));
-
         let name = name.node.to_string();
+        let function_scope =
+            BlockScope::from_contract_scope(name.clone(), Rc::clone(&contract_scope));
+
         let param_types = args
             .iter()
             .map(|arg| func_def_arg(Rc::clone(&function_scope), arg))
@@ -56,8 +57,6 @@ pub fn func_def(
             .map(|typ| types::type_desc_fixed_size(Scope::Block(Rc::clone(&function_scope)), &typ))
             .transpose()?
             .unwrap_or_else(|| Tuple::empty().to_fixed_size());
-
-        function_scope.borrow_mut().return_type = return_type.clone();
 
         let is_public = qual.is_some();
         contract_scope.borrow_mut().add_function(

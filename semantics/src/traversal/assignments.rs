@@ -75,7 +75,7 @@ mod tests {
                 value: Box::new(Type::Base(U256)),
             }),
         );
-        let function_scope = BlockScope::from_contract_scope(contract_scope);
+        let function_scope = BlockScope::from_contract_scope("".to_string(), contract_scope);
         function_scope
             .borrow_mut()
             .add_var("foo".to_string(), FixedSize::Base(U256));
