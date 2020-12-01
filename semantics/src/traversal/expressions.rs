@@ -10,6 +10,7 @@ use crate::namespace::operations;
 use crate::namespace::types::{
     Base,
     FixedSize,
+    Integer,
     Type,
     U256,
 };
@@ -19,6 +20,7 @@ use crate::traversal::_utils::{
     spanned_expression,
 };
 use crate::{
+    CallType,
     Context,
     ExpressionAttributes,
     Location,
@@ -26,6 +28,8 @@ use crate::{
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use std::rc::Rc;
+
+const SELF: &str = "self";
 
 /// Gather context information for expressions and check for type errors.
 pub fn expr(
@@ -307,33 +311,94 @@ fn expr_call(
             .map(|argument| call_arg(Rc::clone(&scope), Rc::clone(&context), argument))
             .collect::<Result<_, _>>()?;
 
-        if let fe::Expr::Attribute { value: _, attr } = &func.node {
-            let contract_scope = &scope.borrow().contract_scope();
-            let called_func = contract_scope.borrow().def(attr.node.to_string());
-            match called_func {
-                Some(ContractDef::Function {
-                    is_public: _,
-                    param_types,
-                    return_type,
-                    scope: _,
-                }) => {
-                    if fixed_sizes_to_types(param_types)
-                        != expression_attributes_to_types(argument_attributes)
-                    {
-                        return Err(SemanticError::TypeError);
-                    }
+        return match &func.node {
+            fe::Expr::Attribute { value, attr } => {
+                let value = expr_name_string(value)?;
 
-                    return Ok(ExpressionAttributes::new(
-                        return_type.into(),
-                        Location::Value,
-                    ));
+                if value == SELF {
+                    context.borrow_mut().add_call(
+                        exp,
+                        CallType::SelfFunction {
+                            name: attr.node.to_string(),
+                        },
+                    );
+                    expr_call_self(scope, context, attr, argument_attributes)
+                } else {
+                    Err(SemanticError::UndefinedValue { value })
                 }
-                _ => unreachable!(),
-            };
-        }
+            }
+            fe::Expr::Name(name) => {
+                if argument_attributes.len() != 1 {
+                    return Err(SemanticError::TypeError);
+                }
+
+                context
+                    .borrow_mut()
+                    .add_call(exp, CallType::TypeConstructor);
+                expr_type_constructor(scope, context, *name)
+            }
+            _ => Err(SemanticError::NotCallable),
+        };
     }
 
     unreachable!()
+}
+
+fn expr_call_self(
+    scope: Shared<BlockScope>,
+    _context: Shared<Context>,
+    func_name: &Spanned<&str>,
+    argument_attributes: Vec<ExpressionAttributes>,
+) -> Result<ExpressionAttributes, SemanticError> {
+    let contract_scope = &scope.borrow().contract_scope();
+    let called_func = contract_scope.borrow().def(func_name.node.to_string());
+
+    match called_func {
+        Some(ContractDef::Function {
+            is_public: _,
+            param_types,
+            return_type,
+            scope: _,
+        }) => {
+            if fixed_sizes_to_types(param_types)
+                != expression_attributes_to_types(argument_attributes)
+            {
+                return Err(SemanticError::TypeError);
+            }
+
+            Ok(ExpressionAttributes::new(
+                return_type.into(),
+                Location::Value,
+            ))
+        }
+        Some(_) => Err(SemanticError::NotCallable),
+        None => Err(SemanticError::UndefinedValue {
+            value: func_name.node.to_string(),
+        }),
+    }
+}
+
+fn expr_type_constructor(
+    _scope: Shared<BlockScope>,
+    _context: Shared<Context>,
+    func_name: &str,
+) -> Result<ExpressionAttributes, SemanticError> {
+    let typ = match func_name {
+        "address" => Type::Base(Base::Address),
+        "u256" => Type::Base(Base::Numeric(Integer::U256)),
+        "u128" => Type::Base(Base::Numeric(Integer::U128)),
+        "u64" => Type::Base(Base::Numeric(Integer::U64)),
+        "u32" => Type::Base(Base::Numeric(Integer::U32)),
+        "u16" => Type::Base(Base::Numeric(Integer::U16)),
+        "u8" => Type::Base(Base::Numeric(Integer::U8)),
+        _ => {
+            return Err(SemanticError::UndefinedValue {
+                value: func_name.to_string(),
+            })
+        }
+    };
+
+    Ok(ExpressionAttributes::new(typ, Location::Value))
 }
 
 fn expr_comp_operation(
@@ -409,6 +474,7 @@ mod tests {
         Array,
         Base,
         FixedSize,
+        Integer,
         Map,
         Type,
         U256,
@@ -428,11 +494,19 @@ mod tests {
         ExpressionAttributes::new(Type::Base(U256), Location::Value)
     }
 
+    fn u128_val() -> ExpressionAttributes {
+        ExpressionAttributes::new(Type::Base(Base::Numeric(Integer::U128)), Location::Value)
+    }
+
     fn u256_sto_with_move() -> ExpressionAttributes {
         let mut attributes =
             ExpressionAttributes::new(Type::Base(U256), Location::Storage { nonce: None });
         attributes.move_location = Some(Location::Value);
         attributes
+    }
+
+    fn addr_val() -> ExpressionAttributes {
+        ExpressionAttributes::new(Type::Base(Base::Address), Location::Value)
     }
 
     fn addr_mem() -> ExpressionAttributes {
@@ -523,6 +597,20 @@ mod tests {
                 ("self.my_addr_u256_map[my_addr_array[42]] + 26", &u256_val())
             ]
         ),
+        case(
+            "address(0)",
+            &[
+                ("0", &u256_val()),
+                ("address(0)", &addr_val()),
+            ]
+        ),
+        case(
+            "u128(0)",
+            &[
+                ("0", &u256_val()),
+                ("u128(0)", &u128_val()),
+            ]
+        )
     )]
     fn exprs(expression: &str, expected_attributes: &[(&str, &ExpressionAttributes)]) {
         let scope = scope();

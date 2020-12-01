@@ -12,4 +12,5 @@ pub enum SemanticError {
     UnexpectedReturn,
     TypeError,
     CannotMove,
+    NotCallable,
 }
