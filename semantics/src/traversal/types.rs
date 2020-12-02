@@ -10,7 +10,7 @@ use fe_parser::span::Spanned;
 
 /// Maps a type description node to an enum type.
 pub fn type_desc(scope: Scope, typ: &Spanned<fe::TypeDesc>) -> Result<Type, SemanticError> {
-    types::type_desc(&scope.module_scope().borrow().defs, &typ.node)
+    types::type_desc(&scope.module_scope().borrow().type_defs, &typ.node)
 }
 
 /// Maps a type description node to a fixed size enum type.
@@ -18,5 +18,5 @@ pub fn type_desc_fixed_size(
     scope: Scope,
     typ: &Spanned<fe::TypeDesc>,
 ) -> Result<FixedSize, SemanticError> {
-    types::type_desc_fixed_size(&scope.module_scope().borrow().defs, &typ.node)
+    types::type_desc_fixed_size(&scope.module_scope().borrow().type_defs, &typ.node)
 }

@@ -10,11 +10,6 @@ use std::rc::Rc;
 pub type Shared<T> = Rc<RefCell<T>>;
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum ModuleDef {
-    Type(Type),
-}
-
-#[derive(Clone, Debug, PartialEq)]
 pub struct ContractFunctionDef {
     pub is_public: bool,
     pub param_types: Vec<FixedSize>,
@@ -35,7 +30,7 @@ pub enum BlockDef {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ModuleScope {
-    pub defs: HashMap<String, ModuleDef>,
+    pub type_defs: HashMap<String, Type>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -89,12 +84,12 @@ impl Scope {
 impl ModuleScope {
     pub fn new() -> Shared<Self> {
         Rc::new(RefCell::new(ModuleScope {
-            defs: HashMap::new(),
+            type_defs: HashMap::new(),
         }))
     }
 
     pub fn add_type_def(&mut self, name: String, typ: Type) {
-        self.defs.insert(name, ModuleDef::Type(typ));
+        self.type_defs.insert(name, typ);
     }
 }
 

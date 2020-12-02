@@ -1,5 +1,4 @@
 use crate::errors::SemanticError;
-use crate::namespace::scopes::*;
 use fe_parser::ast as fe;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -429,7 +428,7 @@ impl AbiEncoding for FeString {
 }
 
 pub fn type_desc_fixed_size(
-    defs: &HashMap<String, ModuleDef>,
+    defs: &HashMap<String, Type>,
     typ: &fe::TypeDesc,
 ) -> Result<FixedSize, SemanticError> {
     match type_desc(defs, typ)? {
@@ -442,7 +441,7 @@ pub fn type_desc_fixed_size(
 }
 
 pub fn type_desc_base(
-    defs: &HashMap<String, ModuleDef>,
+    defs: &HashMap<String, Type>,
     typ: &fe::TypeDesc,
 ) -> Result<Base, SemanticError> {
     match type_desc(defs, typ)? {
@@ -454,10 +453,7 @@ pub fn type_desc_base(
     }
 }
 
-pub fn type_desc(
-    defs: &HashMap<String, ModuleDef>,
-    typ: &fe::TypeDesc,
-) -> Result<Type, SemanticError> {
+pub fn type_desc(defs: &HashMap<String, Type>, typ: &fe::TypeDesc) -> Result<Type, SemanticError> {
     match typ {
         fe::TypeDesc::Base { base: "u256" } => Ok(Type::Base(U256)),
         fe::TypeDesc::Base { base: "u128" } => Ok(Type::Base(Base::Numeric(Integer::U128))),
@@ -475,7 +471,7 @@ pub fn type_desc(
             Ok(Type::String(FeString { max_size }))
         }
         fe::TypeDesc::Base { base } => {
-            if let Some(ModuleDef::Type(typ)) = defs.get(base.to_owned()) {
+            if let Some(typ) = defs.get(base.to_owned()) {
                 return Ok(typ.clone());
             }
 
