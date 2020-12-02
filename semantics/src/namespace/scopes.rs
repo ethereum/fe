@@ -24,11 +24,6 @@ pub struct ContractFieldDef {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum BlockDef {
-    Variable(FixedSize),
-}
-
-#[derive(Clone, Debug, PartialEq)]
 pub struct ModuleScope {
     pub type_defs: HashMap<String, Type>,
 }
@@ -47,7 +42,7 @@ pub struct ContractScope {
 pub struct BlockScope {
     pub name: String,
     pub parent: BlockScopeParent,
-    pub defs: HashMap<String, BlockDef>,
+    pub variable_defs: HashMap<String, FixedSize>,
     pub typ: BlockScopeType,
 }
 
@@ -88,6 +83,7 @@ impl ModuleScope {
         }))
     }
 
+    /// Add a type definiton to the scope
     pub fn add_type_def(&mut self, name: String, typ: Type) {
         self.type_defs.insert(name, typ);
     }
@@ -165,7 +161,7 @@ impl BlockScope {
         Rc::new(RefCell::new(BlockScope {
             name,
             parent,
-            defs: HashMap::new(),
+            variable_defs: HashMap::new(),
             typ,
         }))
     }
@@ -245,11 +241,11 @@ impl BlockScope {
     }
 
     /// Lookup a definition in current or inherited block scope
-    pub fn def(&self, name: String) -> Option<BlockDef> {
-        let block_def = self.defs.get(&name).map(|def| (*def).clone());
+    pub fn variable_def(&self, name: String) -> Option<FixedSize> {
+        let block_def = self.variable_defs.get(&name).map(|def| (*def).clone());
         if block_def.is_none() {
             if let BlockScopeParent::Block(scope) = &self.parent {
-                scope.borrow().def(name)
+                scope.borrow().variable_def(name)
             } else {
                 None
             }
@@ -260,7 +256,7 @@ impl BlockScope {
 
     /// Add a variable to the block scope.
     pub fn add_var(&mut self, name: String, typ: FixedSize) {
-        self.defs.insert(name, BlockDef::Variable(typ));
+        self.variable_defs.insert(name, typ);
     }
 
     /// Return true if the scope or any of its parents is of the given type
@@ -279,7 +275,6 @@ impl BlockScope {
 #[cfg(test)]
 mod tests {
     use crate::namespace::scopes::{
-        BlockDef,
         BlockScope,
         BlockScopeType,
         ContractScope,
@@ -323,8 +318,10 @@ mod tests {
             .borrow_mut()
             .add_var("some_thing".to_string(), FixedSize::Base(Base::Bool));
         assert_eq!(
-            Some(BlockDef::Variable(FixedSize::Base(Base::Bool))),
-            block_scope_1.borrow().def("some_thing".to_string())
+            Some(FixedSize::Base(Base::Bool)),
+            block_scope_1
+                .borrow()
+                .variable_def("some_thing".to_string())
         );
     }
 
@@ -340,8 +337,10 @@ mod tests {
             .borrow_mut()
             .add_var("some_thing".to_string(), FixedSize::Base(Base::Bool));
         assert_eq!(
-            Some(BlockDef::Variable(FixedSize::Base(Base::Bool))),
-            block_scope_2.borrow().def("some_thing".to_string())
+            Some(FixedSize::Base(Base::Bool)),
+            block_scope_2
+                .borrow()
+                .variable_def("some_thing".to_string())
         );
     }
 
@@ -356,7 +355,12 @@ mod tests {
         block_scope_2
             .borrow_mut()
             .add_var("some_thing".to_string(), FixedSize::Base(Base::Bool));
-        assert_eq!(None, block_scope_1.borrow().def("some_thing".to_string()));
+        assert_eq!(
+            None,
+            block_scope_1
+                .borrow()
+                .variable_def("some_thing".to_string())
+        );
     }
 
     #[test]
