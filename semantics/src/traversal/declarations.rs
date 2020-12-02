@@ -44,7 +44,6 @@ pub fn var_decl(
 mod tests {
     use crate::errors::SemanticError;
     use crate::namespace::scopes::{
-        BlockDef,
         BlockScope,
         ContractScope,
         ModuleScope,
@@ -86,8 +85,8 @@ mod tests {
         let context = analyze(Rc::clone(&scope), statement).expect("analysis failed");
         assert_eq!(context.expressions.len(), 3);
         assert_eq!(
-            scope.borrow().def("foo".to_string()),
-            Some(BlockDef::Variable(FixedSize::Base(U256)))
+            scope.borrow().variable_def("foo".to_string()),
+            Some(FixedSize::Base(U256))
         );
     }
 

@@ -1,8 +1,7 @@
 use crate::errors::SemanticError;
 use crate::namespace::scopes::{
-    ContractFunctionDef,
-    BlockDef,
     BlockScope,
+    ContractFunctionDef,
     Shared,
 };
 
@@ -139,19 +138,19 @@ fn expr_name(
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::Name(name) = exp.node {
-        return match scope.borrow().def(name.to_string()) {
-            Some(BlockDef::Variable(FixedSize::Base(base))) => {
+        return match scope.borrow().variable_def(name.to_string()) {
+            Some(FixedSize::Base(base)) => {
                 Ok(ExpressionAttributes::new(Type::Base(base), Location::Value))
             }
-            Some(BlockDef::Variable(FixedSize::Array(array))) => Ok(ExpressionAttributes::new(
+            Some(FixedSize::Array(array)) => Ok(ExpressionAttributes::new(
                 Type::Array(array),
                 Location::Memory,
             )),
-            Some(BlockDef::Variable(FixedSize::String(string))) => Ok(ExpressionAttributes::new(
+            Some(FixedSize::String(string)) => Ok(ExpressionAttributes::new(
                 Type::String(string),
                 Location::Memory,
             )),
-            Some(BlockDef::Variable(FixedSize::Tuple(_))) => unimplemented!(),
+            Some(FixedSize::Tuple(_)) => unimplemented!(),
             None => Err(SemanticError::UndefinedValue {
                 value: name.to_string(),
             }),
@@ -352,7 +351,9 @@ fn expr_call_self(
     argument_attributes: Vec<ExpressionAttributes>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     let contract_scope = &scope.borrow().contract_scope();
-    let called_func = contract_scope.borrow().function_def(func_name.node.to_string());
+    let called_func = contract_scope
+        .borrow()
+        .function_def(func_name.node.to_string());
 
     match called_func {
         Some(ContractFunctionDef {
