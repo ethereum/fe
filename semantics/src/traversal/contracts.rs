@@ -58,13 +58,14 @@ pub fn contract_def(
         let mut runtime_operations = vec![];
         let mut public_functions = vec![];
 
+        for (_, event) in contract_scope.borrow().event_defs.iter() {
+            runtime_operations.push(RuntimeOperations::AbiEncode {
+                params: event.fields.clone(),
+            })
+        }
+
         for (name, def) in contract_scope.borrow().defs.iter() {
             match def {
-                ContractDef::Event(event) => {
-                    runtime_operations.push(RuntimeOperations::AbiEncode {
-                        params: event.fields.clone(),
-                    })
-                }
                 ContractDef::Function {
                     is_public: true,
                     param_types,

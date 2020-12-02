@@ -26,7 +26,6 @@ pub enum ContractDef {
         nonce: usize,
         typ: Type,
     },
-    Event(Event),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -44,6 +43,7 @@ pub struct ContractScope {
     pub parent: Shared<ModuleScope>,
     pub defs: HashMap<String, ContractDef>,
     pub interface: Vec<String>,
+    pub event_defs: HashMap<String, Event>,
     num_fields: usize,
 }
 
@@ -102,6 +102,7 @@ impl ContractScope {
         Rc::new(RefCell::new(ContractScope {
             parent,
             defs: HashMap::new(),
+            event_defs: HashMap::new(),
             interface: vec![],
             num_fields: 0,
         }))
@@ -110,6 +111,11 @@ impl ContractScope {
     /// Lookup contract def by its name.
     pub fn def(&self, name: String) -> Option<ContractDef> {
         self.defs.get(&name).map(|def| (*def).clone())
+    }
+
+    /// Lookup contract event def by its name.
+    pub fn event_def(&self, name: String) -> Option<Event> {
+        self.event_defs.get(&name).map(|def| (*def).clone())
     }
 
     /// Add a contract field definition to the scope.
@@ -148,7 +154,7 @@ impl ContractScope {
 
     /// Add an event definition to the scope.
     pub fn add_event(&mut self, name: String, event: Event) {
-        self.defs.insert(name, ContractDef::Event(event));
+        self.event_defs.insert(name, event);
     }
 }
 
@@ -217,6 +223,11 @@ impl BlockScope {
     /// Lookup a contract definition inherited contract scope
     pub fn contract_def(&self, name: String) -> Option<ContractDef> {
         self.contract_scope().borrow().def(name)
+    }
+
+    /// Lookup a contract definition inherited contract scope
+    pub fn contract_event_def(&self, name: String) -> Option<Event> {
+        self.contract_scope().borrow().event_def(name)
     }
 
     /// Lookup definition in current or inherited block scope
