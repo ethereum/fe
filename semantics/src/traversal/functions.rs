@@ -2,7 +2,6 @@ use crate::errors::SemanticError;
 use crate::namespace::scopes::{
     BlockScope,
     BlockScopeType,
-    ContractDef,
     ContractScope,
     Scope,
     Shared,
@@ -95,25 +94,22 @@ pub fn func_body(
         body,
     } = &def.node
     {
-        let name = name.node.to_string();
-        if let Some(ContractDef::Function {
-            is_public: _,
-            param_types: _,
-            return_type,
-            scope,
-        }) = contract_scope.borrow().def(name)
-        {
-            // If the return type is an empty tuple we do not have to validate any further
-            // at this point because both returning (explicit) or not returning (implicit
-            // return) are valid syntax.
-            // If the return type is anything else, we do need to ensure that all code paths
-            // return or revert.
-            if !return_type.is_empty_tuple() {
-                validate_all_paths_return_or_revert(&body)?
-            }
+        let func_name = name.node.to_string();
+        let host_func_def = contract_scope.borrow().function_def(func_name).expect(&format!(
+            "Failed to lookup function definition for {}",
+            &name.node
+        ));
 
-            traverse_statements(Rc::clone(&scope), Rc::clone(&context), body)?;
+        // If the return type is an empty tuple we do not have to validate any further
+        // at this point because both returning (explicit) or not returning (implicit
+        // return) are valid syntax.
+        // If the return type is anything else, we do need to ensure that all code paths
+        // return or revert.
+        if !host_func_def.return_type.is_empty_tuple() {
+            validate_all_paths_return_or_revert(&body)?
         }
+
+        traverse_statements(Rc::clone(&host_func_def.scope), Rc::clone(&context), body)?;
 
         return Ok(());
     }
@@ -378,7 +374,11 @@ fn func_return(
         let attributes =
             expressions::expr_with_default_move(Rc::clone(&scope), Rc::clone(&context), value)?;
 
-        if attributes.typ != scope.borrow().func_return_type().into() {
+        let host_func_def = scope
+            .borrow()
+            .current_function_def()
+            .expect("Failed to get function definition");
+        if attributes.typ != host_func_def.return_type.into() {
             return Err(SemanticError::TypeError);
         }
 
@@ -394,7 +394,6 @@ mod tests {
         BlockScope,
         BlockScopeParent,
         BlockScopeType,
-        ContractDef,
         ContractScope,
         ModuleScope,
         Shared,
@@ -441,23 +440,15 @@ mod tests {
         let context = analyze(Rc::clone(&scope), func_def);
         assert_eq!(context.expressions.len(), 3);
 
-        if let Some(ContractDef::Function {
-            is_public,
-            param_types,
-            return_type,
-            scope,
-        }) = scope.borrow().def("foo".to_string())
-        {
-            assert_eq!(is_public, false);
-            assert_eq!(param_types, vec![FixedSize::Base(U256)]);
-            assert_eq!(return_type, FixedSize::Base(U256));
-            assert!(matches!(*scope.borrow(), BlockScope {
-                typ: BlockScopeType::Function,
-                parent: BlockScopeParent::Contract(_),
-                ..
-            }))
-        } else {
-            assert!(false, "Did not return expected definition")
-        };
+        let def = scope.borrow().function_def("foo".to_string()).expect("No definiton for foo exists");
+
+        assert_eq!(def.is_public, false);
+        assert_eq!(def.param_types, vec![FixedSize::Base(U256)]);
+        assert_eq!(def.return_type, FixedSize::Base(U256));
+        assert!(matches!(*def.scope.borrow(), BlockScope {
+            typ: BlockScopeType::Function,
+            parent: BlockScopeParent::Contract(_),
+            ..
+        }));
     }
 }

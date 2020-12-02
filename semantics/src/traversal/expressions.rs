@@ -1,8 +1,8 @@
 use crate::errors::SemanticError;
 use crate::namespace::scopes::{
+    ContractFunctionDef,
     BlockDef,
     BlockScope,
-    ContractDef,
     Shared,
 };
 
@@ -352,10 +352,10 @@ fn expr_call_self(
     argument_attributes: Vec<ExpressionAttributes>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     let contract_scope = &scope.borrow().contract_scope();
-    let called_func = contract_scope.borrow().def(func_name.node.to_string());
+    let called_func = contract_scope.borrow().function_def(func_name.node.to_string());
 
     match called_func {
-        Some(ContractDef::Function {
+        Some(ContractFunctionDef {
             is_public: _,
             param_types,
             return_type,
@@ -372,7 +372,6 @@ fn expr_call_self(
                 Location::Value,
             ))
         }
-        Some(_) => Err(SemanticError::NotCallable),
         None => Err(SemanticError::UndefinedValue {
             value: func_name.node.to_string(),
         }),
