@@ -8,7 +8,7 @@ use fe_semantics::{
     Context,
     Location,
 };
-use std::convert::TryInto;
+use std::convert::TryFrom;
 use yultsur::*;
 
 /// Builds a Yul statement from a Fe assignment.
@@ -29,7 +29,8 @@ pub fn assign(
                 let target = expressions::expr(&context, first_target)?;
                 let value = expressions::expr(&context, value)?;
 
-                let typ: FixedSize = target_attributes.typ.to_owned().try_into()?;
+                let typ = FixedSize::try_from(target_attributes.typ.to_owned())
+                    .map_err(|_| CompileError::static_str("invalid attributes"))?;
 
                 return Ok(
                     match (

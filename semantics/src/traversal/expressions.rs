@@ -37,23 +37,24 @@ pub fn expr(
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     let attributes = match &exp.node {
-        fe::Expr::Name(_) => expr_name(scope, exp)?,
-        fe::Expr::Num(_) => expr_num(exp)?,
-        fe::Expr::Bool(_) => expr_bool(exp)?,
-        fe::Expr::Subscript { .. } => expr_subscript(scope, Rc::clone(&context), exp)?,
-        fe::Expr::Attribute { .. } => expr_attribute(scope, exp)?,
-        fe::Expr::Ternary { .. } => expr_ternary(scope, Rc::clone(&context), exp)?,
+        fe::Expr::Name(_) => expr_name(scope, exp),
+        fe::Expr::Num(_) => expr_num(exp),
+        fe::Expr::Bool(_) => expr_bool(exp),
+        fe::Expr::Subscript { .. } => expr_subscript(scope, Rc::clone(&context), exp),
+        fe::Expr::Attribute { .. } => expr_attribute(scope, exp),
+        fe::Expr::Ternary { .. } => expr_ternary(scope, Rc::clone(&context), exp),
         fe::Expr::BoolOperation { .. } => unimplemented!(),
-        fe::Expr::BinOperation { .. } => expr_bin_operation(scope, Rc::clone(&context), exp)?,
+        fe::Expr::BinOperation { .. } => expr_bin_operation(scope, Rc::clone(&context), exp),
         fe::Expr::UnaryOperation { .. } => unimplemented!(),
-        fe::Expr::CompOperation { .. } => expr_comp_operation(scope, Rc::clone(&context), exp)?,
-        fe::Expr::Call { .. } => expr_call(scope, Rc::clone(&context), exp)?,
+        fe::Expr::CompOperation { .. } => expr_comp_operation(scope, Rc::clone(&context), exp),
+        fe::Expr::Call { .. } => expr_call(scope, Rc::clone(&context), exp),
         fe::Expr::List { .. } => unimplemented!(),
         fe::Expr::ListComp { .. } => unimplemented!(),
         fe::Expr::Tuple { .. } => unimplemented!(),
         fe::Expr::Str(_) => unimplemented!(),
         fe::Expr::Ellipsis => unimplemented!(),
-    };
+    }
+    .map_err(|error| error.with_context(exp.span))?;
 
     context.borrow_mut().add_expression(exp, attributes.clone());
 
@@ -151,9 +152,7 @@ fn expr_name(
                 Location::Memory,
             )),
             Some(FixedSize::Tuple(_)) => unimplemented!(),
-            None => Err(SemanticError::UndefinedValue {
-                value: name.to_string(),
-            }),
+            None => Err(SemanticError::undefined_value()),
         };
     }
 
@@ -211,9 +210,7 @@ fn expr_attribute(
         return match expr_name_str(value)? {
             "msg" => expr_attribute_msg(attr),
             "self" => expr_attribute_self(scope, attr),
-            value => Err(SemanticError::UndefinedValue {
-                value: value.to_string(),
-            }),
+            _ => Err(SemanticError::undefined_value()),
         };
     }
 
@@ -226,9 +223,7 @@ fn expr_attribute_msg(attr: &Spanned<&str>) -> Result<ExpressionAttributes, Sema
             Type::Base(Base::Address),
             Location::Value,
         )),
-        value => Err(SemanticError::UndefinedValue {
-            value: value.to_string(),
-        }),
+        _ => Err(SemanticError::undefined_value()),
     }
 }
 
@@ -243,9 +238,7 @@ fn expr_attribute_self(
                 nonce: Some(field.nonce),
             },
         )),
-        None => Err(SemanticError::UndefinedValue {
-            value: attr.node.to_string(),
-        }),
+        None => Err(SemanticError::undefined_value()),
     }
 }
 
@@ -277,7 +270,7 @@ fn validate_types_equal(
     if expression_a.typ == expression_b.typ {
         Ok(())
     } else {
-        Err(SemanticError::TypeError)
+        Err(SemanticError::type_error())
     }
 }
 
@@ -324,12 +317,12 @@ fn expr_call(
                     );
                     expr_call_self(scope, context, attr, argument_attributes)
                 } else {
-                    Err(SemanticError::UndefinedValue { value })
+                    Err(SemanticError::undefined_value())
                 }
             }
             fe::Expr::Name(name) => {
                 if argument_attributes.len() != 1 {
-                    return Err(SemanticError::TypeError);
+                    return Err(SemanticError::type_error());
                 }
 
                 context
@@ -337,7 +330,7 @@ fn expr_call(
                     .add_call(exp, CallType::TypeConstructor);
                 expr_type_constructor(scope, context, *name)
             }
-            _ => Err(SemanticError::NotCallable),
+            _ => Err(SemanticError::not_callable()),
         };
     }
 
@@ -365,7 +358,7 @@ fn expr_call_self(
             if fixed_sizes_to_types(param_types)
                 != expression_attributes_to_types(argument_attributes)
             {
-                return Err(SemanticError::TypeError);
+                return Err(SemanticError::type_error());
             }
 
             Ok(ExpressionAttributes::new(
@@ -373,9 +366,7 @@ fn expr_call_self(
                 Location::Value,
             ))
         }
-        None => Err(SemanticError::UndefinedValue {
-            value: func_name.node.to_string(),
-        }),
+        None => Err(SemanticError::undefined_value()),
     }
 }
 
@@ -392,11 +383,7 @@ fn expr_type_constructor(
         "u32" => Type::Base(Base::Numeric(Integer::U32)),
         "u16" => Type::Base(Base::Numeric(Integer::U16)),
         "u8" => Type::Base(Base::Numeric(Integer::U8)),
-        _ => {
-            return Err(SemanticError::UndefinedValue {
-                value: func_name.to_string(),
-            })
-        }
+        _ => return Err(SemanticError::undefined_value()),
     };
 
     Ok(ExpressionAttributes::new(typ, Location::Value))
@@ -458,7 +445,7 @@ fn expr_ternary(
                 ));
             }
         }
-        return Err(SemanticError::TypeError);
+        return Err(SemanticError::type_error());
     }
     unreachable!()
 }

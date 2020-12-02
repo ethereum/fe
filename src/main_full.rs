@@ -69,7 +69,7 @@ pub fn main() {
 
     match compile(input_file, output_dir, targets) {
         Ok(_) => println!("Compiled {}. Outputs in {}", input_file, output_dir),
-        Err(err) => println!("Unable to compile {}. Error: {}", input_file, err),
+        Err(err) => println!("Unable to compile {}. \nError: {}", input_file, err),
     }
 }
 
@@ -93,7 +93,7 @@ fn compile(src_file: &str, output_dir: &str, targets: Vec<CompilationTarget>) ->
     let contents = fs::read_to_string(src_file)?;
 
     let output = fe_compiler::evm::compile(&contents, to_compile_stage(&targets))
-        .map_err(|e| Error::new(ErrorKind::Other, format!("{:?}", e)))?;
+        .map_err(|e| Error::new(ErrorKind::Other, format!("{}", e)))?;
 
     for target in targets {
         match target {

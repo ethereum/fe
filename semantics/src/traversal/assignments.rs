@@ -29,7 +29,7 @@ pub fn assign(
                 expressions::expr(Rc::clone(&scope), Rc::clone(&context), value)?;
 
             if target_attributes.typ != value_attributes.typ {
-                return Err(SemanticError::TypeError);
+                return Err(SemanticError::type_error());
             }
 
             return Ok(());
@@ -41,7 +41,10 @@ pub fn assign(
 
 #[cfg(test)]
 mod tests {
-    use crate::errors::SemanticError;
+    use crate::errors::{
+        ErrorKind,
+        SemanticError,
+    };
     use crate::namespace::scopes::{
         BlockScope,
         ContractScope,
@@ -119,8 +122,10 @@ mod tests {
     fn type_error_assigns(assignment: &str) {
         let result = analyze(scope(), assignment);
         assert_eq!(
-            result.expect_err("semantic analysis did not return an error"),
-            SemanticError::TypeError
+            result
+                .expect_err("semantic analysis did not return an error")
+                .kind,
+            ErrorKind::TypeError
         )
     }
 }

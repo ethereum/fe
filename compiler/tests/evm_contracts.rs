@@ -21,18 +21,22 @@ use stringreader::StringReader;
 
 type Executor<'a> = evm::executor::StackExecutor<'a, 'a, evm::backend::MemoryBackend<'a>>;
 
+const DEFAULT_CALLER: &str = "1000000000000000000000000000000000000001";
+
 struct ContractHarness {
     address: H160,
     abi: ethabi::Contract,
-    pub caller: primitive_types::H160,
+    caller: H160,
 }
 
 impl ContractHarness {
-    fn new(address: H160, abi: ethabi::Contract) -> Self {
+    fn new(contract_address: H160, abi: ethabi::Contract) -> Self {
+        let caller = address(DEFAULT_CALLER);
+
         ContractHarness {
-            address,
+            address: contract_address,
             abi,
-            caller: H160::zero(),
+            caller,
         }
     }
 
@@ -81,6 +85,18 @@ impl ContractHarness {
         }
     }
 
+    pub fn test_function_reverts(
+        &self,
+        executor: &mut Executor,
+        name: &str,
+        input: Vec<ethabi::Token>,
+    ) {
+        match self.capture_call(executor, name, &input) {
+            evm::Capture::Exit((ExitReason::Revert(_), _)) => {}
+            _ => panic!("function did not revert"),
+        }
+    }
+
     // Executor must be passed by value to get emitted events.
     pub fn events_emitted(&self, executor: Executor, events: Vec<(&str, Vec<ethabi::Token>)>) {
         let raw_logs = executor
@@ -115,6 +131,10 @@ impl ContractHarness {
                 panic!("no logs for event")
             }
         }
+    }
+
+    pub fn set_caller(&mut self, caller: H160) {
+        self.caller = caller;
     }
 }
 
@@ -157,17 +177,16 @@ fn deploy_contract(
         .expect("Unable to serialize the contract ABI.");
 
     let abi = ethabi::Contract::load(StringReader::new(&json_abi)).expect("Unable to load the ABI");
-    let caller = address_token("1000000000000000000000000000000000000001")
-        .to_address()
-        .unwrap();
     let mut init_code = hex::decode(output.bytecode).unwrap();
     if let Some(constructor) = &abi.constructor {
         init_code = constructor.encode_input(init_code, &init_params).unwrap()
     }
 
     if let evm::Capture::Exit(exit) = executor.create(
-        caller.clone(),
-        evm_runtime::CreateScheme::Legacy { caller },
+        address(DEFAULT_CALLER),
+        evm_runtime::CreateScheme::Legacy {
+            caller: address(DEFAULT_CALLER),
+        },
         U256::zero(),
         init_code,
         None,
@@ -186,8 +205,12 @@ fn string_token(s: &str) -> ethabi::Token {
     ethabi::Token::String(s.to_string())
 }
 
+fn address(s: &str) -> H160 {
+    H160::from_str(s).expect("Couldn't create address from string")
+}
+
 fn address_token(s: &str) -> ethabi::Token {
-    ethabi::Token::Address(H160::from_str(s).expect("Couldn't create address from string"))
+    ethabi::Token::Address(address(s))
 }
 
 fn bool_token(val: bool) -> ethabi::Token {
@@ -676,5 +699,108 @@ fn sized_vals_in_sto() {
 
         harness.test_function(&mut executor, "emit_event", vec![], None);
         harness.events_emitted(executor, vec![("MyEvent", vec![num, nums, string])]);
+    });
+}
+
+#[test]
+fn erc20_token() {
+    with_executor(&|mut executor| {
+        let token_name = string_token("Fe Coin");
+        let token_symbol = string_token("fe");
+
+        let mut harness = deploy_contract(
+            &mut executor,
+            "erc20_token.fe",
+            "ERC20",
+            vec![token_name.clone(), token_symbol.clone()],
+        );
+
+        let alice = DEFAULT_CALLER;
+        let bob = "2000000000000000000000000000000000000002";
+        let james = "3000000000000000000000000000000000000003";
+
+        // validate state after init
+        // alice starts with 2600 Fe Coins
+        harness.test_function(&mut executor, "name", vec![], Some(token_name));
+        harness.test_function(&mut executor, "symbol", vec![], Some(token_symbol));
+        harness.test_function(&mut executor, "decimals", vec![], Some(uint_token(18)));
+        harness.test_function(&mut executor, "totalSupply", vec![], Some(uint_token(2600)));
+        harness.test_function(
+            &mut executor,
+            "balanceOf",
+            vec![address_token(alice)],
+            Some(uint_token(2600)),
+        );
+
+        // transfer from alice to bob
+        harness.test_function(
+            &mut executor,
+            "transfer",
+            vec![address_token(bob), uint_token(42)],
+            Some(bool_token(true)),
+        );
+        harness.test_function(
+            &mut executor,
+            "balanceOf",
+            vec![address_token(bob)],
+            Some(uint_token(42)),
+        );
+        harness.test_function(
+            &mut executor,
+            "balanceOf",
+            vec![address_token(alice)],
+            Some(uint_token(2558)),
+        );
+
+        // approve and transfer
+        // alice approves bob to send 50 Fe Coins
+        harness.test_function(
+            &mut executor,
+            "approve",
+            vec![address_token(bob), uint_token(50)],
+            Some(bool_token(true)),
+        );
+        harness.set_caller(address(bob));
+        harness.test_function(
+            &mut executor,
+            "transferFrom",
+            vec![address_token(alice), address_token(james), uint_token(25)],
+            Some(bool_token(true)),
+        );
+        harness.test_function(
+            &mut executor,
+            "balanceOf",
+            vec![address_token(alice)],
+            Some(uint_token(2533)),
+        );
+        harness.test_function(
+            &mut executor,
+            "balanceOf",
+            vec![address_token(james)],
+            Some(uint_token(25)),
+        );
+        harness.test_function(
+            &mut executor,
+            "allowance",
+            vec![address_token(alice), address_token(bob)],
+            Some(uint_token(25)),
+        );
+        harness.test_function_reverts(
+            &mut executor,
+            "transferFrom",
+            vec![address_token(alice), address_token(bob), uint_token(50)],
+        );
+        harness.test_function(
+            &mut executor,
+            "transferFrom",
+            vec![address_token(alice), address_token(james), uint_token(25)],
+            Some(bool_token(true)),
+        );
+        harness.test_function(
+            &mut executor,
+            "balanceOf",
+            vec![address_token(james)],
+            Some(uint_token(50)),
+        );
     });
 }

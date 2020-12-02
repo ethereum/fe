@@ -229,7 +229,7 @@ impl TryFrom<Type> for FixedSize {
             Type::Base(base) => Ok(FixedSize::Base(base)),
             Type::Tuple(tuple) => Ok(FixedSize::Tuple(tuple)),
             Type::String(string) => Ok(FixedSize::String(string)),
-            Type::Map(_) => Err(SemanticError::TypeError),
+            Type::Map(_) => Err(SemanticError::type_error()),
         }
     }
 }
@@ -436,7 +436,7 @@ pub fn type_desc_fixed_size(
         Type::Array(array) => Ok(FixedSize::Array(array)),
         Type::Tuple(tuple) => Ok(FixedSize::Tuple(tuple)),
         Type::String(string) => Ok(FixedSize::String(string)),
-        Type::Map(_) => Err(SemanticError::TypeError),
+        Type::Map(_) => Err(SemanticError::type_error()),
     }
 }
 
@@ -446,10 +446,7 @@ pub fn type_desc_base(
 ) -> Result<Base, SemanticError> {
     match type_desc(defs, typ)? {
         Type::Base(base) => Ok(base),
-        Type::Array(_) => Err(SemanticError::TypeError),
-        Type::Map(_) => Err(SemanticError::TypeError),
-        Type::Tuple(_) => Err(SemanticError::TypeError),
-        Type::String(_) => Err(SemanticError::TypeError),
+        _ => Err(SemanticError::type_error()),
     }
 }
 
@@ -467,7 +464,7 @@ pub fn type_desc(defs: &HashMap<String, Type>, typ: &fe::TypeDesc) -> Result<Typ
         fe::TypeDesc::Base { base } if &base[..6] == "string" => {
             let max_size = base[6..]
                 .parse::<u32>()
-                .map_err(|_| SemanticError::TypeError)? as usize;
+                .map_err(|_| SemanticError::type_error())? as usize;
             Ok(Type::String(FeString { max_size }))
         }
         fe::TypeDesc::Base { base } => {
@@ -475,9 +472,7 @@ pub fn type_desc(defs: &HashMap<String, Type>, typ: &fe::TypeDesc) -> Result<Typ
                 return Ok(typ.clone());
             }
 
-            Err(SemanticError::UndefinedValue {
-                value: base.to_string(),
-            })
+            Err(SemanticError::undefined_value())
         }
         fe::TypeDesc::Array { typ, dimension } => Ok(Type::Array(Array {
             inner: type_desc_base(defs, &typ.node)?,

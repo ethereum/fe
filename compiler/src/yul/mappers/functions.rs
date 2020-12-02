@@ -80,7 +80,7 @@ fn func_stmt(
         fe::FuncStmt::If { .. } => if_statement(context, stmt),
         fe::FuncStmt::Assert { .. } => assert(context, stmt),
         fe::FuncStmt::Expr { .. } => expr(context, stmt),
-        fe::FuncStmt::Pass => unimplemented!(),
+        fe::FuncStmt::Pass => Ok(statement! { pop(0) }),
         fe::FuncStmt::Break => break_statement(context, stmt),
         fe::FuncStmt::Continue => continue_statement(context, stmt),
         fe::FuncStmt::Revert => revert(stmt),

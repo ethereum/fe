@@ -1,8 +1,7 @@
 //! Errors returned by the compilers and ABI builder.
 
-use fe_parser::errors::ParseError;
 use fe_parser::tokenizer::TokenizeError;
-use fe_semantics::errors::SemanticError;
+use serde::export::Formatter;
 
 /// Errors can either be an object or static reference.
 #[derive(Debug)]
@@ -17,9 +16,28 @@ pub struct CompileError {
     pub errors: Vec<ErrorKind>,
 }
 
+impl std::fmt::Display for ErrorKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::StaticStr(s) => write!(f, "{}", s),
+            Self::Str(s) => write!(f, "{}", s),
+        }
+    }
+}
+
 impl Default for CompileError {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl std::fmt::Display for CompileError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if let Some(err) = self.errors.first() {
+            write!(f, "{}", err)
+        } else {
+            write!(f, "empty compiler error")
+        }
     }
 }
 
@@ -43,12 +61,6 @@ impl CompileError {
     }
 }
 
-impl<'a> From<ParseError<'a>> for CompileError {
-    fn from(_: ParseError<'a>) -> Self {
-        CompileError::static_str("parser error")
-    }
-}
-
 impl<'a> From<TokenizeError> for CompileError {
     fn from(_: TokenizeError) -> Self {
         CompileError::static_str("tokenize error")
@@ -64,11 +76,5 @@ impl<'a> From<serde_json::error::Error> for CompileError {
 impl<'a> From<ethabi::Error> for CompileError {
     fn from(e: ethabi::Error) -> Self {
         CompileError::str(format!("ethabi error: {}", e))
-    }
-}
-
-impl<'a> From<SemanticError> for CompileError {
-    fn from(e: SemanticError) -> Self {
-        CompileError::str(format!("semantic error: {:?}", e))
     }
 }

@@ -45,12 +45,7 @@ pub fn expr(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressio
             attributes.location.to_owned(),
             attributes.move_location.to_owned(),
         ) {
-            (from, Some(to)) => move_expression(
-                expression,
-                FixedSize::try_from(attributes.typ.to_owned())?,
-                from,
-                to,
-            ),
+            (from, Some(to)) => move_expression(expression, attributes.typ.to_owned(), from, to),
             (_, None) => Ok(expression),
         }
     } else {
@@ -60,10 +55,13 @@ pub fn expr(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressio
 
 fn move_expression(
     val: yul::Expression,
-    typ: FixedSize,
+    typ: Type,
     from: Location,
     to: Location,
 ) -> Result<yul::Expression, CompileError> {
+    let typ =
+        FixedSize::try_from(typ).map_err(|_| CompileError::static_str("invalid attributes"))?;
+
     match (from.clone(), to.clone()) {
         (Location::Storage { .. }, Location::Value) => Ok(operations::sto_to_val(typ, val)),
         (Location::Memory { .. }, Location::Value) => Ok(operations::mem_to_val(typ, val)),
