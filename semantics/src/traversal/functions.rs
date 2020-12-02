@@ -95,10 +95,13 @@ pub fn func_body(
     } = &def.node
     {
         let func_name = name.node.to_string();
-        let host_func_def = contract_scope.borrow().function_def(func_name).expect(&format!(
-            "Failed to lookup function definition for {}",
-            &name.node
-        ));
+        let host_func_def = contract_scope
+            .borrow()
+            .function_def(func_name)
+            .expect(&format!(
+                "Failed to lookup function definition for {}",
+                &name.node
+            ));
 
         // If the return type is an empty tuple we do not have to validate any further
         // at this point because both returning (explicit) or not returning (implicit
@@ -440,7 +443,10 @@ mod tests {
         let context = analyze(Rc::clone(&scope), func_def);
         assert_eq!(context.expressions.len(), 3);
 
-        let def = scope.borrow().function_def("foo".to_string()).expect("No definiton for foo exists");
+        let def = scope
+            .borrow()
+            .function_def("foo".to_string())
+            .expect("No definiton for foo exists");
 
         assert_eq!(def.is_public, false);
         assert_eq!(def.param_types, vec![FixedSize::Base(U256)]);
