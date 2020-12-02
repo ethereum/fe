@@ -1,7 +1,6 @@
 use crate::errors::SemanticError;
 use crate::namespace::events::Event;
 use crate::namespace::scopes::{
-    ContractDef,
     ContractScope,
     ModuleScope,
     Scope,
@@ -64,41 +63,35 @@ pub fn contract_def(
             })
         }
 
-        for (name, def) in contract_scope.borrow().defs.iter() {
-            match def {
-                ContractDef::Function {
-                    is_public: true,
-                    param_types,
-                    return_type,
-                    scope: _,
-                } => {
-                    if name != "__init__" {
-                        public_functions.push(FunctionAttributes {
-                            name: name.clone(),
-                            param_types: param_types.clone(),
-                            return_type: return_type.clone(),
-                        });
-                        for param in param_types {
-                            runtime_operations.push(RuntimeOperations::AbiDecode {
-                                param: param.clone(),
-                                location: AbiDecodeLocation::Calldata,
-                            })
-                        }
-                        if !return_type.is_empty_tuple() {
-                            runtime_operations.push(RuntimeOperations::AbiEncode {
-                                params: vec![return_type.clone()],
-                            })
-                        }
-                    } else {
-                        for param in param_types {
-                            runtime_operations.push(RuntimeOperations::AbiDecode {
-                                param: param.clone(),
-                                location: AbiDecodeLocation::Memory,
-                            })
-                        }
-                    }
+        for (name, def) in contract_scope.borrow().function_defs.iter() {
+            if !def.is_public {
+                continue;
+            }
+
+            if name != "__init__" {
+                public_functions.push(FunctionAttributes {
+                    name: name.clone(),
+                    param_types: def.param_types.clone(),
+                    return_type: def.return_type.clone(),
+                });
+                for param in &def.param_types {
+                    runtime_operations.push(RuntimeOperations::AbiDecode {
+                        param: param.clone(),
+                        location: AbiDecodeLocation::Calldata,
+                    })
                 }
-                _ => {}
+                if !def.return_type.is_empty_tuple() {
+                    runtime_operations.push(RuntimeOperations::AbiEncode {
+                        params: vec![def.return_type.clone()],
+                    })
+                }
+            } else {
+                for param in &def.param_types {
+                    runtime_operations.push(RuntimeOperations::AbiDecode {
+                        param: param.clone(),
+                        location: AbiDecodeLocation::Memory,
+                    })
+                }
             }
         }
 

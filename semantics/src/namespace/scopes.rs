@@ -15,13 +15,11 @@ pub enum ModuleDef {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum ContractDef {
-    Function {
-        is_public: bool,
-        param_types: Vec<FixedSize>,
-        return_type: FixedSize,
-        scope: Shared<BlockScope>,
-    },
+pub struct ContractFunctionDef {
+    pub is_public: bool,
+    pub param_types: Vec<FixedSize>,
+    pub return_type: FixedSize,
+    pub scope: Shared<BlockScope>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -43,10 +41,10 @@ pub struct ModuleScope {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ContractScope {
     pub parent: Shared<ModuleScope>,
-    pub defs: HashMap<String, ContractDef>,
     pub interface: Vec<String>,
     pub event_defs: HashMap<String, Event>,
     pub field_defs: HashMap<String, ContractFieldDef>,
+    pub function_defs: HashMap<String, ContractFunctionDef>,
     num_fields: usize,
 }
 
@@ -104,7 +102,7 @@ impl ContractScope {
     pub fn new(parent: Shared<ModuleScope>) -> Shared<Self> {
         Rc::new(RefCell::new(ContractScope {
             parent,
-            defs: HashMap::new(),
+            function_defs: HashMap::new(),
             event_defs: HashMap::new(),
             field_defs: HashMap::new(),
             interface: vec![],
@@ -112,19 +110,19 @@ impl ContractScope {
         }))
     }
 
-    /// Lookup contract def by its name.
-    pub fn def(&self, name: String) -> Option<ContractDef> {
-        self.defs.get(&name).map(|def| (*def).clone())
-    }
-
-    /// Lookup contract event def by its name.
+    /// Lookup contract event definition by its name.
     pub fn event_def(&self, name: String) -> Option<Event> {
         self.event_defs.get(&name).map(|def| (*def).clone())
     }
 
-    /// Lookup contract field def by its name.
+    /// Lookup contract field definition by its name.
     pub fn field_def(&self, name: String) -> Option<ContractFieldDef> {
         self.field_defs.get(&name).map(|def| (*def).clone())
+    }
+
+    /// Lookup contract function definition by its name.
+    pub fn function_def(&self, name: String) -> Option<ContractFunctionDef> {
+        self.function_defs.get(&name).map(|def| (*def).clone())
     }
 
     /// Add a contract field definition to the scope.
@@ -150,9 +148,9 @@ impl ContractScope {
         scope: Shared<BlockScope>,
     ) {
         self.interface.push(name.clone());
-        self.defs.insert(
+        self.function_defs.insert(
             name,
-            ContractDef::Function {
+            ContractFunctionDef {
                 is_public,
                 param_types,
                 return_type,
@@ -229,22 +227,29 @@ impl BlockScope {
         function_scope
     }
 
-    /// Lookup a contract definition inherited contract scope
-    pub fn contract_def(&self, name: String) -> Option<ContractDef> {
-        self.contract_scope().borrow().def(name)
-    }
-
-    /// Lookup a contract event definition inherited contract scope
+    /// Lookup an event definition on the inherited contract scope
     pub fn contract_event_def(&self, name: String) -> Option<Event> {
         self.contract_scope().borrow().event_def(name)
     }
 
-    /// Lookup a contract event definition inherited contract scope
+    /// Lookup a field definition on the inherited contract scope
     pub fn contract_field_def(&self, name: String) -> Option<ContractFieldDef> {
         self.contract_scope().borrow().field_def(name)
     }
 
-    /// Lookup definition in current or inherited block scope
+    /// Lookup a function definition on the inherited contract scope.
+    pub fn contract_function_def(&self, name: String) -> Option<ContractFunctionDef> {
+        self.contract_scope().borrow().function_def(name)
+    }
+
+    /// Lookup the function definition for the current block scope on the
+    /// inherited contract scope.
+    pub fn current_function_def(&self) -> Option<ContractFunctionDef> {
+        let function_name = self.function_scope().borrow().name.clone();
+        self.contract_function_def(function_name)
+    }
+
+    /// Lookup a definition in current or inherited block scope
     pub fn def(&self, name: String) -> Option<BlockDef> {
         let block_def = self.defs.get(&name).map(|def| (*def).clone());
         if block_def.is_none() {
@@ -256,16 +261,6 @@ impl BlockScope {
         } else {
             block_def
         }
-    }
-
-    /// Retrieve the return type expected in the current function scope
-    pub fn func_return_type(&self) -> FixedSize {
-        let function_name = self.function_scope().borrow().name.clone();
-        if let Some(ContractDef::Function { return_type, .. }) = self.contract_def(function_name) {
-            return return_type;
-        }
-
-        unreachable!()
     }
 
     /// Add a variable to the block scope.
