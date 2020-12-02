@@ -237,15 +237,16 @@ fn expr_attribute_self(
     scope: Shared<BlockScope>,
     attr: &Spanned<&str>,
 ) -> Result<ExpressionAttributes, SemanticError> {
-    match scope.borrow().contract_def(attr.node.to_string()) {
-        Some(ContractDef::Field { nonce, typ }) => Ok(ExpressionAttributes::new(
-            typ,
-            Location::Storage { nonce: Some(nonce) },
+    match scope.borrow().contract_field_def(attr.node.to_string()) {
+        Some(field) => Ok(ExpressionAttributes::new(
+            field.typ,
+            Location::Storage {
+                nonce: Some(field.nonce),
+            },
         )),
         None => Err(SemanticError::UndefinedValue {
             value: attr.node.to_string(),
         }),
-        _ => Err(SemanticError::TypeError),
     }
 }
 

@@ -22,10 +22,12 @@ pub enum ContractDef {
         return_type: FixedSize,
         scope: Shared<BlockScope>,
     },
-    Field {
-        nonce: usize,
-        typ: Type,
-    },
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ContractFieldDef {
+    pub nonce: usize,
+    pub typ: Type,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -44,6 +46,7 @@ pub struct ContractScope {
     pub defs: HashMap<String, ContractDef>,
     pub interface: Vec<String>,
     pub event_defs: HashMap<String, Event>,
+    pub field_defs: HashMap<String, ContractFieldDef>,
     num_fields: usize,
 }
 
@@ -103,6 +106,7 @@ impl ContractScope {
             parent,
             defs: HashMap::new(),
             event_defs: HashMap::new(),
+            field_defs: HashMap::new(),
             interface: vec![],
             num_fields: 0,
         }))
@@ -118,11 +122,16 @@ impl ContractScope {
         self.event_defs.get(&name).map(|def| (*def).clone())
     }
 
+    /// Lookup contract field def by its name.
+    pub fn field_def(&self, name: String) -> Option<ContractFieldDef> {
+        self.field_defs.get(&name).map(|def| (*def).clone())
+    }
+
     /// Add a contract field definition to the scope.
     pub fn add_field(&mut self, name: String, typ: Type) {
-        self.defs.insert(
+        self.field_defs.insert(
             name,
-            ContractDef::Field {
+            ContractFieldDef {
                 nonce: self.num_fields,
                 typ,
             },
@@ -225,9 +234,14 @@ impl BlockScope {
         self.contract_scope().borrow().def(name)
     }
 
-    /// Lookup a contract definition inherited contract scope
+    /// Lookup a contract event definition inherited contract scope
     pub fn contract_event_def(&self, name: String) -> Option<Event> {
         self.contract_scope().borrow().event_def(name)
+    }
+
+    /// Lookup a contract event definition inherited contract scope
+    pub fn contract_field_def(&self, name: String) -> Option<ContractFieldDef> {
+        self.contract_scope().borrow().field_def(name)
     }
 
     /// Lookup definition in current or inherited block scope
