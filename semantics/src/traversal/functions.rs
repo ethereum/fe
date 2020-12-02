@@ -98,10 +98,7 @@ pub fn func_body(
         let host_func_def = contract_scope
             .borrow()
             .function_def(func_name)
-            .expect(&format!(
-                "Failed to lookup function definition for {}",
-                &name.node
-            ));
+            .unwrap_or_else(|| panic!("Failed to lookup function definition for {}", &name.node));
 
         // If the return type is an empty tuple we do not have to validate any further
         // at this point because both returning (explicit) or not returning (implicit
