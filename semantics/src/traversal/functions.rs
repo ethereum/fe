@@ -315,7 +315,7 @@ fn emit(
     {
         let event_name = expressions::expr_name_string(func)?;
 
-        if let Some(ContractDef::Event(event)) = scope.borrow().contract_def(event_name) {
+        if let Some(event) = scope.borrow().contract_event_def(event_name) {
             context.borrow_mut().add_emit(stmt, event);
         }
 
