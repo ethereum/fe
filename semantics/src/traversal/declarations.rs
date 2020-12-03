@@ -27,7 +27,7 @@ pub fn var_decl(
             let value_attributes =
                 expressions::expr(Rc::clone(&scope), Rc::clone(&context), value)?;
             if Type::from(declared_type.clone()) != value_attributes.typ {
-                return Err(SemanticError::TypeError);
+                return Err(SemanticError::type_error());
             }
         }
 
@@ -42,7 +42,10 @@ pub fn var_decl(
 
 #[cfg(test)]
 mod tests {
-    use crate::errors::SemanticError;
+    use crate::errors::{
+        ErrorKind,
+        SemanticError,
+    };
     use crate::namespace::scopes::{
         BlockScope,
         ContractScope,
@@ -95,8 +98,8 @@ mod tests {
         let statement = "foo: u256[100] = 26";
         let result = analyze(scope(), statement);
         assert_eq!(
-            result.expect_err("analysis didn't fail"),
-            SemanticError::TypeError
+            result.expect_err("analysis didn't fail").kind,
+            ErrorKind::TypeError
         );
     }
 }

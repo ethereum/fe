@@ -86,7 +86,7 @@ impl ExpressionAttributes {
             Type::Array(_) => Location::Memory,
             Type::Tuple(_) => Location::Memory,
             Type::String(_) => Location::Memory,
-            Type::Map(_) => return Err(SemanticError::CannotMove),
+            Type::Map(_) => return Err(SemanticError::cannot_move()),
         };
 
         if self.location != move_location {
@@ -101,7 +101,7 @@ impl ExpressionAttributes {
     pub fn with_value_move(mut self) -> Result<Self, SemanticError> {
         match self.typ {
             Type::Base(_) => {}
-            _ => return Err(SemanticError::CannotMove),
+            _ => return Err(SemanticError::cannot_move()),
         }
 
         if self.location != Location::Value {

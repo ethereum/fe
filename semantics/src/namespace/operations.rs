@@ -13,15 +13,15 @@ pub fn index(value: Type, index: Type) -> Result<Type, SemanticError> {
     match value {
         Type::Array(array) => index_array(array, index),
         Type::Map(map) => index_map(map, index),
-        Type::Base(_) => Err(SemanticError::NotSubscriptable),
-        Type::Tuple(_) => Err(SemanticError::NotSubscriptable),
-        Type::String(_) => Err(SemanticError::NotSubscriptable),
+        Type::Base(_) => Err(SemanticError::not_subscriptable()),
+        Type::Tuple(_) => Err(SemanticError::not_subscriptable()),
+        Type::String(_) => Err(SemanticError::not_subscriptable()),
     }
 }
 
 fn index_array(array: Array, index: Type) -> Result<Type, SemanticError> {
     if index != Type::Base(U256) {
-        return Err(SemanticError::TypeError);
+        return Err(SemanticError::type_error());
     }
 
     Ok(Type::Base(array.inner))
@@ -29,7 +29,7 @@ fn index_array(array: Array, index: Type) -> Result<Type, SemanticError> {
 
 fn index_map(map: Map, index: Type) -> Result<Type, SemanticError> {
     if index != Type::Base(map.key) {
-        return Err(SemanticError::TypeError);
+        return Err(SemanticError::type_error());
     }
 
     Ok(*map.value)
@@ -37,7 +37,7 @@ fn index_map(map: Map, index: Type) -> Result<Type, SemanticError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::errors::SemanticError;
+    use crate::errors::ErrorKind;
     use crate::namespace::operations;
     use crate::namespace::types::{
         Array,
@@ -83,6 +83,6 @@ mod tests {
     )]
     fn type_error_index(value: Type, index: Type) {
         let actual = operations::index(value, index).expect_err("didn't fail");
-        assert_eq!(actual, SemanticError::TypeError)
+        assert_eq!(actual.kind, ErrorKind::TypeError)
     }
 }

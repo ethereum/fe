@@ -37,20 +37,20 @@ pub fn contract_def(
         for stmt in body.iter() {
             match &stmt.node {
                 fe::ContractStmt::ContractField { .. } => {
-                    contract_field(Rc::clone(&contract_scope), stmt)?
+                    contract_field(Rc::clone(&contract_scope), stmt)
                 }
-                fe::ContractStmt::EventDef { .. } => {
-                    event_def(Rc::clone(&contract_scope), stmt)?;
-                }
+                fe::ContractStmt::EventDef { .. } => event_def(Rc::clone(&contract_scope), stmt),
                 fe::ContractStmt::FuncDef { .. } => {
-                    functions::func_def(Rc::clone(&contract_scope), Rc::clone(&context), stmt)?;
+                    functions::func_def(Rc::clone(&contract_scope), Rc::clone(&context), stmt)
                 }
-            };
+            }
+            .map_err(|error| error.with_context(stmt.span))?;
         }
 
         for stmt in body.iter() {
             if let fe::ContractStmt::FuncDef { .. } = &stmt.node {
-                functions::func_body(Rc::clone(&contract_scope), Rc::clone(&context), stmt)?;
+                functions::func_body(Rc::clone(&contract_scope), Rc::clone(&context), stmt)
+                    .map_err(|error| error.with_context(stmt.span))?;
             };
         }
 

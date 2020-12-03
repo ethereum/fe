@@ -1,6 +1,5 @@
 #![cfg(feature = "solc-backend")]
 
-use fe_compiler::errors::CompileError;
 use fe_compiler::evm::CompileStage;
 
 use rstest::rstest;
@@ -8,59 +7,32 @@ use std::fs;
 
 #[rstest(
     fixture_file,
-    error,
-    case(
-        "continue_without_loop.fe",
-        "[Str(\"semantic error: ContinueWithoutLoop\")]"
-    ),
-    case(
-        "continue_without_loop_2.fe",
-        "[Str(\"semantic error: ContinueWithoutLoop\")]"
-    ),
-    case("break_without_loop.fe", "[Str(\"semantic error: BreakWithoutLoop\")]"),
-    case(
-        "break_without_loop_2.fe",
-        "[Str(\"semantic error: BreakWithoutLoop\")]"
-    ),
-    case(
-        "not_in_scope.fe",
-        "[Str(\"semantic error: UndefinedValue { value: \\\"y\\\" }\")]"
-    ),
-    case(
-        "not_in_scope_2.fe",
-        "[Str(\"semantic error: UndefinedValue { value: \\\"y\\\" }\")]"
-    ),
-    case("mismatch_return_type.fe", "[Str(\"semantic error: TypeError\")]"),
-    case("unexpected_return.fe", "[Str(\"semantic error: TypeError\")]"),
-    case("missing_return.fe", "[Str(\"semantic error: MissingReturn\")]"),
-    case(
-        "missing_return_in_else.fe",
-        "[Str(\"semantic error: MissingReturn\")]"
-    ),
-    case("strict_boolean_if_else.fe", "[Str(\"semantic error: TypeError\")]"),
-    case(
-        "return_call_to_fn_without_return.fe",
-        "[Str(\"semantic error: TypeError\")]"
-    ),
-    case(
-        "return_call_to_fn_with_param_type_mismatch.fe",
-        "[Str(\"semantic error: TypeError\")]"
-    ),
-    case(
-        "return_addition_with_mixed_types.fe",
-        "[Str(\"semantic error: TypeError\")]"
-    ),
-    case("return_lt_mixed_types.fe", "[Str(\"semantic error: TypeError\")]")
+    expected_error,
+    case("continue_without_loop.fe", "ContinueWithoutLoop"),
+    case("continue_without_loop_2.fe", "ContinueWithoutLoop"),
+    case("break_without_loop.fe", "BreakWithoutLoop"),
+    case("break_without_loop_2.fe", "BreakWithoutLoop"),
+    case("not_in_scope.fe", "UndefinedValue"),
+    case("not_in_scope_2.fe", "UndefinedValue"),
+    case("mismatch_return_type.fe", "TypeError"),
+    case("unexpected_return.fe", "TypeError"),
+    case("missing_return.fe", "MissingReturn"),
+    case("missing_return_in_else.fe", "MissingReturn"),
+    case("strict_boolean_if_else.fe", "TypeError"),
+    case("return_call_to_fn_without_return.fe", "TypeError"),
+    case("return_call_to_fn_with_param_type_mismatch.fe", "TypeError"),
+    case("return_addition_with_mixed_types.fe", "TypeError"),
+    case("return_lt_mixed_types.fe", "TypeError")
 )]
-fn test_compile_errors(fixture_file: &str, error: &str) {
+fn test_compile_errors(fixture_file: &str, expected_error: &str) {
     let src = fs::read_to_string(format!("tests/fixtures/compile_errors/{}", fixture_file))
         .expect("Unable to read fixture file");
 
     match fe_compiler::evm::compile(&src, CompileStage::AllUpToBytecode) {
-        Err(CompileError { errors }) => assert_eq!(format!("{:?}", errors), error),
+        Err(compile_error) => assert!(format!("{}", compile_error).contains(expected_error)),
         _ => panic!(
             "Compiling succeeded when it was expected to fail with: {}",
-            error
+            expected_error
         ),
     }
 }

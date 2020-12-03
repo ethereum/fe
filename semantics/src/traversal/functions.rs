@@ -155,7 +155,7 @@ fn validate_all_paths_return_or_revert(
         }
     }
 
-    Err(SemanticError::MissingReturn)
+    Err(SemanticError::missing_return())
 }
 
 fn func_def_arg(
@@ -186,11 +186,12 @@ fn func_stmt(
         fe::FuncStmt::If { .. } => if_statement(scope, context, stmt),
         fe::FuncStmt::Assert { .. } => assert(scope, context, stmt),
         fe::FuncStmt::Expr { .. } => expr(scope, context, stmt),
-        fe::FuncStmt::Pass => unimplemented!(),
+        fe::FuncStmt::Pass => Ok(()),
         fe::FuncStmt::Break => break_statement(scope, context, stmt),
         fe::FuncStmt::Continue => continue_statement(scope, context, stmt),
         fe::FuncStmt::Revert => Ok(()),
     }
+    .map_err(|error| error.with_context(stmt.span))
 }
 
 fn verify_is_boolean(
@@ -203,7 +204,7 @@ fn verify_is_boolean(
         return Ok(());
     }
 
-    Err(SemanticError::TypeError)
+    Err(SemanticError::type_error())
 }
 
 fn break_statement(
@@ -212,7 +213,7 @@ fn break_statement(
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::Break {} = &stmt.node {
-        return verify_loop_in_scope(scope, SemanticError::BreakWithoutLoop);
+        return verify_loop_in_scope(scope, SemanticError::break_without_loop());
     }
     unreachable!()
 }
@@ -223,7 +224,7 @@ fn continue_statement(
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::Continue {} = &stmt.node {
-        return verify_loop_in_scope(scope, SemanticError::ContinueWithoutLoop);
+        return verify_loop_in_scope(scope, SemanticError::continue_without_loop());
     }
     unreachable!()
 }
@@ -379,7 +380,7 @@ fn func_return(
             .current_function_def()
             .expect("Failed to get function definition");
         if attributes.typ != host_func_def.return_type.into() {
-            return Err(SemanticError::TypeError);
+            return Err(SemanticError::type_error());
         }
 
         return Ok(());

@@ -8,7 +8,10 @@ use yultsur::*;
 /// Builds a contract constructor.
 ///
 /// Takes an optional init function and its parameter types.
-pub fn build(init: Option<(yul::Statement, Vec<FixedSize>, Vec<yul::Statement>)>) -> yul::Code {
+pub fn build(
+    init: Option<(yul::Statement, Vec<FixedSize>)>,
+    runtime: Vec<yul::Statement>,
+) -> yul::Code {
     // statements that return the contract code
     let deploy_stmts = statements! {
         (let size := datasize("runtime"))
@@ -16,7 +19,7 @@ pub fn build(init: Option<(yul::Statement, Vec<FixedSize>, Vec<yul::Statement>)>
         (return(0, size))
     };
 
-    let block = if let Some((init, params, runtime)) = init {
+    let block = if let Some((init, params)) = init {
         // build a constructor with an init function
 
         // decode operations for `__init__` parameters
@@ -62,7 +65,7 @@ pub fn build(init: Option<(yul::Statement, Vec<FixedSize>, Vec<yul::Statement>)>
 #[test]
 fn test_constructor_without_func() {
     assert_eq!(
-        build(None).to_string(),
+        build(None, vec![]).to_string(),
         r#"code { let size := datasize("runtime") datacopy(0, dataoffset("runtime"), size) return(0, size) }"#,
     )
 }

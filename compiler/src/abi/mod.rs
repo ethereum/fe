@@ -12,7 +12,10 @@ pub mod elements;
 /// Builds the appropriate ABIs for a given source `&str`.
 pub fn build(src: &str) -> Result<elements::ModuleABIs, CompileError> {
     let tokens = parser::get_parse_tokens(src)?;
-    let module = parser::parsers::file_input(&tokens[..])?.1.node;
+    let module = parser::parsers::file_input(&tokens[..])
+        .map_err(|error| CompileError::str(error.format_user(src)))?
+        .1
+        .node;
 
     builder::module(&module)
 }
