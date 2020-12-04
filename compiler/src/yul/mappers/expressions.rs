@@ -31,7 +31,7 @@ pub fn expr(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressio
             fe::Expr::Ternary { .. } => expr_ternary(context, exp),
             fe::Expr::BoolOperation { .. } => unimplemented!(),
             fe::Expr::BinOperation { .. } => expr_bin_operation(context, exp),
-            fe::Expr::UnaryOperation { .. } => unimplemented!(),
+            fe::Expr::UnaryOperation { .. } => expr_unary_operation(context, exp),
             fe::Expr::CompOperation { .. } => expr_comp_operation(context, exp),
             fe::Expr::Call { .. } => expr_call(context, exp),
             fe::Expr::List { .. } => unimplemented!(),
@@ -126,13 +126,30 @@ pub fn expr_comp_operation(
         let yul_left = expr(context, left)?;
         let yul_right = expr(context, right)?;
 
+        let typ = &context
+            .get_expression(left)
+            .expect("Missing `left` expression in context")
+            .typ;
+
         return match op.node {
             fe::CompOperator::Eq => Ok(expression! { eq([yul_left], [yul_right]) }),
             fe::CompOperator::NotEq => Ok(expression! { iszero((eq([yul_left], [yul_right]))) }),
-            fe::CompOperator::Lt => Ok(expression! { lt([yul_left], [yul_right]) }),
-            fe::CompOperator::LtE => Ok(expression! { iszero((gt([yul_left], [yul_right]))) }),
-            fe::CompOperator::Gt => Ok(expression! { gt([yul_left], [yul_right]) }),
-            fe::CompOperator::GtE => Ok(expression! { iszero((lt([yul_left], [yul_right]))) }),
+            fe::CompOperator::Lt => match typ.is_signed_integer() {
+                true => Ok(expression! { slt([yul_left], [yul_right]) }),
+                false => Ok(expression! { lt([yul_left], [yul_right]) }),
+            },
+            fe::CompOperator::LtE => match typ.is_signed_integer() {
+                true => Ok(expression! { iszero((sgt([yul_left], [yul_right]))) }),
+                false => Ok(expression! { iszero((gt([yul_left], [yul_right]))) }),
+            },
+            fe::CompOperator::Gt => match typ.is_signed_integer() {
+                true => Ok(expression! { sgt([yul_left], [yul_right]) }),
+                false => Ok(expression! { gt([yul_left], [yul_right]) }),
+            },
+            fe::CompOperator::GtE => match typ.is_signed_integer() {
+                true => Ok(expression! { iszero((slt([yul_left], [yul_right]))) }),
+                false => Ok(expression! { iszero((lt([yul_left], [yul_right]))) }),
+            },
             _ => unimplemented!(),
         };
     }
@@ -148,20 +165,49 @@ pub fn expr_bin_operation(
         let yul_left = expr(context, left)?;
         let yul_right = expr(context, right)?;
 
+        let typ = &context
+            .get_expression(left)
+            .expect("Missing `left` expression in context")
+            .typ;
+
         return match op.node {
             fe::BinOperator::Add => Ok(expression! { add([yul_left], [yul_right]) }),
             fe::BinOperator::Sub => Ok(expression! { sub([yul_left], [yul_right]) }),
             fe::BinOperator::Mult => Ok(expression! { mul([yul_left], [yul_right]) }),
-            fe::BinOperator::Div => Ok(expression! { div([yul_left], [yul_right]) }),
+            fe::BinOperator::Div => match typ.is_signed_integer() {
+                true => Ok(expression! { sdiv([yul_left], [yul_right]) }),
+                false => Ok(expression! { div([yul_left], [yul_right]) }),
+            },
             fe::BinOperator::BitAnd => Ok(expression! { and([yul_left], [yul_right]) }),
             fe::BinOperator::BitOr => Ok(expression! { or([yul_left], [yul_right]) }),
             fe::BinOperator::BitXor => Ok(expression! { xor([yul_left], [yul_right]) }),
             fe::BinOperator::LShift => Ok(expression! { shl([yul_right], [yul_left]) }),
-            fe::BinOperator::RShift => Ok(expression! { shr([yul_right], [yul_left]) }),
-            fe::BinOperator::Mod => Ok(expression! { mod([yul_left], [yul_right]) }),
+            fe::BinOperator::RShift => match typ.is_signed_integer() {
+                true => Ok(expression! { sar([yul_right], [yul_left]) }),
+                false => Ok(expression! { shr([yul_right], [yul_left]) }),
+            },
+            fe::BinOperator::Mod => match typ.is_signed_integer() {
+                true => Ok(expression! { smod([yul_left], [yul_right]) }),
+                false => Ok(expression! { mod([yul_left], [yul_right]) }),
+            },
             fe::BinOperator::Pow => Ok(expression! { exp([yul_left], [yul_right]) }),
             _ => unimplemented!(),
         };
+    }
+
+    unreachable!()
+}
+
+pub fn expr_unary_operation(
+    context: &Context,
+    exp: &Spanned<fe::Expr>,
+) -> Result<yul::Expression, CompileError> {
+    if let fe::Expr::UnaryOperation { op, operand } = &exp.node {
+        let yul_operand = expr(context, operand)?;
+        if let fe::UnaryOperator::USub = &op.node {
+            let zero = literal_expression! {0};
+            return Ok(expression! { sub([zero], [yul_operand]) });
+        }
     }
 
     unreachable!()
