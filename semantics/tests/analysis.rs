@@ -84,12 +84,12 @@ fn guest_book_analysis() {
     let context = fe_semantics::analysis(&fe_module).expect("failed to perform semantic analysis");
 
     for (start, end, expected) in &[
-        (200, 210, &addr_val()),
-        (214, 222, &bytes_mem()),
-        (253, 261, &bytes_mem()),
-        (326, 341, &addr_bytes_map_sto()),
-        (326, 347, &bytes_sto_moved()),
-        (342, 346, &addr_val()),
+        (196, 206, &addr_val()),
+        (210, 218, &bytes_mem()),
+        (249, 257, &bytes_mem()),
+        (322, 337, &addr_bytes_map_sto()),
+        (322, 343, &bytes_sto_moved()),
+        (338, 342, &addr_val()),
     ] {
         assert_eq!(
             context.get_expression(&mock_spanned_expr(*start, *end)),
@@ -98,7 +98,7 @@ fn guest_book_analysis() {
     }
 
     let actual_event = context
-        .get_emit(&mock_spanned_func_stmt(232, 262))
+        .get_emit(&mock_spanned_func_stmt(228, 258))
         .expect("couldn't find event for emit");
     assert_eq!(
         actual_event.topic,

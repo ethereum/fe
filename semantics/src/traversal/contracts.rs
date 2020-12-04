@@ -59,7 +59,7 @@ pub fn contract_def(
 
         for (_, event) in contract_scope.borrow().event_defs.iter() {
             runtime_operations.push(RuntimeOperations::AbiEncode {
-                params: event.fields.clone(),
+                params: event.field_types(),
             })
         }
 
@@ -131,14 +131,36 @@ fn event_def(
 ) -> Result<(), SemanticError> {
     if let fe::ContractStmt::EventDef { name, fields } = &stmt.node {
         let name = name.node.to_string();
-        let fields = fields
+
+        let (is_indexed_bools, fields): (Vec<bool>, Vec<FixedSize>) = fields
             .iter()
             .map(|field| event_field(Rc::clone(&scope), field))
-            .collect::<Result<Vec<FixedSize>, SemanticError>>()?;
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .unzip();
+
+        let indexed_fields = is_indexed_bools
+            .into_iter()
+            .enumerate()
+            .filter(|(_, is_indexed)| *is_indexed)
+            .map(|(index, _)| index)
+            .collect::<Vec<_>>();
+
+        if indexed_fields.len() > 3 {
+            return Err(SemanticError::more_than_three_indexed_params());
+        }
+
+        // check if they are trying to index an array type
+        for index in indexed_fields.clone() {
+            match fields[index].to_owned() {
+                FixedSize::Base(_) => {}
+                _ => unimplemented!("non-base type indexed event params"),
+            }
+        }
 
         scope
             .borrow_mut()
-            .add_event(name.clone(), Event::new(name, fields));
+            .add_event(name.clone(), Event::new(name, fields, indexed_fields));
 
         return Ok(());
     }
@@ -149,6 +171,9 @@ fn event_def(
 fn event_field(
     scope: Shared<ContractScope>,
     field: &Spanned<fe::EventField>,
-) -> Result<FixedSize, SemanticError> {
-    types::type_desc_fixed_size(Scope::Contract(scope), &field.node.typ)
+) -> Result<(bool, FixedSize), SemanticError> {
+    Ok((
+        field.node.qual.is_some(),
+        types::type_desc_fixed_size(Scope::Contract(scope), &field.node.typ)?,
+    ))
 }

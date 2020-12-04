@@ -103,32 +103,33 @@ impl ContractHarness {
             .deconstruct()
             .1
             .into_iter()
-            .map(|l| ethabi::RawLog::from((l.topics, l.data)))
+            .map(|log| ethabi::RawLog::from((log.topics, log.data)))
             .collect::<Vec<ethabi::RawLog>>();
 
-        for (name, output) in events {
+        for (name, expected_output) in events {
             let event = self
                 .abi
                 .events()
-                .find(|e| e.name.eq(name))
+                .find(|event| event.name.eq(name))
                 .expect("unable to find event for name");
 
-            let mut values = None;
-            for raw_log in raw_logs.clone() {
-                if let Ok(log) = event.parse_log(raw_log) {
-                    values = Some(
-                        log.params
-                            .into_iter()
-                            .map(|p| p.value)
-                            .collect::<Vec<ethabi::Token>>(),
-                    );
-                }
-            }
+            let outputs_for_event = raw_logs
+                .iter()
+                .filter_map(|raw_log| event.parse_log(raw_log.to_owned()).ok())
+                .map(|event_log| {
+                    event_log
+                        .params
+                        .into_iter()
+                        .map(|param| param.value)
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>();
 
-            if let Some(values) = values {
-                assert_eq!(values, output)
-            } else {
-                panic!("no logs for event")
+            if !outputs_for_event.contains(&expected_output) {
+                panic!(
+                    "no {} logs matching: {:?}\nfound: {:?}",
+                    name, expected_output, outputs_for_event
+                )
             }
         }
     }
@@ -793,14 +794,45 @@ fn erc20_token() {
         harness.test_function(
             &mut executor,
             "transferFrom",
-            vec![address_token(alice), address_token(james), uint_token(25)],
+            vec![address_token(alice), address_token(james), uint_token(20)],
             Some(bool_token(true)),
         );
         harness.test_function(
             &mut executor,
             "balanceOf",
             vec![address_token(james)],
-            Some(uint_token(50)),
+            Some(uint_token(45)),
+        );
+
+        // validate events
+        harness.events_emitted(
+            executor,
+            vec![
+                (
+                    "Transfer",
+                    vec![address_token(alice), address_token(bob), uint_token(42)],
+                ),
+                (
+                    "Transfer",
+                    vec![address_token(alice), address_token(james), uint_token(25)],
+                ),
+                (
+                    "Transfer",
+                    vec![address_token(alice), address_token(james), uint_token(20)],
+                ),
+                (
+                    "Approval",
+                    vec![address_token(alice), address_token(bob), uint_token(50)],
+                ),
+                (
+                    "Approval",
+                    vec![address_token(alice), address_token(bob), uint_token(25)],
+                ),
+                (
+                    "Approval",
+                    vec![address_token(alice), address_token(bob), uint_token(5)],
+                ),
+            ],
         );
     });
 }

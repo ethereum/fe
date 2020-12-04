@@ -3,6 +3,7 @@ use fe_semantics::namespace::events::Event;
 use fe_semantics::namespace::types::{
     Array,
     FeSized,
+    FixedSize,
 };
 use yultsur::*;
 
@@ -62,11 +63,31 @@ pub fn mem_to_val<T: FeSized>(typ: T, mptr: yul::Expression) -> yul::Expression 
 
 /// Logs an event.
 pub fn emit_event(event: Event, vals: Vec<yul::Expression>) -> yul::Statement {
-    let topic = literal_expression! { (event.topic) };
-    let encoding = abi_operations::encode(event.fields.clone(), vals.clone());
-    let size = abi_operations::encode_size(event.fields, vals);
+    let mut topics = vec![literal_expression! { (event.topic) }];
 
-    return statement! { log1([encoding], [size], [topic]) };
+    let (field_vals, field_types): (Vec<yul::Expression>, Vec<FixedSize>) = event
+        .fields()
+        .into_iter()
+        .map(|(index, typ)| (vals[index].to_owned(), typ))
+        .unzip();
+
+    // field types will be relevant when we implement indexed array values
+    let (mut indexed_field_vals, _): (Vec<yul::Expression>, Vec<FixedSize>) = event
+        .indexed_fields()
+        .into_iter()
+        .map(|(index, typ)| (vals[index].to_owned(), typ))
+        .unzip();
+
+    let encoding = abi_operations::encode(field_types.clone(), field_vals);
+    let encoding_size = abi_operations::encode_size(field_types, vals);
+
+    // for now we assume these are all base type values and therefore do not need to
+    // be hashed
+    topics.append(&mut indexed_field_vals);
+
+    let log_func = identifier! { (format!("log{}", topics.len())) };
+
+    return statement! { [log_func]([encoding], [encoding_size], [topics...]) };
 }
 
 /// Sums a list of expressions using nested add operations.
@@ -112,15 +133,30 @@ mod tests {
     use yultsur::*;
 
     #[test]
-    fn test_emit_event() {
+    fn test_emit_event_no_indexed() {
         let event = Event::new(
             "MyEvent".to_string(),
             vec![FixedSize::Base(U256), FixedSize::Base(Base::Address)],
+            vec![],
         );
 
         assert_eq!(
             emit_event(event, vec![expression! { 26 }, expression! { 0x00 }]).to_string(),
             "log1(abi_encode_uint256_address(26, 0x00), add(64, 0), 0x74bffa18f2b20140b65de9264a54040b23ab0a34e7643d52f67f7fb18be9bbcb)"
+        )
+    }
+
+    #[test]
+    fn test_emit_event_one_indexed() {
+        let event = Event::new(
+            "MyEvent".to_string(),
+            vec![FixedSize::Base(U256), FixedSize::Base(Base::Address)],
+            vec![0],
+        );
+
+        assert_eq!(
+            emit_event(event, vec![expression! { 26 }, expression! { 0x00 }]).to_string(),
+            "log2(abi_encode_address(0x00), add(32, 0), 0x74bffa18f2b20140b65de9264a54040b23ab0a34e7643d52f67f7fb18be9bbcb, 26)"
         )
     }
 

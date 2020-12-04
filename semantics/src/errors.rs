@@ -15,12 +15,14 @@ pub enum ErrorKind {
     TypeError,
     CannotMove,
     NotCallable,
+    MoreThanThreeIndexedParams,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct SemanticError {
     pub kind: ErrorKind,
-    /// A sequence of nested spans containing the error.
+    /// A sequence of nested spans containing the error's origin in the source
+    /// code.
     pub context: Vec<Span>,
 }
 
@@ -93,6 +95,14 @@ impl SemanticError {
     pub fn not_callable() -> Self {
         SemanticError {
             kind: ErrorKind::NotCallable,
+            context: vec![],
+        }
+    }
+
+    /// Create a new error with kind `MoreThanThreeIndexedParams`
+    pub fn more_than_three_indexed_params() -> Self {
+        SemanticError {
+            kind: ErrorKind::MoreThanThreeIndexedParams,
             context: vec![],
         }
     }
