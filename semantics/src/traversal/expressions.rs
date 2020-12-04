@@ -45,7 +45,7 @@ pub fn expr(
         fe::Expr::Ternary { .. } => expr_ternary(scope, Rc::clone(&context), exp),
         fe::Expr::BoolOperation { .. } => unimplemented!(),
         fe::Expr::BinOperation { .. } => expr_bin_operation(scope, Rc::clone(&context), exp),
-        fe::Expr::UnaryOperation { .. } => unimplemented!(),
+        fe::Expr::UnaryOperation { .. } => expr_unary_operation(scope, Rc::clone(&context), exp),
         fe::Expr::CompOperation { .. } => expr_comp_operation(scope, Rc::clone(&context), exp),
         fe::Expr::Call { .. } => expr_call(scope, Rc::clone(&context), exp),
         fe::Expr::List { .. } => unimplemented!(),
@@ -263,6 +263,33 @@ fn expr_bin_operation(
     unreachable!()
 }
 
+fn expr_unary_operation(
+    scope: Shared<BlockScope>,
+    context: Shared<Context>,
+    exp: &Spanned<fe::Expr>,
+) -> Result<ExpressionAttributes, SemanticError> {
+    if let fe::Expr::UnaryOperation { op, operand } = &exp.node {
+        if let fe::UnaryOperator::USub = &op.node {
+            let operand_attributes =
+                expr_with_value_move(Rc::clone(&scope), Rc::clone(&context), operand)?;
+
+            if !matches!(operand_attributes.typ, Type::Base(Base::Numeric(_))) {
+                return Err(SemanticError::type_error());
+            }
+            // No matter what numeric type the operand was before, the minus symbol turns it
+            // into an I256 just like all positive values default to U256.
+            return Ok(ExpressionAttributes::new(
+                Type::Base(Base::Numeric(Integer::I256)),
+                Location::Value,
+            ));
+        }
+
+        unimplemented!()
+    }
+
+    unreachable!()
+}
+
 fn validate_types_equal(
     expression_a: &ExpressionAttributes,
     expression_b: &ExpressionAttributes,
@@ -383,6 +410,12 @@ fn expr_type_constructor(
         "u32" => Type::Base(Base::Numeric(Integer::U32)),
         "u16" => Type::Base(Base::Numeric(Integer::U16)),
         "u8" => Type::Base(Base::Numeric(Integer::U8)),
+        "i256" => Type::Base(Base::Numeric(Integer::I256)),
+        "i128" => Type::Base(Base::Numeric(Integer::I128)),
+        "i64" => Type::Base(Base::Numeric(Integer::I64)),
+        "i32" => Type::Base(Base::Numeric(Integer::I32)),
+        "i16" => Type::Base(Base::Numeric(Integer::I16)),
+        "i8" => Type::Base(Base::Numeric(Integer::I8)),
         _ => return Err(SemanticError::undefined_value()),
     };
 

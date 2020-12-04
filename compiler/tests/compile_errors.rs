@@ -23,7 +23,8 @@ use std::fs;
     case("return_call_to_fn_with_param_type_mismatch.fe", "TypeError"),
     case("return_addition_with_mixed_types.fe", "TypeError"),
     case("return_lt_mixed_types.fe", "TypeError"),
-    case("indexed_event.fe", "MoreThanThreeIndexedParams")
+    case("indexed_event.fe", "MoreThanThreeIndexedParams"),
+    case("unary_minus_on_bool.fe", "TypeError")
 )]
 fn test_compile_errors(fixture_file: &str, expected_error: &str) {
     let src = fs::read_to_string(format!("tests/fixtures/compile_errors/{}", fixture_file))

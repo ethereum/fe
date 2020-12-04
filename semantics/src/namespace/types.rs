@@ -107,6 +107,12 @@ pub enum Integer {
     U32,
     U16,
     U8,
+    I256,
+    I128,
+    I64,
+    I32,
+    I16,
+    I8,
 }
 
 pub const U256: Base = Base::Numeric(Integer::U256);
@@ -133,10 +139,31 @@ pub struct FeString {
     pub max_size: usize,
 }
 
+impl Integer {
+    pub fn is_signed(&self) -> bool {
+        matches!(
+            self,
+            Integer::I256
+                | Integer::I128
+                | Integer::I64
+                | Integer::I32
+                | Integer::I16
+                | Integer::I8
+        )
+    }
+}
+
 impl Type {
     pub fn is_empty_tuple(&self) -> bool {
         if let Type::Tuple(tuple) = &self {
             return tuple.is_empty();
+        }
+        false
+    }
+
+    pub fn is_signed_integer(&self) -> bool {
+        if let Type::Base(Base::Numeric(integer)) = &self {
+            return integer.is_signed();
         }
         false
     }
@@ -173,6 +200,12 @@ impl FeSized for Integer {
             Integer::U64 => 8,
             Integer::U128 => 16,
             Integer::U256 => 32,
+            Integer::I8 => 1,
+            Integer::I16 => 2,
+            Integer::I32 => 4,
+            Integer::I64 => 8,
+            Integer::I128 => 16,
+            Integer::I256 => 32,
         }
     }
 }
@@ -254,6 +287,12 @@ impl AbiEncoding for Base {
             Base::Numeric(Integer::U32) => "uint32".to_string(),
             Base::Numeric(Integer::U16) => "uint16".to_string(),
             Base::Numeric(Integer::U8) => "uint8".to_string(),
+            Base::Numeric(Integer::I256) => "int256".to_string(),
+            Base::Numeric(Integer::I128) => "int128".to_string(),
+            Base::Numeric(Integer::I64) => "int64".to_string(),
+            Base::Numeric(Integer::I32) => "int32".to_string(),
+            Base::Numeric(Integer::I16) => "int16".to_string(),
+            Base::Numeric(Integer::I8) => "int8".to_string(),
             Base::Address => "address".to_string(),
             Base::Byte => "byte".to_string(),
             Base::Bool => "bool".to_string(),
@@ -304,6 +343,42 @@ impl AbiEncoding for Base {
                     },
                 },
                 Integer::U8 => AbiType::Uint {
+                    size: AbiUintSize {
+                        data_size: 1,
+                        padded_size: 32,
+                    },
+                },
+                Integer::I256 => AbiType::Uint {
+                    size: AbiUintSize {
+                        data_size: 32,
+                        padded_size: 32,
+                    },
+                },
+                Integer::I128 => AbiType::Uint {
+                    size: AbiUintSize {
+                        data_size: 16,
+                        padded_size: 32,
+                    },
+                },
+                Integer::I64 => AbiType::Uint {
+                    size: AbiUintSize {
+                        data_size: 8,
+                        padded_size: 32,
+                    },
+                },
+                Integer::I32 => AbiType::Uint {
+                    size: AbiUintSize {
+                        data_size: 4,
+                        padded_size: 32,
+                    },
+                },
+                Integer::I16 => AbiType::Uint {
+                    size: AbiUintSize {
+                        data_size: 2,
+                        padded_size: 32,
+                    },
+                },
+                Integer::I8 => AbiType::Uint {
                     size: AbiUintSize {
                         data_size: 1,
                         padded_size: 32,
@@ -458,6 +533,12 @@ pub fn type_desc(defs: &HashMap<String, Type>, typ: &fe::TypeDesc) -> Result<Typ
         fe::TypeDesc::Base { base: "u32" } => Ok(Type::Base(Base::Numeric(Integer::U32))),
         fe::TypeDesc::Base { base: "u16" } => Ok(Type::Base(Base::Numeric(Integer::U16))),
         fe::TypeDesc::Base { base: "u8" } => Ok(Type::Base(Base::Numeric(Integer::U8))),
+        fe::TypeDesc::Base { base: "i256" } => Ok(Type::Base(Base::Numeric(Integer::I256))),
+        fe::TypeDesc::Base { base: "i128" } => Ok(Type::Base(Base::Numeric(Integer::I128))),
+        fe::TypeDesc::Base { base: "i64" } => Ok(Type::Base(Base::Numeric(Integer::I64))),
+        fe::TypeDesc::Base { base: "i32" } => Ok(Type::Base(Base::Numeric(Integer::I32))),
+        fe::TypeDesc::Base { base: "i16" } => Ok(Type::Base(Base::Numeric(Integer::I16))),
+        fe::TypeDesc::Base { base: "i8" } => Ok(Type::Base(Base::Numeric(Integer::I8))),
         fe::TypeDesc::Base { base: "bool" } => Ok(Type::Base(Base::Bool)),
         fe::TypeDesc::Base { base: "bytes" } => Ok(Type::Base(Base::Byte)),
         fe::TypeDesc::Base { base: "address" } => Ok(Type::Base(Base::Address)),
