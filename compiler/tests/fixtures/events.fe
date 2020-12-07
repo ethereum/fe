@@ -1,20 +1,20 @@
 contract Foo:
     event Nums:
         idx num1: u256
-        idx num2: u256
+        num2: u256
 
     event Bases:
-        idx num: u256
-        idx addr: address
+        num: u256
+        addr: address
 
     event Mix:
-        idx num1: u256
+        num1: u256
         idx addr: address
-        idx num2: u256
-        idx my_bytes: bytes[100]
+        num2: u256
+        my_bytes: bytes[100]
 
     event Addresses:
-        idx addrs: address[2]
+        addrs: address[2]
 
     pub def emit_nums():
         emit Nums(26, 42)

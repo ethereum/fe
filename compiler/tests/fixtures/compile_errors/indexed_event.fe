@@ -1,0 +1,6 @@
+contract Foo:
+    event MyEvent:
+        idx addr1: address
+        idx addr2: address
+        idx addr3: address
+        idx addr4: address

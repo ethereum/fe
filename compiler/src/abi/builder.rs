@@ -102,7 +102,7 @@ fn event_field<'a>(
     Ok(EventField {
         name: String::from(field.name.node),
         typ: type_desc(&type_defs, &field.typ.node)?,
-        indexed: false,
+        indexed: field.qual.is_some(),
     })
 }
 
