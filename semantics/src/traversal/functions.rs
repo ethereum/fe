@@ -449,10 +449,13 @@ mod tests {
         assert_eq!(def.is_public, false);
         assert_eq!(def.param_types, vec![FixedSize::Base(U256)]);
         assert_eq!(def.return_type, FixedSize::Base(U256));
-        assert!(matches!(*def.scope.borrow(), BlockScope {
-            typ: BlockScopeType::Function,
-            parent: BlockScopeParent::Contract(_),
-            ..
-        }));
+        assert!(matches!(
+            *def.scope.borrow(),
+            BlockScope {
+                typ: BlockScopeType::Function,
+                parent: BlockScopeParent::Contract(_),
+                ..
+            }
+        ));
     }
 }
