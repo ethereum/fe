@@ -68,15 +68,12 @@ pub fn expr_list(
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::List { elts } = &exp.node {
-        if elts.len() > 0 {
-            // Assuming every element attribute should matches the attribute of 0th element
-            // of list. Safe to unwrap as we already checked the length of the
-            // list.
-            let attribute_to_be_matched = expr(
-                Rc::clone(&scope),
-                Rc::clone(&context),
-                elts.iter().nth(0).unwrap(),
-            )?;
+        // Assuming every element attribute should matches the attribute of 0th element
+        // of list. Safe to unwrap as we already checked the length of the
+        // list.
+        if let Some(elt) = elts.first() {
+            let attribute_to_be_matched = expr(Rc::clone(&scope), Rc::clone(&context), elt)?;
+
             // Rationale - A list contains only one type of element.
             // No need to iterate the whole list if the first attribute doesn't match next
             // one.

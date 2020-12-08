@@ -113,7 +113,7 @@ fn for_loop(
         {
             let size = literal_expression! { (array.size()) };
             return Ok(block_statement! {
-                (for {(let i := 0)} (lt(i, size)) {(i := add(i, 1))}
+                (for {(let i := 0)} (lt(i, [size])) {(i := add(i, 1))}
                 {
                     [yul_body...]
                 })

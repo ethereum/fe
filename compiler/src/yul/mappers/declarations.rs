@@ -68,7 +68,7 @@ fn var_decl_array(
         return Ok(if let Some(v) = value {
             let list_yul = expressions::expr_list(context, v)?;
             let array_starts_from = expression! { avail() };
-            let statements_memory_store: Vec<yul::Statement> = list_yul
+            let _statements_memory_store: Vec<yul::Statement> = list_yul
                 .into_iter()
                 .enumerate()
                 .map(|(idx, elt)| {
