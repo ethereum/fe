@@ -1,13 +1,13 @@
 [package]
 name = "fe-semantics"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["Ethereum Foundation <snakecharmers@ethereum.org>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-fe-parser = {path = "../parser", version = "0.1.0"}
+fe-parser = {path = "../parser", version = "0.0.1"}
 rstest = "0.6.4"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
 hex = "0.4"

@@ -380,7 +380,7 @@ dependencies = [
 
 [[package]]
 name = "fe"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "clap",
  "fe-compiler",
@@ -389,7 +389,7 @@ dependencies = [
 
 [[package]]
 name = "fe-compiler"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "ethabi",
  "evm",
@@ -410,7 +410,7 @@ dependencies = [
 
 [[package]]
 name = "fe-parser"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "difference",
  "regex",
@@ -423,7 +423,7 @@ dependencies = [
 
 [[package]]
 name = "fe-semantics"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "ansi_term 0.12.1",
  "fe-parser",

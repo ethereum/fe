@@ -1,6 +1,6 @@
 [package]
 name = "fe"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["David Sanders <david@ethereum.org>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -17,6 +17,6 @@ members = [".", "parser", "compiler"]
 solc-backend = ["fe-compiler/solc-backend"]
 
 [dependencies]
-fe-parser = {path = "parser", version = "0.1.0"}
-fe-compiler = {path = "compiler", version = "0.1.0"}
+fe-parser = {path = "parser", version = "0.0.1"}
+fe-compiler = {path = "compiler", version = "0.0.1"}
 clap = "2.33.3"
