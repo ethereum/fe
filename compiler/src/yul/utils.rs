@@ -3,6 +3,7 @@ use fe_parser::span::{
     Span,
     Spanned,
 };
+use yultsur::*;
 
 /// Creates a new spanned expression. Useful in cases where an `Expr` is nested
 /// within the node of a `Spanned` object.
@@ -11,4 +12,12 @@ pub fn spanned_expression<'a>(span: &Span, exp: &fe::Expr<'a>) -> Spanned<fe::Ex
         node: (*exp).clone(),
         span: (*span).to_owned(),
     }
+}
+
+pub fn func_name(name: &str) -> yul::Identifier {
+    identifier! { (format!("$${}", name)) }
+}
+
+pub fn var_name(name: &str) -> yul::Identifier {
+    identifier! { (format!("${}", name)) }
 }

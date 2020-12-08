@@ -1,12 +1,11 @@
 use crate::errors::CompileError;
-use crate::yul::mappers::_utils::spanned_expression;
-use crate::yul::mappers::expressions::call_arg;
 use crate::yul::mappers::{
     assignments,
     declarations,
     expressions,
 };
 use crate::yul::operations;
+use crate::yul::utils;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use fe_semantics::Context;
@@ -38,7 +37,7 @@ pub fn func_def(
         },
     ) = (context.get_function(def).to_owned(), &def.node)
     {
-        let function_name = identifier! {(name.node)};
+        let function_name = utils::func_name(name.node);
         let param_names = args.iter().map(|arg| func_def_arg(arg)).collect::<Vec<_>>();
         let function_statements = multiple_func_stmt(context, body)?;
 
@@ -61,8 +60,9 @@ pub fn func_def(
 }
 
 fn func_def_arg(arg: &Spanned<fe::FuncDefArg>) -> yul::Identifier {
-    let name = arg.node.name.node.to_string();
-    identifier! {(name)}
+    let name = arg.node.name.node;
+
+    utils::var_name(name)
 }
 
 fn func_stmt(
@@ -113,7 +113,7 @@ fn if_statement(
 
 fn expr(context: &Context, stmt: &Spanned<fe::FuncStmt>) -> Result<yul::Statement, CompileError> {
     if let fe::FuncStmt::Expr { value } = &stmt.node {
-        let spanned = spanned_expression(&stmt.span, value);
+        let spanned = utils::spanned_expression(&stmt.span, value);
         let expr = expressions::expr(context, &spanned)?;
         if let Some(attributes) = context.get_expression(stmt.span) {
             if attributes.typ.is_empty_tuple() {
@@ -141,7 +141,7 @@ fn emit(context: &Context, stmt: &Spanned<fe::FuncStmt>) -> Result<yul::Statemen
             let event_values = args
                 .node
                 .iter()
-                .map(|arg| call_arg(context, arg))
+                .map(|arg| expressions::call_arg(context, arg))
                 .collect::<Result<_, _>>()?;
 
             if let Some(event) = context.get_emit(stmt) {

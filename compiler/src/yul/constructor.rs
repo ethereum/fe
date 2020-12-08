@@ -36,6 +36,7 @@ pub fn build(
         // The parameters are immediately copied from this location into memory at
         // `mem_start`. From there, parameters are decoded and passed into the
         // init function.
+        let init_func = identifier! { ("$$__init__") };
         block! {
             // copy params to memory where they can be decoded
             (let params_start_code := datasize("Contract"))
@@ -44,9 +45,9 @@ pub fn build(
             (let params_start_mem := alloc(params_size))
             (codecopy(params_start_mem, params_start_code, params_size))
 
-            // add init function amd run it
+            // add init function amd call it
             [init]
-            (__init__([decoded_params...]))
+            ([init_func]([decoded_params...]))
 
             // add the runtime functions
             [runtime...]
