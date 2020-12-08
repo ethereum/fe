@@ -251,6 +251,20 @@ fn expr_subscript(
     unreachable!()
 }
 
+pub fn expr_list(
+    context: &Context,
+    exp: &Spanned<fe::Expr>,
+) -> Result<Vec<yul::Expression>, CompileError> {
+    if let fe::Expr::List { elts } = &exp.node {
+        let yul_elts: Vec<yul::Expression> = elts
+            .iter()
+            .map(|elt| expr(context, elt))
+            .collect::<Result<_, _>>()?;
+        return Ok(yul_elts);
+    }
+    unreachable!();
+}
+
 fn expr_attribute(
     context: &Context,
     exp: &Spanned<fe::Expr>,

@@ -1,5 +1,6 @@
 use crate::errors::CompileError;
 use crate::yul::mappers::expressions;
+use crate::yul::operations;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use fe_semantics::namespace::types::{
@@ -51,7 +52,7 @@ fn var_decl_base(
 }
 
 fn var_decl_array(
-    _context: &Context,
+    context: &Context,
     decl: &Spanned<fe::FuncStmt>,
     array: Array,
 ) -> Result<yul::Statement, CompileError> {
@@ -64,8 +65,23 @@ fn var_decl_array(
         let target = identifier! { (expressions::expr_name_string(target)?) };
         let size = literal_expression! { (array.size()) };
 
-        return Ok(if value.is_some() {
-            unimplemented!()
+        return Ok(if let Some(v) = value {
+            let list_yul = expressions::expr_list(context, v)?;
+            let array_starts_from = expression! { avail() };
+            let statements_memory_store: Vec<yul::Statement> = list_yul
+                .into_iter()
+                .enumerate()
+                .map(|(idx, elt)| {
+                    let mptr = operations::indexed_array(
+                        array.clone(),
+                        array_starts_from.clone(),
+                        literal_expression! { (idx)},
+                    );
+                    operations::val_to_mem(array.clone(), mptr, elt)
+                })
+                .collect();
+            // let block_stmt =  block_statement!{(statements_memory_store)};
+            statement! { let [target] := alloc([size]) }
         } else {
             statement! { let [target] := alloc([size]) }
         });

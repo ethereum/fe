@@ -9,7 +9,14 @@ use crate::yul::mappers::{
 use crate::yul::operations;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
-use fe_semantics::Context;
+use fe_semantics::namespace::types::{
+    FeSized,
+    Type,
+};
+use fe_semantics::{
+    Context,
+    ExpressionAttributes,
+};
 use yultsur::*;
 
 pub fn multiple_func_stmt(
@@ -75,7 +82,7 @@ fn func_stmt(
         fe::FuncStmt::Assign { .. } => assignments::assign(context, stmt),
         fe::FuncStmt::Emit { .. } => emit(context, stmt),
         fe::FuncStmt::AugAssign { .. } => unimplemented!(),
-        fe::FuncStmt::For { .. } => unimplemented!(),
+        fe::FuncStmt::For { .. } => for_loop(context, stmt),
         fe::FuncStmt::While { .. } => while_loop(context, stmt),
         fe::FuncStmt::If { .. } => if_statement(context, stmt),
         fe::FuncStmt::Assert { .. } => assert(context, stmt),
@@ -85,6 +92,37 @@ fn func_stmt(
         fe::FuncStmt::Continue => continue_statement(context, stmt),
         fe::FuncStmt::Revert => revert(stmt),
     }
+}
+
+fn for_loop(
+    context: &Context,
+    stmt: &Spanned<fe::FuncStmt>,
+) -> Result<yul::Statement, CompileError> {
+    if let fe::FuncStmt::For {
+        target: _,
+        iter,
+        body,
+        or_else: _,
+    } = &stmt.node
+    {
+        let yul_body = multiple_func_stmt(context, body)?;
+        if let Some(ExpressionAttributes {
+            typ: Type::Array(array),
+            ..
+        }) = context.get_expression(iter.span)
+        {
+            let size = literal_expression! { (array.size()) };
+            return Ok(block_statement! {
+                (for {(let i := 0)} (lt(i, size)) {(i := add(i, 1))}
+                {
+                    [yul_body...]
+                })
+            });
+        } else {
+            return Err(CompileError::static_str("missing iter expression"));
+        }
+    }
+    unreachable!()
 }
 
 fn if_statement(

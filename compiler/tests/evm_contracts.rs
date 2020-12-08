@@ -273,6 +273,7 @@ fn test_assert() {
 }
 
 #[rstest(fixture_file, input, expected,
+    case("for_loop.fe", vec![], Some(uint_token(15))),
     case("while_loop_with_continue.fe", vec![], Some(uint_token(1))),
     case("while_loop.fe", vec![], Some(uint_token(3))),
     case("while_loop_with_break.fe", vec![], Some(uint_token(1))),
