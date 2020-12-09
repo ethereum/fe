@@ -4,6 +4,7 @@
 //! any semantic errors within a given AST and produces a `Context` instance
 //! that can be used to query contextual information attributed to AST nodes.
 
+pub mod builtins;
 pub mod errors;
 pub mod namespace;
 mod traversal;
@@ -35,6 +36,20 @@ pub enum Location {
     },
     Memory,
     Value,
+}
+
+impl Location {
+    /// The expected location of a value with the given type when being
+    /// assigned, returned, or passed.
+    pub fn assign_location(typ: Type) -> Result<Self, SemanticError> {
+        match typ {
+            Type::Base(_) => Ok(Location::Value),
+            Type::Array(_) => Ok(Location::Memory),
+            Type::Tuple(_) => Ok(Location::Memory),
+            Type::String(_) => Ok(Location::Memory),
+            Type::Map(_) => Err(SemanticError::cannot_move()),
+        }
+    }
 }
 
 /// Operations that need to be made available during runtime.
@@ -75,30 +90,28 @@ impl ExpressionAttributes {
         }
     }
 
-    /// Updates the expression attributes with a move to the type's default
-    /// location. Returns an error for map types.
-    ///
-    /// Base types are moved to the stack and reference types are moved to a
-    /// segment of memory.
-    pub fn with_default_move(mut self) -> Result<Self, SemanticError> {
-        let move_location = match self.typ {
-            Type::Base(_) => Location::Value,
-            Type::Array(_) => Location::Memory,
-            Type::Tuple(_) => Location::Memory,
-            Type::String(_) => Location::Memory,
-            Type::Map(_) => return Err(SemanticError::cannot_move()),
-        };
-
-        if self.location != move_location {
-            self.move_location = Some(move_location)
+    /// Adds a move to memory, if it is already in memory.
+    pub fn into_cloned(mut self) -> Result<Self, SemanticError> {
+        if self.location != Location::Memory {
+            Err(SemanticError::cannot_move())
+        } else {
+            self.move_location = Some(Location::Memory);
+            Ok(self)
         }
-
-        Ok(self)
     }
 
-    /// Updates the expression attributes with a move to the stack. Returns an
-    /// error if the type cannot be moved there.
-    pub fn with_value_move(mut self) -> Result<Self, SemanticError> {
+    /// Adds a move to memory, if it is in storage.
+    pub fn into_cloned_from_sto(mut self) -> Result<Self, SemanticError> {
+        if !matches!(self.location, Location::Storage { .. }) {
+            Err(SemanticError::cannot_move())
+        } else {
+            self.move_location = Some(Location::Memory);
+            Ok(self)
+        }
+    }
+
+    /// Adds a move to value, if it is in storage or memory.
+    pub fn into_loaded(mut self) -> Result<Self, SemanticError> {
         match self.typ {
             Type::Base(_) => {}
             _ => return Err(SemanticError::cannot_move()),
@@ -109,6 +122,24 @@ impl ExpressionAttributes {
         }
 
         Ok(self)
+    }
+
+    /// Adds a move (if necessary) to value if it is a base type and ensures
+    /// reference types are in memory.
+    pub fn into_assignable(self) -> Result<Self, SemanticError> {
+        let assign_location = Location::assign_location(self.typ.to_owned())?;
+
+        match assign_location {
+            Location::Value => self.into_loaded(),
+            Location::Memory => {
+                if self.final_location() == Location::Memory {
+                    Ok(self)
+                } else {
+                    Err(SemanticError::cannot_move())
+                }
+            }
+            Location::Storage { .. } => unreachable!(),
+        }
     }
 
     /// The final location of an expression after a possible move.
@@ -124,8 +155,9 @@ impl ExpressionAttributes {
 /// The type of a function call.
 #[derive(Clone, Debug, PartialEq)]
 pub enum CallType {
-    TypeConstructor,
-    SelfFunction { name: String },
+    TypeConstructor { typ: Type },
+    SelfAttribute { func_name: String },
+    ValueAttribute,
 }
 
 /// Contains contextual information relating to a function definition AST node.

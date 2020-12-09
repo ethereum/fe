@@ -3,6 +3,7 @@ use crate::yul::operations;
 use crate::yul::utils;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
+use fe_semantics::builtins;
 use fe_semantics::namespace::types::{
     FixedSize,
     Type,
@@ -63,9 +64,10 @@ fn move_expression(
         FixedSize::try_from(typ).map_err(|_| CompileError::static_str("invalid attributes"))?;
 
     match (from.clone(), to.clone()) {
-        (Location::Storage { .. }, Location::Value) => Ok(operations::sto_to_val(typ, val)),
-        (Location::Memory { .. }, Location::Value) => Ok(operations::mem_to_val(typ, val)),
-        (Location::Storage { .. }, Location::Memory) => Ok(operations::sto_to_mem(typ, val)),
+        (Location::Storage { .. }, Location::Value) => Ok(operations::sload(typ, val)),
+        (Location::Memory, Location::Value) => Ok(operations::mload(typ, val)),
+        (Location::Memory, Location::Memory) => Ok(operations::mcopym(typ, val)),
+        (Location::Storage { .. }, Location::Memory) => Ok(operations::scopym(typ, val)),
         _ => Err(CompileError::str(format!(
             "invalid expression move: {:?} {:?}",
             from, to
@@ -90,29 +92,30 @@ pub fn expr_call(
     context: &Context,
     exp: &Spanned<fe::Expr>,
 ) -> Result<yul::Expression, CompileError> {
-    if let (Some(call_type), fe::Expr::Call { args, .. }) = (context.get_call(exp), &exp.node) {
-        let yul_args: Vec<yul::Expression> = args
-            .node
-            .iter()
-            .map(|val| call_arg(context, val))
-            .collect::<Result<_, _>>()?;
+    if let fe::Expr::Call { args, func } = &exp.node {
+        if let Some(call_type) = context.get_call(func) {
+            let yul_args: Vec<yul::Expression> = args
+                .node
+                .iter()
+                .map(|val| call_arg(context, val))
+                .collect::<Result<_, _>>()?;
 
-        return match call_type {
-            CallType::SelfFunction { name } => {
-                let func_name = utils::func_name(name);
+            return match call_type {
+                CallType::TypeConstructor { .. } => Ok(yul_args[0].to_owned()),
+                CallType::SelfAttribute { func_name } => {
+                    let func_name = utils::func_name(func_name);
 
-                Ok(expression! { [func_name]([yul_args...]) })
-            }
-            CallType::TypeConstructor => {
-                if let Some(first_arg) = yul_args.first() {
-                    Ok(first_arg.to_owned())
-                } else {
-                    Err(CompileError::static_str(
-                        "type constructor expected a single parameter",
-                    ))
+                    Ok(expression! { [func_name]([yul_args...]) })
                 }
-            }
-        };
+                CallType::ValueAttribute { .. } => {
+                    if let fe::Expr::Attribute { value, .. } = &func.node {
+                        expr(context, value)
+                    } else {
+                        unreachable!()
+                    }
+                }
+            };
+        }
     }
 
     unreachable!()
@@ -296,8 +299,8 @@ fn expr_attribute(
 ) -> Result<yul::Expression, CompileError> {
     if let fe::Expr::Attribute { value, attr } = &exp.node {
         return match expr_name_str(value)? {
-            "msg" => expr_attribute_msg(attr),
-            "self" => expr_attribute_self(context, exp),
+            builtins::MSG => expr_attribute_msg(attr),
+            builtins::SELF => expr_attribute_self(context, exp),
             _ => Err(CompileError::static_str("invalid attributes")),
         };
     }
@@ -307,7 +310,7 @@ fn expr_attribute(
 
 fn expr_attribute_msg(attr: &Spanned<&str>) -> Result<yul::Expression, CompileError> {
     match attr.node {
-        "sender" => Ok(expression! { caller() }),
+        builtins::SENDER => Ok(expression! { caller() }),
         _ => Err(CompileError::static_str("invalid msg attribute name")),
     }
 }
@@ -476,7 +479,7 @@ mod tests {
 
         assert_eq!(
             result,
-            "scopy(dualkeccak256(0, mloadn(add($bar_array, mul($index, 20)), 20)), 160)"
+            "scopym(dualkeccak256(0, mloadn(add($bar_array, mul($index, 20)), 20)), 160)"
         );
     }
 

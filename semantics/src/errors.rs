@@ -17,6 +17,7 @@ pub enum ErrorKind {
     NotCallable,
     NumericLiteralExpected,
     MoreThanThreeIndexedParams,
+    WrongNumberOfParams,
 }
 
 #[derive(Debug, PartialEq)]
@@ -112,6 +113,14 @@ impl SemanticError {
     pub fn more_than_three_indexed_params() -> Self {
         SemanticError {
             kind: ErrorKind::MoreThanThreeIndexedParams,
+            context: vec![],
+        }
+    }
+
+    /// Create a new error with kind `WrongNumberOfParams`
+    pub fn wrong_number_of_params() -> Self {
+        SemanticError {
+            kind: ErrorKind::WrongNumberOfParams,
             context: vec![],
         }
     }

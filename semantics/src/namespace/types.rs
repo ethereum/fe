@@ -154,6 +154,7 @@ impl Integer {
 }
 
 impl Type {
+    /// Returns true if the type is a tuple with 0 elements.
     pub fn is_empty_tuple(&self) -> bool {
         if let Type::Tuple(tuple) = &self {
             return tuple.is_empty();

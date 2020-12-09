@@ -5,6 +5,7 @@ use crate::namespace::scopes::{
 };
 use crate::traversal::expressions;
 use crate::Context;
+use crate::Location;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use std::rc::Rc;
@@ -30,6 +31,16 @@ pub fn assign(
 
             if target_attributes.typ != value_attributes.typ {
                 return Err(SemanticError::type_error());
+            }
+
+            if matches!(
+                (
+                    value_attributes.final_location(),
+                    target_attributes.location
+                ),
+                (Location::Storage { .. }, Location::Memory)
+            ) {
+                return Err(SemanticError::cannot_move());
             }
 
             return Ok(());

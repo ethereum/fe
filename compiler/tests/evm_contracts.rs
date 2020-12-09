@@ -908,3 +908,70 @@ fn erc20_token() {
         );
     });
 }
+
+#[test]
+fn data_copying_stress() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "data_copying_stress.fe", "Foo", vec![]);
+
+        harness.test_function(
+            &mut executor,
+            "set_my_vals",
+            vec![
+                string_token("my string"),
+                string_token("my other string"),
+                uint_token(26),
+                uint_token(42),
+            ],
+            None,
+        );
+
+        harness.test_function(&mut executor, "emit_my_event", vec![], None);
+
+        harness.test_function(&mut executor, "set_to_my_other_vals", vec![], None);
+
+        harness.test_function(&mut executor, "emit_my_event", vec![], None);
+
+        let my_array = u256_array_token(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        let my_mutated_array = u256_array_token(vec![1, 2, 3, 5, 5, 6, 7, 8, 9, 10]);
+
+        harness.test_function(
+            &mut executor,
+            "mutate_and_return",
+            vec![my_array.clone()],
+            Some(my_mutated_array),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "clone_and_return",
+            vec![my_array.clone()],
+            Some(my_array.clone()),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "clone_mutate_and_return",
+            vec![my_array.clone()],
+            Some(my_array),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "assign_my_nums_and_return",
+            vec![],
+            Some(u256_array_token(vec![42, 26, 0, 1, 255])),
+        );
+
+        harness.events_emitted(
+            executor,
+            vec![
+                ("MyEvent", vec![string_token("my string"), uint_token(26)]),
+                (
+                    "MyEvent",
+                    vec![string_token("my other string"), uint_token(42)],
+                ),
+            ],
+        );
+    });
+}
