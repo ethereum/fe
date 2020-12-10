@@ -20,3 +20,6 @@ solc-backend = ["fe-compiler/solc-backend"]
 fe-parser = {path = "parser", version = "0.0.1"}
 fe-compiler = {path = "compiler", version = "0.0.1"}
 clap = "2.33.3"
+
+[dev-dependencies]
+cargo-release = "0.13.9"

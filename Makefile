@@ -34,3 +34,12 @@ lint: rustfmt clippy
 .PHONY: build-docs
 build-docs:
 	cargo doc --no-deps --workspace
+
+notes:
+	towncrier --yes --version $(version)
+	git commit -m "Compile release notes"
+
+release:
+	# Ensure release notes where generated before running the release command
+	./newsfragments/validate_files.py is-empty
+	cargo release $(version) --all
