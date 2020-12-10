@@ -64,11 +64,10 @@ fn var_decl_array(
     {
         let target = identifier! { (expressions::expr_name_string(target)?) };
         let size = literal_expression! { (array.size()) };
-
         return Ok(if let Some(v) = value {
             let list_yul = expressions::expr_list(context, v)?;
             let array_starts_from = expression! { avail() };
-            let _statements_memory_store: Vec<yul::Statement> = list_yul
+            let statements_memory_store: Vec<yul::Statement> = list_yul
                 .into_iter()
                 .enumerate()
                 .map(|(idx, elt)| {
@@ -77,11 +76,13 @@ fn var_decl_array(
                         array_starts_from.clone(),
                         literal_expression! { (idx)},
                     );
-                    operations::val_to_mem(array.clone(), mptr, elt)
+                    operations::val_to_mem(array.inner.clone(), mptr, elt)
                 })
                 .collect();
-            // let block_stmt =  block_statement!{(statements_memory_store)};
-            statement! { let [target] := alloc([size]) }
+            block_statement! {
+                (let [target] := [array_starts_from])
+                [statements_memory_store...]
+            }
         } else {
             statement! { let [target] := alloc([size]) }
         });

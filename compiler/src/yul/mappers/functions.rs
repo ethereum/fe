@@ -99,22 +99,27 @@ fn for_loop(
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<yul::Statement, CompileError> {
     if let fe::FuncStmt::For {
-        target: _,
+        target,
         iter,
         body,
         or_else: _,
     } = &stmt.node
     {
+        let iterator = expressions::expr(context, iter)?;
+        let target_var = identifier! { (expressions::expr_name_string(target)?) };
         let yul_body = multiple_func_stmt(context, body)?;
         if let Some(ExpressionAttributes {
             typ: Type::Array(array),
             ..
         }) = context.get_expression(iter.span)
         {
-            let size = literal_expression! { (array.size()) };
+            let size = literal_expression! { (array.dimension) };
+            let inner_size = literal_expression! { (array.inner.size()) };
             return Ok(block_statement! {
                 (for {(let i := 0)} (lt(i, [size])) {(i := add(i, 1))}
                 {
+                    // Below yul statement to load values from memory to `target_var`.
+                    (let [target_var] := [expression! { mloadn([expression! { add([iterator], (mul(i, [inner_size.clone()]))) }], [inner_size]) }])
                     [yul_body...]
                 })
             });
