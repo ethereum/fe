@@ -1,6 +1,6 @@
 use crate::errors::CompileError;
-use crate::yul::mappers::_utils::spanned_expression;
 use crate::yul::operations;
+use crate::yul::utils;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use fe_semantics::namespace::types::{
@@ -23,7 +23,7 @@ use yultsur::*;
 pub fn expr(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
     if let Some(attributes) = context.get_expression(exp) {
         let expression = match &exp.node {
-            fe::Expr::Name(_) => expr_name(context, exp),
+            fe::Expr::Name(_) => expr_name(exp),
             fe::Expr::Num(_) => expr_num(exp),
             fe::Expr::Bool(_) => expr_bool(exp),
             fe::Expr::Subscript { .. } => expr_subscript(context, exp),
@@ -79,7 +79,7 @@ pub fn call_arg(
 ) -> Result<yul::Expression, CompileError> {
     match &arg.node {
         fe::CallArg::Arg(value) => {
-            let spanned = spanned_expression(&arg.span, value);
+            let spanned = utils::spanned_expression(&arg.span, value);
             expr(context, &spanned)
         }
         fe::CallArg::Kwarg(fe::Kwarg { name: _, value }) => expr(context, value),
@@ -99,7 +99,7 @@ pub fn expr_call(
 
         return match call_type {
             CallType::SelfFunction { name } => {
-                let func_name = identifier! { (name) };
+                let func_name = utils::func_name(name);
 
                 Ok(expression! { [func_name]([yul_args...]) })
             }
@@ -176,11 +176,6 @@ pub fn expr_name_str<'a>(exp: &Spanned<fe::Expr<'a>>) -> Result<&'a str, Compile
     unreachable!()
 }
 
-/// Retrieves the &str value of a name expression and converts it to a String.
-pub fn expr_name_string(exp: &Spanned<fe::Expr>) -> Result<String, CompileError> {
-    expr_name_str(exp).map(|name| name.to_string())
-}
-
 /// Builds a Yul expression from the first slice, if it is an index.
 pub fn slices_index(
     context: &Context,
@@ -198,19 +193,17 @@ pub fn slice_index(
     slice: &Spanned<fe::Slice>,
 ) -> Result<yul::Expression, CompileError> {
     if let fe::Slice::Index(index) = &slice.node {
-        let spanned = spanned_expression(&slice.span, index.as_ref());
+        let spanned = utils::spanned_expression(&slice.span, index.as_ref());
         return expr(context, &spanned);
     }
 
     unreachable!()
 }
 
-fn expr_name(_context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
-    if let fe::Expr::Name(name) = exp.node {
-        return Ok(identifier_expression! {(name)});
-    }
+fn expr_name(exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
+    let name = expr_name_str(exp)?;
 
-    unreachable!()
+    Ok(identifier_expression! { [utils::var_name(name)] })
 }
 
 fn expr_num(exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
@@ -401,7 +394,7 @@ mod tests {
     }
 
     #[test]
-    fn map_sload_w_array_elem() {
+    fn map_sload_with_array_elem() {
         let mut harness = ContextHarness::new("self.foo_map[bar_array[index]]");
 
         let foo_key = Base::Address;
@@ -451,7 +444,7 @@ mod tests {
 
         assert_eq!(
             result,
-            "scopy(dualkeccak256(0, mloadn(add(bar_array, mul(index, 20)), 20)), 160)"
+            "scopy(dualkeccak256(0, mloadn(add($bar_array, mul($index, 20)), 20)), 160)"
         );
     }
 

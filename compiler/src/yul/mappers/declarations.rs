@@ -1,6 +1,7 @@
 use crate::errors::CompileError;
 use crate::yul::mappers::expressions;
 use crate::yul::operations;
+use crate::yul::utils;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use fe_semantics::namespace::types::{
@@ -38,7 +39,7 @@ fn var_decl_base(
         value,
     } = &decl.node
     {
-        let target = identifier! { (expressions::expr_name_string(target)?) };
+        let target = utils::var_name(expressions::expr_name_str(target)?);
 
         return Ok(if let Some(value) = value {
             let value = expressions::expr(context, &value)?;
@@ -62,7 +63,7 @@ fn var_decl_array(
         value,
     } = &decl.node
     {
-        let target = identifier! { (expressions::expr_name_string(target)?) };
+        let target = utils::var_name(expressions::expr_name_str(target)?);
         let size = literal_expression! { (array.size()) };
         return Ok(if let Some(v) = value {
             let list_yul = expressions::expr_list(context, v)?;
@@ -129,7 +130,7 @@ mod tests {
             ExpressionAttributes::new(Type::Base(U256), Location::Value),
         );
 
-        assert_eq!(map(&harness.context, &harness.src), "let foo := bar");
+        assert_eq!(map(&harness.context, &harness.src), "let $foo := $bar");
     }
 
     #[test]
@@ -143,6 +144,9 @@ mod tests {
             }),
         );
 
-        assert_eq!(map(&harness.context, &harness.src), "let foo := alloc(200)");
+        assert_eq!(
+            map(&harness.context, &harness.src),
+            "let $foo := alloc(200)"
+        );
     }
 }

@@ -121,23 +121,23 @@ mod tests {
             ExpressionAttributes::new(Type::Base(U256), Location::Value),
         );
 
-        assert_eq!(map(&harness.context, &harness.src), "foo := bar")
+        assert_eq!(map(&harness.context, &harness.src), "$foo := $bar")
     }
 
     #[rstest(
         assignment,
         expected_yul,
-        case("foo = 1 + 2", "foo := add(1, 2)"),
-        case("foo = 1 - 2", "foo := sub(1, 2)"),
-        case("foo = 1 * 2", "foo := mul(1, 2)"),
-        case("foo = 1 / 2", "foo := div(1, 2)"),
-        case("foo = 1 ** 2", "foo := exp(1, 2)"),
-        case("foo = 1 % 2", "foo := mod(1, 2)"),
-        case("foo = 1 & 2", "foo := and(1, 2)"),
-        case("foo = 1 | 2", "foo := or(1, 2)"),
-        case("foo = 1 ^ 2", "foo := xor(1, 2)"),
-        case("foo = 1 << 2", "foo := shl(2, 1)"),
-        case("foo = 1 >> 2", "foo := shr(2, 1)")
+        case("foo = 1 + 2", "$foo := add(1, 2)"),
+        case("foo = 1 - 2", "$foo := sub(1, 2)"),
+        case("foo = 1 * 2", "$foo := mul(1, 2)"),
+        case("foo = 1 / 2", "$foo := div(1, 2)"),
+        case("foo = 1 ** 2", "$foo := exp(1, 2)"),
+        case("foo = 1 % 2", "$foo := mod(1, 2)"),
+        case("foo = 1 & 2", "$foo := and(1, 2)"),
+        case("foo = 1 | 2", "$foo := or(1, 2)"),
+        case("foo = 1 ^ 2", "$foo := xor(1, 2)"),
+        case("foo = 1 << 2", "$foo := shl(2, 1)"),
+        case("foo = 1 >> 2", "$foo := shr(2, 1)")
     )]
     fn assign_arithmetic_expression(assignment: &str, expected_yul: &str) {
         let mut harness = ContextHarness::new(assignment);
@@ -176,7 +176,7 @@ mod tests {
 
         assert_eq!(
             map(&harness.context, &harness.src),
-            "mstoren(add(foo, mul(4, 32)), 2, 32)"
+            "mstoren(add($foo, mul(4, 32)), 2, 32)"
         )
     }
 }

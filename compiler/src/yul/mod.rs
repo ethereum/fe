@@ -7,6 +7,7 @@ mod constructor;
 mod mappers;
 mod operations;
 mod runtime;
+mod utils;
 
 pub struct CompilerOutput {
     pub tokens: String,

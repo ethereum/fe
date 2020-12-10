@@ -1,6 +1,7 @@
 use crate::abi::utils as abi_utils;
 use crate::errors::CompileError;
 use crate::yul::abi::operations as abi_operations;
+use crate::yul::utils;
 use fe_semantics::namespace::types::{
     AbiDecodeLocation,
     AbiEncoding,
@@ -68,7 +69,7 @@ fn selection(name: String, params: &[FixedSize]) -> yul::Expression {
         AbiDecodeLocation::Calldata,
     );
 
-    let name = identifier! { (name) };
+    let name = utils::func_name(&name);
 
     expression! { [name]([decoded_params...]) }
 }
