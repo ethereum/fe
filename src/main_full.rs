@@ -23,6 +23,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 arg_enum! {
     #[derive(PartialEq, Debug)]
     pub enum CompilationTarget {
+        Abi,
         Ast,
         Bytecode,
         Tokens,
@@ -97,6 +98,25 @@ fn compile(src_file: &str, output_dir: &str, targets: Vec<CompilationTarget>) ->
 
     for target in targets {
         match target {
+            CompilationTarget::Abi => {
+                let module_abi = fe_compiler::abi::build(&contents).map_err(|e| {
+                    Error::new(
+                        ErrorKind::Other,
+                        format!("Unable to build the module ABIs: {}", e),
+                    )
+                })?;
+                for (contract_name, contract_abi) in module_abi.contracts.iter() {
+                    let json = contract_abi.json(true).map_err(|e| {
+                        Error::new(
+                            ErrorKind::Other,
+                            format!("Unable to serialize the contract ABI: {}", e),
+                        )
+                    })?;
+                    let file_name = format!("out.{}.abi", contract_name).to_lowercase();
+                    let mut file_abi = fs::File::create(output_dir.join(file_name))?;
+                    file_abi.write_all(json.as_bytes())?;
+                }
+            }
             CompilationTarget::Ast => {
                 let mut file_ast = fs::File::create(output_dir.join("out.ast"))?;
                 file_ast.write_all(output.ast.as_bytes())?;

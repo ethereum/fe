@@ -174,7 +174,7 @@ fn deploy_contract(
     let json_abi = compiler::abi::build(&src)
         .expect("Unable to build the module ABIs")
         .contracts[name]
-        .json()
+        .json(false)
         .expect("Unable to serialize the contract ABI.");
 
     let abi = ethabi::Contract::load(StringReader::new(&json_abi)).expect("Unable to load the ABI");

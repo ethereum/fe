@@ -62,9 +62,12 @@ impl Contract {
 
 impl Contract {
     /// Serialize the contract into a valid JSON ABI.
-    pub fn json(&self) -> Result<String, CompileError> {
-        serde_json::to_string(self)
-            .map_err(|_| CompileError::static_str("unable to serialize contract to json"))
+    pub fn json(&self, prettify: bool) -> Result<String, CompileError> {
+        match prettify {
+            true => serde_json::to_string_pretty(self),
+            false => serde_json::to_string(self),
+        }
+        .map_err(|_| CompileError::static_str("unable to serialize contract to json"))
     }
 }
 
@@ -299,7 +302,7 @@ mod tests {
         };
 
         assert_eq!(
-            contract.json().unwrap(),
+            contract.json(false).unwrap(),
             r#"[
                 {
                     "name":"event_name",
