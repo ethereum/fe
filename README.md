@@ -174,10 +174,11 @@ considered to represent the exact prioritization of work items.
 * [x] Generate YUL source code from YUL AST objects (via [yultsur](https://github.com/axic/yultsur/))
 * [x] Invoke the Solidity compiler with generated YUL source to produce a
   compiled binary (via [solc-rust](https://github.com/axic/solc-rust))
+* [x] Implement a functional [ERC20 token contract](https://github.com/ethereum/fe/blob/00121f5ec06e46fcca261ad4d340f43e7183c2c7/compiler/tests/fixtures/erc20_token.fe) in Fe and compile it.
 
 ### Short-term goals
 
-* [ ] Implement an [ERC20 token contract](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/ERC20.sol) in Fe and compile it.
+* [ ] Implement a functional Uniswap Demo in Fe
 
 ### Long-term goals
 
@@ -185,6 +186,11 @@ considered to represent the exact prioritization of work items.
 * Implement a YUL compiler in Rust to eliminate the need to interact with the
   Solidity compiler
 * Formally verify the Fe compiler using the language specification
+
+## Examples
+
+We have a [functional ERC-20 demo](https://github.com/ethereum/fe/blob/00121f5ec06e46fcca261ad4d340f43e7183c2c7/compiler/tests/fixtures/erc20_token.fe) as well as many other examples as part of our [fixture tests](https://github.com/ethereum/fe/tree/master/compiler/tests/fixtures).
+
 
 ## Community
 
