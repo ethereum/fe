@@ -352,6 +352,9 @@ fn expr_call(
                     return Err(SemanticError::type_error());
                 }
 
+                // Ensure something like u8(x) fails, only literals allowed e.g u8(1)
+                validate_is_numeric_literal(&args.node[0].node)?;
+
                 context
                     .borrow_mut()
                     .add_call(exp, CallType::TypeConstructor);
@@ -362,6 +365,21 @@ fn expr_call(
     }
 
     unreachable!()
+}
+
+fn validate_is_numeric_literal(call_arg: &fe::CallArg) -> Result<(), SemanticError> {
+    let is_numeric_literal =
+        if let fe::CallArg::Arg(fe::Expr::UnaryOperation { operand, op: _ }) = call_arg {
+            matches!((*operand).node, fe::Expr::Num(_))
+        } else {
+            matches!(call_arg, fe::CallArg::Arg(fe::Expr::Num(_)))
+        };
+
+    if is_numeric_literal {
+        Ok(())
+    } else {
+        Err(SemanticError::numeric_literal_expected())
+    }
 }
 
 fn expr_call_self(

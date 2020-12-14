@@ -1,0 +1,4 @@
+contract Foo:
+
+    pub def bar(val: u8) -> u16:
+        return u16(val)
