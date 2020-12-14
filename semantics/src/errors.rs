@@ -15,6 +15,7 @@ pub enum ErrorKind {
     TypeError,
     CannotMove,
     NotCallable,
+    NumericLiteralExpected,
     MoreThanThreeIndexedParams,
 }
 
@@ -95,6 +96,14 @@ impl SemanticError {
     pub fn not_callable() -> Self {
         SemanticError {
             kind: ErrorKind::NotCallable,
+            context: vec![],
+        }
+    }
+
+    /// Create a new error with kind `NumericLiteralExpected`
+    pub fn numeric_literal_expected() -> Self {
+        SemanticError {
+            kind: ErrorKind::NumericLiteralExpected,
             context: vec![],
         }
     }

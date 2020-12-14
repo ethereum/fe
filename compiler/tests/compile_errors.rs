@@ -24,7 +24,8 @@ use std::fs;
     case("return_addition_with_mixed_types.fe", "TypeError"),
     case("return_lt_mixed_types.fe", "TypeError"),
     case("indexed_event.fe", "MoreThanThreeIndexedParams"),
-    case("unary_minus_on_bool.fe", "TypeError")
+    case("unary_minus_on_bool.fe", "TypeError"),
+    case("type_constructor_from_variable.fe", "NumericLiteralExpected")
 )]
 fn test_compile_errors(fixture_file: &str, expected_error: &str) {
     let src = fs::read_to_string(format!("tests/fixtures/compile_errors/{}", fixture_file))
