@@ -51,7 +51,7 @@ pub fn main() {
                 .short("e")
                 .long("emit")
                 .help("Comma seperated compile targets e.g. -e=bytecode,yul")
-                .default_value("bytecode")
+                .default_value("abi,bytecode")
                 .use_delimiter(true)
                 .takes_value(true),
         )
