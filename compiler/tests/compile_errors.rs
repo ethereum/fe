@@ -31,7 +31,10 @@ fn test_compile_errors(fixture_file: &str, expected_error: &str) {
         .expect("Unable to read fixture file");
 
     match fe_compiler::evm::compile(&src, CompileStage::AllUpToBytecode) {
-        Err(compile_error) => assert!(format!("{}", compile_error).contains(expected_error)),
+        Err(compile_error) => assert!(
+            format!("{}", compile_error).contains(expected_error),
+            format!("{} did not contain {}", compile_error, expected_error)
+        ),
         _ => panic!(
             "Compiling succeeded when it was expected to fail with: {}",
             expected_error
