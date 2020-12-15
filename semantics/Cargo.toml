@@ -12,3 +12,4 @@ rstest = "0.6.4"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
 hex = "0.4"
 ansi_term = "0.12.1"
+num-bigint = "0.3.1"

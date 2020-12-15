@@ -345,24 +345,38 @@ fn expr_call_type_constructor(
         return Err(SemanticError::wrong_number_of_params());
     }
 
-    validate_is_numeric_literal(&args.node[0].node)?;
+    let num = validate_is_numeric_literal(&args.node[0].node)?;
+
+    if !matches!(typ, Type::Base(Base::Address)) {
+        validate_literal_fits_type(&num, &typ)?;
+    }
+
     call_arg(scope, context, &args.node[0])?;
     Ok(ExpressionAttributes::new(typ, Location::Value))
 }
 
-fn validate_is_numeric_literal(call_arg: &fe::CallArg) -> Result<(), SemanticError> {
-    let is_numeric_literal =
-        if let fe::CallArg::Arg(fe::Expr::UnaryOperation { operand, op: _ }) = call_arg {
-            matches!((*operand).node, fe::Expr::Num(_))
-        } else {
-            matches!(call_arg, fe::CallArg::Arg(fe::Expr::Num(_)))
-        };
-
-    if is_numeric_literal {
-        Ok(())
-    } else {
-        Err(SemanticError::numeric_literal_expected())
+fn validate_is_numeric_literal(call_arg: &fe::CallArg) -> Result<String, SemanticError> {
+    if let fe::CallArg::Arg(fe::Expr::UnaryOperation { operand, op: _ }) = call_arg {
+        if let fe::Expr::Num(num) = (*operand).node {
+            return Ok(format!("-{}", num));
+        }
+    } else if let fe::CallArg::Arg(fe::Expr::Num(num)) = call_arg {
+        return Ok(num.to_string());
     }
+
+    Err(SemanticError::numeric_literal_expected())
+}
+
+fn validate_literal_fits_type(num: &str, typ: &Type) -> Result<(), SemanticError> {
+    if let Type::Base(Base::Numeric(integer)) = typ {
+        if integer.fits(num) {
+            return Ok(());
+        } else {
+            return Err(SemanticError::numeric_capacity_mismatch());
+        }
+    }
+
+    Err(SemanticError::type_error())
 }
 
 fn expr_call_self_attribute(
