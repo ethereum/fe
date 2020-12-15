@@ -22,7 +22,7 @@ docker-wasm-test:
 
 .PHONY: clippy
 clippy:
-	cargo clippy-preview -Z unstable-options --workspace
+	cargo clippy --all-targets --all-features -- -D warnings
 
 .PHONY: rustfmt
 rustfmt:
