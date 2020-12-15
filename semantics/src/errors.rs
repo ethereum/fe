@@ -10,6 +10,7 @@ pub enum ErrorKind {
     ContinueWithoutLoop,
     MissingReturn,
     NotSubscriptable,
+    NumericCapacityMismatch,
     UndefinedValue,
     UnexpectedReturn,
     TypeError,
@@ -57,6 +58,14 @@ impl SemanticError {
     pub fn not_subscriptable() -> Self {
         SemanticError {
             kind: ErrorKind::NotSubscriptable,
+            context: vec![],
+        }
+    }
+
+    /// Create a new error with kind `NumericCapacityMismatch`
+    pub fn numeric_capacity_mismatch() -> Self {
+        SemanticError {
+            kind: ErrorKind::NumericCapacityMismatch,
             context: vec![],
         }
     }

@@ -242,10 +242,15 @@ fn to_2s_complement(val: isize) -> U256 {
         return U256::from(val);
     } else {
         let positive_val = val * -1;
-        let temp = U256::from(positive_val);
-        let (negated, _) = temp.overflowing_neg();
-        return negated + 1;
+        return get_2s_complement_for_negative(U256::from(positive_val));
     }
+}
+
+/// To get the 2s complement value for e.g. -128 call
+/// get_2s_complement_for_negative(128)
+fn get_2s_complement_for_negative(assume_negative: U256) -> U256 {
+    let (negated, _) = assume_negative.overflowing_neg();
+    return negated + 1;
 }
 
 #[test]
@@ -750,6 +755,111 @@ fn strings() {
             )],
         );
     });
+}
+
+#[test]
+fn test_numeric_sizes() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "numeric_sizes.fe", "Foo", vec![]);
+
+        struct SizeConfig {
+            size: usize,
+            u_min: ethabi::Token,
+            i_min: ethabi::Token,
+            u_max: ethabi::Token,
+            i_max: ethabi::Token,
+        }
+
+        let zero = uint_token(0);
+        let u64_max = ethabi::Token::Uint(U256::from(2).pow(U256::from(64)) - 1);
+        let i64_min = ethabi::Token::Int(get_2s_complement_for_negative(
+            U256::from(2).pow(U256::from(63)),
+        ));
+
+        let u128_max = ethabi::Token::Uint(U256::from(2).pow(U256::from(128)) - 1);
+        let i128_max = ethabi::Token::Int(U256::from(2).pow(U256::from(127)) - 1);
+        let i128_min = ethabi::Token::Int(get_2s_complement_for_negative(
+            U256::from(2).pow(U256::from(127)),
+        ));
+
+        let u256_max = ethabi::Token::Uint(U256::MAX);
+        let i256_max = ethabi::Token::Int(U256::from(2).pow(U256::from(255)) - 1);
+        let i256_min = ethabi::Token::Int(get_2s_complement_for_negative(
+            U256::from(2).pow(U256::from(255)),
+        ));
+
+        let sizes = [
+            SizeConfig {
+                size: 8,
+                u_min: zero.clone(),
+                i_min: int_token(-128),
+                u_max: uint_token(255),
+                i_max: int_token(127),
+            },
+            SizeConfig {
+                size: 16,
+                u_min: zero.clone(),
+                i_min: int_token(-32768),
+                u_max: uint_token(65535),
+                i_max: int_token(32767),
+            },
+            SizeConfig {
+                size: 32,
+                u_min: zero.clone(),
+                i_min: int_token(-2147483648),
+                u_max: uint_token(4294967295),
+                i_max: int_token(2147483647),
+            },
+            SizeConfig {
+                size: 64,
+                u_min: zero.clone(),
+                i_min: i64_min.clone(),
+                u_max: u64_max.clone(),
+                i_max: int_token(9223372036854775807),
+            },
+            SizeConfig {
+                size: 128,
+                u_min: zero.clone(),
+                i_min: i128_min.clone(),
+                u_max: u128_max.clone(),
+                i_max: i128_max.clone(),
+            },
+            SizeConfig {
+                size: 256,
+                u_min: zero.clone(),
+                i_min: i256_min.clone(),
+                u_max: u256_max.clone(),
+                i_max: i256_max.clone(),
+            },
+        ];
+
+        for config in sizes.iter() {
+            harness.test_function(
+                &mut executor,
+                &format!("get_u{}_min", config.size),
+                vec![],
+                Some(config.u_min.clone()),
+            );
+            harness.test_function(
+                &mut executor,
+                &format!("get_u{}_max", config.size),
+                vec![],
+                Some(config.u_max.clone()),
+            );
+            harness.test_function(
+                &mut executor,
+                &format!("get_i{}_min", config.size),
+                vec![],
+                Some(config.i_min.clone()),
+            );
+            harness.test_function(
+                &mut executor,
+                &format!("get_i{}_max", config.size),
+                vec![],
+                Some(config.i_max.clone()),
+            );
+        }
+    })
 }
 
 #[test]

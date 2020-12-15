@@ -2,6 +2,24 @@ use crate::errors::SemanticError;
 use fe_parser::ast as fe;
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::num::{
+    IntErrorKind,
+    ParseIntError,
+};
+
+use num_bigint::BigInt;
+
+pub fn u256_max() -> BigInt {
+    BigInt::from(2).pow(256) - 1
+}
+
+pub fn i256_max() -> BigInt {
+    BigInt::from(2).pow(255) - 1
+}
+
+pub fn i256_min() -> BigInt {
+    BigInt::from(-2).pow(255)
+}
 
 /// The type has a constant size known to the compiler.
 pub trait FeSized {
@@ -150,6 +168,43 @@ impl Integer {
                 | Integer::I16
                 | Integer::I8
         )
+    }
+
+    pub fn fits(&self, num: &str) -> bool {
+        let radix = 10;
+
+        fn handle_parse_error<T>(result: Result<T, ParseIntError>) -> bool {
+            if let Err(error) = result {
+                return match error.kind() {
+                    IntErrorKind::PosOverflow => false,
+                    IntErrorKind::NegOverflow => false,
+                    // If we try to parse a negative value for an unsigned type
+                    IntErrorKind::InvalidDigit => false,
+                    // We don't expect this but it would be tragic if we would map this to `false`
+                    // incase it happens because it would mean we sweep a bug under the rug.
+                    other => panic!("Unexpected ParseIntError: {:?}", other),
+                };
+            }
+
+            true
+        }
+
+        match self {
+            Integer::U8 => handle_parse_error(u8::from_str_radix(num, radix)),
+            Integer::U16 => handle_parse_error(u16::from_str_radix(num, radix)),
+            Integer::U32 => handle_parse_error(u32::from_str_radix(num, radix)),
+            Integer::U64 => handle_parse_error(u64::from_str_radix(num, radix)),
+            Integer::U128 => handle_parse_error(u128::from_str_radix(num, radix)),
+            Integer::U256 => BigInt::parse_bytes(num.as_bytes(), radix)
+                .map_or(false, |val| val >= BigInt::from(0) && val <= u256_max()),
+            Integer::I8 => handle_parse_error(i8::from_str_radix(num, radix)),
+            Integer::I16 => handle_parse_error(i16::from_str_radix(num, radix)),
+            Integer::I32 => handle_parse_error(i32::from_str_radix(num, radix)),
+            Integer::I64 => handle_parse_error(i64::from_str_radix(num, radix)),
+            Integer::I128 => handle_parse_error(i128::from_str_radix(num, radix)),
+            Integer::I256 => BigInt::parse_bytes(num.as_bytes(), radix)
+                .map_or(false, |val| val >= i256_min() && val <= i256_max()),
+        }
     }
 }
 

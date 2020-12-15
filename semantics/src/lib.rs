@@ -3,6 +3,7 @@
 //! This library is used to analyze the semantics of a given Fe AST. It detects
 //! any semantic errors within a given AST and produces a `Context` instance
 //! that can be used to query contextual information attributed to AST nodes.
+#![feature(int_error_matching)]
 
 pub mod builtins;
 pub mod errors;

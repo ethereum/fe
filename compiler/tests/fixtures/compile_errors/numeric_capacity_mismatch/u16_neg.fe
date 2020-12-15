@@ -1,0 +1,3 @@
+contract Foo:
+    pub def bar() -> u16:
+        return u16(-1)
