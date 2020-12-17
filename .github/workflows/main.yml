@@ -46,6 +46,8 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get install -y libboost-all-dev
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 50
+        sudo update-alternatives --set g++ "/usr/bin/g++-8"
     - uses: actions/checkout@v2
     - name: Cache Rust dependencies
       uses: actions/cache@v1.1.2
@@ -104,6 +106,8 @@ jobs:
       if: startsWith(matrix.os,'ubuntu')
       run: |
         sudo apt-get install -y libboost-all-dev
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 50
+        sudo update-alternatives --set g++ "/usr/bin/g++-8"
     - name: Install latest nightly
       uses: actions-rs/toolchain@v1
       with:
@@ -145,6 +149,8 @@ jobs:
           if: startsWith(matrix.os,'ubuntu')
           run: |
             sudo apt-get install -y libboost-all-dev
+            sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 50
+            sudo update-alternatives --set g++ "/usr/bin/g++-8"
         - name: Install latest nightly
           uses: actions-rs/toolchain@v1
           with:
