@@ -18,13 +18,17 @@ contract Foo:
         self.nums = x
 
     pub def read_nums() -> u256[42]:
-        return self.nums
+        return self.nums.to_mem()
 
     pub def write_str(x: string26):
         self.str = x
 
     pub def read_str() -> string26:
-        return self.str
+        return self.str.to_mem()
 
     pub def emit_event():
-        emit MyEvent(self.num, self.nums, self.str)
+        emit MyEvent(
+            self.num,
+            self.nums.to_mem(),
+            self.str.to_mem()
+        )

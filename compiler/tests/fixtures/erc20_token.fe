@@ -25,10 +25,10 @@ contract ERC20:
         self._mint(msg.sender, 2600)
 
     pub def name() -> string100:
-        return self._name
+        return self._name.to_mem()
 
     pub def symbol() -> string100:
-        return self._symbol
+        return self._symbol.to_mem()
 
     pub def decimals() -> u8:
         return self._decimals

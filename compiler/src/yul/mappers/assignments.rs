@@ -38,32 +38,34 @@ pub fn assign(
                         target_attributes.final_location(),
                     ) {
                         (Location::Memory, Location::Storage { .. }) => {
-                            operations::mem_to_sto(typ, target, value)
+                            operations::mcopys(typ, target, value)
                         }
                         (Location::Memory, Location::Value) => {
                             let target = expr_as_ident(target)?;
-                            let value = operations::mem_to_val(typ, value);
+                            let value = operations::mload(typ, value);
                             statement! { [target] := [value] }
                         }
-                        (Location::Memory, Location::Memory) => unimplemented!("memory copying"),
+                        (Location::Memory, Location::Memory) => {
+                            let target = expr_as_ident(target)?;
+                            let ptr = operations::mcopym(typ, value);
+                            statement! { [target] := [ptr] }
+                        }
                         (Location::Storage { .. }, Location::Storage { .. }) => {
-                            unimplemented!("storage copying")
+                            operations::scopys(typ, target, value)
                         }
                         (Location::Storage { .. }, Location::Value) => {
                             let target = expr_as_ident(target)?;
-                            let value = operations::sto_to_val(typ, value);
+                            let value = operations::sload(typ, value);
                             statement! { [target] := [value] }
                         }
                         (Location::Storage { .. }, Location::Memory) => {
-                            let target = expr_as_ident(target)?;
-                            let mptr = operations::sto_to_mem(typ, value);
-                            statement! { [target] := [mptr] }
+                            unreachable!("raw sto to mem assign")
                         }
                         (Location::Value, Location::Memory) => {
-                            operations::val_to_mem(typ, target, value)
+                            operations::mstore(typ, target, value)
                         }
                         (Location::Value, Location::Storage { .. }) => {
-                            operations::val_to_sto(typ, target, value)
+                            operations::sstore(typ, target, value)
                         }
                         (Location::Value, Location::Value) => {
                             let target = expr_as_ident(target)?;

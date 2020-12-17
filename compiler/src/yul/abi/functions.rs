@@ -195,7 +195,9 @@ fn decode_array(
                 let total_size = literal_expression! { (total_size) };
 
                 match location {
-                    AbiDecodeLocation::Calldata => expression! { ccopy(head_ptr, [total_size]) },
+                    AbiDecodeLocation::Calldata => {
+                        expression! { ccopym(head_ptr, [total_size]) }
+                    }
                     AbiDecodeLocation::Memory => expression! { head_ptr },
                 }
             }
@@ -206,7 +208,7 @@ fn decode_array(
                     let data_size = literal_expression! { (data_size) };
                     let total_size = expression! { add(32, (mul([array_size], [data_size]))) };
 
-                    expression! { ccopy([data_ptr], [total_size]) }
+                    expression! { ccopym([data_ptr], [total_size]) }
                 }
                 AbiDecodeLocation::Memory => {
                     expression! { add(start, (mload(head_ptr))) }
@@ -251,7 +253,7 @@ mod tests {
     fn test_decode_string_calldata() {
         assert_eq!(
             decode(FeString { max_size: 100 }, AbiDecodeLocation::Calldata).to_string(),
-            "function abi_decode_string100_calldata(start, head_ptr) -> val { val := ccopy(add(start, calldataload(head_ptr)), add(32, mul(calldataload(add(start, calldataload(head_ptr))), 1))) }"
+            "function abi_decode_string100_calldata(start, head_ptr) -> val { val := ccopym(add(start, calldataload(head_ptr)), add(32, mul(calldataload(add(start, calldataload(head_ptr))), 1))) }"
         )
     }
 
