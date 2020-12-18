@@ -28,9 +28,16 @@ jobs:
           target
           !target/**/*serde*
         key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
+    - name: Install latest nightly
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: nightly
+        override: true
     - name: coverage with tarpaulin
       run: |
-        ./coverage.sh --out Xml
+        cargo install cargo-tarpaulin
+        make coverage
         bash <(curl -s https://codecov.io/bash)
 
   lint:

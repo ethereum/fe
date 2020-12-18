@@ -1,7 +1,3 @@
-.PHONY: docker-coverage
-docker-coverage:
-	./coverage.sh --out Html
-
 .PHONY: docker-test
 docker-test:
 	docker run \
@@ -19,6 +15,10 @@ docker-wasm-test:
 		--workdir '/mnt' \
 		davesque/rust-wasm \
 		wasm-pack test --node -- --workspace
+
+.PHONY: coverage
+coverage:
+	cargo tarpaulin --all --verbose --exclude-files 'tests/*' --exclude-files 'main.rs' --out xml html
 
 .PHONY: clippy
 clippy:
