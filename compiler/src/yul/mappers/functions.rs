@@ -4,7 +4,8 @@ use crate::yul::mappers::{
     declarations,
     expressions,
 };
-use crate::yul::operations;
+use crate::yul::names;
+use crate::yul::operations::data as data_operations;
 use crate::yul::utils;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
@@ -44,7 +45,7 @@ pub fn func_def(
         },
     ) = (context.get_function(def).to_owned(), &def.node)
     {
-        let function_name = utils::func_name(name.node);
+        let function_name = names::func_name(name.node);
         let param_names = args.iter().map(|arg| func_def_arg(arg)).collect::<Vec<_>>();
         let function_statements = multiple_func_stmt(context, body)?;
 
@@ -69,7 +70,7 @@ pub fn func_def(
 fn func_def_arg(arg: &Spanned<fe::FuncDefArg>) -> yul::Identifier {
     let name = arg.node.name.node;
 
-    utils::var_name(name)
+    names::var_name(name)
 }
 
 fn func_stmt(
@@ -188,7 +189,7 @@ fn emit(context: &Context, stmt: &Spanned<fe::FuncStmt>) -> Result<yul::Statemen
                 .collect::<Result<_, _>>()?;
 
             if let Some(event) = context.get_emit(stmt) {
-                return Ok(operations::emit_event(event.to_owned(), event_values));
+                return Ok(data_operations::emit_event(event.to_owned(), event_values));
             }
 
             return Err(CompileError::static_str("missing event definition"));

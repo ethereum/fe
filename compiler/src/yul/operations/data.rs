@@ -1,4 +1,4 @@
-use crate::yul::abi::operations as abi_operations;
+use crate::yul::operations::abi as abi_operations;
 use fe_semantics::namespace::events::Event;
 use fe_semantics::namespace::types::{
     Array,
@@ -124,7 +124,7 @@ pub fn indexed_array(
 
 #[cfg(test)]
 mod tests {
-    use crate::yul::operations::{
+    use crate::yul::operations::data::{
         emit_event,
         sum,
     };

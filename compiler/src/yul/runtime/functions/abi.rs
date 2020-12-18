@@ -1,9 +1,6 @@
-use crate::yul::abi::utils::{
-    decode_name,
-    encode_name,
-    head_offsets,
-};
-use crate::yul::operations;
+use crate::yul::names;
+use crate::yul::operations::data as data_operations;
+use crate::yul::utils;
 use fe_semantics::namespace::types::{
     AbiArraySize,
     AbiDecodeLocation,
@@ -16,7 +13,7 @@ use yultsur::*;
 /// Generates an encoding function for any set of type parameters.
 pub fn encode<T: AbiEncoding>(types: Vec<T>) -> yul::Statement {
     // the name of the function we're generating
-    let func_name = encode_name(&types);
+    let func_name = names::encode_name(&types);
 
     // create a vector of identifiers and a vector of tuples, which contain
     // expressions that correspond to the identifiers.
@@ -35,7 +32,7 @@ pub fn encode<T: AbiEncoding>(types: Vec<T>) -> yul::Statement {
         .unzip();
 
     // get the size of the static section
-    let (_, static_size) = head_offsets(&types);
+    let (_, static_size) = utils::abi_head_offsets(&types);
     let static_size = literal_expression! { (static_size) };
 
     // we need to keep track of the dynamic section size to properly encode
@@ -59,7 +56,7 @@ pub fn encode<T: AbiEncoding>(types: Vec<T>) -> yul::Statement {
                 size: AbiArraySize::Dynamic,
             } => {
                 let dyn_offset =
-                    expression! { add([static_size.clone()], [operations::sum(dyn_sizes.clone())]) };
+                    expression! { add([static_size.clone()], [data_operations::sum(dyn_sizes.clone())]) };
                 let inner = *inner;
                 dyn_sizes.push(dyn_array_data_size(param.clone(), inner.clone()));
                 dyn_array_params.push((param, inner));
@@ -83,6 +80,27 @@ pub fn encode<T: AbiEncoding>(types: Vec<T>) -> yul::Statement {
         }
     }
 }
+
+/// Generates an decoding function for a single type parameter in either
+/// calldata or memory.
+pub fn decode<T: AbiEncoding>(typ: T, location: AbiDecodeLocation) -> yul::Statement {
+    let func_name = names::decode_name(&typ, location.clone());
+
+    let decode_expr = match typ.abi_type() {
+        AbiType::Uint { .. } => decode_uint(location),
+        AbiType::Array { inner, size } => decode_array(*inner, size, location),
+    };
+
+    function_definition! {
+         // `start` refers to the beginning of the encoding
+         // `head_ptr` refers to the pointer at which the head is located
+         function [func_name](start, head_ptr) -> val {
+            (val := [decode_expr])
+         }
+    }
+}
+
+// pub fn abi_pack<T: AbiEncoding>
 
 fn dyn_array_data_size(val: yul::Expression, inner: AbiType) -> yul::Expression {
     match inner {
@@ -148,25 +166,6 @@ fn encode_array(
     }
 }
 
-/// Generates an decoding function for a single type parameter in either
-/// calldata or memory.
-pub fn decode<T: AbiEncoding>(typ: T, location: AbiDecodeLocation) -> yul::Statement {
-    let func_name = decode_name(&typ, location.clone());
-
-    let decode_expr = match typ.abi_type() {
-        AbiType::Uint { .. } => decode_uint(location),
-        AbiType::Array { inner, size } => decode_array(*inner, size, location),
-    };
-
-    function_definition! {
-         // `start` refers to the beginning of the encoding
-         // `head_ptr` refers to the pointer at which the head is located
-         function [func_name](start, head_ptr) -> val {
-            (val := [decode_expr])
-         }
-    }
-}
-
 fn decode_uint(location: AbiDecodeLocation) -> yul::Expression {
     match location {
         AbiDecodeLocation::Memory => expression! { mload(head_ptr) },
@@ -222,7 +221,7 @@ fn decode_array(
 
 #[cfg(test)]
 mod tests {
-    use crate::yul::abi::functions::{
+    use crate::yul::runtime::functions::abi::{
         decode,
         encode,
     };

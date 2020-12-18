@@ -2,9 +2,9 @@
 
 use crate::errors::CompileError;
 
-mod abi;
 mod constructor;
 mod mappers;
+mod names;
 mod operations;
 mod runtime;
 mod utils;
@@ -15,7 +15,7 @@ pub struct CompilerOutput {
     pub yul: String,
 }
 
-/// Compiles Fe to Yul.
+/// Compiles Fe source code to Yul.
 pub fn compile(src: &str) -> Result<CompilerOutput, CompileError> {
     let tokens = fe_parser::get_parse_tokens(src)?;
     let fe_module = fe_parser::parsers::file_input(&tokens[..])

@@ -1,9 +1,9 @@
 use crate::errors::CompileError;
-use crate::yul::abi::functions as abi_functions;
 use crate::yul::constructor;
 use crate::yul::mappers::functions;
 use crate::yul::runtime::abi_dispatcher as runtime_abi;
-use crate::yul::runtime::functions as runtime_functions;
+use crate::yul::runtime::functions::abi as abi_functions;
+use crate::yul::runtime::functions::data as data_functions;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use fe_semantics::{
@@ -39,7 +39,7 @@ pub fn contract_def(
         }
 
         let runtime = {
-            let mut runtime = runtime_functions::std();
+            let mut runtime = data_functions::std();
             runtime.append(&mut build_runtime_functions(
                 attributes.runtime_operations.to_owned(),
             ));

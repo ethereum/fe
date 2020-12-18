@@ -1,4 +1,4 @@
-use crate::yul::abi::operations as abi_operations;
+use crate::yul::operations::abi as abi_operations;
 use fe_semantics::namespace::types::{
     AbiDecodeLocation,
     FixedSize,
