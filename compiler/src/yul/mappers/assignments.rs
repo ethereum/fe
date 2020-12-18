@@ -47,8 +47,7 @@ pub fn assign(
                         }
                         (Location::Memory, Location::Memory) => {
                             let target = expr_as_ident(target)?;
-                            let ptr = operations::mcopym(typ, value);
-                            statement! { [target] := [ptr] }
+                            statement! { [target] := [value] }
                         }
                         (Location::Storage { .. }, Location::Storage { .. }) => {
                             operations::scopys(typ, target, value)

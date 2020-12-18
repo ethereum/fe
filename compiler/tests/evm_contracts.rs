@@ -1054,6 +1054,13 @@ fn data_copying_stress() {
 
         harness.test_function(
             &mut executor,
+            "multiple_references_shared_memory",
+            vec![my_array.clone()],
+            None,
+        );
+
+        harness.test_function(
+            &mut executor,
             "clone_and_return",
             vec![my_array.clone()],
             Some(my_array.clone()),
