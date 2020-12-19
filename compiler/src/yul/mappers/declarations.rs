@@ -52,7 +52,7 @@ fn var_decl_base(
 }
 
 fn var_decl_array(
-    _context: &Context,
+    context: &Context,
     decl: &Spanned<fe::FuncStmt>,
     array: Array,
 ) -> Result<yul::Statement, CompileError> {
@@ -65,10 +65,12 @@ fn var_decl_array(
         let target = utils::var_name(expressions::expr_name_str(target)?);
         let size = literal_expression! { (array.size()) };
 
-        return Ok(if value.is_some() {
-            unimplemented!()
-        } else {
-            statement! { let [target] := alloc([size]) }
+        return Ok(match value {
+            Some(val) => {
+                let value_yul = expressions::expr(&context, val)?;
+                statement! { let [target] := [value_yul] }
+            }
+            None => statement! { let [target] := alloc([size]) },
         });
     }
 
