@@ -55,7 +55,7 @@ pub fn func_def(
             .as_ref()
             .map(|typ| types::type_desc_fixed_size(Scope::Block(Rc::clone(&function_scope)), &typ))
             .transpose()?
-            .unwrap_or_else(|| Tuple::empty().to_fixed_size());
+            .unwrap_or_else(|| Tuple::empty().into());
 
         let is_public = qual.is_some();
         contract_scope.borrow_mut().add_function(
