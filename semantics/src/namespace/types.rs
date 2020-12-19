@@ -490,12 +490,6 @@ impl AbiEncoding for Array {
     }
 }
 
-impl Array {
-    pub fn to_fixed_size(&self) -> FixedSize {
-        FixedSize::Array(self.clone())
-    }
-}
-
 impl Tuple {
     pub fn empty() -> Tuple {
         Tuple { items: vec![] }
@@ -504,9 +498,11 @@ impl Tuple {
     pub fn is_empty(&self) -> bool {
         self.size() == 0
     }
+}
 
-    pub fn to_fixed_size(&self) -> FixedSize {
-        FixedSize::Tuple(self.clone())
+impl From<Tuple> for FixedSize {
+    fn from(value: Tuple) -> Self {
+        FixedSize::Tuple(value)
     }
 }
 
