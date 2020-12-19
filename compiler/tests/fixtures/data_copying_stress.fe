@@ -27,10 +27,8 @@ contract Foo:
         self.my_u256 = self.my_other_u256
 
     pub def multiple_references_shared_memory(my_array: u256[10]):
-        my_2nd_array: u256[10]
-        my_3rd_array: u256[10]
-        my_2nd_array = my_array
-        my_3rd_array = my_2nd_array
+        my_2nd_array: u256[10] = my_array
+        my_3rd_array: u256[10] = my_2nd_array
 
         assert my_array[3] != 5
         my_array[3] = 5
