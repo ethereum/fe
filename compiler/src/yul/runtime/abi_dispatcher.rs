@@ -1,5 +1,4 @@
 use crate::abi::utils as abi_utils;
-use crate::errors::CompileError;
 use crate::yul::names;
 use crate::yul::operations::abi as abi_operations;
 use fe_semantics::namespace::types::{
@@ -11,16 +10,16 @@ use fe_semantics::FunctionAttributes;
 use yultsur::*;
 
 /// Builds a switch statement that dispatches calls to the contract.
-pub fn dispatcher(attributes: Vec<FunctionAttributes>) -> Result<yul::Statement, CompileError> {
+pub fn dispatcher(attributes: Vec<FunctionAttributes>) -> yul::Statement {
     let arms = attributes
         .iter()
         .map(|arm| dispatch_arm(arm.to_owned()))
         .collect::<Vec<_>>();
 
-    Ok(switch! {
+    switch! {
         switch (cloadn(0, 4))
         [arms...]
-    })
+    }
 }
 
 fn dispatch_arm(attributes: FunctionAttributes) -> yul::Case {

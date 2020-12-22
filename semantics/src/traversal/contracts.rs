@@ -6,20 +6,12 @@ use crate::namespace::scopes::{
     Scope,
     Shared,
 };
-use crate::namespace::types::{
-    AbiDecodeLocation,
-    FixedSize,
-};
+use crate::namespace::types::FixedSize;
 use crate::traversal::{
     functions,
     types,
 };
-use crate::{
-    Context,
-    ContractAttributes,
-    FunctionAttributes,
-    RuntimeOperations,
-};
+use crate::Context;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use std::rc::Rc;
@@ -54,56 +46,9 @@ pub fn contract_def(
             };
         }
 
-        let mut runtime_operations = vec![];
-        let mut public_functions = vec![];
-
-        for (_, event) in contract_scope.borrow().event_defs.iter() {
-            runtime_operations.push(RuntimeOperations::AbiEncode {
-                params: event.field_types(),
-            })
-        }
-
-        for (name, def) in contract_scope.borrow().function_defs.iter() {
-            if !def.is_public {
-                continue;
-            }
-
-            if name != "__init__" {
-                public_functions.push(FunctionAttributes {
-                    name: name.clone(),
-                    param_types: def.param_types.clone(),
-                    return_type: def.return_type.clone(),
-                });
-                for param in &def.param_types {
-                    runtime_operations.push(RuntimeOperations::AbiDecode {
-                        param: param.clone(),
-                        location: AbiDecodeLocation::Calldata,
-                    })
-                }
-                if !def.return_type.is_empty_tuple() {
-                    runtime_operations.push(RuntimeOperations::AbiEncode {
-                        params: vec![def.return_type.clone()],
-                    })
-                }
-            } else {
-                for param in &def.param_types {
-                    runtime_operations.push(RuntimeOperations::AbiDecode {
-                        param: param.clone(),
-                        location: AbiDecodeLocation::Memory,
-                    })
-                }
-            }
-        }
-
-        runtime_operations.sort();
-        runtime_operations.dedup();
-
-        let attributes = ContractAttributes {
-            runtime_operations,
-            public_functions,
-        };
-
-        context.borrow_mut().add_contract(stmt, attributes);
+        context
+            .borrow_mut()
+            .add_contract(stmt, contract_scope.borrow().into());
 
         return Ok(());
     }

@@ -211,11 +211,12 @@ fn string_token(s: &str) -> ethabi::Token {
 }
 
 fn address(s: &str) -> H160 {
-    H160::from_str(s).expect("Couldn't create address from string")
+    H160::from_str(s).expect(&format!("couldn't create address from: {}", s))
 }
 
 fn address_token(s: &str) -> ethabi::Token {
-    ethabi::Token::Address(address(s))
+    // left pads to 40 characters
+    ethabi::Token::Address(address(&format!("{:0>40}", s)))
 }
 
 fn bool_token(val: bool) -> ethabi::Token {
@@ -228,6 +229,10 @@ fn bytes_token(s: &str) -> ethabi::Token {
 
 fn u256_array_token(v: Vec<usize>) -> ethabi::Token {
     ethabi::Token::FixedArray(v.into_iter().map(|n| uint_token(n)).collect())
+}
+
+fn address_array_token(v: Vec<&str>) -> ethabi::Token {
+    ethabi::Token::FixedArray(v.into_iter().map(|s| address_token(s)).collect())
 }
 
 fn to_2s_complement(val: isize) -> U256 {
@@ -1092,6 +1097,79 @@ fn data_copying_stress() {
                     vec![string_token("my other string"), uint_token(42)],
                 ),
             ],
+        );
+    });
+}
+
+#[test]
+fn abi_encoding_stress() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "abi_encoding_stress.fe", "Foo", vec![]);
+
+        let my_addrs = address_array_token(vec!["a", "b", "c", "d", "e"]);
+        let my_u128 = uint_token(42);
+        let my_string = string_token("my string");
+        let my_u8s = u256_array_token((0..255).collect());
+        let my_bool = bool_token(true);
+        let my_bytes = bytes_token(
+            iter::repeat("ten bytes.")
+                .take(10)
+                .collect::<String>()
+                .as_str(),
+        );
+
+        harness.test_function(&mut executor, "set_my_addrs", vec![my_addrs.clone()], None);
+
+        harness.test_function(
+            &mut executor,
+            "get_my_addrs",
+            vec![],
+            Some(my_addrs.clone()),
+        );
+
+        harness.test_function(&mut executor, "set_my_u128", vec![my_u128.clone()], None);
+
+        harness.test_function(&mut executor, "get_my_u128", vec![], Some(my_u128.clone()));
+
+        harness.test_function(
+            &mut executor,
+            "set_my_string",
+            vec![my_string.clone()],
+            None,
+        );
+
+        harness.test_function(
+            &mut executor,
+            "get_my_string",
+            vec![],
+            Some(my_string.clone()),
+        );
+
+        harness.test_function(&mut executor, "set_my_u8s", vec![my_u8s.clone()], None);
+
+        harness.test_function(&mut executor, "get_my_u8s", vec![], Some(my_u8s.clone()));
+
+        harness.test_function(&mut executor, "set_my_bool", vec![my_bool.clone()], None);
+
+        harness.test_function(&mut executor, "get_my_bool", vec![], Some(my_bool.clone()));
+
+        harness.test_function(&mut executor, "set_my_bytes", vec![my_bytes.clone()], None);
+
+        harness.test_function(
+            &mut executor,
+            "get_my_bytes",
+            vec![],
+            Some(my_bytes.clone()),
+        );
+
+        harness.test_function(&mut executor, "emit_my_event", vec![], None);
+
+        harness.events_emitted(
+            executor,
+            vec![(
+                "MyEvent",
+                vec![my_addrs, my_u128, my_string, my_u8s, my_bool, my_bytes],
+            )],
         );
     });
 }

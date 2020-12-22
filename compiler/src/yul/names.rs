@@ -38,6 +38,7 @@ pub fn decode_name<T: AbiEncoding>(typ: &T, location: AbiDecodeLocation) -> yul:
 
     identifier! { (full_name) }
 }
+
 #[cfg(test)]
 mod tests {
     use crate::yul::names::{

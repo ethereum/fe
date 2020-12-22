@@ -107,7 +107,7 @@ fn for_loop(
     } = &stmt.node
     {
         let iterator = expressions::expr(context, iter)?;
-        let target_var = utils::var_name(expressions::expr_name_str(target)?);
+        let target_var = names::var_name(expressions::expr_name_str(target)?);
         let yul_body = multiple_func_stmt(context, body)?;
         if let Some(ExpressionAttributes {
             typ: Type::Array(array),

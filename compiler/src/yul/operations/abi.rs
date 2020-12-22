@@ -61,17 +61,16 @@ pub fn decode<T: AbiEncoding>(
     start: yul::Expression,
     location: AbiDecodeLocation,
 ) -> Vec<yul::Expression> {
-    let heads = utils::abi_head_offsets(&types).0.into_iter().map(|offset| {
-        let offset = literal_expression! { (offset) };
-        expression! { add([start.clone()], [offset]) }
+    let offsets = utils::abi_head_offsets(&types).0.into_iter().map(|offset| {
+        literal_expression! { (offset) }
     });
-    let typed_heads = types.iter().zip(heads);
+    let typed_offsets = types.iter().zip(offsets);
 
-    typed_heads
+    typed_offsets
         .into_iter()
-        .map(|(typ, head_ptr)| {
+        .map(|(typ, offset)| {
             let func_name = names::decode_name(typ, location.clone());
-            expression! { [func_name]([start.clone()], [head_ptr]) }
+            expression! { [func_name]([start.clone()], [offset]) }
         })
         .collect()
 }
@@ -115,7 +114,7 @@ mod tests {
                 AbiDecodeLocation::Calldata
             )[0]
             .to_string(),
-            "abi_decode_string26_calldata(42, add(42, 0))"
+            "abi_decode_string26_calldata(42, 0)"
         )
     }
 }
