@@ -1,6 +1,6 @@
 [package]
 name = "fe-compiler"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["Grant Wuerker <gwuerker@gmail.com>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -12,8 +12,8 @@ description = "Compiler lib for the Fe language."
 solc-backend = ["solc"]
 
 [dependencies]
-fe-parser = {path = "../parser", version = "0.1.0"}
-fe-semantics = {path = "../semantics", version = "0.1.0"}
+fe-parser = {path = "../parser", version = "0.0.1"}
+fe-semantics = {path = "../semantics", version = "0.0.1"}
 serde_json = "1.0"
 serde = "1.0"
 hex = "0.4"

@@ -1,0 +1,5 @@
+contract Foo:
+    my_sto_array: u256[10]
+
+    pub def bar(my_array: u256[10]):
+        my_array = self.my_sto_array

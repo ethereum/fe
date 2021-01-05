@@ -3,6 +3,7 @@ use crate::yul::operations;
 use crate::yul::utils;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
+use fe_semantics::builtins;
 use fe_semantics::namespace::types::{
     FixedSize,
     Type,
@@ -31,7 +32,7 @@ pub fn expr(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressio
             fe::Expr::Ternary { .. } => expr_ternary(context, exp),
             fe::Expr::BoolOperation { .. } => unimplemented!(),
             fe::Expr::BinOperation { .. } => expr_bin_operation(context, exp),
-            fe::Expr::UnaryOperation { .. } => unimplemented!(),
+            fe::Expr::UnaryOperation { .. } => expr_unary_operation(context, exp),
             fe::Expr::CompOperation { .. } => expr_comp_operation(context, exp),
             fe::Expr::Call { .. } => expr_call(context, exp),
             fe::Expr::List { .. } => unimplemented!(),
@@ -63,9 +64,10 @@ fn move_expression(
         FixedSize::try_from(typ).map_err(|_| CompileError::static_str("invalid attributes"))?;
 
     match (from.clone(), to.clone()) {
-        (Location::Storage { .. }, Location::Value) => Ok(operations::sto_to_val(typ, val)),
-        (Location::Memory { .. }, Location::Value) => Ok(operations::mem_to_val(typ, val)),
-        (Location::Storage { .. }, Location::Memory) => Ok(operations::sto_to_mem(typ, val)),
+        (Location::Storage { .. }, Location::Value) => Ok(operations::sload(typ, val)),
+        (Location::Memory, Location::Value) => Ok(operations::mload(typ, val)),
+        (Location::Memory, Location::Memory) => Ok(operations::mcopym(typ, val)),
+        (Location::Storage { .. }, Location::Memory) => Ok(operations::scopym(typ, val)),
         _ => Err(CompileError::str(format!(
             "invalid expression move: {:?} {:?}",
             from, to
@@ -90,29 +92,30 @@ pub fn expr_call(
     context: &Context,
     exp: &Spanned<fe::Expr>,
 ) -> Result<yul::Expression, CompileError> {
-    if let (Some(call_type), fe::Expr::Call { args, .. }) = (context.get_call(exp), &exp.node) {
-        let yul_args: Vec<yul::Expression> = args
-            .node
-            .iter()
-            .map(|val| call_arg(context, val))
-            .collect::<Result<_, _>>()?;
+    if let fe::Expr::Call { args, func } = &exp.node {
+        if let Some(call_type) = context.get_call(func) {
+            let yul_args: Vec<yul::Expression> = args
+                .node
+                .iter()
+                .map(|val| call_arg(context, val))
+                .collect::<Result<_, _>>()?;
 
-        return match call_type {
-            CallType::SelfFunction { name } => {
-                let func_name = utils::func_name(name);
+            return match call_type {
+                CallType::TypeConstructor { .. } => Ok(yul_args[0].to_owned()),
+                CallType::SelfAttribute { func_name } => {
+                    let func_name = utils::func_name(func_name);
 
-                Ok(expression! { [func_name]([yul_args...]) })
-            }
-            CallType::TypeConstructor => {
-                if let Some(first_arg) = yul_args.first() {
-                    Ok(first_arg.to_owned())
-                } else {
-                    Err(CompileError::static_str(
-                        "type constructor expected a single parameter",
-                    ))
+                    Ok(expression! { [func_name]([yul_args...]) })
                 }
-            }
-        };
+                CallType::ValueAttribute { .. } => {
+                    if let fe::Expr::Attribute { value, .. } = &func.node {
+                        expr(context, value)
+                    } else {
+                        unreachable!()
+                    }
+                }
+            };
+        }
     }
 
     unreachable!()
@@ -126,13 +129,30 @@ pub fn expr_comp_operation(
         let yul_left = expr(context, left)?;
         let yul_right = expr(context, right)?;
 
+        let typ = &context
+            .get_expression(left)
+            .expect("Missing `left` expression in context")
+            .typ;
+
         return match op.node {
             fe::CompOperator::Eq => Ok(expression! { eq([yul_left], [yul_right]) }),
             fe::CompOperator::NotEq => Ok(expression! { iszero((eq([yul_left], [yul_right]))) }),
-            fe::CompOperator::Lt => Ok(expression! { lt([yul_left], [yul_right]) }),
-            fe::CompOperator::LtE => Ok(expression! { iszero((gt([yul_left], [yul_right]))) }),
-            fe::CompOperator::Gt => Ok(expression! { gt([yul_left], [yul_right]) }),
-            fe::CompOperator::GtE => Ok(expression! { iszero((lt([yul_left], [yul_right]))) }),
+            fe::CompOperator::Lt => match typ.is_signed_integer() {
+                true => Ok(expression! { slt([yul_left], [yul_right]) }),
+                false => Ok(expression! { lt([yul_left], [yul_right]) }),
+            },
+            fe::CompOperator::LtE => match typ.is_signed_integer() {
+                true => Ok(expression! { iszero((sgt([yul_left], [yul_right]))) }),
+                false => Ok(expression! { iszero((gt([yul_left], [yul_right]))) }),
+            },
+            fe::CompOperator::Gt => match typ.is_signed_integer() {
+                true => Ok(expression! { sgt([yul_left], [yul_right]) }),
+                false => Ok(expression! { gt([yul_left], [yul_right]) }),
+            },
+            fe::CompOperator::GtE => match typ.is_signed_integer() {
+                true => Ok(expression! { iszero((slt([yul_left], [yul_right]))) }),
+                false => Ok(expression! { iszero((lt([yul_left], [yul_right]))) }),
+            },
             _ => unimplemented!(),
         };
     }
@@ -148,20 +168,49 @@ pub fn expr_bin_operation(
         let yul_left = expr(context, left)?;
         let yul_right = expr(context, right)?;
 
+        let typ = &context
+            .get_expression(left)
+            .expect("Missing `left` expression in context")
+            .typ;
+
         return match op.node {
             fe::BinOperator::Add => Ok(expression! { add([yul_left], [yul_right]) }),
             fe::BinOperator::Sub => Ok(expression! { sub([yul_left], [yul_right]) }),
             fe::BinOperator::Mult => Ok(expression! { mul([yul_left], [yul_right]) }),
-            fe::BinOperator::Div => Ok(expression! { div([yul_left], [yul_right]) }),
+            fe::BinOperator::Div => match typ.is_signed_integer() {
+                true => Ok(expression! { sdiv([yul_left], [yul_right]) }),
+                false => Ok(expression! { div([yul_left], [yul_right]) }),
+            },
             fe::BinOperator::BitAnd => Ok(expression! { and([yul_left], [yul_right]) }),
             fe::BinOperator::BitOr => Ok(expression! { or([yul_left], [yul_right]) }),
             fe::BinOperator::BitXor => Ok(expression! { xor([yul_left], [yul_right]) }),
             fe::BinOperator::LShift => Ok(expression! { shl([yul_right], [yul_left]) }),
-            fe::BinOperator::RShift => Ok(expression! { shr([yul_right], [yul_left]) }),
-            fe::BinOperator::Mod => Ok(expression! { mod([yul_left], [yul_right]) }),
+            fe::BinOperator::RShift => match typ.is_signed_integer() {
+                true => Ok(expression! { sar([yul_right], [yul_left]) }),
+                false => Ok(expression! { shr([yul_right], [yul_left]) }),
+            },
+            fe::BinOperator::Mod => match typ.is_signed_integer() {
+                true => Ok(expression! { smod([yul_left], [yul_right]) }),
+                false => Ok(expression! { mod([yul_left], [yul_right]) }),
+            },
             fe::BinOperator::Pow => Ok(expression! { exp([yul_left], [yul_right]) }),
             _ => unimplemented!(),
         };
+    }
+
+    unreachable!()
+}
+
+pub fn expr_unary_operation(
+    context: &Context,
+    exp: &Spanned<fe::Expr>,
+) -> Result<yul::Expression, CompileError> {
+    if let fe::Expr::UnaryOperation { op, operand } = &exp.node {
+        let yul_operand = expr(context, operand)?;
+        if let fe::UnaryOperator::USub = &op.node {
+            let zero = literal_expression! {0};
+            return Ok(expression! { sub([zero], [yul_operand]) });
+        }
     }
 
     unreachable!()
@@ -244,28 +293,14 @@ fn expr_subscript(
     unreachable!()
 }
 
-pub fn expr_list(
-    context: &Context,
-    exp: &Spanned<fe::Expr>,
-) -> Result<Vec<yul::Expression>, CompileError> {
-    if let fe::Expr::List { elts } = &exp.node {
-        let yul_elts: Vec<yul::Expression> = elts
-            .iter()
-            .map(|elt| expr(context, elt))
-            .collect::<Result<_, _>>()?;
-        return Ok(yul_elts);
-    }
-    unreachable!();
-}
-
 fn expr_attribute(
     context: &Context,
     exp: &Spanned<fe::Expr>,
 ) -> Result<yul::Expression, CompileError> {
     if let fe::Expr::Attribute { value, attr } = &exp.node {
         return match expr_name_str(value)? {
-            "msg" => expr_attribute_msg(attr),
-            "self" => expr_attribute_self(context, exp),
+            builtins::MSG => expr_attribute_msg(attr),
+            builtins::SELF => expr_attribute_self(context, exp),
             _ => Err(CompileError::static_str("invalid attributes")),
         };
     }
@@ -275,7 +310,7 @@ fn expr_attribute(
 
 fn expr_attribute_msg(attr: &Spanned<&str>) -> Result<yul::Expression, CompileError> {
     match attr.node {
-        "sender" => Ok(expression! { caller() }),
+        builtins::SENDER => Ok(expression! { caller() }),
         _ => Err(CompileError::static_str("invalid msg attribute name")),
     }
 }
@@ -444,7 +479,7 @@ mod tests {
 
         assert_eq!(
             result,
-            "scopy(dualkeccak256(0, mloadn(add($bar_array, mul($index, 20)), 20)), 160)"
+            "scopym(dualkeccak256(0, mloadn(add($bar_array, mul($index, 20)), 20)), 160)"
         );
     }
 

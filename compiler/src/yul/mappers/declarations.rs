@@ -65,27 +65,13 @@ fn var_decl_array(
     {
         let target = utils::var_name(expressions::expr_name_str(target)?);
         let size = literal_expression! { (array.size()) };
-        return Ok(if let Some(v) = value {
-            let list_yul = expressions::expr_list(context, v)?;
-            let array_starts_from = expression! { avail() };
-            let statements_memory_store: Vec<yul::Statement> = list_yul
-                .into_iter()
-                .enumerate()
-                .map(|(idx, elt)| {
-                    let mptr = operations::indexed_array(
-                        array.clone(),
-                        array_starts_from.clone(),
-                        literal_expression! { (idx)},
-                    );
-                    operations::val_to_mem(array.inner.clone(), mptr, elt)
-                })
-                .collect();
-            block_statement! {
-                (let [target] := [array_starts_from])
-                [statements_memory_store...]
+
+        return Ok(match value {
+            Some(val) => {
+                let value_yul = expressions::expr(&context, val)?;
+                statement! { let [target] := [value_yul] }
             }
-        } else {
-            statement! { let [target] := alloc([size]) }
+            None => statement! { let [target] := alloc([size]) },
         });
     }
 

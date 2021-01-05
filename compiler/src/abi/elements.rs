@@ -62,9 +62,12 @@ impl Contract {
 
 impl Contract {
     /// Serialize the contract into a valid JSON ABI.
-    pub fn json(&self) -> Result<String, CompileError> {
-        serde_json::to_string(self)
-            .map_err(|_| CompileError::static_str("unable to serialize contract to json"))
+    pub fn json(&self, prettify: bool) -> Result<String, CompileError> {
+        match prettify {
+            true => serde_json::to_string_pretty(self),
+            false => serde_json::to_string(self),
+        }
+        .map_err(|_| CompileError::static_str("unable to serialize contract to json"))
     }
 }
 
@@ -173,6 +176,12 @@ pub enum VarType {
     Uint32,
     Uint16,
     Uint8,
+    Int256,
+    Int128,
+    Int64,
+    Int32,
+    Int16,
+    Int8,
     Bool,
     Address,
     FixedBytes(usize),
@@ -201,6 +210,12 @@ impl fmt::Display for VarType {
             VarType::Uint32 => write!(f, "uint32"),
             VarType::Uint16 => write!(f, "uint16"),
             VarType::Uint8 => write!(f, "uint8"),
+            VarType::Int256 => write!(f, "int256"),
+            VarType::Int128 => write!(f, "int128"),
+            VarType::Int64 => write!(f, "int64"),
+            VarType::Int32 => write!(f, "int32"),
+            VarType::Int16 => write!(f, "int16"),
+            VarType::Int8 => write!(f, "int8"),
             VarType::Address => write!(f, "address"),
             VarType::FixedBytes(size) => write!(f, "bytes{}", size),
             VarType::FixedArray(inner, dim) => write!(f, "{}[{}]", inner, dim),
@@ -287,7 +302,7 @@ mod tests {
         };
 
         assert_eq!(
-            contract.json().unwrap(),
+            contract.json(false).unwrap(),
             r#"[
                 {
                     "name":"event_name",

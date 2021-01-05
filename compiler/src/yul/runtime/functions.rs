@@ -7,9 +7,11 @@ pub fn std() -> Vec<yul::Statement> {
         alloc(),
         alloc_mstoren(),
         free(),
-        ccopy(),
-        mcopy(),
-        scopy(),
+        ccopym(),
+        mcopys(),
+        scopym(),
+        mcopym(),
+        scopys(),
         mloadn(),
         sloadn(),
         cloadn(),
@@ -62,9 +64,9 @@ pub fn free() -> yul::Statement {
 }
 
 /// Copy calldata to memory a newly allocated segment of memory.
-pub fn ccopy() -> yul::Statement {
+pub fn ccopym() -> yul::Statement {
     function_definition! {
-        function ccopy(cptr, size) -> mptr {
+        function ccopym(cptr, size) -> mptr {
             (mptr := alloc(size))
             (calldatacopy(mptr, cptr, size))
         }
@@ -72,29 +74,94 @@ pub fn ccopy() -> yul::Statement {
 }
 
 /// Copy memory to a given segment of storage.
-pub fn mcopy() -> yul::Statement {
+pub fn mcopys() -> yul::Statement {
     function_definition! {
-        function mcopy(mptr, sptr, size) {
-            (for {(let i := 0)} (lt(i, size)) {(i := add(i, 1))}
+        function mcopys(mptr, sptr, size) {
+            (let offset := 0)
+            (for { } (lt((add(offset, 32)), size)) { }
             {
-                (let _mptr := add(mptr, i))
-                (let _sptr := add(sptr, i))
-                (sstoren(_sptr, (mloadn(_mptr, 1)), 1))
+                (let _mptr := add(mptr, offset))
+                (let _sptr := add(sptr, offset))
+                (sstore(_sptr, (mload(_mptr))))
+                (offset := add(offset, 32))
+            })
+
+            (let rem := sub(size, offset))
+            (if (gt(rem, 0)) {
+                (let _mptr := add(mptr, offset))
+                (let _sptr := add(sptr, offset))
+                (sstoren(_sptr, (mloadn(_mptr, rem)), rem))
             })
         }
     }
 }
 
 /// Copy storage to a newly allocated segment of memory.
-pub fn scopy() -> yul::Statement {
+pub fn scopym() -> yul::Statement {
     function_definition! {
-        function scopy(sptr, size) -> mptr {
+        function scopym(sptr, size) -> mptr {
             (mptr := alloc(size))
-            (for {(let i := 0)} (lt(i, size)) {(i := add(i, 1))}
+            (let offset := 0)
+            (for { } (lt((add(offset, 32)), size)) { }
             {
-                (let _mptr := add(mptr, i))
-                (let _sptr := add(sptr, i))
-                (mstoren(_mptr, (sloadn(_sptr, 1)), 1))
+                (let _mptr := add(mptr, offset))
+                (let _sptr := add(sptr, offset))
+                (mstore(_mptr, (sload(_sptr))))
+                (offset := add(offset, 32))
+            })
+
+            (let rem := sub(size, offset))
+            (if (gt(rem, 0)) {
+                (let _mptr := add(mptr, offset))
+                (let _sptr := add(sptr, offset))
+                (mstoren(_mptr, (sloadn(_sptr, rem)), rem))
+            })
+        }
+    }
+}
+
+/// Copies a segment of storage to another segment of storage.
+pub fn scopys() -> yul::Statement {
+    function_definition! {
+        function scopys(ptr1, ptr2, size) {
+            (let offset := 0)
+            (for { } (lt((add(offset, 32)), size)) { }
+            {
+                (let _ptr1 := add(ptr1, offset))
+                (let _ptr2 := add(ptr2, offset))
+                (sstore(_ptr2, (sload(_ptr1))))
+                (offset := add(offset, 32))
+            })
+
+            (let rem := sub(size, offset))
+            (if (gt(rem, 0)) {
+                (let _ptr1 := add(ptr1, offset))
+                (let _ptr2 := add(ptr2, offset))
+                (sstoren(_ptr2, (sloadn(_ptr1, rem)), rem))
+            })
+        }
+    }
+}
+
+/// Copies a segment of memory to another segment of memory.
+pub fn mcopym() -> yul::Statement {
+    function_definition! {
+        function mcopym(ptr1, size) -> ptr2 {
+            (ptr2 := alloc(size))
+            (let offset := 0)
+            (for { } (lt((add(offset, 32)), size)) { }
+            {
+                (let _ptr1 := add(ptr1, offset))
+                (let _ptr2 := add(ptr2, offset))
+                (mstore(_ptr2, (mload(_ptr1))))
+                (offset := add(offset, 32))
+            })
+
+            (let rem := sub(size, offset))
+            (if (gt(rem, 0)) {
+                (let _ptr1 := add(ptr1, offset))
+                (let _ptr2 := add(ptr2, offset))
+                (mstoren(_ptr2, (mloadn(_ptr1, rem)), rem))
             })
         }
     }

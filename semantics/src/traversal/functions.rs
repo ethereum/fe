@@ -55,7 +55,7 @@ pub fn func_def(
             .as_ref()
             .map(|typ| types::type_desc_fixed_size(Scope::Block(Rc::clone(&function_scope)), &typ))
             .transpose()?
-            .unwrap_or_else(|| Tuple::empty().to_fixed_size());
+            .unwrap_or_else(|| Tuple::empty().into());
 
         let is_public = qual.is_some();
         contract_scope.borrow_mut().add_function(
@@ -397,8 +397,7 @@ fn call_arg(
     match &arg.node {
         fe::CallArg::Arg(value) => {
             let spanned = spanned_expression(&arg.span, value);
-            let _attributes =
-                expressions::expr_with_default_move(scope, Rc::clone(&context), &spanned)?;
+            let _attributes = expressions::assignable_expr(scope, Rc::clone(&context), &spanned)?;
 
             // TODO: Perform type checking
         }
@@ -418,7 +417,7 @@ fn func_return(
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::Return { value: Some(value) } = &stmt.node {
         let attributes =
-            expressions::expr_with_default_move(Rc::clone(&scope), Rc::clone(&context), value)?;
+            expressions::assignable_expr(Rc::clone(&scope), Rc::clone(&context), value)?;
 
         let host_func_def = scope
             .borrow()

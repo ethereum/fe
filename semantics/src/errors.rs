@@ -10,12 +10,15 @@ pub enum ErrorKind {
     ContinueWithoutLoop,
     MissingReturn,
     NotSubscriptable,
+    NumericCapacityMismatch,
     UndefinedValue,
     UnexpectedReturn,
     TypeError,
     CannotMove,
     NotCallable,
+    NumericLiteralExpected,
     MoreThanThreeIndexedParams,
+    WrongNumberOfParams,
 }
 
 #[derive(Debug, PartialEq)]
@@ -55,6 +58,14 @@ impl SemanticError {
     pub fn not_subscriptable() -> Self {
         SemanticError {
             kind: ErrorKind::NotSubscriptable,
+            context: vec![],
+        }
+    }
+
+    /// Create a new error with kind `NumericCapacityMismatch`
+    pub fn numeric_capacity_mismatch() -> Self {
+        SemanticError {
+            kind: ErrorKind::NumericCapacityMismatch,
             context: vec![],
         }
     }
@@ -99,10 +110,26 @@ impl SemanticError {
         }
     }
 
+    /// Create a new error with kind `NumericLiteralExpected`
+    pub fn numeric_literal_expected() -> Self {
+        SemanticError {
+            kind: ErrorKind::NumericLiteralExpected,
+            context: vec![],
+        }
+    }
+
     /// Create a new error with kind `MoreThanThreeIndexedParams`
     pub fn more_than_three_indexed_params() -> Self {
         SemanticError {
             kind: ErrorKind::MoreThanThreeIndexedParams,
+            context: vec![],
+        }
+    }
+
+    /// Create a new error with kind `WrongNumberOfParams`
+    pub fn wrong_number_of_params() -> Self {
+        SemanticError {
+            kind: ErrorKind::WrongNumberOfParams,
             context: vec![],
         }
     }

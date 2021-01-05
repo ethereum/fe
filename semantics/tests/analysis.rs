@@ -21,6 +21,16 @@ fn addr_val() -> ExpressionAttributes {
     ExpressionAttributes::new(Type::Base(Base::Address), Location::Value)
 }
 
+fn bytes_sto() -> ExpressionAttributes {
+    ExpressionAttributes::new(
+        Type::Array(Array {
+            dimension: 100,
+            inner: Base::Byte,
+        }),
+        Location::Storage { nonce: None },
+    )
+}
+
 fn bytes_sto_moved() -> ExpressionAttributes {
     let mut expression = ExpressionAttributes::new(
         Type::Array(Array {
@@ -88,7 +98,8 @@ fn guest_book_analysis() {
         (210, 218, &bytes_mem()),
         (249, 257, &bytes_mem()),
         (322, 337, &addr_bytes_map_sto()),
-        (322, 343, &bytes_sto_moved()),
+        (322, 343, &bytes_sto()),
+        (322, 352, &bytes_sto_moved()),
         (338, 342, &addr_val()),
     ] {
         assert_eq!(

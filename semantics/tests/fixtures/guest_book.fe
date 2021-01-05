@@ -12,4 +12,4 @@ contract GuestBook:
         emit Signed(book_msg=book_msg)
 
     pub def get_msg(addr: address) -> BookMsg:
-        return self.guest_book[addr]
+        return self.guest_book[addr].to_mem()

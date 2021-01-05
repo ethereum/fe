@@ -174,7 +174,7 @@ fn deploy_contract(
     let json_abi = compiler::abi::build(&src)
         .expect("Unable to build the module ABIs")
         .contracts[name]
-        .json()
+        .json(false)
         .expect("Unable to serialize the contract ABI.");
 
     let abi = ethabi::Contract::load(StringReader::new(&json_abi)).expect("Unable to load the ABI");
@@ -202,6 +202,10 @@ fn uint_token(n: usize) -> ethabi::Token {
     ethabi::Token::Uint(U256::from(n))
 }
 
+fn int_token(val: isize) -> ethabi::Token {
+    ethabi::Token::Int(to_2s_complement(val))
+}
+
 fn string_token(s: &str) -> ethabi::Token {
     ethabi::Token::String(s.to_string())
 }
@@ -224,6 +228,39 @@ fn bytes_token(s: &str) -> ethabi::Token {
 
 fn u256_array_token(v: Vec<usize>) -> ethabi::Token {
     ethabi::Token::FixedArray(v.into_iter().map(|n| uint_token(n)).collect())
+}
+
+fn to_2s_complement(val: isize) -> U256 {
+    // Since this API takes an `isize` we can be sure that the min and max values
+    // will never be above what fits the `I256` type which has the same capacity
+    // as U256 but splits it so that one half covers numbers above 0 and the
+    // other half covers the numbers below 0.
+
+    // Conversion to Two's Complement: https://www.cs.cornell.edu/~tomf/notes/cps104/twoscomp.html
+
+    if val >= 0 {
+        return U256::from(val);
+    } else {
+        let positive_val = val * -1;
+        return get_2s_complement_for_negative(U256::from(positive_val));
+    }
+}
+
+/// To get the 2s complement value for e.g. -128 call
+/// get_2s_complement_for_negative(128)
+fn get_2s_complement_for_negative(assume_negative: U256) -> U256 {
+    let (negated, _) = assume_negative.overflowing_neg();
+    return negated + 1;
+}
+
+#[test]
+fn test_to_2s_complement() {
+    let minus_three = U256::from_dec_str(
+        "115792089237316195423570985008687907853269984665640564039457584007913129639933",
+    )
+    .unwrap();
+    assert_eq!(minus_three, to_2s_complement(-3));
+    assert_eq!(U256::from(3), to_2s_complement(3));
 }
 
 #[test]
@@ -280,12 +317,12 @@ fn test_assert() {
     case("while_loop.fe", vec![], Some(uint_token(3))),
     case("while_loop_with_break.fe", vec![], Some(uint_token(1))),
     case("while_loop_with_break_2.fe", vec![], Some(uint_token(1))),
-    case("if_statement.fe", vec![6], Some(uint_token(1))),
-    case("if_statement.fe", vec![4], Some(uint_token(0))),
-    case("if_statement_2.fe", vec![6], Some(uint_token(1))),
+    case("if_statement.fe", vec![uint_token(6)], Some(uint_token(1))),
+    case("if_statement.fe", vec![uint_token(4)], Some(uint_token(0))),
+    case("if_statement_2.fe", vec![uint_token(6)], Some(uint_token(1))),
     case("if_statement_with_block_declaration.fe", vec![], Some(uint_token(1))),
-    case("ternary_expression.fe", vec![6], Some(uint_token(1))),
-    case("ternary_expression.fe", vec![4], Some(uint_token(0))),
+    case("ternary_expression.fe", vec![uint_token(6)], Some(uint_token(1))),
+    case("ternary_expression.fe", vec![uint_token(4)], Some(uint_token(0))),
     case("call_statement_without_args.fe", vec![], Some(uint_token(100))),
     case("call_statement_with_args.fe", vec![], Some(uint_token(100))),
     case("call_statement_with_args_2.fe", vec![], Some(uint_token(100))),
@@ -294,65 +331,105 @@ fn test_assert() {
     case("return_u256_from_called_fn_with_args.fe", vec![], Some(uint_token(200))),
     case("return_u256_from_called_fn.fe", vec![], Some(uint_token(42))),
     case("return_u256.fe", vec![], Some(uint_token(42))),
-    case("return_identity_u256.fe", vec![42], Some(uint_token(42))),
-    case("return_identity_u128.fe", vec![42], Some(uint_token(42))),
-    case("return_identity_u64.fe", vec![42], Some(uint_token(42))),
-    case("return_identity_u32.fe", vec![42], Some(uint_token(42))),
-    case("return_identity_u16.fe", vec![42], Some(uint_token(42))),
-    case("return_identity_u8.fe", vec![42], Some(uint_token(42))),
+    case("return_i256.fe", vec![], Some(int_token(-3))),
+    case("return_identity_u256.fe", vec![uint_token(42)], Some(uint_token(42))),
+    case("return_identity_u128.fe", vec![uint_token(42)], Some(uint_token(42))),
+    case("return_identity_u64.fe", vec![uint_token(42)], Some(uint_token(42))),
+    case("return_identity_u32.fe", vec![uint_token(42)], Some(uint_token(42))),
+    case("return_identity_u16.fe", vec![uint_token(42)], Some(uint_token(42))),
+    case("return_identity_u8.fe", vec![uint_token(42)], Some(uint_token(42))),
     case("return_u128_cast.fe", vec![], Some(uint_token(42))),
+    case("return_i128_cast.fe", vec![], Some(int_token(-3))),
     // binary operators
-    case("return_addition_u256.fe", vec![42, 42], Some(uint_token(84))),
-    case("return_addition_u128.fe", vec![42, 42], Some(uint_token(84))),
-    case("return_subtraction_u256.fe", vec![42, 42], Some(uint_token(0))),
-    case("return_multiplication_u256.fe", vec![42, 42], Some(uint_token(1764))),
-    case("return_division_u256.fe", vec![42, 42], Some(uint_token(1))),
-    case("return_pow_u256.fe", vec![2, 0], Some(uint_token(1))),
-    case("return_pow_u256.fe", vec![2, 4], Some(uint_token(16))),
-    case("return_mod_u256.fe", vec![5, 0], Some(uint_token(0))),
-    case("return_mod_u256.fe", vec![5, 2], Some(uint_token(1))),
-    case("return_mod_u256.fe", vec![5, 3], Some(uint_token(2))),
-    case("return_mod_u256.fe", vec![5, 5], Some(uint_token(0))),
-    case("return_bitwiseand_u256.fe", vec![12, 25], Some(uint_token(8))),
-    case("return_bitwiseand_u128.fe", vec![12, 25], Some(uint_token(8))),
-    case("return_bitwiseor_u256.fe", vec![12, 25], Some(uint_token(29))),
-    case("return_bitwisexor_u256.fe", vec![12, 25], Some(uint_token(21))),
-    case("return_bitwiseshl_u256.fe", vec![212, 0], Some(uint_token(212))),
-    case("return_bitwiseshl_u256.fe", vec![212, 1], Some(uint_token(424))),
-    case("return_bitwiseshr_u256.fe", vec![212, 0], Some(uint_token(212))),
-    case("return_bitwiseshr_u256.fe", vec![212, 1], Some(uint_token(106))),
+    case("return_addition_u256.fe", vec![uint_token(42), uint_token(42)], Some(uint_token(84))),
+    case("return_addition_i256.fe", vec![int_token(-42), int_token(-42)], Some(int_token(-84))),
+    case("return_addition_i256.fe", vec![int_token(-42), int_token(42)], Some(int_token(0))),
+    case("return_addition_u128.fe", vec![uint_token(42), uint_token(42)], Some(uint_token(84))),
+    case("return_subtraction_u256.fe", vec![uint_token(42), uint_token(42)], Some(uint_token(0))),
+    case("return_subtraction_i256.fe", vec![int_token(-42), int_token(-42)], Some(int_token(0))),
+    case("return_subtraction_i256.fe", vec![int_token(-42), int_token(42)], Some(int_token(-84))),
+    case("return_multiplication_u256.fe", vec![uint_token(42), uint_token(42)], Some(uint_token(1764))),
+    case("return_multiplication_i256.fe", vec![int_token(-42), int_token(-42)], Some(int_token(1764))),
+    case("return_multiplication_i256.fe", vec![int_token(-42), int_token(42)], Some(int_token(-1764))),
+    case("return_division_u256.fe", vec![uint_token(42), uint_token(42)], Some(uint_token(1))),
+    case("return_division_i256.fe", vec![int_token(-42), int_token(-42)], Some(int_token(1))),
+    case("return_division_i256.fe", vec![int_token(-1), int_token(1)], Some(int_token(-1))),
+    case("return_division_i256.fe", vec![int_token(-42), int_token(42)], Some(int_token(-1))),
+    case("return_pow_u256.fe", vec![uint_token(2), uint_token(0)], Some(uint_token(1))),
+    case("return_pow_u256.fe", vec![uint_token(2), uint_token(4)], Some(uint_token(16))),
+    case("return_mod_u256.fe", vec![uint_token(5), uint_token(0)], Some(uint_token(0))),
+    case("return_mod_u256.fe", vec![uint_token(5), uint_token(2)], Some(uint_token(1))),
+    case("return_mod_u256.fe", vec![uint_token(5), uint_token(3)], Some(uint_token(2))),
+    case("return_mod_u256.fe", vec![uint_token(5), uint_token(5)], Some(uint_token(0))),
+    case("return_mod_i256.fe", vec![int_token(5), int_token(0)], Some(int_token(0))),
+    case("return_mod_i256.fe", vec![int_token(5), int_token(2)], Some(int_token(1))),
+    case("return_mod_i256.fe", vec![int_token(5), int_token(3)], Some(int_token(2))),
+    case("return_mod_i256.fe", vec![int_token(5), int_token(5)], Some(int_token(0))),
+    case("return_bitwiseand_u256.fe", vec![uint_token(12), uint_token(25)], Some(uint_token(8))),
+    case("return_bitwiseand_u128.fe", vec![uint_token(12), uint_token(25)], Some(uint_token(8))),
+    case("return_bitwiseor_u256.fe", vec![uint_token(12), uint_token(25)], Some(uint_token(29))),
+    case("return_bitwisexor_u256.fe", vec![uint_token(12), uint_token(25)], Some(uint_token(21))),
+    case("return_bitwiseshl_u256.fe", vec![uint_token(212), uint_token(0)], Some(uint_token(212))),
+    case("return_bitwiseshl_u256.fe", vec![uint_token(212), uint_token(1)], Some(uint_token(424))),
+    case("return_bitwiseshr_u256.fe", vec![uint_token(212), uint_token(0)], Some(uint_token(212))),
+    case("return_bitwiseshr_u256.fe", vec![uint_token(212), uint_token(1)], Some(uint_token(106))),
+    case("return_bitwiseshr_i256.fe", vec![int_token(212), int_token(0)], Some(int_token(212))),
+    case("return_bitwiseshr_i256.fe", vec![int_token(212), int_token(1)], Some(int_token(106))),
     // comparision operators
-    case("return_eq_u256.fe", vec![1, 1], Some(bool_token(true))),
-    case("return_eq_u256.fe", vec![1, 2], Some(bool_token(false))),
-    case("return_noteq_u256.fe", vec![1, 1], Some(bool_token(false))),
-    case("return_noteq_u256.fe", vec![1, 2], Some(bool_token(true))),
-    case("return_lt_u256.fe", vec![1, 2], Some(bool_token(true))),
-    case("return_lt_u256.fe", vec![1, 1], Some(bool_token(false))),
-    case("return_lt_u256.fe", vec![2, 1], Some(bool_token(false))),
-    case("return_lt_u128.fe", vec![1, 2], Some(bool_token(true))),
-    case("return_lte_u256.fe", vec![1, 2], Some(bool_token(true))),
-    case("return_lte_u256.fe", vec![1, 1], Some(bool_token(true))),
-    case("return_lte_u256.fe", vec![2, 1], Some(bool_token(false))),
-    case("return_gt_u256.fe", vec![2, 1], Some(bool_token(true))),
-    case("return_gt_u256.fe", vec![1, 1], Some(bool_token(false))),
-    case("return_gt_u256.fe", vec![1, 2], Some(bool_token(false))),
-    case("return_gte_u256.fe", vec![2, 1], Some(bool_token(true))),
-    case("return_gte_u256.fe", vec![1, 1], Some(bool_token(true))),
-    case("return_gte_u256.fe", vec![1, 2], Some(bool_token(false))),
+    case("return_eq_u256.fe", vec![uint_token(1), uint_token(1)], Some(bool_token(true))),
+    case("return_eq_u256.fe", vec![uint_token(1), uint_token(2)], Some(bool_token(false))),
+    case("return_noteq_u256.fe", vec![uint_token(1), uint_token(1)], Some(bool_token(false))),
+    case("return_noteq_u256.fe", vec![uint_token(1), uint_token(2)], Some(bool_token(true))),
+    case("return_lt_u256.fe", vec![uint_token(1), uint_token(2)], Some(bool_token(true))),
+    case("return_lt_u256.fe", vec![uint_token(1), uint_token(1)], Some(bool_token(false))),
+    case("return_lt_u256.fe", vec![uint_token(2), uint_token(1)], Some(bool_token(false))),
+    case("return_lt_u128.fe", vec![uint_token(1), uint_token(2)], Some(bool_token(true))),
+    // lt_i256 with positive and negative numbers
+    case("return_lt_i256.fe", vec![int_token(1), int_token(2)], Some(bool_token(true))),
+    case("return_lt_i256.fe", vec![int_token(1), int_token(1)], Some(bool_token(false))),
+    case("return_lt_i256.fe", vec![int_token(2), int_token(1)], Some(bool_token(false))),
+    case("return_lt_i256.fe", vec![int_token(-2), int_token(-1)], Some(bool_token(true))),
+    case("return_lt_i256.fe", vec![int_token(-1), int_token(-1)], Some(bool_token(false))),
+    case("return_lt_i256.fe", vec![int_token(-1), int_token(-2)], Some(bool_token(false))),
+    case("return_lte_u256.fe", vec![uint_token(1), uint_token(2)], Some(bool_token(true))),
+    case("return_lte_u256.fe", vec![uint_token(1), uint_token(1)], Some(bool_token(true))),
+    // lte_i256 with positive and negative numbers
+    case("return_lte_u256.fe", vec![uint_token(2), uint_token(1)], Some(bool_token(false))),
+    case("return_lte_i256.fe", vec![int_token(1), int_token(2)], Some(bool_token(true))),
+    case("return_lte_i256.fe", vec![int_token(1), int_token(1)], Some(bool_token(true))),
+    case("return_lte_i256.fe", vec![int_token(2), int_token(1)], Some(bool_token(false))),
+    case("return_lte_i256.fe", vec![int_token(-2), int_token(-1)], Some(bool_token(true))),
+    case("return_lte_i256.fe", vec![int_token(-1), int_token(-1)], Some(bool_token(true))),
+    case("return_lte_i256.fe", vec![int_token(-1), int_token(-2)], Some(bool_token(false))),
+    case("return_gt_u256.fe", vec![uint_token(2), uint_token(1)], Some(bool_token(true))),
+    case("return_gt_u256.fe", vec![uint_token(1), uint_token(1)], Some(bool_token(false))),
+    case("return_gt_u256.fe", vec![uint_token(1), uint_token(2)], Some(bool_token(false))),
+    // gt_i256 with positive and negative numbers
+    case("return_gt_i256.fe", vec![int_token(2), int_token(1)], Some(bool_token(true))),
+    case("return_gt_i256.fe", vec![int_token(1), int_token(1)], Some(bool_token(false))),
+    case("return_gt_i256.fe", vec![int_token(1), int_token(2)], Some(bool_token(false))),
+    case("return_gt_i256.fe", vec![int_token(-1), int_token(-2)], Some(bool_token(true))),
+    case("return_gt_i256.fe", vec![int_token(-1), int_token(-1)], Some(bool_token(false))),
+    case("return_gt_i256.fe", vec![int_token(-2), int_token(-1)], Some(bool_token(false))),
+    case("return_gte_u256.fe", vec![uint_token(2), uint_token(1)], Some(bool_token(true))),
+    case("return_gte_u256.fe", vec![uint_token(1), uint_token(1)], Some(bool_token(true))),
+    case("return_gte_u256.fe", vec![uint_token(1), uint_token(2)], Some(bool_token(false))),
+    // gte_i256 with positive and negative numbers
+    case("return_gte_i256.fe", vec![int_token(2), int_token(1)], Some(bool_token(true))),
+    case("return_gte_i256.fe", vec![int_token(1), int_token(1)], Some(bool_token(true))),
+    case("return_gte_i256.fe", vec![int_token(1), int_token(2)], Some(bool_token(false))),
+    case("return_gte_i256.fe", vec![int_token(-1), int_token(-2)], Some(bool_token(true))),
+    case("return_gte_i256.fe", vec![int_token(-1), int_token(-1)], Some(bool_token(true))),
+    case("return_gte_i256.fe", vec![int_token(-2), int_token(-1)], Some(bool_token(false))),
 )]
-fn test_method_return(fixture_file: &str, input: Vec<usize>, expected: Option<ethabi::Token>) {
+fn test_method_return(
+    fixture_file: &str,
+    input: Vec<ethabi::Token>,
+    expected: Option<ethabi::Token>,
+) {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, fixture_file, "Foo", vec![]);
-        harness.test_function(
-            &mut executor,
-            "bar",
-            input
-                .clone()
-                .into_iter()
-                .map(|val| uint_token(val))
-                .collect(),
-            expected.clone(),
-        )
+        harness.test_function(&mut executor, "bar", input.clone(), expected.clone())
     })
 }
 
@@ -684,6 +761,111 @@ fn strings() {
 }
 
 #[test]
+fn test_numeric_sizes() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "numeric_sizes.fe", "Foo", vec![]);
+
+        struct SizeConfig {
+            size: usize,
+            u_min: ethabi::Token,
+            i_min: ethabi::Token,
+            u_max: ethabi::Token,
+            i_max: ethabi::Token,
+        }
+
+        let zero = uint_token(0);
+        let u64_max = ethabi::Token::Uint(U256::from(2).pow(U256::from(64)) - 1);
+        let i64_min = ethabi::Token::Int(get_2s_complement_for_negative(
+            U256::from(2).pow(U256::from(63)),
+        ));
+
+        let u128_max = ethabi::Token::Uint(U256::from(2).pow(U256::from(128)) - 1);
+        let i128_max = ethabi::Token::Int(U256::from(2).pow(U256::from(127)) - 1);
+        let i128_min = ethabi::Token::Int(get_2s_complement_for_negative(
+            U256::from(2).pow(U256::from(127)),
+        ));
+
+        let u256_max = ethabi::Token::Uint(U256::MAX);
+        let i256_max = ethabi::Token::Int(U256::from(2).pow(U256::from(255)) - 1);
+        let i256_min = ethabi::Token::Int(get_2s_complement_for_negative(
+            U256::from(2).pow(U256::from(255)),
+        ));
+
+        let sizes = [
+            SizeConfig {
+                size: 8,
+                u_min: zero.clone(),
+                i_min: int_token(-128),
+                u_max: uint_token(255),
+                i_max: int_token(127),
+            },
+            SizeConfig {
+                size: 16,
+                u_min: zero.clone(),
+                i_min: int_token(-32768),
+                u_max: uint_token(65535),
+                i_max: int_token(32767),
+            },
+            SizeConfig {
+                size: 32,
+                u_min: zero.clone(),
+                i_min: int_token(-2147483648),
+                u_max: uint_token(4294967295),
+                i_max: int_token(2147483647),
+            },
+            SizeConfig {
+                size: 64,
+                u_min: zero.clone(),
+                i_min: i64_min.clone(),
+                u_max: u64_max.clone(),
+                i_max: int_token(9223372036854775807),
+            },
+            SizeConfig {
+                size: 128,
+                u_min: zero.clone(),
+                i_min: i128_min.clone(),
+                u_max: u128_max.clone(),
+                i_max: i128_max.clone(),
+            },
+            SizeConfig {
+                size: 256,
+                u_min: zero.clone(),
+                i_min: i256_min.clone(),
+                u_max: u256_max.clone(),
+                i_max: i256_max.clone(),
+            },
+        ];
+
+        for config in sizes.iter() {
+            harness.test_function(
+                &mut executor,
+                &format!("get_u{}_min", config.size),
+                vec![],
+                Some(config.u_min.clone()),
+            );
+            harness.test_function(
+                &mut executor,
+                &format!("get_u{}_max", config.size),
+                vec![],
+                Some(config.u_max.clone()),
+            );
+            harness.test_function(
+                &mut executor,
+                &format!("get_i{}_min", config.size),
+                vec![],
+                Some(config.i_min.clone()),
+            );
+            harness.test_function(
+                &mut executor,
+                &format!("get_i{}_max", config.size),
+                vec![],
+                Some(config.i_max.clone()),
+            );
+        }
+    })
+}
+
+#[test]
 fn sized_vals_in_sto() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, "sized_vals_in_sto.fe", "Foo", vec![]);
@@ -834,6 +1016,80 @@ fn erc20_token() {
                 (
                     "Approval",
                     vec![address_token(alice), address_token(bob), uint_token(5)],
+                ),
+            ],
+        );
+    });
+}
+
+#[test]
+fn data_copying_stress() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "data_copying_stress.fe", "Foo", vec![]);
+
+        harness.test_function(
+            &mut executor,
+            "set_my_vals",
+            vec![
+                string_token("my string"),
+                string_token("my other string"),
+                uint_token(26),
+                uint_token(42),
+            ],
+            None,
+        );
+
+        harness.test_function(&mut executor, "emit_my_event", vec![], None);
+
+        harness.test_function(&mut executor, "set_to_my_other_vals", vec![], None);
+
+        harness.test_function(&mut executor, "emit_my_event", vec![], None);
+
+        let my_array = u256_array_token(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        let my_mutated_array = u256_array_token(vec![1, 2, 3, 5, 5, 6, 7, 8, 9, 10]);
+
+        harness.test_function(
+            &mut executor,
+            "mutate_and_return",
+            vec![my_array.clone()],
+            Some(my_mutated_array),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "multiple_references_shared_memory",
+            vec![my_array.clone()],
+            None,
+        );
+
+        harness.test_function(
+            &mut executor,
+            "clone_and_return",
+            vec![my_array.clone()],
+            Some(my_array.clone()),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "clone_mutate_and_return",
+            vec![my_array.clone()],
+            Some(my_array),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "assign_my_nums_and_return",
+            vec![],
+            Some(u256_array_token(vec![42, 26, 0, 1, 255])),
+        );
+
+        harness.events_emitted(
+            executor,
+            vec![
+                ("MyEvent", vec![string_token("my string"), uint_token(26)]),
+                (
+                    "MyEvent",
+                    vec![string_token("my other string"), uint_token(42)],
                 ),
             ],
         );

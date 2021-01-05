@@ -2,6 +2,24 @@ use crate::errors::SemanticError;
 use fe_parser::ast as fe;
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::num::{
+    IntErrorKind,
+    ParseIntError,
+};
+
+use num_bigint::BigInt;
+
+pub fn u256_max() -> BigInt {
+    BigInt::from(2).pow(256) - 1
+}
+
+pub fn i256_max() -> BigInt {
+    BigInt::from(2).pow(255) - 1
+}
+
+pub fn i256_min() -> BigInt {
+    BigInt::from(-2).pow(255)
+}
 
 /// The type has a constant size known to the compiler.
 pub trait FeSized {
@@ -107,6 +125,12 @@ pub enum Integer {
     U32,
     U16,
     U8,
+    I256,
+    I128,
+    I64,
+    I32,
+    I16,
+    I8,
 }
 
 pub const U256: Base = Base::Numeric(Integer::U256);
@@ -133,10 +157,69 @@ pub struct FeString {
     pub max_size: usize,
 }
 
+impl Integer {
+    pub fn is_signed(&self) -> bool {
+        matches!(
+            self,
+            Integer::I256
+                | Integer::I128
+                | Integer::I64
+                | Integer::I32
+                | Integer::I16
+                | Integer::I8
+        )
+    }
+
+    pub fn fits(&self, num: &str) -> bool {
+        let radix = 10;
+
+        fn handle_parse_error<T>(result: Result<T, ParseIntError>) -> bool {
+            if let Err(error) = result {
+                return match error.kind() {
+                    IntErrorKind::PosOverflow => false,
+                    IntErrorKind::NegOverflow => false,
+                    // If we try to parse a negative value for an unsigned type
+                    IntErrorKind::InvalidDigit => false,
+                    // We don't expect this but it would be tragic if we would map this to `false`
+                    // incase it happens because it would mean we sweep a bug under the rug.
+                    other => panic!("Unexpected ParseIntError: {:?}", other),
+                };
+            }
+
+            true
+        }
+
+        match self {
+            Integer::U8 => handle_parse_error(u8::from_str_radix(num, radix)),
+            Integer::U16 => handle_parse_error(u16::from_str_radix(num, radix)),
+            Integer::U32 => handle_parse_error(u32::from_str_radix(num, radix)),
+            Integer::U64 => handle_parse_error(u64::from_str_radix(num, radix)),
+            Integer::U128 => handle_parse_error(u128::from_str_radix(num, radix)),
+            Integer::U256 => BigInt::parse_bytes(num.as_bytes(), radix)
+                .map_or(false, |val| val >= BigInt::from(0) && val <= u256_max()),
+            Integer::I8 => handle_parse_error(i8::from_str_radix(num, radix)),
+            Integer::I16 => handle_parse_error(i16::from_str_radix(num, radix)),
+            Integer::I32 => handle_parse_error(i32::from_str_radix(num, radix)),
+            Integer::I64 => handle_parse_error(i64::from_str_radix(num, radix)),
+            Integer::I128 => handle_parse_error(i128::from_str_radix(num, radix)),
+            Integer::I256 => BigInt::parse_bytes(num.as_bytes(), radix)
+                .map_or(false, |val| val >= i256_min() && val <= i256_max()),
+        }
+    }
+}
+
 impl Type {
+    /// Returns true if the type is a tuple with 0 elements.
     pub fn is_empty_tuple(&self) -> bool {
         if let Type::Tuple(tuple) = &self {
             return tuple.is_empty();
+        }
+        false
+    }
+
+    pub fn is_signed_integer(&self) -> bool {
+        if let Type::Base(Base::Numeric(integer)) = &self {
+            return integer.is_signed();
         }
         false
     }
@@ -173,6 +256,12 @@ impl FeSized for Integer {
             Integer::U64 => 8,
             Integer::U128 => 16,
             Integer::U256 => 32,
+            Integer::I8 => 1,
+            Integer::I16 => 2,
+            Integer::I32 => 4,
+            Integer::I64 => 8,
+            Integer::I128 => 16,
+            Integer::I256 => 32,
         }
     }
 }
@@ -254,6 +343,12 @@ impl AbiEncoding for Base {
             Base::Numeric(Integer::U32) => "uint32".to_string(),
             Base::Numeric(Integer::U16) => "uint16".to_string(),
             Base::Numeric(Integer::U8) => "uint8".to_string(),
+            Base::Numeric(Integer::I256) => "int256".to_string(),
+            Base::Numeric(Integer::I128) => "int128".to_string(),
+            Base::Numeric(Integer::I64) => "int64".to_string(),
+            Base::Numeric(Integer::I32) => "int32".to_string(),
+            Base::Numeric(Integer::I16) => "int16".to_string(),
+            Base::Numeric(Integer::I8) => "int8".to_string(),
             Base::Address => "address".to_string(),
             Base::Byte => "byte".to_string(),
             Base::Bool => "bool".to_string(),
@@ -309,6 +404,42 @@ impl AbiEncoding for Base {
                         padded_size: 32,
                     },
                 },
+                Integer::I256 => AbiType::Uint {
+                    size: AbiUintSize {
+                        data_size: 32,
+                        padded_size: 32,
+                    },
+                },
+                Integer::I128 => AbiType::Uint {
+                    size: AbiUintSize {
+                        data_size: 16,
+                        padded_size: 32,
+                    },
+                },
+                Integer::I64 => AbiType::Uint {
+                    size: AbiUintSize {
+                        data_size: 8,
+                        padded_size: 32,
+                    },
+                },
+                Integer::I32 => AbiType::Uint {
+                    size: AbiUintSize {
+                        data_size: 4,
+                        padded_size: 32,
+                    },
+                },
+                Integer::I16 => AbiType::Uint {
+                    size: AbiUintSize {
+                        data_size: 2,
+                        padded_size: 32,
+                    },
+                },
+                Integer::I8 => AbiType::Uint {
+                    size: AbiUintSize {
+                        data_size: 1,
+                        padded_size: 32,
+                    },
+                },
             },
             Base::Address => AbiType::Uint {
                 size: AbiUintSize {
@@ -359,12 +490,6 @@ impl AbiEncoding for Array {
     }
 }
 
-impl Array {
-    pub fn to_fixed_size(&self) -> FixedSize {
-        FixedSize::Array(self.clone())
-    }
-}
-
 impl Tuple {
     pub fn empty() -> Tuple {
         Tuple { items: vec![] }
@@ -373,9 +498,11 @@ impl Tuple {
     pub fn is_empty(&self) -> bool {
         self.size() == 0
     }
+}
 
-    pub fn to_fixed_size(&self) -> FixedSize {
-        FixedSize::Tuple(self.clone())
+impl From<Tuple> for FixedSize {
+    fn from(value: Tuple) -> Self {
+        FixedSize::Tuple(value)
     }
 }
 
@@ -458,6 +585,12 @@ pub fn type_desc(defs: &HashMap<String, Type>, typ: &fe::TypeDesc) -> Result<Typ
         fe::TypeDesc::Base { base: "u32" } => Ok(Type::Base(Base::Numeric(Integer::U32))),
         fe::TypeDesc::Base { base: "u16" } => Ok(Type::Base(Base::Numeric(Integer::U16))),
         fe::TypeDesc::Base { base: "u8" } => Ok(Type::Base(Base::Numeric(Integer::U8))),
+        fe::TypeDesc::Base { base: "i256" } => Ok(Type::Base(Base::Numeric(Integer::I256))),
+        fe::TypeDesc::Base { base: "i128" } => Ok(Type::Base(Base::Numeric(Integer::I128))),
+        fe::TypeDesc::Base { base: "i64" } => Ok(Type::Base(Base::Numeric(Integer::I64))),
+        fe::TypeDesc::Base { base: "i32" } => Ok(Type::Base(Base::Numeric(Integer::I32))),
+        fe::TypeDesc::Base { base: "i16" } => Ok(Type::Base(Base::Numeric(Integer::I16))),
+        fe::TypeDesc::Base { base: "i8" } => Ok(Type::Base(Base::Numeric(Integer::I8))),
         fe::TypeDesc::Base { base: "bool" } => Ok(Type::Base(Base::Bool)),
         fe::TypeDesc::Base { base: "bytes" } => Ok(Type::Base(Base::Byte)),
         fe::TypeDesc::Base { base: "address" } => Ok(Type::Base(Base::Address)),

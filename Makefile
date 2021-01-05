@@ -1,7 +1,3 @@
-.PHONY: docker-coverage
-docker-coverage:
-	./coverage.sh --out Html
-
 .PHONY: docker-test
 docker-test:
 	docker run \
@@ -20,9 +16,13 @@ docker-wasm-test:
 		davesque/rust-wasm \
 		wasm-pack test --node -- --workspace
 
+.PHONY: coverage
+coverage:
+	cargo tarpaulin --all --verbose --exclude-files 'tests/*' --exclude-files 'main.rs' --out xml html
+
 .PHONY: clippy
 clippy:
-	cargo clippy-preview -Z unstable-options --workspace
+	cargo clippy --all-targets --all-features -- -D warnings
 
 .PHONY: rustfmt
 rustfmt:
@@ -34,3 +34,12 @@ lint: rustfmt clippy
 .PHONY: build-docs
 build-docs:
 	cargo doc --no-deps --workspace
+
+notes:
+	towncrier --yes --version $(version)
+	git commit -m "Compile release notes"
+
+release:
+	# Ensure release notes where generated before running the release command
+	./newsfragments/validate_files.py is-empty
+	cargo release $(version) --all
