@@ -1,6 +1,5 @@
 use crate::errors::CompileError;
 use crate::yul::mappers::expressions;
-use crate::yul::operations;
 use crate::yul::utils;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
