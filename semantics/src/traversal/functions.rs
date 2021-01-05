@@ -181,7 +181,7 @@ fn func_stmt(
         fe::FuncStmt::Assign { .. } => assignments::assign(scope, context, stmt),
         fe::FuncStmt::Emit { .. } => emit(scope, context, stmt),
         fe::FuncStmt::AugAssign { .. } => unimplemented!(),
-        fe::FuncStmt::For { .. } => unimplemented!(),
+        fe::FuncStmt::For { .. } => for_loop(scope, context, stmt),
         fe::FuncStmt::While { .. } => while_loop(scope, context, stmt),
         fe::FuncStmt::If { .. } => if_statement(scope, context, stmt),
         fe::FuncStmt::Assert { .. } => assert(scope, context, stmt),
@@ -192,6 +192,51 @@ fn func_stmt(
         fe::FuncStmt::Revert => Ok(()),
     }
     .map_err(|error| error.with_context(stmt.span))
+}
+
+fn for_loop(
+    scope: Shared<BlockScope>,
+    context: Shared<Context>,
+    stmt: &Spanned<fe::FuncStmt>,
+) -> Result<(), SemanticError> {
+    match &stmt.node {
+        fe::FuncStmt::For {
+            target,
+            iter,
+            body,
+            or_else,
+        } => {
+            // Step 1: Make sure it is empty.
+            // TODO: (SA) needs to add support for it.
+            if !or_else.is_empty() {
+                unimplemented!();
+            }
+            // Step 2: Create the for loop body scope.
+            let body_scope = BlockScope::from_block_scope(BlockScopeType::Loop, Rc::clone(&scope));
+            // Step 3: Make sure iter is in the function scope & it should be an array.
+            let target_type = verify_is_array(scope, Rc::clone(&context), iter)?;
+            let target_name = expressions::expr_name_str(target)?;
+            body_scope
+                .borrow_mut()
+                .add_var(target_name.to_string(), target_type);
+            // Step 4: Traverse the statements within the `for loop` body scope.
+            traverse_statements(body_scope, context, body)
+        }
+        _ => unreachable!(),
+    }
+}
+
+fn verify_is_array(
+    scope: Shared<BlockScope>,
+    context: Shared<Context>,
+    expr: &Spanned<fe::Expr>,
+) -> Result<FixedSize, SemanticError> {
+    let attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), &expr)?;
+    if let Type::Array(array) = attributes.typ {
+        // TODO: (SA) Could add a support for tuple
+        return Ok(FixedSize::Base(array.inner));
+    }
+    Err(SemanticError::type_error())
 }
 
 fn verify_is_boolean(

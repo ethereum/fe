@@ -8,6 +8,7 @@ use crate::namespace::scopes::{
 use crate::builtins;
 use crate::namespace::operations;
 use crate::namespace::types::{
+    Array,
     Base,
     FixedSize,
     Integer,
@@ -47,7 +48,7 @@ pub fn expr(
         fe::Expr::UnaryOperation { .. } => expr_unary_operation(scope, Rc::clone(&context), exp),
         fe::Expr::CompOperation { .. } => expr_comp_operation(scope, Rc::clone(&context), exp),
         fe::Expr::Call { .. } => expr_call(scope, Rc::clone(&context), exp),
-        fe::Expr::List { .. } => unimplemented!(),
+        fe::Expr::List { .. } => expr_list(scope, Rc::clone(&context), exp),
         fe::Expr::ListComp { .. } => unimplemented!(),
         fe::Expr::Tuple { .. } => unimplemented!(),
         fe::Expr::Str(_) => unimplemented!(),
@@ -58,6 +59,44 @@ pub fn expr(
     context.borrow_mut().add_expression(exp, attributes.clone());
 
     Ok(attributes)
+}
+
+pub fn expr_list(
+    scope: Shared<BlockScope>,
+    context: Shared<Context>,
+    exp: &Spanned<fe::Expr>,
+) -> Result<ExpressionAttributes, SemanticError> {
+    if let fe::Expr::List { elts } = &exp.node {
+        // Assuming every element attribute should matches the attribute of 0th element
+        // of list. Safe to unwrap as we already checked the length of the
+        // list.
+        if let Some(elt) = elts.first() {
+            let attribute_to_be_matched = expr(Rc::clone(&scope), Rc::clone(&context), elt)?;
+
+            // Rationale - A list contains only one type of element.
+            // No need to iterate the whole list if the first attribute doesn't match next
+            // one.
+            for elt in elts.iter() {
+                let next_attribute = expr(Rc::clone(&scope), Rc::clone(&context), elt)?;
+                validate_types_equal(&next_attribute, &attribute_to_be_matched)?;
+            }
+
+            // TODO: Right now we are only supporting Base type arrays
+            // Potential we can support the tuples as well.
+            if let Type::Base(base) = attribute_to_be_matched.typ {
+                return Ok(ExpressionAttributes {
+                    typ: Type::Array(Array {
+                        dimension: elts.len(),
+                        inner: base,
+                    }),
+                    location: attribute_to_be_matched.location,
+                    move_location: None,
+                });
+            }
+            return Err(SemanticError::type_error());
+        }
+    }
+    unreachable!()
 }
 
 /// Gather context information for expressions and check for type errors.
