@@ -1,6 +1,6 @@
 use crate::errors::CompileError;
 use crate::yul::mappers::expressions;
-use crate::yul::operations;
+use crate::yul::operations::data as data_operations;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use fe_semantics::namespace::types::FixedSize;
@@ -38,11 +38,11 @@ pub fn assign(
                         target_attributes.final_location(),
                     ) {
                         (Location::Memory, Location::Storage { .. }) => {
-                            operations::mcopys(typ, target, value)
+                            data_operations::mcopys(typ, target, value)
                         }
                         (Location::Memory, Location::Value) => {
                             let target = expr_as_ident(target)?;
-                            let value = operations::mload(typ, value);
+                            let value = data_operations::mload(typ, value);
                             statement! { [target] := [value] }
                         }
                         (Location::Memory, Location::Memory) => {
@@ -50,21 +50,21 @@ pub fn assign(
                             statement! { [target] := [value] }
                         }
                         (Location::Storage { .. }, Location::Storage { .. }) => {
-                            operations::scopys(typ, target, value)
+                            data_operations::scopys(typ, target, value)
                         }
                         (Location::Storage { .. }, Location::Value) => {
                             let target = expr_as_ident(target)?;
-                            let value = operations::sload(typ, value);
+                            let value = data_operations::sload(typ, value);
                             statement! { [target] := [value] }
                         }
                         (Location::Storage { .. }, Location::Memory) => {
                             unreachable!("raw sto to mem assign")
                         }
                         (Location::Value, Location::Memory) => {
-                            operations::mstore(typ, target, value)
+                            data_operations::mstore(typ, target, value)
                         }
                         (Location::Value, Location::Storage { .. }) => {
-                            operations::sstore(typ, target, value)
+                            data_operations::sstore(typ, target, value)
                         }
                         (Location::Value, Location::Value) => {
                             let target = expr_as_ident(target)?;

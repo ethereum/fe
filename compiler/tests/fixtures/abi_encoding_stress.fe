@@ -1,0 +1,61 @@
+contract Foo:
+    my_addrs: address[5]
+    my_u128: u128
+    my_string: string10
+    my_u8s: u8[255]
+    my_bool: bool
+    my_bytes: bytes[100]
+
+    event MyEvent:
+        my_addrs: address[5]
+        my_u128: u128
+        my_string: string10
+        my_u8s: u8[255]
+        my_bool: bool
+        my_bytes: bytes[100]
+
+    pub def set_my_addrs(my_addrs: address[5]):
+        self.my_addrs = my_addrs
+
+    pub def get_my_addrs() -> address[5]:
+        return self.my_addrs.to_mem()
+
+    pub def set_my_u128(my_u128: u128):
+        self.my_u128 = my_u128
+
+    pub def get_my_u128() -> u128:
+        return self.my_u128
+
+    pub def set_my_string(my_string: string10):
+        self.my_string = my_string
+
+    pub def get_my_string() -> string10:
+        return self.my_string.to_mem()
+
+    pub def set_my_u8s(my_u8s: u8[255]):
+        self.my_u8s = my_u8s
+
+    pub def get_my_u8s() -> u8[255]:
+        return self.my_u8s.to_mem()
+
+    pub def set_my_bool(my_bool: bool):
+        self.my_bool = my_bool
+
+    pub def get_my_bool() -> bool:
+        return self.my_bool
+
+    pub def set_my_bytes(my_bytes: bytes[100]):
+        self.my_bytes = my_bytes
+
+    pub def get_my_bytes() -> bytes[100]:
+        return self.my_bytes.to_mem()
+
+    pub def emit_my_event():
+        emit MyEvent(
+            self.my_addrs.to_mem(),
+            self.my_u128,
+            self.my_string.to_mem(),
+            self.my_u8s.to_mem(),
+            self.my_bool,
+            self.my_bytes.to_mem()
+        )

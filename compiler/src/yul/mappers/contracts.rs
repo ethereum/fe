@@ -1,15 +1,10 @@
 use crate::errors::CompileError;
-use crate::yul::abi::functions as abi_functions;
 use crate::yul::constructor;
 use crate::yul::mappers::functions;
-use crate::yul::runtime::abi_dispatcher as runtime_abi;
-use crate::yul::runtime::functions as runtime_functions;
+use crate::yul::runtime;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
-use fe_semantics::{
-    Context,
-    RuntimeOperations,
-};
+use fe_semantics::Context;
 use yultsur::*;
 
 /// Builds a Yul object from a Fe contract.
@@ -17,9 +12,7 @@ pub fn contract_def(
     context: &Context,
     stmt: &Spanned<fe::ModuleStmt>,
 ) -> Result<yul::Object, CompileError> {
-    if let (Some(attributes), fe::ModuleStmt::ContractDef { name: _, body }) =
-        (context.get_contract(stmt), &stmt.node)
-    {
+    if let fe::ModuleStmt::ContractDef { name: _, body } = &stmt.node {
         let mut init = None;
         let mut user_functions = vec![];
 
@@ -38,31 +31,26 @@ pub fn contract_def(
             }
         }
 
-        let runtime = {
-            let mut runtime = runtime_functions::std();
-            runtime.append(&mut build_runtime_functions(
-                attributes.runtime_operations.to_owned(),
-            ));
-            runtime.append(&mut user_functions);
-            runtime
+        let constructor = if let Some((init_func, init_params)) = init {
+            let init_runtime = [runtime::build(context, stmt), user_functions.clone()].concat();
+            constructor::build_with_init(init_func, init_params, init_runtime)
+        } else {
+            constructor::build()
         };
 
-        let runtime_with_dispatcher = {
-            let mut runtime = runtime.clone();
-            runtime.push(runtime_abi::dispatcher(
-                attributes.public_functions.to_owned(),
-            )?);
-            runtime
-        };
+        let runtime = runtime::build_with_abi_dispatcher(context, stmt);
 
         return Ok(yul::Object {
             name: identifier! { Contract },
-            code: constructor::build(init, runtime),
+            code: constructor,
             objects: vec![yul::Object {
                 name: identifier! { runtime },
                 code: yul::Code {
                     block: yul::Block {
-                        statements: runtime_with_dispatcher,
+                        statements: statements! {
+                            [user_functions...]
+                            [runtime...]
+                        },
                     },
                 },
                 objects: vec![],
@@ -71,16 +59,4 @@ pub fn contract_def(
     }
 
     unreachable!()
-}
-
-fn build_runtime_functions(functions: Vec<RuntimeOperations>) -> Vec<yul::Statement> {
-    functions
-        .into_iter()
-        .map(|function| match function {
-            RuntimeOperations::AbiEncode { params } => abi_functions::encode(params),
-            RuntimeOperations::AbiDecode { param, location } => {
-                abi_functions::decode(param, location)
-            }
-        })
-        .collect()
 }

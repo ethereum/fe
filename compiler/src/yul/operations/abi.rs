@@ -1,10 +1,6 @@
-use crate::yul::abi::utils::{
-    ceil_32,
-    decode_name,
-    encode_name,
-    head_offsets,
-};
-use crate::yul::operations;
+use crate::yul::names;
+use crate::yul::operations::data as data_operations;
+use crate::yul::utils;
 use fe_semantics::namespace::types::{
     AbiArraySize,
     AbiDecodeLocation,
@@ -17,7 +13,7 @@ use yultsur::*;
 /// Returns an expression that encodes the given values and returns a pointer to
 /// the encoding.
 pub fn encode<T: AbiEncoding>(types: Vec<T>, vals: Vec<yul::Expression>) -> yul::Expression {
-    let func_name = encode_name(&types);
+    let func_name = names::encode_name(&types);
     expression! { [func_name]([vals...]) }
 }
 
@@ -39,7 +35,9 @@ pub fn encode_size<T: AbiEncoding>(types: Vec<T>, vals: Vec<yul::Expression>) ->
                     AbiType::Array { .. } => unimplemented!(),
                 };
                 match size {
-                    AbiArraySize::Static { size } => static_size += ceil_32(inner_size * size),
+                    AbiArraySize::Static { size } => {
+                        static_size += utils::ceil_32(inner_size * size)
+                    }
                     AbiArraySize::Dynamic => {
                         static_size += 64;
                         let inner_size = literal_expression! { (inner_size) };
@@ -52,7 +50,7 @@ pub fn encode_size<T: AbiEncoding>(types: Vec<T>, vals: Vec<yul::Expression>) ->
     }
 
     let static_size = literal_expression! { (static_size) };
-    return expression! { add([static_size], [operations::sum(dyn_size)]) };
+    return expression! { add([static_size], [data_operations::sum(dyn_size)]) };
 }
 
 /// Returns a list of expressions that can be used to decode given types.
@@ -63,24 +61,23 @@ pub fn decode<T: AbiEncoding>(
     start: yul::Expression,
     location: AbiDecodeLocation,
 ) -> Vec<yul::Expression> {
-    let heads = head_offsets(&types).0.into_iter().map(|offset| {
-        let offset = literal_expression! { (offset) };
-        expression! { add([start.clone()], [offset]) }
+    let offsets = utils::abi_head_offsets(&types).0.into_iter().map(|offset| {
+        literal_expression! { (offset) }
     });
-    let typed_heads = types.iter().zip(heads);
+    let typed_offsets = types.iter().zip(offsets);
 
-    typed_heads
+    typed_offsets
         .into_iter()
-        .map(|(typ, head_ptr)| {
-            let func_name = decode_name(typ, location.clone());
-            expression! { [func_name]([start.clone()], [head_ptr]) }
+        .map(|(typ, offset)| {
+            let func_name = names::decode_name(typ, location.clone());
+            expression! { [func_name]([start.clone()], [offset]) }
         })
         .collect()
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::yul::abi::operations::{
+    use crate::yul::operations::abi::{
         decode,
         encode,
         encode_size,
@@ -117,7 +114,7 @@ mod tests {
                 AbiDecodeLocation::Calldata
             )[0]
             .to_string(),
-            "abi_decode_string26_calldata(42, add(42, 0))"
+            "abi_decode_string26_calldata(42, 0)"
         )
     }
 }

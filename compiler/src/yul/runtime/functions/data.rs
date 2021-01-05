@@ -1,28 +1,5 @@
 use yultsur::*;
 
-/// Returns all functions that should be available during runtime.
-pub fn std() -> Vec<yul::Statement> {
-    vec![
-        avail(),
-        alloc(),
-        alloc_mstoren(),
-        free(),
-        ccopym(),
-        mcopys(),
-        scopym(),
-        mcopym(),
-        scopys(),
-        mloadn(),
-        sloadn(),
-        cloadn(),
-        mstoren(),
-        sstoren(),
-        dualkeccak256(),
-        ceil32(),
-        ternary(),
-    ]
-}
-
 /// Returns the highest available pointer.
 pub fn avail() -> yul::Statement {
     function_definition! {

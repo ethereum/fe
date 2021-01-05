@@ -1,6 +1,6 @@
 use crate::errors::CompileError;
 use crate::yul::mappers::expressions;
-use crate::yul::utils;
+use crate::yul::names;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use fe_semantics::namespace::types::{
@@ -38,7 +38,7 @@ fn var_decl_base(
         value,
     } = &decl.node
     {
-        let target = utils::var_name(expressions::expr_name_str(target)?);
+        let target = names::var_name(expressions::expr_name_str(target)?);
 
         return Ok(if let Some(value) = value {
             let value = expressions::expr(context, &value)?;
@@ -62,7 +62,7 @@ fn var_decl_array(
         value,
     } = &decl.node
     {
-        let target = utils::var_name(expressions::expr_name_str(target)?);
+        let target = names::var_name(expressions::expr_name_str(target)?);
         let size = literal_expression! { (array.size()) };
 
         return Ok(match value {

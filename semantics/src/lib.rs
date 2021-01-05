@@ -12,9 +12,11 @@ mod traversal;
 
 use crate::errors::SemanticError;
 use crate::namespace::events::Event;
-use crate::namespace::scopes::Shared;
+use crate::namespace::scopes::{
+    ContractScope,
+    Shared,
+};
 use crate::namespace::types::{
-    AbiDecodeLocation,
     FixedSize,
     Type,
 };
@@ -23,7 +25,10 @@ use fe_parser::span::{
     Span,
     Spanned,
 };
-use std::cell::RefCell;
+use std::cell::{
+    Ref,
+    RefCell,
+};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -53,25 +58,52 @@ impl Location {
     }
 }
 
-/// Operations that need to be made available during runtime.
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
-pub enum RuntimeOperations {
-    /// Encode a set of fixed sized values.
-    AbiEncode { params: Vec<FixedSize> },
-    /// Decode a value.
-    AbiDecode {
-        param: FixedSize,
-        location: AbiDecodeLocation,
-    },
-}
-
 /// Contains contextual information relating to a contract AST node.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ContractAttributes {
-    /// Operations that need to be added to the runtime.
-    pub runtime_operations: Vec<RuntimeOperations>,
     /// Public functions that have been defined by the user.
     pub public_functions: Vec<FunctionAttributes>,
+    /// An init function that has been defined by the user.
+    pub init_function: Option<FunctionAttributes>,
+    /// Events that have been defined by the user.
+    pub events: Vec<Event>,
+}
+
+impl From<Ref<'_, ContractScope>> for ContractAttributes {
+    fn from(scope: Ref<'_, ContractScope>) -> Self {
+        let mut public_functions = vec![];
+        let mut init_function = None;
+
+        for (name, def) in scope.function_defs.iter() {
+            if !def.is_public {
+                continue;
+            }
+
+            if name != "__init__" {
+                public_functions.push(FunctionAttributes {
+                    name: name.clone(),
+                    param_types: def.param_types.to_owned(),
+                    return_type: def.return_type.to_owned(),
+                });
+            } else {
+                init_function = Some(FunctionAttributes {
+                    name: name.clone(),
+                    param_types: def.param_types.to_owned(),
+                    return_type: FixedSize::empty_tuple(),
+                })
+            }
+        }
+
+        ContractAttributes {
+            public_functions,
+            init_function,
+            events: scope
+                .event_defs
+                .values()
+                .map(|event| event.to_owned())
+                .collect::<Vec<Event>>(),
+        }
+    }
 }
 
 /// Contains contextual information relating to an expression AST node.

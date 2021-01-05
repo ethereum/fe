@@ -1,5 +1,6 @@
 use crate::errors::CompileError;
-use crate::yul::operations;
+use crate::yul::names;
+use crate::yul::operations::data as data_operations;
 use crate::yul::utils;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
@@ -64,10 +65,10 @@ fn move_expression(
         FixedSize::try_from(typ).map_err(|_| CompileError::static_str("invalid attributes"))?;
 
     match (from.clone(), to.clone()) {
-        (Location::Storage { .. }, Location::Value) => Ok(operations::sload(typ, val)),
-        (Location::Memory, Location::Value) => Ok(operations::mload(typ, val)),
-        (Location::Memory, Location::Memory) => Ok(operations::mcopym(typ, val)),
-        (Location::Storage { .. }, Location::Memory) => Ok(operations::scopym(typ, val)),
+        (Location::Storage { .. }, Location::Value) => Ok(data_operations::sload(typ, val)),
+        (Location::Memory, Location::Value) => Ok(data_operations::mload(typ, val)),
+        (Location::Memory, Location::Memory) => Ok(data_operations::mcopym(typ, val)),
+        (Location::Storage { .. }, Location::Memory) => Ok(data_operations::scopym(typ, val)),
         _ => Err(CompileError::str(format!(
             "invalid expression move: {:?} {:?}",
             from, to
@@ -103,7 +104,7 @@ pub fn expr_call(
             return match call_type {
                 CallType::TypeConstructor { .. } => Ok(yul_args[0].to_owned()),
                 CallType::SelfAttribute { func_name } => {
-                    let func_name = utils::func_name(func_name);
+                    let func_name = names::func_name(func_name);
 
                     Ok(expression! { [func_name]([yul_args...]) })
                 }
@@ -252,7 +253,7 @@ pub fn slice_index(
 fn expr_name(exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
     let name = expr_name_str(exp)?;
 
-    Ok(identifier_expression! { [utils::var_name(name)] })
+    Ok(identifier_expression! { [names::var_name(name)] })
 }
 
 fn expr_num(exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
@@ -281,8 +282,8 @@ fn expr_subscript(
             let index = slices_index(context, slices)?;
 
             return match value_attributes.typ.to_owned() {
-                Type::Map(_) => Ok(operations::keyed_map(value, index)),
-                Type::Array(array) => Ok(operations::indexed_array(array, value, index)),
+                Type::Map(_) => Ok(data_operations::keyed_map(value, index)),
+                Type::Array(array) => Ok(data_operations::indexed_array(array, value, index)),
                 _ => Err(CompileError::static_str("invalid attributes")),
             };
         }
