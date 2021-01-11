@@ -86,8 +86,7 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
-        # Ignoring Mac until we find a solution to: https://github.com/ethereum/fe/pull/106/checks?check_run_id=1322145918
-        # - os: macOS-latest
+        - os: macOS-latest
     steps:
     - uses: actions/checkout@v2
     - name: Cache Rust dependencies
@@ -141,7 +140,11 @@ jobs:
       needs: [lint, test, wasm-test]
       strategy:
         matrix:
-          os: [ubuntu-latest]
+          include:
+          - os: ubuntu-latest
+            BIN_FILE: fe_amd64
+          - os: macOS-latest
+            BIN_FILE: fe_mac
 
       steps:
         - uses: actions/checkout@v2
@@ -151,6 +154,10 @@ jobs:
             sudo apt-get install -y libboost-all-dev
             sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 50
             sudo update-alternatives --set g++ "/usr/bin/g++-8"
+        - name: Install Mac System dependencies
+          if: startsWith(matrix.os,'macOS')
+          run: |
+            brew install boost
         - name: Install latest nightly
           uses: actions-rs/toolchain@v1
           with:
@@ -158,11 +165,11 @@ jobs:
             toolchain: nightly
             override: true
         - name: Build
-          run: cargo build --all-features --release && strip target/release/fe && mv target/release/fe target/release/fe_amd64
+          run: cargo build --all-features --release && strip target/release/fe && mv target/release/fe target/release/${{ matrix.BIN_FILE }}
         - name: Release
           uses: softprops/action-gh-release@v1
           with:
-            files: target/release/fe_amd64
+            files: target/release/${{ matrix.BIN_FILE }}
             prerelease: true
           env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
