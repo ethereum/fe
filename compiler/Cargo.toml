@@ -24,7 +24,7 @@ tiny-keccak = { version = "2.0", features = ["keccak"] }
 stringreader = "0.1"
 # Optional
 # This fork supports concurrent compilation, which is required for Rust tests.
-solc = { git = "https://github.com/cburgdorf/solc-rust", optional = true }
+solc = { git = "https://github.com/g-r-a-n-t/solc-rust", optional = true }
 
 [dev-dependencies]
 evm-runtime = "0.18"
