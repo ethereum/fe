@@ -32,7 +32,6 @@ use fe_analyzer::{
 };
 use fe_common::utils::keccak;
 use fe_parser::ast as fe;
-use fe_parser::ast::BoolOperator;
 use fe_parser::span::Spanned;
 use std::convert::TryFrom;
 use std::str::FromStr;
@@ -518,8 +517,8 @@ fn expr_bool_operation(
         let yul_right = expr(context, right)?;
 
         return match op.node {
-            BoolOperator::And => Ok(expression! {and([yul_left], [yul_right])}),
-            BoolOperator::Or => Ok(expression! {or([yul_left], [yul_right])}),
+            fe::BoolOperator::And => Ok(expression! {and([yul_left], [yul_right])}),
+            fe::BoolOperator::Or => Ok(expression! {or([yul_left], [yul_right])}),
         };
     }
 
