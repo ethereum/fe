@@ -50,6 +50,18 @@ pub fn ccopym() -> yul::Statement {
     }
 }
 
+/// Load a static string from data into a newly allocated segment of memory.
+pub fn load_data_string() -> yul::Statement {
+    function_definition! {
+        function load_data_string(code_ptr, size) -> mptr {
+            (mptr := alloc(32))
+            (mstore(mptr, size))
+            (let content_ptr := alloc(size))
+            (datacopy(content_ptr, code_ptr, size))
+        }
+    }
+}
+
 /// Copy memory to a given segment of storage.
 pub fn mcopys() -> yul::Statement {
     function_definition! {

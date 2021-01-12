@@ -10,6 +10,7 @@ use crate::namespace::operations;
 use crate::namespace::types::{
     Array,
     Base,
+    FeString,
     FixedSize,
     Integer,
     Type,
@@ -51,7 +52,7 @@ pub fn expr(
         fe::Expr::List { .. } => expr_list(scope, Rc::clone(&context), exp),
         fe::Expr::ListComp { .. } => unimplemented!(),
         fe::Expr::Tuple { .. } => unimplemented!(),
-        fe::Expr::Str(_) => unimplemented!(),
+        fe::Expr::Str(_) => expr_str(scope, exp),
         fe::Expr::Ellipsis => unimplemented!(),
     }
     .map_err(|error| error.with_context(exp.span))?;
@@ -192,6 +193,30 @@ fn expr_name(
             Some(FixedSize::Tuple(_)) => unimplemented!(),
             None => Err(SemanticError::undefined_value()),
         };
+    }
+
+    unreachable!()
+}
+
+fn expr_str(
+    scope: Shared<BlockScope>,
+    exp: &Spanned<fe::Expr>,
+) -> Result<ExpressionAttributes, SemanticError> {
+    if let fe::Expr::Str(lines) = &exp.node {
+        let string_length = lines.iter().map(|val| val.len()).sum();
+        let string_val = lines.join("");
+        scope
+            .borrow_mut()
+            .contract_scope()
+            .borrow_mut()
+            .add_string(string_val);
+
+        return Ok(ExpressionAttributes::new(
+            Type::String(FeString {
+                max_size: string_length,
+            }),
+            Location::Memory,
+        ));
     }
 
     unreachable!()

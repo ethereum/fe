@@ -2,10 +2,7 @@ use crate::namespace::types::{
     AbiEncoding,
     FixedSize,
 };
-use tiny_keccak::{
-    Hasher,
-    Keccak,
-};
+use fe_common::utils::keccak::get_full_signature;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Event {
@@ -59,19 +56,8 @@ impl Event {
 }
 
 fn build_event_topic(name: String, fields: Vec<String>) -> String {
-    sig_keccak256(name, fields, 32)
-}
-
-fn sig_keccak256(name: String, params: Vec<String>, size: usize) -> String {
-    let signature = format!("{}({})", name, params.join(","));
-
-    let mut keccak = Keccak::v256();
-    let mut selector = [0u8; 32];
-
-    keccak.update(signature.as_bytes());
-    keccak.finalize(&mut selector);
-
-    format!("0x{}", hex::encode(&selector[0..size]))
+    let signature = format!("{}({})", name, fields.join(","));
+    get_full_signature(signature.as_bytes())
 }
 
 #[cfg(test)]
