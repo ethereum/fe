@@ -12,6 +12,7 @@ pub fn std() -> Vec<yul::Statement> {
         data::alloc_mstoren(),
         data::free(),
         data::ccopym(),
+        data::load_data_string(),
         data::mcopys(),
         data::scopym(),
         data::mcopym(),

@@ -2,6 +2,7 @@ use crate::errors::CompileError;
 use crate::yul::names;
 use crate::yul::operations::data as data_operations;
 use crate::yul::utils;
+use fe_common::utils::keccak::get_full_signature;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use fe_semantics::builtins;
@@ -15,10 +16,6 @@ use fe_semantics::{
     Location,
 };
 use std::convert::TryFrom;
-use tiny_keccak::{
-    Hasher,
-    Keccak,
-};
 use yultsur::*;
 
 /// Builds a Yul expression from a Fe expression.
@@ -39,7 +36,7 @@ pub fn expr(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressio
             fe::Expr::List { .. } => unimplemented!(),
             fe::Expr::ListComp { .. } => unimplemented!(),
             fe::Expr::Tuple { .. } => unimplemented!(),
-            fe::Expr::Str(_) => unimplemented!(),
+            fe::Expr::Str(_) => expr_str(exp),
             fe::Expr::Ellipsis => unimplemented!(),
         }?;
 
@@ -272,6 +269,20 @@ fn expr_bool(exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
     unreachable!()
 }
 
+fn expr_str(exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
+    if let fe::Expr::Str(lines) = &exp.node {
+        let content = lines.join("");
+        let string_identifier = format!(r#""{}""#, get_full_signature(content.as_bytes()));
+
+        let offset = expression! { dataoffset([literal_expression! { (string_identifier) }]) };
+        let size = expression! { datasize([literal_expression! { (string_identifier) }]) };
+
+        return Ok(expression! {load_data_string([offset], [size])});
+    }
+
+    unreachable!()
+}
+
 fn expr_subscript(
     context: &Context,
     exp: &Spanned<fe::Expr>,
@@ -338,13 +349,7 @@ fn expr_attribute_self(
 
 /// Converts a storage nonce into a pointer based on the keccak256 hash
 pub fn nonce_to_ptr(nonce: usize) -> yul::Expression {
-    let mut keccak = Keccak::v256();
-    let mut ptr = [0u8; 32];
-
-    keccak.update(nonce.to_string().as_bytes());
-    keccak.finalize(&mut ptr);
-
-    let ptr = format!("0x{}", hex::encode(&ptr[0..32]));
+    let ptr = get_full_signature(nonce.to_string().as_bytes());
     literal_expression! { (ptr) }
 }
 

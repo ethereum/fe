@@ -48,8 +48,8 @@ x
   ),
   Spanned(
     node: Str([
-      "\"asdf\"",
-      "\"foo\"",
+      "asdf",
+      "foo",
     ]),
     span: Span(
       start: 14,

@@ -1449,7 +1449,13 @@ pub fn atom(input: Cursor) -> ParseResult<Spanned<Expr>> {
             span: tok.span,
         }),
         map(many1(string_token), |toks| {
-            let tok_strings: Vec<_> = toks.iter().map(|t| t.string).collect();
+            let tok_strings: Vec<_> = toks
+                .iter()
+                .map(|t| {
+                    // We don't want to carry quotes around strings past the parsing stage
+                    &t.string[1..t.string.len() - 1]
+                })
+                .collect();
 
             let fst = toks.first().unwrap();
             let snd = toks.last().unwrap();

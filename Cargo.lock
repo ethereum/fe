@@ -611,12 +611,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "fe-common"
+version = "0.1.0-alpha"
+dependencies = [
+ "hex",
+ "tiny-keccak 2.0.2",
+]
+
+[[package]]
 name = "fe-compiler"
 version = "0.1.0-alpha"
 dependencies = [
  "ethabi",
  "evm",
  "evm-runtime",
+ "fe-common",
  "fe-parser",
  "fe-semantics",
  "hex",
@@ -627,7 +636,6 @@ dependencies = [
  "serde_json",
  "solc",
  "stringreader",
- "tiny-keccak 2.0.2",
  "yultsur",
 ]
 
@@ -649,6 +657,7 @@ name = "fe-semantics"
 version = "0.1.0-alpha"
 dependencies = [
  "ansi_term 0.12.1",
+ "fe-common",
  "fe-parser",
  "hex",
  "num-bigint",
@@ -1927,4 +1936,4 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 [[package]]
 name = "yultsur"
 version = "0.1.0"
-source = "git+https://github.com/g-r-a-n-t/yultsur#ab0c49099d06722e09bd1003a95ae56f1ffe3757"
+source = "git+https://github.com/g-r-a-n-t/yultsur#4db24c750ebfd5890c59ff111b4c6af3d4fefa56"

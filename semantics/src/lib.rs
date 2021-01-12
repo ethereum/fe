@@ -67,6 +67,8 @@ pub struct ContractAttributes {
     pub init_function: Option<FunctionAttributes>,
     /// Events that have been defined by the user.
     pub events: Vec<Event>,
+    /// Static strings that the contract defines
+    pub string_literals: Vec<String>,
 }
 
 impl From<Ref<'_, ContractScope>> for ContractAttributes {
@@ -102,6 +104,7 @@ impl From<Ref<'_, ContractScope>> for ContractAttributes {
                 .values()
                 .map(|event| event.to_owned())
                 .collect::<Vec<Event>>(),
+            string_literals: scope.string_defs.clone(),
         }
     }
 }

@@ -2,6 +2,7 @@ use crate::errors::CompileError;
 use crate::yul::constructor;
 use crate::yul::mappers::functions;
 use crate::yul::runtime;
+use fe_common::utils::keccak::get_full_signature;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use fe_semantics::Context;
@@ -40,6 +41,20 @@ pub fn contract_def(
 
         let runtime = runtime::build_with_abi_dispatcher(context, stmt);
 
+        let data = if let Some(attributes) = context.get_contract(stmt) {
+            attributes
+                .string_literals
+                .clone()
+                .into_iter()
+                .map(|val| yul::Data {
+                    name: get_full_signature(val.as_bytes()),
+                    value: val,
+                })
+                .collect::<Vec<_>>()
+        } else {
+            vec![]
+        };
+
         return Ok(yul::Object {
             name: identifier! { Contract },
             code: constructor,
@@ -54,7 +69,11 @@ pub fn contract_def(
                     },
                 },
                 objects: vec![],
+                // We can't reach to data objects in the "contract" hierachy so in order to have
+                // the data objects available in both places we have to put them in both places.
+                data: data.clone(),
             }],
+            data,
         });
     }
 
