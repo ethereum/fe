@@ -87,7 +87,7 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
-#        - os: macOS-latest
+        - os: macOS-latest
     steps:
     - uses: actions/checkout@v2
     - name: Cache Rust dependencies
@@ -102,6 +102,7 @@ jobs:
       if: startsWith(matrix.os,'macOS')
       run: |
         brew install boost
+        find / -name *boost*
     - name: Install Linux dependencies
       if: startsWith(matrix.os,'ubuntu')
       run: |
@@ -145,8 +146,8 @@ jobs:
           include:
           - os: ubuntu-latest
             BIN_FILE: fe_amd64
-#          - os: macOS-latest
-#            BIN_FILE: fe_mac
+          - os: macOS-latest
+            BIN_FILE: fe_mac
 
       steps:
         - uses: actions/checkout@v2
@@ -161,6 +162,7 @@ jobs:
           if: startsWith(matrix.os,'macOS')
           run: |
             brew install boost
+            find / -name *boost*
         - name: Install latest nightly
           uses: actions-rs/toolchain@v1
           with:
