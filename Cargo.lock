@@ -1501,7 +1501,7 @@ dependencies = [
 [[package]]
 name = "solc"
 version = "0.1.0"
-source = "git+https://github.com/g-r-a-n-t/solc-rust#870b249dc07019c4144e06339d1b7ebd408628e6"
+source = "git+https://github.com/g-r-a-n-t/solc-rust#9ee3d92bf079006459ed513ffb49a353f4543b19"
 dependencies = [
  "bindgen",
  "cmake",

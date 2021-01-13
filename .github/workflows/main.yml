@@ -46,7 +46,6 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get install -y libboost-all-dev
-        sudo find / -name *boost*
         sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 50
         sudo update-alternatives --set g++ "/usr/bin/g++-8"
     - uses: actions/checkout@v2
@@ -102,12 +101,10 @@ jobs:
       if: startsWith(matrix.os,'macOS')
       run: |
         brew install boost
-        find / -name *boost*
     - name: Install Linux dependencies
       if: startsWith(matrix.os,'ubuntu')
       run: |
         sudo apt-get install -y libboost-all-dev
-        sudo find / -name *boost*
         sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 50
         sudo update-alternatives --set g++ "/usr/bin/g++-8"
     - name: Install latest nightly
@@ -155,14 +152,12 @@ jobs:
           if: startsWith(matrix.os,'ubuntu')
           run: |
             sudo apt-get install -y libboost-all-dev
-            sudo find / -name *boost*
             sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 50
             sudo update-alternatives --set g++ "/usr/bin/g++-8"
         - name: Install Mac System dependencies
           if: startsWith(matrix.os,'macOS')
           run: |
             brew install boost
-            find / -name *boost*
         - name: Install latest nightly
           uses: actions-rs/toolchain@v1
           with:
