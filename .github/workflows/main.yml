@@ -87,7 +87,7 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
-        - os: macOS-latest
+#        - os: macOS-latest
     steps:
     - uses: actions/checkout@v2
     - name: Cache Rust dependencies
@@ -145,8 +145,8 @@ jobs:
           include:
           - os: ubuntu-latest
             BIN_FILE: fe_amd64
-          - os: macOS-latest
-            BIN_FILE: fe_mac
+#          - os: macOS-latest
+#            BIN_FILE: fe_mac
 
       steps:
         - uses: actions/checkout@v2
