@@ -38,7 +38,19 @@ We aim to provide a full language specification that should eventually be used t
 
 Fe development is still in its early stages. We have a basic [Roadmap for 2021](https://notes.ethereum.org/LVhaTF30SJOpkbG1iVw1jg) that we want to follow. We generally try to drive the development by working through real world use cases. Our next goal is to provide a working Uniswap implementation in Fe which will help us to advance and form the language.
 
-The first alpha version will be out in January 2021, followed by another release every month.
+Fe had its first alpha release January 2021 and is now following a monthly release cycle.
+
+## Getting started
+
+- [Build the compiler](https://github.com/ethereum/fe/blob/master/docs/build.md)
+- [Or download the binary release](https://github.com/ethereum/fe/releases)
+
+To compile Fe code:
+
+1. Run `fe path/to/fe_source.fe`
+2. Fe creates a directory `output` in the current working directory that contains the compiled binary and abi.
+
+Run `fe --help` to explore further options.
 
 ## Examples
 
@@ -65,10 +77,6 @@ contract GuestBook:
 A lot more working examples can be found in our [test fixtures directory](https://github.com/ethereum/fe/tree/master/compiler/tests/fixtures).
 
 The most advanced example that we can provide at this point is a fully working [ERC20 implementation](https://github.com/ethereum/fe/blob/master/compiler/tests/fixtures/erc20_token.fe).
-
-## Getting started
-
-- [Build the compiler](https://github.com/ethereum/fe/blob/master/docs/build.md)
 
 ## Community
 
