@@ -605,13 +605,13 @@ An *event type* is the type denoted by the name of an [`event` item].
 
 There are three places where data can be stored on the EVM:
 
-- **stack**: 256-bit values placed on the stack that are loaded using `DUP` operations. 
+- **stack**: 256-bit values placed on the stack that are loaded using `DUP` operations.
 - **storage**: 256-bit address space where 256-bit values can be stored. Accessing higher
 storage slots does not increase gas cost.
 - **memory**: 256-bit address space where 256-bit values can be stored. Accessing higher
 memory slots increases gas cost.
 
-Each data type described in section 5 can be stored in these locations. How data is stored is 
+Each data type described in section 5 can be stored in these locations. How data is stored is
 described in this section.
 
 ### 6.1. Stack
@@ -621,8 +621,8 @@ The following can be stored on the stack:
 - base type values
 - pointers to sequence type values
 
-The size of each value stored on the stack must not exceed 256 bits. Since all base types are less 
-than or equal to 256 bits in size, we store them on the stack. Pointers to values stored in memory 
+The size of each value stored on the stack must not exceed 256 bits. Since all base types are less
+than or equal to 256 bits in size, we store them on the stack. Pointers to values stored in memory
 may also be stored on the stack.
 
 Example:
@@ -639,7 +639,7 @@ All data types can be stored in storage.
 
 #### 6.2.1. Constant size values in storage
 
-Storage pointers for constant size values are determined at compile time.  
+Storage pointers for constant size values are determined at compile time.
 
 Example:
 
@@ -656,7 +656,7 @@ given pointer.
 
 #### 6.2.2. Maps in storage
 
-Maps are not assigned pointers, because they do not have a location in storage. They are instead 
+Maps are not assigned pointers, because they do not have a location in storage. They are instead
 assigned a nonce that is used to derive the location of keyed values during runtime.
 
 Example:
@@ -667,15 +667,25 @@ bar: map<address, u256> # bar is assigned a static nonce by the compiler
 baz: map<address, map<address, u256>> # baz is assigned a static nonce by the compiler
 ```
 
-The expression `bar[0x00]` would resolve to the hash of both bar's nonce and the key value 
-.i.e. `keccak256(<bar nonce>, 0x00)`. Similarly, the expression `baz[0x00][0x01]` would resolve to 
+The expression `bar[0x00]` would resolve to the hash of both bar's nonce and the key value
+.i.e. `keccak256(<bar nonce>, 0x00)`. Similarly, the expression `baz[0x00][0x01]` would resolve to
 a nested hash i.e. `keccak256(keccak256(<baz nonce>, 0x00), 0x01)`.
+
+#### 6.2.3. The `to_mem` function
+
+Reference type values can be copied from storage and into memory using the `to_mem` function.
+
+Example:
+
+```python
+my_array_var: u256[10] = self.my_array_field.to_mem()
+```
 
 ### 6.3. Memory
 
 Only sequence types can be stored in memory.
 
-The first memory slot (`0x00`) is used to keep track of the lowest available memory slot. Newly 
+The first memory slot (`0x00`) is used to keep track of the lowest available memory slot. Newly
 allocated segments begin at the value given by this slot. When more memory has been allocated,
 the value stored in `0x00` is increased.
 
@@ -683,18 +693,38 @@ We do not free memory after it is allocated.
 
 #### 6.3.1. Sequence types in memory
 
-Sequence type values may exceed the 256-bit stack slot size, so we store them in memory and 
+Sequence type values may exceed the 256-bit stack slot size, so we store them in memory and
 reference them using pointers kept on the stack.
 
 Example:
 
 ```python
 # function scope
-foo: u256[100] # foo is a pointer that references 100 * 256 bits in memory. 
+foo: u256[100] # foo is a pointer that references 100 * 256 bits in memory.
 ```
 
 To find an element inside of a sequence type, the relative location of the element is added to the
 given pointer.
+
+#### 6.2.3. The `clone` function
+
+Reference type values in memory can be cloned using the `clone` function.
+
+Example:
+
+```python
+# with clone
+foo: u256[10] = bar.clone() # `foo` points to a new segment of memory
+assert foo[1] == bar[1] 
+foo[1] = 42
+assert foo[1] != bar[1] # modifying `foo` does not modify bar
+
+# without clone
+foo: u256[10] = bar # `foo` and `bar` point to the same segment of memory
+assert foo[1] == bar[1]
+foo[1] = 42
+assert foo[1] == bar[1] # modifying `foo` also modifies `bar`
+```
 
 ### 6.4. Function calls
 
