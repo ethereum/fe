@@ -116,9 +116,6 @@ jobs:
       id: install-boost
       with:
         boost_version: 1.73.0
-    - name: Install Z3
-      if: startsWith(matrix.os, 'win')
-      uses: pavpanchekha/setup-z3@v1.2
     - name: Install latest nightly
       uses: actions-rs/toolchain@v1
       with:
