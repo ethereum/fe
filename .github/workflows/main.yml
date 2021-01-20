@@ -41,44 +41,44 @@ jobs:
   #       make coverage
   #       bash <(curl -s https://codecov.io/bash)
 
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Install system dependencies
-      run: |
-        sudo apt-get install -y libboost-all-dev
-        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 50
-        sudo update-alternatives --set g++ "/usr/bin/g++-8"
-    - uses: actions/checkout@v2
-    - name: Cache Rust dependencies
-      uses: actions/cache@v1.1.2
-      with:
-        # There's a problem with caching serde, hence we exclude it here
-        path: |
-          target
-          !target/**/*serde*
-        key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
-    - name: Install latest nightly
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: nightly
-        override: true
-        components: rustfmt, clippy
-    - name: Validate release notes entry
-      run: ./newsfragments/validate_files.py
-    - name: Lint with rustfmt
-      uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: --all -- --check
-    - name: Build
-      run: cargo build --all-features --verbose
-    - name: Lint with clippy
-      uses: actions-rs/cargo@v1
-      with:
-        command: clippy
-        args: --all-targets --all-features -- -D warnings
+  # lint:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Install system dependencies
+  #     run: |
+  #       sudo apt-get install -y libboost-all-dev
+  #       sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 50
+  #       sudo update-alternatives --set g++ "/usr/bin/g++-8"
+  #   - uses: actions/checkout@v2
+  #   - name: Cache Rust dependencies
+  #     uses: actions/cache@v1.1.2
+  #     with:
+  #       # There's a problem with caching serde, hence we exclude it here
+  #       path: |
+  #         target
+  #         !target/**/*serde*
+  #       key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
+  #   - name: Install latest nightly
+  #     uses: actions-rs/toolchain@v1
+  #     with:
+  #       profile: minimal
+  #       toolchain: nightly
+  #       override: true
+  #       components: rustfmt, clippy
+  #   - name: Validate release notes entry
+  #     run: ./newsfragments/validate_files.py
+  #   - name: Lint with rustfmt
+  #     uses: actions-rs/cargo@v1
+  #     with:
+  #       command: fmt
+  #       args: --all -- --check
+  #   - name: Build
+  #     run: cargo build --all-features --verbose
+  #   - name: Lint with clippy
+  #     uses: actions-rs/cargo@v1
+  #     with:
+  #       command: clippy
+  #       args: --all-targets --all-features -- -D warnings
 
   test:
     # Build & Test runs on all platforms
