@@ -111,9 +111,11 @@ jobs:
         sudo apt-get install -y libboost-all-dev
         sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 50
         sudo update-alternatives --set g++ "/usr/bin/g++-8"
-    - name: Install Windows dependencies
+    - name: Install Boost
       if: startsWith(matrix.os, 'win')
       uses: MarkusJx/install-boost@v1.0.1
+    - name: Install Z3
+      if: startsWith(matrix.os, 'win')
       uses: pavpanchekha/setup-z3@v1.2
     - name: Install latest nightly
       uses: actions-rs/toolchain@v1
