@@ -118,7 +118,6 @@ jobs:
         boost_version: 1.73.0
     - name: Configure CMake
       if: startsWith(matrix.os, 'win')
-      run: cmake . -DCMAKE_BUILD_TYPE=$BUILD_TYPE -B build
       env:
         BOOST_ROOT: ${{ steps.install-boost.outputs.BOOST_ROOT }}
     - name: Install latest nightly
