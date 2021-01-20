@@ -112,7 +112,7 @@ jobs:
         sudo update-alternatives --set g++ "/usr/bin/g++-8"
     - name: Install Z3
       if: startsWith(matrix.os, 'win')
-      uses: pavpanchekha/setup-z3@v1.2
+      uses: pavpanchekha/setup-z3@1.2.2
     - name: Install Boost
       if: startsWith(matrix.os, 'win')
       uses: MarkusJx/install-boost@v1.0.1
