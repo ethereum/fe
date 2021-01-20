@@ -1,0 +1,4 @@
+contract Foo:
+
+    pub def return_static_foo() -> string43:
+        return "The quick brown fox jumps over the lazy dog"
