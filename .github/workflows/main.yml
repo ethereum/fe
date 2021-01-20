@@ -18,7 +18,6 @@ jobs:
 
     runs-on: 
     # - ubuntu-latest
-    - windows-latest
 
     steps:
     - uses: actions/checkout@v2
@@ -114,6 +113,9 @@ jobs:
     - name: Install Boost
       if: startsWith(matrix.os, 'win')
       uses: MarkusJx/install-boost@v1.0.1
+      id: install-boost
+      with:
+        boost_version: 1.73.0
     - name: Install Z3
       if: startsWith(matrix.os, 'win')
       uses: pavpanchekha/setup-z3@v1.2
