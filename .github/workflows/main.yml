@@ -14,32 +14,32 @@ env:
 
 jobs:
 
-  coverage:
+  # coverage:
 
-    runs-on: 
-    # - ubuntu-latest
+  #   runs-on: 
+  #   - ubuntu-latest
 
-    steps:
-    - uses: actions/checkout@v2
-    - name: Cache Rust dependencies
-      uses: actions/cache@v1.1.2
-      with:
-        # There's a problem with caching serde, hence we exclude it here
-        path: |
-          target
-          !target/**/*serde*
-        key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
-    - name: Install latest nightly
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: nightly
-        override: true
-    - name: coverage with tarpaulin
-      run: |
-        cargo install cargo-tarpaulin
-        make coverage
-        bash <(curl -s https://codecov.io/bash)
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Cache Rust dependencies
+  #     uses: actions/cache@v1.1.2
+  #     with:
+  #       # There's a problem with caching serde, hence we exclude it here
+  #       path: |
+  #         target
+  #         !target/**/*serde*
+  #       key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
+  #   - name: Install latest nightly
+  #     uses: actions-rs/toolchain@v1
+  #     with:
+  #       profile: minimal
+  #       toolchain: nightly
+  #       override: true
+  #   - name: coverage with tarpaulin
+  #     run: |
+  #       cargo install cargo-tarpaulin
+  #       make coverage
+  #       bash <(curl -s https://codecov.io/bash)
 
   lint:
     runs-on: ubuntu-latest
