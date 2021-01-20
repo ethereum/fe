@@ -16,7 +16,9 @@ jobs:
 
   coverage:
 
-    runs-on: ubuntu-latest
+    runs-on: 
+    - ubuntu-latest
+    - windows-latest
 
     steps:
     - uses: actions/checkout@v2
@@ -86,6 +88,7 @@ jobs:
       matrix:
         include:
         - os: ubuntu-latest
+        - os: windows-latest
         # Ignoring Mac until we find a solution to: https://github.com/ethereum/fe/pull/106/checks?check_run_id=1322145918
         # - os: macOS-latest
     steps:
@@ -108,6 +111,10 @@ jobs:
         sudo apt-get install -y libboost-all-dev
         sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 50
         sudo update-alternatives --set g++ "/usr/bin/g++-8"
+    - name: Install Windows dependencies
+      if: startsWith(matrix.os, 'win')
+      uses: MarkusJx/install-boost@v1.0.1
+      uses: pavpanchekha/setup-z3@v1.2
     - name: Install latest nightly
       uses: actions-rs/toolchain@v1
       with:
