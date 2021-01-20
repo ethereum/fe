@@ -145,7 +145,7 @@ impl SemanticError {
     ///
     /// The string will contain the error kind, line number, and surrounding
     /// code.
-    pub fn format_with_src(&self, src: &str) -> String {
+    pub fn format_user(&self, src: &str) -> String {
         let line = if let Some(span) = self.context.first() {
             src[..span.start].lines().count()
         } else {

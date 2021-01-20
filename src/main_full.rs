@@ -3,7 +3,10 @@ use std::io::{
     Error,
     Write,
 };
-use std::path::Path;
+use std::path::{
+    Path,
+    PathBuf,
+};
 
 use clap::{
     arg_enum,
@@ -13,7 +16,7 @@ use clap::{
 };
 
 use crate::_utils::pretty_curly_print;
-use fe_compiler::evm::CompileStage;
+use fe_compiler::types::CompiledModule;
 
 const DEFAULT_OUTPUT_DIR_NAME: &str = "output";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -50,7 +53,7 @@ pub fn main() {
             Arg::with_name("emit")
                 .short("e")
                 .long("emit")
-                .help("Comma seperated compile targets e.g. -e=bytecode,yul")
+                .help("Comma separated compile targets e.g. -e=bytecode,yul")
                 .default_value("abi,bytecode")
                 .use_delimiter(true)
                 .takes_value(true),
@@ -66,10 +69,78 @@ pub fn main() {
     let targets =
         values_t!(matches.values_of("emit"), CompilationTarget).unwrap_or_else(|e| e.exit());
 
-    match compile(input_file, output_dir, targets) {
+    match compile_and_write(input_file, output_dir, targets) {
         Ok(_) => println!("Compiled {}. Outputs in {}", input_file, output_dir),
         Err(err) => println!("Unable to compile {}. \nError: {}", input_file, err),
     }
+}
+
+fn compile_and_write(
+    src_file: &str,
+    output_dir: &str,
+    targets: Vec<CompilationTarget>,
+) -> Result<(), String> {
+    let src = fs::read_to_string(src_file).map_err(ioerr_to_string)?;
+    let with_bytecode = targets.contains(&CompilationTarget::Bytecode);
+    let compiled_module =
+        fe_compiler::compile(&src, with_bytecode).map_err(|error| error.to_string())?;
+
+    write_compiled_module(compiled_module, output_dir, targets.as_slice())
+}
+
+fn write_compiled_module(
+    mut module: CompiledModule,
+    output_dir: &str,
+    targets: &[CompilationTarget],
+) -> Result<(), String> {
+    let output_dir = Path::new(output_dir);
+    verify_nonexistent_or_empty(output_dir)?;
+    std::fs::create_dir_all(output_dir).map_err(ioerr_to_string)?;
+
+    if targets.contains(&CompilationTarget::Ast) {
+        write_output(output_dir.join("module.ast"), &module.fe_ast)?;
+    }
+
+    if targets.contains(&CompilationTarget::Tokens) {
+        write_output(output_dir.join("module.tokens"), &module.fe_tokens)?;
+    }
+
+    for (name, contract) in module.contracts.drain() {
+        let contract_output_dir = output_dir.join(&name);
+        std::fs::create_dir_all(contract_output_dir.clone()).map_err(ioerr_to_string)?;
+
+        if targets.contains(&CompilationTarget::Abi) {
+            let file_name = format!("{}_abi.json", &name);
+            write_output(contract_output_dir.join(file_name), &contract.json_abi)?;
+        }
+
+        if targets.contains(&CompilationTarget::Yul) {
+            let file_name = format!("{}_ir.yul", &name);
+            write_output(
+                contract_output_dir.join(file_name),
+                &pretty_curly_print(&contract.yul, 4),
+            )?;
+        }
+
+        if targets.contains(&CompilationTarget::Bytecode) {
+            let file_name = format!("{}.bin", &name);
+            write_output(contract_output_dir.join(file_name), &contract.bytecode)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn write_output(path: PathBuf, content: &str) -> Result<(), String> {
+    let mut file_ast = fs::File::create(path).map_err(ioerr_to_string)?;
+    file_ast
+        .write_all(content.as_bytes())
+        .map_err(ioerr_to_string)?;
+    Ok(())
+}
+
+fn ioerr_to_string(error: Error) -> String {
+    format!("{}", error)
 }
 
 fn verify_nonexistent_or_empty(dir: &Path) -> Result<(), String> {
@@ -78,84 +149,4 @@ fn verify_nonexistent_or_empty(dir: &Path) -> Result<(), String> {
     } else {
         Err(format!("Directory '{}' is not empty", dir.display()))
     }
-}
-
-fn compile(
-    src_file: &str,
-    output_dir: &str,
-    targets: Vec<CompilationTarget>,
-) -> Result<(), String> {
-    let output_dir = Path::new(output_dir);
-
-    verify_nonexistent_or_empty(output_dir)?;
-    std::fs::create_dir_all(output_dir).map_err(ioerr_to_string)?;
-
-    let contents = fs::read_to_string(src_file).map_err(ioerr_to_string)?;
-
-    let output = fe_compiler::evm::compile(&contents, to_compile_stage(&targets))
-        .map_err(|e| e.to_string())?;
-
-    for target in targets {
-        match target {
-            CompilationTarget::Abi => {
-                let module_abi = fe_compiler::abi::build(&contents)
-                    .map_err(|e| format!("Unable to build the module ABIs: {}", e))?;
-                for (contract_name, contract_abi) in module_abi.contracts.iter() {
-                    let json = contract_abi
-                        .json(true)
-                        .map_err(|e| format!("Unable to serialize the contract ABI: {}", e))?;
-                    let file_name = format!("out.{}.abi", contract_name).to_lowercase();
-                    let mut file_abi =
-                        fs::File::create(output_dir.join(file_name)).map_err(ioerr_to_string)?;
-                    file_abi
-                        .write_all(json.as_bytes())
-                        .map_err(ioerr_to_string)?;
-                }
-            }
-            CompilationTarget::Ast => {
-                let mut file_ast =
-                    fs::File::create(output_dir.join("out.ast")).map_err(ioerr_to_string)?;
-                file_ast
-                    .write_all(output.ast.as_bytes())
-                    .map_err(ioerr_to_string)?;
-            }
-            CompilationTarget::Bytecode => {
-                let mut file_bytecode =
-                    fs::File::create(output_dir.join("out.bin")).map_err(ioerr_to_string)?;
-                file_bytecode
-                    .write_all(output.bytecode.as_bytes())
-                    .map_err(ioerr_to_string)?;
-            }
-            CompilationTarget::Tokens => {
-                let mut file_tokens =
-                    fs::File::create(output_dir.join("out.tokens")).map_err(ioerr_to_string)?;
-                file_tokens
-                    .write_all(output.tokens.as_bytes())
-                    .map_err(ioerr_to_string)?;
-            }
-            CompilationTarget::Yul => {
-                let mut file_yul =
-                    fs::File::create(output_dir.join("out.yul")).map_err(ioerr_to_string)?;
-                file_yul
-                    .write_all(pretty_curly_print(&output.yul, 4).as_bytes())
-                    .map_err(ioerr_to_string)?;
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn ioerr_to_string(error: Error) -> String {
-    format!("{}", error)
-}
-
-fn to_compile_stage(targets: &[CompilationTarget]) -> CompileStage {
-    for target in targets {
-        if let CompilationTarget::Bytecode = target {
-            return CompileStage::AllUpToBytecode;
-        }
-    }
-
-    CompileStage::AllUpToYul
 }

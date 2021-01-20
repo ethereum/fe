@@ -6,7 +6,7 @@ use crate::abi::elements::{
     FuncOutput,
     FuncType,
     Function,
-    ModuleABIs,
+    ModuleAbis,
     VarType,
 };
 use crate::errors::CompileError;
@@ -17,29 +17,32 @@ use std::collections::HashMap;
 type TypeDefs<'a> = HashMap<&'a str, &'a fe::TypeDesc<'a>>;
 
 /// Parse a map of contract ABIs from the input `module`.
-pub fn module<'a>(module: &'a fe::Module<'a>) -> Result<ModuleABIs, CompileError> {
+pub fn module<'a>(module: &'a fe::Module<'a>) -> Result<ModuleAbis, CompileError> {
     let mut type_defs = TypeDefs::new();
 
-    module.body.iter().try_fold(ModuleABIs::new(), |mut m, s| {
-        match &s.node {
-            fe::ModuleStmt::TypeDef { name, typ } => {
-                if type_defs.insert(name.node, &typ.node).is_some() {
-                    return Err(CompileError::static_str("duplicate type definition"));
+    module
+        .body
+        .iter()
+        .try_fold(ModuleAbis::new(), |mut abis, stmt| {
+            match &stmt.node {
+                fe::ModuleStmt::TypeDef { name, typ } => {
+                    if type_defs.insert(name.node, &typ.node).is_some() {
+                        return Err(CompileError::static_str("duplicate type definition"));
+                    }
                 }
-            }
-            fe::ModuleStmt::ContractDef { name, body } => {
-                if m.contracts
-                    .insert(name.node.to_string(), contract_def(&type_defs, body)?)
-                    .is_some()
-                {
-                    return Err(CompileError::static_str("duplicate contract definition"));
+                fe::ModuleStmt::ContractDef { name, body } => {
+                    if abis
+                        .insert(name.node.to_string(), contract_def(&type_defs, body)?)
+                        .is_some()
+                    {
+                        return Err(CompileError::static_str("duplicate contract definition"));
+                    }
                 }
-            }
-            _ => {}
-        };
+                _ => {}
+            };
 
-        Ok(m)
-    })
+            Ok(abis)
+        })
 }
 
 fn contract_def<'a>(
@@ -220,7 +223,7 @@ mod tests {
             .node;
         let abis = builder::module(&module).expect("unable to build ABIs");
 
-        if let Some(abi) = abis.contracts.get("Foo") {
+        if let Some(abi) = abis.get("Foo") {
             assert_eq!(abi.events[0].name, "Food", "event name should be Food");
             assert_eq!(abi.functions.len(), 2, "too many functions in ABI");
             assert_eq!(abi.functions[0].name, "", "constructor not found in ABI");

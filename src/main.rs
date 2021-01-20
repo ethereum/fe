@@ -8,7 +8,7 @@ mod main_full;
 
 #[cfg(not(feature = "solc-backend"))]
 fn main() {
-    println!("Using the CLI requires passing `--features solc-backend`");
+    println!("The CLI must be built with the solc-backend feature (i.e. `cargo build --release --features solc-backend`).");
 }
 
 // This is moved to its own file so that we don't have to sprinkle the code with

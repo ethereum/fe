@@ -1,0 +1,7 @@
+contract Foo:
+    pub def foo() -> u256:
+        return 42
+
+contract Bar:
+    pub def bar() -> u256:
+        return 26

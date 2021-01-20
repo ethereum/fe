@@ -1,8 +1,75 @@
 #![feature(iterator_fold_self)]
 //! Modules for compiling Fe and building ABIs.
 
+use crate::errors::CompileError;
+use crate::types::{
+    CompiledContract,
+    CompiledModule,
+    FeSrc,
+    NamedContracts,
+};
+use std::collections::HashMap;
+
 pub mod abi;
 pub mod errors;
 #[cfg(feature = "solc-backend")]
 pub mod evm;
+pub mod types;
 pub mod yul;
+
+/// Compiles the given Fe source code to all targets.
+///
+/// If `with_bytecode` is set to false, the compiler will skip the final Yul ->
+/// Bytecode pass. This is useful when debugging invalid Yul code.
+pub fn compile(src: FeSrc, with_bytecode: bool) -> Result<CompiledModule, CompileError> {
+    // parse source
+    let fe_tokens = fe_parser::get_parse_tokens(src)?;
+    let fe_module = fe_parser::parsers::file_input(&fe_tokens[..])
+        .map_err(|error| CompileError::str(error.format_user(src)))?
+        .1
+        .node;
+
+    // build abi
+    let json_abis = abi::build(&fe_module)?;
+
+    // analyze source code
+    let context = fe_semantics::analysis(&fe_module)
+        .map_err(|error| CompileError::str(error.format_user(src)))?;
+
+    // compile to yul
+    let yul_contracts = yul::compile(&fe_module, context)?;
+
+    // compile to bytecode if required
+    #[cfg(feature = "solc-backend")]
+    let bytecode_contracts = if with_bytecode {
+        evm::compile(yul_contracts.clone())?
+    } else {
+        HashMap::new()
+    };
+
+    // combine all of the named contract maps
+    let contracts = json_abis
+        .keys()
+        .map(|name| {
+            (
+                name.to_owned(),
+                CompiledContract {
+                    json_abi: json_abis[name].to_owned(),
+                    yul: yul_contracts[name].to_owned(),
+                    #[cfg(feature = "solc-backend")]
+                    bytecode: if with_bytecode {
+                        bytecode_contracts[name].to_owned()
+                    } else {
+                        "".to_string()
+                    },
+                },
+            )
+        })
+        .collect::<NamedContracts>();
+
+    Ok(CompiledModule {
+        fe_tokens: format!("{:#?}", fe_tokens),
+        fe_ast: format!("{:#?}", fe_module),
+        contracts,
+    })
+}
