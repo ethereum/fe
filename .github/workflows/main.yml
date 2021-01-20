@@ -115,7 +115,7 @@ jobs:
       uses: MarkusJx/install-boost@v1.0.1
       id: install-boost
       with:
-        boost_version: 1.73.0
+        boost_version: 1.61.0
     - name: Install latest nightly
       uses: actions-rs/toolchain@v1
       with:
