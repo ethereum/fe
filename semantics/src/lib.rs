@@ -29,7 +29,10 @@ use std::cell::{
     Ref,
     RefCell,
 };
-use std::collections::HashMap;
+use std::collections::{
+    HashMap,
+    HashSet,
+};
 use std::rc::Rc;
 
 /// Indicates where an expression is stored.
@@ -68,7 +71,7 @@ pub struct ContractAttributes {
     /// Events that have been defined by the user.
     pub events: Vec<Event>,
     /// Static strings that the contract defines
-    pub string_literals: Vec<String>,
+    pub string_literals: HashSet<String>,
 }
 
 impl From<Ref<'_, ContractScope>> for ContractAttributes {
