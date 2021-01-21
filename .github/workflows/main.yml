@@ -132,7 +132,6 @@ jobs:
       env:
         BOOST_ROOT: ${{ steps.install-boost.outputs.BOOST_ROOT }}
         BOOST_VER: ${{ steps.install-boost.outputs.BOOST_VER}}
-        Boost_COMPILER: override
     - name: Run tests
       run: cargo test --workspace --features solc-backend --verbose
       env:
