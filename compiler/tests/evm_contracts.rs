@@ -756,6 +756,13 @@ fn strings() {
             Some(string_token("The quick brown fox jumps over the lazy dog")),
         );
 
+        harness.test_function(
+            &mut executor,
+            "return_casted_static_string",
+            vec![],
+            Some(string_token("foo")),
+        );
+
         harness.events_emitted(
             executor,
             vec![(
@@ -767,6 +774,7 @@ fn strings() {
                     string_token("string 3"),
                     address_token("1000000000000000000000000000000000000001"),
                     string_token("static string"),
+                    string_token("foo"),
                 ],
             )],
         );

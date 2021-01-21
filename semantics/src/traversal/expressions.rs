@@ -4,6 +4,7 @@ use crate::namespace::scopes::{
     ContractFunctionDef,
     Shared,
 };
+use std::convert::TryFrom;
 
 use crate::builtins;
 use crate::namespace::operations;
@@ -27,6 +28,7 @@ use crate::{
     ExpressionAttributes,
     Location,
 };
+
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use std::rc::Rc;
@@ -203,8 +205,9 @@ fn expr_str(
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::Str(lines) = &exp.node {
-        let string_length = lines.iter().map(|val| val.len()).sum();
         let string_val = lines.join("");
+        let string_length = string_val.len();
+
         scope
             .borrow_mut()
             .contract_scope()
@@ -409,14 +412,23 @@ fn expr_call_type_constructor(
         return Err(SemanticError::wrong_number_of_params());
     }
 
-    let num = validate_is_numeric_literal(&args.node[0].node)?;
+    call_arg(Rc::clone(&scope), Rc::clone(&context), &args.node[0])?;
 
-    if !matches!(typ, Type::Base(Base::Address)) {
-        validate_literal_fits_type(&num, &typ)?;
+    match typ {
+        Type::String(ref fe_string) => {
+            validate_str_literal_fits_type(&args.node[0].node, &fe_string)?;
+            Ok(ExpressionAttributes::new(typ, Location::Memory))
+        }
+        _ => {
+            let num = validate_is_numeric_literal(&args.node[0].node)?;
+
+            if !matches!(typ, Type::Base(Base::Address)) {
+                validate_numeric_literal_fits_type(&num, &typ)?;
+            }
+
+            Ok(ExpressionAttributes::new(typ, Location::Value))
+        }
     }
-
-    call_arg(scope, context, &args.node[0])?;
-    Ok(ExpressionAttributes::new(typ, Location::Value))
 }
 
 fn validate_is_numeric_literal(call_arg: &fe::CallArg) -> Result<String, SemanticError> {
@@ -431,12 +443,28 @@ fn validate_is_numeric_literal(call_arg: &fe::CallArg) -> Result<String, Semanti
     Err(SemanticError::numeric_literal_expected())
 }
 
-fn validate_literal_fits_type(num: &str, typ: &Type) -> Result<(), SemanticError> {
+fn validate_numeric_literal_fits_type(num: &str, typ: &Type) -> Result<(), SemanticError> {
     if let Type::Base(Base::Numeric(integer)) = typ {
         if integer.fits(num) {
             return Ok(());
         } else {
             return Err(SemanticError::numeric_capacity_mismatch());
+        }
+    }
+
+    Err(SemanticError::type_error())
+}
+
+fn validate_str_literal_fits_type(
+    call_arg: &fe::CallArg,
+    typ: &FeString,
+) -> Result<(), SemanticError> {
+    if let fe::CallArg::Arg(fe::Expr::Str(lines)) = call_arg {
+        let string_length: usize = lines.join("").len();
+        if string_length > typ.max_size {
+            return Err(SemanticError::string_capacity_mismatch());
+        } else {
+            return Ok(());
         }
     }
 
@@ -567,6 +595,11 @@ fn expr_name_call_type(
         }),
         "i8" => Ok(CallType::TypeConstructor {
             typ: Type::Base(Base::Numeric(Integer::I8)),
+        }),
+        value if value.starts_with("string") => Ok(CallType::TypeConstructor {
+            typ: Type::String(
+                TryFrom::try_from(value).map_err(|_| SemanticError::undefined_value())?,
+            ),
         }),
         _ => Err(SemanticError::undefined_value()),
     }

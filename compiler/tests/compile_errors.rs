@@ -27,6 +27,7 @@ use std::fs;
     case("unary_minus_on_bool.fe", "TypeError"),
     case("type_constructor_from_variable.fe", "NumericLiteralExpected"),
     case("needs_mem_copy.fe", "CannotMove"),
+    case("string_capacity_mismatch.fe", "StringCapacityMismatch"),
     case("numeric_capacity_mismatch/u8_neg.fe", "NumericCapacityMismatch"),
     case("numeric_capacity_mismatch/u8_pos.fe", "NumericCapacityMismatch"),
     case("numeric_capacity_mismatch/u16_neg.fe", "NumericCapacityMismatch"),
