@@ -4,7 +4,10 @@ use crate::namespace::types::{
     Type,
 };
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{
+    HashMap,
+    HashSet,
+};
 use std::rc::Rc;
 
 pub type Shared<T> = Rc<RefCell<T>>;
@@ -35,7 +38,7 @@ pub struct ContractScope {
     pub event_defs: HashMap<String, Event>,
     pub field_defs: HashMap<String, ContractFieldDef>,
     pub function_defs: HashMap<String, ContractFunctionDef>,
-    pub string_defs: Vec<String>,
+    pub string_defs: HashSet<String>,
     num_fields: usize,
 }
 
@@ -97,7 +100,7 @@ impl ContractScope {
             function_defs: HashMap::new(),
             event_defs: HashMap::new(),
             field_defs: HashMap::new(),
-            string_defs: vec![],
+            string_defs: HashSet::new(),
             interface: vec![],
             num_fields: 0,
         }))
@@ -159,7 +162,7 @@ impl ContractScope {
 
     /// Add a static string definition to the scope.
     pub fn add_string(&mut self, value: String) {
-        self.string_defs.push(value);
+        self.string_defs.insert(value);
     }
 }
 
