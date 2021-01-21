@@ -130,6 +130,7 @@ jobs:
       env:
         BOOST_ROOT: ${{ steps.install-boost.outputs.BOOST_ROOT }}
         Boost_NO_BOOST_CMAKE: 'ON'
+        DBoost_NO_BOOST_CMAKE: 'ON'
         Boost_COMPILER: 'vc142'
     - name: Run tests
       run: cargo test --workspace --features solc-backend --verbose
