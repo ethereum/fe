@@ -11,6 +11,7 @@ pub enum ErrorKind {
     MissingReturn,
     NotSubscriptable,
     NumericCapacityMismatch,
+    StringCapacityMismatch,
     UndefinedValue,
     UnexpectedReturn,
     TypeError,
@@ -66,6 +67,14 @@ impl SemanticError {
     pub fn numeric_capacity_mismatch() -> Self {
         SemanticError {
             kind: ErrorKind::NumericCapacityMismatch,
+            context: vec![],
+        }
+    }
+
+    /// Create a new error with kind `NumericCapacityMismatch`
+    pub fn string_capacity_mismatch() -> Self {
+        SemanticError {
+            kind: ErrorKind::StringCapacityMismatch,
             context: vec![],
         }
     }

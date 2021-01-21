@@ -157,6 +157,20 @@ pub struct FeString {
     pub max_size: usize,
 }
 
+impl TryFrom<&str> for FeString {
+    type Error = String;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        if !value.starts_with("string") {
+            return Err("Value must start with 'string'".to_string());
+        }
+
+        let max_size = value[6..].parse::<u32>().map_err(|err| err.to_string())? as usize;
+
+        Ok(FeString { max_size })
+    }
+}
+
 impl Integer {
     pub fn is_signed(&self) -> bool {
         matches!(
@@ -594,12 +608,9 @@ pub fn type_desc(defs: &HashMap<String, Type>, typ: &fe::TypeDesc) -> Result<Typ
         fe::TypeDesc::Base { base: "bool" } => Ok(Type::Base(Base::Bool)),
         fe::TypeDesc::Base { base: "bytes" } => Ok(Type::Base(Base::Byte)),
         fe::TypeDesc::Base { base: "address" } => Ok(Type::Base(Base::Address)),
-        fe::TypeDesc::Base { base } if &base[..6] == "string" => {
-            let max_size = base[6..]
-                .parse::<u32>()
-                .map_err(|_| SemanticError::type_error())? as usize;
-            Ok(Type::String(FeString { max_size }))
-        }
+        fe::TypeDesc::Base { base } if base.starts_with("string") => Ok(Type::String(
+            TryFrom::try_from(*base).map_err(|_| SemanticError::type_error())?,
+        )),
         fe::TypeDesc::Base { base } => {
             if let Some(typ) = defs.get(base.to_owned()) {
                 return Ok(typ.clone());
