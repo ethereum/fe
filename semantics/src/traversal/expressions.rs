@@ -209,7 +209,7 @@ fn expr_str(
         let string_length = string_val.len();
 
         scope
-            .borrow_mut()
+            .borrow()
             .contract_scope()
             .borrow_mut()
             .add_string(string_val);

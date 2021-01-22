@@ -70,7 +70,7 @@ pub fn emit_event(event: Event, vals: Vec<yul::Expression>) -> yul::Statement {
     let mut topics = vec![literal_expression! { (event.topic) }];
 
     let (field_vals, field_types): (Vec<yul::Expression>, Vec<FixedSize>) = event
-        .fields()
+        .non_indexed_fields()
         .into_iter()
         .map(|(index, typ)| (vals[index].to_owned(), typ))
         .unzip();

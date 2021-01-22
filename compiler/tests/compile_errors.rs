@@ -8,6 +8,7 @@ use std::fs;
 #[rstest(
     fixture_file,
     expected_error,
+    case("call_event_with_wrong_types.fe", "TypeError"),
     case("continue_without_loop.fe", "ContinueWithoutLoop"),
     case("continue_without_loop_2.fe", "ContinueWithoutLoop"),
     case("break_without_loop.fe", "BreakWithoutLoop"),

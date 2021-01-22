@@ -40,7 +40,7 @@ impl Event {
     /// The event's non-indexed fields.
     ///
     /// These should be logged in the data section.
-    pub fn fields(&self) -> Vec<(usize, FixedSize)> {
+    pub fn non_indexed_fields(&self) -> Vec<(usize, FixedSize)> {
         self.fields
             .to_owned()
             .into_iter()
@@ -50,8 +50,15 @@ impl Event {
     }
 
     /// The event's non-indexed field types.
+    pub fn non_indexed_field_types(&self) -> Vec<FixedSize> {
+        self.non_indexed_fields()
+            .into_iter()
+            .map(|(_, typ)| typ)
+            .collect()
+    }
+    /// The event's field types.
     pub fn field_types(&self) -> Vec<FixedSize> {
-        self.fields().into_iter().map(|(_, typ)| typ).collect()
+        self.fields.clone()
     }
 }
 
@@ -81,7 +88,16 @@ mod tests {
         );
 
         assert_eq!(
-            event.fields(),
+            event.field_types(),
+            vec![
+                FixedSize::Base(Base::Address),
+                FixedSize::Base(Base::Address),
+                FixedSize::Base(Base::Bool),
+            ],
+        );
+
+        assert_eq!(
+            event.non_indexed_fields(),
             vec![
                 (0, FixedSize::Base(Base::Address)),
                 (2, FixedSize::Base(Base::Bool))
