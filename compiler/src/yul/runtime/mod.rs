@@ -25,7 +25,7 @@ pub fn build(context: &Context, contract: &Spanned<fe::ModuleStmt>) -> Vec<yul::
             let events_batch = attributes
                 .events
                 .iter()
-                .map(|event| event.field_types())
+                .map(|event| event.non_indexed_field_types())
                 .collect::<Vec<_>>();
 
             let batch = [public_functions_batch, events_batch].concat();

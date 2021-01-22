@@ -12,7 +12,11 @@ use crate::namespace::types::{
     Tuple,
     Type,
 };
-use crate::traversal::_utils::spanned_expression;
+use crate::traversal::_utils::{
+    expression_attributes_to_types,
+    fixed_sizes_to_types,
+    spanned_expression,
+};
 use crate::traversal::{
     assignments,
     declarations,
@@ -358,11 +362,19 @@ fn emit(
         let event_name = expressions::expr_name_string(func)?;
 
         if let Some(event) = scope.borrow().contract_event_def(event_name) {
-            context.borrow_mut().add_emit(stmt, event);
-        }
+            context.borrow_mut().add_emit(stmt, event.clone());
 
-        for arg in args.node.iter() {
-            call_arg(Rc::clone(&scope), Rc::clone(&context), arg)?;
+            let argument_attributes = args
+                .node
+                .iter()
+                .map(|arg| expressions::call_arg(Rc::clone(&scope), Rc::clone(&context), arg))
+                .collect::<Result<Vec<_>, _>>()?;
+
+            if fixed_sizes_to_types(event.field_types())
+                != expression_attributes_to_types(argument_attributes)
+            {
+                return Err(SemanticError::type_error());
+            }
         }
 
         return Ok(());
@@ -387,27 +399,6 @@ fn assert(
     }
 
     unreachable!()
-}
-
-fn call_arg(
-    scope: Shared<BlockScope>,
-    context: Shared<Context>,
-    arg: &Spanned<fe::CallArg>,
-) -> Result<(), SemanticError> {
-    match &arg.node {
-        fe::CallArg::Arg(value) => {
-            let spanned = spanned_expression(&arg.span, value);
-            let _attributes = expressions::assignable_expr(scope, Rc::clone(&context), &spanned)?;
-
-            // TODO: Perform type checking
-        }
-        fe::CallArg::Kwarg(fe::Kwarg { name: _, value }) => {
-            let _attributes = expressions::expr(scope, context, value)?;
-            // TODO: Perform type checking
-        }
-    };
-
-    Ok(())
 }
 
 fn func_return(
