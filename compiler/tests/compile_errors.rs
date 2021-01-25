@@ -1,7 +1,5 @@
 #![cfg(feature = "solc-backend")]
 
-use fe_compiler::evm::CompileStage;
-
 use rstest::rstest;
 use std::fs;
 
@@ -58,7 +56,7 @@ fn test_compile_errors(fixture_file: &str, expected_error: &str) {
     let src = fs::read_to_string(format!("tests/fixtures/compile_errors/{}", fixture_file))
         .expect("Unable to read fixture file");
 
-    match fe_compiler::evm::compile(&src, CompileStage::AllUpToBytecode) {
+    match fe_compiler::compile(&src, true) {
         Err(compile_error) => assert!(
             format!("{}", compile_error).contains(expected_error),
             format!("{} did not contain {}", compile_error, expected_error)

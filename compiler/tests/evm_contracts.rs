@@ -2,7 +2,6 @@
 use ethabi;
 use evm;
 
-use compiler::evm::CompileStage;
 use evm_runtime::{
     ExitReason,
     Handler,
@@ -163,24 +162,22 @@ fn with_executor(test: &dyn Fn(Executor)) {
 fn deploy_contract(
     executor: &mut Executor,
     fixture: &str,
-    name: &str,
+    contract_name: &str,
     init_params: Vec<ethabi::Token>,
 ) -> ContractHarness {
     let src = fs::read_to_string(format!("tests/fixtures/{}", fixture))
-        .expect("Unable to read fixture file");
+        .expect("unable to read fixture file");
+    let compiled_module = compiler::compile(&src, true).expect("failed to compile module");
+    let compiled_contract = compiled_module
+        .contracts
+        .get(contract_name)
+        .expect("could not find contract in fixture");
+    let abi = ethabi::Contract::load(StringReader::new(&compiled_contract.json_abi))
+        .expect("unable to load the ABI");
+    let mut bytecode = hex::decode(&compiled_contract.bytecode).expect("failed to decode bytecode");
 
-    let output = compiler::evm::compile(&src, CompileStage::AllUpToBytecode)
-        .expect("Unable to compile to bytecode");
-    let json_abi = compiler::abi::build(&src)
-        .expect("Unable to build the module ABIs")
-        .contracts[name]
-        .json(false)
-        .expect("Unable to serialize the contract ABI.");
-
-    let abi = ethabi::Contract::load(StringReader::new(&json_abi)).expect("Unable to load the ABI");
-    let mut init_code = hex::decode(output.bytecode).unwrap();
     if let Some(constructor) = &abi.constructor {
-        init_code = constructor.encode_input(init_code, &init_params).unwrap()
+        bytecode = constructor.encode_input(bytecode, &init_params).unwrap()
     }
 
     if let evm::Capture::Exit(exit) = executor.create(
@@ -189,7 +186,7 @@ fn deploy_contract(
             caller: address(DEFAULT_CALLER),
         },
         U256::zero(),
-        init_code,
+        bytecode,
         None,
     ) {
         return ContractHarness::new(exit.1.expect("Unable to retrieve contract address"), abi);
@@ -1188,4 +1185,16 @@ fn abi_encoding_stress() {
             )],
         );
     });
+}
+
+#[test]
+fn two_contracts() {
+    with_executor(&|mut executor| {
+        let foo_harness = deploy_contract(&mut executor, "two_contracts.fe", "Foo", vec![]);
+        let bar_harness = deploy_contract(&mut executor, "two_contracts.fe", "Bar", vec![]);
+
+        foo_harness.test_function(&mut executor, "foo", vec![], Some(uint_token(42)));
+
+        bar_harness.test_function(&mut executor, "bar", vec![], Some(uint_token(26)));
+    })
 }

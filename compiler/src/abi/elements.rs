@@ -9,32 +9,8 @@ use serde::{
 };
 use std::collections::HashMap;
 
-/// Wrapper around a map of contract names to their ABIs.
-#[derive(Serialize, Debug, PartialEq, Clone)]
-pub struct ModuleABIs {
-    #[serde(flatten)]
-    pub contracts: HashMap<String, Contract>,
-}
-
-impl Default for ModuleABIs {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ModuleABIs {
-    pub fn new() -> Self {
-        Self {
-            contracts: HashMap::new(),
-        }
-    }
-
-    /// Serialize the module into a JSON object that maps each contract in the
-    /// module to its ABI.
-    pub fn json(&self) -> Result<String, CompileError> {
-        Ok(serde_json::to_string(self)?)
-    }
-}
+/// The ABIs for each contract in a Fe module.
+pub type ModuleAbis = HashMap<String, Contract>;
 
 /// All public interfaces of a Fe contract.
 #[derive(Debug, PartialEq, Clone)]
@@ -243,36 +219,8 @@ mod tests {
         FuncOutput,
         FuncType,
         Function,
-        ModuleABIs,
         VarType,
     };
-    use std::collections::HashMap;
-
-    #[test]
-    fn module_abis_json() {
-        let mut contracts = HashMap::new();
-        contracts.insert(
-            "contract1".to_string(),
-            Contract {
-                functions: vec![],
-                events: vec![],
-            },
-        );
-        contracts.insert(
-            "contract2".to_string(),
-            Contract {
-                functions: vec![],
-                events: vec![],
-            },
-        );
-
-        let json = ModuleABIs { contracts }.json().unwrap();
-
-        assert!(
-            json == r#"{"contract1":[],"contract2":[]}"#
-                || json == r#"{"contract2":[],"contract1":[]}"#
-        )
-    }
 
     #[test]
     fn contract_json() {
