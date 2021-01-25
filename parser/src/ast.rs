@@ -33,6 +33,11 @@ pub enum ModuleStmt<'a> {
         #[serde(borrow)]
         body: Vec<Spanned<ContractStmt<'a>>>,
     },
+    StructDef {
+        name: Spanned<&'a str>,
+        #[serde(borrow)]
+        body: Vec<Spanned<StructStmt<'a>>>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -109,7 +114,23 @@ pub enum ContractStmt<'a> {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub enum StructStmt<'a> {
+    StructField {
+        //qual: Option<Spanned<ContractFieldQual>>,
+        #[serde(borrow)]
+        name: Spanned<&'a str>,
+        typ: Spanned<TypeDesc<'a>>,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ContractFieldQual {
+    Const,
+    Pub,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub enum StructFieldQual {
     Const,
     Pub,
 }

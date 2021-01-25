@@ -1,0 +1,46 @@
+struct Foo:
+    x: address
+---
+[
+  Spanned(
+    node: StructDef(
+      name: Spanned(
+        node: "Foo",
+        span: Span(
+          start: 7,
+          end: 10,
+        ),
+      ),
+      body: [
+        Spanned(
+          node: StructField(
+            name: Spanned(
+              node: "x",
+              span: Span(
+                start: 16,
+                end: 17,
+              ),
+            ),
+            typ: Spanned(
+              node: Base(
+                base: "address",
+              ),
+              span: Span(
+                start: 19,
+                end: 26,
+              ),
+            ),
+          ),
+          span: Span(
+            start: 16,
+            end: 26,
+          ),
+        ),
+      ],
+    ),
+    span: Span(
+      start: 0,
+      end: 26,
+    ),
+  ),
+]

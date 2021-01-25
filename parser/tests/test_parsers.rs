@@ -367,6 +367,12 @@ parser_fixture_tests! {
         "fixtures/parsers/contract_def.ron",
     ),
     (
+        repeat(struct_def),
+        test_struct_def,
+        write_struct_def,
+        "fixtures/parsers/struct_def.ron",
+    ),
+    (
         repeat(contract_stmt),
         test_contract_stmt,
         write_contract_stmt,

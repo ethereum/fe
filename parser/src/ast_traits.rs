@@ -24,6 +24,23 @@ impl TryFrom<&Token<'_>> for Spanned<ContractFieldQual> {
     }
 }
 
+impl TryFrom<&Token<'_>> for Spanned<StructFieldQual> {
+    type Error = &'static str;
+
+    #[cfg_attr(tarpaulin, rustfmt::skip)]
+    fn try_from(tok: &Token) -> Result<Self, Self::Error> {
+        use StructFieldQual::*;
+
+        let span = tok.span;
+
+        Ok(match tok.string {
+            "const" => Spanned { node: Const, span },
+            "pub" => Spanned { node: Pub, span },
+            _ => return Err("unrecognized string"),
+        })
+    }
+}
+
 impl TryFrom<&Token<'_>> for Spanned<EventFieldQual> {
     type Error = &'static str;
 
