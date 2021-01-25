@@ -20,6 +20,7 @@ pub fn module(context: Shared<Context>, module: &fe::Module) -> Result<(), Seman
             fe::ModuleStmt::ContractDef { .. } => {
                 contracts::contract_def(Rc::clone(&scope), Rc::clone(&context), stmt)?
             }
+            fe::ModuleStmt::StructDef { .. } => unimplemented!(),
             fe::ModuleStmt::FromImport { .. } => unimplemented!(),
             fe::ModuleStmt::SimpleImport { .. } => unimplemented!(),
         }

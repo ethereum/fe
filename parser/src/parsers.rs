@@ -152,7 +152,7 @@ pub fn non_empty_file_input(input: Cursor) -> ParseResult<Spanned<Module>> {
 
 /// Parse a module statement, such as a contract definition.
 pub fn module_stmt(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
-    alt((import_stmt, type_def, contract_def))(input)
+    alt((import_stmt, type_def, contract_def, struct_def))(input)
 }
 
 /// Parse an import statement.
@@ -470,6 +470,68 @@ pub fn contract_field(input: Cursor) -> ParseResult<Spanned<ContractStmt>> {
     ))
 }
 
+/// Parse a struct definition statement.
+pub fn struct_def(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
+    // "struct" name ":" NEWLINE
+    let (input, contract_kw) = name("struct")(input)?;
+    let (input, name_tok) = name_token(input)?;
+    let (input, _) = op(":")(input)?;
+    let (input, _) = newline_token(input)?;
+
+    // INDENT struct_field+ DEDENT
+    let (input, _) = indent_token(input)?;
+    let (input, body) = many1(struct_field)(input)?;
+    let (input, _) = dedent_token(input)?;
+
+    let last_stmt = body.last().unwrap();
+    let span = Span::from_pair(contract_kw, last_stmt);
+
+    Ok((
+        input,
+        Spanned {
+            node: StructDef {
+                name: name_tok.into(),
+                body,
+            },
+            span,
+        },
+    ))
+}
+
+/// Parse a struct field definition.
+pub fn struct_field(input: Cursor) -> ParseResult<Spanned<StructStmt>> {
+    let (input, (qual, name_tok)) = alt((
+        // Look for a qualifier and field name first...
+        map(pair(struct_field_qual, name_token), |res| {
+            let (qual, tok) = res;
+            (Some(qual), tok)
+        }),
+        // ...then fall back to just a field name
+        map(name_token, |tok| (None, tok)),
+    ))(input)?;
+
+    let (input, _) = op(":")(input)?;
+    let (input, typ) = type_desc(input)?;
+    let (input, _) = newline_token(input)?;
+
+    let span = match &qual {
+        Some(spanned) => Span::from_pair(spanned, &typ),
+        None => Span::from_pair(name_tok, &typ),
+    };
+
+    Ok((
+        input,
+        Spanned {
+            node: StructStmt::StructField {
+                //qual,
+                name: name_tok.into(),
+                typ,
+            },
+            span,
+        },
+    ))
+}
+
 /// Parse an event definition statement.
 pub fn event_def(input: Cursor) -> ParseResult<Spanned<ContractStmt>> {
     // "event" name ":" NEWLINE
@@ -757,6 +819,11 @@ where
 /// Parse a contract field qualifier keyword e.g. "const".
 pub fn contract_field_qual(input: Cursor) -> ParseResult<Spanned<ContractFieldQual>> {
     try_from_tok(alt((name("const"), name("pub"))))(input)
+}
+
+/// Parse a struct field qualifier keyword e.g. "const".
+pub fn struct_field_qual(input: Cursor) -> ParseResult<Spanned<StructFieldQual>> {
+    try_from_tok(name("pub"))(input)
 }
 
 /// Parse an event field qualifier keyword i.e. "idx".

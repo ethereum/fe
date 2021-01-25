@@ -953,6 +953,13 @@ fn sized_vals_in_sto() {
 }
 
 #[test]
+fn structs() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "structs.fe", "Foo", vec![]);
+    });
+}
+
+#[test]
 fn erc20_token() {
     with_executor(&|mut executor| {
         let token_name = string_token("Fe Coin");

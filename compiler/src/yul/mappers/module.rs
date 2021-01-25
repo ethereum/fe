@@ -22,6 +22,7 @@ pub fn module(context: &Context, module: &fe::Module) -> Result<YulContracts, Co
                         return Err(CompileError::static_str("duplicate contract def"));
                     }
                 }
+                fe::ModuleStmt::StructDef { .. } => unimplemented!(),
                 fe::ModuleStmt::FromImport { .. } => unimplemented!(),
                 fe::ModuleStmt::SimpleImport { .. } => unimplemented!(),
             }

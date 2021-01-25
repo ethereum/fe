@@ -1,0 +1,7 @@
+struct House:
+    price: u256
+    size: u256
+
+
+contract City:
+    pub house: House
