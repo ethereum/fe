@@ -1,12 +1,18 @@
 use crate::errors::CompileError;
 use crate::yul::names;
-use crate::yul::operations::calls as call_operations;
-use crate::yul::operations::data as data_operations;
+use crate::yul::operations::{
+    calls as call_operations,
+    data as data_operations,
+    structs as struct_operations,
+};
 use crate::yul::utils;
-use fe_analyzer::builtins;
 use fe_analyzer::namespace::types::{
     FixedSize,
     Type,
+};
+use fe_analyzer::{
+    builtins,
+    ExpressionAttributes,
 };
 use fe_analyzer::{
     CallType,
@@ -98,6 +104,9 @@ fn expr_call(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressi
                 .collect::<Result<_, _>>()?;
 
             return match call_type {
+                CallType::TypeConstructor {
+                    typ: Type::Struct(val),
+                } => Ok(struct_operations::new(val, yul_args)),
                 CallType::TypeConstructor { .. } => Ok(yul_args[0].to_owned()),
                 CallType::SelfAttribute { func_name } => {
                     let func_name = names::func_name(func_name);
@@ -341,7 +350,25 @@ fn expr_attribute(
             Object,
             TxField,
         };
-        return match Object::from_str(expr_name_str(value)?) {
+
+        let object_name = expr_name_str(value)?;
+
+        // Before we try to match any known pre-defined objects, try matching as a
+        // custom type
+        if let Some(ExpressionAttributes {
+            typ: Type::Struct(val),
+            ..
+        }) = context.get_expression(&*value)
+        {
+            let custom_type = format!("${}", object_name);
+            return Ok(struct_operations::get_attribute(
+                val,
+                &custom_type,
+                attr.node,
+            ));
+        }
+
+        return match Object::from_str(object_name) {
             Ok(Object::Self_) => expr_attribute_self(context, exp),
 
             Ok(Object::Block) => match BlockField::from_str(attr.node) {

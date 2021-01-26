@@ -13,6 +13,7 @@ use crate::namespace::types::{
     FeString,
     FixedSize,
     Integer,
+    Struct,
     Type,
     U256,
 };
@@ -45,7 +46,7 @@ pub fn expr(
         fe::Expr::Num(_) => expr_num(exp),
         fe::Expr::Bool(_) => expr_bool(exp),
         fe::Expr::Subscript { .. } => expr_subscript(scope, Rc::clone(&context), exp),
-        fe::Expr::Attribute { .. } => expr_attribute(scope, exp),
+        fe::Expr::Attribute { .. } => expr_attribute(scope, Rc::clone(&context), exp),
         fe::Expr::Ternary { .. } => expr_ternary(scope, Rc::clone(&context), exp),
         fe::Expr::BoolOperation { .. } => unimplemented!(),
         fe::Expr::BinOperation { .. } => expr_bin_operation(scope, Rc::clone(&context), exp),
@@ -138,7 +139,6 @@ pub fn expr_name_str<'a>(exp: &Spanned<fe::Expr<'a>>) -> Result<&'a str, Semanti
     if let fe::Expr::Name(name) = exp.node {
         return Ok(name);
     }
-
     unreachable!()
 }
 
@@ -198,6 +198,10 @@ fn expr_name(
                 Location::Memory,
             )),
             Some(FixedSize::Tuple(_)) => unimplemented!(),
+            Some(FixedSize::Struct(val)) => Ok(ExpressionAttributes::new(
+                Type::Struct(val),
+                Location::Memory,
+            )),
             None => Err(SemanticError::undefined_value()),
         };
     }
@@ -275,6 +279,7 @@ fn expr_subscript(
 
 fn expr_attribute(
     scope: Shared<BlockScope>,
+    context: Shared<Context>,
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::Attribute { value, attr } = &exp.node {
@@ -286,10 +291,18 @@ fn expr_attribute(
             TxField,
         };
 
+        let object_name = expr_name_str(value)?;
+
+        // Before we try to match any pre-defined objects, try matching as a
+        // custom type
+        if let Some(FixedSize::Struct(_)) = scope.borrow().variable_def(object_name.to_string()) {
+            return expr_attribute_custom_type(Rc::clone(&scope), context, value, attr);
+        }
+
         let val = |t| Ok(ExpressionAttributes::new(Type::Base(t), Location::Value));
         let err = || Err(SemanticError::undefined_value());
 
-        return match Object::from_str(expr_name_str(value)?) {
+        return match Object::from_str(object_name) {
             Ok(Object::Self_) => expr_attribute_self(scope, attr),
 
             Ok(Object::Block) => match BlockField::from_str(attr.node) {
@@ -320,6 +333,35 @@ fn expr_attribute(
     }
 
     unreachable!()
+}
+
+fn expr_attribute_custom_type(
+    scope: Shared<BlockScope>,
+    context: Shared<Context>,
+    value: &Spanned<fe::Expr>,
+    attr: &Spanned<&str>,
+) -> Result<ExpressionAttributes, SemanticError> {
+    let val_str = expr_name_str(value)?;
+    let custom_type = scope
+        .borrow()
+        .variable_def(val_str.to_string())
+        .ok_or_else(SemanticError::undefined_value)?;
+    context.borrow_mut().add_expression(
+        value,
+        ExpressionAttributes::new(custom_type.clone().into(), Location::Memory),
+    );
+    match custom_type {
+        FixedSize::Struct(val) => {
+            let field_type = val
+                .get_field_type(attr.node)
+                .ok_or_else(SemanticError::undefined_value)?;
+            Ok(ExpressionAttributes::new(
+                Type::Base(field_type.clone()),
+                Location::Memory,
+            ))
+        }
+        _ => Err(SemanticError::undefined_value()),
+    }
 }
 
 fn expr_attribute_self(
@@ -431,12 +473,34 @@ fn expr_call(
     unreachable!()
 }
 
+fn expr_call_struct_constructor(
+    scope: Shared<BlockScope>,
+    context: Shared<Context>,
+    typ: Struct,
+    args: &Spanned<Vec<Spanned<fe::CallArg>>>,
+) -> Result<ExpressionAttributes, SemanticError> {
+    let argument_attributes = expr_call_args(Rc::clone(&scope), Rc::clone(&context), args)?;
+
+    if typ.get_field_types() != expression_attributes_to_types(argument_attributes) {
+        return Err(SemanticError::type_error());
+    }
+
+    Ok(ExpressionAttributes::new(
+        Type::Struct(typ),
+        Location::Memory,
+    ))
+}
+
 fn expr_call_type_constructor(
     scope: Shared<BlockScope>,
     context: Shared<Context>,
     typ: Type,
     args: &Spanned<Vec<Spanned<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, SemanticError> {
+    if let Type::Struct(val) = typ {
+        return expr_call_struct_constructor(scope, context, val, args);
+    }
+
     if args.node.len() != 1 {
         return Err(SemanticError::wrong_number_of_params());
     }
@@ -507,6 +571,17 @@ fn validate_str_literal_fits_type(
     Err(SemanticError::type_error())
 }
 
+fn expr_call_args(
+    scope: Shared<BlockScope>,
+    context: Shared<Context>,
+    args: &Spanned<Vec<Spanned<fe::CallArg>>>,
+) -> Result<Vec<ExpressionAttributes>, SemanticError> {
+    args.node
+        .iter()
+        .map(|arg| call_arg(Rc::clone(&scope), Rc::clone(&context), arg))
+        .collect::<Result<Vec<_>, _>>()
+}
+
 fn expr_call_self_attribute(
     scope: Shared<BlockScope>,
     context: Shared<Context>,
@@ -524,11 +599,7 @@ fn expr_call_self_attribute(
         .borrow()
         .function_def(func_name)
     {
-        let argument_attributes = args
-            .node
-            .iter()
-            .map(|arg| call_arg(Rc::clone(&scope), Rc::clone(&context), arg))
-            .collect::<Result<Vec<_>, _>>()?;
+        let argument_attributes = expr_call_args(Rc::clone(&scope), Rc::clone(&context), args)?;
 
         if param_types.len() != argument_attributes.len() {
             return Err(SemanticError::wrong_number_of_params());

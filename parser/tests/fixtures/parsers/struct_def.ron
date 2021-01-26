@@ -14,6 +14,7 @@ struct Foo:
       body: [
         Spanned(
           node: StructField(
+            qual: None,
             name: Spanned(
               node: "x",
               span: Span(

@@ -523,7 +523,7 @@ pub fn struct_field(input: Cursor) -> ParseResult<Spanned<StructStmt>> {
         input,
         Spanned {
             node: StructStmt::StructField {
-                //qual,
+                qual,
                 name: name_tok.into(),
                 typ,
             },

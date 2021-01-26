@@ -1,6 +1,9 @@
 use crate::errors::SemanticError;
 use fe_parser::ast as fe;
-use std::collections::HashMap;
+use std::collections::{
+    BTreeMap,
+    HashMap,
+};
 use std::convert::TryFrom;
 use std::num::{
     IntErrorKind,
@@ -103,6 +106,7 @@ pub enum Type {
     Tuple(Tuple),
     String(FeString),
     Contract(Contract),
+    Struct(Struct),
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
@@ -112,6 +116,7 @@ pub enum FixedSize {
     Tuple(Tuple),
     String(FeString),
     Contract(Contract),
+    Struct(Struct),
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
@@ -158,6 +163,12 @@ pub struct Tuple {
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+pub struct Struct {
+    pub name: String,
+    fields: BTreeMap<String, Base>,
+}
+
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
 pub struct FeString {
     pub max_size: usize,
 }
@@ -166,6 +177,40 @@ pub struct FeString {
 pub struct Contract {
     pub name: String,
     pub functions: Vec<FunctionAttributes>,
+}
+
+impl Struct {
+    pub fn new(name: &str) -> Struct {
+        Struct {
+            name: name.to_string(),
+            fields: BTreeMap::new(),
+        }
+    }
+
+    // Return `true` if the struct has any fields, otherwise return `false`
+    pub fn is_empty(&self) -> bool {
+        self.fields.is_empty()
+    }
+
+    /// Add a field to the struct
+    pub fn add_field(&mut self, name: &str, value: &Base) -> Option<Base> {
+        self.fields.insert(name.to_string(), value.clone())
+    }
+
+    // Return the type of the given field name
+    pub fn get_field_type(&self, name: &str) -> Option<&Base> {
+        self.fields.get(name)
+    }
+
+    // Return a vector of field types
+    pub fn get_field_types(&self) -> Vec<Type> {
+        self.fields.values().map(|val| val.clone().into()).collect()
+    }
+
+    //Return a vector of field names
+    pub fn get_field_names(&self) -> Vec<String> {
+        self.fields.keys().cloned().collect()
+    }
 }
 
 impl TryFrom<&str> for FeString {
@@ -258,7 +303,14 @@ impl From<FixedSize> for Type {
             FixedSize::Tuple(tuple) => Type::Tuple(tuple),
             FixedSize::String(string) => Type::String(string),
             FixedSize::Contract(contract) => Type::Contract(contract),
+            FixedSize::Struct(val) => Type::Struct(val),
         }
+    }
+}
+
+impl From<Base> for Type {
+    fn from(value: Base) -> Self {
+        Type::Base(value)
     }
 }
 
@@ -270,6 +322,7 @@ impl FeSized for FixedSize {
             FixedSize::Tuple(tuple) => tuple.size(),
             FixedSize::String(string) => string.size(),
             FixedSize::Contract(contract) => contract.size(),
+            FixedSize::Struct(val) => val.size(),
         }
     }
 }
@@ -301,6 +354,7 @@ impl AbiEncoding for FixedSize {
             FixedSize::Tuple(tuple) => tuple.abi_name(),
             FixedSize::String(string) => string.abi_name(),
             FixedSize::Contract(contract) => contract.abi_name(),
+            FixedSize::Struct(val) => val.abi_name(),
         }
     }
 
@@ -311,6 +365,7 @@ impl AbiEncoding for FixedSize {
             FixedSize::Tuple(tuple) => tuple.abi_safe_name(),
             FixedSize::String(string) => string.abi_safe_name(),
             FixedSize::Contract(contract) => contract.abi_safe_name(),
+            FixedSize::Struct(val) => val.abi_safe_name(),
         }
     }
 
@@ -321,6 +376,7 @@ impl AbiEncoding for FixedSize {
             FixedSize::Tuple(tuple) => tuple.abi_type(),
             FixedSize::String(string) => string.abi_type(),
             FixedSize::Contract(contract) => contract.abi_type(),
+            FixedSize::Struct(val) => val.abi_type(),
         }
     }
 }
@@ -348,6 +404,7 @@ impl TryFrom<Type> for FixedSize {
             Type::Base(base) => Ok(FixedSize::Base(base)),
             Type::Tuple(tuple) => Ok(FixedSize::Tuple(tuple)),
             Type::String(string) => Ok(FixedSize::String(string)),
+            Type::Struct(val) => Ok(FixedSize::Struct(val)),
             Type::Map(_) => Err(SemanticError::type_error()),
             Type::Contract(contract) => Ok(FixedSize::Contract(contract)),
         }
@@ -540,6 +597,26 @@ impl From<Tuple> for FixedSize {
 impl FeSized for Tuple {
     fn size(&self) -> usize {
         self.items.iter().map(|typ| typ.size()).sum()
+    }
+}
+
+impl FeSized for Struct {
+    fn size(&self) -> usize {
+        self.fields.len() * 32
+    }
+}
+
+impl AbiEncoding for Struct {
+    fn abi_name(&self) -> String {
+        unimplemented!();
+    }
+
+    fn abi_safe_name(&self) -> String {
+        unimplemented!();
+    }
+
+    fn abi_type(&self) -> AbiType {
+        unimplemented!();
     }
 }
 

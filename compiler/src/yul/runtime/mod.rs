@@ -86,7 +86,14 @@ pub fn build(context: &Context, contract: &Spanned<fe::ModuleStmt>) -> Vec<yul::
                 .concat()
         };
 
-        return [std, encoding, decoding, contract_calls].concat();
+        let struct_apis = attributes
+            .structs
+            .iter()
+            .map(|val| functions::structs::struct_apis(val.to_owned()))
+            .collect::<Vec<_>>()
+            .concat();
+
+        return [std, encoding, decoding, contract_calls, struct_apis].concat();
     }
 
     panic!("missing contract attributes")
