@@ -7,7 +7,10 @@ use std::num::{
     ParseIntError,
 };
 
+use crate::FunctionAttributes;
 use num_bigint::BigInt;
+
+const ADDRESS_BYTE_LENGTH: usize = 20;
 
 pub fn u256_max() -> BigInt {
     BigInt::from(2).pow(256) - 1
@@ -99,6 +102,7 @@ pub enum Type {
     Map(Map),
     Tuple(Tuple),
     String(FeString),
+    Contract(Contract),
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
@@ -107,6 +111,7 @@ pub enum FixedSize {
     Array(Array),
     Tuple(Tuple),
     String(FeString),
+    Contract(Contract),
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
@@ -155,6 +160,12 @@ pub struct Tuple {
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
 pub struct FeString {
     pub max_size: usize,
+}
+
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+pub struct Contract {
+    pub name: String,
+    pub functions: Vec<FunctionAttributes>,
 }
 
 impl TryFrom<&str> for FeString {
@@ -246,6 +257,7 @@ impl From<FixedSize> for Type {
             FixedSize::Base(base) => Type::Base(base),
             FixedSize::Tuple(tuple) => Type::Tuple(tuple),
             FixedSize::String(string) => Type::String(string),
+            FixedSize::Contract(contract) => Type::Contract(contract),
         }
     }
 }
@@ -257,6 +269,7 @@ impl FeSized for FixedSize {
             FixedSize::Array(array) => array.size(),
             FixedSize::Tuple(tuple) => tuple.size(),
             FixedSize::String(string) => string.size(),
+            FixedSize::Contract(contract) => contract.size(),
         }
     }
 }
@@ -287,6 +300,7 @@ impl AbiEncoding for FixedSize {
             FixedSize::Base(base) => base.abi_name(),
             FixedSize::Tuple(tuple) => tuple.abi_name(),
             FixedSize::String(string) => string.abi_name(),
+            FixedSize::Contract(contract) => contract.abi_name(),
         }
     }
 
@@ -296,6 +310,7 @@ impl AbiEncoding for FixedSize {
             FixedSize::Base(base) => base.abi_safe_name(),
             FixedSize::Tuple(tuple) => tuple.abi_safe_name(),
             FixedSize::String(string) => string.abi_safe_name(),
+            FixedSize::Contract(contract) => contract.abi_safe_name(),
         }
     }
 
@@ -305,6 +320,7 @@ impl AbiEncoding for FixedSize {
             FixedSize::Array(array) => array.abi_type(),
             FixedSize::Tuple(tuple) => tuple.abi_type(),
             FixedSize::String(string) => string.abi_type(),
+            FixedSize::Contract(contract) => contract.abi_type(),
         }
     }
 }
@@ -333,6 +349,7 @@ impl TryFrom<Type> for FixedSize {
             Type::Tuple(tuple) => Ok(FixedSize::Tuple(tuple)),
             Type::String(string) => Ok(FixedSize::String(string)),
             Type::Map(_) => Err(SemanticError::type_error()),
+            Type::Contract(contract) => Ok(FixedSize::Contract(contract)),
         }
     }
 }
@@ -343,7 +360,7 @@ impl FeSized for Base {
             Base::Numeric(integer) => integer.size(),
             Base::Bool => 1,
             Base::Byte => 1,
-            Base::Address => 20,
+            Base::Address => ADDRESS_BYTE_LENGTH,
         }
     }
 }
@@ -457,7 +474,7 @@ impl AbiEncoding for Base {
             },
             Base::Address => AbiType::Uint {
                 size: AbiUintSize {
-                    data_size: 20,
+                    data_size: ADDRESS_BYTE_LENGTH,
                     padded_size: 32,
                 },
             },
@@ -568,17 +585,31 @@ impl AbiEncoding for FeString {
     }
 }
 
+impl FeSized for Contract {
+    fn size(&self) -> usize {
+        ADDRESS_BYTE_LENGTH
+    }
+}
+
+impl AbiEncoding for Contract {
+    fn abi_name(&self) -> String {
+        unimplemented!();
+    }
+
+    fn abi_safe_name(&self) -> String {
+        unimplemented!();
+    }
+
+    fn abi_type(&self) -> AbiType {
+        unimplemented!();
+    }
+}
+
 pub fn type_desc_fixed_size(
     defs: &HashMap<String, Type>,
     typ: &fe::TypeDesc,
 ) -> Result<FixedSize, SemanticError> {
-    match type_desc(defs, typ)? {
-        Type::Base(base) => Ok(FixedSize::Base(base)),
-        Type::Array(array) => Ok(FixedSize::Array(array)),
-        Type::Tuple(tuple) => Ok(FixedSize::Tuple(tuple)),
-        Type::String(string) => Ok(FixedSize::String(string)),
-        Type::Map(_) => Err(SemanticError::type_error()),
-    }
+    FixedSize::try_from(type_desc(defs, typ)?)
 }
 
 pub fn type_desc_base(

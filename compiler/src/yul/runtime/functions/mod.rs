@@ -2,6 +2,7 @@ use fe_analyzer::namespace::types::AbiDecodeLocation;
 use yultsur::*;
 
 pub mod abi;
+pub mod calls;
 pub mod data;
 
 /// Returns all functions that should be available during runtime.

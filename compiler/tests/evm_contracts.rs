@@ -1218,3 +1218,41 @@ fn two_contracts() {
         bar_harness.test_function(&mut executor, "bar", &[], Some(&uint_token(26)));
     })
 }
+
+#[test]
+fn external_contract() {
+    with_executor(&|mut executor| {
+        let foo_harness = deploy_contract(&mut executor, "external_contract.fe", "Foo", &[]);
+        let proxy_harness = deploy_contract(&mut executor, "external_contract.fe", "FooProxy", &[]);
+
+        let foo_address = ethabi::Token::Address(foo_harness.address);
+        let my_num = uint_token(26);
+        let my_addrs = address_array_token(&["0", "1", "42", "3", "4"]);
+        let my_string = string_token("hello world");
+
+        proxy_harness.test_function(
+            &mut executor,
+            "call_emit_event",
+            &[
+                foo_address.clone(),
+                my_num.clone(),
+                my_addrs.clone(),
+                my_string.clone(),
+            ],
+            None,
+        );
+
+        let a = 26;
+        let b = 42;
+        let c = 26 * 42;
+
+        proxy_harness.test_function(
+            &mut executor,
+            "call_build_array",
+            &[foo_address, uint_token(a), uint_token(b)],
+            Some(&u256_array_token(&[a, c, b])),
+        );
+
+        foo_harness.events_emitted(executor, &[("MyEvent", &[my_num, my_addrs, my_string])]);
+    })
+}

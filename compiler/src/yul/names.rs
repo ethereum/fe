@@ -39,6 +39,12 @@ pub fn decode_name<T: AbiEncoding>(typ: &T, location: AbiDecodeLocation) -> yul:
     identifier! { (full_name) }
 }
 
+/// Generates an external call function name for a given type and location.
+pub fn contract_call(contract_name: &str, func_name: &str) -> yul::Identifier {
+    let name = format!("{}_{}", contract_name, func_name);
+    identifier! { (name) }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::yul::names::{

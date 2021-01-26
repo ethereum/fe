@@ -3,9 +3,13 @@ mod functions;
 
 use fe_analyzer::namespace::types::{
     AbiDecodeLocation,
+    Contract,
     FixedSize,
 };
-use fe_analyzer::Context;
+use fe_analyzer::{
+    Context,
+    FunctionAttributes,
+};
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use yultsur::*;
@@ -14,6 +18,10 @@ use yultsur::*;
 pub fn build(context: &Context, contract: &Spanned<fe::ModuleStmt>) -> Vec<yul::Statement> {
     if let Some(attributes) = context.get_contract(contract) {
         let std = functions::std();
+
+        let external_functions =
+            concat_contract_functions(attributes.external_contracts.to_owned());
+
         let encoding = {
             let public_functions_batch = attributes
                 .public_functions
@@ -28,7 +36,13 @@ pub fn build(context: &Context, contract: &Spanned<fe::ModuleStmt>) -> Vec<yul::
                 .map(|event| event.non_indexed_field_types())
                 .collect::<Vec<_>>();
 
-            let batch = [public_functions_batch, events_batch].concat();
+            let contracts_batch = external_functions
+                .clone()
+                .into_iter()
+                .map(|function| function.param_types)
+                .collect();
+
+            let batch = [public_functions_batch, events_batch, contracts_batch].concat();
             functions::abi::batch_encode(batch)
         };
         let decoding = {
@@ -54,14 +68,37 @@ pub fn build(context: &Context, contract: &Spanned<fe::ModuleStmt>) -> Vec<yul::
                     vec![]
                 };
 
-            let batch = [public_functions_batch, init_params_batch].concat();
+            let contracts_batch = external_functions
+                .into_iter()
+                .filter(|function| !function.return_type.is_empty_tuple())
+                .map(|function| (function.return_type, AbiDecodeLocation::Memory))
+                .collect();
+
+            let batch = [public_functions_batch, init_params_batch, contracts_batch].concat();
             functions::abi::batch_decode(batch)
         };
+        let contract_calls = {
+            attributes
+                .external_contracts
+                .iter()
+                .map(|contract| functions::calls::contract_calls(contract.to_owned()))
+                .collect::<Vec<_>>()
+                .concat()
+        };
 
-        return [std, encoding, decoding].concat();
+        return [std, encoding, decoding, contract_calls].concat();
     }
 
     panic!("missing contract attributes")
+}
+
+/// Concatenates the functions inside of each contracts.
+fn concat_contract_functions(contracts: Vec<Contract>) -> Vec<FunctionAttributes> {
+    contracts
+        .into_iter()
+        .map(|contract| contract.functions)
+        .collect::<Vec<_>>()
+        .concat()
 }
 
 /// Builds the set of function statements that are needed during as well as an
