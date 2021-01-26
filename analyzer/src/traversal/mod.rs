@@ -5,4 +5,5 @@ mod declarations;
 mod expressions;
 mod functions;
 pub mod module;
+mod structs;
 mod types;

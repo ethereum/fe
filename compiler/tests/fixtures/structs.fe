@@ -1,7 +1,21 @@
 struct House:
     price: u256
     size: u256
+    vacant: bool
 
+contract Foo:
 
-contract City:
-    pub house: House
+    pub def bar() -> u256:
+        building: House = House(300, 500, true)
+        assert building.size == 500
+        assert building.price == 300
+        assert building.vacant
+
+        building.vacant = false
+        building.price = 1
+        building.size = 2
+
+        assert building.vacant == false
+        assert building.price == 1
+        assert building.size == 2
+        return building.size

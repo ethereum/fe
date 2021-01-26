@@ -116,7 +116,7 @@ pub enum ContractStmt<'a> {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum StructStmt<'a> {
     StructField {
-        //qual: Option<Spanned<ContractFieldQual>>,
+        qual: Option<Spanned<StructFieldQual>>,
         #[serde(borrow)]
         name: Spanned<&'a str>,
         typ: Spanned<TypeDesc<'a>>,

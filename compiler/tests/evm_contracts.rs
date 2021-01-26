@@ -955,7 +955,8 @@ fn sized_vals_in_sto() {
 #[test]
 fn structs() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "structs.fe", "Foo", vec![]);
+        let harness = deploy_contract(&mut executor, "structs.fe", "Foo", &[]);
+        harness.test_function(&mut executor, "bar", &[], Some(&uint_token(2)));
     });
 }
 

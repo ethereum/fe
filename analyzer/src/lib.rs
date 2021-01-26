@@ -19,6 +19,7 @@ use crate::namespace::scopes::{
 use crate::namespace::types::{
     Contract,
     FixedSize,
+    Struct,
     Type,
 };
 use fe_parser::ast as fe;
@@ -55,6 +56,7 @@ impl Location {
             Type::Array(_) => Ok(Location::Memory),
             Type::Tuple(_) => Ok(Location::Memory),
             Type::String(_) => Ok(Location::Memory),
+            Type::Struct(_) => Ok(Location::Memory),
             Type::Map(_) => Err(SemanticError::cannot_move()),
         }
     }
@@ -71,6 +73,8 @@ pub struct ContractAttributes {
     pub events: Vec<Event>,
     /// Static strings that the contract defines
     pub string_literals: HashSet<String>,
+    /// Structs that have been defined by the user
+    pub structs: Vec<Struct>,
     /// External contracts that may be called from within this contract.
     pub external_contracts: Vec<Contract>,
 }
@@ -108,6 +112,14 @@ impl From<Shared<ContractScope>> for ContractAttributes {
             }
         });
 
+        let structs = scope.borrow().get_module_type_defs(|typ| {
+            if let Type::Struct(val) = typ {
+                Some(val.to_owned())
+            } else {
+                None
+            }
+        });
+
         ContractAttributes {
             public_functions,
             init_function,
@@ -118,6 +130,7 @@ impl From<Shared<ContractScope>> for ContractAttributes {
                 .map(|event| event.to_owned())
                 .collect::<Vec<Event>>(),
             string_literals: scope.borrow().string_defs.clone(),
+            structs,
             external_contracts,
         }
     }
@@ -248,12 +261,8 @@ impl Context {
     }
 
     /// Attribute contextual information to an expression node.
-    pub fn add_expression(
-        &mut self,
-        spanned: &Spanned<fe::Expr>,
-        attributes: ExpressionAttributes,
-    ) {
-        self.expressions.insert(spanned.span, attributes);
+    pub fn add_expression<T: Into<Span>>(&mut self, span: T, attributes: ExpressionAttributes) {
+        self.expressions.insert(span.into(), attributes);
     }
 
     /// Get information that has been attributed to an expression node.

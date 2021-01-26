@@ -4,7 +4,10 @@ use crate::namespace::scopes::{
     Shared,
 };
 use crate::namespace::types;
-use crate::traversal::contracts;
+use crate::traversal::{
+    contracts,
+    structs,
+};
 use crate::Context;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
@@ -17,10 +20,12 @@ pub fn module(context: Shared<Context>, module: &fe::Module) -> Result<(), Seman
     for stmt in module.body.iter() {
         match &stmt.node {
             fe::ModuleStmt::TypeDef { .. } => type_def(Rc::clone(&scope), stmt)?,
+            fe::ModuleStmt::StructDef { name, body } => {
+                structs::struct_def(Rc::clone(&scope), name.node, body)?
+            }
             fe::ModuleStmt::ContractDef { .. } => {
                 contracts::contract_def(Rc::clone(&scope), Rc::clone(&context), stmt)?
             }
-            fe::ModuleStmt::StructDef { .. } => unimplemented!(),
             fe::ModuleStmt::FromImport { .. } => unimplemented!(),
             fe::ModuleStmt::SimpleImport { .. } => unimplemented!(),
         }
