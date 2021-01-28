@@ -1,13 +1,13 @@
 use crate::errors::CompileError;
 use crate::yul::mappers::expressions;
 use crate::yul::operations::data as data_operations;
-use fe_parser::ast as fe;
-use fe_parser::span::Spanned;
-use fe_semantics::namespace::types::FixedSize;
-use fe_semantics::{
+use fe_analyzer::namespace::types::FixedSize;
+use fe_analyzer::{
     Context,
     Location,
 };
+use fe_parser::ast as fe;
+use fe_parser::span::Spanned;
 use std::convert::TryFrom;
 use yultsur::*;
 
@@ -90,18 +90,18 @@ fn expr_as_ident(expr: yul::Expression) -> Result<yul::Identifier, CompileError>
 #[cfg(test)]
 mod tests {
     use crate::yul::mappers::assignments::assign;
-    use fe_parser as parser;
-    use fe_semantics::namespace::types::{
+    use fe_analyzer::namespace::types::{
         Array,
         Type,
         U256,
     };
-    use fe_semantics::test_utils::ContextHarness;
-    use fe_semantics::{
+    use fe_analyzer::test_utils::ContextHarness;
+    use fe_analyzer::{
         Context,
         ExpressionAttributes,
         Location,
     };
+    use fe_parser as parser;
     use rstest::rstest;
 
     fn map(context: &Context, src: &str) -> String {

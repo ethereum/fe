@@ -1,5 +1,5 @@
 [package]
-name = "fe-semantics"
+name = "fe-analyzer"
 version = "0.1.0-alpha"
 authors = ["Ethereum Foundation <snakecharmers@ethereum.org>"]
 edition = "2018"

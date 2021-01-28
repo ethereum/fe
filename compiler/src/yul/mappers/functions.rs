@@ -7,16 +7,16 @@ use crate::yul::mappers::{
 use crate::yul::names;
 use crate::yul::operations::data as data_operations;
 use crate::yul::utils;
-use fe_parser::ast as fe;
-use fe_parser::span::Spanned;
-use fe_semantics::namespace::types::{
+use fe_analyzer::namespace::types::{
     FeSized,
     Type,
 };
-use fe_semantics::{
+use fe_analyzer::{
     Context,
     ExpressionAttributes,
 };
+use fe_parser::ast as fe;
+use fe_parser::span::Spanned;
 use yultsur::*;
 
 pub fn multiple_func_stmt(

@@ -1,13 +1,13 @@
-use fe_parser::ast as fe;
-use fe_parser::span::{
-    Span,
-    Spanned,
-};
-use fe_semantics::namespace::types::{
+use fe_analyzer::namespace::types::{
     AbiArraySize,
     AbiEncoding,
     AbiType,
     AbiUintSize,
+};
+use fe_parser::ast as fe;
+use fe_parser::span::{
+    Span,
+    Spanned,
 };
 
 /// Creates a new spanned expression. Useful in cases where an `Expr` is nested
@@ -59,7 +59,7 @@ pub fn ceil_32(n: usize) -> usize {
 #[cfg(test)]
 mod tests {
     use crate::yul::utils::abi_head_offsets;
-    use fe_semantics::namespace::types::{
+    use fe_analyzer::namespace::types::{
         Array,
         Base,
         FeString,

@@ -611,6 +611,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "fe-analyzer"
+version = "0.1.0-alpha"
+dependencies = [
+ "ansi_term 0.12.1",
+ "fe-common",
+ "fe-parser",
+ "hex",
+ "num-bigint",
+ "rstest",
+ "tiny-keccak 2.0.2",
+]
+
+[[package]]
 name = "fe-common"
 version = "0.1.0-alpha"
 dependencies = [
@@ -625,9 +638,9 @@ dependencies = [
  "ethabi",
  "evm",
  "evm-runtime",
+ "fe-analyzer",
  "fe-common",
  "fe-parser",
- "fe-semantics",
  "hex",
  "primitive-types",
  "rand",
@@ -650,19 +663,6 @@ dependencies = [
  "serde_json",
  "wasm-bindgen",
  "wasm-bindgen-test",
-]
-
-[[package]]
-name = "fe-semantics"
-version = "0.1.0-alpha"
-dependencies = [
- "ansi_term 0.12.1",
- "fe-common",
- "fe-parser",
- "hex",
- "num-bigint",
- "rstest",
- "tiny-keccak 2.0.2",
 ]
 
 [[package]]

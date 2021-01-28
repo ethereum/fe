@@ -1,7 +1,7 @@
 use crate::yul::names;
 use crate::yul::operations::data as data_operations;
 use crate::yul::utils;
-use fe_semantics::namespace::types::{
+use fe_analyzer::namespace::types::{
     AbiArraySize,
     AbiDecodeLocation,
     AbiEncoding,
@@ -337,7 +337,7 @@ mod tests {
         decode,
         encode,
     };
-    use fe_semantics::namespace::types::{
+    use fe_analyzer::namespace::types::{
         AbiDecodeLocation,
         Base,
         FeString,

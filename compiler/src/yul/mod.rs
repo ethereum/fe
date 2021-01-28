@@ -5,7 +5,7 @@ use crate::types::{
     FeModuleAst,
     NamedYulContracts,
 };
-use fe_semantics::Context;
+use fe_analyzer::Context;
 
 mod constructor;
 mod mappers;

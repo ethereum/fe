@@ -1,14 +1,14 @@
 use crate::errors::CompileError;
 use crate::yul::mappers::expressions;
 use crate::yul::names;
-use fe_parser::ast as fe;
-use fe_parser::span::Spanned;
-use fe_semantics::namespace::types::{
+use fe_analyzer::namespace::types::{
     Array,
     FeSized,
     FixedSize,
 };
-use fe_semantics::Context;
+use fe_analyzer::Context;
+use fe_parser::ast as fe;
+use fe_parser::span::Spanned;
 use yultsur::*;
 
 /// Builds a Yul statement from a Fe variable declaration
@@ -80,20 +80,20 @@ fn var_decl_array(
 #[cfg(test)]
 mod tests {
     use crate::yul::mappers::declarations::var_decl;
-    use fe_parser as parser;
-    use fe_semantics::namespace::types::{
+    use fe_analyzer::namespace::types::{
         Array,
         Base,
         FixedSize,
         Type,
         U256,
     };
-    use fe_semantics::test_utils::ContextHarness;
-    use fe_semantics::{
+    use fe_analyzer::test_utils::ContextHarness;
+    use fe_analyzer::{
         Context,
         ExpressionAttributes,
         Location,
     };
+    use fe_parser as parser;
 
     fn map(context: &Context, src: &str) -> String {
         let tokens = parser::get_parse_tokens(src).expect("Couldn't parse declaration");

@@ -1,13 +1,13 @@
 mod abi_dispatcher;
 mod functions;
 
-use fe_parser::ast as fe;
-use fe_parser::span::Spanned;
-use fe_semantics::namespace::types::{
+use fe_analyzer::namespace::types::{
     AbiDecodeLocation,
     FixedSize,
 };
-use fe_semantics::Context;
+use fe_analyzer::Context;
+use fe_parser::ast as fe;
+use fe_parser::span::Spanned;
 use yultsur::*;
 
 /// Builds the set of function statements that are needed during runtime.

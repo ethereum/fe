@@ -1,4 +1,4 @@
-use fe_semantics::namespace::types::{
+use fe_analyzer::namespace::types::{
     AbiDecodeLocation,
     AbiEncoding,
 };
@@ -45,7 +45,7 @@ mod tests {
         decode_name,
         encode_name,
     };
-    use fe_semantics::namespace::types::{
+    use fe_analyzer::namespace::types::{
         AbiDecodeLocation,
         Array,
         Base,

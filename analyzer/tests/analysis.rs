@@ -1,18 +1,18 @@
-use fe_parser::ast as fe;
-use fe_parser::span::{
-    Span,
-    Spanned,
-};
-use fe_semantics;
-use fe_semantics::namespace::types::{
+use fe_analyzer;
+use fe_analyzer::namespace::types::{
     Array,
     Base,
     Map,
     Type,
 };
-use fe_semantics::{
+use fe_analyzer::{
     ExpressionAttributes,
     Location,
+};
+use fe_parser::ast as fe;
+use fe_parser::span::{
+    Span,
+    Spanned,
 };
 
 const GUEST_BOOK: &str = include_str!("fixtures/guest_book.fe");
@@ -91,7 +91,7 @@ fn guest_book_analysis() {
         .1
         .node;
 
-    let context = fe_semantics::analysis(&fe_module).expect("failed to perform semantic analysis");
+    let context = fe_analyzer::analyze(&fe_module).expect("failed to perform semantic analysis");
 
     for (start, end, expected) in &[
         (196, 206, &addr_val()),
