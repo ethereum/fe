@@ -316,6 +316,7 @@ fn expr_attribute(
             Ok(Object::Block) => expr_attribute_block(attr),
             Ok(Object::Chain) => expr_attribute_chain(attr),
             Ok(Object::Msg) => expr_attribute_msg(attr),
+            Ok(Object::Tx) => expr_attribute_tx(attr),
             Ok(Object::Self_) => expr_attribute_self(context, exp),
             Err(_) => Err(CompileError::static_str("invalid attributes")),
         };
@@ -350,6 +351,15 @@ fn expr_attribute_msg(attr: &Spanned<&str>) -> Result<yul::Expression, CompileEr
         Ok(MsgField::Sender) => Ok(expression! { caller() }),
         Ok(MsgField::Sig) => todo!(),
         Ok(MsgField::Value) => Ok(expression! { callvalue() }),
+        Err(_) => Err(CompileError::static_str("invalid `msg` attribute name")),
+    }
+}
+
+fn expr_attribute_tx(attr: &Spanned<&str>) -> Result<yul::Expression, CompileError> {
+    use builtins::TxField;
+    match TxField::from_str(attr.node) {
+        Ok(TxField::GasPrice) => Ok(expression! { gasprice() }),
+        Ok(TxField::Origin) => Ok(expression! { origin() }),
         Err(_) => Err(CompileError::static_str("invalid `msg` attribute name")),
     }
 }
@@ -526,7 +536,9 @@ mod tests {
         case("block.timestamp", "timestamp()", Type::Base(U256)),
         case("chain.id", "chainid()", Type::Base(U256)),
         case("msg.sender", "caller()", Type::Base(Base::Address)),
-        case("msg.value", "callvalue()", Type::Base(U256))
+        case("msg.value", "callvalue()", Type::Base(U256)),
+        case("tx.origin", "origin()", Type::Base(Base::Address)),
+        case("tx.gas_price", "gasprice()", Type::Base(U256))
     )]
     fn builtin_attribute(expression: &str, expected_yul: &str, typ: Type) {
         let mut harness = ContextHarness::new(expression);

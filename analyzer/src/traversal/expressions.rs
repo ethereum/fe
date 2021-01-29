@@ -279,6 +279,7 @@ fn expr_attribute(
             Ok(Object::Block) => expr_attribute_block(attr),
             Ok(Object::Chain) => expr_attribute_chain(attr),
             Ok(Object::Msg) => expr_attribute_msg(attr),
+            Ok(Object::Tx) => expr_attribute_tx(attr),
             Ok(Object::Self_) => expr_attribute_self(scope, attr),
             Err(_) => Err(SemanticError::undefined_value()),
         };
@@ -326,6 +327,19 @@ fn expr_attribute_msg(attr: &Spanned<&str>) -> Result<ExpressionAttributes, Sema
         )),
         Ok(MsgField::Sig) => todo!(),
         Ok(MsgField::Value) => Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value)),
+        Err(_) => Err(SemanticError::undefined_value()),
+    }
+}
+
+fn expr_attribute_tx(attr: &Spanned<&str>) -> Result<ExpressionAttributes, SemanticError> {
+    use builtins::TxField;
+
+    match TxField::from_str(attr.node) {
+        Ok(TxField::GasPrice) => Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value)),
+        Ok(TxField::Origin) => Ok(ExpressionAttributes::new(
+            Type::Base(Base::Address),
+            Location::Value,
+        )),
         Err(_) => Err(SemanticError::undefined_value()),
     }
 }
@@ -656,12 +670,13 @@ fn expr_attribute_call_type(
             match Object::from_str(name) {
                 Ok(Object::Block) => todo!(),
                 Ok(Object::Chain) => todo!(),
+                Ok(Object::Msg) => todo!(), // TODO: error because msg has no methods?
+                Ok(Object::Tx) => todo!(),
                 Ok(Object::Self_) => {
                     return Ok(CallType::SelfAttribute {
                         func_name: attr.node.to_string(),
                     })
                 }
-                Ok(Object::Msg) => todo!(), // TODO: error because msg has no methods?
                 Err(_) => {}
             }
         };

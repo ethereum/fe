@@ -19,3 +19,9 @@ contract Foo:
 
     pub def value() -> u256:
         return msg.value
+
+    pub def origin() -> address:
+        return tx.origin
+
+    pub def gas_price() -> u256:
+        return tx.gas_price

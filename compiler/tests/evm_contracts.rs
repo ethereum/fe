@@ -570,7 +570,7 @@ fn return_builtin_attributes() {
 
     let vicinity = evm::backend::MemoryVicinity {
         gas_price: U256::from(gas_price),
-        origin: origin.to_address().unwrap(),
+        origin: origin.clone().to_address().unwrap(),
         chain_id: U256::from(chain_id),
         block_hashes: Vec::new(),
         block_number: U256::from(block_number),
@@ -611,6 +611,13 @@ fn return_builtin_attributes() {
             harness.test_function(&mut executor, "chainid", &[], Some(&uint_token(chain_id)));
             harness.test_function(&mut executor, "sender", &[], Some(&sender));
             harness.test_function(&mut executor, "value", &[], Some(&uint_token(value)));
+            harness.test_function(&mut executor, "origin", &[], Some(&origin));
+            harness.test_function(
+                &mut executor,
+                "gas_price",
+                &[],
+                Some(&uint_token(gas_price)),
+            );
         },
     )
 }
