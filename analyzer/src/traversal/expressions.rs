@@ -276,8 +276,8 @@ fn expr_attribute(
         use builtins::Object;
 
         return match Object::from_str(expr_name_str(value)?) {
-            Ok(Object::Block) => expr_attribute_msg(attr),
-            Ok(Object::Chain) => expr_attribute_msg(attr),
+            Ok(Object::Block) => expr_attribute_block(attr),
+            Ok(Object::Chain) => expr_attribute_chain(attr),
             Ok(Object::Msg) => expr_attribute_msg(attr),
             Ok(Object::Self_) => expr_attribute_self(scope, attr),
             Err(_) => Err(SemanticError::undefined_value()),
@@ -285,6 +285,34 @@ fn expr_attribute(
     }
 
     unreachable!()
+}
+
+fn expr_attribute_block(attr: &Spanned<&str>) -> Result<ExpressionAttributes, SemanticError> {
+    use builtins::BlockField;
+
+    match BlockField::from_str(attr.node) {
+        Ok(BlockField::Coinbase) => Ok(ExpressionAttributes::new(
+            Type::Base(Base::Address),
+            Location::Value,
+        )),
+        Ok(BlockField::Difficulty) => {
+            Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value))
+        }
+        Ok(BlockField::Number) => Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value)),
+        Ok(BlockField::Timestamp) => {
+            Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value))
+        }
+        Err(_) => Err(SemanticError::undefined_value()),
+    }
+}
+
+fn expr_attribute_chain(attr: &Spanned<&str>) -> Result<ExpressionAttributes, SemanticError> {
+    use builtins::ChainField;
+
+    match ChainField::from_str(attr.node) {
+        Ok(ChainField::Id) => Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value)),
+        Err(_) => Err(SemanticError::undefined_value()),
+    }
 }
 
 fn expr_attribute_msg(attr: &Spanned<&str>) -> Result<ExpressionAttributes, SemanticError> {
@@ -297,7 +325,7 @@ fn expr_attribute_msg(attr: &Spanned<&str>) -> Result<ExpressionAttributes, Sema
             Location::Value,
         )),
         Ok(MsgField::Sig) => todo!(),
-        Ok(MsgField::Value) => todo!(),
+        Ok(MsgField::Value) => Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value)),
         Err(_) => Err(SemanticError::undefined_value()),
     }
 }

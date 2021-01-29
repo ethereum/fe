@@ -26,6 +26,7 @@ struct ContractHarness {
     address: H160,
     abi: ethabi::Contract,
     caller: H160,
+    value: U256,
 }
 
 impl ContractHarness {
@@ -36,6 +37,7 @@ impl ContractHarness {
             address: contract_address,
             abi,
             caller,
+            value: U256::zero(),
         }
     }
 
@@ -50,7 +52,7 @@ impl ContractHarness {
         let context = evm::Context {
             address: self.address.clone(),
             caller: self.caller.clone(),
-            apparent_value: U256::zero(),
+            apparent_value: self.value,
         };
 
         let input = function
@@ -151,9 +153,13 @@ fn with_executor(test: &dyn Fn(Executor)) {
         block_gas_limit: primitive_types::U256::MAX,
     };
     let state: BTreeMap<primitive_types::H160, evm::backend::MemoryAccount> = BTreeMap::new();
-    let config = evm::Config::istanbul();
-
     let backend = evm::backend::MemoryBackend::new(&vicinity, state);
+
+    with_executor_backend(backend, test)
+}
+
+fn with_executor_backend(backend: evm::backend::MemoryBackend, test: &dyn Fn(Executor)) {
+    let config = evm::Config::istanbul();
     let executor = evm::executor::StackExecutor::new(&backend, usize::max_value(), &config);
 
     test(executor)
@@ -561,16 +567,65 @@ fn guest_book() {
 }
 
 #[test]
-fn return_sender() {
-    with_executor(&|mut executor| {
-        let mut harness = deploy_contract(&mut executor, "return_sender.fe", "Foo", vec![]);
+fn return_builtin_attributes() {
+    let gas_price = 123;
+    let origin = address_token("0000000000000000000000000000000000000001");
+    let chain_id = 42;
+    let block_number = 5;
+    let block_coinbase = address_token("0000000000000000000000000000000000000002");
+    let block_timestamp = 1234567890;
+    let block_difficulty = 12345;
 
-        let sender = address_token("1234000000000000000000000000000000005678");
+    let vicinity = evm::backend::MemoryVicinity {
+        gas_price: U256::from(gas_price),
+        origin: origin.clone().to_address().unwrap(),
+        chain_id: U256::from(chain_id),
+        block_hashes: Vec::new(),
+        block_number: U256::from(block_number),
+        block_coinbase: block_coinbase.clone().to_address().unwrap(),
+        block_timestamp: U256::from(block_timestamp),
+        block_difficulty: U256::from(block_difficulty),
+        block_gas_limit: primitive_types::U256::MAX,
+    };
 
-        harness.caller = sender.clone().to_address().unwrap();
-
-        harness.test_function(&mut executor, "bar", vec![], Some(sender));
-    })
+    with_executor_backend(
+        evm::backend::MemoryBackend::new(&vicinity, BTreeMap::new()),
+        &|mut executor| {
+            let mut harness =
+                deploy_contract(&mut executor, "return_builtin_attributes.fe", "Foo", vec![]);
+            let sender = address_token("1234000000000000000000000000000000005678");
+            harness.caller = sender.clone().to_address().unwrap();
+            let value = 55555;
+            harness.value = U256::from(value);
+            harness.test_function(
+                &mut executor,
+                "coinbase",
+                vec![],
+                Some(address_token("0000000000000000000000000000000000000002")),
+            );
+            harness.test_function(
+                &mut executor,
+                "difficulty",
+                vec![],
+                Some(uint_token(block_difficulty)),
+            );
+            harness.test_function(
+                &mut executor,
+                "number",
+                vec![],
+                Some(uint_token(block_number)),
+            );
+            harness.test_function(
+                &mut executor,
+                "timestamp",
+                vec![],
+                Some(uint_token(block_timestamp)),
+            );
+            harness.test_function(&mut executor, "chainid", vec![], Some(uint_token(chain_id)));
+            harness.test_function(&mut executor, "sender", vec![], Some(sender));
+            harness.test_function(&mut executor, "value", vec![], Some(uint_token(value)));
+        },
+    )
 }
 
 #[test]
