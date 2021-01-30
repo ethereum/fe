@@ -178,7 +178,7 @@ fn type_desc<'a>(
         fe::TypeDesc::Base { base: "i8" } => Ok(VarType::Int8),
         fe::TypeDesc::Base { base: "bool" } => Ok(VarType::Bool),
         fe::TypeDesc::Base { base: "address" } => Ok(VarType::Address),
-        fe::TypeDesc::Base { base } if &base[..6] == "string" => Ok(VarType::String),
+        fe::TypeDesc::Base { base } if base.starts_with("string") => Ok(VarType::String),
         fe::TypeDesc::Base { base } => {
             Err(CompileError::str(format!("unrecognized type: {}", base)))
         }
