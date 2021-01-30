@@ -41,7 +41,10 @@ pub fn compile(src: FeSrc, _with_bytecode: bool) -> Result<CompiledModule, Compi
     // compile to bytecode if required
     #[cfg(feature = "solc-backend")]
     let bytecode_contracts = if _with_bytecode {
-        evm::compile(yul_contracts.clone())?
+        match evm::compile(yul_contracts.clone()) {
+            Err(error) => panic!("Yul compilation failed: {}", error),
+            Ok(contracts) => contracts,
+        }
     } else {
         std::collections::HashMap::new()
     };
