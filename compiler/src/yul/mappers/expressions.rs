@@ -311,57 +311,43 @@ fn expr_attribute(
     exp: &Spanned<fe::Expr>,
 ) -> Result<yul::Expression, CompileError> {
     if let fe::Expr::Attribute { value, attr } = &exp.node {
-        use builtins::Object;
+        use builtins::{
+            BlockField,
+            ChainField,
+            MsgField,
+            Object,
+            TxField,
+        };
         return match Object::from_str(expr_name_str(value)?) {
-            Ok(Object::Block) => expr_attribute_block(attr),
-            Ok(Object::Chain) => expr_attribute_chain(attr),
-            Ok(Object::Msg) => expr_attribute_msg(attr),
-            Ok(Object::Tx) => expr_attribute_tx(attr),
             Ok(Object::Self_) => expr_attribute_self(context, exp),
+
+            Ok(Object::Block) => match BlockField::from_str(attr.node) {
+                Ok(BlockField::Coinbase) => Ok(expression! { coinbase() }),
+                Ok(BlockField::Difficulty) => Ok(expression! { difficulty() }),
+                Ok(BlockField::Number) => Ok(expression! { number() }),
+                Ok(BlockField::Timestamp) => Ok(expression! { timestamp() }),
+                Err(_) => Err(CompileError::static_str("invalid `block` attribute name")),
+            },
+            Ok(Object::Chain) => match ChainField::from_str(attr.node) {
+                Ok(ChainField::Id) => Ok(expression! { chainid() }),
+                Err(_) => Err(CompileError::static_str("invalid `chain` attribute name")),
+            },
+            Ok(Object::Msg) => match MsgField::from_str(attr.node) {
+                Ok(MsgField::Data) => todo!(),
+                Ok(MsgField::Sender) => Ok(expression! { caller() }),
+                Ok(MsgField::Sig) => todo!(),
+                Ok(MsgField::Value) => Ok(expression! { callvalue() }),
+                Err(_) => Err(CompileError::static_str("invalid `msg` attribute name")),
+            },
+            Ok(Object::Tx) => match TxField::from_str(attr.node) {
+                Ok(TxField::GasPrice) => Ok(expression! { gasprice() }),
+                Ok(TxField::Origin) => Ok(expression! { origin() }),
+                Err(_) => Err(CompileError::static_str("invalid `msg` attribute name")),
+            },
             Err(_) => Err(CompileError::static_str("invalid attributes")),
         };
     }
-
     unreachable!()
-}
-
-fn expr_attribute_block(attr: &Spanned<&str>) -> Result<yul::Expression, CompileError> {
-    use builtins::BlockField;
-    match BlockField::from_str(attr.node) {
-        Ok(BlockField::Coinbase) => Ok(expression! { coinbase() }),
-        Ok(BlockField::Difficulty) => Ok(expression! { difficulty() }),
-        Ok(BlockField::Number) => Ok(expression! { number() }),
-        Ok(BlockField::Timestamp) => Ok(expression! { timestamp() }),
-        Err(_) => Err(CompileError::static_str("invalid `block` attribute name")),
-    }
-}
-
-fn expr_attribute_chain(attr: &Spanned<&str>) -> Result<yul::Expression, CompileError> {
-    use builtins::ChainField;
-    match ChainField::from_str(attr.node) {
-        Ok(ChainField::Id) => Ok(expression! { chainid() }),
-        Err(_) => Err(CompileError::static_str("invalid `chain` attribute name")),
-    }
-}
-
-fn expr_attribute_msg(attr: &Spanned<&str>) -> Result<yul::Expression, CompileError> {
-    use builtins::MsgField;
-    match MsgField::from_str(attr.node) {
-        Ok(MsgField::Data) => todo!(),
-        Ok(MsgField::Sender) => Ok(expression! { caller() }),
-        Ok(MsgField::Sig) => todo!(),
-        Ok(MsgField::Value) => Ok(expression! { callvalue() }),
-        Err(_) => Err(CompileError::static_str("invalid `msg` attribute name")),
-    }
-}
-
-fn expr_attribute_tx(attr: &Spanned<&str>) -> Result<yul::Expression, CompileError> {
-    use builtins::TxField;
-    match TxField::from_str(attr.node) {
-        Ok(TxField::GasPrice) => Ok(expression! { gasprice() }),
-        Ok(TxField::Origin) => Ok(expression! { origin() }),
-        Err(_) => Err(CompileError::static_str("invalid `msg` attribute name")),
-    }
 }
 
 fn expr_attribute_self(

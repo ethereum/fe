@@ -273,75 +273,48 @@ fn expr_attribute(
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::Attribute { value, attr } = &exp.node {
-        use builtins::Object;
+        use builtins::{
+            BlockField,
+            ChainField,
+            MsgField,
+            Object,
+            TxField,
+        };
+
+        let val = |t| Ok(ExpressionAttributes::new(Type::Base(t), Location::Value));
+        let err = || Err(SemanticError::undefined_value());
 
         return match Object::from_str(expr_name_str(value)?) {
-            Ok(Object::Block) => expr_attribute_block(attr),
-            Ok(Object::Chain) => expr_attribute_chain(attr),
-            Ok(Object::Msg) => expr_attribute_msg(attr),
-            Ok(Object::Tx) => expr_attribute_tx(attr),
             Ok(Object::Self_) => expr_attribute_self(scope, attr),
-            Err(_) => Err(SemanticError::undefined_value()),
+
+            Ok(Object::Block) => match BlockField::from_str(attr.node) {
+                Ok(BlockField::Coinbase) => val(Base::Address),
+                Ok(BlockField::Difficulty) => val(U256),
+                Ok(BlockField::Number) => val(U256),
+                Ok(BlockField::Timestamp) => val(U256),
+                Err(_) => err(),
+            },
+            Ok(Object::Chain) => match ChainField::from_str(attr.node) {
+                Ok(ChainField::Id) => val(U256),
+                Err(_) => err(),
+            },
+            Ok(Object::Msg) => match MsgField::from_str(attr.node) {
+                Ok(MsgField::Data) => todo!(),
+                Ok(MsgField::Sender) => val(Base::Address),
+                Ok(MsgField::Sig) => todo!(),
+                Ok(MsgField::Value) => val(U256),
+                Err(_) => err(),
+            },
+            Ok(Object::Tx) => match TxField::from_str(attr.node) {
+                Ok(TxField::GasPrice) => val(U256),
+                Ok(TxField::Origin) => val(Base::Address),
+                Err(_) => err(),
+            },
+            Err(_) => err(),
         };
     }
 
     unreachable!()
-}
-
-fn expr_attribute_block(attr: &Spanned<&str>) -> Result<ExpressionAttributes, SemanticError> {
-    use builtins::BlockField;
-
-    match BlockField::from_str(attr.node) {
-        Ok(BlockField::Coinbase) => Ok(ExpressionAttributes::new(
-            Type::Base(Base::Address),
-            Location::Value,
-        )),
-        Ok(BlockField::Difficulty) => {
-            Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value))
-        }
-        Ok(BlockField::Number) => Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value)),
-        Ok(BlockField::Timestamp) => {
-            Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value))
-        }
-        Err(_) => Err(SemanticError::undefined_value()),
-    }
-}
-
-fn expr_attribute_chain(attr: &Spanned<&str>) -> Result<ExpressionAttributes, SemanticError> {
-    use builtins::ChainField;
-
-    match ChainField::from_str(attr.node) {
-        Ok(ChainField::Id) => Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value)),
-        Err(_) => Err(SemanticError::undefined_value()),
-    }
-}
-
-fn expr_attribute_msg(attr: &Spanned<&str>) -> Result<ExpressionAttributes, SemanticError> {
-    use builtins::MsgField;
-
-    match MsgField::from_str(attr.node) {
-        Ok(MsgField::Data) => todo!(),
-        Ok(MsgField::Sender) => Ok(ExpressionAttributes::new(
-            Type::Base(Base::Address),
-            Location::Value,
-        )),
-        Ok(MsgField::Sig) => todo!(),
-        Ok(MsgField::Value) => Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value)),
-        Err(_) => Err(SemanticError::undefined_value()),
-    }
-}
-
-fn expr_attribute_tx(attr: &Spanned<&str>) -> Result<ExpressionAttributes, SemanticError> {
-    use builtins::TxField;
-
-    match TxField::from_str(attr.node) {
-        Ok(TxField::GasPrice) => Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value)),
-        Ok(TxField::Origin) => Ok(ExpressionAttributes::new(
-            Type::Base(Base::Address),
-            Location::Value,
-        )),
-        Err(_) => Err(SemanticError::undefined_value()),
-    }
 }
 
 fn expr_attribute_self(
@@ -668,10 +641,9 @@ fn expr_attribute_call_type(
         if let fe::Expr::Name(name) = value.node {
             use builtins::Object;
             match Object::from_str(name) {
-                Ok(Object::Block) => todo!(),
-                Ok(Object::Chain) => todo!(),
-                Ok(Object::Msg) => todo!(), // TODO: error because msg has no methods?
-                Ok(Object::Tx) => todo!(),
+                Ok(Object::Block) | Ok(Object::Chain) | Ok(Object::Msg) | Ok(Object::Tx) => {
+                    return Err(SemanticError::undefined_value())
+                }
                 Ok(Object::Self_) => {
                     return Ok(CallType::SelfAttribute {
                         func_name: attr.node.to_string(),
