@@ -2,10 +2,10 @@ use crate::errors::CompileError;
 use crate::yul::constructor;
 use crate::yul::mappers::functions;
 use crate::yul::runtime;
+use fe_analyzer::Context;
 use fe_common::utils::keccak::get_full_signature;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
-use fe_semantics::Context;
 use yultsur::*;
 
 /// Builds a Yul object from a Fe contract.

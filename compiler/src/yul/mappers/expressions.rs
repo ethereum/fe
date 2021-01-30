@@ -2,19 +2,19 @@ use crate::errors::CompileError;
 use crate::yul::names;
 use crate::yul::operations::data as data_operations;
 use crate::yul::utils;
-use fe_common::utils::keccak::get_full_signature;
-use fe_parser::ast as fe;
-use fe_parser::span::Spanned;
-use fe_semantics::builtins;
-use fe_semantics::namespace::types::{
+use fe_analyzer::builtins;
+use fe_analyzer::namespace::types::{
     FixedSize,
     Type,
 };
-use fe_semantics::{
+use fe_analyzer::{
     CallType,
     Context,
     Location,
 };
+use fe_common::utils::keccak::get_full_signature;
+use fe_parser::ast as fe;
+use fe_parser::span::Spanned;
 use std::convert::TryFrom;
 use yultsur::*;
 
@@ -378,19 +378,19 @@ mod tests {
         expr,
         Location,
     };
-    use fe_parser as parser;
-    use fe_semantics::namespace::types::{
+    use fe_analyzer::namespace::types::{
         Array,
         Base,
         Map,
         Type,
         U256,
     };
-    use fe_semantics::test_utils::ContextHarness;
-    use fe_semantics::{
+    use fe_analyzer::test_utils::ContextHarness;
+    use fe_analyzer::{
         Context,
         ExpressionAttributes,
     };
+    use fe_parser as parser;
     use rstest::rstest;
 
     fn map(context: &Context, src: &str) -> String {

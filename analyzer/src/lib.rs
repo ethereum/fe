@@ -310,7 +310,7 @@ impl Context {
 
 /// Performs semantic analysis of the source program and returns a `Context`
 /// instance.
-pub fn analysis(module: &fe::Module) -> Result<Context, SemanticError> {
+pub fn analyze(module: &fe::Module) -> Result<Context, SemanticError> {
     let context = Context::new_shared();
     traversal::module::module(Rc::clone(&context), module)?;
     Ok(Rc::try_unwrap(context)

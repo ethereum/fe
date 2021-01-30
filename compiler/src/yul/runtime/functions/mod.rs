@@ -1,4 +1,4 @@
-use fe_semantics::namespace::types::AbiDecodeLocation;
+use fe_analyzer::namespace::types::AbiDecodeLocation;
 use yultsur::*;
 
 pub mod abi;

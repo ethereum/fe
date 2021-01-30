@@ -1,6 +1,6 @@
 use crate::yul::operations::abi as abi_operations;
-use fe_semantics::namespace::events::Event;
-use fe_semantics::namespace::types::{
+use fe_analyzer::namespace::events::Event;
+use fe_analyzer::namespace::types::{
     Array,
     FeSized,
     FixedSize,
@@ -128,8 +128,8 @@ mod tests {
         emit_event,
         sum,
     };
-    use fe_semantics::namespace::events::Event;
-    use fe_semantics::namespace::types::{
+    use fe_analyzer::namespace::events::Event;
+    use fe_analyzer::namespace::types::{
         Base,
         FixedSize,
         U256,

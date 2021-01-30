@@ -1,7 +1,7 @@
 use crate::errors::CompileError;
 use crate::yul::mappers::contracts;
+use fe_analyzer::Context;
 use fe_parser::ast as fe;
-use fe_semantics::Context;
 use std::collections::HashMap;
 use yultsur::yul;
 

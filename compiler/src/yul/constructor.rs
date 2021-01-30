@@ -1,5 +1,5 @@
 use crate::yul::operations::abi as abi_operations;
-use fe_semantics::namespace::types::{
+use fe_analyzer::namespace::types::{
     AbiDecodeLocation,
     FixedSize,
 };

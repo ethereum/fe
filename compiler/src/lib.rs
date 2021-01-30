@@ -32,7 +32,7 @@ pub fn compile(src: FeSrc, _with_bytecode: bool) -> Result<CompiledModule, Compi
     let json_abis = abi::build(&fe_module)?;
 
     // analyze source code
-    let context = fe_semantics::analysis(&fe_module)
+    let context = fe_analyzer::analyze(&fe_module)
         .map_err(|error| CompileError::str(error.format_user(src)))?;
 
     // compile to yul
