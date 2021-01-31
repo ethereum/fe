@@ -1,13 +1,11 @@
+use crate::builtins;
 use crate::errors::SemanticError;
+use crate::namespace::operations;
 use crate::namespace::scopes::{
     BlockScope,
     ContractFunctionDef,
     Shared,
 };
-use std::convert::TryFrom;
-
-use crate::builtins;
-use crate::namespace::operations;
 use crate::namespace::types::{
     Array,
     Base,
@@ -31,7 +29,9 @@ use crate::{
 
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
+use std::convert::TryFrom;
 use std::rc::Rc;
+use std::str::FromStr;
 
 /// Gather context information for expressions and check for type errors.
 pub fn expr(
@@ -273,10 +273,14 @@ fn expr_attribute(
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::Attribute { value, attr } = &exp.node {
-        return match expr_name_str(value)? {
-            builtins::MSG => expr_attribute_msg(attr),
-            builtins::SELF => expr_attribute_self(scope, attr),
-            _ => Err(SemanticError::undefined_value()),
+        use builtins::Object;
+
+        return match Object::from_str(expr_name_str(value)?) {
+            Ok(Object::Block) => expr_attribute_msg(attr),
+            Ok(Object::Chain) => expr_attribute_msg(attr),
+            Ok(Object::Msg) => expr_attribute_msg(attr),
+            Ok(Object::Self_) => expr_attribute_self(scope, attr),
+            Err(_) => Err(SemanticError::undefined_value()),
         };
     }
 
@@ -284,12 +288,17 @@ fn expr_attribute(
 }
 
 fn expr_attribute_msg(attr: &Spanned<&str>) -> Result<ExpressionAttributes, SemanticError> {
-    match attr.node {
-        builtins::SENDER => Ok(ExpressionAttributes::new(
+    use builtins::MsgField;
+
+    match MsgField::from_str(attr.node) {
+        Ok(MsgField::Data) => todo!(),
+        Ok(MsgField::Sender) => Ok(ExpressionAttributes::new(
             Type::Base(Base::Address),
             Location::Value,
         )),
-        _ => Err(SemanticError::undefined_value()),
+        Ok(MsgField::Sig) => todo!(),
+        Ok(MsgField::Value) => todo!(),
+        Err(_) => Err(SemanticError::undefined_value()),
     }
 }
 
@@ -526,10 +535,13 @@ fn expr_call_value_attribute(
             return Err(SemanticError::wrong_number_of_params());
         }
 
-        return match attr.node {
-            builtins::CLONE => value_attributes.into_cloned(),
-            builtins::TO_MEM => value_attributes.into_cloned_from_sto(),
-            _ => Err(SemanticError::undefined_value()),
+        use builtins::Method;
+        return match Method::from_str(attr.node).map_err(|_| SemanticError::undefined_value())? {
+            Method::Clone => value_attributes.into_cloned(),
+            Method::ToMem => value_attributes.into_cloned_from_sto(),
+            Method::Keccak256 => todo!(),
+            Method::AbiEncode => todo!(),
+            Method::AbiEncodePacked => todo!(),
         };
     }
 
@@ -611,12 +623,21 @@ fn expr_attribute_call_type(
     exp: &Spanned<fe::Expr>,
 ) -> Result<CallType, SemanticError> {
     if let fe::Expr::Attribute { value, attr } = &exp.node {
-        return match value.node {
-            fe::Expr::Name(builtins::SELF) => Ok(CallType::SelfAttribute {
-                func_name: attr.node.to_string(),
-            }),
-            _ => Ok(CallType::ValueAttribute),
+        if let fe::Expr::Name(name) = value.node {
+            use builtins::Object;
+            match Object::from_str(name) {
+                Ok(Object::Block) => todo!(),
+                Ok(Object::Chain) => todo!(),
+                Ok(Object::Self_) => {
+                    return Ok(CallType::SelfAttribute {
+                        func_name: attr.node.to_string(),
+                    })
+                }
+                Ok(Object::Msg) => todo!(), // TODO: error because msg has no methods?
+                Err(_) => {}
+            }
         };
+        return Ok(CallType::ValueAttribute);
     }
 
     unreachable!()

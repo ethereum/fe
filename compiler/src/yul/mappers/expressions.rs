@@ -16,6 +16,7 @@ use fe_common::utils::keccak::get_full_signature;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use std::convert::TryFrom;
+use std::str::FromStr;
 use yultsur::*;
 
 /// Builds a Yul expression from a Fe expression.
@@ -310,10 +311,13 @@ fn expr_attribute(
     exp: &Spanned<fe::Expr>,
 ) -> Result<yul::Expression, CompileError> {
     if let fe::Expr::Attribute { value, attr } = &exp.node {
-        return match expr_name_str(value)? {
-            builtins::MSG => expr_attribute_msg(attr),
-            builtins::SELF => expr_attribute_self(context, exp),
-            _ => Err(CompileError::static_str("invalid attributes")),
+        use builtins::Object;
+        return match Object::from_str(expr_name_str(value)?) {
+            Ok(Object::Block) => todo!(),
+            Ok(Object::Chain) => todo!(),
+            Ok(Object::Msg) => expr_attribute_msg(attr),
+            Ok(Object::Self_) => expr_attribute_self(context, exp),
+            Err(_) => Err(CompileError::static_str("invalid attributes")),
         };
     }
 
@@ -321,9 +325,13 @@ fn expr_attribute(
 }
 
 fn expr_attribute_msg(attr: &Spanned<&str>) -> Result<yul::Expression, CompileError> {
-    match attr.node {
-        builtins::SENDER => Ok(expression! { caller() }),
-        _ => Err(CompileError::static_str("invalid msg attribute name")),
+    use builtins::MsgField;
+    match MsgField::from_str(attr.node) {
+        Ok(MsgField::Data) => todo!(),
+        Ok(MsgField::Sender) => Ok(expression! { caller() }),
+        Ok(MsgField::Sig) => todo!(),
+        Ok(MsgField::Value) => todo!(),
+        Err(_) => Err(CompileError::static_str("invalid msg attribute name")),
     }
 }
 
