@@ -1,7 +1,4 @@
 #![cfg(feature = "solc-backend")]
-use ethabi;
-use evm;
-
 use evm_runtime::{
     ExitReason,
     Handler,
@@ -26,6 +23,7 @@ struct ContractHarness {
     address: H160,
     abi: ethabi::Contract,
     caller: H160,
+    value: U256,
 }
 
 impl ContractHarness {
@@ -36,6 +34,7 @@ impl ContractHarness {
             address: contract_address,
             abi,
             caller,
+            value: U256::zero(),
         }
     }
 
@@ -43,29 +42,29 @@ impl ContractHarness {
         &self,
         executor: &mut Executor,
         name: &str,
-        input: &Vec<ethabi::Token>,
+        input: &[ethabi::Token],
     ) -> evm::Capture<(evm::ExitReason, Vec<u8>), std::convert::Infallible> {
         let function = &self.abi.functions[name][0];
 
         let context = evm::Context {
-            address: self.address.clone(),
-            caller: self.caller.clone(),
-            apparent_value: U256::zero(),
+            address: self.address,
+            caller: self.caller,
+            apparent_value: self.value,
         };
 
         let input = function
-            .encode_input(input.as_slice())
+            .encode_input(input)
             .expect("Unable to encode input");
 
-        executor.call(self.address.clone(), None, input, None, false, context)
+        executor.call(self.address, None, input, None, false, context)
     }
 
     pub fn test_function(
         &self,
         executor: &mut Executor,
         name: &str,
-        input: Vec<ethabi::Token>,
-        output: Option<ethabi::Token>,
+        input: &[ethabi::Token],
+        output: Option<&ethabi::Token>,
     ) {
         let function = &self.abi.functions[name][0];
 
@@ -76,7 +75,7 @@ impl ContractHarness {
                         .decode_output(&actual_output)
                         .expect(&format!("unable to decode output: {:?}", &actual_output))[0];
 
-                    assert_eq!(&output, actual_output)
+                    assert_eq!(output, actual_output)
                 }
             }
             evm::Capture::Exit((reason, _)) => panic!("failed to run \"{}\": {:?}", name, reason),
@@ -88,16 +87,16 @@ impl ContractHarness {
         &self,
         executor: &mut Executor,
         name: &str,
-        input: Vec<ethabi::Token>,
+        input: &[ethabi::Token],
     ) {
-        match self.capture_call(executor, name, &input) {
+        match self.capture_call(executor, name, input) {
             evm::Capture::Exit((ExitReason::Revert(_), _)) => {}
             _ => panic!("function did not revert"),
         }
     }
 
     // Executor must be passed by value to get emitted events.
-    pub fn events_emitted(&self, executor: Executor, events: Vec<(&str, Vec<ethabi::Token>)>) {
+    pub fn events_emitted(&self, executor: Executor, events: &[(&str, &[ethabi::Token])]) {
         let raw_logs = executor
             .deconstruct()
             .1
@@ -124,7 +123,7 @@ impl ContractHarness {
                 })
                 .collect::<Vec<_>>();
 
-            if !outputs_for_event.contains(&expected_output) {
+            if !outputs_for_event.iter().any(|v| &v == expected_output) {
                 panic!(
                     "no {} logs matching: {:?}\nfound: {:?}",
                     name, expected_output, outputs_for_event
@@ -151,9 +150,13 @@ fn with_executor(test: &dyn Fn(Executor)) {
         block_gas_limit: primitive_types::U256::MAX,
     };
     let state: BTreeMap<primitive_types::H160, evm::backend::MemoryAccount> = BTreeMap::new();
-    let config = evm::Config::istanbul();
-
     let backend = evm::backend::MemoryBackend::new(&vicinity, state);
+
+    with_executor_backend(backend, test)
+}
+
+fn with_executor_backend(backend: evm::backend::MemoryBackend, test: &dyn Fn(Executor)) {
+    let config = evm::Config::istanbul();
     let executor = evm::executor::StackExecutor::new(&backend, usize::max_value(), &config);
 
     test(executor)
@@ -163,7 +166,7 @@ fn deploy_contract(
     executor: &mut Executor,
     fixture: &str,
     contract_name: &str,
-    init_params: Vec<ethabi::Token>,
+    init_params: &[ethabi::Token],
 ) -> ContractHarness {
     let src = fs::read_to_string(format!("tests/fixtures/{}", fixture))
         .expect("unable to read fixture file");
@@ -177,7 +180,7 @@ fn deploy_contract(
     let mut bytecode = hex::decode(&compiled_contract.bytecode).expect("failed to decode bytecode");
 
     if let Some(constructor) = &abi.constructor {
-        bytecode = constructor.encode_input(bytecode, &init_params).unwrap()
+        bytecode = constructor.encode_input(bytecode, init_params).unwrap()
     }
 
     if let evm::Capture::Exit(exit) = executor.create(
@@ -224,12 +227,12 @@ fn bytes_token(s: &str) -> ethabi::Token {
     ethabi::Token::FixedBytes(ethabi::FixedBytes::from(s))
 }
 
-fn u256_array_token(v: Vec<usize>) -> ethabi::Token {
-    ethabi::Token::FixedArray(v.into_iter().map(|n| uint_token(n)).collect())
+fn u256_array_token(v: &[usize]) -> ethabi::Token {
+    ethabi::Token::FixedArray(v.iter().map(|n| uint_token(*n)).collect())
 }
 
-fn address_array_token(v: Vec<&str>) -> ethabi::Token {
-    ethabi::Token::FixedArray(v.into_iter().map(|s| address_token(s)).collect())
+fn address_array_token(v: &[&str]) -> ethabi::Token {
+    ethabi::Token::FixedArray(v.iter().map(|s| address_token(s)).collect())
 }
 
 fn to_2s_complement(val: isize) -> U256 {
@@ -241,10 +244,10 @@ fn to_2s_complement(val: isize) -> U256 {
     // Conversion to Two's Complement: https://www.cs.cornell.edu/~tomf/notes/cps104/twoscomp.html
 
     if val >= 0 {
-        return U256::from(val);
+        U256::from(val)
     } else {
         let positive_val = val * -1;
-        return get_2s_complement_for_negative(U256::from(positive_val));
+        get_2s_complement_for_negative(U256::from(positive_val))
     }
 }
 
@@ -252,7 +255,7 @@ fn to_2s_complement(val: isize) -> U256 {
 /// get_2s_complement_for_negative(128)
 fn get_2s_complement_for_negative(assume_negative: U256) -> U256 {
     let (negated, _) = assume_negative.overflowing_neg();
-    return negated + 1;
+    negated + 1
 }
 
 #[test]
@@ -279,9 +282,9 @@ fn evm_sanity() {
 #[test]
 fn test_revert() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "revert.fe", "Foo", vec![]);
+        let harness = deploy_contract(&mut executor, "revert.fe", "Foo", &[]);
 
-        let exit = harness.capture_call(&mut executor, "bar", &vec![]);
+        let exit = harness.capture_call(&mut executor, "bar", &[]);
 
         assert!(matches!(
             exit,
@@ -293,16 +296,16 @@ fn test_revert() {
 #[test]
 fn test_assert() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "assert.fe", "Foo", vec![]);
+        let harness = deploy_contract(&mut executor, "assert.fe", "Foo", &[]);
 
-        let exit1 = harness.capture_call(&mut executor, "bar", &vec![uint_token(4)]);
+        let exit1 = harness.capture_call(&mut executor, "bar", &[uint_token(4)]);
 
         assert!(matches!(
             exit1,
             evm::Capture::Exit((evm::ExitReason::Revert(_), _))
         ));
 
-        let exit2 = harness.capture_call(&mut executor, "bar", &vec![uint_token(42)]);
+        let exit2 = harness.capture_call(&mut executor, "bar", &[uint_token(42)]);
 
         assert!(matches!(
             exit2,
@@ -312,139 +315,135 @@ fn test_assert() {
 }
 
 #[rstest(fixture_file, input, expected,
-    case("for_loop_with_static_array.fe", vec![], Some(uint_token(30))),
-    case("for_loop_with_break.fe", vec![], Some(uint_token(15))),
-    case("for_loop_with_continue.fe", vec![], Some(uint_token(17))),
-    case("while_loop_with_continue.fe", vec![], Some(uint_token(1))),
-    case("while_loop.fe", vec![], Some(uint_token(3))),
-    case("while_loop_with_break.fe", vec![], Some(uint_token(1))),
-    case("while_loop_with_break_2.fe", vec![], Some(uint_token(1))),
-    case("if_statement.fe", vec![uint_token(6)], Some(uint_token(1))),
-    case("if_statement.fe", vec![uint_token(4)], Some(uint_token(0))),
-    case("if_statement_2.fe", vec![uint_token(6)], Some(uint_token(1))),
-    case("if_statement_with_block_declaration.fe", vec![], Some(uint_token(1))),
-    case("ternary_expression.fe", vec![uint_token(6)], Some(uint_token(1))),
-    case("ternary_expression.fe", vec![uint_token(4)], Some(uint_token(0))),
-    case("call_statement_without_args.fe", vec![], Some(uint_token(100))),
-    case("call_statement_with_args.fe", vec![], Some(uint_token(100))),
-    case("call_statement_with_args_2.fe", vec![], Some(uint_token(100))),
-    case("return_bool_true.fe", vec![], Some(bool_token(true))),
-    case("return_bool_false.fe", vec![], Some(bool_token(false))),
-    case("return_u256_from_called_fn_with_args.fe", vec![], Some(uint_token(200))),
-    case("return_u256_from_called_fn.fe", vec![], Some(uint_token(42))),
-    case("return_u256.fe", vec![], Some(uint_token(42))),
-    case("return_i256.fe", vec![], Some(int_token(-3))),
-    case("return_identity_u256.fe", vec![uint_token(42)], Some(uint_token(42))),
-    case("return_identity_u128.fe", vec![uint_token(42)], Some(uint_token(42))),
-    case("return_identity_u64.fe", vec![uint_token(42)], Some(uint_token(42))),
-    case("return_identity_u32.fe", vec![uint_token(42)], Some(uint_token(42))),
-    case("return_identity_u16.fe", vec![uint_token(42)], Some(uint_token(42))),
-    case("return_identity_u8.fe", vec![uint_token(42)], Some(uint_token(42))),
-    case("return_u128_cast.fe", vec![], Some(uint_token(42))),
-    case("return_i128_cast.fe", vec![], Some(int_token(-3))),
+    case("for_loop_with_static_array.fe", &[], uint_token(30)),
+    case("for_loop_with_break.fe", &[], uint_token(15)),
+    case("for_loop_with_continue.fe", &[], uint_token(17)),
+    case("while_loop_with_continue.fe", &[], uint_token(1)),
+    case("while_loop.fe", &[], uint_token(3)),
+    case("while_loop_with_break.fe", &[], uint_token(1)),
+    case("while_loop_with_break_2.fe", &[], uint_token(1)),
+    case("if_statement.fe", &[uint_token(6)], uint_token(1)),
+    case("if_statement.fe", &[uint_token(4)], uint_token(0)),
+    case("if_statement_2.fe", &[uint_token(6)], uint_token(1)),
+    case("if_statement_with_block_declaration.fe", &[], uint_token(1)),
+    case("ternary_expression.fe", &[uint_token(6)], uint_token(1)),
+    case("ternary_expression.fe", &[uint_token(4)], uint_token(0)),
+    case("call_statement_without_args.fe", &[], uint_token(100)),
+    case("call_statement_with_args.fe", &[], uint_token(100)),
+    case("call_statement_with_args_2.fe", &[], uint_token(100)),
+    case("return_bool_true.fe", &[], bool_token(true)),
+    case("return_bool_false.fe", &[], bool_token(false)),
+    case("return_u256_from_called_fn_with_args.fe", &[], uint_token(200)),
+    case("return_u256_from_called_fn.fe", &[], uint_token(42)),
+    case("return_u256.fe", &[], uint_token(42)),
+    case("return_i256.fe", &[], int_token(-3)),
+    case("return_identity_u256.fe", &[uint_token(42)], uint_token(42)),
+    case("return_identity_u128.fe", &[uint_token(42)], uint_token(42)),
+    case("return_identity_u64.fe", &[uint_token(42)], uint_token(42)),
+    case("return_identity_u32.fe", &[uint_token(42)], uint_token(42)),
+    case("return_identity_u16.fe", &[uint_token(42)], uint_token(42)),
+    case("return_identity_u8.fe", &[uint_token(42)], uint_token(42)),
+    case("return_u128_cast.fe", &[], uint_token(42)),
+    case("return_i128_cast.fe", &[], int_token(-3)),
     // binary operators
-    case("return_addition_u256.fe", vec![uint_token(42), uint_token(42)], Some(uint_token(84))),
-    case("return_addition_i256.fe", vec![int_token(-42), int_token(-42)], Some(int_token(-84))),
-    case("return_addition_i256.fe", vec![int_token(-42), int_token(42)], Some(int_token(0))),
-    case("return_addition_u128.fe", vec![uint_token(42), uint_token(42)], Some(uint_token(84))),
-    case("return_subtraction_u256.fe", vec![uint_token(42), uint_token(42)], Some(uint_token(0))),
-    case("return_subtraction_i256.fe", vec![int_token(-42), int_token(-42)], Some(int_token(0))),
-    case("return_subtraction_i256.fe", vec![int_token(-42), int_token(42)], Some(int_token(-84))),
-    case("return_multiplication_u256.fe", vec![uint_token(42), uint_token(42)], Some(uint_token(1764))),
-    case("return_multiplication_i256.fe", vec![int_token(-42), int_token(-42)], Some(int_token(1764))),
-    case("return_multiplication_i256.fe", vec![int_token(-42), int_token(42)], Some(int_token(-1764))),
-    case("return_division_u256.fe", vec![uint_token(42), uint_token(42)], Some(uint_token(1))),
-    case("return_division_i256.fe", vec![int_token(-42), int_token(-42)], Some(int_token(1))),
-    case("return_division_i256.fe", vec![int_token(-1), int_token(1)], Some(int_token(-1))),
-    case("return_division_i256.fe", vec![int_token(-42), int_token(42)], Some(int_token(-1))),
-    case("return_pow_u256.fe", vec![uint_token(2), uint_token(0)], Some(uint_token(1))),
-    case("return_pow_u256.fe", vec![uint_token(2), uint_token(4)], Some(uint_token(16))),
-    case("return_mod_u256.fe", vec![uint_token(5), uint_token(0)], Some(uint_token(0))),
-    case("return_mod_u256.fe", vec![uint_token(5), uint_token(2)], Some(uint_token(1))),
-    case("return_mod_u256.fe", vec![uint_token(5), uint_token(3)], Some(uint_token(2))),
-    case("return_mod_u256.fe", vec![uint_token(5), uint_token(5)], Some(uint_token(0))),
-    case("return_mod_i256.fe", vec![int_token(5), int_token(0)], Some(int_token(0))),
-    case("return_mod_i256.fe", vec![int_token(5), int_token(2)], Some(int_token(1))),
-    case("return_mod_i256.fe", vec![int_token(5), int_token(3)], Some(int_token(2))),
-    case("return_mod_i256.fe", vec![int_token(5), int_token(5)], Some(int_token(0))),
-    case("return_bitwiseand_u256.fe", vec![uint_token(12), uint_token(25)], Some(uint_token(8))),
-    case("return_bitwiseand_u128.fe", vec![uint_token(12), uint_token(25)], Some(uint_token(8))),
-    case("return_bitwiseor_u256.fe", vec![uint_token(12), uint_token(25)], Some(uint_token(29))),
-    case("return_bitwisexor_u256.fe", vec![uint_token(12), uint_token(25)], Some(uint_token(21))),
-    case("return_bitwiseshl_u256.fe", vec![uint_token(212), uint_token(0)], Some(uint_token(212))),
-    case("return_bitwiseshl_u256.fe", vec![uint_token(212), uint_token(1)], Some(uint_token(424))),
-    case("return_bitwiseshr_u256.fe", vec![uint_token(212), uint_token(0)], Some(uint_token(212))),
-    case("return_bitwiseshr_u256.fe", vec![uint_token(212), uint_token(1)], Some(uint_token(106))),
-    case("return_bitwiseshr_i256.fe", vec![int_token(212), int_token(0)], Some(int_token(212))),
-    case("return_bitwiseshr_i256.fe", vec![int_token(212), int_token(1)], Some(int_token(106))),
+    case("return_addition_u256.fe", &[uint_token(42), uint_token(42)], uint_token(84)),
+    case("return_addition_i256.fe", &[int_token(-42), int_token(-42)], int_token(-84)),
+    case("return_addition_i256.fe", &[int_token(-42), int_token(42)], int_token(0)),
+    case("return_addition_u128.fe", &[uint_token(42), uint_token(42)], uint_token(84)),
+    case("return_subtraction_u256.fe", &[uint_token(42), uint_token(42)], uint_token(0)),
+    case("return_subtraction_i256.fe", &[int_token(-42), int_token(-42)], int_token(0)),
+    case("return_subtraction_i256.fe", &[int_token(-42), int_token(42)], int_token(-84)),
+    case("return_multiplication_u256.fe", &[uint_token(42), uint_token(42)], uint_token(1764)),
+    case("return_multiplication_i256.fe", &[int_token(-42), int_token(-42)], int_token(1764)),
+    case("return_multiplication_i256.fe", &[int_token(-42), int_token(42)], int_token(-1764)),
+    case("return_division_u256.fe", &[uint_token(42), uint_token(42)], uint_token(1)),
+    case("return_division_i256.fe", &[int_token(-42), int_token(-42)], int_token(1)),
+    case("return_division_i256.fe", &[int_token(-1), int_token(1)], int_token(-1)),
+    case("return_division_i256.fe", &[int_token(-42), int_token(42)], int_token(-1)),
+    case("return_pow_u256.fe", &[uint_token(2), uint_token(0)], uint_token(1)),
+    case("return_pow_u256.fe", &[uint_token(2), uint_token(4)], uint_token(16)),
+    case("return_mod_u256.fe", &[uint_token(5), uint_token(0)], uint_token(0)),
+    case("return_mod_u256.fe", &[uint_token(5), uint_token(2)], uint_token(1)),
+    case("return_mod_u256.fe", &[uint_token(5), uint_token(3)], uint_token(2)),
+    case("return_mod_u256.fe", &[uint_token(5), uint_token(5)], uint_token(0)),
+    case("return_mod_i256.fe", &[int_token(5), int_token(0)], int_token(0)),
+    case("return_mod_i256.fe", &[int_token(5), int_token(2)], int_token(1)),
+    case("return_mod_i256.fe", &[int_token(5), int_token(3)], int_token(2)),
+    case("return_mod_i256.fe", &[int_token(5), int_token(5)], int_token(0)),
+    case("return_bitwiseand_u256.fe", &[uint_token(12), uint_token(25)], uint_token(8)),
+    case("return_bitwiseand_u128.fe", &[uint_token(12), uint_token(25)], uint_token(8)),
+    case("return_bitwiseor_u256.fe", &[uint_token(12), uint_token(25)], uint_token(29)),
+    case("return_bitwisexor_u256.fe", &[uint_token(12), uint_token(25)], uint_token(21)),
+    case("return_bitwiseshl_u256.fe", &[uint_token(212), uint_token(0)], uint_token(212)),
+    case("return_bitwiseshl_u256.fe", &[uint_token(212), uint_token(1)], uint_token(424)),
+    case("return_bitwiseshr_u256.fe", &[uint_token(212), uint_token(0)], uint_token(212)),
+    case("return_bitwiseshr_u256.fe", &[uint_token(212), uint_token(1)], uint_token(106)),
+    case("return_bitwiseshr_i256.fe", &[int_token(212), int_token(0)], int_token(212)),
+    case("return_bitwiseshr_i256.fe", &[int_token(212), int_token(1)], int_token(106)),
     // comparision operators
-    case("return_eq_u256.fe", vec![uint_token(1), uint_token(1)], Some(bool_token(true))),
-    case("return_eq_u256.fe", vec![uint_token(1), uint_token(2)], Some(bool_token(false))),
-    case("return_noteq_u256.fe", vec![uint_token(1), uint_token(1)], Some(bool_token(false))),
-    case("return_noteq_u256.fe", vec![uint_token(1), uint_token(2)], Some(bool_token(true))),
-    case("return_lt_u256.fe", vec![uint_token(1), uint_token(2)], Some(bool_token(true))),
-    case("return_lt_u256.fe", vec![uint_token(1), uint_token(1)], Some(bool_token(false))),
-    case("return_lt_u256.fe", vec![uint_token(2), uint_token(1)], Some(bool_token(false))),
-    case("return_lt_u128.fe", vec![uint_token(1), uint_token(2)], Some(bool_token(true))),
+    case("return_eq_u256.fe", &[uint_token(1), uint_token(1)], bool_token(true)),
+    case("return_eq_u256.fe", &[uint_token(1), uint_token(2)], bool_token(false)),
+    case("return_noteq_u256.fe", &[uint_token(1), uint_token(1)], bool_token(false)),
+    case("return_noteq_u256.fe", &[uint_token(1), uint_token(2)], bool_token(true)),
+    case("return_lt_u256.fe", &[uint_token(1), uint_token(2)], bool_token(true)),
+    case("return_lt_u256.fe", &[uint_token(1), uint_token(1)], bool_token(false)),
+    case("return_lt_u256.fe", &[uint_token(2), uint_token(1)], bool_token(false)),
+    case("return_lt_u128.fe", &[uint_token(1), uint_token(2)], bool_token(true)),
     // lt_i256 with positive and negative numbers
-    case("return_lt_i256.fe", vec![int_token(1), int_token(2)], Some(bool_token(true))),
-    case("return_lt_i256.fe", vec![int_token(1), int_token(1)], Some(bool_token(false))),
-    case("return_lt_i256.fe", vec![int_token(2), int_token(1)], Some(bool_token(false))),
-    case("return_lt_i256.fe", vec![int_token(-2), int_token(-1)], Some(bool_token(true))),
-    case("return_lt_i256.fe", vec![int_token(-1), int_token(-1)], Some(bool_token(false))),
-    case("return_lt_i256.fe", vec![int_token(-1), int_token(-2)], Some(bool_token(false))),
-    case("return_lte_u256.fe", vec![uint_token(1), uint_token(2)], Some(bool_token(true))),
-    case("return_lte_u256.fe", vec![uint_token(1), uint_token(1)], Some(bool_token(true))),
+    case("return_lt_i256.fe", &[int_token(1), int_token(2)], bool_token(true)),
+    case("return_lt_i256.fe", &[int_token(1), int_token(1)], bool_token(false)),
+    case("return_lt_i256.fe", &[int_token(2), int_token(1)], bool_token(false)),
+    case("return_lt_i256.fe", &[int_token(-2), int_token(-1)], bool_token(true)),
+    case("return_lt_i256.fe", &[int_token(-1), int_token(-1)], bool_token(false)),
+    case("return_lt_i256.fe", &[int_token(-1), int_token(-2)], bool_token(false)),
+    case("return_lte_u256.fe", &[uint_token(1), uint_token(2)], bool_token(true)),
+    case("return_lte_u256.fe", &[uint_token(1), uint_token(1)], bool_token(true)),
     // lte_i256 with positive and negative numbers
-    case("return_lte_u256.fe", vec![uint_token(2), uint_token(1)], Some(bool_token(false))),
-    case("return_lte_i256.fe", vec![int_token(1), int_token(2)], Some(bool_token(true))),
-    case("return_lte_i256.fe", vec![int_token(1), int_token(1)], Some(bool_token(true))),
-    case("return_lte_i256.fe", vec![int_token(2), int_token(1)], Some(bool_token(false))),
-    case("return_lte_i256.fe", vec![int_token(-2), int_token(-1)], Some(bool_token(true))),
-    case("return_lte_i256.fe", vec![int_token(-1), int_token(-1)], Some(bool_token(true))),
-    case("return_lte_i256.fe", vec![int_token(-1), int_token(-2)], Some(bool_token(false))),
-    case("return_gt_u256.fe", vec![uint_token(2), uint_token(1)], Some(bool_token(true))),
-    case("return_gt_u256.fe", vec![uint_token(1), uint_token(1)], Some(bool_token(false))),
-    case("return_gt_u256.fe", vec![uint_token(1), uint_token(2)], Some(bool_token(false))),
+    case("return_lte_u256.fe", &[uint_token(2), uint_token(1)], bool_token(false)),
+    case("return_lte_i256.fe", &[int_token(1), int_token(2)], bool_token(true)),
+    case("return_lte_i256.fe", &[int_token(1), int_token(1)], bool_token(true)),
+    case("return_lte_i256.fe", &[int_token(2), int_token(1)], bool_token(false)),
+    case("return_lte_i256.fe", &[int_token(-2), int_token(-1)], bool_token(true)),
+    case("return_lte_i256.fe", &[int_token(-1), int_token(-1)], bool_token(true)),
+    case("return_lte_i256.fe", &[int_token(-1), int_token(-2)], bool_token(false)),
+    case("return_gt_u256.fe", &[uint_token(2), uint_token(1)], bool_token(true)),
+    case("return_gt_u256.fe", &[uint_token(1), uint_token(1)], bool_token(false)),
+    case("return_gt_u256.fe", &[uint_token(1), uint_token(2)], bool_token(false)),
     // gt_i256 with positive and negative numbers
-    case("return_gt_i256.fe", vec![int_token(2), int_token(1)], Some(bool_token(true))),
-    case("return_gt_i256.fe", vec![int_token(1), int_token(1)], Some(bool_token(false))),
-    case("return_gt_i256.fe", vec![int_token(1), int_token(2)], Some(bool_token(false))),
-    case("return_gt_i256.fe", vec![int_token(-1), int_token(-2)], Some(bool_token(true))),
-    case("return_gt_i256.fe", vec![int_token(-1), int_token(-1)], Some(bool_token(false))),
-    case("return_gt_i256.fe", vec![int_token(-2), int_token(-1)], Some(bool_token(false))),
-    case("return_gte_u256.fe", vec![uint_token(2), uint_token(1)], Some(bool_token(true))),
-    case("return_gte_u256.fe", vec![uint_token(1), uint_token(1)], Some(bool_token(true))),
-    case("return_gte_u256.fe", vec![uint_token(1), uint_token(2)], Some(bool_token(false))),
+    case("return_gt_i256.fe", &[int_token(2), int_token(1)], bool_token(true)),
+    case("return_gt_i256.fe", &[int_token(1), int_token(1)], bool_token(false)),
+    case("return_gt_i256.fe", &[int_token(1), int_token(2)], bool_token(false)),
+    case("return_gt_i256.fe", &[int_token(-1), int_token(-2)], bool_token(true)),
+    case("return_gt_i256.fe", &[int_token(-1), int_token(-1)], bool_token(false)),
+    case("return_gt_i256.fe", &[int_token(-2), int_token(-1)], bool_token(false)),
+    case("return_gte_u256.fe", &[uint_token(2), uint_token(1)], bool_token(true)),
+    case("return_gte_u256.fe", &[uint_token(1), uint_token(1)], bool_token(true)),
+    case("return_gte_u256.fe", &[uint_token(1), uint_token(2)], bool_token(false)),
     // gte_i256 with positive and negative numbers
-    case("return_gte_i256.fe", vec![int_token(2), int_token(1)], Some(bool_token(true))),
-    case("return_gte_i256.fe", vec![int_token(1), int_token(1)], Some(bool_token(true))),
-    case("return_gte_i256.fe", vec![int_token(1), int_token(2)], Some(bool_token(false))),
-    case("return_gte_i256.fe", vec![int_token(-1), int_token(-2)], Some(bool_token(true))),
-    case("return_gte_i256.fe", vec![int_token(-1), int_token(-1)], Some(bool_token(true))),
-    case("return_gte_i256.fe", vec![int_token(-2), int_token(-1)], Some(bool_token(false))),
+    case("return_gte_i256.fe", &[int_token(2), int_token(1)], bool_token(true)),
+    case("return_gte_i256.fe", &[int_token(1), int_token(1)], bool_token(true)),
+    case("return_gte_i256.fe", &[int_token(1), int_token(2)], bool_token(false)),
+    case("return_gte_i256.fe", &[int_token(-1), int_token(-2)], bool_token(true)),
+    case("return_gte_i256.fe", &[int_token(-1), int_token(-1)], bool_token(true)),
+    case("return_gte_i256.fe", &[int_token(-2), int_token(-1)], bool_token(false)),
 )]
-fn test_method_return(
-    fixture_file: &str,
-    input: Vec<ethabi::Token>,
-    expected: Option<ethabi::Token>,
-) {
+fn test_method_return(fixture_file: &str, input: &[ethabi::Token], expected: ethabi::Token) {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, fixture_file, "Foo", vec![]);
-        harness.test_function(&mut executor, "bar", input.clone(), expected.clone())
+        let harness = deploy_contract(&mut executor, fixture_file, "Foo", &[]);
+        harness.test_function(&mut executor, "bar", input, Some(&expected))
     })
 }
 
 #[test]
 fn return_array() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "return_array.fe", "Foo", vec![]);
+        let harness = deploy_contract(&mut executor, "return_array.fe", "Foo", &[]);
 
         harness.test_function(
             &mut executor,
             "bar",
-            vec![uint_token(42)],
-            Some(u256_array_token(vec![0, 0, 0, 42, 0])),
+            &[uint_token(42)],
+            Some(&u256_array_token(&[0, 0, 0, 42, 0])),
         )
     })
 }
@@ -452,13 +451,13 @@ fn return_array() {
 #[test]
 fn multi_param() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "multi_param.fe", "Foo", vec![]);
+        let harness = deploy_contract(&mut executor, "multi_param.fe", "Foo", &[]);
 
         harness.test_function(
             &mut executor,
             "bar",
-            vec![uint_token(4), uint_token(42), uint_token(420)],
-            Some(u256_array_token(vec![4, 42, 420])),
+            &[uint_token(4), uint_token(42), uint_token(420)],
+            Some(&u256_array_token(&[4, 42, 420])),
         )
     })
 }
@@ -474,34 +473,34 @@ fn multi_param() {
 )]
 fn test_map(fixture_file: &str) {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, fixture_file, "Foo", vec![]);
+        let harness = deploy_contract(&mut executor, fixture_file, "Foo", &[]);
 
         harness.test_function(
             &mut executor,
             "write_bar",
-            vec![uint_token(4), uint_token(42)],
+            &[uint_token(4), uint_token(42)],
             None,
         );
 
         harness.test_function(
             &mut executor,
             "write_bar",
-            vec![uint_token(420), uint_token(12)],
+            &[uint_token(420), uint_token(12)],
             None,
         );
 
         harness.test_function(
             &mut executor,
             "read_bar",
-            vec![uint_token(4)],
-            Some(uint_token(42)),
+            &[uint_token(4)],
+            Some(&uint_token(42)),
         );
 
         harness.test_function(
             &mut executor,
             "read_bar",
-            vec![uint_token(420)],
-            Some(uint_token(12)),
+            &[uint_token(420)],
+            Some(&uint_token(12)),
         );
     })
 }
@@ -509,7 +508,7 @@ fn test_map(fixture_file: &str) {
 #[test]
 fn address_bytes10_map() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "address_bytes10_map.fe", "Foo", vec![]);
+        let harness = deploy_contract(&mut executor, "address_bytes10_map.fe", "Foo", &[]);
 
         let address1 = address_token("0000000000000000000000000000000000000001");
         let bytes1 = bytes_token("ten bytes1");
@@ -520,27 +519,26 @@ fn address_bytes10_map() {
         harness.test_function(
             &mut executor,
             "write_bar",
-            vec![address1.clone(), bytes1.clone()],
+            &[address1.clone(), bytes1.clone()],
             None,
         );
 
         harness.test_function(
             &mut executor,
             "write_bar",
-            vec![address2.clone(), bytes2.clone()],
+            &[address2.clone(), bytes2.clone()],
             None,
         );
 
-        harness.test_function(&mut executor, "read_bar", vec![address1], Some(bytes1));
-
-        harness.test_function(&mut executor, "read_bar", vec![address2], Some(bytes2));
+        harness.test_function(&mut executor, "read_bar", &[address1], Some(&bytes1));
+        harness.test_function(&mut executor, "read_bar", &[address2], Some(&bytes2));
     })
 }
 
 #[test]
 fn guest_book() {
     with_executor(&|mut executor| {
-        let mut harness = deploy_contract(&mut executor, "guest_book.fe", "GuestBook", vec![]);
+        let mut harness = deploy_contract(&mut executor, "guest_book.fe", "GuestBook", &[]);
 
         let sender = address_token("1234000000000000000000000000000000005678");
         let bytes = bytes_token(
@@ -552,31 +550,82 @@ fn guest_book() {
 
         harness.caller = sender.clone().to_address().unwrap();
 
-        harness.test_function(&mut executor, "sign", vec![bytes.clone()], None);
+        harness.test_function(&mut executor, "sign", &[bytes.clone()], None);
 
-        harness.test_function(&mut executor, "get_msg", vec![sender], Some(bytes.clone()));
+        harness.test_function(&mut executor, "get_msg", &[sender], Some(&bytes));
 
-        harness.events_emitted(executor, vec![("Signed", vec![bytes])]);
+        harness.events_emitted(executor, &[("Signed", &[bytes])]);
     })
 }
 
 #[test]
-fn return_sender() {
-    with_executor(&|mut executor| {
-        let mut harness = deploy_contract(&mut executor, "return_sender.fe", "Foo", vec![]);
+fn return_builtin_attributes() {
+    let gas_price = 123;
+    let origin = address_token("0000000000000000000000000000000000000001");
+    let chain_id = 42;
+    let block_number = 5;
+    let block_coinbase = address_token("0000000000000000000000000000000000000002");
+    let block_timestamp = 1234567890;
+    let block_difficulty = 12345;
 
-        let sender = address_token("1234000000000000000000000000000000005678");
+    let vicinity = evm::backend::MemoryVicinity {
+        gas_price: U256::from(gas_price),
+        origin: origin.clone().to_address().unwrap(),
+        chain_id: U256::from(chain_id),
+        block_hashes: Vec::new(),
+        block_number: U256::from(block_number),
+        block_coinbase: block_coinbase.clone().to_address().unwrap(),
+        block_timestamp: U256::from(block_timestamp),
+        block_difficulty: U256::from(block_difficulty),
+        block_gas_limit: primitive_types::U256::MAX,
+    };
 
-        harness.caller = sender.clone().to_address().unwrap();
-
-        harness.test_function(&mut executor, "bar", vec![], Some(sender));
-    })
+    with_executor_backend(
+        evm::backend::MemoryBackend::new(&vicinity, BTreeMap::new()),
+        &|mut executor| {
+            let mut harness =
+                deploy_contract(&mut executor, "return_builtin_attributes.fe", "Foo", &[]);
+            let sender = address_token("1234000000000000000000000000000000005678");
+            harness.caller = sender.clone().to_address().unwrap();
+            let value = 55555;
+            harness.value = U256::from(value);
+            harness.test_function(&mut executor, "coinbase", &[], Some(&block_coinbase));
+            harness.test_function(
+                &mut executor,
+                "difficulty",
+                &[],
+                Some(&uint_token(block_difficulty)),
+            );
+            harness.test_function(
+                &mut executor,
+                "number",
+                &[],
+                Some(&uint_token(block_number)),
+            );
+            harness.test_function(
+                &mut executor,
+                "timestamp",
+                &[],
+                Some(&uint_token(block_timestamp)),
+            );
+            harness.test_function(&mut executor, "chainid", &[], Some(&uint_token(chain_id)));
+            harness.test_function(&mut executor, "sender", &[], Some(&sender));
+            harness.test_function(&mut executor, "value", &[], Some(&uint_token(value)));
+            harness.test_function(&mut executor, "origin", &[], Some(&origin));
+            harness.test_function(
+                &mut executor,
+                "gas_price",
+                &[],
+                Some(&uint_token(gas_price)),
+            );
+        },
+    )
 }
 
 #[test]
 fn nested_map() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "nested_map.fe", "Foo", vec![]);
+        let harness = deploy_contract(&mut executor, "nested_map.fe", "Foo", &[]);
 
         let address1 = address_token("1000000000000000000000000000000000000001");
         let address2 = address_token("2000000000000000000000000000000000000002");
@@ -586,19 +635,19 @@ fn nested_map() {
         harness.test_function(
             &mut executor,
             "write_bar",
-            vec![address1.clone(), address2.clone(), uint_token(12)],
+            &[address1.clone(), address2.clone(), uint_token(12)],
             None,
         );
         harness.test_function(
             &mut executor,
             "write_bar",
-            vec![address1.clone(), address3.clone(), uint_token(13)],
+            &[address1.clone(), address3.clone(), uint_token(13)],
             None,
         );
         harness.test_function(
             &mut executor,
             "write_bar",
-            vec![address2.clone(), address1.clone(), uint_token(21)],
+            &[address2.clone(), address1.clone(), uint_token(21)],
             None,
         );
 
@@ -606,19 +655,19 @@ fn nested_map() {
         harness.test_function(
             &mut executor,
             "write_baz",
-            vec![address1.clone(), uint_token(26), bool_token(true)],
+            &[address1.clone(), uint_token(26), bool_token(true)],
             None,
         );
         harness.test_function(
             &mut executor,
             "write_baz",
-            vec![address2.clone(), uint_token(42), bool_token(true)],
+            &[address2.clone(), uint_token(42), bool_token(true)],
             None,
         );
         harness.test_function(
             &mut executor,
             "write_baz",
-            vec![address2.clone(), uint_token(100), bool_token(false)],
+            &[address2.clone(), uint_token(100), bool_token(false)],
             None,
         );
 
@@ -626,40 +675,40 @@ fn nested_map() {
         harness.test_function(
             &mut executor,
             "read_bar",
-            vec![address1.clone(), address2.clone()],
-            Some(uint_token(12)),
+            &[address1.clone(), address2.clone()],
+            Some(&uint_token(12)),
         );
         harness.test_function(
             &mut executor,
             "read_bar",
-            vec![address1.clone(), address3.clone()],
-            Some(uint_token(13)),
+            &[address1.clone(), address3],
+            Some(&uint_token(13)),
         );
         harness.test_function(
             &mut executor,
             "read_bar",
-            vec![address2.clone(), address1.clone()],
-            Some(uint_token(21)),
+            &[address2.clone(), address1.clone()],
+            Some(&uint_token(21)),
         );
 
         // read baz
         harness.test_function(
             &mut executor,
             "read_baz",
-            vec![address1.clone(), uint_token(26)],
-            Some(bool_token(true)),
+            &[address1, uint_token(26)],
+            Some(&bool_token(true)),
         );
         harness.test_function(
             &mut executor,
             "read_baz",
-            vec![address2.clone(), uint_token(42)],
-            Some(bool_token(true)),
+            &[address2.clone(), uint_token(42)],
+            Some(&bool_token(true)),
         );
         harness.test_function(
             &mut executor,
             "read_baz",
-            vec![address2.clone(), uint_token(100)],
-            Some(bool_token(false)),
+            &[address2, uint_token(100)],
+            Some(&bool_token(false)),
         );
     })
 }
@@ -667,7 +716,7 @@ fn nested_map() {
 #[test]
 fn events() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "events.fe", "Foo", vec![]);
+        let harness = deploy_contract(&mut executor, "events.fe", "Foo", &[]);
 
         let addr1 = address_token("1234000000000000000000000000000000005678");
         let addr2 = address_token("9123000000000000000000000000000000004567");
@@ -679,31 +728,28 @@ fn events() {
                 .as_str(),
         );
 
-        harness.test_function(&mut executor, "emit_nums", vec![], None);
-        harness.test_function(&mut executor, "emit_bases", vec![addr1.clone()], None);
+        harness.test_function(&mut executor, "emit_nums", &[], None);
+        harness.test_function(&mut executor, "emit_bases", &[addr1.clone()], None);
         harness.test_function(
             &mut executor,
             "emit_mix",
-            vec![addr1.clone(), bytes.clone()],
+            &[addr1.clone(), bytes.clone()],
             None,
         );
         harness.test_function(
             &mut executor,
             "emit_addresses",
-            vec![addr1.clone(), addr2.clone()],
+            &[addr1.clone(), addr2],
             None,
         );
 
         harness.events_emitted(
             executor,
-            vec![
-                ("Nums", vec![uint_token(26), uint_token(42)]),
-                ("Bases", vec![uint_token(26), addr1.clone()]),
-                (
-                    "Mix",
-                    vec![uint_token(26), addr1.clone(), uint_token(42), bytes],
-                ),
-                ("Addresses", vec![addr_array]),
+            &[
+                ("Nums", &[uint_token(26), uint_token(42)]),
+                ("Bases", &[uint_token(26), addr1.clone()]),
+                ("Mix", &[uint_token(26), addr1, uint_token(42), bytes]),
+                ("Addresses", &[addr_array]),
             ],
         );
     })
@@ -716,10 +762,10 @@ fn constructor() {
             &mut executor,
             "constructor.fe",
             "Foo",
-            vec![uint_token(26), uint_token(42)],
+            &[uint_token(26), uint_token(42)],
         );
 
-        harness.test_function(&mut executor, "read_bar", vec![], Some(uint_token(68)));
+        harness.test_function(&mut executor, "read_bar", &[], Some(&uint_token(68)));
     })
 }
 
@@ -730,7 +776,7 @@ fn strings() {
             &mut executor,
             "strings.fe",
             "Foo",
-            vec![
+            &[
                 string_token("string 1"),
                 address_token("1000000000000000000000000000000000000001"),
                 string_token("string 2"),
@@ -742,29 +788,29 @@ fn strings() {
         harness.test_function(
             &mut executor,
             "bar",
-            vec![string_token("string 4"), string_token("string 5")],
-            Some(string_token("string 5")),
+            &[string_token("string 4"), string_token("string 5")],
+            Some(&string_token("string 5")),
         );
 
         harness.test_function(
             &mut executor,
             "return_static_string",
-            vec![],
-            Some(string_token("The quick brown fox jumps over the lazy dog")),
+            &[],
+            Some(&string_token("The quick brown fox jumps over the lazy dog")),
         );
 
         harness.test_function(
             &mut executor,
             "return_casted_static_string",
-            vec![],
-            Some(string_token("foo")),
+            &[],
+            Some(&string_token("foo")),
         );
 
         harness.events_emitted(
             executor,
-            vec![(
+            &[(
                 "MyEvent",
-                vec![
+                &[
                     string_token("string 2"),
                     uint_token(42),
                     string_token("string 1"),
@@ -781,7 +827,7 @@ fn strings() {
 #[test]
 fn test_numeric_sizes() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "numeric_sizes.fe", "Foo", vec![]);
+        let harness = deploy_contract(&mut executor, "numeric_sizes.fe", "Foo", &[]);
 
         struct SizeConfig {
             size: usize,
@@ -858,26 +904,26 @@ fn test_numeric_sizes() {
             harness.test_function(
                 &mut executor,
                 &format!("get_u{}_min", config.size),
-                vec![],
-                Some(config.u_min.clone()),
+                &[],
+                Some(&config.u_min.clone()),
             );
             harness.test_function(
                 &mut executor,
                 &format!("get_u{}_max", config.size),
-                vec![],
-                Some(config.u_max.clone()),
+                &[],
+                Some(&config.u_max.clone()),
             );
             harness.test_function(
                 &mut executor,
                 &format!("get_i{}_min", config.size),
-                vec![],
-                Some(config.i_min.clone()),
+                &[],
+                Some(&config.i_min.clone()),
             );
             harness.test_function(
                 &mut executor,
                 &format!("get_i{}_max", config.size),
-                vec![],
-                Some(config.i_max.clone()),
+                &[],
+                Some(&config.i_max.clone()),
             );
         }
     })
@@ -886,23 +932,23 @@ fn test_numeric_sizes() {
 #[test]
 fn sized_vals_in_sto() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "sized_vals_in_sto.fe", "Foo", vec![]);
+        let harness = deploy_contract(&mut executor, "sized_vals_in_sto.fe", "Foo", &[]);
 
         let num = uint_token(68);
-        let nums = u256_array_token((0..42).into_iter().collect());
+        let nums = u256_array_token(&(0..42).into_iter().collect::<Vec<_>>());
         let string = string_token("there are 26 protons in fe");
 
-        harness.test_function(&mut executor, "write_num", vec![num.clone()], None);
-        harness.test_function(&mut executor, "read_num", vec![], Some(num.clone()));
+        harness.test_function(&mut executor, "write_num", &[num.clone()], None);
+        harness.test_function(&mut executor, "read_num", &[], Some(&num));
 
-        harness.test_function(&mut executor, "write_nums", vec![nums.clone()], None);
-        harness.test_function(&mut executor, "read_nums", vec![], Some(nums.clone()));
+        harness.test_function(&mut executor, "write_nums", &[nums.clone()], None);
+        harness.test_function(&mut executor, "read_nums", &[], Some(&nums));
 
-        harness.test_function(&mut executor, "write_str", vec![string.clone()], None);
-        harness.test_function(&mut executor, "read_str", vec![], Some(string.clone()));
+        harness.test_function(&mut executor, "write_str", &[string.clone()], None);
+        harness.test_function(&mut executor, "read_str", &[], Some(&string));
 
-        harness.test_function(&mut executor, "emit_event", vec![], None);
-        harness.events_emitted(executor, vec![("MyEvent", vec![num, nums, string])]);
+        harness.test_function(&mut executor, "emit_event", &[], None);
+        harness.events_emitted(executor, &[("MyEvent", &[num, nums, string])]);
     });
 }
 
@@ -916,7 +962,7 @@ fn erc20_token() {
             &mut executor,
             "erc20_token.fe",
             "ERC20",
-            vec![token_name.clone(), token_symbol.clone()],
+            &[token_name.clone(), token_symbol.clone()],
         );
 
         let alice = DEFAULT_CALLER;
@@ -925,35 +971,35 @@ fn erc20_token() {
 
         // validate state after init
         // alice starts with 2600 Fe Coins
-        harness.test_function(&mut executor, "name", vec![], Some(token_name));
-        harness.test_function(&mut executor, "symbol", vec![], Some(token_symbol));
-        harness.test_function(&mut executor, "decimals", vec![], Some(uint_token(18)));
-        harness.test_function(&mut executor, "totalSupply", vec![], Some(uint_token(2600)));
+        harness.test_function(&mut executor, "name", &[], Some(&token_name));
+        harness.test_function(&mut executor, "symbol", &[], Some(&token_symbol));
+        harness.test_function(&mut executor, "decimals", &[], Some(&uint_token(18)));
+        harness.test_function(&mut executor, "totalSupply", &[], Some(&uint_token(2600)));
         harness.test_function(
             &mut executor,
             "balanceOf",
-            vec![address_token(alice)],
-            Some(uint_token(2600)),
+            &[address_token(alice)],
+            Some(&uint_token(2600)),
         );
 
         // transfer from alice to bob
         harness.test_function(
             &mut executor,
             "transfer",
-            vec![address_token(bob), uint_token(42)],
-            Some(bool_token(true)),
+            &[address_token(bob), uint_token(42)],
+            Some(&bool_token(true)),
         );
         harness.test_function(
             &mut executor,
             "balanceOf",
-            vec![address_token(bob)],
-            Some(uint_token(42)),
+            &[address_token(bob)],
+            Some(&uint_token(42)),
         );
         harness.test_function(
             &mut executor,
             "balanceOf",
-            vec![address_token(alice)],
-            Some(uint_token(2558)),
+            &[address_token(alice)],
+            Some(&uint_token(2558)),
         );
 
         // approve and transfer
@@ -961,79 +1007,79 @@ fn erc20_token() {
         harness.test_function(
             &mut executor,
             "approve",
-            vec![address_token(bob), uint_token(50)],
-            Some(bool_token(true)),
+            &[address_token(bob), uint_token(50)],
+            Some(&bool_token(true)),
         );
         harness.set_caller(address(bob));
         harness.test_function(
             &mut executor,
             "transferFrom",
-            vec![address_token(alice), address_token(james), uint_token(25)],
-            Some(bool_token(true)),
+            &[address_token(alice), address_token(james), uint_token(25)],
+            Some(&bool_token(true)),
         );
         harness.test_function(
             &mut executor,
             "balanceOf",
-            vec![address_token(alice)],
-            Some(uint_token(2533)),
+            &[address_token(alice)],
+            Some(&uint_token(2533)),
         );
         harness.test_function(
             &mut executor,
             "balanceOf",
-            vec![address_token(james)],
-            Some(uint_token(25)),
+            &[address_token(james)],
+            Some(&uint_token(25)),
         );
         harness.test_function(
             &mut executor,
             "allowance",
-            vec![address_token(alice), address_token(bob)],
-            Some(uint_token(25)),
+            &[address_token(alice), address_token(bob)],
+            Some(&uint_token(25)),
         );
         harness.test_function_reverts(
             &mut executor,
             "transferFrom",
-            vec![address_token(alice), address_token(bob), uint_token(50)],
+            &[address_token(alice), address_token(bob), uint_token(50)],
         );
         harness.test_function(
             &mut executor,
             "transferFrom",
-            vec![address_token(alice), address_token(james), uint_token(20)],
-            Some(bool_token(true)),
+            &[address_token(alice), address_token(james), uint_token(20)],
+            Some(&bool_token(true)),
         );
         harness.test_function(
             &mut executor,
             "balanceOf",
-            vec![address_token(james)],
-            Some(uint_token(45)),
+            &[address_token(james)],
+            Some(&uint_token(45)),
         );
 
         // validate events
         harness.events_emitted(
             executor,
-            vec![
+            &[
                 (
                     "Transfer",
-                    vec![address_token(alice), address_token(bob), uint_token(42)],
-                ),
-                (
-                    "Transfer",
-                    vec![address_token(alice), address_token(james), uint_token(25)],
+                    &[address_token(alice), address_token(bob), uint_token(42)],
                 ),
                 (
                     "Transfer",
-                    vec![address_token(alice), address_token(james), uint_token(20)],
+                    &[address_token(alice), address_token(james), uint_token(25)],
+                ),
+                (
+                    "Transfer",
+                    &[address_token(alice), address_token(james), uint_token(20)],
                 ),
                 (
                     "Approval",
-                    vec![address_token(alice), address_token(bob), uint_token(50)],
+                    &[address_token(alice), address_token(bob), uint_token(50)],
                 ),
                 (
                     "Approval",
-                    vec![address_token(alice), address_token(bob), uint_token(25)],
+                    &[address_token(alice), address_token(bob), uint_token(25)],
                 ),
                 (
                     "Approval",
-                    vec![address_token(alice), address_token(bob), uint_token(5)],
+                    &[address_token(alice), address_token(bob), uint_token(5)],
                 ),
             ],
         );
@@ -1043,12 +1089,12 @@ fn erc20_token() {
 #[test]
 fn data_copying_stress() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "data_copying_stress.fe", "Foo", vec![]);
+        let harness = deploy_contract(&mut executor, "data_copying_stress.fe", "Foo", &[]);
 
         harness.test_function(
             &mut executor,
             "set_my_vals",
-            vec![
+            &[
                 string_token("my string"),
                 string_token("my other string"),
                 uint_token(26),
@@ -1057,57 +1103,57 @@ fn data_copying_stress() {
             None,
         );
 
-        harness.test_function(&mut executor, "emit_my_event", vec![], None);
+        harness.test_function(&mut executor, "emit_my_event", &[], None);
 
-        harness.test_function(&mut executor, "set_to_my_other_vals", vec![], None);
+        harness.test_function(&mut executor, "set_to_my_other_vals", &[], None);
 
-        harness.test_function(&mut executor, "emit_my_event", vec![], None);
+        harness.test_function(&mut executor, "emit_my_event", &[], None);
 
-        let my_array = u256_array_token(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-        let my_mutated_array = u256_array_token(vec![1, 2, 3, 5, 5, 6, 7, 8, 9, 10]);
+        let my_array = u256_array_token(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        let my_mutated_array = u256_array_token(&[1, 2, 3, 5, 5, 6, 7, 8, 9, 10]);
 
         harness.test_function(
             &mut executor,
             "mutate_and_return",
-            vec![my_array.clone()],
-            Some(my_mutated_array),
+            &[my_array.clone()],
+            Some(&my_mutated_array),
         );
 
         harness.test_function(
             &mut executor,
             "multiple_references_shared_memory",
-            vec![my_array.clone()],
+            &[my_array.clone()],
             None,
         );
 
         harness.test_function(
             &mut executor,
             "clone_and_return",
-            vec![my_array.clone()],
-            Some(my_array.clone()),
+            &[my_array.clone()],
+            Some(&my_array),
         );
 
         harness.test_function(
             &mut executor,
             "clone_mutate_and_return",
-            vec![my_array.clone()],
-            Some(my_array),
+            &[my_array.clone()],
+            Some(&my_array),
         );
 
         harness.test_function(
             &mut executor,
             "assign_my_nums_and_return",
-            vec![],
-            Some(u256_array_token(vec![42, 26, 0, 1, 255])),
+            &[],
+            Some(&u256_array_token(&[42, 26, 0, 1, 255])),
         );
 
         harness.events_emitted(
             executor,
-            vec![
-                ("MyEvent", vec![string_token("my string"), uint_token(26)]),
+            &[
+                ("MyEvent", &[string_token("my string"), uint_token(26)]),
                 (
                     "MyEvent",
-                    vec![string_token("my other string"), uint_token(42)],
+                    &[string_token("my other string"), uint_token(42)],
                 ),
             ],
         );
@@ -1117,12 +1163,12 @@ fn data_copying_stress() {
 #[test]
 fn abi_encoding_stress() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(&mut executor, "abi_encoding_stress.fe", "Foo", vec![]);
+        let harness = deploy_contract(&mut executor, "abi_encoding_stress.fe", "Foo", &[]);
 
-        let my_addrs = address_array_token(vec!["a", "b", "c", "d", "e"]);
+        let my_addrs = address_array_token(&["a", "b", "c", "d", "e"]);
         let my_u128 = uint_token(42);
         let my_string = string_token("my string");
-        let my_u8s = u256_array_token((0..255).collect());
+        let my_u8s = u256_array_token(&(0..255).collect::<Vec<_>>());
         let my_bool = bool_token(true);
         let my_bytes = bytes_token(
             iter::repeat("ten bytes.")
@@ -1131,57 +1177,31 @@ fn abi_encoding_stress() {
                 .as_str(),
         );
 
-        harness.test_function(&mut executor, "set_my_addrs", vec![my_addrs.clone()], None);
+        harness.test_function(&mut executor, "set_my_addrs", &[my_addrs.clone()], None);
+        harness.test_function(&mut executor, "get_my_addrs", &[], Some(&my_addrs));
 
-        harness.test_function(
-            &mut executor,
-            "get_my_addrs",
-            vec![],
-            Some(my_addrs.clone()),
-        );
+        harness.test_function(&mut executor, "set_my_u128", &[my_u128.clone()], None);
+        harness.test_function(&mut executor, "get_my_u128", &[], Some(&my_u128));
 
-        harness.test_function(&mut executor, "set_my_u128", vec![my_u128.clone()], None);
+        harness.test_function(&mut executor, "set_my_string", &[my_string.clone()], None);
+        harness.test_function(&mut executor, "get_my_string", &[], Some(&my_string));
 
-        harness.test_function(&mut executor, "get_my_u128", vec![], Some(my_u128.clone()));
+        harness.test_function(&mut executor, "set_my_u8s", &[my_u8s.clone()], None);
+        harness.test_function(&mut executor, "get_my_u8s", &[], Some(&my_u8s));
 
-        harness.test_function(
-            &mut executor,
-            "set_my_string",
-            vec![my_string.clone()],
-            None,
-        );
+        harness.test_function(&mut executor, "set_my_bool", &[my_bool.clone()], None);
+        harness.test_function(&mut executor, "get_my_bool", &[], Some(&my_bool));
 
-        harness.test_function(
-            &mut executor,
-            "get_my_string",
-            vec![],
-            Some(my_string.clone()),
-        );
+        harness.test_function(&mut executor, "set_my_bytes", &[my_bytes.clone()], None);
+        harness.test_function(&mut executor, "get_my_bytes", &[], Some(&my_bytes));
 
-        harness.test_function(&mut executor, "set_my_u8s", vec![my_u8s.clone()], None);
-
-        harness.test_function(&mut executor, "get_my_u8s", vec![], Some(my_u8s.clone()));
-
-        harness.test_function(&mut executor, "set_my_bool", vec![my_bool.clone()], None);
-
-        harness.test_function(&mut executor, "get_my_bool", vec![], Some(my_bool.clone()));
-
-        harness.test_function(&mut executor, "set_my_bytes", vec![my_bytes.clone()], None);
-
-        harness.test_function(
-            &mut executor,
-            "get_my_bytes",
-            vec![],
-            Some(my_bytes.clone()),
-        );
-
-        harness.test_function(&mut executor, "emit_my_event", vec![], None);
+        harness.test_function(&mut executor, "emit_my_event", &[], None);
 
         harness.events_emitted(
             executor,
-            vec![(
+            &[(
                 "MyEvent",
-                vec![my_addrs, my_u128, my_string, my_u8s, my_bool, my_bytes],
+                &[my_addrs, my_u128, my_string, my_u8s, my_bool, my_bytes],
             )],
         );
     });
@@ -1190,11 +1210,11 @@ fn abi_encoding_stress() {
 #[test]
 fn two_contracts() {
     with_executor(&|mut executor| {
-        let foo_harness = deploy_contract(&mut executor, "two_contracts.fe", "Foo", vec![]);
-        let bar_harness = deploy_contract(&mut executor, "two_contracts.fe", "Bar", vec![]);
+        let foo_harness = deploy_contract(&mut executor, "two_contracts.fe", "Foo", &[]);
+        let bar_harness = deploy_contract(&mut executor, "two_contracts.fe", "Bar", &[]);
 
-        foo_harness.test_function(&mut executor, "foo", vec![], Some(uint_token(42)));
+        foo_harness.test_function(&mut executor, "foo", &[], Some(&uint_token(42)));
 
-        bar_harness.test_function(&mut executor, "bar", vec![], Some(uint_token(26)));
+        bar_harness.test_function(&mut executor, "bar", &[], Some(&uint_token(26)));
     })
 }

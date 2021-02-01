@@ -16,6 +16,7 @@ use fe_common::utils::keccak::get_full_signature;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use std::convert::TryFrom;
+use std::str::FromStr;
 use yultsur::*;
 
 /// Builds a Yul expression from a Fe expression.
@@ -310,21 +311,43 @@ fn expr_attribute(
     exp: &Spanned<fe::Expr>,
 ) -> Result<yul::Expression, CompileError> {
     if let fe::Expr::Attribute { value, attr } = &exp.node {
-        return match expr_name_str(value)? {
-            builtins::MSG => expr_attribute_msg(attr),
-            builtins::SELF => expr_attribute_self(context, exp),
-            _ => Err(CompileError::static_str("invalid attributes")),
+        use builtins::{
+            BlockField,
+            ChainField,
+            MsgField,
+            Object,
+            TxField,
+        };
+        return match Object::from_str(expr_name_str(value)?) {
+            Ok(Object::Self_) => expr_attribute_self(context, exp),
+
+            Ok(Object::Block) => match BlockField::from_str(attr.node) {
+                Ok(BlockField::Coinbase) => Ok(expression! { coinbase() }),
+                Ok(BlockField::Difficulty) => Ok(expression! { difficulty() }),
+                Ok(BlockField::Number) => Ok(expression! { number() }),
+                Ok(BlockField::Timestamp) => Ok(expression! { timestamp() }),
+                Err(_) => Err(CompileError::static_str("invalid `block` attribute name")),
+            },
+            Ok(Object::Chain) => match ChainField::from_str(attr.node) {
+                Ok(ChainField::Id) => Ok(expression! { chainid() }),
+                Err(_) => Err(CompileError::static_str("invalid `chain` attribute name")),
+            },
+            Ok(Object::Msg) => match MsgField::from_str(attr.node) {
+                Ok(MsgField::Data) => todo!(),
+                Ok(MsgField::Sender) => Ok(expression! { caller() }),
+                Ok(MsgField::Sig) => todo!(),
+                Ok(MsgField::Value) => Ok(expression! { callvalue() }),
+                Err(_) => Err(CompileError::static_str("invalid `msg` attribute name")),
+            },
+            Ok(Object::Tx) => match TxField::from_str(attr.node) {
+                Ok(TxField::GasPrice) => Ok(expression! { gasprice() }),
+                Ok(TxField::Origin) => Ok(expression! { origin() }),
+                Err(_) => Err(CompileError::static_str("invalid `msg` attribute name")),
+            },
+            Err(_) => Err(CompileError::static_str("invalid attributes")),
         };
     }
-
     unreachable!()
-}
-
-fn expr_attribute_msg(attr: &Spanned<&str>) -> Result<yul::Expression, CompileError> {
-    match attr.node {
-        builtins::SENDER => Ok(expression! { caller() }),
-        _ => Err(CompileError::static_str("invalid msg attribute name")),
-    }
 }
 
 fn expr_attribute_self(
@@ -489,17 +512,25 @@ mod tests {
         );
     }
 
-    #[test]
-    fn msg_sender() {
-        let mut harness = ContextHarness::new("msg.sender");
-        harness.add_expression(
-            "msg.sender",
-            ExpressionAttributes::new(Type::Base(Base::Address), Location::Value),
-        );
-
-        let result = map(&harness.context, "msg.sender");
-
-        assert_eq!(result, "caller()");
+    #[rstest(
+        expression,
+        expected_yul,
+        typ,
+        case("block.coinbase", "coinbase()", Type::Base(Base::Address)),
+        case("block.difficulty", "difficulty()", Type::Base(U256)),
+        case("block.number", "number()", Type::Base(U256)),
+        case("block.timestamp", "timestamp()", Type::Base(U256)),
+        case("chain.id", "chainid()", Type::Base(U256)),
+        case("msg.sender", "caller()", Type::Base(Base::Address)),
+        case("msg.value", "callvalue()", Type::Base(U256)),
+        case("tx.origin", "origin()", Type::Base(Base::Address)),
+        case("tx.gas_price", "gasprice()", Type::Base(U256))
+    )]
+    fn builtin_attribute(expression: &str, expected_yul: &str, typ: Type) {
+        let mut harness = ContextHarness::new(expression);
+        harness.add_expression(expression, ExpressionAttributes::new(typ, Location::Value));
+        let result = map(&harness.context, expression);
+        assert_eq!(result, expected_yul);
     }
 
     #[rstest(

@@ -1,13 +1,11 @@
+use crate::builtins;
 use crate::errors::SemanticError;
+use crate::namespace::operations;
 use crate::namespace::scopes::{
     BlockScope,
     ContractFunctionDef,
     Shared,
 };
-use std::convert::TryFrom;
-
-use crate::builtins;
-use crate::namespace::operations;
 use crate::namespace::types::{
     Array,
     Base,
@@ -31,7 +29,9 @@ use crate::{
 
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
+use std::convert::TryFrom;
 use std::rc::Rc;
+use std::str::FromStr;
 
 /// Gather context information for expressions and check for type errors.
 pub fn expr(
@@ -273,24 +273,48 @@ fn expr_attribute(
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::Attribute { value, attr } = &exp.node {
-        return match expr_name_str(value)? {
-            builtins::MSG => expr_attribute_msg(attr),
-            builtins::SELF => expr_attribute_self(scope, attr),
-            _ => Err(SemanticError::undefined_value()),
+        use builtins::{
+            BlockField,
+            ChainField,
+            MsgField,
+            Object,
+            TxField,
+        };
+
+        let val = |t| Ok(ExpressionAttributes::new(Type::Base(t), Location::Value));
+        let err = || Err(SemanticError::undefined_value());
+
+        return match Object::from_str(expr_name_str(value)?) {
+            Ok(Object::Self_) => expr_attribute_self(scope, attr),
+
+            Ok(Object::Block) => match BlockField::from_str(attr.node) {
+                Ok(BlockField::Coinbase) => val(Base::Address),
+                Ok(BlockField::Difficulty) => val(U256),
+                Ok(BlockField::Number) => val(U256),
+                Ok(BlockField::Timestamp) => val(U256),
+                Err(_) => err(),
+            },
+            Ok(Object::Chain) => match ChainField::from_str(attr.node) {
+                Ok(ChainField::Id) => val(U256),
+                Err(_) => err(),
+            },
+            Ok(Object::Msg) => match MsgField::from_str(attr.node) {
+                Ok(MsgField::Data) => todo!(),
+                Ok(MsgField::Sender) => val(Base::Address),
+                Ok(MsgField::Sig) => todo!(),
+                Ok(MsgField::Value) => val(U256),
+                Err(_) => err(),
+            },
+            Ok(Object::Tx) => match TxField::from_str(attr.node) {
+                Ok(TxField::GasPrice) => val(U256),
+                Ok(TxField::Origin) => val(Base::Address),
+                Err(_) => err(),
+            },
+            Err(_) => err(),
         };
     }
 
     unreachable!()
-}
-
-fn expr_attribute_msg(attr: &Spanned<&str>) -> Result<ExpressionAttributes, SemanticError> {
-    match attr.node {
-        builtins::SENDER => Ok(ExpressionAttributes::new(
-            Type::Base(Base::Address),
-            Location::Value,
-        )),
-        _ => Err(SemanticError::undefined_value()),
-    }
 }
 
 fn expr_attribute_self(
@@ -526,10 +550,13 @@ fn expr_call_value_attribute(
             return Err(SemanticError::wrong_number_of_params());
         }
 
-        return match attr.node {
-            builtins::CLONE => value_attributes.into_cloned(),
-            builtins::TO_MEM => value_attributes.into_cloned_from_sto(),
-            _ => Err(SemanticError::undefined_value()),
+        use builtins::Method;
+        return match Method::from_str(attr.node).map_err(|_| SemanticError::undefined_value())? {
+            Method::Clone => value_attributes.into_cloned(),
+            Method::ToMem => value_attributes.into_cloned_from_sto(),
+            Method::Keccak256 => todo!(),
+            Method::AbiEncode => todo!(),
+            Method::AbiEncodePacked => todo!(),
         };
     }
 
@@ -611,12 +638,21 @@ fn expr_attribute_call_type(
     exp: &Spanned<fe::Expr>,
 ) -> Result<CallType, SemanticError> {
     if let fe::Expr::Attribute { value, attr } = &exp.node {
-        return match value.node {
-            fe::Expr::Name(builtins::SELF) => Ok(CallType::SelfAttribute {
-                func_name: attr.node.to_string(),
-            }),
-            _ => Ok(CallType::ValueAttribute),
+        if let fe::Expr::Name(name) = value.node {
+            use builtins::Object;
+            match Object::from_str(name) {
+                Ok(Object::Block) | Ok(Object::Chain) | Ok(Object::Msg) | Ok(Object::Tx) => {
+                    return Err(SemanticError::undefined_value())
+                }
+                Ok(Object::Self_) => {
+                    return Ok(CallType::SelfAttribute {
+                        func_name: attr.node.to_string(),
+                    })
+                }
+                Err(_) => {}
+            }
         };
+        return Ok(CallType::ValueAttribute);
     }
 
     unreachable!()
