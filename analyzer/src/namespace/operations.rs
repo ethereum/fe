@@ -16,6 +16,7 @@ pub fn index(value: Type, index: Type) -> Result<Type, SemanticError> {
         Type::Base(_) => Err(SemanticError::not_subscriptable()),
         Type::Tuple(_) => Err(SemanticError::not_subscriptable()),
         Type::String(_) => Err(SemanticError::not_subscriptable()),
+        Type::Contract(_) => Err(SemanticError::not_subscriptable()),
     }
 }
 

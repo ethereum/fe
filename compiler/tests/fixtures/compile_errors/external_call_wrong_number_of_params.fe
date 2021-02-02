@@ -1,0 +1,7 @@
+contract Foo:
+    pub def bar(a: u256, b: u256):
+        pass
+
+contract FooProxy:
+    pub def baz():
+        Foo(address(0)).bar(42)

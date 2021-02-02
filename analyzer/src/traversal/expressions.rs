@@ -9,6 +9,7 @@ use crate::namespace::scopes::{
 use crate::namespace::types::{
     Array,
     Base,
+    Contract,
     FeString,
     FixedSize,
     Integer,
@@ -184,6 +185,10 @@ fn expr_name(
             Some(FixedSize::Base(base)) => {
                 Ok(ExpressionAttributes::new(Type::Base(base), Location::Value))
             }
+            Some(FixedSize::Contract(contract)) => Ok(ExpressionAttributes::new(
+                Type::Contract(contract),
+                Location::Value,
+            )),
             Some(FixedSize::Array(array)) => Ok(ExpressionAttributes::new(
                 Type::Array(array),
                 Location::Memory,
@@ -411,7 +416,7 @@ fn expr_call(
     context: Shared<Context>,
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
-    if let fe::Expr::Call { args, func } = &exp.node {
+    if let fe::Expr::Call { func, args } = &exp.node {
         return match expr_call_type(Rc::clone(&scope), Rc::clone(&context), func)? {
             CallType::TypeConstructor { typ } => {
                 expr_call_type_constructor(scope, context, typ, args)
@@ -436,12 +441,19 @@ fn expr_call_type_constructor(
         return Err(SemanticError::wrong_number_of_params());
     }
 
-    call_arg(Rc::clone(&scope), Rc::clone(&context), &args.node[0])?;
+    let arg_attributes = call_arg(Rc::clone(&scope), Rc::clone(&context), &args.node[0])?;
 
     match typ {
         Type::String(ref fe_string) => {
             validate_str_literal_fits_type(&args.node[0].node, &fe_string)?;
             Ok(ExpressionAttributes::new(typ, Location::Memory))
+        }
+        Type::Contract(_) => {
+            if arg_attributes.typ != Type::Base(Base::Address) {
+                Err(SemanticError::type_error())
+            } else {
+                Ok(ExpressionAttributes::new(typ, Location::Value))
+            }
         }
         _ => {
             let num = validate_is_numeric_literal(&args.node[0].node)?;
@@ -518,6 +530,10 @@ fn expr_call_self_attribute(
             .map(|arg| call_arg(Rc::clone(&scope), Rc::clone(&context), arg))
             .collect::<Result<Vec<_>, _>>()?;
 
+        if param_types.len() != argument_attributes.len() {
+            return Err(SemanticError::wrong_number_of_params());
+        }
+
         if fixed_sizes_to_types(param_types) != expression_attributes_to_types(argument_attributes)
         {
             return Err(SemanticError::type_error());
@@ -543,7 +559,17 @@ fn expr_call_value_attribute(
     args: &Spanned<Vec<Spanned<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::Attribute { value, attr } = &func.node {
-        let value_attributes = expr(scope, context, value)?;
+        let value_attributes = expr(Rc::clone(&scope), Rc::clone(&context), &value)?;
+
+        if let Type::Contract(contract) = value_attributes.typ {
+            return expr_call_contract_attribute(
+                scope,
+                context,
+                contract,
+                attr.node.to_string(),
+                args,
+            );
+        }
 
         // for now all of these function expect 0 arguments
         if !args.node.is_empty() {
@@ -558,6 +584,51 @@ fn expr_call_value_attribute(
             Method::AbiEncode => todo!(),
             Method::AbiEncodePacked => todo!(),
         };
+    }
+
+    unreachable!()
+}
+
+fn expr_call_contract_attribute(
+    scope: Shared<BlockScope>,
+    context: Shared<Context>,
+    contract: Contract,
+    func_name: String,
+    args: &Spanned<Vec<Spanned<fe::CallArg>>>,
+) -> Result<ExpressionAttributes, SemanticError> {
+    if let Some(function) = contract
+        .functions
+        .iter()
+        .find(|function| function.name == func_name)
+    {
+        let return_type = function.return_type.to_owned();
+
+        if matches!(return_type, FixedSize::String(_)) {
+            // we need figure out how to deal with dynamically sized returns
+            // for now, this only affects strings
+            todo!("external call string returns")
+        }
+
+        let argument_attributes = args
+            .node
+            .iter()
+            .map(|arg| call_arg(Rc::clone(&scope), Rc::clone(&context), arg))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        if function.param_types.len() != argument_attributes.len() {
+            return Err(SemanticError::wrong_number_of_params());
+        }
+
+        if fixed_sizes_to_types(function.param_types.clone())
+            != expression_attributes_to_types(argument_attributes)
+        {
+            return Err(SemanticError::type_error());
+        }
+
+        return Ok(ExpressionAttributes::new(
+            return_type.clone().into(),
+            Location::assign_location(return_type.into())?,
+        ));
     }
 
     unreachable!()
@@ -579,7 +650,7 @@ fn expr_call_type(
 }
 
 fn expr_name_call_type(
-    _scope: Shared<BlockScope>,
+    scope: Shared<BlockScope>,
     _context: Shared<Context>,
     name: &str,
 ) -> Result<CallType, SemanticError> {
@@ -628,6 +699,18 @@ fn expr_name_call_type(
                 TryFrom::try_from(value).map_err(|_| SemanticError::undefined_value())?,
             ),
         }),
+        value
+            if scope
+                .borrow()
+                .module_scope()
+                .borrow()
+                .type_defs
+                .contains_key(value) =>
+        {
+            Ok(CallType::TypeConstructor {
+                typ: scope.borrow().module_scope().borrow().type_defs[value].to_owned(),
+            })
+        }
         _ => Err(SemanticError::undefined_value()),
     }
 }

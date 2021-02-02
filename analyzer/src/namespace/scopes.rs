@@ -106,6 +106,11 @@ impl ContractScope {
         }))
     }
 
+    /// Return the module scope that the contract scope inherits from
+    pub fn module_scope(&self) -> Shared<ModuleScope> {
+        Rc::clone(&self.parent)
+    }
+
     /// Lookup contract event definition by its name.
     pub fn event_def(&self, name: String) -> Option<Event> {
         self.event_defs.get(&name).map(|def| (*def).clone())

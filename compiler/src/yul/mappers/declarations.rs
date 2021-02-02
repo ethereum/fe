@@ -2,7 +2,6 @@ use crate::errors::CompileError;
 use crate::yul::mappers::expressions;
 use crate::yul::names;
 use fe_analyzer::namespace::types::{
-    Array,
     FeSized,
     FixedSize,
 };
@@ -16,61 +15,22 @@ pub fn var_decl(
     context: &Context,
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<yul::Statement, CompileError> {
-    if let Some(typ) = context.get_declaration(stmt) {
-        return match typ {
-            FixedSize::Base(_) => var_decl_base(context, stmt),
-            FixedSize::Array(array) => var_decl_array(context, stmt, array.to_owned()),
-            FixedSize::Tuple(_) => unimplemented!(),
-            FixedSize::String(_) => unimplemented!(),
-        };
-    }
+    let decl_type = context.get_declaration(stmt).expect("missing attributes");
 
-    unreachable!()
-}
-
-fn var_decl_base(
-    context: &Context,
-    decl: &Spanned<fe::FuncStmt>,
-) -> Result<yul::Statement, CompileError> {
-    if let fe::FuncStmt::VarDecl {
-        target,
-        typ: _,
-        value,
-    } = &decl.node
-    {
-        let target = names::var_name(expressions::expr_name_str(target)?);
+    if let fe::FuncStmt::VarDecl { target, value, .. } = &stmt.node {
+        let target = names::var_name(expressions::expr_name_str(&target)?);
 
         return Ok(if let Some(value) = value {
             let value = expressions::expr(context, &value)?;
             statement! { let [target] := [value] }
         } else {
-            statement! { let [target] := 0 }
-        });
-    }
-
-    unreachable!()
-}
-
-fn var_decl_array(
-    context: &Context,
-    decl: &Spanned<fe::FuncStmt>,
-    array: Array,
-) -> Result<yul::Statement, CompileError> {
-    if let fe::FuncStmt::VarDecl {
-        target,
-        typ: _,
-        value,
-    } = &decl.node
-    {
-        let target = names::var_name(expressions::expr_name_str(target)?);
-        let size = literal_expression! { (array.size()) };
-
-        return Ok(match value {
-            Some(val) => {
-                let value_yul = expressions::expr(&context, val)?;
-                statement! { let [target] := [value_yul] }
+            match decl_type {
+                FixedSize::Base(_) => statement! { let [target] := 0 },
+                typ => {
+                    let size = literal_expression! { (typ.size()) };
+                    statement! { let [target] := alloc([size]) }
+                }
             }
-            None => statement! { let [target] := alloc([size]) },
         });
     }
 

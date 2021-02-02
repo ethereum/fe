@@ -1,5 +1,6 @@
 use crate::errors::CompileError;
 use crate::yul::names;
+use crate::yul::operations::calls as call_operations;
 use crate::yul::operations::data as data_operations;
 use crate::yul::utils;
 use fe_analyzer::builtins;
@@ -87,10 +88,7 @@ pub fn call_arg(
     }
 }
 
-pub fn expr_call(
-    context: &Context,
-    exp: &Spanned<fe::Expr>,
-) -> Result<yul::Expression, CompileError> {
+fn expr_call(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
     if let fe::Expr::Call { args, func } = &exp.node {
         if let Some(call_type) = context.get_call(func) {
             let yul_args: Vec<yul::Expression> = args
@@ -103,15 +101,40 @@ pub fn expr_call(
                 CallType::TypeConstructor { .. } => Ok(yul_args[0].to_owned()),
                 CallType::SelfAttribute { func_name } => {
                     let func_name = names::func_name(func_name);
-
                     Ok(expression! { [func_name]([yul_args...]) })
                 }
-                CallType::ValueAttribute { .. } => {
-                    if let fe::Expr::Attribute { value, .. } = &func.node {
-                        expr(context, value)
-                    } else {
-                        unreachable!()
+                CallType::ValueAttribute => {
+                    if let fe::Expr::Attribute { value, attr } = &func.node {
+                        let value_attributes =
+                            context.get_expression(value).expect("invalid attributes");
+
+                        return match (value_attributes.typ.to_owned(), attr.node) {
+                            (Type::Contract(contract), func_name) => {
+                                Ok(call_operations::contract_call(
+                                    contract,
+                                    func_name.to_owned(),
+                                    expr(context, value)?,
+                                    yul_args,
+                                ))
+                            }
+                            (_, func_name) => {
+                                match builtins::Method::from_str(func_name)
+                                    .expect("uncaught analyzer error")
+                                {
+                                    // Copying is done in `expr(..)` based on the move location set
+                                    // in the expression's attributes, so we just map the value for
+                                    // `to_mem` and `clone`.
+                                    builtins::Method::ToMem => expr(context, value),
+                                    builtins::Method::Clone => expr(context, value),
+                                    builtins::Method::AbiEncode => todo!(),
+                                    builtins::Method::AbiEncodePacked => todo!(),
+                                    builtins::Method::Keccak256 => todo!(),
+                                }
+                            }
+                        };
                     }
+
+                    panic!("invalid attributes")
                 }
             };
         }

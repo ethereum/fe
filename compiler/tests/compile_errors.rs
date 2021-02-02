@@ -50,7 +50,9 @@ use std::fs;
     case("numeric_capacity_mismatch/i128_neg.fe", "NumericCapacityMismatch"),
     case("numeric_capacity_mismatch/i128_pos.fe", "NumericCapacityMismatch"),
     case("numeric_capacity_mismatch/i256_neg.fe", "NumericCapacityMismatch"),
-    case("numeric_capacity_mismatch/i256_pos.fe", "NumericCapacityMismatch")
+    case("numeric_capacity_mismatch/i256_pos.fe", "NumericCapacityMismatch"),
+    case("external_call_type_error.fe", "TypeError"),
+    case("external_call_wrong_number_of_params.fe", "WrongNumberOfParams")
 )]
 fn test_compile_errors(fixture_file: &str, expected_error: &str) {
     let src = fs::read_to_string(format!("tests/fixtures/compile_errors/{}", fixture_file))

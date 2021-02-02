@@ -6,12 +6,19 @@ use crate::namespace::scopes::{
     Scope,
     Shared,
 };
-use crate::namespace::types::FixedSize;
+use crate::namespace::types::{
+    Contract,
+    FixedSize,
+    Type,
+};
 use crate::traversal::{
     functions,
     types,
 };
-use crate::Context;
+use crate::{
+    Context,
+    ContractAttributes,
+};
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use std::rc::Rc;
@@ -23,8 +30,8 @@ pub fn contract_def(
     context: Shared<Context>,
     stmt: &Spanned<fe::ModuleStmt>,
 ) -> Result<(), SemanticError> {
-    if let fe::ModuleStmt::ContractDef { name: _, body } = &stmt.node {
-        let contract_scope = ContractScope::new(module_scope);
+    if let fe::ModuleStmt::ContractDef { name, body } = &stmt.node {
+        let contract_scope = ContractScope::new(Rc::clone(&module_scope));
 
         for stmt in body.iter() {
             match &stmt.node {
@@ -46,9 +53,21 @@ pub fn contract_def(
             };
         }
 
-        context
+        let contract_attributes = ContractAttributes::from(Rc::clone(&contract_scope));
+
+        contract_scope
+            .borrow()
+            .module_scope()
             .borrow_mut()
-            .add_contract(stmt, contract_scope.borrow().into());
+            .add_type_def(
+                name.node.to_string(),
+                Type::Contract(Contract {
+                    name: name.node.to_string(),
+                    functions: contract_attributes.public_functions.clone(),
+                }),
+            );
+
+        context.borrow_mut().add_contract(stmt, contract_attributes);
 
         return Ok(());
     }

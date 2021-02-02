@@ -25,7 +25,8 @@ pub fn var_decl(
         let declared_type = types::type_desc_fixed_size(Scope::Block(Rc::clone(&scope)), typ)?;
         if let Some(value) = value {
             let value_attributes =
-                expressions::expr(Rc::clone(&scope), Rc::clone(&context), value)?;
+                expressions::assignable_expr(Rc::clone(&scope), Rc::clone(&context), value)?;
+
             if Type::from(declared_type.clone()) != value_attributes.typ {
                 return Err(SemanticError::type_error());
             }

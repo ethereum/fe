@@ -17,6 +17,7 @@ use crate::namespace::scopes::{
     Shared,
 };
 use crate::namespace::types::{
+    Contract,
     FixedSize,
     Type,
 };
@@ -25,10 +26,7 @@ use fe_parser::span::{
     Span,
     Spanned,
 };
-use std::cell::{
-    Ref,
-    RefCell,
-};
+use std::cell::RefCell;
 use std::collections::{
     HashMap,
     HashSet,
@@ -53,6 +51,7 @@ impl Location {
     pub fn assign_location(typ: Type) -> Result<Self, SemanticError> {
         match typ {
             Type::Base(_) => Ok(Location::Value),
+            Type::Contract(_) => Ok(Location::Value),
             Type::Array(_) => Ok(Location::Memory),
             Type::Tuple(_) => Ok(Location::Memory),
             Type::String(_) => Ok(Location::Memory),
@@ -72,14 +71,16 @@ pub struct ContractAttributes {
     pub events: Vec<Event>,
     /// Static strings that the contract defines
     pub string_literals: HashSet<String>,
+    /// External contracts that may be called from within this contract.
+    pub external_contracts: Vec<Contract>,
 }
 
-impl From<Ref<'_, ContractScope>> for ContractAttributes {
-    fn from(scope: Ref<'_, ContractScope>) -> Self {
+impl From<Shared<ContractScope>> for ContractAttributes {
+    fn from(scope: Shared<ContractScope>) -> Self {
         let mut public_functions = vec![];
         let mut init_function = None;
 
-        for (name, def) in scope.function_defs.iter() {
+        for (name, def) in scope.borrow().function_defs.iter() {
             if !def.is_public {
                 continue;
             }
@@ -99,15 +100,32 @@ impl From<Ref<'_, ContractScope>> for ContractAttributes {
             }
         }
 
+        let external_contracts = scope
+            .borrow()
+            .module_scope()
+            .borrow()
+            .type_defs
+            .values()
+            .filter_map(|typ| {
+                if let Type::Contract(contract) = typ {
+                    Some(contract.to_owned())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
         ContractAttributes {
             public_functions,
             init_function,
             events: scope
+                .borrow()
                 .event_defs
                 .values()
                 .map(|event| event.to_owned())
                 .collect::<Vec<Event>>(),
-            string_literals: scope.string_defs.clone(),
+            string_literals: scope.borrow().string_defs.clone(),
+            external_contracts,
         }
     }
 }
@@ -153,6 +171,7 @@ impl ExpressionAttributes {
     pub fn into_loaded(mut self) -> Result<Self, SemanticError> {
         match self.typ {
             Type::Base(_) => {}
+            Type::Contract(_) => {}
             _ => return Err(SemanticError::cannot_move()),
         }
 
@@ -200,7 +219,7 @@ pub enum CallType {
 }
 
 /// Contains contextual information relating to a function definition AST node.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub struct FunctionAttributes {
     pub name: String,
     pub param_types: Vec<FixedSize>,
