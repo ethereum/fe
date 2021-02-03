@@ -330,8 +330,15 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, TokenizeError> {
                 #[allow(clippy::range_plus_one)]
                 result.push(Token {
                     typ: ERRORTOKEN,
-                    string: &line[line_pos..line_pos + 1],
                     span: Span::new(line_start + line_pos, line_start + line_pos + 1),
+                    string: {
+                        let char = line[line_pos..].chars().next().unwrap();
+                        // panic!(format!("{}, {}, {:?}", line_pos, char.len_utf8(), char));
+                        let len = char.len_utf8();
+                        let result = &line[line_pos..line_pos + len];
+                        line_pos += len - 1;
+                        result
+                    },
                     line,
                 });
                 line_pos += 1;
@@ -415,5 +422,21 @@ mod tests {
         for input in &inputs {
             assert!(tokenize(input).is_err());
         }
+    }
+
+    #[test]
+    fn test_unicode_token() {
+        let uni = "\u{6dd}";
+        let input = format!("[{}]", uni);
+        let result = tokenize(&input);
+        assert!(result.is_ok());
+        let tokens = result.unwrap();
+        let token = tokens
+            .iter()
+            .filter(|token| token.typ == ERRORTOKEN)
+            .nth(0)
+            .unwrap();
+        assert_eq!(token.typ, ERRORTOKEN);
+        assert_eq!(token.string, uni);
     }
 }
