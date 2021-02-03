@@ -311,6 +311,12 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, TokenizeError> {
                     if initial == '(' || initial == '[' || initial == '{' {
                         parenlev += 1;
                     } else if initial == ')' || initial == ']' || initial == '}' {
+                        if parenlev == 0 {
+                            return Err(TokenizeError {
+                                msg: "Unbalanced brackets",
+                                offset: line_pos,
+                            });
+                        }
                         parenlev -= 1;
                     }
                     result.push(Token {
@@ -331,6 +337,14 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, TokenizeError> {
                 line_pos += 1;
             }
         }
+    }
+
+    // Ensure brackets are balanced
+    if parenlev != 0 {
+        return Err(TokenizeError {
+            msg: "Unbalanced brackets",
+            offset: input.len(),
+        });
     }
 
     // We use this zero-length slice as the ending content for remaining tokens.
@@ -381,4 +395,25 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, TokenizeError> {
     });
 
     Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_balanced_brackets() {
+        let inputs = ["[]", "[[]]", "()", "(())", "{}", "{{}}"];
+        for input in &inputs {
+            assert!(tokenize(input).is_ok());
+        }
+    }
+
+    #[test]
+    fn test_unbalanced_brackets() {
+        let inputs = ["[[]", "[]]", "(()", "())", "{{}", "{}}"];
+        for input in &inputs {
+            assert!(tokenize(input).is_err());
+        }
+    }
 }
