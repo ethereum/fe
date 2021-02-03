@@ -311,6 +311,12 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, TokenizeError> {
                     if initial == '(' || initial == '[' || initial == '{' {
                         parenlev += 1;
                     } else if initial == ')' || initial == ']' || initial == '}' {
+                        if parenlev == 0 {
+                            return Err(TokenizeError {
+                                msg: "Unbalanced brackets",
+                                offset: line_pos,
+                            });
+                        }
                         parenlev -= 1;
                     }
                     result.push(Token {
@@ -321,16 +327,27 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, TokenizeError> {
                     });
                 }
             } else {
+                let char = line[line_pos..].chars().next().unwrap();
+                let len = char.len_utf8();
+                let string = &line[line_pos..line_pos + len];
                 #[allow(clippy::range_plus_one)]
                 result.push(Token {
                     typ: ERRORTOKEN,
-                    string: &line[line_pos..line_pos + 1],
-                    span: Span::new(line_start + line_pos, line_start + line_pos + 1),
+                    string,
+                    span: Span::new(line_start + line_pos, line_start + line_pos + len),
                     line,
                 });
-                line_pos += 1;
+                line_pos += len;
             }
         }
+    }
+
+    // Ensure brackets are balanced
+    if parenlev != 0 {
+        return Err(TokenizeError {
+            msg: "Unbalanced brackets",
+            offset: input.len(),
+        });
     }
 
     // We use this zero-length slice as the ending content for remaining tokens.
@@ -381,4 +398,41 @@ pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, TokenizeError> {
     });
 
     Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_balanced_brackets() {
+        let inputs = ["[]", "[[]]", "()", "(())", "{}", "{{}}"];
+        for input in &inputs {
+            assert!(tokenize(input).is_ok());
+        }
+    }
+
+    #[test]
+    fn test_unbalanced_brackets() {
+        let inputs = ["[[]", "[]]", "(()", "())", "{{}", "{}}"];
+        for input in &inputs {
+            assert!(tokenize(input).is_err());
+        }
+    }
+
+    #[test]
+    fn test_unicode_token() {
+        let uni = "\u{6dd}";
+        let input = format!("[{}]", uni);
+        let result = tokenize(&input);
+        assert!(result.is_ok());
+        let tokens = result.unwrap();
+        let token = tokens
+            .iter()
+            .filter(|token| token.typ == ERRORTOKEN)
+            .nth(0)
+            .unwrap();
+        assert_eq!(token.typ, ERRORTOKEN);
+        assert_eq!(token.string, uni);
+    }
 }
