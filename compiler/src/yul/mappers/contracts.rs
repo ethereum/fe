@@ -12,11 +12,14 @@ use yultsur::*;
 pub fn contract_def(
     context: &Context,
     stmt: &Spanned<fe::ModuleStmt>,
+    created_contracts: Vec<yul::Object>,
 ) -> Result<yul::Object, CompileError> {
-    if let fe::ModuleStmt::ContractDef { name: _, body } = &stmt.node {
+    if let fe::ModuleStmt::ContractDef { name, body } = &stmt.node {
         let mut init = None;
         let mut user_functions = vec![];
+        let contract_name = name.node;
 
+        // map user defined functions
         for stmt in body.iter() {
             if let (Some(attributes), fe::ContractStmt::FuncDef { name, .. }) =
                 (context.get_function(stmt), &stmt.node)
@@ -32,15 +35,18 @@ pub fn contract_def(
             }
         }
 
+        // build the contract's constructor
         let constructor = if let Some((init_func, init_params)) = init {
             let init_runtime = [runtime::build(context, stmt), user_functions.clone()].concat();
-            constructor::build_with_init(init_func, init_params, init_runtime)
+            constructor::build_with_init(contract_name, init_func, init_params, init_runtime)
         } else {
             constructor::build()
         };
 
+        // build the contract's runtime
         let runtime = runtime::build_with_abi_dispatcher(context, stmt);
 
+        // build data objects for static strings (also for constants in the future)
         let data = if let Some(attributes) = context.get_contract(stmt) {
             attributes
                 .string_literals
@@ -55,24 +61,28 @@ pub fn contract_def(
             vec![]
         };
 
-        return Ok(yul::Object {
-            name: identifier! { Contract },
-            code: constructor,
-            objects: vec![yul::Object {
-                name: identifier! { runtime },
-                code: yul::Code {
-                    block: yul::Block {
-                        statements: statements! {
-                            [user_functions...]
-                            [runtime...]
-                        },
+        let runtime = yul::Object {
+            name: identifier! { runtime },
+            code: yul::Code {
+                block: yul::Block {
+                    statements: statements! {
+                        [user_functions...]
+                        [runtime...]
+                        // we must return, otherwise we'll enter into other objects
+                        (return(0, 0))
                     },
                 },
-                objects: vec![],
-                // We can't reach to data objects in the "contract" hierachy so in order to have
-                // the data objects available in both places we have to put them in both places.
-                data: data.clone(),
-            }],
+            },
+            objects: created_contracts,
+            // We can't reach to data objects in the "contract" hierachy so in order to have
+            // the data objects available in both places we have to put them in both places.
+            data: data.clone(),
+        };
+
+        return Ok(yul::Object {
+            name: identifier! { (contract_name) },
+            code: constructor,
+            objects: vec![runtime],
             data,
         });
     }

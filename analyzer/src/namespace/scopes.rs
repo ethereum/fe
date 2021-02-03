@@ -41,6 +41,7 @@ pub struct ContractScope {
     pub field_defs: HashMap<String, ContractFieldDef>,
     pub function_defs: HashMap<String, ContractFunctionDef>,
     pub string_defs: HashSet<String>,
+    pub created_contracts: HashSet<String>,
     num_fields: usize,
 }
 
@@ -98,6 +99,11 @@ impl ModuleScope {
     pub fn get_type_defs<B, F: FnMut(&Type) -> Option<B>>(&self, predicate: F) -> Vec<B> {
         self.type_defs.values().filter_map(predicate).collect()
     }
+
+    /// Gets a type definition by name.
+    pub fn get_type_def(&self, name: &str) -> Option<Type> {
+        self.type_defs.get(name).map(|typ| typ.to_owned())
+    }
 }
 
 impl ContractScope {
@@ -109,6 +115,7 @@ impl ContractScope {
             field_defs: HashMap::new(),
             string_defs: HashSet::new(),
             interface: vec![],
+            created_contracts: HashSet::new(),
             num_fields: 0,
         }))
     }
@@ -191,6 +198,12 @@ impl ContractScope {
     pub fn add_string(&mut self, value: String) -> Result<(), SemanticError> {
         self.string_defs.insert(value);
         Ok(())
+    }
+
+    /// Add the name of another contract that has been created within this
+    /// contract.
+    pub fn add_created_contract(&mut self, name: String) {
+        self.created_contracts.insert(name);
     }
 }
 
@@ -279,11 +292,11 @@ impl BlockScope {
     }
 
     /// Lookup a definition in current or inherited block scope
-    pub fn variable_def(&self, name: String) -> Option<FixedSize> {
+    pub fn get_variable_def(&self, name: String) -> Option<FixedSize> {
         let block_def = self.variable_defs.get(&name).map(|def| (*def).clone());
         if block_def.is_none() {
             if let BlockScopeParent::Block(scope) = &self.parent {
-                scope.borrow().variable_def(name)
+                scope.borrow().get_variable_def(name)
             } else {
                 None
             }
@@ -314,6 +327,16 @@ impl BlockScope {
         } else {
             true
         }
+    }
+
+    /// Filter module scope for type definitions that match the given predicate
+    pub fn get_module_type_defs<B, F: FnMut(&Type) -> Option<B>>(&self, predicate: F) -> Vec<B> {
+        self.module_scope().borrow().get_type_defs(predicate)
+    }
+
+    /// Gets a type definition by name.
+    pub fn get_module_type_def(&self, name: &str) -> Option<Type> {
+        self.module_scope().borrow().get_type_def(name)
     }
 }
 
@@ -367,7 +390,7 @@ mod tests {
             Some(FixedSize::Base(Base::Bool)),
             block_scope_1
                 .borrow()
-                .variable_def("some_thing".to_string())
+                .get_variable_def("some_thing".to_string())
         );
     }
 
@@ -387,7 +410,7 @@ mod tests {
             Some(FixedSize::Base(Base::Bool)),
             block_scope_2
                 .borrow()
-                .variable_def("some_thing".to_string())
+                .get_variable_def("some_thing".to_string())
         );
     }
 
@@ -407,7 +430,7 @@ mod tests {
             None,
             block_scope_1
                 .borrow()
-                .variable_def("some_thing".to_string())
+                .get_variable_def("some_thing".to_string())
         );
     }
 

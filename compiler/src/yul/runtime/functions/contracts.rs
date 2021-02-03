@@ -10,7 +10,7 @@ use yultsur::*;
 
 /// Builds a set of functions used to make calls to the given contract's public
 /// functions.
-pub fn contract_calls(contract: Contract) -> Vec<yul::Statement> {
+pub fn calls(contract: Contract) -> Vec<yul::Statement> {
     let contract_name = contract.name;
     contract
         .functions
@@ -81,4 +81,26 @@ pub fn contract_calls(contract: Contract) -> Vec<yul::Statement> {
             }
         })
         .collect()
+}
+
+/// Function that executes the `create2` operation.
+pub fn create2() -> yul::Statement {
+    function_definition! {
+        function contract_create2(data_ptr, data_size, value, salt) -> return_address {
+            (let mptr := alloc(data_size))
+            (datacopy(mptr, data_ptr, data_size))
+            (return_address := create2(value, mptr, data_size, salt))
+        }
+    }
+}
+
+/// Function that executes the `create` operation.
+pub fn create() -> yul::Statement {
+    function_definition! {
+        function contract_create(data_ptr, data_size, value) -> return_address {
+            (let mptr := alloc(data_size))
+            (datacopy(mptr, data_ptr, data_size))
+            (return_address := create(value, mptr, data_size))
+        }
+    }
 }

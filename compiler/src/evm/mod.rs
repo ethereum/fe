@@ -9,20 +9,31 @@ use crate::types::{
 };
 
 /// Compiles Fe to bytecode. It uses Yul as an intermediate representation.
-pub fn compile(mut contracts: NamedYulContracts) -> Result<NamedBytecodeContracts, CompileError> {
+pub fn compile(
+    mut contracts: NamedYulContracts,
+    optimize: bool,
+) -> Result<NamedBytecodeContracts, CompileError> {
     contracts
         .drain()
-        .map(|(name, yul_src)| compile_single_contract(yul_src).map(|bytecode| (name, bytecode)))
+        .map(|(name, yul_src)| {
+            compile_single_contract(&name, yul_src, optimize).map(|bytecode| (name, bytecode))
+        })
         .collect::<Result<NamedBytecodeContracts, _>>()
 }
 
-fn compile_single_contract(yul_src: YulIr) -> Result<Bytecode, CompileError> {
+fn compile_single_contract(
+    name: &str,
+    yul_src: YulIr,
+    optimize: bool,
+) -> Result<Bytecode, CompileError> {
     let solc_temp = include_str!("solc_temp.json");
-    let input = solc_temp.replace("{src}", &yul_src);
+    let input = solc_temp
+        .replace("{optimizer_enabled}", &optimize.to_string())
+        .replace("{src}", &yul_src);
     let raw_output = solc::compile(&input);
     let output: serde_json::Value = serde_json::from_str(&raw_output)?;
 
-    let bytecode = output["contracts"]["input.yul"]["Contract"]["evm"]["bytecode"]["object"]
+    let bytecode = output["contracts"]["input.yul"][name]["evm"]["bytecode"]["object"]
         .to_string()
         .replace("\"", "");
 
@@ -37,7 +48,9 @@ fn compile_single_contract(yul_src: YulIr) -> Result<Bytecode, CompileError> {
 fn test_solc_sanity() {
     let yul_src = "{ sstore(0,0) }";
     let solc_temp = include_str!("solc_temp.json");
-    let input = solc_temp.replace("{src}", &yul_src);
+    let input = solc_temp
+        .replace("{optimizer_enabled}", "false")
+        .replace("{src}", &yul_src);
 
     let raw_output = solc::compile(&input);
     let output: serde_json::Value = serde_json::from_str(&raw_output).unwrap();

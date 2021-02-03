@@ -20,6 +20,7 @@ pub fn build() -> yul::Code {
 /// We include the entire contact runtime inside of the constructor (without the
 /// ABI dispatcher), run the init function, and return the contract code.
 pub fn build_with_init(
+    contract_name: &str,
     init_func: yul::Statement,
     init_params: Vec<FixedSize>,
     runtime: Vec<yul::Statement>,
@@ -33,8 +34,9 @@ pub fn build_with_init(
         expression! { params_start_mem },
         AbiDecodeLocation::Memory,
     );
-    // the name of the user defined init function ager it is mapped
+    // the name of the user defined init function after it is mapped
     let init_func_name = identifier! { ("$$__init__") };
+    let contract_name = literal_expression! { (format!("\"{}\"", contract_name)) };
 
     // Build a constructor that runs a user defined init function. Parameters for
     // init functions are appended to the end of the initialization code.
@@ -45,7 +47,7 @@ pub fn build_with_init(
     // init function.
     code! {
         // copy params to memory where they can be decoded
-        (let params_start_code := datasize("Contract"))
+        (let params_start_code := datasize([contract_name]))
         (let params_end_code := codesize())
         (let params_size := sub(params_end_code, params_start_code))
         (let params_start_mem := alloc(params_size))

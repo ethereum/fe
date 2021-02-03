@@ -81,7 +81,7 @@ pub fn build(context: &Context, contract: &Spanned<fe::ModuleStmt>) -> Vec<yul::
             attributes
                 .external_contracts
                 .iter()
-                .map(|contract| functions::calls::contract_calls(contract.to_owned()))
+                .map(|contract| functions::contracts::calls(contract.to_owned()))
                 .collect::<Vec<_>>()
                 .concat()
         };
