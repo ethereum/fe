@@ -91,6 +91,11 @@ impl ModuleScope {
     pub fn add_type_def(&mut self, name: String, typ: Type) {
         self.type_defs.insert(name, typ);
     }
+
+    /// Filter module scope for type definitions that match the given predicate
+    pub fn get_type_defs<B, F: FnMut(&Type) -> Option<B>>(&self, predicate: F) -> Vec<B> {
+        self.type_defs.values().filter_map(predicate).collect()
+    }
 }
 
 impl ContractScope {
@@ -109,6 +114,11 @@ impl ContractScope {
     /// Return the module scope that the contract scope inherits from
     pub fn module_scope(&self) -> Shared<ModuleScope> {
         Rc::clone(&self.parent)
+    }
+
+    /// Filter module scope for type definitions that match the given predicate
+    pub fn get_module_type_defs<B, F: FnMut(&Type) -> Option<B>>(&self, predicate: F) -> Vec<B> {
+        self.module_scope().borrow().get_type_defs(predicate)
     }
 
     /// Lookup contract event definition by its name.

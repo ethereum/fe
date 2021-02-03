@@ -100,20 +100,13 @@ impl From<Shared<ContractScope>> for ContractAttributes {
             }
         }
 
-        let external_contracts = scope
-            .borrow()
-            .module_scope()
-            .borrow()
-            .type_defs
-            .values()
-            .filter_map(|typ| {
-                if let Type::Contract(contract) = typ {
-                    Some(contract.to_owned())
-                } else {
-                    None
-                }
-            })
-            .collect();
+        let external_contracts = scope.borrow().get_module_type_defs(|typ| {
+            if let Type::Contract(contract) = typ {
+                Some(contract.to_owned())
+            } else {
+                None
+            }
+        });
 
         ContractAttributes {
             public_functions,
