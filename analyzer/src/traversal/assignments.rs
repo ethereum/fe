@@ -82,24 +82,31 @@ mod tests {
     fn scope() -> Shared<BlockScope> {
         let module_scope = ModuleScope::new();
         let contract_scope = ContractScope::new(module_scope);
-        contract_scope.borrow_mut().add_field(
-            "foobar".to_string(),
-            Type::Map(Map {
-                key: U256,
-                value: Box::new(Type::Base(U256)),
-            }),
-        );
+        contract_scope
+            .borrow_mut()
+            .add_field(
+                "foobar".to_string(),
+                Type::Map(Map {
+                    key: U256,
+                    value: Box::new(Type::Base(U256)),
+                }),
+            )
+            .unwrap();
         let function_scope = BlockScope::from_contract_scope("".to_string(), contract_scope);
         function_scope
             .borrow_mut()
-            .add_var("foo".to_string(), FixedSize::Base(U256));
-        function_scope.borrow_mut().add_var(
-            "bar".to_string(),
-            FixedSize::Array(Array {
-                inner: U256,
-                dimension: 100,
-            }),
-        );
+            .add_var("foo".to_string(), FixedSize::Base(U256))
+            .unwrap();
+        function_scope
+            .borrow_mut()
+            .add_var(
+                "bar".to_string(),
+                FixedSize::Array(Array {
+                    inner: U256,
+                    dimension: 100,
+                }),
+            )
+            .unwrap();
         function_scope
     }
 

@@ -68,7 +68,7 @@ pub fn func_def(
             param_types.clone(),
             return_type.clone(),
             Rc::clone(&function_scope),
-        );
+        )?;
 
         let attributes = FunctionAttributes {
             name,
@@ -169,7 +169,7 @@ fn func_def_arg(
     let name = arg.node.name.node.to_string();
     let typ = types::type_desc_fixed_size(Scope::Block(Rc::clone(&scope)), &arg.node.typ)?;
 
-    scope.borrow_mut().add_var(name, typ.clone());
+    scope.borrow_mut().add_var(name, typ.clone())?;
 
     Ok(typ)
 }
@@ -222,7 +222,7 @@ fn for_loop(
             let target_name = expressions::expr_name_str(target)?;
             body_scope
                 .borrow_mut()
-                .add_var(target_name.to_string(), target_type);
+                .add_var(target_name.to_string(), target_type)?;
             // Step 4: Traverse the statements within the `for loop` body scope.
             traverse_statements(body_scope, context, body)
         }
