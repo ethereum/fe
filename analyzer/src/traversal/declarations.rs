@@ -32,7 +32,7 @@ pub fn var_decl(
             }
         }
 
-        scope.borrow_mut().add_var(name, declared_type.clone());
+        scope.borrow_mut().add_var(name, declared_type.clone())?;
         context.borrow_mut().add_declaration(stmt, declared_type);
 
         return Ok(());
@@ -101,6 +101,19 @@ mod tests {
         assert_eq!(
             result.expect_err("analysis didn't fail").kind,
             ErrorKind::TypeError
+        );
+    }
+
+    #[test]
+    fn duplicate_var_decl() {
+        let statement = "foo: u256 = 0";
+        let scope = scope();
+        let result = analyze(scope.clone(), statement);
+        assert!(result.is_ok());
+        let result = analyze(scope, statement);
+        assert_eq!(
+            result.expect_err("analysis didn't fail").kind,
+            ErrorKind::AlreadyDefined,
         );
     }
 }

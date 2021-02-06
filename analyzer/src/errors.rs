@@ -20,6 +20,7 @@ pub enum ErrorKind {
     NumericLiteralExpected,
     MoreThanThreeIndexedParams,
     WrongNumberOfParams,
+    AlreadyDefined,
 }
 
 #[derive(Debug, PartialEq)]
@@ -107,6 +108,14 @@ impl SemanticError {
     pub fn cannot_move() -> Self {
         SemanticError {
             kind: ErrorKind::CannotMove,
+            context: vec![],
+        }
+    }
+
+    /// Create a new error with kind `AlreadyDefined`
+    pub fn already_defined() -> Self {
+        SemanticError {
+            kind: ErrorKind::AlreadyDefined,
             context: vec![],
         }
     }

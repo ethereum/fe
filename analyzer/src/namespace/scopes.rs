@@ -1,9 +1,11 @@
+use crate::errors::SemanticError;
 use crate::namespace::events::Event;
 use crate::namespace::types::{
     FixedSize,
     Type,
 };
 use std::cell::RefCell;
+use std::collections::hash_map::Entry;
 use std::collections::{
     HashMap,
     HashSet,
@@ -137,16 +139,18 @@ impl ContractScope {
     }
 
     /// Add a contract field definition to the scope.
-    pub fn add_field(&mut self, name: String, typ: Type) {
-        self.field_defs.insert(
-            name,
-            ContractFieldDef {
-                nonce: self.num_fields,
-                typ,
-            },
-        );
-
-        self.num_fields += 1;
+    pub fn add_field(&mut self, name: String, typ: Type) -> Result<(), SemanticError> {
+        match self.field_defs.entry(name) {
+            Entry::Occupied(_) => Err(SemanticError::already_defined()),
+            Entry::Vacant(e) => {
+                e.insert(ContractFieldDef {
+                    nonce: self.num_fields,
+                    typ,
+                });
+                self.num_fields += 1;
+                Ok(())
+            }
+        }
     }
 
     /// Add a function definition to the scope.
@@ -157,27 +161,36 @@ impl ContractScope {
         param_types: Vec<FixedSize>,
         return_type: FixedSize,
         scope: Shared<BlockScope>,
-    ) {
-        self.interface.push(name.clone());
-        self.function_defs.insert(
-            name,
-            ContractFunctionDef {
-                is_public,
-                param_types,
-                return_type,
-                scope,
-            },
-        );
+    ) -> Result<(), SemanticError> {
+        match self.function_defs.entry(name) {
+            Entry::Occupied(_) => Err(SemanticError::already_defined()),
+            Entry::Vacant(e) => {
+                e.insert(ContractFunctionDef {
+                    is_public,
+                    param_types,
+                    return_type,
+                    scope,
+                });
+                Ok(())
+            }
+        }
     }
 
     /// Add an event definition to the scope.
-    pub fn add_event(&mut self, name: String, event: Event) {
-        self.event_defs.insert(name, event);
+    pub fn add_event(&mut self, name: String, event: Event) -> Result<(), SemanticError> {
+        match self.event_defs.entry(name) {
+            Entry::Occupied(_) => Err(SemanticError::already_defined()),
+            Entry::Vacant(e) => {
+                e.insert(event);
+                Ok(())
+            }
+        }
     }
 
     /// Add a static string definition to the scope.
-    pub fn add_string(&mut self, value: String) {
+    pub fn add_string(&mut self, value: String) -> Result<(), SemanticError> {
         self.string_defs.insert(value);
+        Ok(())
     }
 }
 
@@ -280,20 +293,27 @@ impl BlockScope {
     }
 
     /// Add a variable to the block scope.
-    pub fn add_var(&mut self, name: String, typ: FixedSize) {
-        self.variable_defs.insert(name, typ);
+    pub fn add_var(&mut self, name: String, typ: FixedSize) -> Result<(), SemanticError> {
+        match self.variable_defs.entry(name) {
+            Entry::Occupied(_) => Err(SemanticError::already_defined()),
+            Entry::Vacant(e) => {
+                e.insert(typ);
+                Ok(())
+            }
+        }
     }
 
     /// Return true if the scope or any of its parents is of the given type
     pub fn inherits_type(&self, typ: BlockScopeType) -> bool {
         if self.typ != typ {
             if let BlockScopeParent::Block(scope) = &self.parent {
-                return scope.borrow().inherits_type(typ);
+                scope.borrow().inherits_type(typ)
             } else {
-                return false;
+                false
             }
+        } else {
+            true
         }
-        true
     }
 }
 
@@ -341,7 +361,8 @@ mod tests {
             BlockScope::from_contract_scope("".to_string(), Rc::clone(&contract_scope));
         block_scope_1
             .borrow_mut()
-            .add_var("some_thing".to_string(), FixedSize::Base(Base::Bool));
+            .add_var("some_thing".to_string(), FixedSize::Base(Base::Bool))
+            .unwrap();
         assert_eq!(
             Some(FixedSize::Base(Base::Bool)),
             block_scope_1
@@ -360,7 +381,8 @@ mod tests {
             BlockScope::from_block_scope(BlockScopeType::IfElse, Rc::clone(&block_scope_1));
         block_scope_1
             .borrow_mut()
-            .add_var("some_thing".to_string(), FixedSize::Base(Base::Bool));
+            .add_var("some_thing".to_string(), FixedSize::Base(Base::Bool))
+            .unwrap();
         assert_eq!(
             Some(FixedSize::Base(Base::Bool)),
             block_scope_2
@@ -379,7 +401,8 @@ mod tests {
             BlockScope::from_block_scope(BlockScopeType::IfElse, Rc::clone(&block_scope_1));
         block_scope_2
             .borrow_mut()
-            .add_var("some_thing".to_string(), FixedSize::Base(Base::Bool));
+            .add_var("some_thing".to_string(), FixedSize::Base(Base::Bool))
+            .unwrap();
         assert_eq!(
             None,
             block_scope_1

@@ -217,7 +217,7 @@ fn expr_str(
             .borrow()
             .contract_scope()
             .borrow_mut()
-            .add_string(string_val);
+            .add_string(string_val)?;
 
         return Ok(ExpressionAttributes::new(
             Type::String(FeString {
@@ -955,21 +955,30 @@ mod tests {
         let scope = scope();
         scope
             .borrow_mut()
-            .add_var("my_addr".to_string(), FixedSize::Base(Base::Address));
-        scope.borrow_mut().add_var(
-            "my_addr_array".to_string(),
-            FixedSize::Array(Array {
-                dimension: 100,
-                inner: Base::Address,
-            }),
-        );
-        scope.borrow_mut().contract_scope().borrow_mut().add_field(
-            "my_addr_u256_map".to_string(),
-            Type::Map(Map {
-                key: Base::Address,
-                value: Box::new(Type::Base(U256)),
-            }),
-        );
+            .add_var("my_addr".to_string(), FixedSize::Base(Base::Address))
+            .unwrap();
+        scope
+            .borrow_mut()
+            .add_var(
+                "my_addr_array".to_string(),
+                FixedSize::Array(Array {
+                    dimension: 100,
+                    inner: Base::Address,
+                }),
+            )
+            .unwrap();
+        scope
+            .borrow_mut()
+            .contract_scope()
+            .borrow_mut()
+            .add_field(
+                "my_addr_u256_map".to_string(),
+                Type::Map(Map {
+                    key: Base::Address,
+                    value: Box::new(Type::Base(U256)),
+                }),
+            )
+            .unwrap();
 
         let context = analyze(scope, expression);
 
