@@ -1,5 +1,5 @@
 mod abi_dispatcher;
-mod functions;
+pub mod functions;
 
 use fe_analyzer::namespace::types::{
     AbiDecodeLocation,
