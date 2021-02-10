@@ -91,8 +91,8 @@ impl ModuleScope {
     }
 
     /// Add a type definiton to the scope
-    pub fn add_type_def(&mut self, name: String, typ: Type) {
-        self.type_defs.insert(name, typ);
+    pub fn add_type_def<T: Into<String>>(&mut self, name: T, typ: Type) {
+        self.type_defs.insert(name.into(), typ);
     }
 
     /// Filter module scope for type definitions that match the given predicate
@@ -101,8 +101,8 @@ impl ModuleScope {
     }
 
     /// Gets a type definition by name.
-    pub fn get_type_def(&self, name: &str) -> Option<Type> {
-        self.type_defs.get(name).map(|typ| typ.to_owned())
+    pub fn get_type_def<T: Into<String>>(&self, name: T) -> Option<Type> {
+        self.type_defs.get(&name.into()).map(|typ| typ.to_owned())
     }
 }
 
@@ -131,23 +131,25 @@ impl ContractScope {
     }
 
     /// Lookup contract event definition by its name.
-    pub fn event_def(&self, name: String) -> Option<Event> {
-        self.event_defs.get(&name).map(|def| (*def).clone())
+    pub fn event_def<T: Into<String>>(&self, name: T) -> Option<Event> {
+        self.event_defs.get(&name.into()).map(|def| (*def).clone())
     }
 
     /// Lookup contract field definition by its name.
-    pub fn field_def(&self, name: String) -> Option<ContractFieldDef> {
-        self.field_defs.get(&name).map(|def| (*def).clone())
+    pub fn field_def<T: Into<String>>(&self, name: T) -> Option<ContractFieldDef> {
+        self.field_defs.get(&name.into()).map(|def| (*def).clone())
     }
 
     /// Lookup contract function definition by its name.
-    pub fn function_def(&self, name: String) -> Option<ContractFunctionDef> {
-        self.function_defs.get(&name).map(|def| (*def).clone())
+    pub fn function_def<T: Into<String>>(&self, name: T) -> Option<ContractFunctionDef> {
+        self.function_defs
+            .get(&name.into())
+            .map(|def| (*def).clone())
     }
 
     /// Add a contract field definition to the scope.
-    pub fn add_field(&mut self, name: String, typ: Type) -> Result<(), SemanticError> {
-        match self.field_defs.entry(name) {
+    pub fn add_field<T: Into<String>>(&mut self, name: T, typ: Type) -> Result<(), SemanticError> {
+        match self.field_defs.entry(name.into()) {
             Entry::Occupied(_) => Err(SemanticError::already_defined()),
             Entry::Vacant(e) => {
                 e.insert(ContractFieldDef {
@@ -161,15 +163,15 @@ impl ContractScope {
     }
 
     /// Add a function definition to the scope.
-    pub fn add_function(
+    pub fn add_function<T: Into<String>>(
         &mut self,
-        name: String,
+        name: T,
         is_public: bool,
         param_types: Vec<FixedSize>,
         return_type: FixedSize,
         scope: Shared<BlockScope>,
     ) -> Result<(), SemanticError> {
-        match self.function_defs.entry(name) {
+        match self.function_defs.entry(name.into()) {
             Entry::Occupied(_) => Err(SemanticError::already_defined()),
             Entry::Vacant(e) => {
                 e.insert(ContractFunctionDef {
@@ -184,8 +186,12 @@ impl ContractScope {
     }
 
     /// Add an event definition to the scope.
-    pub fn add_event(&mut self, name: String, event: Event) -> Result<(), SemanticError> {
-        match self.event_defs.entry(name) {
+    pub fn add_event<T: Into<String>>(
+        &mut self,
+        name: T,
+        event: Event,
+    ) -> Result<(), SemanticError> {
+        match self.event_defs.entry(name.into()) {
             Entry::Occupied(_) => Err(SemanticError::already_defined()),
             Entry::Vacant(e) => {
                 e.insert(event);
@@ -195,22 +201,26 @@ impl ContractScope {
     }
 
     /// Add a static string definition to the scope.
-    pub fn add_string(&mut self, value: String) -> Result<(), SemanticError> {
-        self.string_defs.insert(value);
+    pub fn add_string<T: Into<String>>(&mut self, value: T) -> Result<(), SemanticError> {
+        self.string_defs.insert(value.into());
         Ok(())
     }
 
     /// Add the name of another contract that has been created within this
     /// contract.
-    pub fn add_created_contract(&mut self, name: String) {
-        self.created_contracts.insert(name);
+    pub fn add_created_contract<T: Into<String>>(&mut self, name: T) {
+        self.created_contracts.insert(name.into());
     }
 }
 
 impl BlockScope {
-    pub fn new(name: String, typ: BlockScopeType, parent: BlockScopeParent) -> Shared<Self> {
+    pub fn new<T: Into<String>>(
+        name: T,
+        typ: BlockScopeType,
+        parent: BlockScopeParent,
+    ) -> Shared<Self> {
         Rc::new(RefCell::new(BlockScope {
-            name,
+            name: name.into(),
             parent,
             variable_defs: HashMap::new(),
             typ,
@@ -218,7 +228,10 @@ impl BlockScope {
     }
 
     /// Create a block scope from a contract scope.
-    pub fn from_contract_scope(name: String, parent: Shared<ContractScope>) -> Shared<Self> {
+    pub fn from_contract_scope<T: Into<String>>(
+        name: T,
+        parent: Shared<ContractScope>,
+    ) -> Shared<Self> {
         BlockScope::new(
             name,
             BlockScopeType::Function,
@@ -228,11 +241,7 @@ impl BlockScope {
 
     /// Create a block scope from another block scope.
     pub fn from_block_scope(typ: BlockScopeType, parent: Shared<BlockScope>) -> Shared<Self> {
-        BlockScope::new(
-            "BlockScope".to_string(),
-            typ,
-            BlockScopeParent::Block(parent),
-        )
+        BlockScope::new("BlockScope", typ, BlockScopeParent::Block(parent))
     }
 
     /// Return the contract scope and its immediate block scope child
@@ -270,18 +279,18 @@ impl BlockScope {
     }
 
     /// Lookup an event definition on the inherited contract scope
-    pub fn contract_event_def(&self, name: String) -> Option<Event> {
-        self.contract_scope().borrow().event_def(name)
+    pub fn contract_event_def<T: Into<String>>(&self, name: T) -> Option<Event> {
+        self.contract_scope().borrow().event_def(name.into())
     }
 
     /// Lookup a field definition on the inherited contract scope
-    pub fn contract_field_def(&self, name: String) -> Option<ContractFieldDef> {
-        self.contract_scope().borrow().field_def(name)
+    pub fn contract_field_def<T: Into<String>>(&self, name: T) -> Option<ContractFieldDef> {
+        self.contract_scope().borrow().field_def(name.into())
     }
 
     /// Lookup a function definition on the inherited contract scope.
-    pub fn contract_function_def(&self, name: String) -> Option<ContractFunctionDef> {
-        self.contract_scope().borrow().function_def(name)
+    pub fn contract_function_def<T: Into<String>>(&self, name: T) -> Option<ContractFunctionDef> {
+        self.contract_scope().borrow().function_def(name.into())
     }
 
     /// Lookup the function definition for the current block scope on the
@@ -292,11 +301,12 @@ impl BlockScope {
     }
 
     /// Lookup a definition in current or inherited block scope
-    pub fn get_variable_def(&self, name: String) -> Option<FixedSize> {
+    pub fn get_variable_def<T: Into<String>>(&self, name: T) -> Option<FixedSize> {
+        let name = name.into();
         let block_def = self.variable_defs.get(&name).map(|def| (*def).clone());
         if block_def.is_none() {
             if let BlockScopeParent::Block(scope) = &self.parent {
-                scope.borrow().get_variable_def(name)
+                scope.borrow().get_variable_def(&name)
             } else {
                 None
             }
@@ -306,8 +316,12 @@ impl BlockScope {
     }
 
     /// Add a variable to the block scope.
-    pub fn add_var(&mut self, name: String, typ: FixedSize) -> Result<(), SemanticError> {
-        match self.variable_defs.entry(name) {
+    pub fn add_var<T: Into<String>>(
+        &mut self,
+        name: T,
+        typ: FixedSize,
+    ) -> Result<(), SemanticError> {
+        match self.variable_defs.entry(name.into()) {
             Entry::Occupied(_) => Err(SemanticError::already_defined()),
             Entry::Vacant(e) => {
                 e.insert(typ);
@@ -335,8 +349,8 @@ impl BlockScope {
     }
 
     /// Gets a type definition by name.
-    pub fn get_module_type_def(&self, name: &str) -> Option<Type> {
-        self.module_scope().borrow().get_type_def(name)
+    pub fn get_module_type_def<T: Into<String>>(&self, name: T) -> Option<Type> {
+        self.module_scope().borrow().get_type_def(name.into())
     }
 }
 
@@ -384,13 +398,11 @@ mod tests {
             BlockScope::from_contract_scope("".to_string(), Rc::clone(&contract_scope));
         block_scope_1
             .borrow_mut()
-            .add_var("some_thing".to_string(), FixedSize::Base(Base::Bool))
+            .add_var("some_thing", FixedSize::Base(Base::Bool))
             .unwrap();
         assert_eq!(
             Some(FixedSize::Base(Base::Bool)),
-            block_scope_1
-                .borrow()
-                .get_variable_def("some_thing".to_string())
+            block_scope_1.borrow().get_variable_def("some_thing")
         );
     }
 
@@ -404,13 +416,11 @@ mod tests {
             BlockScope::from_block_scope(BlockScopeType::IfElse, Rc::clone(&block_scope_1));
         block_scope_1
             .borrow_mut()
-            .add_var("some_thing".to_string(), FixedSize::Base(Base::Bool))
+            .add_var("some_thing", FixedSize::Base(Base::Bool))
             .unwrap();
         assert_eq!(
             Some(FixedSize::Base(Base::Bool)),
-            block_scope_2
-                .borrow()
-                .get_variable_def("some_thing".to_string())
+            block_scope_2.borrow().get_variable_def("some_thing")
         );
     }
 
@@ -424,14 +434,9 @@ mod tests {
             BlockScope::from_block_scope(BlockScopeType::IfElse, Rc::clone(&block_scope_1));
         block_scope_2
             .borrow_mut()
-            .add_var("some_thing".to_string(), FixedSize::Base(Base::Bool))
+            .add_var("some_thing", FixedSize::Base(Base::Bool))
             .unwrap();
-        assert_eq!(
-            None,
-            block_scope_1
-                .borrow()
-                .get_variable_def("some_thing".to_string())
-        );
+        assert_eq!(None, block_scope_1.borrow().get_variable_def("some_thing"));
     }
 
     #[test]

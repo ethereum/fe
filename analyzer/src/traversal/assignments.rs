@@ -85,7 +85,7 @@ mod tests {
         contract_scope
             .borrow_mut()
             .add_field(
-                "foobar".to_string(),
+                "foobar",
                 Type::Map(Map {
                     key: U256,
                     value: Box::new(Type::Base(U256)),
@@ -95,12 +95,12 @@ mod tests {
         let function_scope = BlockScope::from_contract_scope("".to_string(), contract_scope);
         function_scope
             .borrow_mut()
-            .add_var("foo".to_string(), FixedSize::Base(U256))
+            .add_var("foo", FixedSize::Base(U256))
             .unwrap();
         function_scope
             .borrow_mut()
             .add_var(
-                "bar".to_string(),
+                "bar",
                 FixedSize::Array(Array {
                     inner: U256,
                     dimension: 100,

@@ -182,7 +182,7 @@ fn expr_name(
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::Name(name) = exp.node {
-        return match scope.borrow().get_variable_def(name.to_string()) {
+        return match scope.borrow().get_variable_def(name) {
             Some(FixedSize::Base(base)) => {
                 Ok(ExpressionAttributes::new(Type::Base(base), Location::Value))
             }
@@ -296,8 +296,7 @@ fn expr_attribute(
 
         // Before we try to match any pre-defined objects, try matching as a
         // custom type
-        if let Some(FixedSize::Struct(_)) = scope.borrow().get_variable_def(object_name.to_string())
-        {
+        if let Some(FixedSize::Struct(_)) = scope.borrow().get_variable_def(object_name) {
             return expr_attribute_custom_type(Rc::clone(&scope), context, value, attr);
         }
 
@@ -346,7 +345,7 @@ fn expr_attribute_custom_type(
     let val_str = expr_name_str(value)?;
     let custom_type = scope
         .borrow()
-        .get_variable_def(val_str.to_string())
+        .get_variable_def(val_str)
         .ok_or_else(SemanticError::undefined_value)?;
     context.borrow_mut().add_expression(
         value,
@@ -370,7 +369,7 @@ fn expr_attribute_self(
     scope: Shared<BlockScope>,
     attr: &Spanned<&str>,
 ) -> Result<ExpressionAttributes, SemanticError> {
-    match scope.borrow().contract_field_def(attr.node.to_string()) {
+    match scope.borrow().contract_field_def(attr.node) {
         Some(field) => Ok(ExpressionAttributes::new(
             field.typ,
             Location::Storage {
@@ -658,7 +657,7 @@ fn expr_call_type_attribute(
                     .borrow()
                     .contract_scope()
                     .borrow_mut()
-                    .add_created_contract(contract.name.clone());
+                    .add_created_contract(&contract.name);
 
                 Ok(ExpressionAttributes::new(
                     Type::Contract(contract),
@@ -678,7 +677,7 @@ fn expr_call_type_attribute(
                     .borrow()
                     .contract_scope()
                     .borrow_mut()
-                    .add_created_contract(contract.name.clone());
+                    .add_created_contract(&contract.name);
 
                 Ok(ExpressionAttributes::new(
                     Type::Contract(contract),
@@ -1100,12 +1099,12 @@ mod tests {
         let scope = scope();
         scope
             .borrow_mut()
-            .add_var("my_addr".to_string(), FixedSize::Base(Base::Address))
+            .add_var("my_addr", FixedSize::Base(Base::Address))
             .unwrap();
         scope
             .borrow_mut()
             .add_var(
-                "my_addr_array".to_string(),
+                "my_addr_array",
                 FixedSize::Array(Array {
                     dimension: 100,
                     inner: Base::Address,
@@ -1117,7 +1116,7 @@ mod tests {
             .contract_scope()
             .borrow_mut()
             .add_field(
-                "my_addr_u256_map".to_string(),
+                "my_addr_u256_map",
                 Type::Map(Map {
                     key: Base::Address,
                     value: Box::new(Type::Base(U256)),

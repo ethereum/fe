@@ -12,12 +12,16 @@ pub struct Event {
 }
 
 impl Event {
-    pub fn new(name: String, fields: Vec<FixedSize>, indexed_fields: Vec<usize>) -> Self {
+    pub fn new<T: Into<String>>(
+        name: T,
+        fields: Vec<FixedSize>,
+        indexed_fields: Vec<usize>,
+    ) -> Self {
         let abi_fields = fields
             .iter()
             .map(|field| field.abi_name())
             .collect::<Vec<String>>();
-        let topic = build_event_topic(name, abi_fields);
+        let topic = build_event_topic(name.into(), abi_fields);
 
         Self {
             topic,

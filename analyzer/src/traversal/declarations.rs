@@ -89,7 +89,7 @@ mod tests {
         let context = analyze(Rc::clone(&scope), statement).expect("analysis failed");
         assert_eq!(context.expressions.len(), 3);
         assert_eq!(
-            scope.borrow().get_variable_def("foo".to_string()),
+            scope.borrow().get_variable_def("foo"),
             Some(FixedSize::Base(U256))
         );
     }

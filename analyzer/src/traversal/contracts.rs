@@ -81,7 +81,7 @@ fn contract_field(
 ) -> Result<(), SemanticError> {
     if let fe::ContractStmt::ContractField { qual: _, name, typ } = &stmt.node {
         let typ = types::type_desc(Scope::Contract(Rc::clone(&scope)), typ)?;
-        return scope.borrow_mut().add_field(name.node.to_string(), typ);
+        return scope.borrow_mut().add_field(name.node, typ);
     }
 
     unreachable!()
@@ -122,7 +122,7 @@ fn event_def(
 
         return scope
             .borrow_mut()
-            .add_event(name.clone(), Event::new(name, fields, indexed_fields));
+            .add_event(&name, Event::new(&name, fields, indexed_fields));
     }
 
     unreachable!()

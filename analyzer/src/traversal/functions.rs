@@ -63,7 +63,7 @@ pub fn func_def(
 
         let is_public = qual.is_some();
         contract_scope.borrow_mut().add_function(
-            name.clone(),
+            &name,
             is_public,
             param_types.clone(),
             return_type.clone(),
@@ -166,10 +166,10 @@ fn func_def_arg(
     scope: Shared<BlockScope>,
     arg: &Spanned<fe::FuncDefArg>,
 ) -> Result<FixedSize, SemanticError> {
-    let name = arg.node.name.node.to_string();
     let typ = types::type_desc_fixed_size(Scope::Block(Rc::clone(&scope)), &arg.node.typ)?;
-
-    scope.borrow_mut().add_var(name, typ.clone())?;
+    scope
+        .borrow_mut()
+        .add_var(arg.node.name.node, typ.clone())?;
 
     Ok(typ)
 }
@@ -220,9 +220,7 @@ fn for_loop(
             // Step 3: Make sure iter is in the function scope & it should be an array.
             let target_type = verify_is_array(scope, Rc::clone(&context), iter)?;
             let target_name = expressions::expr_name_str(target)?;
-            body_scope
-                .borrow_mut()
-                .add_var(target_name.to_string(), target_type)?;
+            body_scope.borrow_mut().add_var(target_name, target_type)?;
             // Step 4: Traverse the statements within the `for loop` body scope.
             traverse_statements(body_scope, context, body)
         }
@@ -478,7 +476,7 @@ mod tests {
 
         let def = scope
             .borrow()
-            .function_def("foo".to_string())
+            .function_def("foo")
             .expect("No definiton for foo exists");
 
         assert_eq!(def.is_public, false);
