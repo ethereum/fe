@@ -2,12 +2,19 @@ use strum::EnumString;
 
 #[derive(Debug, PartialEq, EnumString)]
 #[strum(serialize_all = "snake_case")]
-pub enum Method {
+pub enum ValueMethod {
     Clone,
     ToMem,
     Keccak256,
     AbiEncode,
     AbiEncodePacked,
+}
+
+#[derive(Debug, PartialEq, EnumString)]
+#[strum(serialize_all = "snake_case")]
+pub enum ContractTypeMethod {
+    Create,
+    Create2,
 }
 
 #[derive(Debug, PartialEq, EnumString)]

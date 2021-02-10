@@ -2,7 +2,7 @@ use fe_analyzer::namespace::types::AbiDecodeLocation;
 use yultsur::*;
 
 pub mod abi;
-pub mod calls;
+pub mod contracts;
 pub mod data;
 pub mod structs;
 
@@ -30,5 +30,7 @@ pub fn std() -> Vec<yul::Statement> {
         abi::unpack(),
         abi::pack(AbiDecodeLocation::Calldata),
         abi::pack(AbiDecodeLocation::Memory),
+        contracts::create2(),
+        contracts::create(),
     ]
 }

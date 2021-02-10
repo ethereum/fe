@@ -77,6 +77,8 @@ pub struct ContractAttributes {
     pub structs: Vec<Struct>,
     /// External contracts that may be called from within this contract.
     pub external_contracts: Vec<Contract>,
+    /// Names of contracts that have been created inside of this contract.
+    pub created_contracts: HashSet<String>,
 }
 
 impl From<Shared<ContractScope>> for ContractAttributes {
@@ -132,6 +134,7 @@ impl From<Shared<ContractScope>> for ContractAttributes {
             string_literals: scope.borrow().string_defs.clone(),
             structs,
             external_contracts,
+            created_contracts: scope.borrow().created_contracts.to_owned(),
         }
     }
 }
@@ -222,6 +225,7 @@ pub enum CallType {
     TypeConstructor { typ: Type },
     SelfAttribute { func_name: String },
     ValueAttribute,
+    TypeAttribute { typ: Type, func_name: String },
 }
 
 /// Contains contextual information relating to a function definition AST node.

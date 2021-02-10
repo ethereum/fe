@@ -1,4 +1,4 @@
 pub mod abi;
-pub mod calls;
+pub mod contracts;
 pub mod data;
 pub mod structs;

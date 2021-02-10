@@ -20,7 +20,11 @@ pub mod yul;
 ///
 /// If `with_bytecode` is set to false, the compiler will skip the final Yul ->
 /// Bytecode pass. This is useful when debugging invalid Yul code.
-pub fn compile(src: FeSrc, _with_bytecode: bool) -> Result<CompiledModule, CompileError> {
+pub fn compile(
+    src: FeSrc,
+    _with_bytecode: bool,
+    _optimize: bool,
+) -> Result<CompiledModule, CompileError> {
     // parse source
     let fe_tokens = fe_parser::get_parse_tokens(src)?;
     let fe_module = fe_parser::parsers::file_input(&fe_tokens[..])
@@ -36,12 +40,12 @@ pub fn compile(src: FeSrc, _with_bytecode: bool) -> Result<CompiledModule, Compi
         .map_err(|error| CompileError::str(error.format_user(src)))?;
 
     // compile to yul
-    let yul_contracts = yul::compile(&fe_module, context)?;
+    let yul_contracts = yul::compile(context, &fe_module)?;
 
     // compile to bytecode if required
     #[cfg(feature = "solc-backend")]
     let bytecode_contracts = if _with_bytecode {
-        match evm::compile(yul_contracts.clone()) {
+        match evm::compile(yul_contracts.clone(), _optimize) {
             Err(error) => panic!("Yul compilation failed: {}", error),
             Ok(contracts) => contracts,
         }

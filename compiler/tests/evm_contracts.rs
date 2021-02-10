@@ -66,17 +66,25 @@ impl ContractHarness {
         input: &[ethabi::Token],
         output: Option<&ethabi::Token>,
     ) {
+        let actual_output = self.call_function(executor, name, input);
+        assert_eq!(output.map(|token| token.to_owned()), actual_output)
+    }
+
+    pub fn call_function(
+        &self,
+        executor: &mut Executor,
+        name: &str,
+        input: &[ethabi::Token],
+    ) -> Option<ethabi::Token> {
         let function = &self.abi.functions[name][0];
 
         match self.capture_call(executor, name, &input) {
-            evm::Capture::Exit((ExitReason::Succeed(_), actual_output)) => {
-                if let Some(output) = output {
-                    let actual_output = &function
-                        .decode_output(&actual_output)
-                        .expect(&format!("unable to decode output: {:?}", &actual_output))[0];
-
-                    assert_eq!(output, actual_output)
-                }
+            evm::Capture::Exit((ExitReason::Succeed(_), output)) => {
+                let output = function
+                    .decode_output(&output)
+                    .expect(&format!("unable to decode output: {:?}", &output))
+                    .pop();
+                return output;
             }
             evm::Capture::Exit((reason, _)) => panic!("failed to run \"{}\": {:?}", name, reason),
             _ => panic!("trap"),
@@ -170,7 +178,7 @@ fn deploy_contract(
 ) -> ContractHarness {
     let src = fs::read_to_string(format!("tests/fixtures/{}", fixture))
         .expect("unable to read fixture file");
-    let compiled_module = compiler::compile(&src, true).expect("failed to compile module");
+    let compiled_module = compiler::compile(&src, true, false).expect("failed to compile module");
     let compiled_contract = compiled_module
         .contracts
         .get(contract_name)
@@ -196,6 +204,20 @@ fn deploy_contract(
     }
 
     panic!("Failed to create contract")
+}
+
+fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
+    let src = fs::read_to_string(format!("tests/fixtures/{}", fixture))
+        .expect("unable to read fixture file");
+    let compiled_module = compiler::compile(&src, true, false).expect("failed to compile module");
+    let compiled_contract = compiled_module
+        .contracts
+        .get(contract_name)
+        .expect("could not find contract in fixture");
+    let abi = ethabi::Contract::load(StringReader::new(&compiled_contract.json_abi))
+        .expect("unable to load the ABI");
+
+    ContractHarness::new(address, abi)
 }
 
 fn uint_token(n: usize) -> ethabi::Token {
@@ -1262,5 +1284,41 @@ fn external_contract() {
         );
 
         foo_harness.events_emitted(executor, &[("MyEvent", &[my_num, my_addrs, my_string])]);
+    })
+}
+
+#[test]
+fn create2_contract() {
+    with_executor(&|mut executor| {
+        let factory_harness =
+            deploy_contract(&mut executor, "create2_contract.fe", "FooFactory", &[]);
+
+        let foo_address = factory_harness
+            .call_function(&mut executor, "create2_foo", &[])
+            .expect("factory did not return an address")
+            .to_address()
+            .expect("not an address");
+
+        let foo_harness = load_contract(foo_address, "create2_contract.fe", "Foo");
+
+        foo_harness.test_function(&mut executor, "get_my_num", &[], Some(&uint_token(42)));
+    })
+}
+
+#[test]
+fn create_contract() {
+    with_executor(&|mut executor| {
+        let factory_harness =
+            deploy_contract(&mut executor, "create_contract.fe", "FooFactory", &[]);
+
+        let foo_address = factory_harness
+            .call_function(&mut executor, "create_foo", &[])
+            .expect("factory did not return an address")
+            .to_address()
+            .expect("not an address");
+
+        let foo_harness = load_contract(foo_address, "create_contract.fe", "Foo");
+
+        foo_harness.test_function(&mut executor, "get_my_num", &[], Some(&uint_token(42)));
     })
 }

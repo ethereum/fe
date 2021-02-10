@@ -29,6 +29,7 @@ use crate::{
     Location,
 };
 
+use crate::builtins::ContractTypeMethod;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use std::convert::TryFrom;
@@ -181,7 +182,7 @@ fn expr_name(
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::Name(name) = exp.node {
-        return match scope.borrow().variable_def(name.to_string()) {
+        return match scope.borrow().get_variable_def(name.to_string()) {
             Some(FixedSize::Base(base)) => {
                 Ok(ExpressionAttributes::new(Type::Base(base), Location::Value))
             }
@@ -295,7 +296,8 @@ fn expr_attribute(
 
         // Before we try to match any pre-defined objects, try matching as a
         // custom type
-        if let Some(FixedSize::Struct(_)) = scope.borrow().variable_def(object_name.to_string()) {
+        if let Some(FixedSize::Struct(_)) = scope.borrow().get_variable_def(object_name.to_string())
+        {
             return expr_attribute_custom_type(Rc::clone(&scope), context, value, attr);
         }
 
@@ -344,7 +346,7 @@ fn expr_attribute_custom_type(
     let val_str = expr_name_str(value)?;
     let custom_type = scope
         .borrow()
-        .variable_def(val_str.to_string())
+        .get_variable_def(val_str.to_string())
         .ok_or_else(SemanticError::undefined_value)?;
     context.borrow_mut().add_expression(
         value,
@@ -467,6 +469,9 @@ fn expr_call(
                 expr_call_self_attribute(scope, context, func_name, args)
             }
             CallType::ValueAttribute => expr_call_value_attribute(scope, context, func, args),
+            CallType::TypeAttribute { typ, func_name } => {
+                expr_call_type_attribute(scope, context, typ, func_name, args)
+            }
         };
     }
 
@@ -519,56 +524,24 @@ fn expr_call_type_constructor(
                 Ok(ExpressionAttributes::new(typ, Location::Value))
             }
         }
-        _ => {
+        Type::Base(Base::Numeric(_)) => {
             let num = validate_is_numeric_literal(&args.node[0].node)?;
-
-            if !matches!(typ, Type::Base(Base::Address)) {
-                validate_numeric_literal_fits_type(&num, &typ)?;
-            }
-
+            validate_numeric_literal_fits_type(&num, &typ)?;
             Ok(ExpressionAttributes::new(typ, Location::Value))
         }
-    }
-}
+        Type::Base(Base::Address) => {
+            match arg_attributes.typ {
+                Type::Contract(_) | Type::Base(Base::Numeric(_)) | Type::Base(Base::Address) => {}
+                _ => return Err(SemanticError::type_error()),
+            }
 
-fn validate_is_numeric_literal(call_arg: &fe::CallArg) -> Result<String, SemanticError> {
-    if let fe::CallArg::Arg(fe::Expr::UnaryOperation { operand, op: _ }) = call_arg {
-        if let fe::Expr::Num(num) = (*operand).node {
-            return Ok(format!("-{}", num));
+            Ok(ExpressionAttributes::new(
+                Type::Base(Base::Address),
+                Location::Value,
+            ))
         }
-    } else if let fe::CallArg::Arg(fe::Expr::Num(num)) = call_arg {
-        return Ok(num.to_string());
+        _ => Err(SemanticError::undefined_value()),
     }
-
-    Err(SemanticError::numeric_literal_expected())
-}
-
-fn validate_numeric_literal_fits_type(num: &str, typ: &Type) -> Result<(), SemanticError> {
-    if let Type::Base(Base::Numeric(integer)) = typ {
-        if integer.fits(num) {
-            return Ok(());
-        } else {
-            return Err(SemanticError::numeric_capacity_mismatch());
-        }
-    }
-
-    Err(SemanticError::type_error())
-}
-
-fn validate_str_literal_fits_type(
-    call_arg: &fe::CallArg,
-    typ: &FeString,
-) -> Result<(), SemanticError> {
-    if let fe::CallArg::Arg(fe::Expr::Str(lines)) = call_arg {
-        let string_length: usize = lines.join("").len();
-        if string_length > typ.max_size {
-            return Err(SemanticError::string_capacity_mismatch());
-        } else {
-            return Ok(());
-        }
-    }
-
-    Err(SemanticError::type_error())
 }
 
 fn expr_call_args(
@@ -647,17 +620,76 @@ fn expr_call_value_attribute(
             return Err(SemanticError::wrong_number_of_params());
         }
 
-        use builtins::Method;
-        return match Method::from_str(attr.node).map_err(|_| SemanticError::undefined_value())? {
-            Method::Clone => value_attributes.into_cloned(),
-            Method::ToMem => value_attributes.into_cloned_from_sto(),
-            Method::Keccak256 => todo!(),
-            Method::AbiEncode => todo!(),
-            Method::AbiEncodePacked => todo!(),
+        use builtins::ValueMethod;
+        return match ValueMethod::from_str(attr.node)
+            .map_err(|_| SemanticError::undefined_value())?
+        {
+            ValueMethod::Clone => value_attributes.into_cloned(),
+            ValueMethod::ToMem => value_attributes.into_cloned_from_sto(),
+            ValueMethod::Keccak256 => todo!(),
+            ValueMethod::AbiEncode => todo!(),
+            ValueMethod::AbiEncodePacked => todo!(),
         };
     }
 
     unreachable!()
+}
+
+fn expr_call_type_attribute(
+    scope: Shared<BlockScope>,
+    context: Shared<Context>,
+    typ: Type,
+    func_name: String,
+    args: &Spanned<Vec<Spanned<fe::CallArg>>>,
+) -> Result<ExpressionAttributes, SemanticError> {
+    let arg_attributes = expr_call_args(Rc::clone(&scope), context, args)?;
+
+    match (typ, ContractTypeMethod::from_str(func_name.as_str())) {
+        (Type::Contract(contract), Ok(ContractTypeMethod::Create2)) => {
+            if arg_attributes.len() != 2 {
+                return Err(SemanticError::wrong_number_of_params());
+            }
+
+            if matches!(
+                (&arg_attributes[0].typ, &arg_attributes[1].typ),
+                (Type::Base(Base::Numeric(_)), Type::Base(Base::Numeric(_)))
+            ) {
+                scope
+                    .borrow()
+                    .contract_scope()
+                    .borrow_mut()
+                    .add_created_contract(contract.name.clone());
+
+                Ok(ExpressionAttributes::new(
+                    Type::Contract(contract),
+                    Location::Value,
+                ))
+            } else {
+                Err(SemanticError::type_error())
+            }
+        }
+        (Type::Contract(contract), Ok(ContractTypeMethod::Create)) => {
+            if arg_attributes.len() != 1 {
+                return Err(SemanticError::wrong_number_of_params());
+            }
+
+            if matches!(&arg_attributes[0].typ, Type::Base(Base::Numeric(_))) {
+                scope
+                    .borrow()
+                    .contract_scope()
+                    .borrow_mut()
+                    .add_created_contract(contract.name.clone());
+
+                Ok(ExpressionAttributes::new(
+                    Type::Contract(contract),
+                    Location::Value,
+                ))
+            } else {
+                Err(SemanticError::type_error())
+            }
+        }
+        _ => Err(SemanticError::undefined_value()),
+    }
 }
 
 fn expr_call_contract_attribute(
@@ -770,24 +802,18 @@ fn expr_name_call_type(
                 TryFrom::try_from(value).map_err(|_| SemanticError::undefined_value())?,
             ),
         }),
-        value
-            if scope
-                .borrow()
-                .module_scope()
-                .borrow()
-                .type_defs
-                .contains_key(value) =>
-        {
-            Ok(CallType::TypeConstructor {
-                typ: scope.borrow().module_scope().borrow().type_defs[value].to_owned(),
-            })
+        value => {
+            if let Some(typ) = scope.borrow().get_module_type_def(value) {
+                Ok(CallType::TypeConstructor { typ })
+            } else {
+                Err(SemanticError::undefined_value())
+            }
         }
-        _ => Err(SemanticError::undefined_value()),
     }
 }
 
 fn expr_attribute_call_type(
-    _scope: Shared<BlockScope>,
+    scope: Shared<BlockScope>,
     _context: Shared<Context>,
     exp: &Spanned<fe::Expr>,
 ) -> Result<CallType, SemanticError> {
@@ -805,11 +831,59 @@ fn expr_attribute_call_type(
                 }
                 Err(_) => {}
             }
+
+            if let Some(typ) = scope.borrow().get_module_type_def(name) {
+                return Ok(CallType::TypeAttribute {
+                    typ,
+                    func_name: attr.node.to_string(),
+                });
+            }
         };
+
         return Ok(CallType::ValueAttribute);
     }
 
     unreachable!()
+}
+
+fn validate_is_numeric_literal(call_arg: &fe::CallArg) -> Result<String, SemanticError> {
+    if let fe::CallArg::Arg(fe::Expr::UnaryOperation { operand, op: _ }) = call_arg {
+        if let fe::Expr::Num(num) = (*operand).node {
+            return Ok(format!("-{}", num));
+        }
+    } else if let fe::CallArg::Arg(fe::Expr::Num(num)) = call_arg {
+        return Ok(num.to_string());
+    }
+
+    Err(SemanticError::numeric_literal_expected())
+}
+
+fn validate_numeric_literal_fits_type(num: &str, typ: &Type) -> Result<(), SemanticError> {
+    if let Type::Base(Base::Numeric(integer)) = typ {
+        if integer.fits(num) {
+            return Ok(());
+        } else {
+            return Err(SemanticError::numeric_capacity_mismatch());
+        }
+    }
+
+    Err(SemanticError::type_error())
+}
+
+fn validate_str_literal_fits_type(
+    call_arg: &fe::CallArg,
+    typ: &FeString,
+) -> Result<(), SemanticError> {
+    if let fe::CallArg::Arg(fe::Expr::Str(lines)) = call_arg {
+        let string_length: usize = lines.join("").len();
+        if string_length > typ.max_size {
+            return Err(SemanticError::string_capacity_mismatch());
+        } else {
+            return Ok(());
+        }
+    }
+
+    Err(SemanticError::type_error())
 }
 
 fn expr_comp_operation(

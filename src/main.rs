@@ -66,15 +66,21 @@ pub fn main() {
                 .long("overwrite")
                 .help("Overwrite contents of output directory`"),
         )
+        .arg(
+            Arg::with_name("optimize")
+                .long("optimize")
+                .help("Enables the Yul optimizer`"),
+        )
         .get_matches();
 
     let input_file = matches.value_of("input").unwrap();
     let output_dir = matches.value_of("output-dir").unwrap();
     let overwrite = matches.is_present("overwrite");
+    let optimize = matches.is_present("overwrite");
     let targets =
         values_t!(matches.values_of("emit"), CompilationTarget).unwrap_or_else(|e| e.exit());
 
-    match compile_and_write(input_file, &targets, &output_dir, overwrite) {
+    match compile_and_write(input_file, &targets, &output_dir, overwrite, optimize) {
         Ok(_) => println!("Compiled {}. Outputs in `{}`", input_file, output_dir),
         Err(err) => {
             println!("Unable to compile {}. \nError: {}", input_file, err);
@@ -88,6 +94,7 @@ fn compile_and_write(
     targets: &[CompilationTarget],
     output_dir: &str,
     overwrite: bool,
+    optimize: bool,
 ) -> Result<(), String> {
     let src = fs::read_to_string(src_file).map_err(ioerr_to_string)?;
     let with_bytecode = targets.contains(&CompilationTarget::Bytecode);
@@ -98,7 +105,7 @@ fn compile_and_write(
     }
 
     let compiled_module =
-        fe_compiler::compile(&src, with_bytecode).map_err(|error| error.to_string())?;
+        fe_compiler::compile(&src, with_bytecode, optimize).map_err(|error| error.to_string())?;
 
     write_compiled_module(compiled_module, targets, output_dir, overwrite)
 }

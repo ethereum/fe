@@ -1,11 +1,12 @@
 use crate::errors::CompileError;
 use crate::yul::names;
 use crate::yul::operations::{
-    calls as call_operations,
+    contracts as contract_operations,
     data as data_operations,
     structs as struct_operations,
 };
 use crate::yul::utils;
+use fe_analyzer::builtins::ContractTypeMethod;
 use fe_analyzer::namespace::types::{
     FixedSize,
     Type,
@@ -56,7 +57,7 @@ pub fn expr(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressio
             (_, None) => Ok(expression),
         }
     } else {
-        Err(CompileError::static_str("missing expression attributes"))
+        panic!("missing expression attributes")
     }
 }
 
@@ -118,32 +119,49 @@ fn expr_call(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressi
                             context.get_expression(value).expect("invalid attributes");
 
                         return match (value_attributes.typ.to_owned(), attr.node) {
-                            (Type::Contract(contract), func_name) => {
-                                Ok(call_operations::contract_call(
-                                    contract,
-                                    func_name.to_owned(),
-                                    expr(context, value)?,
-                                    yul_args,
-                                ))
-                            }
+                            (Type::Contract(contract), func_name) => Ok(contract_operations::call(
+                                contract,
+                                func_name.to_owned(),
+                                expr(context, value)?,
+                                yul_args,
+                            )),
                             (_, func_name) => {
-                                match builtins::Method::from_str(func_name)
+                                match builtins::ValueMethod::from_str(func_name)
                                     .expect("uncaught analyzer error")
                                 {
                                     // Copying is done in `expr(..)` based on the move location set
                                     // in the expression's attributes, so we just map the value for
                                     // `to_mem` and `clone`.
-                                    builtins::Method::ToMem => expr(context, value),
-                                    builtins::Method::Clone => expr(context, value),
-                                    builtins::Method::AbiEncode => todo!(),
-                                    builtins::Method::AbiEncodePacked => todo!(),
-                                    builtins::Method::Keccak256 => todo!(),
+                                    builtins::ValueMethod::ToMem => expr(context, value),
+                                    builtins::ValueMethod::Clone => expr(context, value),
+                                    builtins::ValueMethod::AbiEncode => todo!(),
+                                    builtins::ValueMethod::AbiEncodePacked => todo!(),
+                                    builtins::ValueMethod::Keccak256 => todo!(),
                                 }
                             }
                         };
                     }
 
                     panic!("invalid attributes")
+                }
+                CallType::TypeAttribute { typ, func_name } => {
+                    match (
+                        typ,
+                        ContractTypeMethod::from_str(func_name.as_str())
+                            .expect("invalid attributes"),
+                    ) {
+                        (Type::Contract(contract), ContractTypeMethod::Create2) => {
+                            Ok(contract_operations::create2(
+                                &contract,
+                                yul_args[0].to_owned(),
+                                yul_args[1].to_owned(),
+                            ))
+                        }
+                        (Type::Contract(contract), ContractTypeMethod::Create) => Ok(
+                            contract_operations::create(&contract, yul_args[0].to_owned()),
+                        ),
+                        _ => panic!("invalid attributes"),
+                    }
                 }
             };
         }
