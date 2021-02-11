@@ -31,6 +31,6 @@ pub fn struct_def(
     }
     module_scope
         .borrow_mut()
-        .add_type_def(name.to_string(), Type::Struct(val));
+        .add_type_def(name, Type::Struct(val));
     Ok(())
 }

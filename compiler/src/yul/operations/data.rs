@@ -139,7 +139,7 @@ mod tests {
     #[test]
     fn test_emit_event_no_indexed() {
         let event = Event::new(
-            "MyEvent".to_string(),
+            "MyEvent",
             vec![FixedSize::Base(U256), FixedSize::Base(Base::Address)],
             vec![],
         );
@@ -153,7 +153,7 @@ mod tests {
     #[test]
     fn test_emit_event_one_indexed() {
         let event = Event::new(
-            "MyEvent".to_string(),
+            "MyEvent",
             vec![FixedSize::Base(U256), FixedSize::Base(Base::Address)],
             vec![0],
         );

@@ -60,9 +60,9 @@ pub fn contract_def(
             .module_scope()
             .borrow_mut()
             .add_type_def(
-                name.node.to_string(),
+                name.node,
                 Type::Contract(Contract {
-                    name: name.node.to_string(),
+                    name: name.node.to_owned(),
                     functions: contract_attributes.public_functions.clone(),
                 }),
             );
@@ -81,7 +81,7 @@ fn contract_field(
 ) -> Result<(), SemanticError> {
     if let fe::ContractStmt::ContractField { qual: _, name, typ } = &stmt.node {
         let typ = types::type_desc(Scope::Contract(Rc::clone(&scope)), typ)?;
-        return scope.borrow_mut().add_field(name.node.to_string(), typ);
+        return scope.borrow_mut().add_field(name.node, typ);
     }
 
     unreachable!()
@@ -92,7 +92,7 @@ fn event_def(
     stmt: &Spanned<fe::ContractStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::ContractStmt::EventDef { name, fields } = &stmt.node {
-        let name = name.node.to_string();
+        let name = name.node;
 
         let (is_indexed_bools, fields): (Vec<bool>, Vec<FixedSize>) = fields
             .iter()
@@ -122,7 +122,7 @@ fn event_def(
 
         return scope
             .borrow_mut()
-            .add_event(name.clone(), Event::new(name, fields, indexed_fields));
+            .add_event(name, Event::new(name, fields, indexed_fields));
     }
 
     unreachable!()
