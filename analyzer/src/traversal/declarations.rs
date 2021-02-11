@@ -21,7 +21,7 @@ pub fn var_decl(
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::VarDecl { target, typ, value } = &stmt.node {
-        let name = expressions::expr_name_string(target)?;
+        let name = expressions::expr_name_str(target)?;
         let declared_type = types::type_desc_fixed_size(Scope::Block(Rc::clone(&scope)), typ)?;
         if let Some(value) = value {
             let value_attributes =
@@ -32,7 +32,7 @@ pub fn var_decl(
             }
         }
 
-        scope.borrow_mut().add_var(&name, declared_type.clone())?;
+        scope.borrow_mut().add_var(name, declared_type.clone())?;
         context.borrow_mut().add_declaration(stmt, declared_type);
 
         return Ok(());
