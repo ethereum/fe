@@ -38,7 +38,7 @@ fn compile_single_contract(
         .replace("\"", "");
 
     if bytecode == "null" {
-        return Err(CompileError::str(output.to_string()));
+        return Err(CompileError::str(&output.to_string()));
     }
 
     Ok(bytecode)

@@ -75,7 +75,7 @@ fn move_expression(
         (Location::Memory, Location::Value) => Ok(data_operations::mload(typ, val)),
         (Location::Memory, Location::Memory) => Ok(data_operations::mcopym(typ, val)),
         (Location::Storage { .. }, Location::Memory) => Ok(data_operations::scopym(typ, val)),
-        _ => Err(CompileError::str(format!(
+        _ => Err(CompileError::str(&format!(
             "invalid expression move: {:?} {:?}",
             from, to
         ))),

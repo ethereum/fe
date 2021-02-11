@@ -47,16 +47,16 @@ impl CompileError {
     }
 
     /// Create a single error with a static string.
-    pub fn static_str(s: &'static str) -> Self {
+    pub fn static_str(val: &'static str) -> Self {
         Self {
-            errors: vec![ErrorKind::StaticStr(s)],
+            errors: vec![ErrorKind::StaticStr(val)],
         }
     }
 
     /// Create a single error with a string object.
-    pub fn str(s: String) -> Self {
+    pub fn str(val: &str) -> Self {
         Self {
-            errors: vec![ErrorKind::Str(s)],
+            errors: vec![ErrorKind::Str(val.to_owned())],
         }
     }
 }
@@ -75,6 +75,6 @@ impl<'a> From<serde_json::error::Error> for CompileError {
 
 impl<'a> From<ethabi::Error> for CompileError {
     fn from(e: ethabi::Error) -> Self {
-        CompileError::str(format!("ethabi error: {}", e))
+        CompileError::str(&format!("ethabi error: {}", e))
     }
 }
