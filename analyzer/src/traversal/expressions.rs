@@ -287,6 +287,30 @@ fn expr_attribute(
             TxField,
         };
 
+        let val = |t| Ok(ExpressionAttributes::new(Type::Base(t), Location::Value));
+        let err = || Err(SemanticError::undefined_value());
+
+        // The value might be an attribute expression which currently can only happen if
+        // we are dealing with structs in storage (e.g.
+        // self.my_struct.some_field). In the future when structs can have other
+        // structs as properties, this can be true for in-memory structs, too (e.g.
+        // my_struct.other_struct.some_field)
+        if let fe::Expr::Attribute { .. } = &value.node {
+            let self_property = expr_attribute(Rc::clone(&scope), Rc::clone(&context), value)?;
+            context
+                .borrow_mut()
+                .add_expression(value, self_property.clone());
+            if let Type::Struct(matched_struct) = self_property.typ {
+                return match matched_struct.get_field_type(attr.node) {
+                    Some(typ) => Ok(ExpressionAttributes::new(
+                        Type::Base(typ.to_owned()),
+                        self_property.location,
+                    )),
+                    None => err(),
+                };
+            }
+        }
+
         let object_name = expr_name_str(value)?;
 
         // Before we try to match any pre-defined objects, try matching as a
@@ -294,9 +318,6 @@ fn expr_attribute(
         if let Some(FixedSize::Struct(_)) = scope.borrow().get_variable_def(object_name) {
             return expr_attribute_custom_type(Rc::clone(&scope), context, value, attr);
         }
-
-        let val = |t| Ok(ExpressionAttributes::new(Type::Base(t), Location::Value));
-        let err = || Err(SemanticError::undefined_value());
 
         return match Object::from_str(object_name) {
             Ok(Object::Self_) => expr_attribute_self(scope, attr),

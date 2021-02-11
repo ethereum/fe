@@ -4,6 +4,25 @@ struct House:
     vacant: bool
 
 contract Foo:
+    my_house: House
+
+    pub def create_house():
+        self.my_house = House(1,2,false)
+        assert self.my_house.price == 1
+        assert self.my_house.size == 2
+        assert self.my_house.vacant == false
+        # We change only the size and check other fields are unchanged
+        self.my_house.size = 50
+        assert self.my_house.size == 50
+        assert self.my_house.price == 1
+        assert self.my_house.vacant == false
+        # We change only the price and check other fields are unchanged
+        self.my_house.price = 1000
+        assert self.my_house.size == 50
+        assert self.my_house.price == 1000
+        assert self.my_house.vacant == false
+
+
 
     pub def bar() -> u256:
         building: House = House(300, 500, true)

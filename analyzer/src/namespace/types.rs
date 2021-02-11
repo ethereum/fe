@@ -202,6 +202,11 @@ impl Struct {
         self.fields.get(name)
     }
 
+    // Return the index of the given field name
+    pub fn get_field_index(&self, name: &str) -> Option<usize> {
+        self.fields.keys().position(|field| field == name)
+    }
+
     // Return a vector of field types
     pub fn get_field_types(&self) -> Vec<Type> {
         self.fields.values().map(|val| val.clone().into()).collect()
