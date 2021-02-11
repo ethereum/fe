@@ -23,10 +23,10 @@ pub fn dispatcher(attributes: Vec<FunctionAttributes>) -> yul::Statement {
 }
 
 fn dispatch_arm(attributes: FunctionAttributes) -> yul::Case {
-    let selector = selector(attributes.name.clone(), &attributes.param_types);
+    let selector = selector(&attributes.name, &attributes.param_types);
 
     if !attributes.return_type.is_empty_tuple() {
-        let selection = selection(attributes.name, &attributes.param_types);
+        let selection = selection(&attributes.name, &attributes.param_types);
         let return_data = abi_operations::encode(
             vec![attributes.return_type.clone()],
             vec![expression! { raw_return }],
@@ -47,12 +47,12 @@ fn dispatch_arm(attributes: FunctionAttributes) -> yul::Case {
         };
     }
 
-    let selection = selection_as_statement(attributes.name, &attributes.param_types);
+    let selection = selection_as_statement(&attributes.name, &attributes.param_types);
 
     case! { case [selector] { [selection] } }
 }
 
-fn selector(name: String, params: &[FixedSize]) -> yul::Literal {
+fn selector(name: &str, params: &[FixedSize]) -> yul::Literal {
     let params = params
         .iter()
         .map(|param| param.abi_name())
@@ -61,7 +61,7 @@ fn selector(name: String, params: &[FixedSize]) -> yul::Literal {
     literal! {(abi_utils::func_selector(name, params))}
 }
 
-fn selection(name: String, params: &[FixedSize]) -> yul::Expression {
+fn selection(name: &str, params: &[FixedSize]) -> yul::Expression {
     let decoded_params = abi_operations::decode(
         params.to_owned(),
         literal_expression! { 4 },
@@ -73,7 +73,7 @@ fn selection(name: String, params: &[FixedSize]) -> yul::Expression {
     expression! { [name]([decoded_params...]) }
 }
 
-fn selection_as_statement(name: String, params: &[FixedSize]) -> yul::Statement {
+fn selection_as_statement(name: &str, params: &[FixedSize]) -> yul::Statement {
     yul::Statement::Expression(selection(name, params))
 }
 
@@ -87,16 +87,13 @@ mod tests {
 
     #[test]
     fn test_selector_literal_basic() {
-        assert_eq!(
-            selector("foo".to_string(), &[]).to_string(),
-            String::from("0xc2985578"),
-        )
+        assert_eq!(selector("foo", &[]).to_string(), String::from("0xc2985578"),)
     }
 
     #[test]
     fn test_selector_literal() {
         assert_eq!(
-            selector("bar".to_string(), &[FixedSize::Base(U256)]).to_string(),
+            selector("bar", &[FixedSize::Base(U256)]).to_string(),
             String::from("0x0423a132"),
         )
     }

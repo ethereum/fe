@@ -121,7 +121,7 @@ fn expr_call(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressi
                         return match (value_attributes.typ.to_owned(), attr.node) {
                             (Type::Contract(contract), func_name) => Ok(contract_operations::call(
                                 contract,
-                                func_name.to_owned(),
+                                func_name,
                                 expr(context, value)?,
                                 yul_args,
                             )),

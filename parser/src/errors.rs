@@ -36,8 +36,8 @@ impl<'a> ParseError<'a> {
         Self::new(input, ErrorKind::StaticStr(string))
     }
 
-    pub fn str(input: Cursor<'a>, string: String) -> Self {
-        Self::new(input, ErrorKind::Str(string))
+    pub fn str(input: Cursor<'a>, string: &str) -> Self {
+        Self::new(input, ErrorKind::Str(string.to_owned()))
     }
 
     pub fn eof(input: Cursor<'a>) -> Self {
@@ -132,7 +132,7 @@ mod tests {
     #[test]
     fn test_parse_error_factories() {
         assert_eq!(
-            ParseError::str(empty_slice!(), "foo".to_string()),
+            ParseError::str(empty_slice!(), "foo"),
             ParseError {
                 errors: vec![(empty_slice!(), Str("foo".to_string()))],
             }

@@ -6,11 +6,11 @@ use yultsur::*;
 /// parameters.
 pub fn call(
     contract: Contract,
-    func_name: String,
+    func_name: &str,
     address: yul::Expression,
     params: Vec<yul::Expression>,
 ) -> yul::Expression {
-    let func_name = names::contract_call(&contract.name, &func_name);
+    let func_name = names::contract_call(&contract.name, func_name);
     expression! { [func_name]([address], [params...]) }
 }
 
