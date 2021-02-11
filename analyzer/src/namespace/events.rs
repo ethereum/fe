@@ -12,7 +12,7 @@ pub struct Event {
 }
 
 impl Event {
-    pub fn new(name: String, fields: Vec<FixedSize>, indexed_fields: Vec<usize>) -> Self {
+    pub fn new(name: &str, fields: Vec<FixedSize>, indexed_fields: Vec<usize>) -> Self {
         let abi_fields = fields
             .iter()
             .map(|field| field.abi_name())
@@ -62,7 +62,7 @@ impl Event {
     }
 }
 
-fn build_event_topic(name: String, fields: Vec<String>) -> String {
+fn build_event_topic(name: &str, fields: Vec<String>) -> String {
     let signature = format!("{}({})", name, fields.join(","));
     get_full_signature(signature.as_bytes())
 }
@@ -78,7 +78,7 @@ mod tests {
     #[test]
     fn test_new_event() {
         let event = Event::new(
-            "MyEvent".to_string(),
+            "MyEvent",
             vec![
                 FixedSize::Base(Base::Address),
                 FixedSize::Base(Base::Address),

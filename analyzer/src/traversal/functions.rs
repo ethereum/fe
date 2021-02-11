@@ -46,9 +46,8 @@ pub fn func_def(
         body: _,
     } = &def.node
     {
-        let name = name.node.to_string();
-        let function_scope =
-            BlockScope::from_contract_scope(name.clone(), Rc::clone(&contract_scope));
+        let name = name.node;
+        let function_scope = BlockScope::from_contract_scope(name, Rc::clone(&contract_scope));
 
         let param_types = args
             .iter()
@@ -63,7 +62,7 @@ pub fn func_def(
 
         let is_public = qual.is_some();
         contract_scope.borrow_mut().add_function(
-            name.clone(),
+            name,
             is_public,
             param_types.clone(),
             return_type.clone(),
@@ -71,7 +70,7 @@ pub fn func_def(
         )?;
 
         let attributes = FunctionAttributes {
-            name,
+            name: name.to_owned(),
             param_types,
             return_type,
         };
@@ -98,10 +97,9 @@ pub fn func_body(
         body,
     } = &def.node
     {
-        let func_name = name.node.to_string();
         let host_func_def = contract_scope
             .borrow()
-            .function_def(func_name)
+            .function_def(name.node)
             .unwrap_or_else(|| panic!("Failed to lookup function definition for {}", &name.node));
 
         // If the return type is an empty tuple we do not have to validate any further
@@ -166,7 +164,7 @@ fn func_def_arg(
     scope: Shared<BlockScope>,
     arg: &Spanned<fe::FuncDefArg>,
 ) -> Result<FixedSize, SemanticError> {
-    let name = arg.node.name.node.to_string();
+    let name = arg.node.name.node;
     let typ = types::type_desc_fixed_size(Scope::Block(Rc::clone(&scope)), &arg.node.typ)?;
 
     scope.borrow_mut().add_var(name, typ.clone())?;
@@ -220,9 +218,7 @@ fn for_loop(
             // Step 3: Make sure iter is in the function scope & it should be an array.
             let target_type = verify_is_array(scope, Rc::clone(&context), iter)?;
             let target_name = expressions::expr_name_str(target)?;
-            body_scope
-                .borrow_mut()
-                .add_var(target_name.to_string(), target_type)?;
+            body_scope.borrow_mut().add_var(target_name, target_type)?;
             // Step 4: Traverse the statements within the `for loop` body scope.
             traverse_statements(body_scope, context, body)
         }
@@ -361,7 +357,7 @@ fn emit(
     {
         let event_name = expressions::expr_name_string(func)?;
 
-        if let Some(event) = scope.borrow().contract_event_def(event_name) {
+        if let Some(event) = scope.borrow().contract_event_def(&event_name) {
             context.borrow_mut().add_emit(stmt, event.clone());
 
             let argument_attributes = args
@@ -478,7 +474,7 @@ mod tests {
 
         let def = scope
             .borrow()
-            .function_def("foo".to_string())
+            .function_def("foo")
             .expect("No definiton for foo exists");
 
         assert_eq!(def.is_public, false);

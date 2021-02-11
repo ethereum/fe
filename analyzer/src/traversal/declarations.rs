@@ -32,7 +32,7 @@ pub fn var_decl(
             }
         }
 
-        scope.borrow_mut().add_var(name, declared_type.clone())?;
+        scope.borrow_mut().add_var(&name, declared_type.clone())?;
         context.borrow_mut().add_declaration(stmt, declared_type);
 
         return Ok(());
@@ -65,7 +65,7 @@ mod tests {
     fn scope() -> Shared<BlockScope> {
         let module_scope = ModuleScope::new();
         let contract_scope = ContractScope::new(module_scope);
-        BlockScope::from_contract_scope("".to_string(), contract_scope)
+        BlockScope::from_contract_scope("", contract_scope)
     }
 
     fn analyze(scope: Shared<BlockScope>, src: &str) -> Result<Context, SemanticError> {
@@ -89,7 +89,7 @@ mod tests {
         let context = analyze(Rc::clone(&scope), statement).expect("analysis failed");
         assert_eq!(context.expressions.len(), 3);
         assert_eq!(
-            scope.borrow().get_variable_def("foo".to_string()),
+            scope.borrow().get_variable_def("foo"),
             Some(FixedSize::Base(U256))
         );
     }
