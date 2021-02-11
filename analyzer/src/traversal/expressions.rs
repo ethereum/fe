@@ -143,11 +143,6 @@ pub fn expr_name_str<'a>(exp: &Spanned<fe::Expr<'a>>) -> Result<&'a str, Semanti
     unreachable!()
 }
 
-/// Retrieves the &str value of a name expression and converts it to a String.
-pub fn expr_name_string(exp: &Spanned<fe::Expr>) -> Result<String, SemanticError> {
-    expr_name_str(exp).map(|name| name.to_string())
-}
-
 /// Gather context information for an index and check for type errors.
 pub fn slices_index(
     scope: Shared<BlockScope>,
