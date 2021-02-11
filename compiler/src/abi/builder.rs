@@ -180,7 +180,7 @@ fn type_desc<'a>(
         fe::TypeDesc::Base { base: "address" } => Ok(VarType::Address),
         fe::TypeDesc::Base { base } if base.starts_with("string") => Ok(VarType::String),
         fe::TypeDesc::Base { base } => {
-            Err(CompileError::str(format!("unrecognized type: {}", base)))
+            Err(CompileError::str(&format!("unrecognized type: {}", base)))
         }
         fe::TypeDesc::Array { typ, dimension } => {
             if let fe::TypeDesc::Base { base: "bytes" } = &typ.node {

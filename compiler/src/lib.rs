@@ -28,7 +28,7 @@ pub fn compile(
     // parse source
     let fe_tokens = fe_parser::get_parse_tokens(src)?;
     let fe_module = fe_parser::parsers::file_input(&fe_tokens[..])
-        .map_err(|error| CompileError::str(error.format_user(src)))?
+        .map_err(|error| CompileError::str(&error.format_user(src)))?
         .1
         .node;
 
@@ -37,7 +37,7 @@ pub fn compile(
 
     // analyze source code
     let context = fe_analyzer::analyze(&fe_module)
-        .map_err(|error| CompileError::str(error.format_user(src)))?;
+        .map_err(|error| CompileError::str(&error.format_user(src)))?;
 
     // compile to yul
     let yul_contracts = yul::compile(context, &fe_module)?;
