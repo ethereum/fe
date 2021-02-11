@@ -37,7 +37,7 @@ pub fn calls(contract: Contract) -> Vec<yul::Statement> {
                 .unzip();
             // the function selector must be added to the first 4 bytes of the calldata
             let selector = {
-                let selector = abi_utils::func_selector(function.name.clone(), param_names);
+                let selector = abi_utils::func_selector(&function.name, param_names);
                 literal_expression! { (selector) }
             };
             // the operations used to encode the parameters

@@ -60,18 +60,13 @@ fn contract_def<'a>(
             } => {
                 if let Some(qual) = qual {
                     if qual.node == fe::FuncQual::Pub {
-                        c.functions.push(func_def(
-                            type_defs,
-                            name.node.to_string(),
-                            args,
-                            return_type,
-                        )?)
+                        c.functions
+                            .push(func_def(type_defs, name.node, args, return_type)?)
                     }
                 }
             }
             fe::ContractStmt::EventDef { name, fields } => {
-                c.events
-                    .push(event_def(type_defs, name.node.to_string(), fields)?)
+                c.events.push(event_def(type_defs, name.node, fields)?)
             }
             fe::ContractStmt::ContractField { .. } => {}
         }
@@ -82,7 +77,7 @@ fn contract_def<'a>(
 
 fn event_def<'a>(
     type_defs: &'a TypeDefs<'a>,
-    name: String,
+    name: &str,
     fields: &[Spanned<fe::EventField<'a>>],
 ) -> Result<Event, CompileError> {
     let fields = fields
@@ -91,8 +86,8 @@ fn event_def<'a>(
         .collect::<Result<_, _>>()?;
 
     Ok(Event {
-        name,
-        typ: "event".to_string(),
+        name: name.to_owned(),
+        typ: "event".to_owned(),
         fields,
         anonymous: false,
     })
@@ -103,7 +98,7 @@ fn event_field<'a>(
     field: &'a fe::EventField<'a>,
 ) -> Result<EventField, CompileError> {
     Ok(EventField {
-        name: String::from(field.name.node),
+        name: field.name.node.to_owned(),
         typ: type_desc(&type_defs, &field.typ.node)?,
         indexed: field.qual.is_some(),
     })
@@ -111,7 +106,7 @@ fn event_field<'a>(
 
 fn func_def<'a>(
     type_defs: &'a TypeDefs<'a>,
-    name: String,
+    name: &str,
     args: &[Spanned<fe::FuncDefArg<'a>>],
     return_type: &'a Option<Spanned<fe::TypeDesc<'a>>>,
 ) -> Result<Function, CompileError> {
@@ -130,13 +125,13 @@ fn func_def<'a>(
     };
 
     let (name, typ) = if name == "__init__" {
-        ("".to_string(), FuncType::Constructor)
+        ("", FuncType::Constructor)
     } else {
         (name, FuncType::Function)
     };
 
     Ok(Function {
-        name,
+        name: name.to_owned(),
         typ,
         inputs,
         outputs,
@@ -148,7 +143,7 @@ fn func_def_arg<'a>(
     arg: &'a fe::FuncDefArg<'a>,
 ) -> Result<FuncInput, CompileError> {
     Ok(FuncInput {
-        name: String::from(arg.name.node),
+        name: arg.name.node.to_owned(),
         typ: type_desc(&type_defs, &arg.typ.node)?,
     })
 }

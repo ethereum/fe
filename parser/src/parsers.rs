@@ -43,7 +43,7 @@ pub fn token<'a>(typ: TokenType) -> impl Fn(Cursor<'a>) -> ParseResult<&Token> {
     verify(
         next,
         move |t| t.typ == typ,
-        move |inp, _| ParseError::str(inp, format!("expected {:?} token", typ)),
+        move |inp, _| ParseError::str(inp, &format!("expected {:?} token", typ)),
     )
 }
 
@@ -58,7 +58,7 @@ pub fn name<'a>(string: &'a str) -> impl Fn(Cursor<'a>) -> ParseResult<&Token> {
     verify(
         name_token,
         move |t| t.string == string,
-        move |inp, _| ParseError::str(inp, format!("expected \"{}\" name token", string)),
+        move |inp, _| ParseError::str(inp, &format!("expected \"{}\" name token", string)),
     )
 }
 
@@ -73,7 +73,7 @@ pub fn op<'a>(string: &'a str) -> impl Fn(Cursor<'a>) -> ParseResult<&Token> {
     verify(
         op_token,
         move |t| t.string == string,
-        move |inp, _| ParseError::str(inp, format!("expected \"{}\" op token", string)),
+        move |inp, _| ParseError::str(inp, &format!("expected \"{}\" op token", string)),
     )
 }
 
@@ -793,7 +793,7 @@ pub fn arr_dim(input: Cursor) -> ParseResult<Spanned<usize>> {
         Err(_) => {
             return Err(ParseError::str(
                 num_input,
-                format!("invalid integer literal \"{}\"", num_tok.string),
+                &format!("invalid integer literal \"{}\"", num_tok.string),
             ))
         }
     };

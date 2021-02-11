@@ -217,7 +217,7 @@ fn expr_str(
             .borrow()
             .contract_scope()
             .borrow_mut()
-            .add_string(string_val)?;
+            .add_string(&string_val)?;
 
         return Ok(ExpressionAttributes::new(
             Type::String(FeString {
@@ -460,11 +460,11 @@ fn expr_call(
                 expr_call_type_constructor(scope, context, typ, args)
             }
             CallType::SelfAttribute { func_name } => {
-                expr_call_self_attribute(scope, context, func_name, args)
+                expr_call_self_attribute(scope, context, &func_name, args)
             }
             CallType::ValueAttribute => expr_call_value_attribute(scope, context, func, args),
             CallType::TypeAttribute { typ, func_name } => {
-                expr_call_type_attribute(scope, context, typ, func_name, args)
+                expr_call_type_attribute(scope, context, typ, &func_name, args)
             }
         };
     }
@@ -552,7 +552,7 @@ fn expr_call_args(
 fn expr_call_self_attribute(
     scope: Shared<BlockScope>,
     context: Shared<Context>,
-    func_name: String,
+    func_name: &str,
     args: &Spanned<Vec<Spanned<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let Some(ContractFunctionDef {
@@ -564,7 +564,7 @@ fn expr_call_self_attribute(
         .borrow()
         .contract_scope()
         .borrow()
-        .function_def(&func_name)
+        .function_def(func_name)
     {
         let argument_attributes = expr_call_args(Rc::clone(&scope), Rc::clone(&context), args)?;
 
@@ -600,13 +600,7 @@ fn expr_call_value_attribute(
         let value_attributes = expr(Rc::clone(&scope), Rc::clone(&context), &value)?;
 
         if let Type::Contract(contract) = value_attributes.typ {
-            return expr_call_contract_attribute(
-                scope,
-                context,
-                contract,
-                attr.node.to_string(),
-                args,
-            );
+            return expr_call_contract_attribute(scope, context, contract, attr.node, args);
         }
 
         // for now all of these function expect 0 arguments
@@ -633,12 +627,12 @@ fn expr_call_type_attribute(
     scope: Shared<BlockScope>,
     context: Shared<Context>,
     typ: Type,
-    func_name: String,
+    func_name: &str,
     args: &Spanned<Vec<Spanned<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     let arg_attributes = expr_call_args(Rc::clone(&scope), context, args)?;
 
-    match (typ, ContractTypeMethod::from_str(func_name.as_str())) {
+    match (typ, ContractTypeMethod::from_str(func_name)) {
         (Type::Contract(contract), Ok(ContractTypeMethod::Create2)) => {
             if arg_attributes.len() != 2 {
                 return Err(SemanticError::wrong_number_of_params());
@@ -690,7 +684,7 @@ fn expr_call_contract_attribute(
     scope: Shared<BlockScope>,
     context: Shared<Context>,
     contract: Contract,
-    func_name: String,
+    func_name: &str,
     args: &Spanned<Vec<Spanned<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let Some(function) = contract

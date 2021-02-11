@@ -195,8 +195,8 @@ impl ContractScope {
     }
 
     /// Add a static string definition to the scope.
-    pub fn add_string(&mut self, value: String) -> Result<(), SemanticError> {
-        self.string_defs.insert(value);
+    pub fn add_string(&mut self, value: &str) -> Result<(), SemanticError> {
+        self.string_defs.insert(value.to_owned());
         Ok(())
     }
 

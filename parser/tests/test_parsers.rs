@@ -270,7 +270,7 @@ fn test_arr_dim_err() {
         standalone(arr_dim)(&toks),
         Err(ParseError::str(
             &toks[1..],
-            "invalid integer literal \"1.0\"".to_string(),
+            "invalid integer literal \"1.0\"",
         )),
     );
 }
