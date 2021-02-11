@@ -369,6 +369,26 @@ fn expr_attribute(
             TxField,
         };
 
+        if let fe::Expr::Attribute { .. } = &value.node {
+            match context.get_expression(value) {
+                Some(ExpressionAttributes {
+                    location,
+                    typ: Type::Struct(val),
+                    ..
+                }) => match val.get_field_index(attr.node) {
+                    Some(index) => {
+                        if let Location::Storage { nonce: Some(nonce) } = location {
+                            return Ok(nonce_with_offset_to_ptr(*nonce, index * 32));
+                        } else {
+                            return Err(CompileError::static_str("invalid attributes"));
+                        };
+                    }
+                    None => return Err(CompileError::static_str("invalid attributes")),
+                },
+                _ => return Err(CompileError::static_str("invalid attributes")),
+            }
+        }
+
         let object_name = expr_name_str(value)?;
 
         // Before we try to match any known pre-defined objects, try matching as a
@@ -442,6 +462,14 @@ fn expr_attribute_self(
 pub fn nonce_to_ptr(nonce: usize) -> yul::Expression {
     let ptr = get_full_signature(nonce.to_string().as_bytes());
     literal_expression! { (ptr) }
+}
+
+/// Converts a storage nonce into a pointer based on the keccak256 hash
+pub fn nonce_with_offset_to_ptr(nonce: usize, offset: usize) -> yul::Expression {
+    let ptr = get_full_signature(nonce.to_string().as_bytes());
+    let ptr = literal_expression! { (ptr) };
+    let offset = literal_expression! { (offset) };
+    expression! { (add([ptr], [offset])) }
 }
 
 fn expr_ternary(
