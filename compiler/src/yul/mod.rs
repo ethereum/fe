@@ -11,7 +11,7 @@ mod constructor;
 mod mappers;
 mod names;
 mod operations;
-mod runtime;
+pub mod runtime;
 mod utils;
 
 /// Compiles Fe source code to Yul.

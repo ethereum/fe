@@ -8,7 +8,7 @@ use crate::types::{
     YulIr,
 };
 
-/// Compiles Fe to bytecode. It uses Yul as an intermediate representation.
+/// Compile a map of Yul contracts to a map of bytecode contracts.
 pub fn compile(
     mut contracts: NamedYulContracts,
     optimize: bool,
@@ -21,7 +21,8 @@ pub fn compile(
         .collect::<Result<NamedBytecodeContracts, _>>()
 }
 
-fn compile_single_contract(
+/// Compiles a single Yul contract to bytecode.
+pub fn compile_single_contract(
     name: &str,
     yul_src: YulIr,
     optimize: bool,
