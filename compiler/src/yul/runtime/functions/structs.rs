@@ -63,9 +63,7 @@ pub fn generate_new_fn(struct_type: &Struct) -> yul::Statement {
 pub fn generate_get_fn(struct_type: &Struct, field_name: &str) -> yul::Statement {
     let function_name = names::struct_getter_call(&struct_type.name, field_name);
     let field_index = struct_type
-        .get_field_names()
-        .iter()
-        .position(|field| field == field_name)
+        .get_field_index(field_name)
         .unwrap_or_else(|| panic!("No field {} in {}", field_name, struct_type.name));
     let field_offset = field_index * 32;
 
