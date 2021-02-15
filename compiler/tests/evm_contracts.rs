@@ -1056,7 +1056,12 @@ fn create_contract() {
     })
 }
 
-#[rstest(fixture_file, contract_name, case("ownable.fe", "Ownable"))]
+#[rstest(
+    fixture_file,
+    contract_name,
+    case("ownable.fe", "Ownable"),
+    case("empty.fe", "Empty")
+)]
 fn can_deploy_fixture(fixture_file: &str, contract_name: &str) {
     with_executor(&|mut executor| {
         deploy_contract(&mut executor, fixture_file, contract_name, &[]);

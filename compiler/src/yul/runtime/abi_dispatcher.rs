@@ -16,9 +16,13 @@ pub fn dispatcher(attributes: Vec<FunctionAttributes>) -> yul::Statement {
         .map(|arm| dispatch_arm(arm.to_owned()))
         .collect::<Vec<_>>();
 
-    switch! {
-        switch (cloadn(0, 4))
-        [arms...]
+    if arms.is_empty() {
+        return statement! { pop(0) };
+    } else {
+        switch! {
+            switch (cloadn(0, 4))
+            [arms...]
+        }
     }
 }
 
