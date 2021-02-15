@@ -242,7 +242,8 @@ fn expr_bool(exp: &Spanned<fe::Expr>) -> Result<ExpressionAttributes, SemanticEr
 }
 
 fn expr_num(exp: &Spanned<fe::Expr>) -> Result<ExpressionAttributes, SemanticError> {
-    if let fe::Expr::Num(_) = &exp.node {
+    if let fe::Expr::Num(num) = &exp.node {
+        validate_numeric_literal_fits_type(*num, &Type::Base(U256))?;
         return Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value));
     }
 

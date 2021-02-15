@@ -39,6 +39,10 @@ use std::fs;
     case("numeric_capacity_mismatch/u128_pos.fe", "NumericCapacityMismatch"),
     case("numeric_capacity_mismatch/u256_neg.fe", "NumericCapacityMismatch"),
     case("numeric_capacity_mismatch/u256_pos.fe", "NumericCapacityMismatch"),
+    case(
+        "numeric_capacity_mismatch/literal_too_big.fe",
+        "NumericCapacityMismatch"
+    ),
     case("numeric_capacity_mismatch/i8_neg.fe", "NumericCapacityMismatch"),
     case("numeric_capacity_mismatch/i8_pos.fe", "NumericCapacityMismatch"),
     case("numeric_capacity_mismatch/i16_neg.fe", "NumericCapacityMismatch"),
@@ -51,6 +55,10 @@ use std::fs;
     case("numeric_capacity_mismatch/i128_pos.fe", "NumericCapacityMismatch"),
     case("numeric_capacity_mismatch/i256_neg.fe", "NumericCapacityMismatch"),
     case("numeric_capacity_mismatch/i256_pos.fe", "NumericCapacityMismatch"),
+    case(
+        "numeric_capacity_mismatch/literal_too_small.fe",
+        "NumericCapacityMismatch"
+    ),
     case("external_call_type_error.fe", "TypeError"),
     case("external_call_wrong_number_of_params.fe", "WrongNumberOfParams")
 )]
