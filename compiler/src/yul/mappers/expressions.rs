@@ -136,7 +136,6 @@ fn expr_call(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressi
                                     builtins::ValueMethod::Clone => expr(context, value),
                                     builtins::ValueMethod::AbiEncode => todo!(),
                                     builtins::ValueMethod::AbiEncodePacked => todo!(),
-                                    builtins::ValueMethod::Keccak256 => todo!(),
                                 }
                             }
                         };
