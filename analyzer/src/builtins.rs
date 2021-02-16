@@ -5,7 +5,6 @@ use strum::EnumString;
 pub enum ValueMethod {
     Clone,
     ToMem,
-    Keccak256,
     AbiEncode,
     AbiEncodePacked,
 }

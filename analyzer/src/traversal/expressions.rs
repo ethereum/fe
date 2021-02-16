@@ -614,7 +614,6 @@ fn expr_call_value_attribute(
         {
             ValueMethod::Clone => value_attributes.into_cloned(),
             ValueMethod::ToMem => value_attributes.into_cloned_from_sto(),
-            ValueMethod::Keccak256 => todo!(),
             ValueMethod::AbiEncode => todo!(),
             ValueMethod::AbiEncodePacked => todo!(),
         };
