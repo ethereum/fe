@@ -174,3 +174,22 @@ fn test_abi_unpack() {
         );
     })
 }
+
+#[test]
+fn test_keccak256() {
+    with_executor(&|mut executor| {
+        test_runtime_functions(
+            &mut executor,
+            functions::std(),
+            statements! {
+                (let num := 63806209331542711802848847270949280092855778197726125910674179583545433573378)
+                (let result :=109966633016701122630199943745061001312678661825260870342362413625737614346915)
+                // Can be validated with solidity
+                // uint(keccak256(abi.encodePacked(uint(63806209331542711802848847270949280092855778197726125910674179583545433573378))));
+                // which returns 109966633016701122630199943745061001312678661825260870342362413625737614346915
+                (mstore(0, num))
+                [assert_eq!(result, (keccak256(0, 32)))]
+            },
+        );
+    })
+}
