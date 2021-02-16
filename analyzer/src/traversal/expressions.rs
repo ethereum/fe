@@ -30,6 +30,7 @@ use crate::{
 };
 
 use crate::builtins::ContractTypeMethod;
+use builtins::GlobalMethod;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use std::convert::TryFrom;
@@ -478,6 +479,9 @@ fn expr_call(
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::Call { func, args } = &exp.node {
         return match expr_call_type(Rc::clone(&scope), Rc::clone(&context), func)? {
+            CallType::BuiltinFunction { func } => {
+                expr_call_builtin_function(scope, context, func, args)
+            }
             CallType::TypeConstructor { typ } => {
                 expr_call_type_constructor(scope, context, typ, args)
             }
@@ -492,6 +496,32 @@ fn expr_call(
     }
 
     unreachable!()
+}
+
+fn expr_call_builtin_function(
+    scope: Shared<BlockScope>,
+    context: Shared<Context>,
+    typ: GlobalMethod,
+    args: &Spanned<Vec<Spanned<fe::CallArg>>>,
+) -> Result<ExpressionAttributes, SemanticError> {
+    let argument_attributes = expr_call_args(Rc::clone(&scope), Rc::clone(&context), args)?;
+    match typ {
+        GlobalMethod::Keccak256 => {
+            if argument_attributes.len() != 1 {
+                return Err(SemanticError::wrong_number_of_params());
+            }
+            if !matches!(
+                expression_attributes_to_types(argument_attributes).first(),
+                Some(Type::Array(Array {
+                    inner: Base::Byte,
+                    ..
+                }))
+            ) {
+                return Err(SemanticError::type_error());
+            }
+            Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value))
+        }
+    }
 }
 
 fn expr_call_struct_constructor(
@@ -767,6 +797,9 @@ fn expr_name_call_type(
     name: &str,
 ) -> Result<CallType, SemanticError> {
     match name {
+        "keccak256" => Ok(CallType::BuiltinFunction {
+            func: GlobalMethod::Keccak256,
+        }),
         "address" => Ok(CallType::TypeConstructor {
             typ: Type::Base(Base::Address),
         }),

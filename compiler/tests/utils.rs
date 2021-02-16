@@ -14,6 +14,18 @@ use std::str::FromStr;
 use stringreader::StringReader;
 use yultsur::*;
 
+pub trait ToBeBytes {
+    fn to_be_bytes(&self) -> [u8; 32];
+}
+
+impl ToBeBytes for U256 {
+    fn to_be_bytes(&self) -> [u8; 32] {
+        let mut input_bytes: [u8; 32] = [0; 32];
+        self.to_big_endian(&mut input_bytes);
+        input_bytes
+    }
+}
+
 #[allow(dead_code)]
 pub type Executor<'a> = evm::executor::StackExecutor<'a, 'a, evm::backend::MemoryBackend<'a>>;
 
@@ -266,6 +278,11 @@ pub fn test_runtime_functions(
 #[allow(dead_code)]
 pub fn uint_token(n: usize) -> ethabi::Token {
     ethabi::Token::Uint(U256::from(n))
+}
+
+#[allow(dead_code)]
+pub fn uint_token_from_dec_str(val: &str) -> ethabi::Token {
+    ethabi::Token::Uint(U256::from_dec_str(val).expect("Not a valid dec string"))
 }
 
 #[allow(dead_code)]

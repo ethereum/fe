@@ -6,8 +6,12 @@ use crate::yul::operations::{
     structs as struct_operations,
 };
 use crate::yul::utils;
-use fe_analyzer::builtins::ContractTypeMethod;
+use fe_analyzer::builtins::{
+    ContractTypeMethod,
+    GlobalMethod,
+};
 use fe_analyzer::namespace::types::{
+    FeSized,
     FixedSize,
     Type,
 };
@@ -57,7 +61,7 @@ pub fn expr(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressio
             (_, None) => Ok(expression),
         }
     } else {
-        panic!("missing expression attributes")
+        panic!("missing expression attributes for {:?}", exp)
     }
 }
 
@@ -67,8 +71,7 @@ fn move_expression(
     from: Location,
     to: Location,
 ) -> Result<yul::Expression, CompileError> {
-    let typ =
-        FixedSize::try_from(typ).map_err(|_| CompileError::static_str("invalid attributes"))?;
+    let typ = FixedSize::try_from(typ).expect("Invalid type");
 
     match (from.clone(), to.clone()) {
         (Location::Storage { .. }, Location::Value) => Ok(data_operations::sload(typ, val)),
@@ -105,6 +108,20 @@ fn expr_call(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressi
                 .collect::<Result<_, _>>()?;
 
             return match call_type {
+                CallType::BuiltinFunction { func } => match func {
+                    GlobalMethod::Keccak256 => {
+                        let first_arg = args.node.first().expect("Missing argument");
+                        let arg_expr = context
+                            .get_expression(first_arg)
+                            .expect("invalid attributes");
+                        let size = FixedSize::try_from(arg_expr.typ.clone()).expect("Invalid type");
+                        let func_name: &str = func.into();
+
+                        let func_name = identifier! { (func_name) };
+                        let size = identifier_expression! { (size.size()) };
+                        Ok(expression! { [func_name]([yul_args[0].to_owned()], [size]) })
+                    }
+                },
                 CallType::TypeConstructor {
                     typ: Type::Struct(val),
                 } => Ok(struct_operations::new(val, yul_args)),
