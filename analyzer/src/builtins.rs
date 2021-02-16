@@ -1,4 +1,7 @@
-use strum::EnumString;
+use strum::{
+    EnumString,
+    IntoStaticStr,
+};
 
 #[derive(Debug, PartialEq, EnumString)]
 #[strum(serialize_all = "snake_case")]
@@ -7,6 +10,12 @@ pub enum ValueMethod {
     ToMem,
     AbiEncode,
     AbiEncodePacked,
+}
+
+#[derive(Clone, Debug, PartialEq, EnumString, IntoStaticStr)]
+#[strum(serialize_all = "snake_case")]
+pub enum GlobalMethod {
+    Keccak256,
 }
 
 #[derive(Debug, PartialEq, EnumString)]

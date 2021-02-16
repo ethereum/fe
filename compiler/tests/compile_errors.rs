@@ -7,6 +7,7 @@ use std::fs;
     fixture_file,
     expected_error,
     case("call_event_with_wrong_types.fe", "TypeError"),
+    case("keccak_called_with_wrong_type.fe", "TypeError"),
     case("continue_without_loop.fe", "ContinueWithoutLoop"),
     case("continue_without_loop_2.fe", "ContinueWithoutLoop"),
     case("break_without_loop.fe", "BreakWithoutLoop"),

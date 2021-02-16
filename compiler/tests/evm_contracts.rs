@@ -9,6 +9,8 @@ use std::collections::BTreeMap;
 use std::iter;
 
 mod utils;
+use fe_common::utils::keccak::get_keccak256;
+use utils::ToBeBytes;
 use utils::*;
 
 #[test]
@@ -710,6 +712,63 @@ fn structs() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, "structs.fe", "Foo", &[]);
         harness.test_function(&mut executor, "bar", &[], Some(&uint_token(2)));
+    });
+}
+
+#[test]
+fn keccak() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "keccak.fe", "Keccak", &[]);
+        // The expected value in clear text is on purpose for added clarity. All other
+        // tests use get_keccak256 to calculate the expected results on the fly.
+        harness.test_function(
+            &mut executor,
+            "return_hash_from_u256",
+            &[ethabi::Token::FixedBytes(
+                U256::from(1).to_be_bytes().to_vec(),
+            )],
+            Some(&uint_token_from_dec_str(
+                "80084422859880547211683076133703299733277748156566366325829078699459944778998",
+            )),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "return_hash_from_u256",
+            &[ethabi::Token::FixedBytes(
+                U256::from(1).to_be_bytes().to_vec(),
+            )],
+            Some(&ethabi::Token::Uint(
+                get_keccak256(&U256::from(1).to_be_bytes()).into(),
+            )),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "return_hash_from_u8",
+            &[ethabi::Token::FixedBytes([1].into())],
+            Some(&ethabi::Token::Uint(
+                get_keccak256(&1u8.to_be_bytes()).into(),
+            )),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "return_hash_from_u8",
+            &[ethabi::Token::FixedBytes([0].into())],
+            Some(&ethabi::Token::Uint(
+                get_keccak256(&0u8.to_be_bytes()).into(),
+            )),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "return_hash_from_foo",
+            &[bytes_token("foo")],
+            Some(&ethabi::Token::Uint(
+                get_keccak256(&"foo".as_bytes()).into(),
+            )),
+        );
     });
 }
 

@@ -22,6 +22,7 @@ use crate::namespace::types::{
     Struct,
     Type,
 };
+use builtins::GlobalMethod;
 use fe_parser::ast as fe;
 use fe_parser::span::{
     Span,
@@ -222,6 +223,7 @@ impl ExpressionAttributes {
 /// The type of a function call.
 #[derive(Clone, Debug, PartialEq)]
 pub enum CallType {
+    BuiltinFunction { func: GlobalMethod },
     TypeConstructor { typ: Type },
     SelfAttribute { func_name: String },
     ValueAttribute,
