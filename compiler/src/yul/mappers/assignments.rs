@@ -177,7 +177,7 @@ mod tests {
 
         assert_eq!(
             map(&harness.context, &harness.src),
-            "mstoren(add($foo, mul(4, 32)), 2, 32)"
+            "mstoren(add($foo, mul(4, 32)), 32, 2)"
         )
     }
 }

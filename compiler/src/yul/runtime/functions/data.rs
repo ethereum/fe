@@ -21,16 +21,6 @@ pub fn alloc() -> yul::Statement {
     }
 }
 
-/// Stores a value in a newly allocated memory segment.
-pub fn alloc_mstoren() -> yul::Statement {
-    function_definition! {
-        function alloc_mstoren(val, size) -> ptr {
-            (ptr := alloc(size))
-            (mstoren(ptr, val, size))
-        }
-    }
-}
-
 /// Set the highest available pointer.
 pub fn free() -> yul::Statement {
     function_definition! {
@@ -40,7 +30,33 @@ pub fn free() -> yul::Statement {
     }
 }
 
-/// Copy calldata to memory a newly allocated segment of memory.
+/// Set the given segment of the value (defined in bits) to zero.
+pub fn set_zero() -> yul::Statement {
+    function_definition! {
+        function set_zero(start_bit, end_bit, val) -> result {
+            (let left_shift_dist := sub(256, start_bit))
+            (let right_shift_dist := end_bit)
+            // shift left then right to zero out the desired bits
+            (let left := shl(left_shift_dist, (shr(left_shift_dist, val))))
+            // shift right then left to zero out the desired bits
+            (let right := shr(right_shift_dist, (shl(right_shift_dist, val))))
+            // combine the left and right side
+            // the segment defined by `start_bit` and `end_bit` will be zero
+            (result := or(left, right))
+        }
+    }
+}
+
+/// Rounds a 256 bit value up to the nearest multiple of 32.
+pub fn ceil32() -> yul::Statement {
+    function_definition! {
+        function ceil32(n) -> return_val {
+            (return_val := mul((div((add(n, 31)), 32)), 32))
+        }
+    }
+}
+
+/// Copy calldata to a newly allocated segment of memory.
 pub fn ccopym() -> yul::Statement {
     function_definition! {
         function ccopym(cptr, size) -> mptr {
@@ -50,83 +66,76 @@ pub fn ccopym() -> yul::Statement {
     }
 }
 
-/// Load a static string from data into a newly allocated segment of memory.
-pub fn load_data_string() -> yul::Statement {
-    function_definition! {
-        function load_data_string(code_ptr, size) -> mptr {
-            (mptr := alloc(32))
-            (mstore(mptr, size))
-            (let content_ptr := alloc(size))
-            (datacopy(content_ptr, code_ptr, size))
-        }
-    }
-}
-
 /// Copy memory to a given segment of storage.
+///
+/// The storage pointer addresses a word.
 pub fn mcopys() -> yul::Statement {
     function_definition! {
         function mcopys(mptr, sptr, size) {
-            (let offset := 0)
-            (for { } (lt((add(offset, 32)), size)) { }
+            (let mptr_offset := 0)
+            (let sptr_offset := 0)
+            (for { } (lt((add(mptr_offset, 32)), size)) { }
             {
-                (let _mptr := add(mptr, offset))
-                (let _sptr := add(sptr, offset))
+                (let _mptr := add(mptr, mptr_offset))
+                (let _sptr := add(sptr, sptr_offset))
                 (sstore(_sptr, (mload(_mptr))))
-                (offset := add(offset, 32))
+                (mptr_offset := add(mptr_offset, 32))
+                (sptr_offset := add(sptr_offset, 1))
             })
 
-            (let rem := sub(size, offset))
+            (let rem := sub(size, mptr_offset))
             (if (gt(rem, 0)) {
-                (let _mptr := add(mptr, offset))
-                (let _sptr := add(sptr, offset))
-                (sstoren(_sptr, (mloadn(_mptr, rem)), rem))
+                (let _mptr := add(mptr, mptr_offset))
+                (let _sptr := add(sptr, sptr_offset))
+                (let zeroed_val := set_zero((mul(rem, 8)), 256, (mload(_mptr))))
+                (sstore(_sptr, zeroed_val))
             })
         }
     }
 }
 
 /// Copy storage to a newly allocated segment of memory.
+///
+/// The storage pointer addresses a word.
 pub fn scopym() -> yul::Statement {
     function_definition! {
         function scopym(sptr, size) -> mptr {
             (mptr := alloc(size))
-            (let offset := 0)
-            (for { } (lt((add(offset, 32)), size)) { }
+            (let mptr_offset := 0)
+            (let sptr_offset := 0)
+            (for { } (lt((add(mptr_offset, 32)), size)) { }
             {
-                (let _mptr := add(mptr, offset))
-                (let _sptr := add(sptr, offset))
+                (let _mptr := add(mptr, mptr_offset))
+                (let _sptr := add(sptr, sptr_offset))
                 (mstore(_mptr, (sload(_sptr))))
-                (offset := add(offset, 32))
+                (mptr_offset := add(mptr_offset, 32))
+                (sptr_offset := add(sptr_offset, 1))
             })
 
-            (let rem := sub(size, offset))
+            (let rem := sub(size, mptr_offset))
             (if (gt(rem, 0)) {
-                (let _mptr := add(mptr, offset))
-                (let _sptr := add(sptr, offset))
-                (mstoren(_mptr, (sloadn(_sptr, rem)), rem))
+                (let _mptr := add(mptr, mptr_offset))
+                (let _sptr := add(sptr, sptr_offset))
+                (mstoren(_mptr, rem, (sloadn(_sptr, 0, rem))))
             })
         }
     }
 }
 
 /// Copies a segment of storage to another segment of storage.
+///
+/// The storage pointers address words.
 pub fn scopys() -> yul::Statement {
     function_definition! {
         function scopys(ptr1, ptr2, size) {
+            (let word_size := div((add(size, 31)), 32))
             (let offset := 0)
-            (for { } (lt((add(offset, 32)), size)) { }
+            (for { } (lt((add(offset, 1)), size)) { }
             {
                 (let _ptr1 := add(ptr1, offset))
                 (let _ptr2 := add(ptr2, offset))
                 (sstore(_ptr2, (sload(_ptr1))))
-                (offset := add(offset, 32))
-            })
-
-            (let rem := sub(size, offset))
-            (if (gt(rem, 0)) {
-                (let _ptr1 := add(ptr1, offset))
-                (let _ptr2 := add(ptr2, offset))
-                (sstoren(_ptr2, (sloadn(_ptr1, rem)), rem))
+                (offset := add(offset, 1))
             })
         }
     }
@@ -150,13 +159,13 @@ pub fn mcopym() -> yul::Statement {
             (if (gt(rem, 0)) {
                 (let _ptr1 := add(ptr1, offset))
                 (let _ptr2 := add(ptr2, offset))
-                (mstoren(_ptr2, (mloadn(_ptr1, rem)), rem))
+                (mstoren(_ptr2, rem, (mloadn(_ptr1, rem))))
             })
         }
     }
 }
 
-/// Read a 256 bit value from memory and right-shift according to size.
+/// Read a value of n bytes from memory at the given address.
 pub fn mloadn() -> yul::Statement {
     function_definition! {
         function mloadn(ptr, size) -> val {
@@ -165,16 +174,25 @@ pub fn mloadn() -> yul::Statement {
     }
 }
 
-/// Read a 256 bit value from storage and right-shift according to size.
+/// Read a value of n bytes at the given word address and bytes offset.
+///
+/// (offset + size) must be less that 32, otherwise it enters undefined
+/// behavior.
 pub fn sloadn() -> yul::Statement {
     function_definition! {
-        function sloadn(ptr, size) -> val {
-            (val := shr((sub(256, (mul(8, size)))), (sload(ptr))))
+        function sloadn(word_ptr, bytes_offset, bytes_size) -> val {
+            (let bits_offset := mul(bytes_offset, 8))
+            (let bits_size := mul(bytes_size, 8))
+            (let bits_padding := sub(256, bits_size))
+
+            (let word := sload(word_ptr))
+            (let word_shl := shl(bits_offset, word))
+            (val := shr(bits_padding, word_shl))
         }
     }
 }
 
-/// Read a 256 bit value from calldata and right-shift according to size.
+/// Read a value of n bytes from calldata at the given address.
 pub fn cloadn() -> yul::Statement {
     function_definition! {
         function cloadn(ptr, size) -> val {
@@ -186,7 +204,7 @@ pub fn cloadn() -> yul::Statement {
 /// Stores a value in memory, only modifying the given size (0 < size <= 32).
 pub fn mstoren() -> yul::Statement {
     function_definition! {
-        function mstoren(ptr, val, size) {
+        function mstoren(ptr, size, val) {
             (let size_bits := mul(8, size))
             (let left := shl((sub(256, size_bits)), val))
             (let right := shr(size_bits, (mload((add(ptr, size))))))
@@ -198,32 +216,75 @@ pub fn mstoren() -> yul::Statement {
 /// Stores a value in storage, only modifying the given size (0 < size <= 32).
 pub fn sstoren() -> yul::Statement {
     function_definition! {
-        function sstoren(ptr, val, size) {
-            (let size_bits := mul(8, size))
-            (let left := shl((sub(256, size_bits)), val))
-            (let right := shr(size_bits, (sload((add(ptr, size))))))
-            (sstore(ptr, (or(left, right))))
+        function sstoren(word_ptr, bytes_offset, bytes_size, val) {
+            (let bits_offset := mul(bytes_offset, 8))
+            (let bits_size := mul(bytes_size, 8))
+
+            (let old_word := sload(word_ptr))
+            // zero out the section to be modified
+            (let zeroed_word := set_zero(
+                bits_offset,
+                (add(bits_offset, bits_size)),
+                old_word
+            ))
+            // get the number of bits we need to shift to get the value to the correct offset
+            (let left_shift_dist := sub((sub(256, bits_size)), bits_offset))
+            (let offset_val := shl(left_shift_dist, val))
+            // use or to place the new value in the zeroed out section
+            (let new_word := or(zeroed_word, offset_val))
+            (sstore(word_ptr, new_word))
         }
     }
 }
 
-/// Takes two 256 bit values and returns the keccak256 value of both.
-pub fn dualkeccak256() -> yul::Statement {
+/// Read a value of n bytes at the given byte address.
+///
+/// The value must not span multiple words.
+pub fn bytes_sloadn() -> yul::Statement {
     function_definition! {
-        function dualkeccak256(a, b) -> return_val {
+        function bytes_sloadn(sptr, size) -> val {
+            (let word_ptr := div(sptr, 32))
+            (let bytes_offset := mod(sptr, 32))
+            (val := sloadn(word_ptr, bytes_offset, 32))
+        }
+    }
+}
+
+/// Stores a value in storage at the given address, only modifying a segment of
+/// the given size.
+///
+/// The modified segment must not span multiple words.
+pub fn bytes_sstoren() -> yul::Statement {
+    function_definition! {
+        function bytes_sstoren(sptr, size, val) {
+            (let word_ptr := div(sptr, 32))
+            (let bytes_offset := mod(sptr, 32))
+            (sstoren(word_ptr, bytes_offset, 32, val))
+        }
+    }
+}
+
+/// Stores a value in a newly allocated memory segment.
+pub fn alloc_mstoren() -> yul::Statement {
+    function_definition! {
+        function alloc_mstoren(val, size) -> ptr {
+            (ptr := alloc(size))
+            (mstoren(ptr, size, val))
+        }
+    }
+}
+
+/// Derives the byte address of a value corresponding to a map key.
+///
+/// The address is always divisible by 32, so it points to a word.
+pub fn map_value_ptr() -> yul::Statement {
+    function_definition! {
+        function map_value_ptr(a, b) -> return_val {
             (let ptr := avail())
             (mstore(ptr, a))
             (mstore((add(ptr, 32)), b))
-            (return_val := keccak256(ptr, 64))
-        }
-    }
-}
-
-/// Rounds a 256 bit value up to the nearest multiple of 32.
-pub fn ceil32() -> yul::Statement {
-    function_definition! {
-        function ceil32(n) -> return_val {
-            (return_val := mul((div((add(n, 31)), 32)), 32))
+            (let hash := keccak256(ptr, 64))
+            (return_val := set_zero(248, 256, hash))
         }
     }
 }
@@ -237,6 +298,18 @@ pub fn ternary() -> yul::Statement {
                 (case 1 {(result := if_expr)})
                 (case 0 {(result := else_expr)})
             }])
+        }
+    }
+}
+
+/// Load a static string from data into a newly allocated segment of memory.
+pub fn load_data_string() -> yul::Statement {
+    function_definition! {
+        function load_data_string(code_ptr, size) -> mptr {
+            (mptr := alloc(32))
+            (mstore(mptr, size))
+            (let content_ptr := alloc(size))
+            (datacopy(content_ptr, code_ptr, size))
         }
     }
 }

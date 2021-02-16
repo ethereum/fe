@@ -91,7 +91,7 @@ mod tests {
 
         assert_eq!(
             map(&harness.context, &harness.src),
-            "let $foo := alloc(200)"
+            "let $foo := alloc(320)"
         );
     }
 }

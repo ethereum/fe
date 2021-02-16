@@ -3,7 +3,7 @@ use crate::yul::constructor;
 use crate::yul::mappers::functions;
 use crate::yul::runtime;
 use fe_analyzer::Context;
-use fe_common::utils::keccak::get_full_signature;
+use fe_common::utils::keccak;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use yultsur::*;
@@ -53,7 +53,7 @@ pub fn contract_def(
                 .clone()
                 .into_iter()
                 .map(|val| yul::Data {
-                    name: get_full_signature(val.as_bytes()),
+                    name: keccak::full(val.as_bytes()),
                     value: val,
                 })
                 .collect::<Vec<_>>()

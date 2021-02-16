@@ -13,8 +13,6 @@ use std::num::{
 use crate::FunctionAttributes;
 use num_bigint::BigInt;
 
-const ADDRESS_BYTE_LENGTH: usize = 20;
-
 pub fn u256_max() -> BigInt {
     BigInt::from(2).pow(256) - 1
 }
@@ -422,7 +420,7 @@ impl FeSized for Base {
             Base::Numeric(integer) => integer.size(),
             Base::Bool => 1,
             Base::Byte => 1,
-            Base::Address => ADDRESS_BYTE_LENGTH,
+            Base::Address => 32,
         }
     }
 }
@@ -536,7 +534,7 @@ impl AbiEncoding for Base {
             },
             Base::Address => AbiType::Uint {
                 size: AbiUintSize {
-                    data_size: ADDRESS_BYTE_LENGTH,
+                    data_size: 32,
                     padded_size: 32,
                 },
             },
@@ -669,7 +667,7 @@ impl AbiEncoding for FeString {
 
 impl FeSized for Contract {
     fn size(&self) -> usize {
-        ADDRESS_BYTE_LENGTH
+        32
     }
 }
 

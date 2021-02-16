@@ -24,7 +24,7 @@ use fe_analyzer::{
     Context,
     Location,
 };
-use fe_common::utils::keccak::get_full_signature;
+use fe_common::utils::keccak;
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use std::convert::TryFrom;
@@ -339,7 +339,7 @@ fn expr_bool(exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
 fn expr_str(exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
     if let fe::Expr::Str(lines) = &exp.node {
         let content = lines.join("");
-        let string_identifier = format!(r#""{}""#, get_full_signature(content.as_bytes()));
+        let string_identifier = format!(r#""{}""#, keccak::full(content.as_bytes()));
 
         let offset = expression! { dataoffset([literal_expression! { (string_identifier) }]) };
         let size = expression! { datasize([literal_expression! { (string_identifier) }]) };
@@ -475,15 +475,18 @@ fn expr_attribute_self(
 }
 
 /// Converts a storage nonce into a pointer based on the keccak256 hash
+///
+/// Pointers created here have the last byte set to zero. This is to ensure that
+/// our byte pointer sits at the start of a word (32 | `ptr` ).
 pub fn nonce_to_ptr(nonce: usize) -> yul::Expression {
-    let ptr = get_full_signature(nonce.to_string().as_bytes());
+    // set the last byte to `0x00` to ensure our pointer sits at the start of a word
+    let ptr = keccak::partial_right_padded(nonce.to_string().as_bytes(), 31);
     literal_expression! { (ptr) }
 }
 
 /// Converts a storage nonce into a pointer based on the keccak256 hash
 pub fn nonce_with_offset_to_ptr(nonce: usize, offset: usize) -> yul::Expression {
-    let ptr = get_full_signature(nonce.to_string().as_bytes());
-    let ptr = literal_expression! { (ptr) };
+    let ptr = nonce_to_ptr(nonce);
     let offset = literal_expression! { (offset) };
     expression! { (add([ptr], [offset])) }
 }
@@ -566,7 +569,7 @@ mod tests {
 
         let result = map(&harness.context, &harness.src);
 
-        assert_eq!(result, "sloadn(dualkeccak256(0, 3), 32)");
+        assert_eq!(result, "bytes_sloadn(map_value_ptr(0, 3), 32)");
     }
 
     #[test]
@@ -620,7 +623,7 @@ mod tests {
 
         assert_eq!(
             result,
-            "scopym(dualkeccak256(0, mloadn(add($bar_array, mul($index, 20)), 20)), 160)"
+            "scopym(div(map_value_ptr(0, mloadn(add($bar_array, mul($index, 32)), 32)), 32), 256)"
         );
     }
 

@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use std::iter;
 
 mod utils;
-use fe_common::utils::keccak::get_keccak256;
+use fe_common::utils::keccak;
 use utils::ToBeBytes;
 use utils::*;
 
@@ -741,7 +741,7 @@ fn keccak() {
                 U256::from(1).to_be_bytes().to_vec(),
             )],
             Some(&ethabi::Token::Uint(
-                get_keccak256(&U256::from(1).to_be_bytes()).into(),
+                keccak::full_as_bytes(&U256::from(1).to_be_bytes()).into(),
             )),
         );
 
@@ -750,7 +750,7 @@ fn keccak() {
             "return_hash_from_u8",
             &[ethabi::Token::FixedBytes([1].into())],
             Some(&ethabi::Token::Uint(
-                get_keccak256(&1u8.to_be_bytes()).into(),
+                keccak::full_as_bytes(&1u8.to_be_bytes()).into(),
             )),
         );
 
@@ -759,7 +759,7 @@ fn keccak() {
             "return_hash_from_u8",
             &[ethabi::Token::FixedBytes([0].into())],
             Some(&ethabi::Token::Uint(
-                get_keccak256(&0u8.to_be_bytes()).into(),
+                keccak::full_as_bytes(&0u8.to_be_bytes()).into(),
             )),
         );
 
@@ -768,7 +768,7 @@ fn keccak() {
             "return_hash_from_foo",
             &[bytes_token("foo")],
             Some(&ethabi::Token::Uint(
-                get_keccak256(&"foo".as_bytes()).into(),
+                keccak::full_as_bytes(&"foo".as_bytes()).into(),
             )),
         );
     });
@@ -934,6 +934,9 @@ fn data_copying_stress() {
         let my_array = u256_array_token(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
         let my_mutated_array = u256_array_token(&[1, 2, 3, 5, 5, 6, 7, 8, 9, 10]);
 
+        let my_addrs = address_array_token(&["0", "1", "2"]);
+        let my_second_addr = address_token("1");
+
         harness.test_function(
             &mut executor,
             "mutate_and_return",
@@ -967,6 +970,14 @@ fn data_copying_stress() {
             "assign_my_nums_and_return",
             &[],
             Some(&u256_array_token(&[42, 26, 0, 1, 255])),
+        );
+
+        harness.test_function(&mut executor, "set_my_addrs", &[my_addrs], None);
+        harness.test_function(
+            &mut executor,
+            "get_my_second_addr",
+            &[],
+            Some(&my_second_addr),
         );
 
         harness.events_emitted(

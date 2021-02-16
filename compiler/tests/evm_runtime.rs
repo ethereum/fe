@@ -16,7 +16,7 @@ macro_rules! assert_eq {
 }
 
 #[test]
-fn test_alloc_and_avail() {
+fn test_runtime_alloc_and_avail() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
@@ -36,51 +36,87 @@ fn test_alloc_and_avail() {
 }
 
 #[test]
-fn test_mcopys() {
+fn test_runtime_mcopys() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
             functions::std(),
             statements! {
-                (let a := 26)
-                (let b := 27)
+                (let a := 0x0111114211111111011111112342311101111112221151110111111111111111)
+                (let b := 0x0111111234111111011123411111111101112431111111110111111234411111)
+                (let c := 0x0111341111111111011111111123411101111123411111110111111234111111)
 
-                (mstore(42, a))
-                (mstore(74, b))
-                (mcopys(42, 100, 64))
+                (let d := 0x0111112344111111011111145111111101111111111111110111111111111111)
+                (let e := 0x0111112344111111011111145111111101111111110000000000000000000000)
 
-                [assert_eq!(a, (sload(100)))]
-                [assert_eq!(b, (sload(132)))]
+                (mstore(100, a))
+                (mstore(132, b))
+                (mstore(164, c))
+                (mstore(196, d))
+
+                (mcopys(100, 42, 117))
+
+                [assert_eq!(a, (sload(42)))]
+                [assert_eq!(b, (sload(43)))]
+                [assert_eq!(c, (sload(44)))]
+                [assert_eq!(e, (sload(45)))]
+
+                (mcopys(100, 46, 128))
+
+                [assert_eq!(a, (sload(46)))]
+                [assert_eq!(b, (sload(47)))]
+                [assert_eq!(c, (sload(48)))]
+                [assert_eq!(d, (sload(49)))]
             },
         );
     })
 }
 
 #[test]
-fn test_scopym() {
+fn test_runtime_scopym() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
             functions::std(),
             statements! {
-                (let a := 26)
-                (let b := 27)
+                (let a := 0x0111114211111111011111112342311101111112221151110111111111111111)
+                (let b := 0x0111111234111111011123411111111101112431111111110111111234411111)
+                (let c := 0x0111341111111111011111111123411101111123411111110111111234111111)
+
+                (let d := 0x0111112344111111011111145111111101111111111111110111111111111111)
+                (let e := 0x0111112344111111011111145111111101111111110000000000000000000000)
 
                 (sstore(42, a))
-                (sstore(74, b))
+                (sstore(43, b))
+                (sstore(44, c))
+                (sstore(45, d))
 
-                (let ptr1 := scopym(42, 64))
+                (let ptr1 := scopym(42, 117))
                 (let ptr2 := add(ptr1, 32))
+                (let ptr3 := add(ptr2, 32))
+                (let ptr4 := add(ptr3, 32))
 
                 [assert_eq!(a, (mload(ptr1)))]
                 [assert_eq!(b, (mload(ptr2)))]
+                [assert_eq!(c, (mload(ptr3)))]
+                [assert_eq!(e, (mload(ptr4)))]
+
+                (let ptr5 := scopym(42, 128))
+                (let ptr6 := add(ptr5, 32))
+                (let ptr7 := add(ptr6, 32))
+                (let ptr8 := add(ptr7, 32))
+
+                [assert_eq!(a, (mload(ptr5)))]
+                [assert_eq!(b, (mload(ptr6)))]
+                [assert_eq!(c, (mload(ptr7)))]
+                [assert_eq!(d, (mload(ptr8)))]
             },
         );
     })
 }
 
 #[test]
-fn test_mloadn() {
+fn test_runtime_mloadn() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
@@ -99,29 +135,83 @@ fn test_mloadn() {
 }
 
 #[test]
-fn test_sloadn() {
+fn test_runtime_storage_sanity() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
-            functions::std(),
+            vec![],
             statements! {
-                (let a := 0x4200000000000000000000000000000000000000000000000000000000420026)
+                (let a := 0x4200000000000000000000000000000000000000000000000000000000000026)
+                (let b := 0x9900000000000000000000000000000000000000000000000000000000000077)
                 (sstore(0, a))
+                (sstore(1, b))
 
-                [assert_eq!(0x42, (sloadn(0, 1)))]
-                [assert_eq!(a, (sloadn(0, 32)))]
-                // these fail for some reason.. possible bug or misunderstanding of the EVM?
-                // TODO: figure out why this fails
-                // [assert_eq!(0x420026, (sloadn(29, 3)))]
-                // [assert_eq!(0x26, (sloadn(30, 2)))]
-                // [assert_eq!(0x26, (sloadn(31, 1)))]
+                [assert_eq!(a, (sload(0)))]
+                [assert_eq!(b, (sload(1)))]
             },
         );
     })
 }
 
 #[test]
-fn test_ceil32() {
+fn test_runtime_sloadn() {
+    with_executor(&|mut executor| {
+        test_runtime_functions(
+            &mut executor,
+            functions::std(),
+            statements! {
+                (let a := 0x4200000000000000000000000000000000000000000000000000000000000026)
+                (let b := 0x9900530000003900000000000000000000000000000000000000000000000077)
+                (sstore(1000, a))
+                (sstore(1001, b))
+
+                [assert_eq!(a, (sloadn(1000, 0, 32)))]
+                [assert_eq!(b, (sloadn(1001, 0, 32)))]
+
+                [assert_eq!(0x42, (sloadn(1000, 0, 1)))]
+                [assert_eq!(0x26, (sloadn(1000, 31, 1)))]
+                [assert_eq!(0x4200, (sloadn(1000, 0, 2)))]
+
+                [assert_eq!(0x99, (sloadn(1001, 0, 1)))]
+                [assert_eq!(0x77, (sloadn(1001, 31, 1)))]
+                [assert_eq!(0x990053, (sloadn(1001, 0, 3)))]
+                [assert_eq!(0x5300000039, (sloadn(1001, 2, 5)))]
+            },
+        );
+    })
+}
+
+#[test]
+fn test_runtime_sstoren() {
+    with_executor(&|mut executor| {
+        test_runtime_functions(
+            &mut executor,
+            functions::std(),
+            statements! {
+                (let a := 0x0111111111111111011111111111111101111111111111110111111111111111)
+                //         dashes indicate which bytes are to be replaced in this test
+                //         0----2          8----10      15----------------23            31--32
+                (let b := 0x4201111111111111123411111111119999999998998999110111111111111126)
+                (sstore(1000, a))
+
+                (sstoren(1000, 0, 2, 0x4201))
+                (sstoren(1000, 8, 2, 0x1234))
+                (sstoren(1000, 15, 8, 0x9999999998998999))
+                (sstoren(1000, 31, 1, 0x26))
+
+                [assert_eq!(b, (sload(1000)))]
+
+                (let c := 0x4242424242424242424242424242424242424242424242424242424242424242)
+                (sstoren(1000, 0, 32, c))
+
+                [assert_eq!(c, (sload(1000)))]
+            },
+        );
+    })
+}
+
+#[test]
+fn test_runtime_ceil32() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
@@ -135,7 +225,7 @@ fn test_ceil32() {
 }
 
 #[test]
-fn test_ternary() {
+fn test_runtime_ternary() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
@@ -152,7 +242,7 @@ fn test_ternary() {
 }
 
 #[test]
-fn test_abi_unpack() {
+fn test_runtime_abi_unpack() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
@@ -189,6 +279,26 @@ fn test_keccak256() {
                 // which returns 109966633016701122630199943745061001312678661825260870342362413625737614346915
                 (mstore(0, num))
                 [assert_eq!(result, (keccak256(0, 32)))]
+            },
+        );
+    })
+}
+
+#[test]
+fn test_runtime_set_zero() {
+    with_executor(&|mut executor| {
+        test_runtime_functions(
+            &mut executor,
+            functions::std(),
+            statements! {
+                (let a := 0x1111111111111111111111111111111111111111111111111111111111111111)
+                (let b := 0x1111110000000000000000000000000000000000000000000000001111111111)
+                (let c := 0x1111100000000000000000000000000000000000000000000000000000000000)
+
+                [assert_eq!(0, (set_zero(0, 256, a)))]
+                [assert_eq!(0x11, (set_zero(0, 248, a)))]
+                [assert_eq!(b, (set_zero(24, 216, a)))]
+                [assert_eq!(c, (set_zero(20, 256, a)))]
             },
         );
     })
