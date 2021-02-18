@@ -2,7 +2,7 @@ use crate::namespace::types::{
     AbiEncoding,
     FixedSize,
 };
-use fe_common::utils::keccak::get_full_signature;
+use fe_common::utils::keccak;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Event {
@@ -64,7 +64,7 @@ impl Event {
 
 fn build_event_topic(name: &str, fields: Vec<String>) -> String {
     let signature = format!("{}({})", name, fields.join(","));
-    get_full_signature(signature.as_bytes())
+    keccak::full(signature.as_bytes())
 }
 
 #[cfg(test)]

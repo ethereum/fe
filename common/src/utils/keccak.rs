@@ -3,12 +3,32 @@ use tiny_keccak::{
     Keccak,
 };
 
-pub fn get_full_signature(content: &[u8]) -> String {
-    get_partial_signature(content, 32)
+/// Get the full 32 byte hash of the content.
+pub fn full(content: &[u8]) -> String {
+    partial(content, 32)
 }
 
-/// Return the keccak256 hash of the given content as an array of bytes
-pub fn get_keccak256(content: &[u8]) -> [u8; 32] {
+/// Take the first `size` number of bytes of the hash and pad the right side
+/// with zeros to 32 bytes.
+pub fn partial_right_padded(content: &[u8], size: usize) -> String {
+    let result = full_as_bytes(content);
+    let padded_output: Vec<u8> = result
+        .iter()
+        .enumerate()
+        .map(|(index, byte)| if index >= size { 0 } else { *byte })
+        .collect();
+
+    format!("0x{}", hex::encode(&padded_output))
+}
+
+/// Take the first `size` number of bytes of the hash with no padding.
+pub fn partial(content: &[u8], size: usize) -> String {
+    let result = full_as_bytes(content);
+    format!("0x{}", hex::encode(&result[0..size]))
+}
+
+/// Get the full 32 byte hash of the content as a byte array.
+pub fn full_as_bytes(content: &[u8]) -> [u8; 32] {
     let mut keccak = Keccak::v256();
     let mut selector = [0u8; 32];
 
@@ -16,8 +36,4 @@ pub fn get_keccak256(content: &[u8]) -> [u8; 32] {
     keccak.finalize(&mut selector);
 
     selector
-}
-
-pub fn get_partial_signature(content: &[u8], size: usize) -> String {
-    format!("0x{}", hex::encode(&get_keccak256(content)[0..size]))
 }

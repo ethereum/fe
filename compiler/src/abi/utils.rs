@@ -1,4 +1,4 @@
-use fe_common::utils::keccak::get_partial_signature;
+use fe_common::utils::keccak;
 
 /// Formats the name and fields and calculates the 32 byte keccak256 value of
 /// the signature.
@@ -13,5 +13,5 @@ pub fn func_selector(name: &str, params: Vec<String>) -> String {
 
 fn sign_event_or_func(name: &str, params: Vec<String>, size: usize) -> String {
     let signature = format!("{}({})", name, params.join(","));
-    get_partial_signature(signature.as_bytes(), size)
+    keccak::partial(signature.as_bytes(), size)
 }
