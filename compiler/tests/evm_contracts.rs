@@ -775,6 +775,26 @@ fn keccak() {
 }
 
 #[test]
+fn math() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "math.fe", "Math", &[]);
+        harness.test_function(
+            &mut executor,
+            "sqrt",
+            &[uint_token(16000)],
+            Some(&uint_token(126)),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "min",
+            &[uint_token(1), uint_token(2)],
+            Some(&uint_token(1)),
+        );
+    });
+}
+
+#[test]
 fn erc20_token() {
     with_executor(&|mut executor| {
         let token_name = string_token("Fe Coin");
