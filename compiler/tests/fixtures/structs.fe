@@ -7,7 +7,7 @@ contract Foo:
     my_house: House
 
     pub def create_house():
-        self.my_house = House(1,2,false)
+        self.my_house = House(price=1, size=2, vacant=false)
         assert self.my_house.price == 1
         assert self.my_house.size == 2
         assert self.my_house.vacant == false
@@ -25,7 +25,7 @@ contract Foo:
 
 
     pub def bar() -> u256:
-        building: House = House(300, 500, true)
+        building: House = House(price=300, size=500, vacant=true)
         assert building.size == 500
         assert building.price == 300
         assert building.vacant

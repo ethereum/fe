@@ -28,6 +28,7 @@ use std::fs;
     case("type_constructor_from_variable.fe", "NumericLiteralExpected"),
     case("needs_mem_copy.fe", "CannotMove"),
     case("string_capacity_mismatch.fe", "StringCapacityMismatch"),
+    case("struct_call_without_kw_args.fe", "KeyWordArgsRequired"),
     case("numeric_capacity_mismatch/u8_neg.fe", "NumericCapacityMismatch"),
     case("numeric_capacity_mismatch/u8_pos.fe", "NumericCapacityMismatch"),
     case("numeric_capacity_mismatch/u16_neg.fe", "NumericCapacityMismatch"),

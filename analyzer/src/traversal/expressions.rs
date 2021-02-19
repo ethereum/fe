@@ -530,6 +530,7 @@ fn expr_call_struct_constructor(
     typ: Struct,
     args: &Spanned<Vec<Spanned<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, SemanticError> {
+    validate_are_kw_args(&args.node)?;
     let argument_attributes = expr_call_args(Rc::clone(&scope), Rc::clone(&context), args)?;
 
     if typ.get_field_types() != expression_attributes_to_types(argument_attributes) {
@@ -886,6 +887,17 @@ fn expr_attribute_call_type(
     }
 
     unreachable!()
+}
+
+fn validate_are_kw_args(args: &[Spanned<fe::CallArg>]) -> Result<(), SemanticError> {
+    if args
+        .iter()
+        .any(|arg| matches!(arg.node, fe::CallArg::Arg(_)))
+    {
+        return Err(SemanticError::kw_args_required());
+    }
+
+    Ok(())
 }
 
 fn validate_is_numeric_literal(call_arg: &fe::CallArg) -> Result<String, SemanticError> {

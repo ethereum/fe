@@ -8,6 +8,7 @@ use fe_parser::span::Span;
 pub enum ErrorKind {
     BreakWithoutLoop,
     ContinueWithoutLoop,
+    KeyWordArgsRequired,
     MissingReturn,
     NotSubscriptable,
     NumericCapacityMismatch,
@@ -44,6 +45,14 @@ impl SemanticError {
     pub fn continue_without_loop() -> Self {
         SemanticError {
             kind: ErrorKind::ContinueWithoutLoop,
+            context: vec![],
+        }
+    }
+
+    /// Create a new error with kind `KeyWordArgsRequired`
+    pub fn kw_args_required() -> Self {
+        SemanticError {
+            kind: ErrorKind::KeyWordArgsRequired,
             context: vec![],
         }
     }
