@@ -1,0 +1,7 @@
+contract Foo:
+
+  pub def explicit_return():
+    return
+
+  pub def implicit():
+    pass

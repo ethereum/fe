@@ -25,7 +25,9 @@ use crate::traversal::{
 };
 use crate::{
     Context,
+    ExpressionAttributes,
     FunctionAttributes,
+    Location,
 };
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
@@ -402,9 +404,11 @@ fn func_return(
     context: Shared<Context>,
     stmt: &Spanned<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
-    if let fe::FuncStmt::Return { value: Some(value) } = &stmt.node {
-        let attributes =
-            expressions::assignable_expr(Rc::clone(&scope), Rc::clone(&context), value)?;
+    if let fe::FuncStmt::Return { value } = &stmt.node {
+        let attributes = match value {
+            Some(val) => expressions::assignable_expr(Rc::clone(&scope), Rc::clone(&context), val)?,
+            None => ExpressionAttributes::new(Type::Tuple(Tuple::empty()), Location::Value),
+        };
 
         let host_func_def = scope
             .borrow()
