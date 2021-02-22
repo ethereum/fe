@@ -39,7 +39,6 @@ pub trait FeSized {
 /// needed by our encoding/decoding functions to properly read and write data.
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
 pub struct AbiUintSize {
-    ///
     pub data_size: usize,
     pub padded_size: usize,
 }
@@ -164,6 +163,7 @@ pub struct Tuple {
 pub struct Struct {
     pub name: String,
     fields: BTreeMap<String, Base>,
+    order: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
@@ -182,37 +182,48 @@ impl Struct {
         Struct {
             name: name.to_string(),
             fields: BTreeMap::new(),
+            order: vec![],
         }
     }
 
-    // Return `true` if the struct has any fields, otherwise return `false`
+    /// Return `true` if the struct has any fields, otherwise return `false`
     pub fn is_empty(&self) -> bool {
         self.fields.is_empty()
     }
 
     /// Add a field to the struct
     pub fn add_field(&mut self, name: &str, value: &Base) -> Option<Base> {
+        self.order.push(name.to_string());
         self.fields.insert(name.to_string(), value.clone())
     }
 
-    // Return the type of the given field name
+    /// Return the type of the given field name
     pub fn get_field_type(&self, name: &str) -> Option<&Base> {
         self.fields.get(name)
     }
 
-    // Return the index of the given field name
+    /// Return the index of the given field name
     pub fn get_field_index(&self, name: &str) -> Option<usize> {
-        self.fields.keys().position(|field| field == name)
+        self.order.iter().position(|field| field == name)
     }
 
-    // Return a vector of field types
+    /// Return a vector of field types
     pub fn get_field_types(&self) -> Vec<Type> {
-        self.fields.values().map(|val| val.clone().into()).collect()
+        self.order
+            .iter()
+            .map(|name| {
+                Type::Base(
+                    self.get_field_type(name)
+                        .expect("no entry for field name")
+                        .to_owned(),
+                )
+            })
+            .collect()
     }
 
-    //Return a vector of field names
+    /// Return a vector of field names
     pub fn get_field_names(&self) -> Vec<String> {
-        self.fields.keys().cloned().collect()
+        self.order.clone()
     }
 }
 
