@@ -272,10 +272,15 @@ pub fn expr_unary_operation(
 ) -> Result<yul::Expression, CompileError> {
     if let fe::Expr::UnaryOperation { op, operand } = &exp.node {
         let yul_operand = expr(context, operand)?;
-        if let fe::UnaryOperator::USub = &op.node {
-            let zero = literal_expression! {0};
-            return Ok(expression! { sub([zero], [yul_operand]) });
-        }
+
+        return match &op.node {
+            fe::UnaryOperator::USub => {
+                let zero = literal_expression! {0};
+                Ok(expression! { sub([zero], [yul_operand]) })
+            }
+            fe::UnaryOperator::Not => Ok(expression! { iszero([yul_operand]) }),
+            _ => todo!(),
+        };
     }
 
     unreachable!()

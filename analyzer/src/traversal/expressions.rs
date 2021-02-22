@@ -425,21 +425,32 @@ fn expr_unary_operation(
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::UnaryOperation { op, operand } = &exp.node {
-        if let fe::UnaryOperator::USub = &op.node {
-            let operand_attributes = value_expr(Rc::clone(&scope), Rc::clone(&context), operand)?;
+        let operand_attributes = value_expr(Rc::clone(&scope), Rc::clone(&context), operand)?;
 
-            if !matches!(operand_attributes.typ, Type::Base(Base::Numeric(_))) {
-                return Err(SemanticError::type_error());
+        match &op.node {
+            fe::UnaryOperator::USub => {
+                if !matches!(operand_attributes.typ, Type::Base(Base::Numeric(_))) {
+                    return Err(SemanticError::type_error());
+                }
+                // No matter what numeric type the operand was before, the minus symbol turns it
+                // into an I256 just like all positive values default to U256.
+                return Ok(ExpressionAttributes::new(
+                    Type::Base(Base::Numeric(Integer::I256)),
+                    Location::Value,
+                ));
             }
-            // No matter what numeric type the operand was before, the minus symbol turns it
-            // into an I256 just like all positive values default to U256.
-            return Ok(ExpressionAttributes::new(
-                Type::Base(Base::Numeric(Integer::I256)),
-                Location::Value,
-            ));
+            fe::UnaryOperator::Not => {
+                return if !matches!(operand_attributes.typ, Type::Base(Base::Bool)) {
+                    Err(SemanticError::type_error())
+                } else {
+                    Ok(ExpressionAttributes::new(
+                        Type::Base(Base::Bool),
+                        Location::Value,
+                    ))
+                }
+            }
+            _ => todo!(),
         }
-
-        unimplemented!()
     }
 
     unreachable!()

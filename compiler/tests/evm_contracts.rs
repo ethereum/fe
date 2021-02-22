@@ -88,6 +88,8 @@ fn test_assert() {
     case("call_statement_with_args_2.fe", &[], uint_token(100)),
     case("return_bool_true.fe", &[], bool_token(true)),
     case("return_bool_false.fe", &[], bool_token(false)),
+    case("return_bool_inverted.fe", &[bool_token(true)], bool_token(false)),
+    case("return_bool_inverted.fe", &[bool_token(false)], bool_token(true)),
     case("return_u256_from_called_fn_with_args.fe", &[], uint_token(200)),
     case("return_u256_from_called_fn.fe", &[], uint_token(42)),
     case("return_u256.fe", &[], uint_token(42)),
