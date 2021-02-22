@@ -103,7 +103,7 @@ mod tests {
                 "bar",
                 FixedSize::Array(Array {
                     inner: U256,
-                    dimension: 100,
+                    size: 100,
                 }),
             )
             .unwrap();

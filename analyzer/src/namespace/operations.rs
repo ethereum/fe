@@ -52,7 +52,7 @@ mod tests {
 
     const U256_ARRAY_TYPE: Type = Type::Array(Array {
         inner: U256,
-        dimension: 100,
+        size: 100,
     });
     const U256_TYPE: Type = Type::Base(U256);
     const BOOL_TYPE: Type = Type::Base(Base::Bool);

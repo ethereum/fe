@@ -42,7 +42,20 @@ pub fn build(context: &Context, contract: &Spanned<fe::ModuleStmt>) -> Vec<yul::
                 .map(|function| function.param_types)
                 .collect();
 
-            let batch = [public_functions_batch, events_batch, contracts_batch].concat();
+            let structs_batch = attributes
+                .structs
+                .clone()
+                .into_iter()
+                .map(|struct_| vec![FixedSize::Struct(struct_)])
+                .collect::<Vec<Vec<_>>>();
+
+            let batch = [
+                public_functions_batch,
+                events_batch,
+                contracts_batch,
+                structs_batch,
+            ]
+            .concat();
             functions::abi::batch_encode(batch)
         };
         let decoding = {

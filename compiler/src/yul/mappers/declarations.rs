@@ -18,7 +18,7 @@ pub fn var_decl(
     let decl_type = context.get_declaration(stmt).expect("missing attributes");
 
     if let fe::FuncStmt::VarDecl { target, value, .. } = &stmt.node {
-        let target = names::var_name(expressions::expr_name_str(&target)?);
+        let target = names::var_name(expressions::expr_name_str(&target));
 
         return Ok(if let Some(value) = value {
             let value = expressions::expr(context, &value)?;
@@ -84,7 +84,7 @@ mod tests {
         harness.add_declaration(
             "foo: address[10]",
             FixedSize::Array(Array {
-                dimension: 10,
+                size: 10,
                 inner: Base::Address,
             }),
         );

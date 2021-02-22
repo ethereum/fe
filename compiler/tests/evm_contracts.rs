@@ -714,6 +714,25 @@ fn structs() {
 
         harness.test_function(&mut executor, "create_house", &[], None);
         harness.test_function(&mut executor, "bar", &[], Some(&uint_token(2)));
+
+        let encoded_house = [
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 1, 44, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 1, 244, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+        ];
+        let token = ethabi::Token::FixedBytes(ethabi::FixedBytes::from(encoded_house));
+        harness.test_function(&mut executor, "encode_house", &[], Some(&token));
+
+        harness.test_function(
+            &mut executor,
+            "hashed_house",
+            &[],
+            Some(&uint_token_from_dec_str(
+                "46276961562062403346660092841258592376337652487249021183958956662511039738107",
+            )),
+        );
     });
 }
 

@@ -7,10 +7,13 @@ pub fn new(struct_type: &Struct, params: Vec<yul::Expression>) -> yul::Expressio
     expression! { [function_name]([params...]) }
 }
 
-pub fn get_attribute(struct_type: &Struct, ptr_name: &str, field_name: &str) -> yul::Expression {
+pub fn get_attribute(
+    struct_type: &Struct,
+    field_name: &str,
+    val: yul::Expression,
+) -> yul::Expression {
     let function_name = names::struct_getter_call(&struct_type.name, field_name);
-    let ptr_name_exp = identifier_expression! {(ptr_name)};
-    expression! { [function_name]([ptr_name_exp]) }
+    expression! { [function_name]([val]) }
 }
 
 #[cfg(test)]
@@ -18,6 +21,7 @@ mod tests {
     use crate::yul::operations::structs;
     use fe_analyzer::namespace::types::{
         Base,
+        FixedSize,
         Struct,
     };
     use yultsur::*;
@@ -25,8 +29,8 @@ mod tests {
     #[test]
     fn test_new() {
         let mut val = Struct::new("Foo");
-        val.add_field("bar", &Base::Bool);
-        val.add_field("bar2", &Base::Bool);
+        val.add_field("bar", &FixedSize::Base(Base::Bool));
+        val.add_field("bar2", &FixedSize::Base(Base::Bool));
         let params = vec![
             identifier_expression! { (1) },
             identifier_expression! { (2) },

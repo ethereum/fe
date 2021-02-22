@@ -237,6 +237,43 @@ pub fn sstoren() -> yul::Statement {
     }
 }
 
+/// Copy memory to a given segment of storage.
+///
+/// The storage pointer addresses a byte.
+pub fn bytes_mcopys() -> yul::Statement {
+    function_definition! {
+        function bytes_mcopys(mptr, sptr, size) {
+            (let word_ptr := div(sptr, 32))
+            (mcopys(mptr, word_ptr, size))
+        }
+    }
+}
+
+/// Copy storage to a newly allocated segment of memory.
+///
+/// The storage pointer addresses a byte.
+pub fn bytes_scopym() -> yul::Statement {
+    function_definition! {
+        function bytes_scopym(sptr, size) -> mptr {
+            (let word_ptr := div(sptr, 32))
+            (mptr := scopym(word_ptr, size))
+        }
+    }
+}
+
+/// Copies a segment of storage to another segment of storage.
+///
+/// The storage pointers address bytes.
+pub fn bytes_scopys() -> yul::Statement {
+    function_definition! {
+        function bytes_scopys(ptr1, ptr2, size) {
+            (let word_ptr1 := div(ptr1, 32))
+            (let word_ptr2 := div(ptr2, 32))
+            (scopys(word_ptr1, word_ptr2, size))
+        }
+    }
+}
+
 /// Read a value of n bytes at the given byte address.
 ///
 /// The value must not span multiple words.
@@ -245,7 +282,7 @@ pub fn bytes_sloadn() -> yul::Statement {
         function bytes_sloadn(sptr, size) -> val {
             (let word_ptr := div(sptr, 32))
             (let bytes_offset := mod(sptr, 32))
-            (val := sloadn(word_ptr, bytes_offset, 32))
+            (val := sloadn(word_ptr, bytes_offset, size))
         }
     }
 }
@@ -259,7 +296,7 @@ pub fn bytes_sstoren() -> yul::Statement {
         function bytes_sstoren(sptr, size, val) {
             (let word_ptr := div(sptr, 32))
             (let bytes_offset := mod(sptr, 32))
-            (sstoren(word_ptr, bytes_offset, 32, val))
+            (sstoren(word_ptr, bytes_offset, size, val))
         }
     }
 }

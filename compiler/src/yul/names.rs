@@ -84,7 +84,7 @@ mod tests {
                 FixedSize::Base(U256),
                 FixedSize::Array(Array {
                     inner: Base::Byte,
-                    dimension: 100
+                    size: 100
                 })
             ])
             .to_string(),

@@ -1,5 +1,8 @@
 use crate::yul::names;
-use fe_analyzer::namespace::types::Struct;
+use fe_analyzer::namespace::types::{
+    FeSized,
+    Struct,
+};
 use yultsur::*;
 
 /// Generate a YUL function that can be used to create an instance of
@@ -11,10 +14,9 @@ pub fn generate_new_fn(struct_type: &Struct) -> yul::Statement {
         // We return 0 here because it is safe to assume that we never write to an empty
         // struct. If we end up writing to an empty struct that's an actual Fe
         // bug.
-        let body = statement! { return_val := 0 };
         return function_definition! {
             function [function_name]() -> return_val {
-                 [body]
+                 (return_val := 0)
             }
         };
     }
@@ -65,14 +67,20 @@ pub fn generate_get_fn(struct_type: &Struct, field_name: &str) -> yul::Statement
     let field_index = struct_type
         .get_field_index(field_name)
         .unwrap_or_else(|| panic!("No field {} in {}", field_name, struct_type.name));
-    let field_offset = field_index * 32;
+    let field_type = struct_type
+        .get_field_type(field_name)
+        .unwrap_or_else(|| panic!("No field {} in {}", field_name, struct_type.name));
+    // The value of each field occupies 32 bytes. This includes values with sizes
+    // less than 32 bytes. So, when we get the pointer to the value of a struct
+    // field, we must take into consideration the left-padding. The left-padding is
+    // equal to the difference between the value's size and 32 bytes, so we end up
+    // adding the word offset and the byte offset.
+    let field_offset = field_index * 32 + (32 - field_type.size());
 
-    let offset = literal_expression! {(field_offset)};
-    let return_expression = expression! { add(ptr, [offset]) };
-    let body = statement! { (return_val := [return_expression]) };
+    let offset = literal_expression! { (field_offset) };
     function_definition! {
         function [function_name](ptr) -> return_val {
-             [body]
+             (return_val := add(ptr, [offset]))
         }
     }
 }
@@ -95,6 +103,7 @@ mod tests {
     use crate::yul::runtime::functions::structs;
     use fe_analyzer::namespace::types::{
         Base,
+        FixedSize,
         Struct,
     };
 
@@ -109,26 +118,25 @@ mod tests {
     #[test]
     fn test_struct_api_generation() {
         let mut val = Struct::new("Foo");
-        val.add_field("bar", &Base::Bool);
-        val.add_field("bar2", &Base::Bool);
+        val.add_field("bar", &FixedSize::Base(Base::Bool));
+        val.add_field("bar2", &FixedSize::Base(Base::Bool));
         assert_eq!(
             structs::generate_new_fn(&val).to_string(),
-            "function struct_Foo_new(bar, bar2) -> return_val { return_val := alloc(32) mstore(return_val, bar) let bar2_ptr := alloc(32) mstore(bar2_ptr, bar2) }"
-        )
+            "function struct_Foo_new(bar, bar2) -> return_val { return_val := alloc(32) mstore(return_val, bar) let bar2_ptr := alloc(32) mstore(bar2_ptr, bar2) }"         )
     }
 
     #[test]
     fn test_struct_getter_generation() {
         let mut val = Struct::new("Foo");
-        val.add_field("bar", &Base::Bool);
-        val.add_field("bar2", &Base::Bool);
+        val.add_field("bar", &FixedSize::Base(Base::Bool));
+        val.add_field("bar2", &FixedSize::Base(Base::Bool));
         assert_eq!(
             structs::generate_get_fn(&val, &val.get_field_names().get(0).unwrap()).to_string(),
-            "function struct_Foo_get_bar_ptr(ptr) -> return_val { return_val := add(ptr, 0) }"
+            "function struct_Foo_get_bar_ptr(ptr) -> return_val { return_val := add(ptr, 31) }"
         );
         assert_eq!(
             structs::generate_get_fn(&val, &val.get_field_names().get(1).unwrap()).to_string(),
-            "function struct_Foo_get_bar2_ptr(ptr) -> return_val { return_val := add(ptr, 32) }"
+            "function struct_Foo_get_bar2_ptr(ptr) -> return_val { return_val := add(ptr, 63) }"
         );
     }
 }

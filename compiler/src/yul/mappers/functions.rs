@@ -107,14 +107,14 @@ fn for_loop(
     } = &stmt.node
     {
         let iterator = expressions::expr(context, iter)?;
-        let target_var = names::var_name(expressions::expr_name_str(target)?);
+        let target_var = names::var_name(expressions::expr_name_str(target));
         let yul_body = multiple_func_stmt(context, body)?;
         if let Some(ExpressionAttributes {
             typ: Type::Array(array),
             ..
         }) = context.get_expression(iter.span)
         {
-            let size = literal_expression! { (array.dimension) };
+            let size = literal_expression! { (array.size) };
             let inner_size = literal_expression! { (array.inner.size()) };
             return Ok(block_statement! {
                 (for {(let i := 0)} (lt(i, [size])) {(i := add(i, 1))}

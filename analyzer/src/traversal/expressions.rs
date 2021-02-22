@@ -31,6 +31,14 @@ use crate::{
 
 use crate::builtins::ContractTypeMethod;
 use builtins::GlobalMethod;
+use builtins::ValueMethod;
+use builtins::{
+    BlockField,
+    ChainField,
+    MsgField,
+    Object,
+    TxField,
+};
 use fe_parser::ast as fe;
 use fe_parser::span::Spanned;
 use std::convert::TryFrom;
@@ -93,7 +101,7 @@ pub fn expr_list(
             if let Type::Base(base) = attribute_to_be_matched.typ {
                 return Ok(ExpressionAttributes {
                     typ: Type::Array(Array {
-                        dimension: elts.len(),
+                        size: elts.len(),
                         inner: base,
                     }),
                     location: attribute_to_be_matched.location,
@@ -281,106 +289,69 @@ fn expr_attribute(
     exp: &Spanned<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::Attribute { value, attr } = &exp.node {
-        use builtins::{
-            BlockField,
-            ChainField,
-            MsgField,
-            Object,
-            TxField,
-        };
+        let base_type = |typ| Ok(ExpressionAttributes::new(Type::Base(typ), Location::Value));
+        let undefined_value_err = Err(SemanticError::undefined_value());
 
-        let val = |t| Ok(ExpressionAttributes::new(Type::Base(t), Location::Value));
-        let err = || Err(SemanticError::undefined_value());
-
-        // The value might be an attribute expression which currently can only happen if
-        // we are dealing with structs in storage (e.g.
-        // self.my_struct.some_field). In the future when structs can have other
-        // structs as properties, this can be true for in-memory structs, too (e.g.
-        // my_struct.other_struct.some_field)
-        if let fe::Expr::Attribute { .. } = &value.node {
-            let self_property = expr_attribute(Rc::clone(&scope), Rc::clone(&context), value)?;
-            context
-                .borrow_mut()
-                .add_expression(value, self_property.clone());
-            if let Type::Struct(matched_struct) = self_property.typ {
-                return match matched_struct.get_field_type(attr.node) {
-                    Some(typ) => Ok(ExpressionAttributes::new(
-                        Type::Base(typ.to_owned()),
-                        self_property.location,
-                    )),
-                    None => err(),
-                };
+        // If the value is a name, check if it is a builtin object and attribute.
+        if let fe::Expr::Name(name) = value.node {
+            match Object::from_str(name) {
+                Ok(Object::Self_) => return expr_attribute_self(scope, attr),
+                Ok(Object::Block) => {
+                    return match BlockField::from_str(attr.node) {
+                        Ok(BlockField::Coinbase) => base_type(Base::Address),
+                        Ok(BlockField::Difficulty) => base_type(U256),
+                        Ok(BlockField::Number) => base_type(U256),
+                        Ok(BlockField::Timestamp) => base_type(U256),
+                        Err(_) => undefined_value_err,
+                    }
+                }
+                Ok(Object::Chain) => {
+                    return match ChainField::from_str(attr.node) {
+                        Ok(ChainField::Id) => base_type(U256),
+                        Err(_) => undefined_value_err,
+                    }
+                }
+                Ok(Object::Msg) => {
+                    return match MsgField::from_str(attr.node) {
+                        Ok(MsgField::Data) => todo!(),
+                        Ok(MsgField::Sender) => base_type(Base::Address),
+                        Ok(MsgField::Sig) => todo!(),
+                        Ok(MsgField::Value) => base_type(U256),
+                        Err(_) => undefined_value_err,
+                    }
+                }
+                Ok(Object::Tx) => {
+                    return match TxField::from_str(attr.node) {
+                        Ok(TxField::GasPrice) => base_type(U256),
+                        Ok(TxField::Origin) => base_type(Base::Address),
+                        Err(_) => undefined_value_err,
+                    }
+                }
+                Err(_) => {}
             }
         }
 
-        let object_name = expr_name_str(value)?;
-
-        // Before we try to match any pre-defined objects, try matching as a
-        // custom type
-        if let Some(FixedSize::Struct(_)) = scope.borrow().get_variable_def(object_name) {
-            return expr_attribute_custom_type(Rc::clone(&scope), context, value, attr);
-        }
-
-        return match Object::from_str(object_name) {
-            Ok(Object::Self_) => expr_attribute_self(scope, attr),
-
-            Ok(Object::Block) => match BlockField::from_str(attr.node) {
-                Ok(BlockField::Coinbase) => val(Base::Address),
-                Ok(BlockField::Difficulty) => val(U256),
-                Ok(BlockField::Number) => val(U256),
-                Ok(BlockField::Timestamp) => val(U256),
-                Err(_) => err(),
-            },
-            Ok(Object::Chain) => match ChainField::from_str(attr.node) {
-                Ok(ChainField::Id) => val(U256),
-                Err(_) => err(),
-            },
-            Ok(Object::Msg) => match MsgField::from_str(attr.node) {
-                Ok(MsgField::Data) => todo!(),
-                Ok(MsgField::Sender) => val(Base::Address),
-                Ok(MsgField::Sig) => todo!(),
-                Ok(MsgField::Value) => val(U256),
-                Err(_) => err(),
-            },
-            Ok(Object::Tx) => match TxField::from_str(attr.node) {
-                Ok(TxField::GasPrice) => val(U256),
-                Ok(TxField::Origin) => val(Base::Address),
-                Err(_) => err(),
-            },
-            Err(_) => err(),
+        // We attempt to analyze the value as an expression. If this is succesfull, we
+        // build a new set of attributes from the value attributes.
+        return match expr(scope, context, value)? {
+            // If the value is a struct, we return the type of the attribute. The location stays the
+            // same and can be memory or storage.
+            ExpressionAttributes {
+                typ: Type::Struct(struct_),
+                location,
+                ..
+            } => {
+                if let Some(typ) = struct_.get_field_type(attr.node) {
+                    Ok(ExpressionAttributes::new(typ.to_owned().into(), location))
+                } else {
+                    undefined_value_err
+                }
+            }
+            _ => undefined_value_err,
         };
     }
 
     unreachable!()
-}
-
-fn expr_attribute_custom_type(
-    scope: Shared<BlockScope>,
-    context: Shared<Context>,
-    value: &Spanned<fe::Expr>,
-    attr: &Spanned<&str>,
-) -> Result<ExpressionAttributes, SemanticError> {
-    let val_str = expr_name_str(value)?;
-    let custom_type = scope
-        .borrow()
-        .get_variable_def(val_str)
-        .ok_or_else(SemanticError::undefined_value)?;
-    context.borrow_mut().add_expression(
-        value,
-        ExpressionAttributes::new(custom_type.clone().into(), Location::Memory),
-    );
-    match custom_type {
-        FixedSize::Struct(val) => {
-            let field_type = val
-                .get_field_type(attr.node)
-                .ok_or_else(SemanticError::undefined_value)?;
-            Ok(ExpressionAttributes::new(
-                Type::Base(field_type.clone()),
-                Location::Memory,
-            ))
-        }
-        _ => Err(SemanticError::undefined_value()),
-    }
 }
 
 fn expr_attribute_self(
@@ -533,7 +504,9 @@ fn expr_call_struct_constructor(
     validate_are_kw_args(&args.node)?;
     let argument_attributes = expr_call_args(Rc::clone(&scope), Rc::clone(&context), args)?;
 
-    if typ.get_field_types() != expression_attributes_to_types(argument_attributes) {
+    if fixed_sizes_to_types(typ.get_field_types())
+        != expression_attributes_to_types(argument_attributes)
+    {
         return Err(SemanticError::type_error());
     }
 
@@ -661,13 +634,27 @@ fn expr_call_value_attribute(
             return Err(SemanticError::wrong_number_of_params());
         }
 
-        use builtins::ValueMethod;
         return match ValueMethod::from_str(attr.node)
             .map_err(|_| SemanticError::undefined_value())?
         {
             ValueMethod::Clone => value_attributes.into_cloned(),
             ValueMethod::ToMem => value_attributes.into_cloned_from_sto(),
-            ValueMethod::AbiEncode => todo!(),
+            ValueMethod::AbiEncode => match &value_attributes.typ {
+                Type::Struct(struct_) => {
+                    if value_attributes.final_location() != Location::Memory {
+                        todo!("encode structs from storage")
+                    }
+
+                    Ok(ExpressionAttributes::new(
+                        Type::Array(Array {
+                            inner: Base::Byte,
+                            size: struct_.get_num_fields() * 32,
+                        }),
+                        Location::Memory,
+                    ))
+                }
+                _ => todo!(),
+            },
             ValueMethod::AbiEncodePacked => todo!(),
         };
     }
@@ -862,7 +849,6 @@ fn expr_attribute_call_type(
 ) -> Result<CallType, SemanticError> {
     if let fe::Expr::Attribute { value, attr } = &exp.node {
         if let fe::Expr::Name(name) = value.node {
-            use builtins::Object;
             match Object::from_str(name) {
                 Ok(Object::Block) | Ok(Object::Chain) | Ok(Object::Msg) | Ok(Object::Tx) => {
                     return Err(SemanticError::undefined_value())
@@ -1060,7 +1046,7 @@ mod tests {
     fn addr_array_mem() -> ExpressionAttributes {
         ExpressionAttributes::new(
             Type::Array(Array {
-                dimension: 100,
+                size: 100,
                 inner: Base::Address,
             }),
             Location::Memory,
@@ -1161,7 +1147,7 @@ mod tests {
             .add_var(
                 "my_addr_array",
                 FixedSize::Array(Array {
-                    dimension: 100,
+                    size: 100,
                     inner: Base::Address,
                 }),
             )
