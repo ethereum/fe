@@ -586,78 +586,7 @@ fn test_numeric_sizes() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, "numeric_sizes.fe", "Foo", &[]);
 
-        struct SizeConfig {
-            size: usize,
-            u_min: ethabi::Token,
-            i_min: ethabi::Token,
-            u_max: ethabi::Token,
-            i_max: ethabi::Token,
-        }
-
-        let zero = uint_token(0);
-        let u64_max = ethabi::Token::Uint(U256::from(2).pow(U256::from(64)) - 1);
-        let i64_min = ethabi::Token::Int(get_2s_complement_for_negative(
-            U256::from(2).pow(U256::from(63)),
-        ));
-
-        let u128_max = ethabi::Token::Uint(U256::from(2).pow(U256::from(128)) - 1);
-        let i128_max = ethabi::Token::Int(U256::from(2).pow(U256::from(127)) - 1);
-        let i128_min = ethabi::Token::Int(get_2s_complement_for_negative(
-            U256::from(2).pow(U256::from(127)),
-        ));
-
-        let u256_max = ethabi::Token::Uint(U256::MAX);
-        let i256_max = ethabi::Token::Int(U256::from(2).pow(U256::from(255)) - 1);
-        let i256_min = ethabi::Token::Int(get_2s_complement_for_negative(
-            U256::from(2).pow(U256::from(255)),
-        ));
-
-        let sizes = [
-            SizeConfig {
-                size: 8,
-                u_min: zero.clone(),
-                i_min: int_token(-128),
-                u_max: uint_token(255),
-                i_max: int_token(127),
-            },
-            SizeConfig {
-                size: 16,
-                u_min: zero.clone(),
-                i_min: int_token(-32768),
-                u_max: uint_token(65535),
-                i_max: int_token(32767),
-            },
-            SizeConfig {
-                size: 32,
-                u_min: zero.clone(),
-                i_min: int_token(-2147483648),
-                u_max: uint_token(4294967295),
-                i_max: int_token(2147483647),
-            },
-            SizeConfig {
-                size: 64,
-                u_min: zero.clone(),
-                i_min: i64_min.clone(),
-                u_max: u64_max.clone(),
-                i_max: int_token(9223372036854775807),
-            },
-            SizeConfig {
-                size: 128,
-                u_min: zero.clone(),
-                i_min: i128_min.clone(),
-                u_max: u128_max.clone(),
-                i_max: i128_max.clone(),
-            },
-            SizeConfig {
-                size: 256,
-                u_min: zero.clone(),
-                i_min: i256_min.clone(),
-                u_max: u256_max.clone(),
-                i_max: i256_max.clone(),
-            },
-        ];
-
-        for config in sizes.iter() {
+        for config in NumericAbiTokenBounds::get_all().iter() {
             harness.test_function(
                 &mut executor,
                 &format!("get_u{}_min", config.size),
@@ -706,6 +635,65 @@ fn sized_vals_in_sto() {
 
         harness.test_function(&mut executor, "emit_event", &[], None);
         harness.events_emitted(executor, &[("MyEvent", &[num, nums, string])]);
+    });
+}
+
+#[test]
+fn checked_arithmetic() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(
+            &mut executor,
+            "checked_arithmetic.fe",
+            "CheckedArithmetic",
+            &[],
+        );
+
+        for config in NumericAbiTokenBounds::get_all().iter() {
+            // unsigned: max_value + 1 fails
+            harness.test_function_reverts(
+                &mut executor,
+                &format!("add_u{}", config.size),
+                &[config.u_max.clone(), uint_token(1)],
+            );
+
+            // unsigned: max_value + 0 works
+            harness.test_function(
+                &mut executor,
+                &format!("add_u{}", config.size),
+                &[config.u_max.clone(), uint_token(0)],
+                Some(&config.u_max),
+            );
+
+            // signed: max_value + 1 fails
+            harness.test_function_reverts(
+                &mut executor,
+                &format!("add_i{}", config.size),
+                &[config.i_max.clone(), int_token(1)],
+            );
+
+            // signed: max_value + 0 works
+            harness.test_function(
+                &mut executor,
+                &format!("add_i{}", config.size),
+                &[config.i_max.clone(), int_token(0)],
+                Some(&config.i_max),
+            );
+
+            // signed: min_value + -1 fails
+            harness.test_function_reverts(
+                &mut executor,
+                &format!("add_i{}", config.size),
+                &[config.i_min.clone(), int_token(-1)],
+            );
+
+            // signed: min_value + 0 works
+            harness.test_function(
+                &mut executor,
+                &format!("add_i{}", config.size),
+                &[config.i_min.clone(), int_token(0)],
+                Some(&config.i_min),
+            );
+        }
     });
 }
 

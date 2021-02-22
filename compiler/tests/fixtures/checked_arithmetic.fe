@@ -1,0 +1,37 @@
+contract CheckedArithmetic:
+
+    pub def add_u256(left: u256, right: u256) -> u256:
+        return left + right
+
+    pub def add_u128(left: u128, right: u128) -> u128:
+        return left + right
+
+    pub def add_u64(left: u64, right: u64) -> u64:
+        return left + right
+
+    pub def add_u32(left: u32, right: u32) -> u32:
+        return left + right
+
+    pub def add_u16(left: u16, right: u16) -> u16:
+        return left + right
+
+    pub def add_u8(left: u8, right: u8) -> u8:
+        return left + right
+
+    pub def add_i256(left: i256, right: i256) -> i256:
+        return left + right
+
+    pub def add_i128(left: i128, right: i128) -> i128:
+        return left + right
+
+    pub def add_i64(left: i64, right: i64) -> i64:
+        return left + right
+
+    pub def add_i32(left: i32, right: i32) -> i32:
+        return left + right
+
+    pub def add_i16(left: i16, right: i16) -> i16:
+        return left + right
+
+    pub def add_i8(left: i8, right: i8) -> i8:
+        return left + right
