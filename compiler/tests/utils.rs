@@ -350,3 +350,82 @@ pub fn get_2s_complement_for_negative(assume_negative: U256) -> U256 {
     let (negated, _) = assume_negative.overflowing_neg();
     negated + 1
 }
+
+#[allow(dead_code)]
+pub struct NumericAbiTokenBounds {
+    pub size: usize,
+    pub u_min: ethabi::Token,
+    pub i_min: ethabi::Token,
+    pub u_max: ethabi::Token,
+    pub i_max: ethabi::Token,
+}
+
+impl NumericAbiTokenBounds {
+    #[allow(dead_code)]
+    pub fn get_all() -> [NumericAbiTokenBounds; 6] {
+        let zero = uint_token(0);
+        let u64_max = ethabi::Token::Uint(U256::from(2).pow(U256::from(64)) - 1);
+        let i64_min = ethabi::Token::Int(get_2s_complement_for_negative(
+            U256::from(2).pow(U256::from(63)),
+        ));
+
+        let u128_max = ethabi::Token::Uint(U256::from(2).pow(U256::from(128)) - 1);
+        let i128_max = ethabi::Token::Int(U256::from(2).pow(U256::from(127)) - 1);
+        let i128_min = ethabi::Token::Int(get_2s_complement_for_negative(
+            U256::from(2).pow(U256::from(127)),
+        ));
+
+        let u256_max = ethabi::Token::Uint(U256::MAX);
+        let i256_max = ethabi::Token::Int(U256::from(2).pow(U256::from(255)) - 1);
+        let i256_min = ethabi::Token::Int(get_2s_complement_for_negative(
+            U256::from(2).pow(U256::from(255)),
+        ));
+
+        let sizes = [
+            NumericAbiTokenBounds {
+                size: 8,
+                u_min: zero.clone(),
+                i_min: int_token(-128),
+                u_max: uint_token(255),
+                i_max: int_token(127),
+            },
+            NumericAbiTokenBounds {
+                size: 16,
+                u_min: zero.clone(),
+                i_min: int_token(-32768),
+                u_max: uint_token(65535),
+                i_max: int_token(32767),
+            },
+            NumericAbiTokenBounds {
+                size: 32,
+                u_min: zero.clone(),
+                i_min: int_token(-2147483648),
+                u_max: uint_token(4294967295),
+                i_max: int_token(2147483647),
+            },
+            NumericAbiTokenBounds {
+                size: 64,
+                u_min: zero.clone(),
+                i_min: i64_min.clone(),
+                u_max: u64_max.clone(),
+                i_max: int_token(9223372036854775807),
+            },
+            NumericAbiTokenBounds {
+                size: 128,
+                u_min: zero.clone(),
+                i_min: i128_min.clone(),
+                u_max: u128_max.clone(),
+                i_max: i128_max.clone(),
+            },
+            NumericAbiTokenBounds {
+                size: 256,
+                u_min: zero.clone(),
+                i_min: i256_min.clone(),
+                u_max: u256_max.clone(),
+                i_max: i256_max.clone(),
+            },
+        ];
+
+        sizes
+    }
+}

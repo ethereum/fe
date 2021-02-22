@@ -128,7 +128,7 @@ mod tests {
     #[rstest(
         assignment,
         expected_yul,
-        case("foo = 1 + 2", "$foo := add(1, 2)"),
+        case("foo = 1 + 2", "$foo := checked_add_u256(1, 2)"),
         case("foo = 1 - 2", "$foo := sub(1, 2)"),
         case("foo = 1 * 2", "$foo := mul(1, 2)"),
         case("foo = 1 / 2", "$foo := div(1, 2)"),

@@ -4,6 +4,7 @@ use yultsur::*;
 pub mod abi;
 pub mod contracts;
 pub mod data;
+pub mod math;
 pub mod structs;
 
 /// Returns all functions that should be available during runtime.
@@ -35,5 +36,17 @@ pub fn std() -> Vec<yul::Statement> {
         abi::pack(AbiDecodeLocation::Memory),
         contracts::create2(),
         contracts::create(),
+        math::checked_add_u256(),
+        math::checked_add_u128(),
+        math::checked_add_u64(),
+        math::checked_add_u32(),
+        math::checked_add_u16(),
+        math::checked_add_u8(),
+        math::checked_add_i256(),
+        math::checked_add_i128(),
+        math::checked_add_i64(),
+        math::checked_add_i32(),
+        math::checked_add_i16(),
+        math::checked_add_i8(),
     ]
 }

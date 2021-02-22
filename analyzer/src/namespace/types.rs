@@ -12,6 +12,7 @@ use std::num::{
 
 use crate::FunctionAttributes;
 use num_bigint::BigInt;
+use strum::IntoStaticStr;
 
 pub fn u256_max() -> BigInt {
     BigInt::from(2).pow(256) - 1
@@ -125,7 +126,7 @@ pub enum Base {
     Address,
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, IntoStaticStr)]
 pub enum Integer {
     U256,
     U128,
