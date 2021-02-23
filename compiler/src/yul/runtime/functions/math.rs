@@ -1,12 +1,53 @@
+use crate::yul::constants::numeric_min_max;
+use crate::yul::names;
 use fe_analyzer::namespace::types::Integer;
 use yultsur::*;
 
-fn checked_add_unsigned(size: Integer, max_value: yul::Expression) -> yul::Statement {
+/// Return a vector of runtime functions for additions with over-/underflow
+/// protection
+pub fn checked_add_fns() -> Vec<yul::Statement> {
+    vec![
+        checked_add_unsigned(Integer::U256),
+        checked_add_unsigned(Integer::U128),
+        checked_add_unsigned(Integer::U64),
+        checked_add_unsigned(Integer::U32),
+        checked_add_unsigned(Integer::U16),
+        checked_add_unsigned(Integer::U8),
+        checked_add_signed(Integer::I256),
+        checked_add_signed(Integer::I128),
+        checked_add_signed(Integer::I64),
+        checked_add_signed(Integer::I32),
+        checked_add_signed(Integer::I16),
+        checked_add_signed(Integer::I8),
+    ]
+}
+
+/// Return a vector of runtime functions for subtraction with over-/underflow
+/// protection
+pub fn checked_sub_fns() -> Vec<yul::Statement> {
+    vec![
+        checked_sub_unsigned(),
+        checked_sub_signed(Integer::I256),
+        checked_sub_signed(Integer::I128),
+        checked_sub_signed(Integer::I64),
+        checked_sub_signed(Integer::I32),
+        checked_sub_signed(Integer::I16),
+        checked_sub_signed(Integer::I8),
+    ]
+}
+
+// Return all math runtime functions
+pub fn all() -> Vec<yul::Statement> {
+    [checked_add_fns(), checked_sub_fns()].concat()
+}
+
+fn checked_add_unsigned(size: Integer) -> yul::Statement {
     if size.is_signed() {
         panic!("Expected unsigned integer")
     }
-    let size: &str = size.into();
-    let fn_name = identifier! {(format!("checked_add_{}", size.to_lowercase()))};
+    let fn_name = names::checked_add(&size);
+    let max_value = get_max(size);
+
     function_definition! {
         function [fn_name](val1, val2) -> sum {
             // overflow, if val1 > (max_value - val2)
@@ -16,50 +57,11 @@ fn checked_add_unsigned(size: Integer, max_value: yul::Expression) -> yul::State
     }
 }
 
-/// Add two u256 numbers. Revert if result overflows.
-pub fn checked_add_u256() -> yul::Statement {
-    checked_add_unsigned(
-        Integer::U256,
-        literal_expression! {0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff},
-    )
-}
-
-/// Add two u128 numbers. Revert if result overflows.
-pub fn checked_add_u128() -> yul::Statement {
-    checked_add_unsigned(
-        Integer::U128,
-        literal_expression! {0xffffffffffffffffffffffffffffffff},
-    )
-}
-
-/// Add two u64 numbers. Revert if result overflows.
-pub fn checked_add_u64() -> yul::Statement {
-    checked_add_unsigned(Integer::U64, literal_expression! {0xffffffffffffffff})
-}
-
-/// Add two u32 numbers. Revert if result overflows.
-pub fn checked_add_u32() -> yul::Statement {
-    checked_add_unsigned(Integer::U32, literal_expression! {0xffffffff})
-}
-
-/// Add two u16 numbers. Revert if result overflows.
-pub fn checked_add_u16() -> yul::Statement {
-    checked_add_unsigned(Integer::U16, literal_expression! {0xffff})
-}
-
-/// Add two u8 numbers. Revert if result overflows.
-pub fn checked_add_u8() -> yul::Statement {
-    checked_add_unsigned(Integer::U8, literal_expression! {0xff})
-}
-
-fn checked_add_signed(
-    size: Integer,
-    min_value: yul::Expression,
-    max_value: yul::Expression,
-) -> yul::Statement {
+fn checked_add_signed(size: Integer) -> yul::Statement {
     if !size.is_signed() {
         panic!("Expected signed integer")
     }
+    let (min_value, max_value) = get_min_max(size.clone());
     let size: &str = size.into();
     let fn_name = identifier! {(format!("checked_add_{}", size.to_lowercase()))};
     function_definition! {
@@ -73,56 +75,43 @@ fn checked_add_signed(
     }
 }
 
-/// Add two i256 numbers. Revert if result over- or underflows.
-pub fn checked_add_i256() -> yul::Statement {
-    checked_add_signed(
-        Integer::I256,
-        literal_expression! {0x8000000000000000000000000000000000000000000000000000000000000000},
-        literal_expression! {0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff},
-    )
+fn checked_sub_unsigned() -> yul::Statement {
+    function_definition! {
+        function checked_sub_unsigned(val1, val2) -> diff {
+            // underflow, if val2  > val1
+            (if (lt(val1, val2)) { (revert(0, 0)) })
+            (diff := sub(val1, val2))
+        }
+    }
 }
 
-/// Add two i128 numbers. Revert if result over- or underflows.
-pub fn checked_add_i128() -> yul::Statement {
-    checked_add_signed(
-        Integer::I128,
-        literal_expression! {0xffffffffffffffffffffffffffffffff80000000000000000000000000000000},
-        literal_expression! {0x7fffffffffffffffffffffffffffffff},
-    )
+fn checked_sub_signed(size: Integer) -> yul::Statement {
+    if !size.is_signed() {
+        panic!("Expected signed integer")
+    }
+    let fn_name = names::checked_sub(&size);
+    let (min_value, max_value) = get_min_max(size);
+
+    function_definition! {
+        function [fn_name](val1, val2) -> diff {
+            // underflow, if val2 >= 0 and val1 < (min_value + val2)
+            (if (and((iszero((slt(val2, 0)))), (slt(val1, (add([min_value], val2)))))) { (revert(0, 0)) })
+            // overflow, if val2 < 0 and val1 > (max_value + val2)
+            (if (and((slt(val2, 0)), (sgt(val1, (add([max_value], val2)))))) { (revert(0, 0)) })
+            (diff := sub(val1, val2))
+        }
+    }
 }
 
-/// Add two i64 numbers. Revert if result over- or underflows.
-pub fn checked_add_i64() -> yul::Statement {
-    checked_add_signed(
-        Integer::I64,
-        literal_expression! {0xffffffffffffffffffffffffffffffffffffffffffffffff8000000000000000},
-        literal_expression! {0x7fffffffffffffff},
-    )
+fn get_min_max(integer: Integer) -> (yul::Expression, yul::Expression) {
+    let map = numeric_min_max();
+
+    map.get(&integer)
+        .expect("Expected integer to be in map")
+        .to_owned()
 }
 
-/// Add two i32 numbers. Revert if result over- or underflows.
-pub fn checked_add_i32() -> yul::Statement {
-    checked_add_signed(
-        Integer::I32,
-        literal_expression! {0xffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000},
-        literal_expression! {0x7fffffff},
-    )
-}
-
-/// Add two i16 numbers. Revert if result over- or underflows.
-pub fn checked_add_i16() -> yul::Statement {
-    checked_add_signed(
-        Integer::I16,
-        literal_expression! {0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff8000},
-        literal_expression! {0x7fff},
-    )
-}
-
-/// Add two i8 numbers. Revert if result over- or underflows.
-pub fn checked_add_i8() -> yul::Statement {
-    checked_add_signed(
-        Integer::I8,
-        literal_expression! {0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80},
-        literal_expression! {0x7f},
-    )
+fn get_max(integer: Integer) -> yul::Expression {
+    let (_, max) = get_min_max(integer);
+    max
 }

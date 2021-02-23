@@ -23,7 +23,6 @@ use fe_analyzer::namespace::types::{
     Base,
     FeSized,
     FixedSize,
-    Integer,
     Type,
 };
 use fe_analyzer::{
@@ -253,45 +252,17 @@ pub fn expr_bin_operation(
 
         return match op.node {
             fe::BinOperator::Add => match typ {
-                Type::Base(Base::Numeric(Integer::I256)) => {
-                    Ok(expression! { checked_add_i256([yul_left], [yul_right]) })
-                }
-                Type::Base(Base::Numeric(Integer::I128)) => {
-                    Ok(expression! { checked_add_i128([yul_left], [yul_right]) })
-                }
-                Type::Base(Base::Numeric(Integer::I64)) => {
-                    Ok(expression! { checked_add_i64([yul_left], [yul_right]) })
-                }
-                Type::Base(Base::Numeric(Integer::I32)) => {
-                    Ok(expression! { checked_add_i32([yul_left], [yul_right]) })
-                }
-                Type::Base(Base::Numeric(Integer::I16)) => {
-                    Ok(expression! { checked_add_i16([yul_left], [yul_right]) })
-                }
-                Type::Base(Base::Numeric(Integer::I8)) => {
-                    Ok(expression! { checked_add_i8([yul_left], [yul_right]) })
-                }
-                Type::Base(Base::Numeric(Integer::U256)) => {
-                    Ok(expression! { checked_add_u256([yul_left], [yul_right]) })
-                }
-                Type::Base(Base::Numeric(Integer::U128)) => {
-                    Ok(expression! { checked_add_u128([yul_left], [yul_right]) })
-                }
-                Type::Base(Base::Numeric(Integer::U64)) => {
-                    Ok(expression! { checked_add_u64([yul_left], [yul_right]) })
-                }
-                Type::Base(Base::Numeric(Integer::U32)) => {
-                    Ok(expression! { checked_add_u32([yul_left], [yul_right]) })
-                }
-                Type::Base(Base::Numeric(Integer::U16)) => {
-                    Ok(expression! { checked_add_u16([yul_left], [yul_right]) })
-                }
-                Type::Base(Base::Numeric(Integer::U8)) => {
-                    Ok(expression! { checked_add_u8([yul_left], [yul_right]) })
+                Type::Base(Base::Numeric(integer)) => {
+                    Ok(expression! { [names::checked_add(integer)]([yul_left], [yul_right]) })
                 }
                 _ => unimplemented!("Addition for non-numeric types not yet supported"),
             },
-            fe::BinOperator::Sub => Ok(expression! { sub([yul_left], [yul_right]) }),
+            fe::BinOperator::Sub => match typ {
+                Type::Base(Base::Numeric(integer)) => {
+                    Ok(expression! { [names::checked_sub(integer)]([yul_left], [yul_right]) })
+                }
+                _ => unimplemented!("Subtraction for non-numeric types not yet supported"),
+            },
             fe::BinOperator::Mult => Ok(expression! { mul([yul_left], [yul_right]) }),
             fe::BinOperator::Div => match typ.is_signed_integer() {
                 true => Ok(expression! { sdiv([yul_left], [yul_right]) }),
@@ -673,7 +644,7 @@ mod tests {
         expression,
         expected_yul,
         case("1 + 2", "checked_add_u256(1, 2)"),
-        case("1 - 2", "sub(1, 2)"),
+        case("1 - 2", "checked_sub_unsigned(1, 2)"),
         case("1 * 2", "mul(1, 2)"),
         case("1 / 2", "div(1, 2)"),
         case("1 ** 2", "exp(1, 2)"),

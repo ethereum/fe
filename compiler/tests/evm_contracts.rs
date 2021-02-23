@@ -649,6 +649,8 @@ fn checked_arithmetic() {
         );
 
         for config in NumericAbiTokenBounds::get_all().iter() {
+            // ADDITION
+
             // unsigned: max_value + 1 fails
             harness.test_function_reverts(
                 &mut executor,
@@ -692,6 +694,52 @@ fn checked_arithmetic() {
                 &format!("add_i{}", config.size),
                 &[config.i_min.clone(), int_token(0)],
                 Some(&config.i_min),
+            );
+
+            // SUBTRACTION
+            // unsigned: min_value - 1 fails
+            harness.test_function_reverts(
+                &mut executor,
+                &format!("sub_u{}", config.size),
+                &[config.u_min.clone(), uint_token(1)],
+            );
+
+            // unsigned: min_value - 0 works
+            harness.test_function(
+                &mut executor,
+                &format!("sub_u{}", config.size),
+                &[config.u_min.clone(), uint_token(0)],
+                Some(&config.u_min),
+            );
+
+            // signed: min_value - 1 fails
+            harness.test_function_reverts(
+                &mut executor,
+                &format!("sub_i{}", config.size),
+                &[config.i_min.clone(), int_token(1)],
+            );
+
+            // signed: min_value - 0 works
+            harness.test_function(
+                &mut executor,
+                &format!("sub_i{}", config.size),
+                &[config.i_min.clone(), int_token(0)],
+                Some(&config.i_min),
+            );
+
+            // signed: max_value - -1 fails
+            harness.test_function_reverts(
+                &mut executor,
+                &format!("sub_i{}", config.size),
+                &[config.i_max.clone(), int_token(-1)],
+            );
+
+            // signed: max_value - -0 works
+            harness.test_function(
+                &mut executor,
+                &format!("sub_i{}", config.size),
+                &[config.i_max.clone(), int_token(-0)],
+                Some(&config.i_max),
             );
         }
     });

@@ -130,7 +130,7 @@ pub enum Base {
     Address,
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, IntoStaticStr)]
+#[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Ord, Eq, IntoStaticStr)]
 pub enum Integer {
     U256,
     U128,
