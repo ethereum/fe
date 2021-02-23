@@ -643,6 +643,7 @@ dependencies = [
  "fe-common",
  "fe-parser",
  "hex",
+ "maplit",
  "primitive-types",
  "rand",
  "rstest",

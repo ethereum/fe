@@ -1,8 +1,23 @@
 use fe_analyzer::namespace::types::{
     AbiDecodeLocation,
     AbiEncoding,
+    Integer,
 };
 use yultsur::*;
+
+pub fn checked_add(size: &Integer) -> yul::Identifier {
+    let size: &str = size.into();
+    identifier! {(format!("checked_add_{}", size.to_lowercase()))}
+}
+
+pub fn checked_sub(size: &Integer) -> yul::Identifier {
+    let size: &str = if size.is_signed() {
+        size.into()
+    } else {
+        "unsigned"
+    };
+    identifier! {(format!("checked_sub_{}", size.to_lowercase()))}
+}
 
 pub fn func_name(name: &str) -> yul::Identifier {
     identifier! { (format!("$${}", name)) }

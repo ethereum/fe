@@ -7,6 +7,7 @@ use crate::types::{
 };
 use fe_analyzer::Context;
 
+pub mod constants;
 mod constructor;
 mod mappers;
 mod names;
