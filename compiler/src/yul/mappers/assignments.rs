@@ -168,7 +168,7 @@ mod tests {
             "foo",
             ExpressionAttributes::new(
                 Type::Array(Array {
-                    dimension: 10,
+                    size: 10,
                     inner: U256,
                 }),
                 Location::Memory,

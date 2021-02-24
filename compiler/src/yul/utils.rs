@@ -37,11 +37,13 @@ pub fn abi_head_offsets<T: AbiEncoding>(types: &[T]) -> (Vec<usize>, usize) {
                 size: AbiArraySize::Static { size },
                 inner,
             } => match *inner {
-                AbiType::Array { .. } => unimplemented!(),
+                AbiType::Array { .. } => todo!(),
+                AbiType::Tuple { .. } => todo!(),
                 AbiType::Uint {
                     size: AbiUintSize { padded_size, .. },
                 } => ceil_32(padded_size * size),
             },
+            AbiType::Tuple { elems } => elems.len() * 32,
             AbiType::Uint {
                 size: AbiUintSize { padded_size, .. },
             } => padded_size,
@@ -72,7 +74,7 @@ mod tests {
         let types = vec![
             FixedSize::Array(Array {
                 inner: U256,
-                dimension: 42,
+                size: 42,
             }),
             FixedSize::Base(U256),
             FixedSize::String(FeString { max_size: 26 }),

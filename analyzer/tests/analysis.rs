@@ -24,7 +24,7 @@ fn addr_val() -> ExpressionAttributes {
 fn bytes_sto() -> ExpressionAttributes {
     ExpressionAttributes::new(
         Type::Array(Array {
-            dimension: 100,
+            size: 100,
             inner: Base::Byte,
         }),
         Location::Storage { nonce: None },
@@ -34,7 +34,7 @@ fn bytes_sto() -> ExpressionAttributes {
 fn bytes_sto_moved() -> ExpressionAttributes {
     let mut expression = ExpressionAttributes::new(
         Type::Array(Array {
-            dimension: 100,
+            size: 100,
             inner: Base::Byte,
         }),
         Location::Storage { nonce: None },
@@ -47,7 +47,7 @@ fn bytes_sto_moved() -> ExpressionAttributes {
 fn bytes_mem() -> ExpressionAttributes {
     ExpressionAttributes::new(
         Type::Array(Array {
-            dimension: 100,
+            size: 100,
             inner: Base::Byte,
         }),
         Location::Memory,
@@ -59,7 +59,7 @@ fn addr_bytes_map_sto() -> ExpressionAttributes {
         Type::Map(Map {
             key: Base::Address,
             value: Box::new(Type::Array(Array {
-                dimension: 100,
+                size: 100,
                 inner: Base::Byte,
             })),
         }),

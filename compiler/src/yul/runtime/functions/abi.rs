@@ -88,6 +88,7 @@ fn encode<T: AbiEncoding>(types: Vec<T>) -> yul::Statement {
                 dyn_array_params.push((param, inner));
                 encode_uint(dyn_offset)
             }
+            AbiType::Tuple { elems } => encode_tuple(param, elems),
             AbiType::Uint { .. } => encode_uint(param),
         })
         .collect::<Vec<_>>();
@@ -118,6 +119,7 @@ fn decode<T: AbiEncoding>(typ: T, location: AbiDecodeLocation) -> yul::Statement
             AbiArraySize::Static { size } => decode_static_array(*inner, size, location),
             AbiArraySize::Dynamic => decode_dyn_array(*inner, location),
         },
+        AbiType::Tuple { elems } => decode_tuple(elems, location),
     };
 
     function_definition! {
@@ -170,7 +172,8 @@ pub fn pack(location: AbiDecodeLocation) -> yul::Statement {
 
 fn dyn_array_data_size(val: yul::Expression, inner: AbiType) -> yul::Expression {
     match inner {
-        AbiType::Array { .. } => unimplemented!(),
+        AbiType::Array { .. } => todo!(),
+        AbiType::Tuple { .. } => todo!(),
         AbiType::Uint {
             size: AbiUintSize { padded_size, .. },
         } => {
@@ -180,6 +183,12 @@ fn dyn_array_data_size(val: yul::Expression, inner: AbiType) -> yul::Expression 
             expression! { add(32, (ceil32([elements_size]))) }
         }
     }
+}
+
+fn encode_tuple(val: yul::Expression, elems: Vec<AbiType>) -> yul::Statement {
+    let tuple_size = elems.len() * 32;
+    let tuple_size = literal_expression! { (tuple_size) };
+    statement! { pop((mcopym([val], [tuple_size]))) }
 }
 
 fn encode_uint(val: yul::Expression) -> yul::Statement {
@@ -206,7 +215,8 @@ fn encode_array(
     array_size: yul::Expression,
 ) -> yul::Statement {
     match inner {
-        AbiType::Array { .. } => unimplemented!("encoding of nested arrays"),
+        AbiType::Array { .. } => todo!("encoding of nested arrays"),
+        AbiType::Tuple { .. } => todo!("encoding of nested tuples"),
         AbiType::Uint {
             size:
                 AbiUintSize {
@@ -258,7 +268,8 @@ fn decode_dyn_array(inner: AbiType, location: AbiDecodeLocation) -> yul::Express
     let array_size = expression! { [load]([encoding_start.clone()]) };
 
     match inner {
-        AbiType::Array { .. } => unimplemented!("decoding of nested arrays"),
+        AbiType::Array { .. } => todo!("decoding of nested arrays"),
+        AbiType::Tuple { .. } => todo!("decoding of nested tuples"),
         AbiType::Uint {
             size:
                 AbiUintSize {
@@ -294,7 +305,8 @@ fn decode_static_array(
     let array_start = identifier_expression! { head_ptr };
 
     match inner {
-        AbiType::Array { .. } => unimplemented!("decoding of nested arrays"),
+        AbiType::Array { .. } => todo!("decoding of nested arrays"),
+        AbiType::Tuple { .. } => todo!("decoding of nested tuples"),
         AbiType::Uint {
             size:
                 AbiUintSize {
@@ -328,6 +340,16 @@ fn decode_static_array(
                 }
             }
         }
+    }
+}
+
+fn decode_tuple(elems: Vec<AbiType>, location: AbiDecodeLocation) -> yul::Expression {
+    let tuple_size = elems.len() * 32;
+    let tuple_size = literal_expression! { (tuple_size) };
+
+    match location {
+        AbiDecodeLocation::Memory => expression! { head_ptr },
+        AbiDecodeLocation::Calldata => expression! { ccopym(head_ptr, [tuple_size]) },
     }
 }
 

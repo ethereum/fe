@@ -249,6 +249,11 @@ p = Point {x: 10, y: 11}
 px: u256 = p.x;
 ```
 
+
+Builtin functions:
+
+- `abi_encode()` encodes the struct as an ABI tuple and returns the encoded data as a fixed-size byte array that is equal in size to the encoding.
+
 ### 3.3. Events
 
 > **<sup>Syntax</sup>**\
@@ -586,11 +591,11 @@ MISSING
 
 ### 5.1.1.7. Struct types
 
-An *struct type* is the type denotated by the name of an [`struct` item].
+An *struct type* is the type denoted by the name of an [`struct` item].
 
 ### 5.1.1.8. Enumerated types
 
-An *enum type* is the type denotated by the name of an [`enum` item].
+An *enum type* is the type denoted by the name of an [`enum` item].
 
 ### 5.1.1.9. Function item types
 

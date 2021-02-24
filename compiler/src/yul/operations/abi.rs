@@ -32,7 +32,8 @@ pub fn encode_size<T: AbiEncoding>(types: Vec<T>, vals: Vec<yul::Expression>) ->
                     AbiType::Uint {
                         size: AbiUintSize { padded_size, .. },
                     } => padded_size,
-                    AbiType::Array { .. } => unimplemented!(),
+                    AbiType::Array { .. } => todo!(),
+                    AbiType::Tuple { .. } => todo!(),
                 };
                 match size {
                     AbiArraySize::Static { size } => {
@@ -46,6 +47,7 @@ pub fn encode_size<T: AbiEncoding>(types: Vec<T>, vals: Vec<yul::Expression>) ->
                     }
                 }
             }
+            AbiType::Tuple { elems } => static_size += elems.len() * 32,
         }
     }
 
@@ -65,7 +67,8 @@ pub fn static_encode_size<T: AbiEncoding>(types: Vec<T>) -> Result<yul::Expressi
                     AbiType::Uint {
                         size: AbiUintSize { padded_size, .. },
                     } => padded_size,
-                    AbiType::Array { .. } => unimplemented!(),
+                    AbiType::Array { .. } => todo!(),
+                    AbiType::Tuple { .. } => todo!(),
                 };
                 match size {
                     AbiArraySize::Static { size } => {
@@ -79,6 +82,7 @@ pub fn static_encode_size<T: AbiEncoding>(types: Vec<T>) -> Result<yul::Expressi
                     }
                 }
             }
+            AbiType::Tuple { elems } => static_size += elems.len() * 32,
         }
     }
 
@@ -160,7 +164,7 @@ mod tests {
             static_encode_size(vec![
                 FixedSize::Array(Array {
                     inner: Base::Address,
-                    dimension: 42
+                    size: 42
                 }),
                 FixedSize::Base(Base::Bool)
             ])

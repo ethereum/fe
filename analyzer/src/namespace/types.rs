@@ -63,8 +63,13 @@ pub enum AbiType {
         inner: Box<AbiType>,
         size: AbiArraySize,
     },
+    Tuple {
+        elems: Vec<AbiType>,
+    },
     /// All elements are encoded as a uint or set of uints.
-    Uint { size: AbiUintSize },
+    Uint {
+        size: AbiUintSize,
+    },
 }
 
 /// Data can be decoded from memory or calldata.
@@ -145,7 +150,7 @@ pub const U256: Base = Base::Numeric(Integer::U256);
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
 pub struct Array {
-    pub dimension: usize,
+    pub size: usize,
     pub inner: Base,
 }
 
@@ -163,7 +168,7 @@ pub struct Tuple {
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
 pub struct Struct {
     pub name: String,
-    fields: BTreeMap<String, Base>,
+    fields: BTreeMap<String, FixedSize>,
     order: Vec<String>,
 }
 
@@ -193,13 +198,13 @@ impl Struct {
     }
 
     /// Add a field to the struct
-    pub fn add_field(&mut self, name: &str, value: &Base) -> Option<Base> {
+    pub fn add_field(&mut self, name: &str, value: &FixedSize) -> Option<FixedSize> {
         self.order.push(name.to_string());
         self.fields.insert(name.to_string(), value.clone())
     }
 
     /// Return the type of the given field name
-    pub fn get_field_type(&self, name: &str) -> Option<&Base> {
+    pub fn get_field_type(&self, name: &str) -> Option<&FixedSize> {
         self.fields.get(name)
     }
 
@@ -209,15 +214,13 @@ impl Struct {
     }
 
     /// Return a vector of field types
-    pub fn get_field_types(&self) -> Vec<Type> {
+    pub fn get_field_types(&self) -> Vec<FixedSize> {
         self.order
             .iter()
             .map(|name| {
-                Type::Base(
-                    self.get_field_type(name)
-                        .expect("no entry for field name")
-                        .to_owned(),
-                )
+                self.get_field_type(name)
+                    .expect("no entry for field name")
+                    .to_owned()
             })
             .collect()
     }
@@ -225,6 +228,10 @@ impl Struct {
     /// Return a vector of field names
     pub fn get_field_names(&self) -> Vec<String> {
         self.order.clone()
+    }
+
+    pub fn get_num_fields(&self) -> usize {
+        self.order.len()
     }
 }
 
@@ -562,33 +569,31 @@ impl AbiEncoding for Base {
 
 impl FeSized for Array {
     fn size(&self) -> usize {
-        self.dimension * self.inner.size()
+        self.size * self.inner.size()
     }
 }
 
 impl AbiEncoding for Array {
     fn abi_name(&self) -> String {
         if self.inner == Base::Byte {
-            return format!("bytes{}", self.dimension);
+            return format!("bytes{}", self.size);
         }
 
-        format!("{}[{}]", self.inner.abi_name(), self.dimension)
+        format!("{}[{}]", self.inner.abi_name(), self.size)
     }
 
     fn abi_safe_name(&self) -> String {
         if self.inner == Base::Byte {
-            return format!("bytes{}", self.dimension);
+            return format!("bytes{}", self.size);
         }
 
-        format!("{}{}", self.inner.abi_name(), self.dimension)
+        format!("{}{}", self.inner.abi_name(), self.size)
     }
 
     fn abi_type(&self) -> AbiType {
         AbiType::Array {
             inner: Box::new(self.inner.abi_type()),
-            size: AbiArraySize::Static {
-                size: self.dimension,
-            },
+            size: AbiArraySize::Static { size: self.size },
         }
     }
 }
@@ -623,15 +628,27 @@ impl FeSized for Struct {
 
 impl AbiEncoding for Struct {
     fn abi_name(&self) -> String {
-        unimplemented!();
+        let field_names = self
+            .get_field_types()
+            .iter()
+            .map(|typ| typ.abi_name())
+            .collect::<Vec<String>>();
+        let joined_names = field_names.join(",");
+        format!("({})", joined_names)
     }
 
     fn abi_safe_name(&self) -> String {
-        unimplemented!();
+        self.name.clone()
     }
 
     fn abi_type(&self) -> AbiType {
-        unimplemented!();
+        AbiType::Tuple {
+            elems: self
+                .get_field_types()
+                .iter()
+                .map(|typ| typ.abi_type())
+                .collect(),
+        }
     }
 }
 
@@ -743,7 +760,7 @@ pub fn type_desc(defs: &HashMap<String, Type>, typ: &fe::TypeDesc) -> Result<Typ
         }
         fe::TypeDesc::Array { typ, dimension } => Ok(Type::Array(Array {
             inner: type_desc_base(defs, &typ.node)?,
-            dimension: *dimension,
+            size: *dimension,
         })),
         fe::TypeDesc::Map { from, to } => Ok(Type::Map(Map {
             key: type_desc_base(defs, &from.node)?,

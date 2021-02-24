@@ -8,7 +8,12 @@ contract Foo:
     my_house: House
 
     pub def create_house():
-        self.my_house = House(price=1, size=2, rooms=u8(5), vacant=false)
+        self.my_house = House(
+            price=1,
+            size=2,
+            rooms=u8(5),
+            vacant=false
+        )
         assert self.my_house.price == 1
         assert self.my_house.size == 2
         assert self.my_house.rooms == u8(5)
@@ -37,10 +42,15 @@ contract Foo:
         assert self.my_house.vacant
 
     pub def bar() -> u256:
-        building: House = House(price=300, size=500, rooms=u8(20), vacant=true)
+        building: House = House(
+            price=300,
+            size=500,
+            rooms=u8(20),
+            vacant=true
+        )
         assert building.size == 500
         assert building.price == 300
-        #assert building.rooms == u8(20)
+        assert building.rooms == u8(20)
         assert building.vacant
 
         building.vacant = false
@@ -53,3 +63,21 @@ contract Foo:
         assert building.size == 2
         assert building.rooms == u8(10)
         return building.size
+
+    pub def encode_house() -> bytes[128]:
+        house: House = House(
+            price=300,
+            size=500,
+            rooms=u8(20),
+            vacant=true
+        )
+        return house.abi_encode()
+
+    pub def hashed_house() -> u256:
+        house: House = House(
+            price=300,
+            size=500,
+            rooms=u8(20),
+            vacant=true
+        )
+        return keccak256(house.abi_encode())

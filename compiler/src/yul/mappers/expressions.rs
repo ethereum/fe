@@ -1,11 +1,20 @@
 use crate::errors::CompileError;
 use crate::yul::names;
 use crate::yul::operations::{
+    abi as abi_operations,
     contracts as contract_operations,
     data as data_operations,
     structs as struct_operations,
 };
 use crate::yul::utils;
+use builtins::{
+    BlockField,
+    ChainField,
+    MsgField,
+    Object,
+    TxField,
+};
+use fe_analyzer::builtins;
 use fe_analyzer::builtins::{
     ContractTypeMethod,
     GlobalMethod,
@@ -16,10 +25,6 @@ use fe_analyzer::namespace::types::{
     FixedSize,
     Integer,
     Type,
-};
-use fe_analyzer::{
-    builtins,
-    ExpressionAttributes,
 };
 use fe_analyzer::{
     CallType,
@@ -37,7 +42,7 @@ use yultsur::*;
 pub fn expr(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
     if let Some(attributes) = context.get_expression(exp) {
         let expression = match &exp.node {
-            fe::Expr::Name(_) => expr_name(exp),
+            fe::Expr::Name(_) => Ok(expr_name(exp)),
             fe::Expr::Num(_) => expr_num(exp),
             fe::Expr::Bool(_) => expr_bool(exp),
             fe::Expr::Subscript { .. } => expr_subscript(context, exp),
@@ -144,7 +149,7 @@ fn expr_call(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressi
                                 expr(context, value)?,
                                 yul_args,
                             )),
-                            (_, func_name) => {
+                            (typ, func_name) => {
                                 match builtins::ValueMethod::from_str(func_name)
                                     .expect("uncaught analyzer error")
                                 {
@@ -153,7 +158,13 @@ fn expr_call(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressi
                                     // `to_mem` and `clone`.
                                     builtins::ValueMethod::ToMem => expr(context, value),
                                     builtins::ValueMethod::Clone => expr(context, value),
-                                    builtins::ValueMethod::AbiEncode => todo!(),
+                                    builtins::ValueMethod::AbiEncode => match typ {
+                                        Type::Struct(struct_) => Ok(abi_operations::encode(
+                                            vec![struct_],
+                                            vec![expr(context, value)?],
+                                        )),
+                                        _ => panic!("invalid attributes"),
+                                    },
                                     builtins::ValueMethod::AbiEncodePacked => todo!(),
                                 }
                             }
@@ -327,9 +338,9 @@ pub fn expr_unary_operation(
 }
 
 /// Retrieves the &str value of a name expression.
-pub fn expr_name_str<'a>(exp: &Spanned<fe::Expr<'a>>) -> Result<&'a str, CompileError> {
+pub fn expr_name_str<'a>(exp: &Spanned<fe::Expr<'a>>) -> &'a str {
     if let fe::Expr::Name(name) = exp.node {
-        return Ok(name);
+        return name;
     }
 
     unreachable!()
@@ -359,10 +370,10 @@ pub fn slice_index(
     unreachable!()
 }
 
-fn expr_name(exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
-    let name = expr_name_str(exp)?;
+fn expr_name(exp: &Spanned<fe::Expr>) -> yul::Expression {
+    let name = expr_name_str(exp);
 
-    Ok(identifier_expression! { [names::var_name(name)] })
+    identifier_expression! { [names::var_name(name)] }
 }
 
 fn expr_num(exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
@@ -422,80 +433,52 @@ fn expr_attribute(
     exp: &Spanned<fe::Expr>,
 ) -> Result<yul::Expression, CompileError> {
     if let fe::Expr::Attribute { value, attr } = &exp.node {
-        use builtins::{
-            BlockField,
-            ChainField,
-            MsgField,
-            Object,
-            TxField,
-        };
+        // If the given value has expression attributes, we handle it as an expression
+        // by first mapping the value and then performing the expected operation
+        // inferred from the attribute name.
+        //
+        // If the given value does not have expression attributes, we assume it is a
+        // builtin object and map it as such.
+        return if let Some(attributes) = context.get_expression(value) {
+            let value = expr(context, value)?;
 
-        if let fe::Expr::Attribute { .. } = &value.node {
-            match context.get_expression(value) {
-                Some(ExpressionAttributes {
-                    location,
-                    typ: Type::Struct(val),
-                    ..
-                }) => match val.get_field_index(attr.node) {
-                    Some(index) => {
-                        if let Location::Storage { nonce: Some(nonce) } = location {
-                            return Ok(nonce_with_offset_to_ptr(*nonce, index * 32));
-                        } else {
-                            return Err(CompileError::static_str("invalid attributes"));
-                        };
-                    }
-                    None => return Err(CompileError::static_str("invalid attributes")),
-                },
-                _ => return Err(CompileError::static_str("invalid attributes")),
+            match &attributes.typ {
+                Type::Struct(struct_) => {
+                    Ok(struct_operations::get_attribute(struct_, attr.node, value))
+                }
+                _ => panic!("invalid attributes"),
             }
-        }
-
-        let object_name = expr_name_str(value)?;
-
-        // Before we try to match any known pre-defined objects, try matching as a
-        // custom type
-        if let Some(ExpressionAttributes {
-            typ: Type::Struct(val),
-            ..
-        }) = context.get_expression(&*value)
-        {
-            let custom_type = format!("${}", object_name);
-            return Ok(struct_operations::get_attribute(
-                val,
-                &custom_type,
-                attr.node,
-            ));
-        }
-
-        return match Object::from_str(object_name) {
-            Ok(Object::Self_) => expr_attribute_self(context, exp),
-
-            Ok(Object::Block) => match BlockField::from_str(attr.node) {
-                Ok(BlockField::Coinbase) => Ok(expression! { coinbase() }),
-                Ok(BlockField::Difficulty) => Ok(expression! { difficulty() }),
-                Ok(BlockField::Number) => Ok(expression! { number() }),
-                Ok(BlockField::Timestamp) => Ok(expression! { timestamp() }),
-                Err(_) => Err(CompileError::static_str("invalid `block` attribute name")),
-            },
-            Ok(Object::Chain) => match ChainField::from_str(attr.node) {
-                Ok(ChainField::Id) => Ok(expression! { chainid() }),
-                Err(_) => Err(CompileError::static_str("invalid `chain` attribute name")),
-            },
-            Ok(Object::Msg) => match MsgField::from_str(attr.node) {
-                Ok(MsgField::Data) => todo!(),
-                Ok(MsgField::Sender) => Ok(expression! { caller() }),
-                Ok(MsgField::Sig) => todo!(),
-                Ok(MsgField::Value) => Ok(expression! { callvalue() }),
-                Err(_) => Err(CompileError::static_str("invalid `msg` attribute name")),
-            },
-            Ok(Object::Tx) => match TxField::from_str(attr.node) {
-                Ok(TxField::GasPrice) => Ok(expression! { gasprice() }),
-                Ok(TxField::Origin) => Ok(expression! { origin() }),
-                Err(_) => Err(CompileError::static_str("invalid `msg` attribute name")),
-            },
-            Err(_) => Err(CompileError::static_str("invalid attributes")),
+        } else {
+            match Object::from_str(expr_name_str(value)) {
+                Ok(Object::Self_) => expr_attribute_self(context, exp),
+                Ok(Object::Block) => match BlockField::from_str(attr.node) {
+                    Ok(BlockField::Coinbase) => Ok(expression! { coinbase() }),
+                    Ok(BlockField::Difficulty) => Ok(expression! { difficulty() }),
+                    Ok(BlockField::Number) => Ok(expression! { number() }),
+                    Ok(BlockField::Timestamp) => Ok(expression! { timestamp() }),
+                    Err(_) => Err(CompileError::static_str("invalid `block` attribute name")),
+                },
+                Ok(Object::Chain) => match ChainField::from_str(attr.node) {
+                    Ok(ChainField::Id) => Ok(expression! { chainid() }),
+                    Err(_) => Err(CompileError::static_str("invalid `chain` attribute name")),
+                },
+                Ok(Object::Msg) => match MsgField::from_str(attr.node) {
+                    Ok(MsgField::Data) => todo!(),
+                    Ok(MsgField::Sender) => Ok(expression! { caller() }),
+                    Ok(MsgField::Sig) => todo!(),
+                    Ok(MsgField::Value) => Ok(expression! { callvalue() }),
+                    Err(_) => Err(CompileError::static_str("invalid `msg` attribute name")),
+                },
+                Ok(Object::Tx) => match TxField::from_str(attr.node) {
+                    Ok(TxField::GasPrice) => Ok(expression! { gasprice() }),
+                    Ok(TxField::Origin) => Ok(expression! { origin() }),
+                    Err(_) => Err(CompileError::static_str("invalid `msg` attribute name")),
+                },
+                Err(_) => Err(CompileError::static_str("invalid attributes")),
+            }
         };
     }
+
     unreachable!()
 }
 
@@ -527,13 +510,6 @@ pub fn nonce_to_ptr(nonce: usize) -> yul::Expression {
     // set the last byte to `0x00` to ensure our pointer sits at the start of a word
     let ptr = keccak::partial_right_padded(nonce.to_string().as_bytes(), 31);
     literal_expression! { (ptr) }
-}
-
-/// Converts a storage nonce into a pointer based on the keccak256 hash
-pub fn nonce_with_offset_to_ptr(nonce: usize, offset: usize) -> yul::Expression {
-    let ptr = nonce_to_ptr(nonce);
-    let offset = literal_expression! { (offset) };
-    expression! { (add([ptr], [offset])) }
 }
 
 fn expr_ternary(
@@ -623,7 +599,7 @@ mod tests {
 
         let foo_key = Base::Address;
         let foo_value = Type::Array(Array {
-            dimension: 8,
+            size: 8,
             inner: Base::Address,
         });
         let bar_value = Type::Base(Base::Address);
@@ -643,7 +619,7 @@ mod tests {
             "bar_array",
             ExpressionAttributes::new(
                 Type::Array(Array {
-                    dimension: 100,
+                    size: 100,
                     inner: Base::Address,
                 }),
                 Location::Memory,
