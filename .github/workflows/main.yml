@@ -37,7 +37,7 @@ jobs:
       uses: actions-rs/toolchain@v1
       with:
         profile: minimal
-        toolchain: nightly-2021-01-30
+        toolchain: nightly
         override: true
     - name: coverage with tarpaulin
       run: |
@@ -66,7 +66,7 @@ jobs:
       uses: actions-rs/toolchain@v1
       with:
         profile: minimal
-        toolchain: nightly-2021-01-30
+        toolchain: nightly
         override: true
         components: rustfmt, clippy
     - name: Validate release notes entry
@@ -116,7 +116,7 @@ jobs:
       uses: actions-rs/toolchain@v1
       with:
         profile: minimal
-        toolchain: nightly-2021-01-30
+        toolchain: nightly
         override: true
     - name: Build
       run: cargo build --all-features --verbose
@@ -132,7 +132,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2021-01-30
+          toolchain: nightly
           override: true
       - name: Run WASM tests
         run: wasm-pack test --node -- --workspace
@@ -167,7 +167,7 @@ jobs:
           uses: actions-rs/toolchain@v1
           with:
             profile: minimal
-            toolchain: nightly-2021-01-30
+            toolchain: nightly
             override: true
         - name: Build
           run: cargo build --all-features --release && strip target/release/fe && mv target/release/fe target/release/${{ matrix.BIN_FILE }}
