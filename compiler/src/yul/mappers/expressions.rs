@@ -264,7 +264,12 @@ pub fn expr_bin_operation(
                 }
                 _ => unimplemented!("Subtraction for non-numeric types not yet supported"),
             },
-            fe::BinOperator::Mult => Ok(expression! { mul([yul_left], [yul_right]) }),
+            fe::BinOperator::Mult => match typ {
+                Type::Base(Base::Numeric(integer)) => {
+                    Ok(expression! { [names::checked_mul(integer)]([yul_left], [yul_right]) })
+                }
+                _ => unreachable!(),
+            },
             fe::BinOperator::Div => match typ.is_signed_integer() {
                 true => Ok(expression! { sdiv([yul_left], [yul_right]) }),
                 false => Ok(expression! { div([yul_left], [yul_right]) }),
@@ -669,7 +674,7 @@ mod tests {
         expected_yul,
         case("1 + 2", "checked_add_u256(1, 2)"),
         case("1 - 2", "checked_sub_unsigned(1, 2)"),
-        case("1 * 2", "mul(1, 2)"),
+        case("1 * 2", "checked_mul_u256(1, 2)"),
         case("1 / 2", "div(1, 2)"),
         case("1 ** 2", "exp(1, 2)"),
         case("1 % 2", "mod(1, 2)"),
