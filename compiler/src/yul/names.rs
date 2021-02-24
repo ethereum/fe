@@ -5,11 +5,19 @@ use fe_analyzer::namespace::types::{
 };
 use yultsur::*;
 
+/// Generate a function name to perform checked addition
 pub fn checked_add(size: &Integer) -> yul::Identifier {
     let size: &str = size.into();
     identifier! {(format!("checked_add_{}", size.to_lowercase()))}
 }
 
+/// Generate a function name to perform checked multiplication
+pub fn checked_mul(size: &Integer) -> yul::Identifier {
+    let size: &str = size.into();
+    identifier! {(format!("checked_mul_{}", size.to_lowercase()))}
+}
+
+/// Generate a function name to perform checked subtraction
 pub fn checked_sub(size: &Integer) -> yul::Identifier {
     let size: &str = if size.is_signed() {
         size.into()
@@ -19,10 +27,12 @@ pub fn checked_sub(size: &Integer) -> yul::Identifier {
     identifier! {(format!("checked_sub_{}", size.to_lowercase()))}
 }
 
+/// Generate a safe function name for a user defined function
 pub fn func_name(name: &str) -> yul::Identifier {
     identifier! { (format!("$${}", name)) }
 }
 
+/// Generate a safe variable name for a user defined function
 pub fn var_name(name: &str) -> yul::Identifier {
     identifier! { (format!("${}", name)) }
 }
