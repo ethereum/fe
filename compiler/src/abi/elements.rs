@@ -134,8 +134,8 @@ pub struct FuncOutput {
 // type.
 /// The type of a public function.
 #[allow(dead_code)]
-#[serde(rename_all = "lowercase")]
 #[derive(Serialize, Debug, PartialEq, Clone)]
+#[serde(rename_all = "lowercase")]
 pub enum FuncType {
     Function,
     Constructor,
@@ -167,8 +167,8 @@ pub enum VarType {
 
 /// The mutability of a public function.
 #[allow(dead_code)]
-#[serde(rename_all = "lowercase")]
 #[derive(Serialize, Debug, PartialEq, Clone)]
+#[serde(rename_all = "lowercase")]
 pub enum StateMutability {
     Pure,
     View,

@@ -1,4 +1,3 @@
-#![feature(iterator_fold_self)]
 //! Modules for compiling Fe and building ABIs.
 
 use crate::errors::CompileError;
