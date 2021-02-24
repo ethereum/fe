@@ -82,7 +82,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: clippy
-        args: --all-targets --all-features -- -D warnings
+        args: --all-targets --all-features -- -D warnings -A clippy::upper-case-acronyms
 
   test:
     # Build & Test runs on all platforms

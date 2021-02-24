@@ -101,7 +101,7 @@ pub fn sum(vals: Vec<yul::Expression>) -> yul::Expression {
     }
 
     vals.into_iter()
-        .fold_first(|val1, val2| expression! { add([val1], [val2]) })
+        .reduce(|val1, val2| expression! { add([val1], [val2]) })
         .unwrap()
 }
 

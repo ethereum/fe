@@ -71,7 +71,9 @@ fn test_compile_errors(fixture_file: &str, expected_error: &str) {
     match fe_compiler::compile(&src, true, false) {
         Err(compile_error) => assert!(
             format!("{}", compile_error).contains(expected_error),
-            format!("{} did not contain {}", compile_error, expected_error)
+            "{} did not contain {}",
+            compile_error,
+            expected_error
         ),
         _ => panic!(
             "Compiling succeeded when it was expected to fail with: {}",
