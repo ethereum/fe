@@ -1,0 +1,3 @@
+contract Foo:
+    pub def bar(x: bool, y: bool) -> bool:
+        return x or y

@@ -183,6 +183,16 @@ fn test_assert() {
     case("return_gte_i256.fe", &[int_token(-1), int_token(-2)], bool_token(true)),
     case("return_gte_i256.fe", &[int_token(-1), int_token(-1)], bool_token(true)),
     case("return_gte_i256.fe", &[int_token(-2), int_token(-1)], bool_token(false)),
+    // `and` bool operation
+    case("return_bool_op_and.fe", &[bool_token(true), bool_token(true)], bool_token(true)),
+    case("return_bool_op_and.fe", &[bool_token(true), bool_token(false)], bool_token(false)),
+    case("return_bool_op_and.fe", &[bool_token(false), bool_token(true)], bool_token(false)),
+    case("return_bool_op_and.fe", &[bool_token(false), bool_token(false)], bool_token(false)),
+    // `or` bool operation
+    case("return_bool_op_or.fe", &[bool_token(true), bool_token(true)], bool_token(true)),
+    case("return_bool_op_or.fe", &[bool_token(true), bool_token(false)], bool_token(true)),
+    case("return_bool_op_or.fe", &[bool_token(false), bool_token(true)], bool_token(true)),
+    case("return_bool_op_or.fe", &[bool_token(false), bool_token(false)], bool_token(false)),
 )]
 fn test_method_return(fixture_file: &str, input: &[ethabi::Token], expected: ethabi::Token) {
     with_executor(&|mut executor| {
@@ -1214,4 +1224,17 @@ fn can_deploy_fixture(fixture_file: &str, contract_name: &str) {
     with_executor(&|mut executor| {
         deploy_contract(&mut executor, fixture_file, contract_name, &[]);
     })
+}
+
+#[test]
+fn self_address() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "self_address.fe", "Foo", &[]);
+        harness.test_function(
+            &mut executor,
+            "my_address",
+            &[],
+            Some(&ethabi::Token::Address(harness.address)),
+        );
+    });
 }

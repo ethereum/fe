@@ -32,6 +32,7 @@ use fe_analyzer::{
 };
 use fe_common::utils::keccak;
 use fe_parser::ast as fe;
+use fe_parser::ast::BoolOperator;
 use fe_parser::span::Spanned;
 use std::convert::TryFrom;
 use std::str::FromStr;
@@ -47,7 +48,7 @@ pub fn expr(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressio
             fe::Expr::Subscript { .. } => expr_subscript(context, exp),
             fe::Expr::Attribute { .. } => expr_attribute(context, exp),
             fe::Expr::Ternary { .. } => expr_ternary(context, exp),
-            fe::Expr::BoolOperation { .. } => unimplemented!(),
+            fe::Expr::BoolOperation { .. } => expr_bool_operation(context, exp),
             fe::Expr::BinOperation { .. } => expr_bin_operation(context, exp),
             fe::Expr::UnaryOperation { .. } => expr_unary_operation(context, exp),
             fe::Expr::CompOperation { .. } => expr_comp_operation(context, exp),
@@ -457,6 +458,12 @@ fn expr_attribute_self(
     context: &Context,
     exp: &Spanned<fe::Expr>,
 ) -> Result<yul::Expression, CompileError> {
+    if let fe::Expr::Attribute { attr, .. } = &exp.node {
+        if let Ok(builtins::SelfField::Address) = builtins::SelfField::from_str(attr.node) {
+            return Ok(expression! { address() });
+        }
+    }
+
     if let Some(attributes) = context.get_expression(exp) {
         let nonce = if let Location::Storage { nonce: Some(nonce) } = attributes.location {
             nonce
@@ -499,6 +506,23 @@ fn expr_ternary(
 
         return Ok(expression! {ternary([yul_test_expr], [yul_if_expr], [yul_else_expr])});
     }
+    unreachable!()
+}
+
+fn expr_bool_operation(
+    context: &Context,
+    exp: &Spanned<fe::Expr>,
+) -> Result<yul::Expression, CompileError> {
+    if let fe::Expr::BoolOperation { left, op, right } = &exp.node {
+        let yul_left = expr(context, left)?;
+        let yul_right = expr(context, right)?;
+
+        return match op.node {
+            BoolOperator::And => Ok(expression! {and([yul_left], [yul_right])}),
+            BoolOperator::Or => Ok(expression! {or([yul_left], [yul_right])}),
+        };
+    }
+
     unreachable!()
 }
 
