@@ -74,7 +74,8 @@ be used as the names of:
 > KW_SELFVALUE      : `self`\
 > KW_STRUCT         : `struct`\
 > KW_TRUE           : `true`\
-> KW_WHILE          : `while`
+> KW_WHILE          : `while` \
+> KW_ADDRESS        : `address`
 
 
 #### 2.1.2. Reserved keywords

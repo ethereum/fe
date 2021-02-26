@@ -58,7 +58,7 @@ pub fn expr(
         fe::Expr::Subscript { .. } => expr_subscript(scope, Rc::clone(&context), exp),
         fe::Expr::Attribute { .. } => expr_attribute(scope, Rc::clone(&context), exp),
         fe::Expr::Ternary { .. } => expr_ternary(scope, Rc::clone(&context), exp),
-        fe::Expr::BoolOperation { .. } => unimplemented!(),
+        fe::Expr::BoolOperation { .. } => expr_bool_operation(scope, Rc::clone(&context), exp),
         fe::Expr::BinOperation { .. } => expr_bin_operation(scope, Rc::clone(&context), exp),
         fe::Expr::UnaryOperation { .. } => expr_unary_operation(scope, Rc::clone(&context), exp),
         fe::Expr::CompOperation { .. } => expr_comp_operation(scope, Rc::clone(&context), exp),
@@ -358,6 +358,13 @@ fn expr_attribute_self(
     scope: Shared<BlockScope>,
     attr: &Spanned<&str>,
 ) -> Result<ExpressionAttributes, SemanticError> {
+    if let Ok(builtins::SelfField::Address) = builtins::SelfField::from_str(attr.node) {
+        return Ok(ExpressionAttributes::new(
+            Type::Base(Base::Address),
+            Location::Value,
+        ));
+    }
+
     match scope.borrow().contract_field_def(attr.node) {
         Some(field) => Ok(ExpressionAttributes::new(
             field.typ,
@@ -994,6 +1001,27 @@ fn expr_ternary(
         }
         return Err(SemanticError::type_error());
     }
+    unreachable!()
+}
+
+fn expr_bool_operation(
+    scope: Shared<BlockScope>,
+    context: Shared<Context>,
+    exp: &Spanned<fe::Expr>,
+) -> Result<ExpressionAttributes, SemanticError> {
+    if let fe::Expr::BoolOperation { left, right, .. } = &exp.node {
+        let left_attributes = value_expr(Rc::clone(&scope), Rc::clone(&context), left)?;
+        let right_attributes = value_expr(Rc::clone(&scope), Rc::clone(&context), right)?;
+
+        let bool_ = Type::Base(Base::Bool);
+
+        return if left_attributes.typ == bool_ && right_attributes.typ == bool_ {
+            Ok(ExpressionAttributes::new(bool_, Location::Value))
+        } else {
+            Err(SemanticError::type_error())
+        };
+    }
+
     unreachable!()
 }
 
