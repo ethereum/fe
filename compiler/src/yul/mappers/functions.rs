@@ -242,8 +242,13 @@ fn func_return(
     if let fe::FuncStmt::Return { value } = &stmt.node {
         return match value {
             Some(value) => {
-                let value = expressions::expr(context, value)?;
+                // Ensure `return ()` is handled as if the function does not return
+                let attributes = context.get_expression(value).expect("Missing attributes");
+                if attributes.is_empty_tuple() {
+                    return Ok(statement! { leave });
+                }
 
+                let value = expressions::expr(context, value)?;
                 return Ok(block_statement! {
                     (return_val := [value])
                     (leave)

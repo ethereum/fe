@@ -14,6 +14,7 @@ use crate::namespace::types::{
     FixedSize,
     Integer,
     Struct,
+    Tuple,
     Type,
     U256,
 };
@@ -65,7 +66,7 @@ pub fn expr(
         fe::Expr::Call { .. } => expr_call(scope, Rc::clone(&context), exp),
         fe::Expr::List { .. } => expr_list(scope, Rc::clone(&context), exp),
         fe::Expr::ListComp { .. } => unimplemented!(),
-        fe::Expr::Tuple { .. } => unimplemented!(),
+        fe::Expr::Tuple { .. } => expr_tuple(scope, Rc::clone(&context), exp),
         fe::Expr::Str(_) => expr_str(scope, exp),
         fe::Expr::Ellipsis => unimplemented!(),
     }
@@ -109,6 +110,25 @@ pub fn expr_list(
                 });
             }
             return Err(SemanticError::type_error());
+        }
+    }
+    unreachable!()
+}
+
+/// Gather context information for a tuple expression and check for type errors.
+pub fn expr_tuple(
+    _scope: Shared<BlockScope>,
+    _context: Shared<Context>,
+    exp: &Spanned<fe::Expr>,
+) -> Result<ExpressionAttributes, SemanticError> {
+    if let fe::Expr::Tuple { elts } = &exp.node {
+        if elts.is_empty() {
+            return Ok(ExpressionAttributes::new(
+                Type::Tuple(Tuple::empty()),
+                Location::Memory,
+            ));
+        } else {
+            todo!("Non-empty Tuples not supported yet")
         }
     }
     unreachable!()
