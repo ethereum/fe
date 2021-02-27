@@ -11,7 +11,7 @@ Fe is moving fast. Read up on all the latest improvements.
 **WARNING: All Fe releases are alpha releases and only meant to share the development progress with developers and enthusiasts. It is NOT yet ready for production usage.**
 
 [//]: # (towncrier release notes start)
-## 0.2.0-alpha (2021-02-27)
+## 0.2.0-alpha "Borax" (2021-02-27)
 
 
 ### Features
