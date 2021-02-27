@@ -116,10 +116,14 @@ fn func_def<'a>(
         .collect::<Result<Vec<FuncInput>, CompileError>>()?;
 
     let outputs = if let Some(return_type) = return_type {
-        vec![FuncOutput {
-            name: "".to_string(),
-            typ: type_desc(type_defs, &return_type.node)?,
-        }]
+        match type_desc(type_defs, &return_type.node)? {
+            // Should there be a different ABI for `pub def foo() -> ():` and `pub def foo():`?
+            VarType::Tuple(items) if items.is_empty() => vec![],
+            _ => vec![FuncOutput {
+                name: "".to_string(),
+                typ: type_desc(type_defs, &return_type.node)?,
+            }],
+        }
     } else {
         vec![]
     };
@@ -186,7 +190,13 @@ fn type_desc<'a>(
             Ok(VarType::FixedArray(Box::new(inner), *dimension))
         }
         fe::TypeDesc::Map { .. } => Err(CompileError::static_str("maps not supported in ABI")),
-        fe::TypeDesc::Tuple { .. } => unimplemented!(),
+        fe::TypeDesc::Tuple { items } => {
+            let items = items
+                .iter()
+                .map(|item| type_desc(type_defs, &item.node))
+                .collect::<Result<_, _>>()?;
+            Ok(VarType::Tuple(items))
+        }
     }
 }
 

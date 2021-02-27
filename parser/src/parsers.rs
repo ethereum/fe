@@ -603,7 +603,7 @@ pub fn func_def(input: Cursor) -> ParseResult<Spanned<ContractStmt>> {
     let (input, args) = arg_list(input)?;
     let (input, _) = op(")")(input)?;
 
-    let (input, return_type) = opt(preceded(op("->"), base_type))(input)?;
+    let (input, return_type) = opt(preceded(op("->"), base_or_tuple_type))(input)?;
 
     let (input, _) = op(":")(input)?;
 
@@ -680,7 +680,12 @@ pub fn type_def(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
 
 /// Parse a type description e.g. "u256" or "map<address, bool>".
 pub fn type_desc(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
-    alt((map_type, base_type))(input)
+    alt((map_type, base_type, tuple_type))(input)
+}
+
+/// Parse all base and tuple types but not map types
+pub fn base_or_tuple_type(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
+    alt((base_type, tuple_type))(input)
 }
 
 /// Parse a map type e.g. "map<address, bool".
@@ -773,6 +778,28 @@ pub fn base_type(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
             span,
         };
     }
+
+    Ok((input, result))
+}
+
+/// Parse a tuple type.
+///
+/// Example:
+/// (u64, bool)
+pub fn tuple_type(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
+    let (input, opening) = op("(")(input)?;
+
+    let (input, types) = match input[0] {
+        Token { string: ")", .. } => Ok((input, vec![])),
+        _ => separated(base_type, op(","), true)(input),
+    }?;
+
+    let (input, closing) = op(")")(input)?;
+
+    let result = Spanned {
+        node: TypeDesc::Tuple { items: types },
+        span: Span::from_pair(opening, closing),
+    };
 
     Ok((input, result))
 }

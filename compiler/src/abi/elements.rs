@@ -163,6 +163,7 @@ pub enum VarType {
     FixedBytes(usize),
     FixedArray(Box<VarType>, usize),
     String,
+    Tuple(Vec<VarType>),
 }
 
 /// The mutability of a public function.
@@ -177,25 +178,33 @@ pub enum StateMutability {
 }
 
 impl fmt::Display for VarType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> Result<(), Error> {
         match self {
-            VarType::Bool => write!(f, "bool"),
-            VarType::Uint256 => write!(f, "uint256"),
-            VarType::Uint128 => write!(f, "uint128"),
-            VarType::Uint64 => write!(f, "uint64"),
-            VarType::Uint32 => write!(f, "uint32"),
-            VarType::Uint16 => write!(f, "uint16"),
-            VarType::Uint8 => write!(f, "uint8"),
-            VarType::Int256 => write!(f, "int256"),
-            VarType::Int128 => write!(f, "int128"),
-            VarType::Int64 => write!(f, "int64"),
-            VarType::Int32 => write!(f, "int32"),
-            VarType::Int16 => write!(f, "int16"),
-            VarType::Int8 => write!(f, "int8"),
-            VarType::Address => write!(f, "address"),
-            VarType::FixedBytes(size) => write!(f, "bytes{}", size),
-            VarType::FixedArray(inner, dim) => write!(f, "{}[{}]", inner, dim),
-            VarType::String => write!(f, "string"),
+            VarType::Bool => write!(formatter, "bool"),
+            VarType::Uint256 => write!(formatter, "uint256"),
+            VarType::Uint128 => write!(formatter, "uint128"),
+            VarType::Uint64 => write!(formatter, "uint64"),
+            VarType::Uint32 => write!(formatter, "uint32"),
+            VarType::Uint16 => write!(formatter, "uint16"),
+            VarType::Uint8 => write!(formatter, "uint8"),
+            VarType::Int256 => write!(formatter, "int256"),
+            VarType::Int128 => write!(formatter, "int128"),
+            VarType::Int64 => write!(formatter, "int64"),
+            VarType::Int32 => write!(formatter, "int32"),
+            VarType::Int16 => write!(formatter, "int16"),
+            VarType::Int8 => write!(formatter, "int8"),
+            VarType::Address => write!(formatter, "address"),
+            VarType::FixedBytes(size) => write!(formatter, "bytes{}", size),
+            VarType::FixedArray(inner, dim) => write!(formatter, "{}[{}]", inner, dim),
+            VarType::String => write!(formatter, "string"),
+            VarType::Tuple(items) => {
+                let items = items
+                    .iter()
+                    .map(VarType::to_string)
+                    .collect::<Vec<String>>()
+                    .join(",");
+                write!(formatter, "({})", items)
+            }
         }
     }
 }

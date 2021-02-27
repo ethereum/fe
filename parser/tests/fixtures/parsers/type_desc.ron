@@ -1,14 +1,53 @@
+()
+(u8, u16)
 address
 map<address, bool>
 ---
 [
   Spanned(
+    node: Tuple(
+      items: [],
+    ),
+    span: Span(
+      start: 0,
+      end: 2,
+    ),
+  ),
+  Spanned(
+    node: Tuple(
+      items: [
+        Spanned(
+          node: Base(
+            base: "u8",
+          ),
+          span: Span(
+            start: 4,
+            end: 6,
+          ),
+        ),
+        Spanned(
+          node: Base(
+            base: "u16",
+          ),
+          span: Span(
+            start: 8,
+            end: 11,
+          ),
+        ),
+      ],
+    ),
+    span: Span(
+      start: 3,
+      end: 12,
+    ),
+  ),
+  Spanned(
     node: Base(
       base: "address",
     ),
     span: Span(
-      start: 0,
-      end: 7,
+      start: 13,
+      end: 20,
     ),
   ),
   Spanned(
@@ -18,8 +57,8 @@ map<address, bool>
           base: "address",
         ),
         span: Span(
-          start: 12,
-          end: 19,
+          start: 25,
+          end: 32,
         ),
       ),
       to: Spanned(
@@ -27,14 +66,14 @@ map<address, bool>
           base: "bool",
         ),
         span: Span(
-          start: 21,
-          end: 25,
+          start: 34,
+          end: 38,
         ),
       ),
     ),
     span: Span(
-      start: 8,
-      end: 26,
+      start: 21,
+      end: 39,
     ),
   ),
 ]

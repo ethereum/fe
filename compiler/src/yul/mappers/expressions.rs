@@ -55,7 +55,7 @@ pub fn expr(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressio
             fe::Expr::Call { .. } => expr_call(context, exp),
             fe::Expr::List { .. } => unimplemented!(),
             fe::Expr::ListComp { .. } => unimplemented!(),
-            fe::Expr::Tuple { .. } => unimplemented!(),
+            fe::Expr::Tuple { .. } => expr_tuple(exp),
             fe::Expr::Str(_) => expr_str(exp),
             fe::Expr::Ellipsis => unimplemented!(),
         }?;
@@ -337,6 +337,18 @@ pub fn slice_index(
     if let fe::Slice::Index(index) = &slice.node {
         let spanned = utils::spanned_expression(&slice.span, index.as_ref());
         return expr(context, &spanned);
+    }
+
+    unreachable!()
+}
+
+fn expr_tuple(exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
+    if let fe::Expr::Tuple { elts } = &exp.node {
+        if !elts.is_empty() {
+            todo!("Non empty Tuples aren't yet supported")
+        } else {
+            return Ok(literal_expression! {0x0});
+        }
     }
 
     unreachable!()

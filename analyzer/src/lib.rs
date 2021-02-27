@@ -157,6 +157,20 @@ impl ExpressionAttributes {
         }
     }
 
+    /// Return `true` if the type of the expression is an empty Tuple, otherwise
+    /// `false`
+    pub fn is_empty_tuple(&self) -> bool {
+        if let ExpressionAttributes {
+            typ: Type::Tuple(tuple),
+            ..
+        } = self
+        {
+            tuple.is_empty()
+        } else {
+            false
+        }
+    }
+
     /// Adds a move to memory, if it is already in memory.
     pub fn into_cloned(mut self) -> Result<Self, SemanticError> {
         if self.location != Location::Memory {
