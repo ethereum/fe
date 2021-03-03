@@ -196,7 +196,7 @@ pub fn deploy_contract(
 ) -> ContractHarness {
     let src = fs::read_to_string(format!("tests/fixtures/{}", fixture))
         .expect("unable to read fixture file");
-    let compiled_module = compiler::compile(&src, true, false).expect("failed to compile module");
+    let compiled_module = compiler::compile(&src, true, true).expect("failed to compile module");
     let compiled_contract = compiled_module
         .contracts
         .get(contract_name)
@@ -228,7 +228,7 @@ pub fn deploy_contract(
 pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
     let src = fs::read_to_string(format!("tests/fixtures/{}", fixture))
         .expect("unable to read fixture file");
-    let compiled_module = compiler::compile(&src, true, false).expect("failed to compile module");
+    let compiled_module = compiler::compile(&src, true, true).expect("failed to compile module");
     let compiled_contract = compiled_module
         .contracts
         .get(contract_name)
