@@ -1,3 +1,5 @@
+//! Tests for contracts that should cause compile errors
+
 #![cfg(feature = "solc-backend")]
 
 use rstest::rstest;
