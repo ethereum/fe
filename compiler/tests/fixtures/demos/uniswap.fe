@@ -156,9 +156,7 @@ contract UniswapV2Pair:
 
     # if fee is on, mint liquidity equivalent to 1/6th of the growth in sqrt(k)
     def _mint_fee(reserve0: u256, reserve1: u256) -> bool:
-        # TODO: The interfaces of subsequently defined contracts should be visible (https://github.com/ethereum/fe/issues/283)
-        # fee_to: address = UniswapV2Factory(factory).fee_to()
-        fee_to: address = address(0)
+        fee_to: address = UniswapV2Factory(self.factory).fee_to()
         fee_on: bool = fee_to != address(0)
         k_last: u256 = self.k_last # gas savings
         if fee_on:
