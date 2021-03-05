@@ -90,6 +90,7 @@ pub fn build(context: &Context, contract: &Spanned<fe::ModuleStmt>) -> Vec<yul::
             let batch = [public_functions_batch, init_params_batch, contracts_batch].concat();
             functions::abi::batch_decode(batch)
         };
+
         let contract_calls = {
             attributes
                 .external_contracts

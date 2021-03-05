@@ -43,6 +43,7 @@ pub struct ModuleScope {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ContractScope {
+    pub name: String,
     pub parent: Shared<ModuleScope>,
     pub interface: Vec<String>,
     pub event_defs: HashMap<String, Event>,
@@ -173,8 +174,9 @@ impl ModuleScope {
 }
 
 impl ContractScope {
-    pub fn new(parent: Shared<ModuleScope>) -> Shared<Self> {
+    pub fn new(name: &str, parent: Shared<ModuleScope>) -> Shared<Self> {
         Rc::new(RefCell::new(ContractScope {
+            name: name.to_owned(),
             parent,
             function_defs: HashMap::new(),
             event_defs: HashMap::new(),
@@ -430,7 +432,7 @@ mod tests {
     #[test]
     fn test_scope_resolution_on_first_level_block_scope() {
         let module_scope = ModuleScope::new();
-        let contract_scope = ContractScope::new(module_scope);
+        let contract_scope = ContractScope::new("", module_scope);
         let block_scope_1 = BlockScope::from_contract_scope("", Rc::clone(&contract_scope));
         assert_eq!(block_scope_1, block_scope_1.borrow().function_scope());
         assert_eq!(contract_scope, block_scope_1.borrow().contract_scope());
@@ -439,7 +441,7 @@ mod tests {
     #[test]
     fn test_scope_resolution_on_second_level_block_scope() {
         let module_scope = ModuleScope::new();
-        let contract_scope = ContractScope::new(module_scope);
+        let contract_scope = ContractScope::new("", module_scope);
         let block_scope_1 = BlockScope::from_contract_scope("", Rc::clone(&contract_scope));
         let block_scope_2 =
             BlockScope::from_block_scope(BlockScopeType::IfElse, Rc::clone(&block_scope_1));
@@ -450,7 +452,7 @@ mod tests {
     #[test]
     fn test_1st_level_def_lookup_on_1st_level_block_scope() {
         let module_scope = ModuleScope::new();
-        let contract_scope = ContractScope::new(module_scope);
+        let contract_scope = ContractScope::new("", module_scope);
         let block_scope_1 = BlockScope::from_contract_scope("", Rc::clone(&contract_scope));
         block_scope_1
             .borrow_mut()
@@ -465,7 +467,7 @@ mod tests {
     #[test]
     fn test_1st_level_def_lookup_on_2nd_level_block_scope() {
         let module_scope = ModuleScope::new();
-        let contract_scope = ContractScope::new(module_scope);
+        let contract_scope = ContractScope::new("", module_scope);
         let block_scope_1 = BlockScope::from_contract_scope("", Rc::clone(&contract_scope));
         let block_scope_2 =
             BlockScope::from_block_scope(BlockScopeType::IfElse, Rc::clone(&block_scope_1));
@@ -482,7 +484,7 @@ mod tests {
     #[test]
     fn test_2nd_level_def_lookup_on_1nd_level_block_scope_fails() {
         let module_scope = ModuleScope::new();
-        let contract_scope = ContractScope::new(module_scope);
+        let contract_scope = ContractScope::new("", module_scope);
         let block_scope_1 = BlockScope::from_contract_scope("", Rc::clone(&contract_scope));
         let block_scope_2 =
             BlockScope::from_block_scope(BlockScopeType::IfElse, Rc::clone(&block_scope_1));
@@ -496,7 +498,7 @@ mod tests {
     #[test]
     fn test_inherits_type() {
         let module_scope = ModuleScope::new();
-        let contract_scope = ContractScope::new(module_scope);
+        let contract_scope = ContractScope::new("", module_scope);
         let block_scope_1 = BlockScope::from_contract_scope("", Rc::clone(&contract_scope));
         assert_eq!(
             true,

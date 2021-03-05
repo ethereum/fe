@@ -30,7 +30,7 @@ pub fn contract_def(
     stmt: &Spanned<fe::ModuleStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::ModuleStmt::ContractDef { name, .. } = &stmt.node {
-        let contract_scope = ContractScope::new(Rc::clone(&module_scope));
+        let contract_scope = ContractScope::new(name.node, Rc::clone(&module_scope));
 
         contract_scope
             .borrow()

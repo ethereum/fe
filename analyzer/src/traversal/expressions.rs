@@ -1124,7 +1124,7 @@ mod tests {
 
     fn scope() -> Shared<BlockScope> {
         let module_scope = ModuleScope::new();
-        let contract_scope = ContractScope::new(module_scope);
+        let contract_scope = ContractScope::new("", module_scope);
         BlockScope::from_contract_scope("", contract_scope)
     }
 
