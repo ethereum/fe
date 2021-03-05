@@ -76,7 +76,7 @@ contract GuestBook:
 
 A lot more working examples can be found in our [test fixtures directory](https://github.com/ethereum/fe/tree/master/compiler/tests/fixtures).
 
-The most advanced example that we can provide at this point is a fully working [ERC20 implementation](https://github.com/ethereum/fe/blob/master/compiler/tests/fixtures/erc20_token.fe).
+The most advanced example that we can provide at this point is a fully working [ERC20 implementation](https://github.com/ethereum/fe/blob/master/compiler/tests/fixtures/demos/erc20_token.fe).
 
 ## Community
 
