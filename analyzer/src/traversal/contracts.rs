@@ -9,7 +9,6 @@ use crate::namespace::scopes::{
 use crate::namespace::types::{
     Contract,
     FixedSize,
-    Type,
 };
 use crate::traversal::{
     functions,
@@ -27,11 +26,45 @@ use std::rc::Rc;
 /// errors.
 pub fn contract_def(
     module_scope: Shared<ModuleScope>,
+    _context: Shared<Context>,
+    stmt: &Spanned<fe::ModuleStmt>,
+) -> Result<(), SemanticError> {
+    if let fe::ModuleStmt::ContractDef { name, .. } = &stmt.node {
+        let contract_scope = ContractScope::new(Rc::clone(&module_scope));
+
+        contract_scope
+            .borrow()
+            .module_scope()
+            .borrow_mut()
+            .add_contract_def(
+                name.node,
+                Rc::clone(&contract_scope),
+                Contract {
+                    name: name.node.to_owned(),
+                    // Function defintions are added in a subsequent walk
+                    functions: vec![],
+                },
+            )?;
+
+        return Ok(());
+    }
+
+    unreachable!()
+}
+
+/// Gather context information for contract definitions and check for type
+/// errors.
+pub fn contract_body(
+    module_scope: Shared<ModuleScope>,
     context: Shared<Context>,
     stmt: &Spanned<fe::ModuleStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::ModuleStmt::ContractDef { name, body } = &stmt.node {
-        let contract_scope = ContractScope::new(Rc::clone(&module_scope));
+        let contract_scope = module_scope
+            .borrow()
+            .contract_def(name.node)
+            .unwrap_or_else(|| panic!("Unknown contract {}", name.node))
+            .scope;
 
         for stmt in body.iter() {
             match &stmt.node {
@@ -46,28 +79,19 @@ pub fn contract_def(
             .map_err(|error| error.with_context(stmt.span))?;
         }
 
-        for stmt in body.iter() {
-            if let fe::ContractStmt::FuncDef { .. } = &stmt.node {
-                functions::func_body(Rc::clone(&contract_scope), Rc::clone(&context), stmt)
-                    .map_err(|error| error.with_context(stmt.span))?;
-            };
-        }
-
         let contract_attributes = ContractAttributes::from(Rc::clone(&contract_scope));
 
         contract_scope
             .borrow()
             .module_scope()
             .borrow_mut()
-            .add_type_def(
+            .update_contract_def(
                 name.node,
-                Type::Contract(Contract {
+                Contract {
                     name: name.node.to_owned(),
-                    functions: contract_attributes.public_functions.clone(),
-                }),
+                    functions: contract_attributes.public_functions,
+                },
             );
-
-        context.borrow_mut().add_contract(stmt, contract_attributes);
 
         return Ok(());
     }

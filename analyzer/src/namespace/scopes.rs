@@ -1,6 +1,7 @@
 use crate::errors::SemanticError;
 use crate::namespace::events::Event;
 use crate::namespace::types::{
+    Contract,
     FixedSize,
     Type,
 };
@@ -13,6 +14,12 @@ use std::collections::{
 use std::rc::Rc;
 
 pub type Shared<T> = Rc<RefCell<T>>;
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ContractDef {
+    pub name: String,
+    pub scope: Shared<ContractScope>,
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ContractFunctionDef {
@@ -31,6 +38,7 @@ pub struct ContractFieldDef {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ModuleScope {
     pub type_defs: HashMap<String, Type>,
+    contract_defs: HashMap<String, ContractDef>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -73,6 +81,20 @@ pub enum BlockScopeType {
     Loop,
 }
 
+impl Contract {
+    /// Retrieve the latest version of the contract from the given module scope.
+    /// This may be needed when we are dealing with outdated type information.
+    /// A common case would be a storage field with the type of another
+    /// contract, which at the time of creation uses an incomplete stub of
+    /// the final type.
+    pub fn latest_version(&self, scope: Shared<ModuleScope>) -> Contract {
+        if let Some(Type::Contract(contract)) = scope.borrow().get_type_def(&self.name) {
+            return contract;
+        }
+        panic!("No contract {} known in the given module", self.name)
+    }
+}
+
 impl Scope {
     pub fn module_scope(&self) -> Shared<ModuleScope> {
         match self {
@@ -86,12 +108,56 @@ impl Scope {
 impl ModuleScope {
     pub fn new() -> Shared<Self> {
         Rc::new(RefCell::new(ModuleScope {
+            contract_defs: HashMap::new(),
             type_defs: HashMap::new(),
         }))
     }
 
+    /// Add a contract definiton to the scope
+    pub fn add_contract_def(
+        &mut self,
+        name: &str,
+        scope: Shared<ContractScope>,
+        contract: Contract,
+    ) -> Result<(), SemanticError> {
+        match self.contract_defs.entry(name.to_owned()) {
+            Entry::Occupied(_) => Err(SemanticError::already_defined()),
+            Entry::Vacant(e) => {
+                e.insert(ContractDef {
+                    name: name.to_owned(),
+                    scope,
+                });
+                self.type_defs
+                    .insert(name.to_owned(), Type::Contract(contract));
+                Ok(())
+            }
+        }
+    }
+
+    /// Update a contract definiton in the scope
+    pub fn update_contract_def(&mut self, name: &str, contract: Contract) {
+        if !self.contract_defs.contains_key(name) || !self.type_defs.contains_key(name) {
+            panic!(
+                "No contract defintion for {}. Call add_contract_def first.",
+                name
+            )
+        }
+        // Nothing about the ContractDef changes, we only need to update the contract
+        // itself.
+        self.type_defs
+            .insert(name.to_owned(), Type::Contract(contract));
+    }
+
+    /// Lookup contract definition by its name.
+    pub fn contract_def(&self, name: &str) -> Option<ContractDef> {
+        self.contract_defs.get(name).map(|def| (*def).clone())
+    }
+
     /// Add a type definiton to the scope
     pub fn add_type_def(&mut self, name: &str, typ: Type) {
+        if let Type::Contract(_) = typ {
+            panic!("Use add_contract_def to add type definitions for contracts")
+        }
         self.type_defs.insert(name.to_owned(), typ);
     }
 
@@ -137,7 +203,19 @@ impl ContractScope {
 
     /// Lookup contract field definition by its name.
     pub fn field_def(&self, name: &str) -> Option<ContractFieldDef> {
-        self.field_defs.get(name).map(|def| (*def).clone())
+        self.field_defs.get(name).map(|field| {
+            if let Type::Contract(contract) = &field.typ {
+                // Since this field has the type of a contract, it is possible that
+                // the contract type was only partially available at the time of creation.
+                // This ensures we always return an up to date version.
+                ContractFieldDef {
+                    nonce: field.nonce,
+                    typ: Type::Contract(contract.latest_version(self.module_scope())),
+                }
+            } else {
+                field.clone()
+            }
+        })
     }
 
     /// Lookup contract function definition by its name.
