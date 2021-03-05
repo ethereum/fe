@@ -109,7 +109,12 @@ impl From<Shared<ContractScope>> for ContractAttributes {
 
         let external_contracts = scope.borrow().get_module_type_defs(|typ| {
             if let Type::Contract(contract) = typ {
-                Some(contract.to_owned())
+                // Skip our own contract
+                if contract.name == scope.borrow().name {
+                    None
+                } else {
+                    Some(contract.to_owned())
+                }
             } else {
                 None
             }

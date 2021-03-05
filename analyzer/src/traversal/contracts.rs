@@ -31,7 +31,7 @@ pub fn contract_def(
     stmt: &Spanned<fe::ModuleStmt>,
 ) -> Result<Shared<ContractScope>, SemanticError> {
     if let fe::ModuleStmt::ContractDef { name, body } = &stmt.node {
-        let contract_scope = ContractScope::new(Rc::clone(&module_scope));
+        let contract_scope = ContractScope::new(name.node, Rc::clone(&module_scope));
 
         for stmt in body.iter() {
             match &stmt.node {
