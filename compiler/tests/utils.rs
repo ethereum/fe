@@ -327,6 +327,11 @@ pub fn address_array_token(v: &[&str]) -> ethabi::Token {
 }
 
 #[allow(dead_code)]
+pub fn tuple_token(tokens: &[ethabi::Token]) -> ethabi::Token {
+    ethabi::Token::Tuple(tokens.to_owned())
+}
+
+#[allow(dead_code)]
 pub fn to_2s_complement(val: isize) -> U256 {
     // Since this API takes an `isize` we can be sure that the min and max values
     // will never be above what fits the `I256` type which has the same capacity

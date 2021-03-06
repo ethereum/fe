@@ -145,6 +145,26 @@ fn abi_encoding_stress() {
         harness.test_function(&mut executor, "set_my_bytes", &[my_bytes.clone()], None);
         harness.test_function(&mut executor, "get_my_bytes", &[], Some(&my_bytes));
 
+        let my_tuple1 = tuple_token(&[
+            uint_token(42),
+            uint_token(26),
+            bool_token(true),
+            address_token("000000000000000000000000000000000001e240"),
+        ]);
+        let my_tuple2 = tuple_token(&[
+            uint_token(12341234),
+            uint_token(42),
+            bool_token(false),
+            address_token("00000000000000000000000000000000000270f"),
+        ]);
+        harness.test_function(&mut executor, "get_my_struct", &[], Some(&my_tuple1));
+        harness.test_function(
+            &mut executor,
+            "mod_my_struct",
+            &[my_tuple1],
+            Some(&my_tuple2),
+        );
+
         harness.test_function(&mut executor, "emit_my_event", &[], None);
 
         harness.events_emitted(

@@ -122,14 +122,12 @@ contract UniswapV2Pair:
     pub def balanceOf(account: address) -> u256:
         return self.balances[account]
 
-    # TODO: support structs in the public interface (https://github.com/ethereum/fe/issues/282)
-    pub def get_reserves(): # -> ThreeNums:
-#        return ThreeNums(
-#            num1=self.reserve0,
-#            num2=self.reserve1,
-#            num3=self.block_time_stamp
-#        )
-        pass
+    pub def get_reserves() -> ThreeNums:
+        return ThreeNums(
+            num1=self.reserve0,
+            num2=self.reserve1,
+            num3=self.block_timestamp_last
+        )
 
     # called once by the factory at time of deployment
     pub def initialize(token0: address, token1: address):
@@ -205,8 +203,7 @@ contract UniswapV2Pair:
         return liquidity
 
     # this low-level function should be called from a contract which performs important safety checks
-    # TODO: support structs in the public interface (https://github.com/ethereum/fe/issues/282)
-    pub def burn(to: address): # -> TwoNums:
+    pub def burn(to: address) -> TwoNums:
         # (reserve0: u112, reserve1: u112) = self.get_reserves() # gas savings
         reserve0: u256 = self.reserve0
         reserve1: u256 = self.reserve1
@@ -233,7 +230,7 @@ contract UniswapV2Pair:
             self.k_last = reserve0 * reserve1 # reserve0 and reserve1 are up-to-date
 
         emit Burn(msg.sender, amount0, amount1, to)
-        #return TwoNums(num1=amount0, num2=amount1)
+        return TwoNums(num1=amount0, num2=amount1)
 
     # this low-level function should be called from a contract which performs important safety checks
     # TODO: add support for the bytes type (https://github.com/ethereum/fe/issues/280)

@@ -27,7 +27,7 @@ pub fn contract_def(
                 if name.node == "__init__" {
                     init = Some((
                         functions::func_def(context, stmt)?,
-                        attributes.param_types.clone(),
+                        attributes.param_types(),
                     ))
                 } else {
                     user_functions.push(functions::func_def(context, stmt)?)

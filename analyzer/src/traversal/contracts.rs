@@ -1,5 +1,5 @@
 use crate::errors::SemanticError;
-use crate::namespace::events::Event;
+use crate::namespace::events::EventDef;
 use crate::namespace::scopes::{
     ContractScope,
     ModuleScope,
@@ -41,7 +41,9 @@ pub fn contract_def(
                     // current contract.
                     Ok(())
                 }
-                fe::ContractStmt::EventDef { .. } => event_def(Rc::clone(&contract_scope), stmt),
+                fe::ContractStmt::EventDef { .. } => {
+                    event_def(Rc::clone(&contract_scope), Rc::clone(&context), stmt)
+                }
                 fe::ContractStmt::FuncDef { .. } => {
                     functions::func_def(Rc::clone(&contract_scope), Rc::clone(&context), stmt)
                 }
@@ -113,12 +115,13 @@ fn contract_field(
 
 fn event_def(
     scope: Shared<ContractScope>,
+    context: Shared<Context>,
     stmt: &Spanned<fe::ContractStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::ContractStmt::EventDef { name, fields } = &stmt.node {
         let name = name.node;
 
-        let (is_indexed_bools, fields): (Vec<bool>, Vec<FixedSize>) = fields
+        let (is_indexed_bools, fields): (Vec<bool>, Vec<(String, FixedSize)>) = fields
             .iter()
             .map(|field| event_field(Rc::clone(&scope), field))
             .collect::<Result<Vec<_>, _>>()?
@@ -138,15 +141,17 @@ fn event_def(
 
         // check if they are trying to index an array type
         for index in indexed_fields.clone() {
-            match fields[index].to_owned() {
+            match fields[index].1.to_owned() {
                 FixedSize::Base(_) => {}
                 _ => unimplemented!("non-base type indexed event params"),
             }
         }
 
-        return scope
-            .borrow_mut()
-            .add_event(name, Event::new(name, fields, indexed_fields));
+        let event = EventDef::new(name, fields, indexed_fields);
+
+        context.borrow_mut().add_event(stmt, event.clone());
+
+        return scope.borrow_mut().add_event(name, event);
     }
 
     unreachable!()
@@ -155,9 +160,12 @@ fn event_def(
 fn event_field(
     scope: Shared<ContractScope>,
     field: &Spanned<fe::EventField>,
-) -> Result<(bool, FixedSize), SemanticError> {
+) -> Result<(bool, (String, FixedSize)), SemanticError> {
     Ok((
         field.node.qual.is_some(),
-        types::type_desc_fixed_size(Scope::Contract(scope), &field.node.typ)?,
+        (
+            field.node.name.node.to_string(),
+            types::type_desc_fixed_size(Scope::Contract(scope), &field.node.typ)?,
+        ),
     ))
 }

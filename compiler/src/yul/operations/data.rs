@@ -1,5 +1,5 @@
 use crate::yul::operations::abi as abi_operations;
-use fe_analyzer::namespace::events::Event;
+use fe_analyzer::namespace::events::EventDef;
 use fe_analyzer::namespace::types::{
     Array,
     FeSized,
@@ -66,18 +66,18 @@ pub fn mcopym<T: FeSized>(typ: T, ptr: yul::Expression) -> yul::Expression {
 }
 
 /// Logs an event.
-pub fn emit_event(event: Event, vals: Vec<yul::Expression>) -> yul::Statement {
+pub fn emit_event(event: EventDef, vals: Vec<yul::Expression>) -> yul::Statement {
     let mut topics = vec![literal_expression! { (event.topic) }];
 
     let (field_vals, field_types): (Vec<yul::Expression>, Vec<FixedSize>) = event
-        .non_indexed_fields()
+        .non_indexed_field_types_with_index()
         .into_iter()
         .map(|(index, typ)| (vals[index].to_owned(), typ))
         .unzip();
 
     // field types will be relevant when we implement indexed array values
     let (mut indexed_field_vals, _): (Vec<yul::Expression>, Vec<FixedSize>) = event
-        .indexed_fields()
+        .indexed_field_types_with_index()
         .into_iter()
         .map(|(index, typ)| (vals[index].to_owned(), typ))
         .unzip();
@@ -128,7 +128,7 @@ mod tests {
         emit_event,
         sum,
     };
-    use fe_analyzer::namespace::events::Event;
+    use fe_analyzer::namespace::events::EventDef;
     use fe_analyzer::namespace::types::{
         Base,
         FixedSize,
@@ -138,9 +138,12 @@ mod tests {
 
     #[test]
     fn test_emit_event_no_indexed() {
-        let event = Event::new(
+        let event = EventDef::new(
             "MyEvent",
-            vec![FixedSize::Base(U256), FixedSize::Base(Base::Address)],
+            vec![
+                ("my_u256".to_string(), FixedSize::Base(U256)),
+                ("my_addr".to_string(), FixedSize::Base(Base::Address)),
+            ],
             vec![],
         );
 
@@ -152,9 +155,12 @@ mod tests {
 
     #[test]
     fn test_emit_event_one_indexed() {
-        let event = Event::new(
+        let event = EventDef::new(
             "MyEvent",
-            vec![FixedSize::Base(U256), FixedSize::Base(Base::Address)],
+            vec![
+                ("my_u256".to_string(), FixedSize::Base(U256)),
+                ("my_addr".to_string(), FixedSize::Base(Base::Address)),
+            ],
             vec![0],
         );
 

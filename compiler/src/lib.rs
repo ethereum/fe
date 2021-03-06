@@ -31,15 +31,15 @@ pub fn compile(
         .1
         .node;
 
-    // build abi
-    let json_abis = abi::build(&fe_module)?;
-
     // analyze source code
     let context = fe_analyzer::analyze(&fe_module)
         .map_err(|error| CompileError::str(&error.format_user(src)))?;
 
+    // build abi
+    let json_abis = abi::build(&context, &fe_module)?;
+
     // compile to yul
-    let yul_contracts = yul::compile(context, &fe_module)?;
+    let yul_contracts = yul::compile(&context, &fe_module)?;
 
     // compile to bytecode if required
     #[cfg(feature = "solc-backend")]
