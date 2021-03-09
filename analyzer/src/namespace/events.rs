@@ -82,7 +82,7 @@ mod tests {
             vec![
                 FixedSize::Base(Base::Address),
                 FixedSize::Base(Base::Address),
-                FixedSize::Base(Base::Bool),
+                FixedSize::bool(),
             ],
             vec![1],
         );
@@ -92,16 +92,13 @@ mod tests {
             vec![
                 FixedSize::Base(Base::Address),
                 FixedSize::Base(Base::Address),
-                FixedSize::Base(Base::Bool),
+                FixedSize::bool(),
             ],
         );
 
         assert_eq!(
             event.non_indexed_fields(),
-            vec![
-                (0, FixedSize::Base(Base::Address)),
-                (2, FixedSize::Base(Base::Bool))
-            ]
+            vec![(0, FixedSize::Base(Base::Address)), (2, FixedSize::bool())]
         );
 
         assert_eq!(

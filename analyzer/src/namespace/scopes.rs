@@ -343,10 +343,7 @@ mod tests {
         ContractScope,
         ModuleScope,
     };
-    use crate::namespace::types::{
-        Base,
-        FixedSize,
-    };
+    use crate::namespace::types::FixedSize;
     use std::rc::Rc;
 
     #[test]
@@ -376,10 +373,10 @@ mod tests {
         let block_scope_1 = BlockScope::from_contract_scope("", Rc::clone(&contract_scope));
         block_scope_1
             .borrow_mut()
-            .add_var("some_thing", FixedSize::Base(Base::Bool))
+            .add_var("some_thing", FixedSize::bool())
             .unwrap();
         assert_eq!(
-            Some(FixedSize::Base(Base::Bool)),
+            Some(FixedSize::bool()),
             block_scope_1.borrow().get_variable_def("some_thing")
         );
     }
@@ -393,10 +390,10 @@ mod tests {
             BlockScope::from_block_scope(BlockScopeType::IfElse, Rc::clone(&block_scope_1));
         block_scope_1
             .borrow_mut()
-            .add_var("some_thing", FixedSize::Base(Base::Bool))
+            .add_var("some_thing", FixedSize::bool())
             .unwrap();
         assert_eq!(
-            Some(FixedSize::Base(Base::Bool)),
+            Some(FixedSize::bool()),
             block_scope_2.borrow().get_variable_def("some_thing")
         );
     }
@@ -410,7 +407,7 @@ mod tests {
             BlockScope::from_block_scope(BlockScopeType::IfElse, Rc::clone(&block_scope_1));
         block_scope_2
             .borrow_mut()
-            .add_var("some_thing", FixedSize::Base(Base::Bool))
+            .add_var("some_thing", FixedSize::bool())
             .unwrap();
         assert_eq!(None, block_scope_1.borrow().get_variable_def("some_thing"));
     }

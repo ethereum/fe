@@ -20,7 +20,6 @@ pub fn get_attribute(
 mod tests {
     use crate::yul::operations::structs;
     use fe_analyzer::namespace::types::{
-        Base,
         FixedSize,
         Struct,
     };
@@ -29,8 +28,8 @@ mod tests {
     #[test]
     fn test_new() {
         let mut val = Struct::new("Foo");
-        val.add_field("bar", &FixedSize::Base(Base::Bool));
-        val.add_field("bar2", &FixedSize::Base(Base::Bool));
+        val.add_field("bar", &FixedSize::bool());
+        val.add_field("bar2", &FixedSize::bool());
         let params = vec![
             identifier_expression! { (1) },
             identifier_expression! { (2) },
