@@ -17,6 +17,8 @@ use std::rc::Rc;
 pub fn module(context: Shared<Context>, module: &fe::Module) -> Result<(), SemanticError> {
     let scope = ModuleScope::new();
 
+    let mut contracts = vec![];
+
     for stmt in module.body.iter() {
         match &stmt.node {
             fe::ModuleStmt::TypeDef { .. } => type_def(Rc::clone(&scope), stmt)?,
@@ -24,10 +26,21 @@ pub fn module(context: Shared<Context>, module: &fe::Module) -> Result<(), Seman
                 structs::struct_def(Rc::clone(&scope), name.node, body)?
             }
             fe::ModuleStmt::ContractDef { .. } => {
-                contracts::contract_def(Rc::clone(&scope), Rc::clone(&context), stmt)?
+                // Collect contract statements and the scope that we create for them. After we
+                // have walked all contracts once, we walk over them again for a
+                // more detailed inspection.
+                let contract_scope =
+                    contracts::contract_def(Rc::clone(&scope), Rc::clone(&context), stmt)?;
+                contracts.push((stmt, contract_scope))
             }
             fe::ModuleStmt::FromImport { .. } => unimplemented!(),
             fe::ModuleStmt::SimpleImport { .. } => unimplemented!(),
+        }
+    }
+
+    for (stmt, scope) in contracts.iter() {
+        if let fe::ModuleStmt::ContractDef { .. } = stmt.node {
+            contracts::contract_body(Rc::clone(&scope), Rc::clone(&context), stmt)?
         }
     }
 
