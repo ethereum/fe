@@ -415,6 +415,10 @@ impl FixedSize {
 
         false
     }
+
+    pub fn bool() -> Self {
+        FixedSize::Base(Base::Bool)
+    }
 }
 
 impl TryFrom<Type> for FixedSize {

@@ -166,7 +166,7 @@ mod tests {
                     inner: Base::Address,
                     size: 42
                 }),
-                FixedSize::Base(Base::Bool)
+                FixedSize::bool()
             ])
             .expect("failed to get static size")
             .to_string(),
