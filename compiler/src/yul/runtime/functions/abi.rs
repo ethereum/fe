@@ -10,6 +10,15 @@ use fe_analyzer::namespace::types::{
 };
 use yultsur::*;
 
+/// Return all abi runtime functions
+pub fn all() -> Vec<yul::Statement> {
+    vec![
+        unpack(),
+        pack(AbiDecodeLocation::Calldata),
+        pack(AbiDecodeLocation::Memory),
+    ]
+}
+
 /// Creates a batch of encoding function for the given type arrays.
 ///
 /// It sorts the functions and removes duplicates.

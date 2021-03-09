@@ -8,6 +8,11 @@ use fe_analyzer::namespace::types::{
 };
 use yultsur::*;
 
+/// Return all contacts runtime functions
+pub fn all() -> Vec<yul::Statement> {
+    vec![create2(), create()]
+}
+
 /// Builds a set of functions used to make calls to the given contract's public
 /// functions.
 pub fn calls(contract: Contract) -> Vec<yul::Statement> {

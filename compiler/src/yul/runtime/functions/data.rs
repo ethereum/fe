@@ -1,5 +1,35 @@
 use yultsur::*;
 
+/// Return all data runtime functions
+pub fn all() -> Vec<yul::Statement> {
+    vec![
+        avail(),
+        alloc(),
+        alloc_mstoren(),
+        free(),
+        ccopym(),
+        load_data_string(),
+        mcopys(),
+        scopym(),
+        mcopym(),
+        scopys(),
+        mloadn(),
+        sloadn(),
+        bytes_sloadn(),
+        cloadn(),
+        mstoren(),
+        sstoren(),
+        bytes_sstoren(),
+        bytes_mcopys(),
+        bytes_scopym(),
+        bytes_scopys(),
+        map_value_ptr(),
+        ceil32(),
+        ternary(),
+        set_zero(),
+    ]
+}
+
 /// Returns the highest available pointer.
 pub fn avail() -> yul::Statement {
     function_definition! {
