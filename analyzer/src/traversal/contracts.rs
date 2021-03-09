@@ -29,14 +29,17 @@ pub fn contract_def(
     module_scope: Shared<ModuleScope>,
     context: Shared<Context>,
     stmt: &Spanned<fe::ModuleStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<Shared<ContractScope>, SemanticError> {
     if let fe::ModuleStmt::ContractDef { name, body } = &stmt.node {
         let contract_scope = ContractScope::new(Rc::clone(&module_scope));
 
         for stmt in body.iter() {
             match &stmt.node {
                 fe::ContractStmt::ContractField { .. } => {
-                    contract_field(Rc::clone(&contract_scope), stmt)
+                    // Contract fields are evaluated in the next pass together with function bodies
+                    // so that they can use other contract types that may only be defined after the
+                    // current contract.
+                    Ok(())
                 }
                 fe::ContractStmt::EventDef { .. } => event_def(Rc::clone(&contract_scope), stmt),
                 fe::ContractStmt::FuncDef { .. } => {
@@ -44,13 +47,6 @@ pub fn contract_def(
                 }
             }
             .map_err(|error| error.with_context(stmt.span))?;
-        }
-
-        for stmt in body.iter() {
-            if let fe::ContractStmt::FuncDef { .. } = &stmt.node {
-                functions::func_body(Rc::clone(&contract_scope), Rc::clone(&context), stmt)
-                    .map_err(|error| error.with_context(stmt.span))?;
-            };
         }
 
         let contract_attributes = ContractAttributes::from(Rc::clone(&contract_scope));
@@ -63,9 +59,37 @@ pub fn contract_def(
                 name.node,
                 Type::Contract(Contract {
                     name: name.node.to_owned(),
-                    functions: contract_attributes.public_functions.clone(),
+                    functions: contract_attributes.public_functions,
                 }),
             );
+
+        return Ok(contract_scope);
+    }
+
+    unreachable!()
+}
+
+/// Gather context information for fields and function bodies of contracts.
+/// Gathering this information is deferred to allow contracts to refer to other
+/// contract types that are defined after it.
+pub fn contract_body(
+    contract_scope: Shared<ContractScope>,
+    context: Shared<Context>,
+    stmt: &Spanned<fe::ModuleStmt>,
+) -> Result<(), SemanticError> {
+    if let fe::ModuleStmt::ContractDef { body, .. } = &stmt.node {
+        for stmt in body.iter() {
+            if let fe::ContractStmt::ContractField { .. } = &stmt.node {
+                contract_field(Rc::clone(&contract_scope), stmt)?;
+            };
+
+            if let fe::ContractStmt::FuncDef { .. } = &stmt.node {
+                functions::func_body(Rc::clone(&contract_scope), Rc::clone(&context), stmt)
+                    .map_err(|error| error.with_context(stmt.span))?;
+            };
+        }
+
+        let contract_attributes = ContractAttributes::from(Rc::clone(&contract_scope));
 
         context.borrow_mut().add_contract(stmt, contract_attributes);
 
