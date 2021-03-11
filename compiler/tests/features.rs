@@ -1002,6 +1002,28 @@ fn create_contract() {
     })
 }
 
+#[test]
+fn create_contract_from_init() {
+    with_executor(&|mut executor| {
+        let factory_harness = deploy_contract(
+            &mut executor,
+            "create_contract_from_init.fe",
+            "FooFactory",
+            &[],
+        );
+
+        let foo_address = factory_harness
+            .call_function(&mut executor, "get_foo_addr", &[])
+            .expect("factory did not return an address")
+            .to_address()
+            .expect("not an address");
+
+        let foo_harness = load_contract(foo_address, "create_contract_from_init.fe", "Foo");
+
+        foo_harness.test_function(&mut executor, "get_my_num", &[], Some(&uint_token(42)));
+    })
+}
+
 #[rstest(
     fixture_file,
     contract_name,
