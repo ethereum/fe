@@ -1,7 +1,10 @@
 use crate::errors::CompileError;
-use core::fmt;
-use serde::export::fmt::Error;
-use serde::export::Formatter;
+use fe_analyzer::namespace::types::{
+    AbiComponent,
+    AbiEncoding,
+    FixedSize,
+};
+use fe_analyzer::FunctionAttributes;
 use serde::ser::SerializeSeq;
 use serde::{
     Serialize,
@@ -71,8 +74,6 @@ impl Serialize for Contract {
 pub struct Event {
     /// The event's name.
     pub name: String,
-    // FIXME: This attribute should be added when serialized instead of being defined in the
-    // struct.
     /// The type of an event (Always "event").
     #[serde(rename = "type")]
     pub typ: String,
@@ -90,7 +91,7 @@ pub struct EventField {
     pub name: String,
     /// The type of an event (e.g. u256, address, bytes100,...)
     #[serde(rename = "type")]
-    pub typ: VarType,
+    pub typ: String,
     /// True if the field is part of the log’s topics, false if it is one of the
     /// log’s data segment.
     pub indexed: bool,
@@ -110,6 +111,27 @@ pub struct Function {
     pub outputs: Vec<FuncOutput>,
 }
 
+/// Component of an ABI tuple.
+#[derive(Serialize, Debug, PartialEq, Clone)]
+pub struct Component {
+    name: String,
+    #[serde(rename = "type")]
+    typ: String,
+}
+
+impl From<AbiComponent> for Component {
+    fn from(component: AbiComponent) -> Self {
+        if !component.components.is_empty() {
+            todo!("ABI serialization of subcomponents")
+        }
+
+        Self {
+            name: component.name,
+            typ: component.typ,
+        }
+    }
+}
+
 /// A single function input.
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub struct FuncInput {
@@ -117,7 +139,11 @@ pub struct FuncInput {
     pub name: String,
     /// The input's type.
     #[serde(rename = "type")]
-    pub typ: VarType,
+    pub typ: String,
+    /// Components of a tuple. This field is excluded if there are no
+    /// components.
+    #[serde(skip_serializing_if = "should_skip_components")]
+    pub components: Vec<Component>,
 }
 
 /// A single function output.
@@ -127,11 +153,17 @@ pub struct FuncOutput {
     pub name: String,
     /// The output's type.
     #[serde(rename = "type")]
-    pub typ: VarType,
+    pub typ: String,
+    /// Components of a tuple. This field is excluded if there are no
+    /// components.
+    #[serde(skip_serializing_if = "should_skip_components")]
+    pub components: Vec<Component>,
 }
 
-// FIXME: This should be removed in favor of separate structs for each function
-// type.
+fn should_skip_components(components: &[Component]) -> bool {
+    components.is_empty()
+}
+
 /// The type of a public function.
 #[allow(dead_code)]
 #[derive(Serialize, Debug, PartialEq, Clone)]
@@ -141,29 +173,6 @@ pub enum FuncType {
     Constructor,
     Receive,
     Fallback,
-}
-
-/// The type of an event field or function input or output.
-#[derive(Debug, PartialEq, Clone)]
-pub enum VarType {
-    Uint256,
-    Uint128,
-    Uint64,
-    Uint32,
-    Uint16,
-    Uint8,
-    Int256,
-    Int128,
-    Int64,
-    Int32,
-    Int16,
-    Int8,
-    Bool,
-    Address,
-    FixedBytes(usize),
-    FixedArray(Box<VarType>, usize),
-    String,
-    Tuple(Vec<VarType>),
 }
 
 /// The mutability of a public function.
@@ -177,44 +186,56 @@ pub enum StateMutability {
     Payable,
 }
 
-impl fmt::Display for VarType {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> Result<(), Error> {
-        match self {
-            VarType::Bool => write!(formatter, "bool"),
-            VarType::Uint256 => write!(formatter, "uint256"),
-            VarType::Uint128 => write!(formatter, "uint128"),
-            VarType::Uint64 => write!(formatter, "uint64"),
-            VarType::Uint32 => write!(formatter, "uint32"),
-            VarType::Uint16 => write!(formatter, "uint16"),
-            VarType::Uint8 => write!(formatter, "uint8"),
-            VarType::Int256 => write!(formatter, "int256"),
-            VarType::Int128 => write!(formatter, "int128"),
-            VarType::Int64 => write!(formatter, "int64"),
-            VarType::Int32 => write!(formatter, "int32"),
-            VarType::Int16 => write!(formatter, "int16"),
-            VarType::Int8 => write!(formatter, "int8"),
-            VarType::Address => write!(formatter, "address"),
-            VarType::FixedBytes(size) => write!(formatter, "bytes{}", size),
-            VarType::FixedArray(inner, dim) => write!(formatter, "{}[{}]", inner, dim),
-            VarType::String => write!(formatter, "string"),
-            VarType::Tuple(items) => {
-                let items = items
-                    .iter()
-                    .map(VarType::to_string)
-                    .collect::<Vec<String>>()
-                    .join(",");
-                write!(formatter, "({})", items)
-            }
-        }
-    }
-}
+impl From<FunctionAttributes> for Function {
+    fn from(attributes: FunctionAttributes) -> Self {
+        let name = attributes.name;
 
-impl Serialize for VarType {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
+        let (name, typ) = match name.as_str() {
+            "__init__" => ("".to_string(), FuncType::Constructor),
+            _ => (name, FuncType::Function),
+        };
+
+        let inputs = attributes
+            .params
+            .iter()
+            .map(|(name, typ)| FuncInput {
+                name: name.to_owned(),
+                typ: typ.abi_type_name(),
+                components: typ
+                    .abi_type_components()
+                    .iter()
+                    .map(|component| Component::from(component.to_owned()))
+                    .collect(),
+            })
+            .collect();
+
+        let return_type = &attributes.return_type;
+        let outputs = if return_type.is_empty_tuple() {
+            vec![]
+        } else {
+            let components = if let FixedSize::Struct(struct_) = return_type {
+                struct_
+                    .abi_type_components()
+                    .iter()
+                    .map(|component| Component::from(component.to_owned()))
+                    .collect()
+            } else {
+                vec![]
+            };
+
+            vec![FuncOutput {
+                name: "".to_string(),
+                typ: return_type.abi_type_name(),
+                components,
+            }]
+        };
+
+        Self {
+            name,
+            typ,
+            inputs,
+            outputs,
+        }
     }
 }
 
@@ -228,7 +249,6 @@ mod tests {
         FuncOutput,
         FuncType,
         Function,
-        VarType,
     };
 
     #[test]
@@ -239,7 +259,7 @@ mod tests {
                 typ: "event".to_string(),
                 fields: vec![EventField {
                     name: "input_name".to_string(),
-                    typ: VarType::Uint256,
+                    typ: "uint256".to_string(),
                     indexed: true,
                 }],
                 anonymous: false,
@@ -249,11 +269,13 @@ mod tests {
                 typ: FuncType::Function,
                 inputs: vec![FuncInput {
                     name: "input_name".to_string(),
-                    typ: VarType::Address,
+                    typ: "address".to_string(),
+                    components: vec![],
                 }],
                 outputs: vec![FuncOutput {
                     name: "output_name".to_string(),
-                    typ: VarType::Uint256,
+                    typ: "uint256".to_string(),
+                    components: vec![],
                 }],
             }],
         };
@@ -264,7 +286,13 @@ mod tests {
                 {
                     "name":"event_name",
                     "type":"event",
-                    "inputs":[{"name":"input_name","type":"uint256","indexed":true}],
+                    "inputs":[
+                        {
+                            "name":"input_name",
+                            "type":"uint256",
+                            "indexed":true
+                        }
+                    ],
                     "anonymous":false
                 },
                 {
@@ -276,22 +304,6 @@ mod tests {
             ]"#
             .split_whitespace()
             .collect::<String>(),
-        )
-    }
-
-    #[test]
-    fn fixed_bytes() {
-        assert_eq!(
-            serde_json::to_string(&VarType::FixedBytes(100)).unwrap(),
-            r#""bytes100""#
-        )
-    }
-
-    #[test]
-    fn fixed_array() {
-        assert_eq!(
-            serde_json::to_string(&VarType::FixedArray(Box::new(VarType::Address), 42)).unwrap(),
-            r#""address[42]""#
         )
     }
 }

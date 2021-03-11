@@ -143,6 +143,18 @@ fn uniswap_contracts() {
             Some(&uint_token(1000)),
         );
 
+        // Validate reserves.
+        pair_harness.test_function(
+            &mut executor,
+            "get_reserves",
+            &[],
+            Some(&tuple_token(&[
+                uint_token_from_dec_str("200000000000000000000"),
+                uint_token_from_dec_str("100000000000000000000"),
+                uint_token_from_dec_str("0"),
+            ])),
+        );
+
         /* BOB PERFORMS A SWAP */
 
         // Set Bob as the token1 caller, this is so Bob can perform a swap.
@@ -177,6 +189,18 @@ fn uniswap_contracts() {
             Some(&uint_token_from_dec_str("1993")),
         );
 
+        // Validate reserves.
+        pair_harness.test_function(
+            &mut executor,
+            "get_reserves",
+            &[],
+            Some(&tuple_token(&[
+                uint_token_from_dec_str("199999999999999998007"),
+                uint_token_from_dec_str("100000000000000001000"),
+                uint_token_from_dec_str("0"),
+            ])),
+        );
+
         /* ALICE REMOVES LIQUIDITY */
 
         // Alice sends liquidity back to pair contract.
@@ -188,7 +212,29 @@ fn uniswap_contracts() {
         );
 
         // Alice burns the liquidity that she has sent back.
-        pair_harness.test_function(&mut executor, "burn", &[alice.clone()], None);
+        pair_harness.test_function(
+            &mut executor,
+            "burn",
+            &[alice.clone()],
+            Some(&tuple_token(&[
+                uint_token_from_dec_str("199999999999999996592"),
+                uint_token_from_dec_str("100000000000000000292"),
+            ])),
+        );
+
+        /* VALIDATE LIQUIDITY REMOVAL */
+
+        // Validate reserves.
+        pair_harness.test_function(
+            &mut executor,
+            "get_reserves",
+            &[],
+            Some(&tuple_token(&[
+                uint_token_from_dec_str("1415"),
+                uint_token_from_dec_str("708"),
+                uint_token_from_dec_str("0"),
+            ])),
+        );
 
         /* SANITY CHECK TOKEN BALANCES */
 

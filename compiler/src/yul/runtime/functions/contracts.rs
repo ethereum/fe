@@ -24,14 +24,14 @@ pub fn calls(contract: Contract) -> Vec<yul::Statement> {
             // get the name of the call function and its parameters
             let function_name = names::contract_call(&contract_name, &function.name);
             let param_names = function
-                .param_types
+                .param_types()
                 .iter()
-                .map(|typ| typ.abi_name())
+                .map(|typ| typ.abi_type_name())
                 .collect::<Vec<String>>();
 
             // create a pair of identifiers and expressions for the parameters
             let (param_idents, param_exprs): (Vec<yul::Identifier>, Vec<yul::Expression>) = (0
-                ..function.param_types.len())
+                ..function.params.len())
                 .into_iter()
                 .map(|n| {
                     let name = format!("val_{}", n);
@@ -47,9 +47,9 @@ pub fn calls(contract: Contract) -> Vec<yul::Statement> {
             };
             // the operations used to encode the parameters
             let encoding_operation =
-                abi_operations::encode(function.param_types.clone(), param_exprs.clone());
+                abi_operations::encode(function.param_types(), param_exprs.clone());
             // the size of the encoded data
-            let encoding_size = abi_operations::encode_size(function.param_types, param_exprs);
+            let encoding_size = abi_operations::encode_size(function.param_types(), param_exprs);
 
             if function.return_type.is_empty_tuple() {
                 // there is no return data to handle

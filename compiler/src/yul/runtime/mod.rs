@@ -39,7 +39,7 @@ pub fn build(context: &Context, contract: &Spanned<fe::ModuleStmt>) -> Vec<yul::
             let contracts_batch = external_functions
                 .clone()
                 .into_iter()
-                .map(|function| function.param_types)
+                .map(|function| function.param_types())
                 .collect();
 
             let structs_batch = attributes
@@ -63,7 +63,7 @@ pub fn build(context: &Context, contract: &Spanned<fe::ModuleStmt>) -> Vec<yul::
                 .public_functions
                 .to_owned()
                 .into_iter()
-                .map(|attributes| attributes.param_types)
+                .map(|attributes| attributes.param_types())
                 .collect::<Vec<_>>()
                 .concat()
                 .into_iter()
@@ -73,7 +73,7 @@ pub fn build(context: &Context, contract: &Spanned<fe::ModuleStmt>) -> Vec<yul::
             let init_params_batch =
                 if let Some(init_attributes) = attributes.init_function.to_owned() {
                     init_attributes
-                        .param_types
+                        .param_types()
                         .into_iter()
                         .map(|typ| (typ, AbiDecodeLocation::Memory))
                         .collect::<Vec<_>>()

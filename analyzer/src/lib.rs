@@ -11,8 +11,9 @@ pub mod namespace;
 mod traversal;
 
 use crate::errors::SemanticError;
-use crate::namespace::events::Event;
+use crate::namespace::events::EventDef;
 use crate::namespace::scopes::{
+    ContractFunctionDef,
     ContractScope,
     Shared,
 };
@@ -71,7 +72,7 @@ pub struct ContractAttributes {
     /// An init function that has been defined by the user.
     pub init_function: Option<FunctionAttributes>,
     /// Events that have been defined by the user.
-    pub events: Vec<Event>,
+    pub events: Vec<EventDef>,
     /// Static strings that the contract defines
     pub string_literals: HashSet<String>,
     /// Structs that have been defined by the user
@@ -94,14 +95,16 @@ impl From<Shared<ContractScope>> for ContractAttributes {
 
             if name != "__init__" {
                 public_functions.push(FunctionAttributes {
+                    is_public: def.is_public,
                     name: name.clone(),
-                    param_types: def.param_types.to_owned(),
+                    params: def.params.to_owned(),
                     return_type: def.return_type.to_owned(),
                 });
             } else {
                 init_function = Some(FunctionAttributes {
+                    is_public: def.is_public,
                     name: name.clone(),
-                    param_types: def.param_types.to_owned(),
+                    params: def.params.to_owned(),
                     return_type: FixedSize::empty_tuple(),
                 })
             }
@@ -136,7 +139,7 @@ impl From<Shared<ContractScope>> for ContractAttributes {
                 .event_defs
                 .values()
                 .map(|event| event.to_owned())
-                .collect::<Vec<Event>>(),
+                .collect::<Vec<EventDef>>(),
             string_literals: scope.borrow().string_defs.clone(),
             structs,
             external_contracts,
@@ -252,9 +255,34 @@ pub enum CallType {
 /// Contains contextual information relating to a function definition AST node.
 #[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub struct FunctionAttributes {
+    pub is_public: bool,
     pub name: String,
-    pub param_types: Vec<FixedSize>,
+    pub params: Vec<(String, FixedSize)>,
     pub return_type: FixedSize,
+}
+
+impl FunctionAttributes {
+    pub fn param_types(&self) -> Vec<FixedSize> {
+        self.params.iter().map(|(_, typ)| typ.to_owned()).collect()
+    }
+
+    pub fn param_names(&self) -> Vec<String> {
+        self.params
+            .iter()
+            .map(|(name, _)| name.to_owned())
+            .collect()
+    }
+}
+
+impl From<ContractFunctionDef> for FunctionAttributes {
+    fn from(def: ContractFunctionDef) -> Self {
+        Self {
+            is_public: def.is_public,
+            name: def.name,
+            params: def.params,
+            return_type: def.return_type,
+        }
+    }
 }
 
 /// Contains contextual information about a Fe module and can be queried using
@@ -262,11 +290,12 @@ pub struct FunctionAttributes {
 #[derive(Clone, Debug, Default)]
 pub struct Context {
     expressions: HashMap<Span, ExpressionAttributes>,
-    emits: HashMap<Span, Event>,
+    emits: HashMap<Span, EventDef>,
     functions: HashMap<Span, FunctionAttributes>,
     declarations: HashMap<Span, FixedSize>,
     contracts: HashMap<Span, ContractAttributes>,
     calls: HashMap<Span, CallType>,
+    events: HashMap<Span, EventDef>,
 }
 
 impl Context {
@@ -282,6 +311,7 @@ impl Context {
             declarations: HashMap::new(),
             contracts: HashMap::new(),
             calls: HashMap::new(),
+            events: HashMap::new(),
         }
     }
 
@@ -296,12 +326,12 @@ impl Context {
     }
 
     /// Attribute contextual information to an emit statement node.
-    pub fn add_emit(&mut self, spanned: &Spanned<fe::FuncStmt>, event: Event) {
+    pub fn add_emit(&mut self, spanned: &Spanned<fe::FuncStmt>, event: EventDef) {
         self.emits.insert(spanned.span, event);
     }
 
     /// Get information that has been attributed to an emit statement node.
-    pub fn get_emit<T: Into<Span>>(&self, span: T) -> Option<&Event> {
+    pub fn get_emit<T: Into<Span>>(&self, span: T) -> Option<&EventDef> {
         self.emits.get(&span.into())
     }
 
@@ -351,6 +381,16 @@ impl Context {
     /// Get information that has been attributed to a call expression node.
     pub fn get_call<T: Into<Span>>(&self, span: T) -> Option<&CallType> {
         self.calls.get(&span.into())
+    }
+
+    /// Attribute contextual information to an event definition node.
+    pub fn add_event(&mut self, spanned: &Spanned<fe::ContractStmt>, event: EventDef) {
+        self.events.insert(spanned.span, event);
+    }
+
+    /// Get information that has been attributed to an event definition node.
+    pub fn get_event<T: Into<Span>>(&self, span: T) -> Option<&EventDef> {
+        self.events.get(&span.into())
     }
 }
 

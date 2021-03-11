@@ -477,7 +477,7 @@ pub fn call_arg(
 
             Ok(attributes)
         }
-        fe::CallArg::Kwarg(fe::Kwarg { name: _, value }) => expr(scope, context, value),
+        fe::CallArg::Kwarg(fe::Kwarg { name: _, value }) => assignable_expr(scope, context, value),
     }
 }
 
@@ -620,10 +620,9 @@ fn expr_call_self_attribute(
     args: &Spanned<Vec<Spanned<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let Some(ContractFunctionDef {
-        is_public: _,
-        param_types,
+        params,
         return_type,
-        scope: _,
+        ..
     }) = scope
         .borrow()
         .contract_scope()
@@ -632,11 +631,12 @@ fn expr_call_self_attribute(
     {
         let argument_attributes = expr_call_args(Rc::clone(&scope), Rc::clone(&context), args)?;
 
-        if param_types.len() != argument_attributes.len() {
+        if params.len() != argument_attributes.len() {
             return Err(SemanticError::wrong_number_of_params());
         }
 
-        if fixed_sizes_to_types(param_types) != expression_attributes_to_types(argument_attributes)
+        if fixed_sizes_to_types(params.iter().map(|(_, typ)| typ.to_owned()).collect())
+            != expression_attributes_to_types(argument_attributes)
         {
             return Err(SemanticError::type_error());
         }
@@ -783,11 +783,11 @@ fn expr_call_contract_attribute(
             .map(|arg| call_arg(Rc::clone(&scope), Rc::clone(&context), arg))
             .collect::<Result<Vec<_>, _>>()?;
 
-        if function.param_types.len() != argument_attributes.len() {
+        if function.params.len() != argument_attributes.len() {
             return Err(SemanticError::wrong_number_of_params());
         }
 
-        if fixed_sizes_to_types(function.param_types.clone())
+        if fixed_sizes_to_types(function.param_types())
             != expression_attributes_to_types(argument_attributes)
         {
             return Err(SemanticError::type_error());

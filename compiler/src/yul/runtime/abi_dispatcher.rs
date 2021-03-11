@@ -27,10 +27,10 @@ pub fn dispatcher(attributes: Vec<FunctionAttributes>) -> yul::Statement {
 }
 
 fn dispatch_arm(attributes: FunctionAttributes) -> yul::Case {
-    let selector = selector(&attributes.name, &attributes.param_types);
+    let selector = selector(&attributes.name, &attributes.param_types());
 
     if !attributes.return_type.is_empty_tuple() {
-        let selection = selection(&attributes.name, &attributes.param_types);
+        let selection = selection(&attributes.name, &attributes.param_types());
         let return_data = abi_operations::encode(
             vec![attributes.return_type.clone()],
             vec![expression! { raw_return }],
@@ -51,7 +51,7 @@ fn dispatch_arm(attributes: FunctionAttributes) -> yul::Case {
         };
     }
 
-    let selection = selection_as_statement(&attributes.name, &attributes.param_types);
+    let selection = selection_as_statement(&attributes.name, &attributes.param_types());
 
     case! { case [selector] { [selection] } }
 }
@@ -59,7 +59,7 @@ fn dispatch_arm(attributes: FunctionAttributes) -> yul::Case {
 fn selector(name: &str, params: &[FixedSize]) -> yul::Literal {
     let params = params
         .iter()
-        .map(|param| param.abi_name())
+        .map(|param| param.abi_type_name())
         .collect::<Vec<String>>();
 
     literal! {(abi_utils::func_selector(name, params))}

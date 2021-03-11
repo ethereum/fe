@@ -1,5 +1,5 @@
 use crate::errors::SemanticError;
-use crate::namespace::events::Event;
+use crate::namespace::events::EventDef;
 use crate::namespace::types::{
     FixedSize,
     Type,
@@ -17,7 +17,8 @@ pub type Shared<T> = Rc<RefCell<T>>;
 #[derive(Clone, Debug, PartialEq)]
 pub struct ContractFunctionDef {
     pub is_public: bool,
-    pub param_types: Vec<FixedSize>,
+    pub name: String,
+    pub params: Vec<(String, FixedSize)>,
     pub return_type: FixedSize,
     pub scope: Shared<BlockScope>,
 }
@@ -38,7 +39,7 @@ pub struct ContractScope {
     pub name: String,
     pub parent: Shared<ModuleScope>,
     pub interface: Vec<String>,
-    pub event_defs: HashMap<String, Event>,
+    pub event_defs: HashMap<String, EventDef>,
     pub field_defs: HashMap<String, ContractFieldDef>,
     pub function_defs: HashMap<String, ContractFunctionDef>,
     pub string_defs: HashSet<String>,
@@ -133,7 +134,7 @@ impl ContractScope {
     }
 
     /// Lookup contract event definition by its name.
-    pub fn event_def(&self, name: &str) -> Option<Event> {
+    pub fn event_def(&self, name: &str) -> Option<EventDef> {
         self.event_defs.get(name).map(|def| (*def).clone())
     }
 
@@ -167,26 +168,24 @@ impl ContractScope {
         &mut self,
         name: &str,
         is_public: bool,
-        param_types: Vec<FixedSize>,
+        params: Vec<(String, FixedSize)>,
         return_type: FixedSize,
         scope: Shared<BlockScope>,
-    ) -> Result<(), SemanticError> {
+    ) -> Result<&ContractFunctionDef, SemanticError> {
         match self.function_defs.entry(name.to_owned()) {
             Entry::Occupied(_) => Err(SemanticError::already_defined()),
-            Entry::Vacant(e) => {
-                e.insert(ContractFunctionDef {
-                    is_public,
-                    param_types,
-                    return_type,
-                    scope,
-                });
-                Ok(())
-            }
+            Entry::Vacant(entry) => Ok(entry.insert(ContractFunctionDef {
+                is_public,
+                name: name.to_string(),
+                params,
+                return_type,
+                scope,
+            })),
         }
     }
 
     /// Add an event definition to the scope.
-    pub fn add_event(&mut self, name: &str, event: Event) -> Result<(), SemanticError> {
+    pub fn add_event(&mut self, name: &str, event: EventDef) -> Result<(), SemanticError> {
         match self.event_defs.entry(name.to_owned()) {
             Entry::Occupied(_) => Err(SemanticError::already_defined()),
             Entry::Vacant(e) => {
@@ -268,7 +267,7 @@ impl BlockScope {
     }
 
     /// Lookup an event definition on the inherited contract scope
-    pub fn contract_event_def(&self, name: &str) -> Option<Event> {
+    pub fn contract_event_def(&self, name: &str) -> Option<EventDef> {
         self.contract_scope().borrow().event_def(name)
     }
 

@@ -1,3 +1,9 @@
+struct MyStruct:
+    my_num: u256
+    my_num2: u8
+    my_bool: bool
+    my_addr: address
+
 contract Foo:
     my_addrs: address[5]
     my_u128: u128
@@ -49,6 +55,21 @@ contract Foo:
 
     pub def get_my_bytes() -> bytes[100]:
         return self.my_bytes.to_mem()
+
+    pub def get_my_struct() -> MyStruct:
+        return MyStruct(
+            my_num=42,
+            my_num2=u8(26),
+            my_bool=true,
+            my_addr=address(123456)
+        )
+
+    pub def mod_my_struct(my_struct: MyStruct) -> MyStruct:
+        my_struct.my_num = 12341234
+        my_struct.my_num2 = u8(42)
+        my_struct.my_bool = false
+        my_struct.my_addr = address(9999)
+        return my_struct
 
     pub def emit_my_event():
         emit MyEvent(

@@ -51,7 +51,9 @@ pub fn func_def(
         let name = name.node;
         let function_scope = BlockScope::from_contract_scope(name, Rc::clone(&contract_scope));
 
-        let param_types = args
+        let is_public = qual.is_some();
+
+        let params = args
             .iter()
             .map(|arg| func_def_arg(Rc::clone(&function_scope), arg))
             .collect::<Result<Vec<_>, _>>()?;
@@ -62,20 +64,17 @@ pub fn func_def(
             .transpose()?
             .unwrap_or_else(|| Tuple::empty().into());
 
-        let is_public = qual.is_some();
-        contract_scope.borrow_mut().add_function(
-            name,
-            is_public,
-            param_types.clone(),
-            return_type.clone(),
-            Rc::clone(&function_scope),
-        )?;
-
-        let attributes = FunctionAttributes {
-            name: name.to_owned(),
-            param_types,
-            return_type,
-        };
+        let attributes: FunctionAttributes = contract_scope
+            .borrow_mut()
+            .add_function(
+                name,
+                is_public,
+                params,
+                return_type,
+                Rc::clone(&function_scope),
+            )?
+            .to_owned()
+            .into();
 
         context.borrow_mut().add_function(def, attributes);
 
@@ -165,13 +164,13 @@ fn validate_all_paths_return_or_revert(
 fn func_def_arg(
     scope: Shared<BlockScope>,
     arg: &Spanned<fe::FuncDefArg>,
-) -> Result<FixedSize, SemanticError> {
+) -> Result<(String, FixedSize), SemanticError> {
     let name = arg.node.name.node;
     let typ = types::type_desc_fixed_size(Scope::Block(Rc::clone(&scope)), &arg.node.typ)?;
 
     scope.borrow_mut().add_var(name, typ.clone())?;
 
-    Ok(typ)
+    Ok((name.to_string(), typ))
 }
 
 fn func_stmt(
@@ -368,7 +367,7 @@ fn emit(
                 .map(|arg| expressions::call_arg(Rc::clone(&scope), Rc::clone(&context), arg))
                 .collect::<Result<Vec<_>, _>>()?;
 
-            if fixed_sizes_to_types(event.field_types())
+            if fixed_sizes_to_types(event.all_field_types())
                 != expression_attributes_to_types(argument_attributes)
             {
                 return Err(SemanticError::type_error());
@@ -482,7 +481,7 @@ mod tests {
             .expect("No definiton for foo exists");
 
         assert_eq!(def.is_public, false);
-        assert_eq!(def.param_types, vec![FixedSize::Base(U256)]);
+        assert_eq!(def.params, vec![("x".to_string(), FixedSize::Base(U256))]);
         assert_eq!(def.return_type, FixedSize::Base(U256));
         assert!(matches!(
             *def.scope.borrow(),
