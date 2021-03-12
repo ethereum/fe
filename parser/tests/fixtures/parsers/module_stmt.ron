@@ -3,14 +3,14 @@ contract Foo:
     x: bar
 ---
 [
-  Spanned(
-    node: SimpleImport(
+  Node(
+    kind: SimpleImport(
       names: [
-        Spanned(
-          node: SimpleImportName(
+        Node(
+          kind: SimpleImportName(
             path: [
-              Spanned(
-                node: "foo",
+              Node(
+                kind: "foo",
                 span: Span(
                   start: 7,
                   end: 10,
@@ -31,28 +31,28 @@ contract Foo:
       end: 10,
     ),
   ),
-  Spanned(
-    node: ContractDef(
-      name: Spanned(
-        node: "Foo",
+  Node(
+    kind: ContractDef(
+      name: Node(
+        kind: "Foo",
         span: Span(
           start: 20,
           end: 23,
         ),
       ),
       body: [
-        Spanned(
-          node: ContractField(
+        Node(
+          kind: ContractField(
             qual: None,
-            name: Spanned(
-              node: "x",
+            name: Node(
+              kind: "x",
               span: Span(
                 start: 29,
                 end: 30,
               ),
             ),
-            typ: Spanned(
-              node: Base(
+            typ: Node(
+              kind: Base(
                 base: "bar",
               ),
               span: Span(

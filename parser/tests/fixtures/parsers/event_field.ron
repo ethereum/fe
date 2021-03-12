@@ -2,18 +2,18 @@ x: address
 idx x: address
 ---
 [
-  Spanned(
-    node: EventField(
+  Node(
+    kind: EventField(
       qual: None,
-      name: Spanned(
-        node: "x",
+      name: Node(
+        kind: "x",
         span: Span(
           start: 0,
           end: 1,
         ),
       ),
-      typ: Spanned(
-        node: Base(
+      typ: Node(
+        kind: Base(
           base: "address",
         ),
         span: Span(
@@ -27,24 +27,24 @@ idx x: address
       end: 10,
     ),
   ),
-  Spanned(
-    node: EventField(
-      qual: Some(Spanned(
-        node: Idx,
+  Node(
+    kind: EventField(
+      qual: Some(Node(
+        kind: Idx,
         span: Span(
           start: 11,
           end: 14,
         ),
       )),
-      name: Spanned(
-        node: "x",
+      name: Node(
+        kind: "x",
         span: Span(
           start: 15,
           end: 16,
         ),
       ),
-      typ: Spanned(
-        node: Base(
+      typ: Node(
+        kind: Base(
           base: "address",
         ),
         span: Span(

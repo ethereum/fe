@@ -10,71 +10,71 @@ in
 is
 ---
 [
-  Spanned(
-    node: NotIn,
+  Node(
+    kind: NotIn,
     span: Span(
       start: 0,
       end: 6,
     ),
   ),
-  Spanned(
-    node: IsNot,
+  Node(
+    kind: IsNot,
     span: Span(
       start: 7,
       end: 13,
     ),
   ),
-  Spanned(
-    node: Lt,
+  Node(
+    kind: Lt,
     span: Span(
       start: 14,
       end: 15,
     ),
   ),
-  Spanned(
-    node: LtE,
+  Node(
+    kind: LtE,
     span: Span(
       start: 16,
       end: 18,
     ),
   ),
-  Spanned(
-    node: Eq,
+  Node(
+    kind: Eq,
     span: Span(
       start: 19,
       end: 21,
     ),
   ),
-  Spanned(
-    node: GtE,
+  Node(
+    kind: GtE,
     span: Span(
       start: 22,
       end: 24,
     ),
   ),
-  Spanned(
-    node: Gt,
+  Node(
+    kind: Gt,
     span: Span(
       start: 25,
       end: 26,
     ),
   ),
-  Spanned(
-    node: NotEq,
+  Node(
+    kind: NotEq,
     span: Span(
       start: 27,
       end: 29,
     ),
   ),
-  Spanned(
-    node: In,
+  Node(
+    kind: In,
     span: Span(
       start: 30,
       end: 32,
     ),
   ),
-  Spanned(
-    node: Is,
+  Node(
+    kind: Is,
     span: Span(
       start: 33,
       end: 35,

@@ -1,3 +1,4 @@
+#![cfg(feature = "ignore")]
 use fe_analyzer;
 use fe_analyzer::namespace::types::{
     Array,
@@ -10,9 +11,9 @@ use fe_analyzer::{
     Location,
 };
 use fe_parser::ast as fe;
-use fe_parser::span::{
+use fe_parser::node::{
+    Node,
     Span,
-    Spanned,
 };
 
 const GUEST_BOOK: &str = include_str!("fixtures/guest_book.fe");
@@ -67,20 +68,17 @@ fn addr_bytes_map_sto() -> ExpressionAttributes {
     )
 }
 
-fn mock_spanned_expr(start: usize, end: usize) -> Spanned<fe::Expr<'static>> {
-    Spanned {
-        node: fe::Expr::Name("foo"),
-        span: Span { start, end },
-    }
+fn mock_node_expr(start: usize, end: usize) -> Node<fe::Expr<'static>> {
+    Node::new(fe::Expr::Name("foo"), Span { start, end })
 }
 
-fn mock_spanned_func_stmt(start: usize, end: usize) -> Spanned<fe::FuncStmt<'static>> {
-    Spanned {
-        node: fe::FuncStmt::Expr {
+fn mock_node_func_stmt(start: usize, end: usize) -> Node<fe::FuncStmt<'static>> {
+    Node::new(
+        fe::FuncStmt::Expr {
             value: fe::Expr::Name("foo"),
         },
-        span: Span { start, end },
-    }
+        Span { start, end },
+    )
 }
 
 #[test]
@@ -89,7 +87,7 @@ fn guest_book_analysis() {
     let fe_module = fe_parser::parsers::file_input(&tokens[..])
         .expect("failed to parse guest book")
         .1
-        .node;
+        .kind;
 
     let context = fe_analyzer::analyze(&fe_module).expect("failed to perform semantic analysis");
 
@@ -103,13 +101,13 @@ fn guest_book_analysis() {
         (338, 342, &addr_val()),
     ] {
         assert_eq!(
-            context.get_expression(&mock_spanned_expr(*start, *end)),
+            context.get_expression(&mock_node_expr(*start, *end)),
             Some(*expected),
         );
     }
 
     let actual_event = context
-        .get_emit(&mock_spanned_func_stmt(228, 258))
+        .get_emit(&mock_node_func_stmt(228, 258))
         .expect("couldn't find event for emit");
     assert_eq!(
         actual_event.topic,

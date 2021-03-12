@@ -1,22 +1,22 @@
 [1][2][3]
 ---
 [
-  Spanned(
-    node: 1,
+  Node(
+    kind: 1,
     span: Span(
       start: 0,
       end: 3,
     ),
   ),
-  Spanned(
-    node: 2,
+  Node(
+    kind: 2,
     span: Span(
       start: 3,
       end: 6,
     ),
   ),
-  Spanned(
-    node: 3,
+  Node(
+    kind: 3,
     span: Span(
       start: 6,
       end: 9,

@@ -3,8 +3,8 @@ extern crate regex;
 pub mod ast;
 pub mod builders;
 pub mod errors;
+pub mod node;
 pub mod parsers;
-pub mod span;
 pub mod string_utils;
 pub mod tokenizer;
 

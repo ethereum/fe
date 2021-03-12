@@ -4,8 +4,8 @@ pass; pass
 ---
 [
   [
-    Spanned(
-      node: Pass,
+    Node(
+      kind: Pass,
       span: Span(
         start: 0,
         end: 4,
@@ -13,8 +13,8 @@ pass; pass
     ),
   ],
   [
-    Spanned(
-      node: Pass,
+    Node(
+      kind: Pass,
       span: Span(
         start: 5,
         end: 9,
@@ -22,15 +22,15 @@ pass; pass
     ),
   ],
   [
-    Spanned(
-      node: Pass,
+    Node(
+      kind: Pass,
       span: Span(
         start: 11,
         end: 15,
       ),
     ),
-    Spanned(
-      node: Pass,
+    Node(
+      kind: Pass,
       span: Span(
         start: 17,
         end: 21,

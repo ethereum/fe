@@ -832,17 +832,17 @@ pub fn type_desc(defs: &HashMap<String, Type>, typ: &fe::TypeDesc) -> Result<Typ
             Err(SemanticError::undefined_value())
         }
         fe::TypeDesc::Array { typ, dimension } => Ok(Type::Array(Array {
-            inner: type_desc_base(defs, &typ.node)?,
+            inner: type_desc_base(defs, &typ.kind)?,
             size: *dimension,
         })),
         fe::TypeDesc::Map { from, to } => Ok(Type::Map(Map {
-            key: type_desc_base(defs, &from.node)?,
-            value: Box::new(type_desc(defs, &to.node)?),
+            key: type_desc_base(defs, &from.kind)?,
+            value: Box::new(type_desc(defs, &to.kind)?),
         })),
         fe::TypeDesc::Tuple { items } => Ok(Type::Tuple(Tuple {
             items: items
                 .iter()
-                .map(|typ| type_desc_base(defs, &typ.node))
+                .map(|typ| type_desc_base(defs, &typ.kind))
                 .collect::<Result<_, _>>()?,
         })),
     }

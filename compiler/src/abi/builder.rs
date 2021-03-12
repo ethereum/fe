@@ -8,7 +8,7 @@ use crate::errors::CompileError;
 use fe_analyzer::namespace::types::AbiEncoding;
 use fe_analyzer::Context;
 use fe_parser::ast as fe;
-use fe_parser::span::Spanned;
+use fe_parser::node::Node;
 
 /// Parse a map of contract ABIs from the input `module`.
 pub fn module<'a>(
@@ -19,9 +19,9 @@ pub fn module<'a>(
         .body
         .iter()
         .try_fold(ModuleAbis::new(), |mut abis, stmt| {
-            if let fe::ModuleStmt::ContractDef { name, body } = &stmt.node {
+            if let fe::ModuleStmt::ContractDef { name, body } = &stmt.kind {
                 if abis
-                    .insert(name.node.to_string(), contract_def(context, body)?)
+                    .insert(name.kind.to_string(), contract_def(context, body)?)
                     .is_some()
                 {
                     return Err(CompileError::static_str("duplicate contract definition"));
@@ -34,10 +34,10 @@ pub fn module<'a>(
 
 fn contract_def<'a>(
     context: &Context,
-    body: &[Spanned<fe::ContractStmt<'a>>],
+    body: &[Node<fe::ContractStmt<'a>>],
 ) -> Result<Contract, CompileError> {
     body.iter().try_fold(Contract::new(), |mut contract, stmt| {
-        match &stmt.node {
+        match &stmt.kind {
             fe::ContractStmt::FuncDef { .. } => {
                 let attributes = context
                     .get_function(stmt)
@@ -102,7 +102,7 @@ mod tests {
         let module = parsers::file_input(&tokens[..])
             .expect("unable to build module AST")
             .1
-            .node;
+            .kind;
         let context = fe_analyzer::analyze(&module).expect("failed to analyze source");
         let abis = builder::module(&context, &module).expect("unable to build ABI");
 

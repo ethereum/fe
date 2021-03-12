@@ -7,19 +7,25 @@ else:
     c
 ---
 [
-  Spanned(
-    node: While(
-      test: Spanned(
-        node: Name("a"),
+  Node(
+    kind: While(
+      test: Node(
+        kind: Name("a"),
         span: Span(
           start: 6,
           end: 7,
         ),
       ),
       body: [
-        Spanned(
-          node: Expr(
-            value: Name("b"),
+        Node(
+          kind: Expr(
+            value: Node(
+              kind: Name("b"),
+              span: Span(
+                start: 13,
+                end: 14,
+              ),
+            ),
           ),
           span: Span(
             start: 13,
@@ -34,19 +40,25 @@ else:
       end: 14,
     ),
   ),
-  Spanned(
-    node: While(
-      test: Spanned(
-        node: Name("a"),
+  Node(
+    kind: While(
+      test: Node(
+        kind: Name("a"),
         span: Span(
           start: 22,
           end: 23,
         ),
       ),
       body: [
-        Spanned(
-          node: Expr(
-            value: Name("b"),
+        Node(
+          kind: Expr(
+            value: Node(
+              kind: Name("b"),
+              span: Span(
+                start: 29,
+                end: 30,
+              ),
+            ),
           ),
           span: Span(
             start: 29,
@@ -55,9 +67,15 @@ else:
         ),
       ],
       or_else: [
-        Spanned(
-          node: Expr(
-            value: Name("c"),
+        Node(
+          kind: Expr(
+            value: Node(
+              kind: Name("c"),
+              span: Span(
+                start: 41,
+                end: 42,
+              ),
+            ),
           ),
           span: Span(
             start: 41,

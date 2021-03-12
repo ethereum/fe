@@ -50,9 +50,9 @@ use crate::errors::{
     ErrorKind,
     ParseError,
 };
-use crate::span::{
+use crate::node::{
+    Node,
     Span,
-    Spanned,
 };
 use crate::{
     Cursor,
@@ -301,7 +301,7 @@ pub fn delimited<'a, L, P, R, O1, O2, O3>(
     left: L,
     parser: P,
     right: R,
-) -> impl Fn(Cursor<'a>) -> ParseResult<Spanned<O2>>
+) -> impl Fn(Cursor<'a>) -> ParseResult<Node<O2>>
 where
     L: Fn(Cursor<'a>) -> ParseResult<O1>,
     P: Fn(Cursor<'a>) -> ParseResult<O2>,
@@ -316,10 +316,7 @@ where
 
         Ok((
             input,
-            Spanned {
-                node,
-                span: Span::from_pair(l_delim.into(), r_delim.into()),
-            },
+            Node::new(node, Span::from_pair(l_delim.into(), r_delim.into())),
         ))
     }
 }
@@ -328,11 +325,11 @@ pub fn op_expr_builder<'a, F, G, B, OperatorT>(
     operand: F,
     operator: G,
     builder: B,
-) -> impl Fn(Cursor<'a>) -> ParseResult<Spanned<Expr>>
+) -> impl Fn(Cursor<'a>) -> ParseResult<Node<Expr>>
 where
-    F: Fn(Cursor<'a>) -> ParseResult<Spanned<Expr>>,
+    F: Fn(Cursor<'a>) -> ParseResult<Node<Expr>>,
     G: Fn(Cursor<'a>) -> ParseResult<OperatorT>,
-    B: Fn(Spanned<Expr<'a>>, OperatorT, Spanned<Expr<'a>>) -> Expr<'a>,
+    B: Fn(Node<Expr<'a>>, OperatorT, Node<Expr<'a>>) -> Expr<'a>,
 {
     move |input| {
         let (input, head) = operand(input)?;
@@ -342,10 +339,7 @@ where
         for (oprtr, right) in tail {
             let span = Span::from_pair(&left, &right);
 
-            left = Spanned {
-                node: builder(left, oprtr, right),
-                span,
-            };
+            left = Node::new(builder(left, oprtr, right), span);
         }
 
         Ok((input, left))

@@ -4,18 +4,18 @@ foo.bar
 ...foo
 ---
 [
-  Spanned(
-    node: Absolute(
+  Node(
+    kind: Absolute(
       path: [
-        Spanned(
-          node: "foo",
+        Node(
+          kind: "foo",
           span: Span(
             start: 0,
             end: 3,
           ),
         ),
-        Spanned(
-          node: "bar",
+        Node(
+          kind: "bar",
           span: Span(
             start: 4,
             end: 7,
@@ -28,12 +28,12 @@ foo.bar
       end: 7,
     ),
   ),
-  Spanned(
-    node: Relative(
+  Node(
+    kind: Relative(
       parent_level: 0,
       path: [
-        Spanned(
-          node: "foo",
+        Node(
+          kind: "foo",
           span: Span(
             start: 9,
             end: 12,
@@ -46,12 +46,12 @@ foo.bar
       end: 12,
     ),
   ),
-  Spanned(
-    node: Relative(
+  Node(
+    kind: Relative(
       parent_level: 1,
       path: [
-        Spanned(
-          node: "foo",
+        Node(
+          kind: "foo",
           span: Span(
             start: 15,
             end: 18,
@@ -64,12 +64,12 @@ foo.bar
       end: 18,
     ),
   ),
-  Spanned(
-    node: Relative(
+  Node(
+    kind: Relative(
       parent_level: 2,
       path: [
-        Spanned(
-          node: "foo",
+        Node(
+          kind: "foo",
           span: Span(
             start: 22,
             end: 25,

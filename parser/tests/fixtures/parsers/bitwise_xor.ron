@@ -3,31 +3,31 @@ x ^ y
 x ^ y ^ z
 ---
 [
-  Spanned(
-    node: Name("x"),
+  Node(
+    kind: Name("x"),
     span: Span(
       start: 0,
       end: 1,
     ),
   ),
-  Spanned(
-    node: BinOperation(
-      left: Spanned(
-        node: Name("x"),
+  Node(
+    kind: BinOperation(
+      left: Node(
+        kind: Name("x"),
         span: Span(
           start: 2,
           end: 3,
         ),
       ),
-      op: Spanned(
-        node: BitXor,
+      op: Node(
+        kind: BitXor,
         span: Span(
           start: 4,
           end: 5,
         ),
       ),
-      right: Spanned(
-        node: Name("y"),
+      right: Node(
+        kind: Name("y"),
         span: Span(
           start: 6,
           end: 7,
@@ -39,26 +39,26 @@ x ^ y ^ z
       end: 7,
     ),
   ),
-  Spanned(
-    node: BinOperation(
-      left: Spanned(
-        node: BinOperation(
-          left: Spanned(
-            node: Name("x"),
+  Node(
+    kind: BinOperation(
+      left: Node(
+        kind: BinOperation(
+          left: Node(
+            kind: Name("x"),
             span: Span(
               start: 8,
               end: 9,
             ),
           ),
-          op: Spanned(
-            node: BitXor,
+          op: Node(
+            kind: BitXor,
             span: Span(
               start: 10,
               end: 11,
             ),
           ),
-          right: Spanned(
-            node: Name("y"),
+          right: Node(
+            kind: Name("y"),
             span: Span(
               start: 12,
               end: 13,
@@ -70,15 +70,15 @@ x ^ y ^ z
           end: 13,
         ),
       ),
-      op: Spanned(
-        node: BitXor,
+      op: Node(
+        kind: BitXor,
         span: Span(
           start: 14,
           end: 15,
         ),
       ),
-      right: Spanned(
-        node: Name("z"),
+      right: Node(
+        kind: Name("z"),
         span: Span(
           start: 16,
           end: 17,

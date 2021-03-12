@@ -6,7 +6,6 @@ use crate::yul::mappers::{
 };
 use crate::yul::names;
 use crate::yul::operations::data as data_operations;
-use crate::yul::utils;
 use fe_analyzer::namespace::types::{
     FeSized,
     Type,
@@ -16,12 +15,12 @@ use fe_analyzer::{
     ExpressionAttributes,
 };
 use fe_parser::ast as fe;
-use fe_parser::span::Spanned;
+use fe_parser::node::Node;
 use yultsur::*;
 
 pub fn multiple_func_stmt(
     context: &Context,
-    statements: &[Spanned<fe::FuncStmt>],
+    statements: &[Node<fe::FuncStmt>],
 ) -> Result<Vec<yul::Statement>, CompileError> {
     statements
         .iter()
@@ -32,7 +31,7 @@ pub fn multiple_func_stmt(
 /// Builds a Yul function definition from a Fe function definition.
 pub fn func_def(
     context: &Context,
-    def: &Spanned<fe::ContractStmt>,
+    def: &Node<fe::ContractStmt>,
 ) -> Result<yul::Statement, CompileError> {
     if let (
         Some(attributes),
@@ -43,9 +42,9 @@ pub fn func_def(
             return_type: _,
             body,
         },
-    ) = (context.get_function(def).to_owned(), &def.node)
+    ) = (context.get_function(def).to_owned(), &def.kind)
     {
-        let function_name = names::func_name(name.node);
+        let function_name = names::func_name(name.kind);
         let param_names = args.iter().map(|arg| func_def_arg(arg)).collect::<Vec<_>>();
         let function_statements = multiple_func_stmt(context, body)?;
 
@@ -67,17 +66,14 @@ pub fn func_def(
     unreachable!()
 }
 
-fn func_def_arg(arg: &Spanned<fe::FuncDefArg>) -> yul::Identifier {
-    let name = arg.node.name.node;
+fn func_def_arg(arg: &Node<fe::FuncDefArg>) -> yul::Identifier {
+    let name = arg.kind.name.kind;
 
     names::var_name(name)
 }
 
-fn func_stmt(
-    context: &Context,
-    stmt: &Spanned<fe::FuncStmt>,
-) -> Result<yul::Statement, CompileError> {
-    match &stmt.node {
+fn func_stmt(context: &Context, stmt: &Node<fe::FuncStmt>) -> Result<yul::Statement, CompileError> {
+    match &stmt.kind {
         fe::FuncStmt::Return { .. } => func_return(context, stmt),
         fe::FuncStmt::VarDecl { .. } => declarations::var_decl(context, stmt),
         fe::FuncStmt::Assign { .. } => assignments::assign(context, stmt),
@@ -95,51 +91,48 @@ fn func_stmt(
     }
 }
 
-fn for_loop(
-    context: &Context,
-    stmt: &Spanned<fe::FuncStmt>,
-) -> Result<yul::Statement, CompileError> {
+fn for_loop(context: &Context, stmt: &Node<fe::FuncStmt>) -> Result<yul::Statement, CompileError> {
     if let fe::FuncStmt::For {
         target,
         iter,
         body,
         or_else: _,
-    } = &stmt.node
+    } = &stmt.kind
     {
         let iterator = expressions::expr(context, iter)?;
         let target_var = names::var_name(expressions::expr_name_str(target));
         let yul_body = multiple_func_stmt(context, body)?;
-        if let Some(ExpressionAttributes {
+        return if let Some(ExpressionAttributes {
             typ: Type::Array(array),
             ..
-        }) = context.get_expression(iter.span)
+        }) = context.get_expression(iter)
         {
             let size = literal_expression! { (array.size) };
             let inner_size = literal_expression! { (array.inner.size()) };
-            return Ok(block_statement! {
+            Ok(block_statement! {
                 (for {(let i := 0)} (lt(i, [size])) {(i := add(i, 1))}
                 {
                     // Below yul statement to load values from memory to `target_var`.
                     (let [target_var] := [expression! { mloadn([expression! { add([iterator], (mul(i, [inner_size.clone()]))) }], [inner_size]) }])
                     [yul_body...]
                 })
-            });
+            })
         } else {
-            return Err(CompileError::static_str("missing iter expression"));
-        }
+            Err(CompileError::static_str("missing iter expression"))
+        };
     }
     unreachable!()
 }
 
 fn if_statement(
     context: &Context,
-    stmt: &Spanned<fe::FuncStmt>,
+    stmt: &Node<fe::FuncStmt>,
 ) -> Result<yul::Statement, CompileError> {
     if let fe::FuncStmt::If {
         test,
         body,
         or_else,
-    } = &stmt.node
+    } = &stmt.kind
     {
         let yul_test = expressions::expr(context, &test)?;
         let yul_body = multiple_func_stmt(context, body)?;
@@ -155,35 +148,35 @@ fn if_statement(
     unreachable!()
 }
 
-fn expr(context: &Context, stmt: &Spanned<fe::FuncStmt>) -> Result<yul::Statement, CompileError> {
-    if let fe::FuncStmt::Expr { value } = &stmt.node {
-        let spanned = utils::spanned_expression(&stmt.span, value);
-        let expr = expressions::expr(context, &spanned)?;
-        if let Some(attributes) = context.get_expression(stmt.span) {
-            if attributes.typ.is_empty_tuple() {
-                return Ok(yul::Statement::Expression(expr));
-            } else {
-                return Ok(statement! { pop([expr])});
-            }
-        }
+fn expr(context: &Context, stmt: &Node<fe::FuncStmt>) -> Result<yul::Statement, CompileError> {
+    if let fe::FuncStmt::Expr { value } = &stmt.kind {
+        let expr = expressions::expr(context, value)?;
+
+        let attributes = context.get_expression(value).expect("missing attributes");
+
+        return if attributes.typ.is_empty_tuple() {
+            Ok(yul::Statement::Expression(expr))
+        } else {
+            Ok(statement! { pop([expr])})
+        };
     }
 
     unreachable!()
 }
 
-fn revert(stmt: &Spanned<fe::FuncStmt>) -> Result<yul::Statement, CompileError> {
-    if let fe::FuncStmt::Revert = &stmt.node {
+fn revert(stmt: &Node<fe::FuncStmt>) -> Result<yul::Statement, CompileError> {
+    if let fe::FuncStmt::Revert = &stmt.kind {
         return Ok(statement! { revert(0, 0) });
     }
 
     unreachable!()
 }
 
-fn emit(context: &Context, stmt: &Spanned<fe::FuncStmt>) -> Result<yul::Statement, CompileError> {
-    if let fe::FuncStmt::Emit { value } = &stmt.node {
-        if let fe::Expr::Call { func: _, args } = &value.node {
+fn emit(context: &Context, stmt: &Node<fe::FuncStmt>) -> Result<yul::Statement, CompileError> {
+    if let fe::FuncStmt::Emit { value } = &stmt.kind {
+        if let fe::Expr::Call { func: _, args } = &value.kind {
             let event_values = args
-                .node
+                .kind
                 .iter()
                 .map(|arg| expressions::call_arg(context, arg))
                 .collect::<Result<_, _>>()?;
@@ -203,8 +196,8 @@ fn emit(context: &Context, stmt: &Spanned<fe::FuncStmt>) -> Result<yul::Statemen
     unreachable!()
 }
 
-fn assert(context: &Context, stmt: &Spanned<fe::FuncStmt>) -> Result<yul::Statement, CompileError> {
-    if let fe::FuncStmt::Assert { test, msg: _ } = &stmt.node {
+fn assert(context: &Context, stmt: &Node<fe::FuncStmt>) -> Result<yul::Statement, CompileError> {
+    if let fe::FuncStmt::Assert { test, msg: _ } = &stmt.kind {
         let test = expressions::expr(context, test)?;
 
         return Ok(statement! { if (iszero([test])) { (revert(0, 0)) } });
@@ -215,9 +208,9 @@ fn assert(context: &Context, stmt: &Spanned<fe::FuncStmt>) -> Result<yul::Statem
 
 fn break_statement(
     _context: &Context,
-    stmt: &Spanned<fe::FuncStmt>,
+    stmt: &Node<fe::FuncStmt>,
 ) -> Result<yul::Statement, CompileError> {
-    if let fe::FuncStmt::Break {} = &stmt.node {
+    if let fe::FuncStmt::Break {} = &stmt.kind {
         return Ok(statement! { break });
     }
 
@@ -226,9 +219,9 @@ fn break_statement(
 
 fn continue_statement(
     _context: &Context,
-    stmt: &Spanned<fe::FuncStmt>,
+    stmt: &Node<fe::FuncStmt>,
 ) -> Result<yul::Statement, CompileError> {
-    if let fe::FuncStmt::Continue {} = &stmt.node {
+    if let fe::FuncStmt::Continue {} = &stmt.kind {
         return Ok(statement! { continue });
     }
 
@@ -237,9 +230,9 @@ fn continue_statement(
 
 fn func_return(
     context: &Context,
-    stmt: &Spanned<fe::FuncStmt>,
+    stmt: &Node<fe::FuncStmt>,
 ) -> Result<yul::Statement, CompileError> {
-    if let fe::FuncStmt::Return { value } = &stmt.node {
+    if let fe::FuncStmt::Return { value } = &stmt.kind {
         return match value {
             Some(value) => {
                 // Ensure `return ()` is handled as if the function does not return
@@ -263,13 +256,13 @@ fn func_return(
 
 fn while_loop(
     context: &Context,
-    stmt: &Spanned<fe::FuncStmt>,
+    stmt: &Node<fe::FuncStmt>,
 ) -> Result<yul::Statement, CompileError> {
     if let fe::FuncStmt::While {
         test,
         body,
         or_else: _,
-    } = &stmt.node
+    } = &stmt.kind
     {
         let test = expressions::expr(context, test)?;
         let yul_body = multiple_func_stmt(context, body)?;

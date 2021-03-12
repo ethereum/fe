@@ -7,16 +7,16 @@ use fe_analyzer::{
     Location,
 };
 use fe_parser::ast as fe;
-use fe_parser::span::Spanned;
+use fe_parser::node::Node;
 use std::convert::TryFrom;
 use yultsur::*;
 
 /// Builds a Yul statement from a Fe assignment.
 pub fn assign(
     context: &Context,
-    stmt: &Spanned<fe::FuncStmt>,
+    stmt: &Node<fe::FuncStmt>,
 ) -> Result<yul::Statement, CompileError> {
-    if let fe::FuncStmt::Assign { targets, value } = &stmt.node {
+    if let fe::FuncStmt::Assign { targets, value } = &stmt.kind {
         if targets.len() > 1 {
             unimplemented!("multiple assignment targets")
         }
@@ -88,6 +88,7 @@ fn expr_as_ident(expr: yul::Expression) -> Result<yul::Identifier, CompileError>
 }
 
 #[cfg(test)]
+#[cfg(feature = "fix-context-harness")]
 mod tests {
     use crate::yul::mappers::assignments::assign;
     use fe_analyzer::namespace::types::{

@@ -7,8 +7,8 @@ x
 ...
 ---
 [
-  Spanned(
-    node: List(
+  Node(
+    kind: List(
       elts: [],
     ),
     span: Span(
@@ -16,15 +16,15 @@ x
       end: 2,
     ),
   ),
-  Spanned(
-    node: Name("x"),
+  Node(
+    kind: Name("x"),
     span: Span(
       start: 3,
       end: 6,
     ),
   ),
-  Spanned(
-    node: Tuple(
+  Node(
+    kind: Tuple(
       elts: [],
     ),
     span: Span(
@@ -32,22 +32,22 @@ x
       end: 9,
     ),
   ),
-  Spanned(
-    node: Name("x"),
+  Node(
+    kind: Name("x"),
     span: Span(
       start: 10,
       end: 11,
     ),
   ),
-  Spanned(
-    node: Num("1"),
+  Node(
+    kind: Num("1"),
     span: Span(
       start: 12,
       end: 13,
     ),
   ),
-  Spanned(
-    node: Str([
+  Node(
+    kind: Str([
       "asdf",
       "foo",
     ]),
@@ -56,8 +56,8 @@ x
       end: 26,
     ),
   ),
-  Spanned(
-    node: Ellipsis,
+  Node(
+    kind: Ellipsis,
     span: Span(
       start: 27,
       end: 30,

@@ -5,10 +5,10 @@ from foo import (
 )
 ---
 [
-  Spanned(
-    node: FromImport(
-      path: Spanned(
-        node: Relative(
+  Node(
+    kind: FromImport(
+      path: Node(
+        kind: Relative(
           parent_level: 0,
           path: [],
         ),
@@ -17,8 +17,8 @@ from foo import (
           end: 6,
         ),
       ),
-      names: Spanned(
-        node: Star,
+      names: Node(
+        kind: Star,
         span: Span(
           start: 14,
           end: 15,
@@ -30,13 +30,13 @@ from foo import (
       end: 15,
     ),
   ),
-  Spanned(
-    node: FromImport(
-      path: Spanned(
-        node: Absolute(
+  Node(
+    kind: FromImport(
+      path: Node(
+        kind: Absolute(
           path: [
-            Spanned(
-              node: "foo",
+            Node(
+              kind: "foo",
               span: Span(
                 start: 21,
                 end: 24,
@@ -49,12 +49,12 @@ from foo import (
           end: 24,
         ),
       ),
-      names: Spanned(
-        node: List([
-          Spanned(
-            node: FromImportName(
-              name: Spanned(
-                node: "bar",
+      names: Node(
+        kind: List([
+          Node(
+            kind: FromImportName(
+              name: Node(
+                kind: "bar",
                 span: Span(
                   start: 32,
                   end: 35,
@@ -79,13 +79,13 @@ from foo import (
       end: 35,
     ),
   ),
-  Spanned(
-    node: FromImport(
-      path: Spanned(
-        node: Absolute(
+  Node(
+    kind: FromImport(
+      path: Node(
+        kind: Absolute(
           path: [
-            Spanned(
-              node: "foo",
+            Node(
+              kind: "foo",
               span: Span(
                 start: 41,
                 end: 44,
@@ -98,12 +98,12 @@ from foo import (
           end: 44,
         ),
       ),
-      names: Spanned(
-        node: List([
-          Spanned(
-            node: FromImportName(
-              name: Spanned(
-                node: "bar",
+      names: Node(
+        kind: List([
+          Node(
+            kind: FromImportName(
+              name: Node(
+                kind: "bar",
                 span: Span(
                   start: 58,
                   end: 61,

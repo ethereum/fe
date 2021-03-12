@@ -1,19 +1,19 @@
 type Msg = bytes[100]
 ---
 [
-  Spanned(
-    node: TypeDef(
-      name: Spanned(
-        node: "Msg",
+  Node(
+    kind: TypeDef(
+      name: Node(
+        kind: "Msg",
         span: Span(
           start: 5,
           end: 8,
         ),
       ),
-      typ: Spanned(
-        node: Array(
-          typ: Spanned(
-            node: Base(
+      typ: Node(
+        kind: Array(
+          typ: Node(
+            kind: Base(
               base: "bytes",
             ),
             span: Span(

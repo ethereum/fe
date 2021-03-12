@@ -3,9 +3,9 @@ use serde::{
     Serialize,
 };
 
-use crate::span::{
+use crate::node::{
+    Node,
     Span,
-    Spanned,
 };
 
 /// Indicates the basic syntactic element represented by a token.
@@ -49,11 +49,8 @@ impl<'a> From<&Token<'a>> for Span {
     }
 }
 
-impl<'a> From<&Token<'a>> for Spanned<&'a str> {
+impl<'a> From<&Token<'a>> for Node<&'a str> {
     fn from(tok: &Token<'a>) -> Self {
-        Spanned {
-            node: tok.string,
-            span: tok.span,
-        }
+        Node::new(tok.string, tok.span)
     }
 }

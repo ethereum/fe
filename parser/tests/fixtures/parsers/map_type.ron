@@ -6,10 +6,10 @@ map<MyType, map<bool, map<asdf, map<foo, bar>>>>
 map<MyType, map<bool, map<asdf, map<foo, bar> > > >
 ---
 [
-  Spanned(
-    node: Map(
-      from: Spanned(
-        node: Base(
+  Node(
+    kind: Map(
+      from: Node(
+        kind: Base(
           base: "address",
         ),
         span: Span(
@@ -17,10 +17,10 @@ map<MyType, map<bool, map<asdf, map<foo, bar> > > >
           end: 11,
         ),
       ),
-      to: Spanned(
-        node: Array(
-          typ: Spanned(
-            node: Base(
+      to: Node(
+        kind: Array(
+          typ: Node(
+            kind: Base(
               base: "bytes",
             ),
             span: Span(
@@ -41,10 +41,10 @@ map<MyType, map<bool, map<asdf, map<foo, bar> > > >
       end: 24,
     ),
   ),
-  Spanned(
-    node: Map(
-      from: Spanned(
-        node: Base(
+  Node(
+    kind: Map(
+      from: Node(
+        kind: Base(
           base: "MyType",
         ),
         span: Span(
@@ -52,10 +52,10 @@ map<MyType, map<bool, map<asdf, map<foo, bar> > > >
           end: 35,
         ),
       ),
-      to: Spanned(
-        node: Map(
-          from: Spanned(
-            node: Base(
+      to: Node(
+        kind: Map(
+          from: Node(
+            kind: Base(
               base: "bool",
             ),
             span: Span(
@@ -63,8 +63,8 @@ map<MyType, map<bool, map<asdf, map<foo, bar> > > >
               end: 45,
             ),
           ),
-          to: Spanned(
-            node: Base(
+          to: Node(
+            kind: Base(
               base: "uint128",
             ),
             span: Span(
@@ -84,10 +84,10 @@ map<MyType, map<bool, map<asdf, map<foo, bar> > > >
       end: 56,
     ),
   ),
-  Spanned(
-    node: Map(
-      from: Spanned(
-        node: Base(
+  Node(
+    kind: Map(
+      from: Node(
+        kind: Base(
           base: "MyType",
         ),
         span: Span(
@@ -95,10 +95,10 @@ map<MyType, map<bool, map<asdf, map<foo, bar> > > >
           end: 67,
         ),
       ),
-      to: Spanned(
-        node: Map(
-          from: Spanned(
-            node: Base(
+      to: Node(
+        kind: Map(
+          from: Node(
+            kind: Base(
               base: "bool",
             ),
             span: Span(
@@ -106,8 +106,8 @@ map<MyType, map<bool, map<asdf, map<foo, bar> > > >
               end: 77,
             ),
           ),
-          to: Spanned(
-            node: Base(
+          to: Node(
+            kind: Base(
               base: "uint128",
             ),
             span: Span(
@@ -127,10 +127,10 @@ map<MyType, map<bool, map<asdf, map<foo, bar> > > >
       end: 89,
     ),
   ),
-  Spanned(
-    node: Map(
-      from: Spanned(
-        node: Base(
+  Node(
+    kind: Map(
+      from: Node(
+        kind: Base(
           base: "MyType",
         ),
         span: Span(
@@ -138,10 +138,10 @@ map<MyType, map<bool, map<asdf, map<foo, bar> > > >
           end: 100,
         ),
       ),
-      to: Spanned(
-        node: Map(
-          from: Spanned(
-            node: Base(
+      to: Node(
+        kind: Map(
+          from: Node(
+            kind: Base(
               base: "bool",
             ),
             span: Span(
@@ -149,10 +149,10 @@ map<MyType, map<bool, map<asdf, map<foo, bar> > > >
               end: 110,
             ),
           ),
-          to: Spanned(
-            node: Map(
-              from: Spanned(
-                node: Base(
+          to: Node(
+            kind: Map(
+              from: Node(
+                kind: Base(
                   base: "asdf",
                 ),
                 span: Span(
@@ -160,8 +160,8 @@ map<MyType, map<bool, map<asdf, map<foo, bar> > > >
                   end: 120,
                 ),
               ),
-              to: Spanned(
-                node: Base(
+              to: Node(
+                kind: Base(
                   base: "foo",
                 ),
                 span: Span(
@@ -187,10 +187,10 @@ map<MyType, map<bool, map<asdf, map<foo, bar> > > >
       end: 128,
     ),
   ),
-  Spanned(
-    node: Map(
-      from: Spanned(
-        node: Base(
+  Node(
+    kind: Map(
+      from: Node(
+        kind: Base(
           base: "MyType",
         ),
         span: Span(
@@ -198,10 +198,10 @@ map<MyType, map<bool, map<asdf, map<foo, bar> > > >
           end: 139,
         ),
       ),
-      to: Spanned(
-        node: Map(
-          from: Spanned(
-            node: Base(
+      to: Node(
+        kind: Map(
+          from: Node(
+            kind: Base(
               base: "bool",
             ),
             span: Span(
@@ -209,10 +209,10 @@ map<MyType, map<bool, map<asdf, map<foo, bar> > > >
               end: 149,
             ),
           ),
-          to: Spanned(
-            node: Map(
-              from: Spanned(
-                node: Base(
+          to: Node(
+            kind: Map(
+              from: Node(
+                kind: Base(
                   base: "asdf",
                 ),
                 span: Span(
@@ -220,10 +220,10 @@ map<MyType, map<bool, map<asdf, map<foo, bar> > > >
                   end: 159,
                 ),
               ),
-              to: Spanned(
-                node: Map(
-                  from: Spanned(
-                    node: Base(
+              to: Node(
+                kind: Map(
+                  from: Node(
+                    kind: Base(
                       base: "foo",
                     ),
                     span: Span(
@@ -231,8 +231,8 @@ map<MyType, map<bool, map<asdf, map<foo, bar> > > >
                       end: 168,
                     ),
                   ),
-                  to: Spanned(
-                    node: Base(
+                  to: Node(
+                    kind: Base(
                       base: "bar",
                     ),
                     span: Span(
@@ -264,10 +264,10 @@ map<MyType, map<bool, map<asdf, map<foo, bar> > > >
       end: 177,
     ),
   ),
-  Spanned(
-    node: Map(
-      from: Spanned(
-        node: Base(
+  Node(
+    kind: Map(
+      from: Node(
+        kind: Base(
           base: "MyType",
         ),
         span: Span(
@@ -275,10 +275,10 @@ map<MyType, map<bool, map<asdf, map<foo, bar> > > >
           end: 188,
         ),
       ),
-      to: Spanned(
-        node: Map(
-          from: Spanned(
-            node: Base(
+      to: Node(
+        kind: Map(
+          from: Node(
+            kind: Base(
               base: "bool",
             ),
             span: Span(
@@ -286,10 +286,10 @@ map<MyType, map<bool, map<asdf, map<foo, bar> > > >
               end: 198,
             ),
           ),
-          to: Spanned(
-            node: Map(
-              from: Spanned(
-                node: Base(
+          to: Node(
+            kind: Map(
+              from: Node(
+                kind: Base(
                   base: "asdf",
                 ),
                 span: Span(
@@ -297,10 +297,10 @@ map<MyType, map<bool, map<asdf, map<foo, bar> > > >
                   end: 208,
                 ),
               ),
-              to: Spanned(
-                node: Map(
-                  from: Spanned(
-                    node: Base(
+              to: Node(
+                kind: Map(
+                  from: Node(
+                    kind: Base(
                       base: "foo",
                     ),
                     span: Span(
@@ -308,8 +308,8 @@ map<MyType, map<bool, map<asdf, map<foo, bar> > > >
                       end: 217,
                     ),
                   ),
-                  to: Spanned(
-                    node: Base(
+                  to: Node(
+                    kind: Base(
                       base: "bar",
                     ),
                     span: Span(

@@ -2,28 +2,28 @@ contract Foo:
     x: address
 ---
 [
-  Spanned(
-    node: ContractDef(
-      name: Spanned(
-        node: "Foo",
+  Node(
+    kind: ContractDef(
+      name: Node(
+        kind: "Foo",
         span: Span(
           start: 9,
           end: 12,
         ),
       ),
       body: [
-        Spanned(
-          node: ContractField(
+        Node(
+          kind: ContractField(
             qual: None,
-            name: Spanned(
-              node: "x",
+            name: Node(
+              kind: "x",
               span: Span(
                 start: 18,
                 end: 19,
               ),
             ),
-            typ: Spanned(
-              node: Base(
+            typ: Node(
+              kind: Base(
                 base: "address",
               ),
               span: Span(

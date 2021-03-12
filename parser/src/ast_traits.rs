@@ -1,13 +1,13 @@
 use std::convert::TryFrom;
 
 use crate::ast::*;
-use crate::span::{
+use crate::node::{
+    Node,
     Span,
-    Spanned,
 };
 use crate::tokenizer::Token;
 
-impl TryFrom<&Token<'_>> for Spanned<ContractFieldQual> {
+impl TryFrom<&Token<'_>> for Node<ContractFieldQual> {
     type Error = &'static str;
 
     #[cfg_attr(tarpaulin, rustfmt::skip)]
@@ -17,14 +17,14 @@ impl TryFrom<&Token<'_>> for Spanned<ContractFieldQual> {
         let span = tok.span;
 
         Ok(match tok.string {
-            "const" => Spanned { node: Const, span },
-            "pub" => Spanned { node: Pub, span },
+            "const" => Node::new(Const, span),
+            "pub" => Node::new(Pub, span),
             _ => return Err("unrecognized string"),
         })
     }
 }
 
-impl TryFrom<&Token<'_>> for Spanned<StructFieldQual> {
+impl TryFrom<&Token<'_>> for Node<StructFieldQual> {
     type Error = &'static str;
 
     #[cfg_attr(tarpaulin, rustfmt::skip)]
@@ -34,53 +34,50 @@ impl TryFrom<&Token<'_>> for Spanned<StructFieldQual> {
         let span = tok.span;
 
         Ok(match tok.string {
-            "const" => Spanned { node: Const, span },
-            "pub" => Spanned { node: Pub, span },
+            "const" => Node::new(Const, span),
+            "pub" => Node::new(Pub, span),
             _ => return Err("unrecognized string"),
         })
     }
 }
 
-impl TryFrom<&Token<'_>> for Spanned<EventFieldQual> {
+impl TryFrom<&Token<'_>> for Node<EventFieldQual> {
     type Error = &'static str;
 
     #[cfg_attr(tarpaulin, rustfmt::skip)]
     fn try_from(tok: &Token) -> Result<Self, Self::Error> {
         Ok(match tok.string {
-            "idx" => Spanned {
-                node: EventFieldQual::Idx,
-                span: tok.span,
-            },
+            "idx" => Node::new(
+                EventFieldQual::Idx,
+                tok.span,
+            ),
             _ => return Err("unrecognized string"),
         })
     }
 }
 
-impl TryFrom<&Token<'_>> for Spanned<FuncQual> {
+impl TryFrom<&Token<'_>> for Node<FuncQual> {
     type Error = &'static str;
 
     #[cfg_attr(tarpaulin, rustfmt::skip)]
     fn try_from(tok: &Token) -> Result<Self, Self::Error> {
         Ok(match tok.string {
-            "pub" => Spanned {
-                node: FuncQual::Pub,
-                span: tok.span,
-            },
+            "pub" => Node::new(
+                FuncQual::Pub,
+                tok.span,
+            ),
             _ => return Err("unrecognized string"),
         })
     }
 }
 
-impl<'a> From<&'a Token<'a>> for Spanned<TypeDesc<'a>> {
+impl<'a> From<&'a Token<'a>> for Node<TypeDesc<'a>> {
     fn from(token: &'a Token<'a>) -> Self {
-        Spanned {
-            node: TypeDesc::Base { base: token.string },
-            span: token.span,
-        }
+        Node::new(TypeDesc::Base { base: token.string }, token.span)
     }
 }
 
-impl TryFrom<&Token<'_>> for Spanned<BoolOperator> {
+impl TryFrom<&Token<'_>> for Node<BoolOperator> {
     type Error = &'static str;
 
     #[cfg_attr(tarpaulin, rustfmt::skip)]
@@ -93,14 +90,14 @@ impl TryFrom<&Token<'_>> for Spanned<BoolOperator> {
             _ => return Err("unrecognized token"),
         };
 
-        Ok(Spanned {
+        Ok(Node::new(
             node,
-            span: tok.span,
-        })
+            tok.span,
+        ))
     }
 }
 
-impl TryFrom<&Token<'_>> for Spanned<BinOperator> {
+impl TryFrom<&Token<'_>> for Node<BinOperator> {
     type Error = &'static str;
 
     #[cfg_attr(tarpaulin, rustfmt::skip)]
@@ -135,14 +132,14 @@ impl TryFrom<&Token<'_>> for Spanned<BinOperator> {
             _ => return Err("unrecognized token"),
         };
 
-        Ok(Spanned {
+        Ok(Node::new(
             node,
-            span: tok.span,
-        })
+            tok.span,
+        ))
     }
 }
 
-impl TryFrom<&Token<'_>> for Spanned<UnaryOperator> {
+impl TryFrom<&Token<'_>> for Node<UnaryOperator> {
     type Error = &'static str;
 
     #[cfg_attr(tarpaulin, rustfmt::skip)]
@@ -157,14 +154,14 @@ impl TryFrom<&Token<'_>> for Spanned<UnaryOperator> {
             _ => return Err("unrecognized string"),
         };
 
-        Ok(Spanned {
+        Ok(Node::new(
             node,
-            span: tok.span,
-        })
+            tok.span,
+        ))
     }
 }
 
-impl TryFrom<&[&Token<'_>]> for Spanned<CompOperator> {
+impl TryFrom<&[&Token<'_>]> for Node<CompOperator> {
     type Error = &'static str;
 
     #[cfg_attr(tarpaulin, rustfmt::skip)]
@@ -191,6 +188,6 @@ impl TryFrom<&[&Token<'_>]> for Spanned<CompOperator> {
         let last = toks.last().unwrap();
         let span = Span::from_pair(*first, *last);
 
-        Ok(Spanned { node, span })
+        Ok(Node::new(node, span))
     }
 }

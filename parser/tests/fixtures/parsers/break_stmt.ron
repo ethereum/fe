@@ -1,8 +1,8 @@
 break
 ---
 [
-  Spanned(
-    node: Break,
+  Node(
+    kind: Break,
     span: Span(
       start: 0,
       end: 5,

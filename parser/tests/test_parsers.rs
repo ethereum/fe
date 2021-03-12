@@ -5,7 +5,6 @@ mod utils;
 
 use wasm_bindgen_test::wasm_bindgen_test;
 
-use fe_parser::ast::Module;
 use fe_parser::builders::{
     many0,
     many1,
@@ -14,10 +13,6 @@ use fe_parser::builders::{
 };
 use fe_parser::errors::ParseError;
 use fe_parser::parsers::*;
-use fe_parser::span::{
-    Span,
-    Spanned,
-};
 use fe_parser::{
     get_parse_tokens,
     Cursor,
@@ -60,18 +55,11 @@ macro_rules! assert_parser_ok {
         assert_parser_ok!($parser, $examples);
     }};
     ($parser:expr, $examples:expr) => {{
-        for (inp, expected) in $examples {
+        for inp in $examples {
             let tokens = get_parse_tokens(inp).unwrap();
             let actual = $parser(&tokens[..]);
 
-            assert_eq!(
-                actual,
-                expected,
-                "\n===== Input =====\n{:#?}\n===== Actual =====\n{:#?}\n===== Expected =====\n{:#?}",
-                inp,
-                actual,
-                expected,
-            );
+            assert!(actual.is_ok());
         }
     }};
 }
@@ -200,19 +188,7 @@ fn test_next_err() {
 #[test]
 #[wasm_bindgen_test]
 fn test_file_input() {
-    assert_parser_ok!(
-        file_input,
-        vec![(
-            "",
-            Ok((
-                empty_slice!(),
-                Spanned {
-                    node: Module { body: vec![] },
-                    span: Span::new(0, 0),
-                }
-            ))
-        )],
-    );
+    assert_parser_ok!(file_input, vec![""],);
 
     do_with_fixtures!(
         assert_fixture_parsed_with!(file_input),
@@ -223,41 +199,7 @@ fn test_file_input() {
 #[test]
 #[wasm_bindgen_test]
 fn test_empty_file_input() {
-    assert_parser_ok!(
-        empty_file_input,
-        vec![
-            (
-                "",
-                Ok((
-                    empty_slice!(),
-                    Spanned {
-                        node: Module { body: vec![] },
-                        span: Span::new(0, 0),
-                    }
-                ))
-            ),
-            (
-                "  \t ",
-                Ok((
-                    empty_slice!(),
-                    Spanned {
-                        node: Module { body: vec![] },
-                        span: Span::new(4, 4),
-                    }
-                ))
-            ),
-            (
-                " \n\n   \t \n \t ",
-                Ok((
-                    empty_slice!(),
-                    Spanned {
-                        node: Module { body: vec![] },
-                        span: Span::new(12, 12),
-                    }
-                ))
-            ),
-        ],
-    );
+    assert_parser_ok!(empty_file_input, vec!["", "  \t ", " \n\n   \t \n \t "],);
 }
 
 #[test]
@@ -276,10 +218,10 @@ fn test_arr_dim_err() {
 }
 
 // Uncomment this to update all fixtures.
-//#[test]
-//fn write_fixtures() {
+// #[test]
+// fn write_fixtures() {
 //    fixture_writers::write_all();
-//}
+// }
 
 parser_fixture_tests! {
     (

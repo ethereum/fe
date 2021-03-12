@@ -4,17 +4,12 @@ use crate::{
     Type,
 };
 use fe_parser::ast as fe;
-use fe_parser::span::{
-    Span,
-    Spanned,
-};
+use fe_parser::node::Node;
 
-/// Creates a new spanned expression. Useful in cases where an `Expr` is nested
-/// within the node of a `Spanned` object.
-pub fn spanned_expression<'a>(span: &Span, exp: &fe::Expr<'a>) -> Spanned<fe::Expr<'a>> {
-    Spanned {
-        node: (*exp).clone(),
-        span: (*span).to_owned(),
+pub fn call_arg_value<'a>(arg: &'a fe::CallArg<'a>) -> &'a Node<fe::Expr<'a>> {
+    match arg {
+        fe::CallArg::Arg(value) => value,
+        fe::CallArg::Kwarg(fe::Kwarg { value, .. }) => value,
     }
 }
 

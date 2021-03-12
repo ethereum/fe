@@ -2,10 +2,10 @@ assert x
 assert x, y
 ---
 [
-  Spanned(
-    node: Assert(
-      test: Spanned(
-        node: Name("x"),
+  Node(
+    kind: Assert(
+      test: Node(
+        kind: Name("x"),
         span: Span(
           start: 7,
           end: 8,
@@ -18,17 +18,17 @@ assert x, y
       end: 8,
     ),
   ),
-  Spanned(
-    node: Assert(
-      test: Spanned(
-        node: Name("x"),
+  Node(
+    kind: Assert(
+      test: Node(
+        kind: Name("x"),
         span: Span(
           start: 16,
           end: 17,
         ),
       ),
-      msg: Some(Spanned(
-        node: Name("y"),
+      msg: Some(Node(
+        kind: Name("y"),
         span: Span(
           start: 19,
           end: 20,

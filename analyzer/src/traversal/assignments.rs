@@ -7,7 +7,7 @@ use crate::traversal::expressions;
 use crate::Context;
 use crate::Location;
 use fe_parser::ast as fe;
-use fe_parser::span::Spanned;
+use fe_parser::node::Node;
 use std::rc::Rc;
 
 /// Gather context information for assignments and check for type errors.
@@ -16,9 +16,9 @@ use std::rc::Rc;
 pub fn assign(
     scope: Shared<BlockScope>,
     context: Shared<Context>,
-    stmt: &Spanned<fe::FuncStmt>,
+    stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
-    if let fe::FuncStmt::Assign { targets, value } = &stmt.node {
+    if let fe::FuncStmt::Assign { targets, value } = &stmt.kind {
         if targets.len() > 1 {
             unimplemented!()
         }

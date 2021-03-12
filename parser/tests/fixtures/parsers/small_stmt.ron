@@ -11,8 +11,8 @@ x += y
 x
 ---
 [
-  Spanned(
-    node: Return(
+  Node(
+    kind: Return(
       value: None,
     ),
     span: Span(
@@ -20,10 +20,10 @@ x
       end: 6,
     ),
   ),
-  Spanned(
-    node: Assert(
-      test: Spanned(
-        node: Name("x"),
+  Node(
+    kind: Assert(
+      test: Node(
+        kind: Name("x"),
         span: Span(
           start: 14,
           end: 15,
@@ -36,10 +36,10 @@ x
       end: 15,
     ),
   ),
-  Spanned(
-    node: Emit(
-      value: Spanned(
-        node: Name("x"),
+  Node(
+    kind: Emit(
+      value: Node(
+        kind: Name("x"),
         span: Span(
           start: 21,
           end: 22,
@@ -51,45 +51,45 @@ x
       end: 22,
     ),
   ),
-  Spanned(
-    node: Pass,
+  Node(
+    kind: Pass,
     span: Span(
       start: 23,
       end: 27,
     ),
   ),
-  Spanned(
-    node: Break,
+  Node(
+    kind: Break,
     span: Span(
       start: 28,
       end: 33,
     ),
   ),
-  Spanned(
-    node: Continue,
+  Node(
+    kind: Continue,
     span: Span(
       start: 34,
       end: 42,
     ),
   ),
-  Spanned(
-    node: Revert,
+  Node(
+    kind: Revert,
     span: Span(
       start: 43,
       end: 49,
     ),
   ),
-  Spanned(
-    node: VarDecl(
-      target: Spanned(
-        node: Name("x"),
+  Node(
+    kind: VarDecl(
+      target: Node(
+        kind: Name("x"),
         span: Span(
           start: 50,
           end: 51,
         ),
       ),
-      typ: Spanned(
-        node: Base(
+      typ: Node(
+        kind: Base(
           base: "bool",
         ),
         span: Span(
@@ -97,8 +97,8 @@ x
           end: 57,
         ),
       ),
-      value: Some(Spanned(
-        node: Name("y"),
+      value: Some(Node(
+        kind: Name("y"),
         span: Span(
           start: 60,
           end: 61,
@@ -110,19 +110,19 @@ x
       end: 61,
     ),
   ),
-  Spanned(
-    node: Assign(
+  Node(
+    kind: Assign(
       targets: [
-        Spanned(
-          node: Name("x"),
+        Node(
+          kind: Name("x"),
           span: Span(
             start: 62,
             end: 63,
           ),
         ),
       ],
-      value: Spanned(
-        node: Name("y"),
+      value: Node(
+        kind: Name("y"),
         span: Span(
           start: 66,
           end: 67,
@@ -134,24 +134,24 @@ x
       end: 67,
     ),
   ),
-  Spanned(
-    node: AugAssign(
-      target: Spanned(
-        node: Name("x"),
+  Node(
+    kind: AugAssign(
+      target: Node(
+        kind: Name("x"),
         span: Span(
           start: 68,
           end: 69,
         ),
       ),
-      op: Spanned(
-        node: Add,
+      op: Node(
+        kind: Add,
         span: Span(
           start: 70,
           end: 72,
         ),
       ),
-      value: Spanned(
-        node: Name("y"),
+      value: Node(
+        kind: Name("y"),
         span: Span(
           start: 73,
           end: 74,
@@ -163,9 +163,15 @@ x
       end: 74,
     ),
   ),
-  Spanned(
-    node: Expr(
-      value: Name("x"),
+  Node(
+    kind: Expr(
+      value: Node(
+        kind: Name("x"),
+        span: Span(
+          start: 75,
+          end: 76,
+        ),
+      ),
     ),
     span: Span(
       start: 75,

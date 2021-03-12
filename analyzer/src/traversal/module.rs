@@ -10,7 +10,7 @@ use crate::traversal::{
 };
 use crate::Context;
 use fe_parser::ast as fe;
-use fe_parser::span::Spanned;
+use fe_parser::node::Node;
 use std::rc::Rc;
 
 /// Gather context information for a module and check for type errors.
@@ -20,10 +20,10 @@ pub fn module(context: Shared<Context>, module: &fe::Module) -> Result<(), Seman
     let mut contracts = vec![];
 
     for stmt in module.body.iter() {
-        match &stmt.node {
+        match &stmt.kind {
             fe::ModuleStmt::TypeDef { .. } => type_def(Rc::clone(&scope), stmt)?,
             fe::ModuleStmt::StructDef { name, body } => {
-                structs::struct_def(Rc::clone(&scope), name.node, body)?
+                structs::struct_def(Rc::clone(&scope), name.kind, body)?
             }
             fe::ModuleStmt::ContractDef { .. } => {
                 // Collect contract statements and the scope that we create for them. After we
@@ -39,7 +39,7 @@ pub fn module(context: Shared<Context>, module: &fe::Module) -> Result<(), Seman
     }
 
     for (stmt, scope) in contracts.iter() {
-        if let fe::ModuleStmt::ContractDef { .. } = stmt.node {
+        if let fe::ModuleStmt::ContractDef { .. } = stmt.kind {
             contracts::contract_body(Rc::clone(&scope), Rc::clone(&context), stmt)?
         }
     }
@@ -47,13 +47,10 @@ pub fn module(context: Shared<Context>, module: &fe::Module) -> Result<(), Seman
     Ok(())
 }
 
-fn type_def(
-    scope: Shared<ModuleScope>,
-    def: &Spanned<fe::ModuleStmt>,
-) -> Result<(), SemanticError> {
-    if let fe::ModuleStmt::TypeDef { name, typ } = &def.node {
-        let typ = types::type_desc(&scope.borrow().type_defs, &typ.node)?;
-        scope.borrow_mut().add_type_def(name.node, typ)?;
+fn type_def(scope: Shared<ModuleScope>, def: &Node<fe::ModuleStmt>) -> Result<(), SemanticError> {
+    if let fe::ModuleStmt::TypeDef { name, typ } = &def.kind {
+        let typ = types::type_desc(&scope.borrow().type_defs, &typ.kind)?;
+        scope.borrow_mut().add_type_def(name.kind, typ)?;
         return Ok(());
     }
 

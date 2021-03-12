@@ -7,26 +7,32 @@ else:
     d
 ---
 [
-  Spanned(
-    node: For(
-      target: Spanned(
-        node: Name("a"),
+  Node(
+    kind: For(
+      target: Node(
+        kind: Name("a"),
         span: Span(
           start: 4,
           end: 5,
         ),
       ),
-      iter: Spanned(
-        node: Name("b"),
+      iter: Node(
+        kind: Name("b"),
         span: Span(
           start: 9,
           end: 10,
         ),
       ),
       body: [
-        Spanned(
-          node: Expr(
-            value: Name("c"),
+        Node(
+          kind: Expr(
+            value: Node(
+              kind: Name("c"),
+              span: Span(
+                start: 16,
+                end: 17,
+              ),
+            ),
           ),
           span: Span(
             start: 16,
@@ -41,26 +47,32 @@ else:
       end: 17,
     ),
   ),
-  Spanned(
-    node: For(
-      target: Spanned(
-        node: Name("a"),
+  Node(
+    kind: For(
+      target: Node(
+        kind: Name("a"),
         span: Span(
           start: 23,
           end: 24,
         ),
       ),
-      iter: Spanned(
-        node: Name("b"),
+      iter: Node(
+        kind: Name("b"),
         span: Span(
           start: 28,
           end: 29,
         ),
       ),
       body: [
-        Spanned(
-          node: Expr(
-            value: Name("c"),
+        Node(
+          kind: Expr(
+            value: Node(
+              kind: Name("c"),
+              span: Span(
+                start: 35,
+                end: 36,
+              ),
+            ),
           ),
           span: Span(
             start: 35,
@@ -69,9 +81,15 @@ else:
         ),
       ],
       or_else: [
-        Spanned(
-          node: Expr(
-            value: Name("d"),
+        Node(
+          kind: Expr(
+            value: Node(
+              kind: Name("d"),
+              span: Span(
+                start: 47,
+                end: 48,
+              ),
+            ),
           ),
           span: Span(
             start: 47,
