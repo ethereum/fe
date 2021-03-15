@@ -269,9 +269,11 @@ pub fn expr_bin_operation(
                 }
                 _ => unreachable!(),
             },
-            fe::BinOperator::Div => match typ.is_signed_integer() {
-                true => Ok(expression! { sdiv([yul_left], [yul_right]) }),
-                false => Ok(expression! { div([yul_left], [yul_right]) }),
+            fe::BinOperator::Div => match typ {
+                Type::Base(Base::Numeric(integer)) => {
+                    Ok(expression! { [names::checked_div(integer)]([yul_left], [yul_right]) })
+                }
+                _ => unreachable!(),
             },
             fe::BinOperator::BitAnd => Ok(expression! { and([yul_left], [yul_right]) }),
             fe::BinOperator::BitOr => Ok(expression! { or([yul_left], [yul_right]) }),
@@ -686,7 +688,7 @@ mod tests {
         case("1 + 2", "checked_add_u256(1, 2)"),
         case("1 - 2", "checked_sub_unsigned(1, 2)"),
         case("1 * 2", "checked_mul_u256(1, 2)"),
-        case("1 / 2", "div(1, 2)"),
+        case("1 / 2", "checked_div_unsigned(1, 2)"),
         case("1 ** 2", "exp(1, 2)"),
         case("1 % 2", "mod(1, 2)"),
         case("1 & 2", "and(1, 2)"),

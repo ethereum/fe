@@ -749,6 +749,44 @@ fn checked_arithmetic() {
                 Some(&config.i_max),
             );
 
+            // DIVISON
+            // unsigned: anything / 0 fails
+            harness.test_function_reverts(
+                &mut executor,
+                &format!("div_u{}", config.size),
+                &[config.u_max.clone(), uint_token(0)],
+            );
+
+            // unsigned: 3 / 2 works
+            harness.test_function(
+                &mut executor,
+                &format!("div_u{}", config.size),
+                &[uint_token(3), uint_token(2)],
+                Some(&uint_token(1)),
+            );
+
+            // signed: anything / 0 fails
+            harness.test_function_reverts(
+                &mut executor,
+                &format!("div_i{}", config.size),
+                &[config.i_max.clone(), int_token(0)],
+            );
+
+            // signed: min_value / -1 fails
+            harness.test_function_reverts(
+                &mut executor,
+                &format!("div_i{}", config.size),
+                &[config.i_min.clone(), int_token(-1)],
+            );
+
+            // unsigned: 3 / -2 works
+            harness.test_function(
+                &mut executor,
+                &format!("div_i{}", config.size),
+                &[int_token(3), int_token(-2)],
+                Some(&int_token(-1)),
+            );
+
             // MULTIPLICATION
             // unsigned: max_value * 2 fails
             harness.test_function_reverts(
