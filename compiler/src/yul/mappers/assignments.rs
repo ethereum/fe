@@ -131,7 +131,7 @@ mod tests {
         case("foo = 1 + 2", "$foo := checked_add_u256(1, 2)"),
         case("foo = 1 - 2", "$foo := checked_sub_unsigned(1, 2)"),
         case("foo = 1 * 2", "$foo := checked_mul_u256(1, 2)"),
-        case("foo = 1 / 2", "$foo := div(1, 2)"),
+        case("foo = 1 / 2", "$foo := checked_div_unsigned(1, 2)"),
         case("foo = 1 ** 2", "$foo := exp(1, 2)"),
         case("foo = 1 % 2", "$foo := mod(1, 2)"),
         case("foo = 1 & 2", "$foo := and(1, 2)"),

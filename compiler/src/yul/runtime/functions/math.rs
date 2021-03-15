@@ -22,6 +22,20 @@ pub fn checked_add_fns() -> Vec<yul::Statement> {
     ]
 }
 
+/// Return a vector of runtime functions for divisions with
+/// over-/underflow protection
+pub fn checked_div_fns() -> Vec<yul::Statement> {
+    vec![
+        checked_div_unsigned(),
+        checked_div_signed(Integer::I256),
+        checked_div_signed(Integer::I128),
+        checked_div_signed(Integer::I64),
+        checked_div_signed(Integer::I32),
+        checked_div_signed(Integer::I16),
+        checked_div_signed(Integer::I8),
+    ]
+}
+
 /// Return a vector of runtime functions for multiplications with
 /// over-/underflow protection
 pub fn checked_mul_fns() -> Vec<yul::Statement> {
@@ -57,7 +71,13 @@ pub fn checked_sub_fns() -> Vec<yul::Statement> {
 
 // Return all math runtime functions
 pub fn all() -> Vec<yul::Statement> {
-    [checked_add_fns(), checked_mul_fns(), checked_sub_fns()].concat()
+    [
+        checked_add_fns(),
+        checked_div_fns(),
+        checked_mul_fns(),
+        checked_sub_fns(),
+    ]
+    .concat()
 }
 
 fn checked_mul_unsigned(size: Integer) -> yul::Statement {
@@ -127,6 +147,32 @@ fn checked_add_signed(size: Integer) -> yul::Statement {
             // underflow, if val1 < 0 and val2 < (min_val - val1)
             (if (and((slt(val1, 0)), (slt(val2, (sub([min_value], val1)))))) { (revert(0, 0)) })
             (sum := add(val1, val2))
+        }
+    }
+}
+
+fn checked_div_unsigned() -> yul::Statement {
+    function_definition! {
+        function checked_div_unsigned(val1, val2) -> result {
+            (if (iszero(val2)) { (revert(0, 0)) })
+            (result := div(val1, val2))
+        }
+    }
+}
+
+fn checked_div_signed(size: Integer) -> yul::Statement {
+    if !size.is_signed() {
+        panic!("Expected signed integer")
+    }
+    let (min_value, _) = get_min_max(size.clone());
+    let fn_name = names::checked_div(&size);
+    function_definition! {
+        function [fn_name](val1, val2) -> result {
+            (if (iszero(val2)) { (revert(0, 0)) })
+
+            // overflow for min_val / -1
+            (if (and( (eq(val1, [min_value])), (eq(val2, (sub(0, 1))))) ) { (revert(0, 0)) })
+            (result := sdiv(val1, val2))
         }
     }
 }

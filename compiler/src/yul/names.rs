@@ -11,6 +11,16 @@ pub fn checked_add(size: &Integer) -> yul::Identifier {
     identifier! {(format!("checked_add_{}", size.to_lowercase()))}
 }
 
+/// Generate a function name to perform checked division
+pub fn checked_div(size: &Integer) -> yul::Identifier {
+    let size: &str = if size.is_signed() {
+        size.into()
+    } else {
+        "unsigned"
+    };
+    identifier! {(format!("checked_div_{}", size.to_lowercase()))}
+}
+
 /// Generate a function name to perform checked multiplication
 pub fn checked_mul(size: &Integer) -> yul::Identifier {
     let size: &str = size.into();
