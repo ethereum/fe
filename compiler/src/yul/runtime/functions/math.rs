@@ -119,8 +119,7 @@ fn checked_add_signed(size: Integer) -> yul::Statement {
         panic!("Expected signed integer")
     }
     let (min_value, max_value) = get_min_max(size.clone());
-    let size: &str = size.into();
-    let fn_name = identifier! {(format!("checked_add_{}", size.to_lowercase()))};
+    let fn_name = names::checked_add(&size);
     function_definition! {
         function [fn_name](val1, val2) -> sum {
             // overflow, if val1 >= 0 and val2 > (max_value - val1)
