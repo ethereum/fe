@@ -315,9 +315,8 @@ contract UniswapV2Factory:
         pair: address
         index: u256
 
-    # TODO: fix issue with "missing data object" for the pair contract (https://github.com/ethereum/fe/issues/284)
-    # pub def __init__(fee_to_setter: address):
-    #    self.fee_to_setter = fee_to_setter
+    pub def __init__(fee_to_setter: address):
+       self.fee_to_setter = fee_to_setter
 
     pub def fee_to() -> address:
         return self.fee_to

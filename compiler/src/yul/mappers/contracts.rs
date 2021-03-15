@@ -15,9 +15,9 @@ pub fn contract_def(
     created_contracts: Vec<yul::Object>,
 ) -> Result<yul::Object, CompileError> {
     if let fe::ModuleStmt::ContractDef { name, body } = &stmt.node {
-        let mut init = None;
-        let mut user_functions = vec![];
         let contract_name = name.node;
+        let mut init_function = None;
+        let mut user_functions = vec![];
 
         // map user defined functions
         for stmt in body.iter() {
@@ -25,7 +25,7 @@ pub fn contract_def(
                 (context.get_function(stmt), &stmt.node)
             {
                 if name.node == "__init__" {
-                    init = Some((
+                    init_function = Some((
                         functions::func_def(context, stmt)?,
                         attributes.param_types(),
                     ))
@@ -35,16 +35,8 @@ pub fn contract_def(
             }
         }
 
-        // build the contract's constructor
-        let constructor = if let Some((init_func, init_params)) = init {
-            let init_runtime = [runtime::build(context, stmt), user_functions.clone()].concat();
-            constructor::build_with_init(contract_name, init_func, init_params, init_runtime)
-        } else {
-            constructor::build()
-        };
-
-        // build the contract's runtime
-        let runtime = runtime::build_with_abi_dispatcher(context, stmt);
+        // build the set of functions needed during runtime
+        let runtime_functions = runtime::build_with_abi_dispatcher(context, stmt);
 
         // build data objects for static strings (also for constants in the future)
         let data = if let Some(attributes) = context.get_contract(stmt) {
@@ -61,28 +53,56 @@ pub fn contract_def(
             vec![]
         };
 
-        let runtime = yul::Object {
+        // create the runtime object
+        let runtime_object = yul::Object {
             name: identifier! { runtime },
             code: yul::Code {
                 block: yul::Block {
                     statements: statements! {
                         [user_functions...]
-                        [runtime...]
+                        [runtime_functions...]
                         // we must return, otherwise we'll enter into other objects
                         (return(0, 0))
                     },
                 },
             },
-            objects: created_contracts,
+            objects: created_contracts.clone(),
             // We can't reach to data objects in the "contract" hierachy so in order to have
             // the data objects available in both places we have to put them in both places.
             data: data.clone(),
         };
 
+        // Build the code and and objects fields for the constructor object.
+        //
+        // If there is an `__init__` function defined, we must include everything that
+        // is in the runtime object in the constructor object too. This is so
+        // user-defined functions can be called from `__init__`.
+        let (constructor_code, constructor_objects) = if let Some((init_func, init_params)) =
+            init_function
+        {
+            let init_runtime_functions = [runtime::build(context, stmt), user_functions].concat();
+            let constructor_code = constructor::build_with_init(
+                contract_name,
+                init_func,
+                init_params,
+                init_runtime_functions,
+            );
+
+            (
+                constructor_code,
+                [vec![runtime_object], created_contracts].concat(),
+            )
+        } else {
+            let constructor_code = constructor::build();
+
+            (constructor_code, vec![runtime_object])
+        };
+
+        // We return the contract initialization object.
         return Ok(yul::Object {
             name: identifier! { (contract_name) },
-            code: constructor,
-            objects: vec![runtime],
+            code: constructor_code,
+            objects: constructor_objects,
             data,
         });
     }

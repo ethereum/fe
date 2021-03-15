@@ -4,6 +4,5 @@ contract Foo:
 
 contract FooFactory:
     pub def create_foo() -> address:
-        # value and salt
         foo: Foo = Foo.create(0)
         return address(foo)
