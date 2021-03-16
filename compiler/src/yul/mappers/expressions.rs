@@ -457,7 +457,12 @@ fn expr_attribute(
                 Ok(Object::Msg) => match MsgField::from_str(attr.node) {
                     Ok(MsgField::Data) => todo!(),
                     Ok(MsgField::Sender) => Ok(expression! { caller() }),
-                    Ok(MsgField::Sig) => todo!(),
+                    Ok(MsgField::Sig) => Ok(expression! {
+                        and(
+                            [ expression! { calldataload(0) } ],
+                            [ expression! { shl(224, 0xffffffff) } ]
+                        )
+                    }),
                     Ok(MsgField::Value) => Ok(expression! { callvalue() }),
                     Err(_) => Err(CompileError::static_str("invalid `msg` attribute name")),
                 },

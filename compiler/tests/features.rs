@@ -122,6 +122,7 @@ fn test_assert() {
     case("return_identity_u8.fe", &[uint_token(42)], uint_token(42)),
     case("return_u128_cast.fe", &[], uint_token(42)),
     case("return_i128_cast.fe", &[], int_token(-3)),
+    case("return_msg_sig.fe", &[], bytes32_token("febb0f7e")),
     // binary operators
     case("return_addition_u256.fe", &[uint_token(42), uint_token(42)], uint_token(84)),
     case("return_addition_i256.fe", &[int_token(-42), int_token(-42)], int_token(-84)),
@@ -155,7 +156,7 @@ fn test_assert() {
     case("return_bitwiseshr_u256.fe", &[uint_token(212), uint_token(1)], uint_token(106)),
     case("return_bitwiseshr_i256.fe", &[int_token(212), int_token(0)], int_token(212)),
     case("return_bitwiseshr_i256.fe", &[int_token(212), int_token(1)], int_token(106)),
-    // comparision operators
+    // comparison operators
     case("return_eq_u256.fe", &[uint_token(1), uint_token(1)], bool_token(true)),
     case("return_eq_u256.fe", &[uint_token(1), uint_token(2)], bool_token(false)),
     case("return_noteq_u256.fe", &[uint_token(1), uint_token(1)], bool_token(false)),

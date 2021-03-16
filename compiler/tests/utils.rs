@@ -6,6 +6,7 @@ use evm_runtime::{
 use fe_compiler as compiler;
 use primitive_types::{
     H160,
+    H256,
     U256,
 };
 use std::collections::BTreeMap;
@@ -314,6 +315,19 @@ pub fn bool_token(val: bool) -> ethabi::Token {
 #[allow(dead_code)]
 pub fn bytes_token(s: &str) -> ethabi::Token {
     ethabi::Token::FixedBytes(ethabi::FixedBytes::from(s))
+}
+
+#[allow(dead_code)]
+pub fn bytes32(val: &str) -> Vec<u8> {
+    H256::from_str(val)
+        .expect(&format!("couldn't create bytes[32] from: {}", val))
+        .as_bytes()
+        .to_vec()
+}
+
+#[allow(dead_code)]
+pub fn bytes32_token(val: &str) -> ethabi::Token {
+    ethabi::Token::FixedBytes(bytes32(&format! {"{:0<64}", val}))
 }
 
 #[allow(dead_code)]

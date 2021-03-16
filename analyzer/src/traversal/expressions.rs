@@ -310,6 +310,12 @@ fn expr_attribute(
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::Attribute { value, attr } = &exp.node {
         let base_type = |typ| Ok(ExpressionAttributes::new(Type::Base(typ), Location::Value));
+        let array_type = |array| {
+            Ok(ExpressionAttributes::new(
+                Type::Array(array),
+                Location::Value,
+            ))
+        };
         let undefined_value_err = Err(SemanticError::undefined_value());
 
         // If the value is a name, check if it is a builtin object and attribute.
@@ -335,7 +341,10 @@ fn expr_attribute(
                     return match MsgField::from_str(attr.node) {
                         Ok(MsgField::Data) => todo!(),
                         Ok(MsgField::Sender) => base_type(Base::Address),
-                        Ok(MsgField::Sig) => todo!(),
+                        Ok(MsgField::Sig) => array_type(Array {
+                            size: 32,
+                            inner: Base::Byte,
+                        }),
                         Ok(MsgField::Value) => base_type(U256),
                         Err(_) => undefined_value_err,
                     }
