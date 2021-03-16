@@ -139,11 +139,9 @@ fn test_assert() {
     case("return_division_i256.fe", &[int_token(-42), int_token(42)], int_token(-1)),
     case("return_pow_u256.fe", &[uint_token(2), uint_token(0)], uint_token(1)),
     case("return_pow_u256.fe", &[uint_token(2), uint_token(4)], uint_token(16)),
-    case("return_mod_u256.fe", &[uint_token(5), uint_token(0)], uint_token(0)),
     case("return_mod_u256.fe", &[uint_token(5), uint_token(2)], uint_token(1)),
     case("return_mod_u256.fe", &[uint_token(5), uint_token(3)], uint_token(2)),
     case("return_mod_u256.fe", &[uint_token(5), uint_token(5)], uint_token(0)),
-    case("return_mod_i256.fe", &[int_token(5), int_token(0)], int_token(0)),
     case("return_mod_i256.fe", &[int_token(5), int_token(2)], int_token(1)),
     case("return_mod_i256.fe", &[int_token(5), int_token(3)], int_token(2)),
     case("return_mod_i256.fe", &[int_token(5), int_token(5)], int_token(0)),
@@ -779,11 +777,58 @@ fn checked_arithmetic() {
                 &[config.i_min.clone(), int_token(-1)],
             );
 
-            // unsigned: 3 / -2 works
+            // signed: 3 / -2 works
             harness.test_function(
                 &mut executor,
                 &format!("div_i{}", config.size),
                 &[int_token(3), int_token(-2)],
+                Some(&int_token(-1)),
+            );
+
+            // MODULO
+            // unsigned: anything % 0 fails
+            harness.test_function_reverts(
+                &mut executor,
+                &format!("mod_u{}", config.size),
+                &[config.u_max.clone(), uint_token(0)],
+            );
+
+            // unsigned: max_value % 2 works
+            harness.test_function(
+                &mut executor,
+                &format!("mod_u{}", config.size),
+                &[config.u_max.clone(), uint_token(2)],
+                Some(&uint_token(1)),
+            );
+
+            // signed: anything % 0 fails
+            harness.test_function_reverts(
+                &mut executor,
+                &format!("mod_i{}", config.size),
+                &[config.i_max.clone(), int_token(0)],
+            );
+
+            // unsigned: max_value % 2 works
+            harness.test_function(
+                &mut executor,
+                &format!("mod_i{}", config.size),
+                &[config.i_max.clone(), int_token(2)],
+                Some(&int_token(1)),
+            );
+
+            // signed: 13 % -3 works
+            harness.test_function(
+                &mut executor,
+                &format!("mod_i{}", config.size),
+                &[int_token(13), int_token(-3)],
+                Some(&int_token(1)),
+            );
+
+            // signed: -13 % 3 works
+            harness.test_function(
+                &mut executor,
+                &format!("mod_i{}", config.size),
+                &[int_token(-13), int_token(3)],
                 Some(&int_token(-1)),
             );
 

@@ -36,6 +36,11 @@ pub fn checked_div_fns() -> Vec<yul::Statement> {
     ]
 }
 
+/// Return a vector of runtime functions for checked modulo arithmetic
+pub fn checked_mod_fns() -> Vec<yul::Statement> {
+    vec![checked_mod_unsigned(), checked_mod_signed()]
+}
+
 /// Return a vector of runtime functions for multiplications with
 /// over-/underflow protection
 pub fn checked_mul_fns() -> Vec<yul::Statement> {
@@ -74,10 +79,29 @@ pub fn all() -> Vec<yul::Statement> {
     [
         checked_add_fns(),
         checked_div_fns(),
+        checked_mod_fns(),
         checked_mul_fns(),
         checked_sub_fns(),
     ]
     .concat()
+}
+
+fn checked_mod_unsigned() -> yul::Statement {
+    function_definition! {
+        function checked_mod_unsigned(val1, val2) -> result {
+            (if (iszero(val2)) { (revert(0, 0)) })
+            (result := mod(val1, val2))
+        }
+    }
+}
+
+fn checked_mod_signed() -> yul::Statement {
+    function_definition! {
+        function checked_mod_signed(val1, val2) -> result {
+            (if (iszero(val2)) { (revert(0, 0)) })
+            (result := smod(val1, val2))
+        }
+    }
 }
 
 fn checked_mul_unsigned(size: Integer) -> yul::Statement {

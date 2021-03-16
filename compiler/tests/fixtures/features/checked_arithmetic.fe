@@ -72,9 +72,6 @@ contract CheckedArithmetic:
     pub def sub_i8(left: i8, right: i8) -> i8:
         return left - right
 
-    pub def mul_u256(left: u256, right: u256) -> u256:
-        return left * right
-
     pub def div_u256(left: u256, right: u256) -> u256:
         return left / right
 
@@ -111,6 +108,9 @@ contract CheckedArithmetic:
     pub def div_i8(left: i8, right: i8) -> i8:
         return left / right
 
+    pub def mul_u256(left: u256, right: u256) -> u256:
+        return left * right
+
     pub def mul_u128(left: u128, right: u128) -> u128:
         return left * right
 
@@ -143,3 +143,39 @@ contract CheckedArithmetic:
 
     pub def mul_i8(left: i8, right: i8) -> i8:
         return left * right
+
+    pub def mod_u256(left: u256, right: u256) -> u256:
+        return left % right
+
+    pub def mod_u128(left: u128, right: u128) -> u128:
+        return left % right
+
+    pub def mod_u64(left: u64, right: u64) -> u64:
+        return left % right
+
+    pub def mod_u32(left: u32, right: u32) -> u32:
+        return left % right
+
+    pub def mod_u16(left: u16, right: u16) -> u16:
+        return left % right
+
+    pub def mod_u8(left: u8, right: u8) -> u8:
+        return left % right
+
+    pub def mod_i256(left: i256, right: i256) -> i256:
+        return left % right
+
+    pub def mod_i128(left: i128, right: i128) -> i128:
+        return left % right
+
+    pub def mod_i64(left: i64, right: i64) -> i64:
+        return left % right
+
+    pub def mod_i32(left: i32, right: i32) -> i32:
+        return left % right
+
+    pub def mod_i16(left: i16, right: i16) -> i16:
+        return left % right
+
+    pub def mod_i8(left: i8, right: i8) -> i8:
+        return left % right
