@@ -66,7 +66,9 @@ use std::fs;
     case("external_call_type_error.fe", "TypeError"),
     case("external_call_wrong_number_of_params.fe", "WrongNumberOfParams"),
     case("non_bool_and.fe", "TypeError"),
-    case("non_bool_or.fe", "TypeError")
+    case("non_bool_or.fe", "TypeError"),
+    case("pow_with_wrong_capacity.fe", "TypeError"),
+    case("pow_with_signed_exponent.fe", "SignedExponentNotAllowed")
 )]
 fn test_compile_errors(fixture_file: &str, expected_error: &str) {
     let src = fs::read_to_string(format!("tests/fixtures/compile_errors/{}", fixture_file))

@@ -12,6 +12,7 @@ pub enum ErrorKind {
     MissingReturn,
     NotSubscriptable,
     NumericCapacityMismatch,
+    SignedExponentNotAllowed,
     StringCapacityMismatch,
     UndefinedValue,
     UnexpectedReturn,
@@ -77,6 +78,14 @@ impl SemanticError {
     pub fn numeric_capacity_mismatch() -> Self {
         SemanticError {
             kind: ErrorKind::NumericCapacityMismatch,
+            context: vec![],
+        }
+    }
+
+    /// Create a new error with kind `SignedExponentNotAllowed`
+    pub fn signed_exponent_not_allowed() -> Self {
+        SemanticError {
+            kind: ErrorKind::SignedExponentNotAllowed,
             context: vec![],
         }
     }

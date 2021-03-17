@@ -366,3 +366,16 @@ fn test_runtime_house_struct() {
         );
     })
 }
+
+#[test]
+fn checked_exp_signed() {
+    with_executor(&|mut executor| {
+        test_runtime_functions(
+            &mut executor,
+            functions::std(),
+            statements! {
+                [assert_eq!(4, (checked_exp_signed(2, 2, 0, 100)))]
+            },
+        );
+    })
+}

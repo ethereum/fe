@@ -140,6 +140,7 @@ fn test_assert() {
     case("return_division_i256.fe", &[int_token(-42), int_token(42)], int_token(-1)),
     case("return_pow_u256.fe", &[uint_token(2), uint_token(0)], uint_token(1)),
     case("return_pow_u256.fe", &[uint_token(2), uint_token(4)], uint_token(16)),
+    case("return_pow_i256.fe", &[int_token(-2), uint_token(3)], int_token(-8)),
     case("return_mod_u256.fe", &[uint_token(5), uint_token(2)], uint_token(1)),
     case("return_mod_u256.fe", &[uint_token(5), uint_token(3)], uint_token(2)),
     case("return_mod_u256.fe", &[uint_token(5), uint_token(5)], uint_token(0)),
@@ -784,6 +785,58 @@ fn checked_arithmetic() {
                 &format!("div_i{}", config.size),
                 &[int_token(3), int_token(-2)],
                 Some(&int_token(-1)),
+            );
+
+            // EXPONENTIATION
+            // unsigned: max ** 2 fails
+            harness.test_function_reverts(
+                &mut executor,
+                &format!("pow_u{}", config.size),
+                &[config.u_max.clone(), uint_token(2)],
+            );
+
+            // unsigned: 2 ** (bit_len-1) works
+            harness.test_function(
+                &mut executor,
+                &format!("pow_u{}", config.size),
+                &[uint_token(2), uint_token(config.size - 1)],
+                Some(&ethabi::Token::Uint(
+                    U256::from(2).pow(U256::from(config.size - 1)),
+                )),
+            );
+
+            // signed: max ** 2 fails (overflow)
+            harness.test_function_reverts(
+                &mut executor,
+                &format!("pow_i{}", config.size),
+                &[config.i_max.clone(), uint_token(2)],
+            );
+
+            // signed: min ** 3 fails (underflow)
+            harness.test_function_reverts(
+                &mut executor,
+                &format!("pow_i{}", config.size),
+                &[config.i_min.clone(), uint_token(3)],
+            );
+
+            // signed: 2 ** (bit_len-2) works
+            harness.test_function(
+                &mut executor,
+                &format!("pow_i{}", config.size),
+                &[int_token(2), uint_token(config.size - 2)],
+                Some(&ethabi::Token::Int(
+                    U256::from(2).pow(U256::from(config.size - 2)),
+                )),
+            );
+
+            // signed: -2 ** (bit_len-1) works
+            harness.test_function(
+                &mut executor,
+                &format!("pow_i{}", config.size),
+                &[int_token(-2), uint_token(config.size - 1)],
+                Some(&ethabi::Token::Int(get_2s_complement_for_negative(
+                    U256::from(2).pow(U256::from(config.size - 1)),
+                ))),
             );
 
             // MODULO

@@ -31,6 +31,12 @@ pub fn checked_mod(size: &Integer) -> yul::Identifier {
     identifier! {(format!("checked_mod_{}", sign.to_lowercase()))}
 }
 
+/// Generate a function name to perform checked exponentiation
+pub fn checked_exp(size: &Integer) -> yul::Identifier {
+    let size: &str = size.into();
+    identifier! {(format!("checked_exp_{}", size.to_lowercase()))}
+}
+
 /// Generate a function name to perform checked multiplication
 pub fn checked_mul(size: &Integer) -> yul::Identifier {
     let size: &str = size.into();
