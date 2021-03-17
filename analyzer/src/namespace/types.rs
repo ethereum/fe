@@ -262,6 +262,7 @@ impl TryFrom<&str> for FeString {
 }
 
 impl Integer {
+    /// Returns `true` if the integer is signed, otherwise `false`
     pub fn is_signed(&self) -> bool {
         matches!(
             self,
@@ -274,6 +275,13 @@ impl Integer {
         )
     }
 
+    // Returns `true` if the integer is at least the same size (or larger) than
+    // `other`
+    pub fn can_hold(&self, other: &Integer) -> bool {
+        self.size() >= other.size()
+    }
+
+    // Returns `true` if `num` represents a number that fits the type
     pub fn fits(&self, num: &str) -> bool {
         let radix = 10;
 

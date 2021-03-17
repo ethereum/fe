@@ -179,3 +179,39 @@ contract CheckedArithmetic:
 
     pub def mod_i8(left: i8, right: i8) -> i8:
         return left % right
+
+    pub def pow_u256(left: u256, right: u256) -> u256:
+        return left ** right
+
+    pub def pow_u128(left: u128, right: u128) -> u128:
+        return left ** right
+
+    pub def pow_u64(left: u64, right: u64) -> u64:
+        return left ** right
+
+    pub def pow_u32(left: u32, right: u32) -> u32:
+        return left ** right
+
+    pub def pow_u16(left: u16, right: u16) -> u16:
+        return left ** right
+
+    pub def pow_u8(left: u8, right: u8) -> u8:
+        return left ** right
+
+    pub def pow_i256(left: i256, right: u256) -> i256:
+        return left ** right
+
+    pub def pow_i128(left: i128, right: u128) -> i128:
+        return left ** right
+
+    pub def pow_i64(left: i64, right: u64) -> i64:
+        return left ** right
+
+    pub def pow_i32(left: i32, right: u32) -> i32:
+        return left ** right
+
+    pub def pow_i16(left: i16, right: u16) -> i16:
+        return left ** right
+
+    pub def pow_i8(left: i8, right: u8) -> i8:
+        return left ** right
