@@ -306,6 +306,9 @@ impl BlockScope {
 
     /// Add a variable to the block scope.
     pub fn add_var(&mut self, name: &str, typ: FixedSize) -> Result<(), SemanticError> {
+        if self.get_variable_def(name).is_some() {
+            return Err(SemanticError::already_defined());
+        }
         match self.variable_defs.entry(name.to_owned()) {
             Entry::Occupied(_) => Err(SemanticError::already_defined()),
             Entry::Vacant(e) => {
