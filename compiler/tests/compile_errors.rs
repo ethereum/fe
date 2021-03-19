@@ -16,6 +16,7 @@ use std::fs;
     case("duplicate_contract_in_module.fe", "AlreadyDefined"),
     case("duplicate_event_in_contract.fe", "AlreadyDefined"),
     case("duplicate_field_in_contract.fe", "AlreadyDefined"),
+    case("duplicate_field_in_struct.fe", "AlreadyDefined"),
     case("duplicate_method_in_contract.fe", "AlreadyDefined"),
     case("duplicate_struct_in_module.fe", "AlreadyDefined"),
     case("duplicate_typedef_in_module.fe", "AlreadyDefined"),

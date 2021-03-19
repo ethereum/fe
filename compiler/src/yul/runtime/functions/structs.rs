@@ -117,8 +117,8 @@ mod tests {
     #[test]
     fn test_struct_api_generation() {
         let mut val = Struct::new("Foo");
-        val.add_field("bar", &FixedSize::bool());
-        val.add_field("bar2", &FixedSize::bool());
+        val.add_field("bar", &FixedSize::bool()).unwrap();
+        val.add_field("bar2", &FixedSize::bool()).unwrap();
         assert_eq!(
             structs::generate_new_fn(&val).to_string(),
             "function struct_Foo_new(bar, bar2) -> return_val { return_val := alloc(32) mstore(return_val, bar) let bar2_ptr := alloc(32) mstore(bar2_ptr, bar2) }"         )
@@ -127,8 +127,8 @@ mod tests {
     #[test]
     fn test_struct_getter_generation() {
         let mut val = Struct::new("Foo");
-        val.add_field("bar", &FixedSize::bool());
-        val.add_field("bar2", &FixedSize::bool());
+        val.add_field("bar", &FixedSize::bool()).unwrap();
+        val.add_field("bar2", &FixedSize::bool()).unwrap();
         assert_eq!(
             structs::generate_get_fn(&val, &val.get_field_names().get(0).unwrap()).to_string(),
             "function struct_Foo_get_bar_ptr(ptr) -> return_val { return_val := add(ptr, 31) }"

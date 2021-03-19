@@ -28,8 +28,8 @@ mod tests {
     #[test]
     fn test_new() {
         let mut val = Struct::new("Foo");
-        val.add_field("bar", &FixedSize::bool());
-        val.add_field("bar2", &FixedSize::bool());
+        val.add_field("bar", &FixedSize::bool()).unwrap();
+        val.add_field("bar2", &FixedSize::bool()).unwrap();
         let params = vec![
             identifier_expression! { (1) },
             identifier_expression! { (2) },
