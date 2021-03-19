@@ -63,7 +63,7 @@ pub fn contract_def(
                     name: name.node.to_owned(),
                     functions: contract_attributes.public_functions,
                 }),
-            );
+            )?;
 
         return Ok(contract_scope);
     }

@@ -53,7 +53,7 @@ fn type_def(
 ) -> Result<(), SemanticError> {
     if let fe::ModuleStmt::TypeDef { name, typ } = &def.node {
         let typ = types::type_desc(&scope.borrow().type_defs, &typ.node)?;
-        scope.borrow_mut().add_type_def(name.node, typ);
+        scope.borrow_mut().add_type_def(name.node, typ)?;
         return Ok(());
     }
 

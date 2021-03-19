@@ -1,0 +1,9 @@
+
+type bar = u8
+
+type bar = u8
+
+contract Foo:
+
+    pub def bar():
+        pass
