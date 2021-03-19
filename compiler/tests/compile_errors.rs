@@ -13,6 +13,7 @@ use std::fs;
     case("call_event_with_wrong_types.fe", "TypeError"),
     case("continue_without_loop_2.fe", "ContinueWithoutLoop"),
     case("continue_without_loop.fe", "ContinueWithoutLoop"),
+    case("duplicate_event_in_contract.fe", "AlreadyDefined"),
     case("duplicate_field_in_contract.fe", "AlreadyDefined"),
     case("duplicate_method_in_contract.fe", "AlreadyDefined"),
     case("external_call_type_error.fe", "TypeError"),
