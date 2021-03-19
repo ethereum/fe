@@ -76,7 +76,7 @@ pub fn main() {
     let input_file = matches.value_of("input").unwrap();
     let output_dir = matches.value_of("output-dir").unwrap();
     let overwrite = matches.is_present("overwrite");
-    let optimize = matches.is_present("overwrite");
+    let optimize = matches.is_present("optimize");
     let targets =
         values_t!(matches.values_of("emit"), CompilationTarget).unwrap_or_else(|e| e.exit());
 
