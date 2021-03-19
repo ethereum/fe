@@ -3,40 +3,40 @@ use serde::{
     Serialize,
 };
 
-use crate::span::Spanned;
+use crate::node::Node;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Module<'a> {
     #[serde(borrow)]
-    pub body: Vec<Spanned<ModuleStmt<'a>>>,
+    pub body: Vec<Node<ModuleStmt<'a>>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ModuleStmt<'a> {
     TypeDef {
-        name: Spanned<&'a str>,
+        name: Node<&'a str>,
         #[serde(borrow)]
-        typ: Spanned<TypeDesc<'a>>,
+        typ: Node<TypeDesc<'a>>,
     },
     SimpleImport {
         #[serde(borrow)]
-        names: Vec<Spanned<SimpleImportName<'a>>>,
+        names: Vec<Node<SimpleImportName<'a>>>,
     },
     FromImport {
         #[serde(borrow)]
-        path: Spanned<FromImportPath<'a>>,
+        path: Node<FromImportPath<'a>>,
         #[serde(borrow)]
-        names: Spanned<FromImportNames<'a>>,
+        names: Node<FromImportNames<'a>>,
     },
     ContractDef {
-        name: Spanned<&'a str>,
+        name: Node<&'a str>,
         #[serde(borrow)]
-        body: Vec<Spanned<ContractStmt<'a>>>,
+        body: Vec<Node<ContractStmt<'a>>>,
     },
     StructDef {
-        name: Spanned<&'a str>,
+        name: Node<&'a str>,
         #[serde(borrow)]
-        body: Vec<Spanned<StructStmt<'a>>>,
+        body: Vec<Node<StructStmt<'a>>>,
     },
 }
 
@@ -46,35 +46,35 @@ pub enum TypeDesc<'a> {
         base: &'a str,
     },
     Array {
-        typ: Box<Spanned<TypeDesc<'a>>>,
+        typ: Box<Node<TypeDesc<'a>>>,
         dimension: usize,
     },
     Map {
-        from: Box<Spanned<TypeDesc<'a>>>,
-        to: Box<Spanned<TypeDesc<'a>>>,
+        from: Box<Node<TypeDesc<'a>>>,
+        to: Box<Node<TypeDesc<'a>>>,
     },
     Tuple {
-        items: Vec<Spanned<TypeDesc<'a>>>,
+        items: Vec<Node<TypeDesc<'a>>>,
     },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct SimpleImportName<'a> {
     #[serde(borrow)]
-    pub path: Vec<Spanned<&'a str>>,
-    pub alias: Option<Spanned<&'a str>>,
+    pub path: Vec<Node<&'a str>>,
+    pub alias: Option<Node<&'a str>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum FromImportPath<'a> {
     Absolute {
         #[serde(borrow)]
-        path: Vec<Spanned<&'a str>>,
+        path: Vec<Node<&'a str>>,
     },
     Relative {
         parent_level: usize,
         #[serde(borrow)]
-        path: Vec<Spanned<&'a str>>,
+        path: Vec<Node<&'a str>>,
     },
 }
 
@@ -82,44 +82,44 @@ pub enum FromImportPath<'a> {
 pub enum FromImportNames<'a> {
     Star,
     #[serde(borrow)]
-    List(Vec<Spanned<FromImportName<'a>>>),
+    List(Vec<Node<FromImportName<'a>>>),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct FromImportName<'a> {
     #[serde(borrow)]
-    pub name: Spanned<&'a str>,
-    pub alias: Option<Spanned<&'a str>>,
+    pub name: Node<&'a str>,
+    pub alias: Option<Node<&'a str>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ContractStmt<'a> {
     ContractField {
-        qual: Option<Spanned<ContractFieldQual>>,
+        qual: Option<Node<ContractFieldQual>>,
         #[serde(borrow)]
-        name: Spanned<&'a str>,
-        typ: Spanned<TypeDesc<'a>>,
+        name: Node<&'a str>,
+        typ: Node<TypeDesc<'a>>,
     },
     EventDef {
-        name: Spanned<&'a str>,
-        fields: Vec<Spanned<EventField<'a>>>,
+        name: Node<&'a str>,
+        fields: Vec<Node<EventField<'a>>>,
     },
     FuncDef {
-        qual: Option<Spanned<FuncQual>>,
-        name: Spanned<&'a str>,
-        args: Vec<Spanned<FuncDefArg<'a>>>,
-        return_type: Option<Spanned<TypeDesc<'a>>>,
-        body: Vec<Spanned<FuncStmt<'a>>>,
+        qual: Option<Node<FuncQual>>,
+        name: Node<&'a str>,
+        args: Vec<Node<FuncDefArg<'a>>>,
+        return_type: Option<Node<TypeDesc<'a>>>,
+        body: Vec<Node<FuncStmt<'a>>>,
     },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum StructStmt<'a> {
     StructField {
-        qual: Option<Spanned<StructFieldQual>>,
+        qual: Option<Node<StructFieldQual>>,
         #[serde(borrow)]
-        name: Spanned<&'a str>,
-        typ: Spanned<TypeDesc<'a>>,
+        name: Node<&'a str>,
+        typ: Node<TypeDesc<'a>>,
     },
 }
 
@@ -137,10 +137,10 @@ pub enum StructFieldQual {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct EventField<'a> {
-    pub qual: Option<Spanned<EventFieldQual>>,
+    pub qual: Option<Node<EventFieldQual>>,
     #[serde(borrow)]
-    pub name: Spanned<&'a str>,
-    pub typ: Spanned<TypeDesc<'a>>,
+    pub name: Node<&'a str>,
+    pub typ: Node<TypeDesc<'a>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -156,55 +156,55 @@ pub enum FuncQual {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct FuncDefArg<'a> {
     #[serde(borrow)]
-    pub name: Spanned<&'a str>,
-    pub typ: Spanned<TypeDesc<'a>>,
+    pub name: Node<&'a str>,
+    pub typ: Node<TypeDesc<'a>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum FuncStmt<'a> {
     Return {
         #[serde(borrow)]
-        value: Option<Spanned<Expr<'a>>>,
+        value: Option<Node<Expr<'a>>>,
     },
     VarDecl {
-        target: Spanned<Expr<'a>>,
-        typ: Spanned<TypeDesc<'a>>,
-        value: Option<Spanned<Expr<'a>>>,
+        target: Node<Expr<'a>>,
+        typ: Node<TypeDesc<'a>>,
+        value: Option<Node<Expr<'a>>>,
     },
     Assign {
-        targets: Vec<Spanned<Expr<'a>>>,
-        value: Spanned<Expr<'a>>,
+        targets: Vec<Node<Expr<'a>>>,
+        value: Node<Expr<'a>>,
     },
     AugAssign {
-        target: Spanned<Expr<'a>>,
-        op: Spanned<BinOperator>,
-        value: Spanned<Expr<'a>>,
+        target: Node<Expr<'a>>,
+        op: Node<BinOperator>,
+        value: Node<Expr<'a>>,
     },
     For {
-        target: Spanned<Expr<'a>>,
-        iter: Spanned<Expr<'a>>,
-        body: Vec<Spanned<FuncStmt<'a>>>,
-        or_else: Vec<Spanned<FuncStmt<'a>>>,
+        target: Node<Expr<'a>>,
+        iter: Node<Expr<'a>>,
+        body: Vec<Node<FuncStmt<'a>>>,
+        or_else: Vec<Node<FuncStmt<'a>>>,
     },
     While {
-        test: Spanned<Expr<'a>>,
-        body: Vec<Spanned<FuncStmt<'a>>>,
-        or_else: Vec<Spanned<FuncStmt<'a>>>,
+        test: Node<Expr<'a>>,
+        body: Vec<Node<FuncStmt<'a>>>,
+        or_else: Vec<Node<FuncStmt<'a>>>,
     },
     If {
-        test: Spanned<Expr<'a>>,
-        body: Vec<Spanned<FuncStmt<'a>>>,
-        or_else: Vec<Spanned<FuncStmt<'a>>>,
+        test: Node<Expr<'a>>,
+        body: Vec<Node<FuncStmt<'a>>>,
+        or_else: Vec<Node<FuncStmt<'a>>>,
     },
     Assert {
-        test: Spanned<Expr<'a>>,
-        msg: Option<Spanned<Expr<'a>>>,
+        test: Node<Expr<'a>>,
+        msg: Option<Node<Expr<'a>>>,
     },
     Emit {
-        value: Spanned<Expr<'a>>,
+        value: Node<Expr<'a>>,
     },
     Expr {
-        value: Expr<'a>,
+        value: Node<Expr<'a>>,
     },
     Pass,
     Break,
@@ -215,50 +215,50 @@ pub enum FuncStmt<'a> {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum Expr<'a> {
     Ternary {
-        if_expr: Box<Spanned<Expr<'a>>>,
-        test: Box<Spanned<Expr<'a>>>,
-        else_expr: Box<Spanned<Expr<'a>>>,
+        if_expr: Box<Node<Expr<'a>>>,
+        test: Box<Node<Expr<'a>>>,
+        else_expr: Box<Node<Expr<'a>>>,
     },
     BoolOperation {
-        left: Box<Spanned<Expr<'a>>>,
-        op: Spanned<BoolOperator>,
-        right: Box<Spanned<Expr<'a>>>,
+        left: Box<Node<Expr<'a>>>,
+        op: Node<BoolOperator>,
+        right: Box<Node<Expr<'a>>>,
     },
     BinOperation {
-        left: Box<Spanned<Expr<'a>>>,
-        op: Spanned<BinOperator>,
-        right: Box<Spanned<Expr<'a>>>,
+        left: Box<Node<Expr<'a>>>,
+        op: Node<BinOperator>,
+        right: Box<Node<Expr<'a>>>,
     },
     UnaryOperation {
-        op: Spanned<UnaryOperator>,
-        operand: Box<Spanned<Expr<'a>>>,
+        op: Node<UnaryOperator>,
+        operand: Box<Node<Expr<'a>>>,
     },
     CompOperation {
-        left: Box<Spanned<Expr<'a>>>,
-        op: Spanned<CompOperator>,
-        right: Box<Spanned<Expr<'a>>>,
+        left: Box<Node<Expr<'a>>>,
+        op: Node<CompOperator>,
+        right: Box<Node<Expr<'a>>>,
     },
     Attribute {
-        value: Box<Spanned<Expr<'a>>>,
-        attr: Spanned<&'a str>,
+        value: Box<Node<Expr<'a>>>,
+        attr: Node<&'a str>,
     },
     Subscript {
-        value: Box<Spanned<Expr<'a>>>,
-        slices: Spanned<Vec<Spanned<Slice<'a>>>>,
+        value: Box<Node<Expr<'a>>>,
+        slices: Node<Vec<Node<Slice<'a>>>>,
     },
     Call {
-        func: Box<Spanned<Expr<'a>>>,
-        args: Spanned<Vec<Spanned<CallArg<'a>>>>,
+        func: Box<Node<Expr<'a>>>,
+        args: Node<Vec<Node<CallArg<'a>>>>,
     },
     List {
-        elts: Vec<Spanned<Expr<'a>>>,
+        elts: Vec<Node<Expr<'a>>>,
     },
     ListComp {
-        elt: Box<Spanned<Expr<'a>>>,
-        comps: Vec<Spanned<Comprehension<'a>>>,
+        elt: Box<Node<Expr<'a>>>,
+        comps: Vec<Node<Comprehension<'a>>>,
     },
     Tuple {
-        elts: Vec<Spanned<Expr<'a>>>,
+        elts: Vec<Node<Expr<'a>>>,
     },
     Bool(bool),
     Name(&'a str),
@@ -271,33 +271,33 @@ pub enum Expr<'a> {
 pub enum Slice<'a> {
     Slice {
         #[serde(borrow)]
-        lower: Option<Box<Spanned<Expr<'a>>>>,
-        upper: Option<Box<Spanned<Expr<'a>>>>,
-        step: Option<Box<Spanned<Expr<'a>>>>,
+        lower: Option<Box<Node<Expr<'a>>>>,
+        upper: Option<Box<Node<Expr<'a>>>>,
+        step: Option<Box<Node<Expr<'a>>>>,
     },
-    Index(Box<Expr<'a>>),
+    Index(Box<Node<Expr<'a>>>),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum CallArg<'a> {
     #[serde(borrow)]
-    Arg(Expr<'a>),
+    Arg(Node<Expr<'a>>),
     Kwarg(Kwarg<'a>),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Kwarg<'a> {
     #[serde(borrow)]
-    pub name: Spanned<&'a str>,
-    pub value: Box<Spanned<Expr<'a>>>,
+    pub name: Node<&'a str>,
+    pub value: Box<Node<Expr<'a>>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Comprehension<'a> {
     #[serde(borrow)]
-    pub target: Box<Spanned<Expr<'a>>>,
-    pub iter: Box<Spanned<Expr<'a>>>,
-    pub ifs: Vec<Spanned<Expr<'a>>>,
+    pub target: Box<Node<Expr<'a>>>,
+    pub iter: Box<Node<Expr<'a>>>,
+    pub ifs: Vec<Node<Expr<'a>>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]

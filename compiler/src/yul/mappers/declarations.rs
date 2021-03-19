@@ -7,17 +7,17 @@ use fe_analyzer::namespace::types::{
 };
 use fe_analyzer::Context;
 use fe_parser::ast as fe;
-use fe_parser::span::Spanned;
+use fe_parser::node::Node;
 use yultsur::*;
 
 /// Builds a Yul statement from a Fe variable declaration
 pub fn var_decl(
     context: &Context,
-    stmt: &Spanned<fe::FuncStmt>,
+    stmt: &Node<fe::FuncStmt>,
 ) -> Result<yul::Statement, CompileError> {
     let decl_type = context.get_declaration(stmt).expect("missing attributes");
 
-    if let fe::FuncStmt::VarDecl { target, value, .. } = &stmt.node {
+    if let fe::FuncStmt::VarDecl { target, value, .. } = &stmt.kind {
         let target = names::var_name(expressions::expr_name_str(&target));
 
         return Ok(if let Some(value) = value {
@@ -38,6 +38,7 @@ pub fn var_decl(
 }
 
 #[cfg(test)]
+#[cfg(feature = "fix-context-harness")]
 mod tests {
     use crate::yul::mappers::declarations::var_decl;
     use fe_analyzer::namespace::types::{

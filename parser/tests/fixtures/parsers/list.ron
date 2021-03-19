@@ -2,8 +2,8 @@
 [x]
 ---
 [
-  Spanned(
-    node: List(
+  Node(
+    kind: List(
       elts: [],
     ),
     span: Span(
@@ -11,11 +11,11 @@
       end: 2,
     ),
   ),
-  Spanned(
-    node: List(
+  Node(
+    kind: List(
       elts: [
-        Spanned(
-          node: Name("x"),
+        Node(
+          kind: Name("x"),
           span: Span(
             start: 4,
             end: 5,

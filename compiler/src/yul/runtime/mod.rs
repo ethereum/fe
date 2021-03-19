@@ -11,11 +11,11 @@ use fe_analyzer::{
     FunctionAttributes,
 };
 use fe_parser::ast as fe;
-use fe_parser::span::Spanned;
+use fe_parser::node::Node;
 use yultsur::*;
 
 /// Builds the set of function statements that are needed during runtime.
-pub fn build(context: &Context, contract: &Spanned<fe::ModuleStmt>) -> Vec<yul::Statement> {
+pub fn build(context: &Context, contract: &Node<fe::ModuleStmt>) -> Vec<yul::Statement> {
     if let Some(attributes) = context.get_contract(contract) {
         let std = functions::std();
 
@@ -125,7 +125,7 @@ fn concat_contract_functions(contracts: Vec<Contract>) -> Vec<FunctionAttributes
 /// ABI dispatcher statement.
 pub fn build_with_abi_dispatcher(
     context: &Context,
-    contract: &Spanned<fe::ModuleStmt>,
+    contract: &Node<fe::ModuleStmt>,
 ) -> Vec<yul::Statement> {
     if let Some(attributes) = context.get_contract(contract) {
         let mut runtime = build(context, contract);

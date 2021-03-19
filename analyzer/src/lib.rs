@@ -25,10 +25,7 @@ use crate::namespace::types::{
 };
 use builtins::GlobalMethod;
 use fe_parser::ast as fe;
-use fe_parser::span::{
-    Span,
-    Spanned,
-};
+use fe_parser::node::NodeId;
 use std::cell::RefCell;
 use std::collections::{
     HashMap,
@@ -289,13 +286,13 @@ impl From<ContractFunctionDef> for FunctionAttributes {
 /// `Spanned` AST nodes.
 #[derive(Clone, Debug, Default)]
 pub struct Context {
-    expressions: HashMap<Span, ExpressionAttributes>,
-    emits: HashMap<Span, EventDef>,
-    functions: HashMap<Span, FunctionAttributes>,
-    declarations: HashMap<Span, FixedSize>,
-    contracts: HashMap<Span, ContractAttributes>,
-    calls: HashMap<Span, CallType>,
-    events: HashMap<Span, EventDef>,
+    expressions: HashMap<NodeId, ExpressionAttributes>,
+    emits: HashMap<NodeId, EventDef>,
+    functions: HashMap<NodeId, FunctionAttributes>,
+    declarations: HashMap<NodeId, FixedSize>,
+    contracts: HashMap<NodeId, ContractAttributes>,
+    calls: HashMap<NodeId, CallType>,
+    events: HashMap<NodeId, EventDef>,
 }
 
 impl Context {
@@ -316,81 +313,77 @@ impl Context {
     }
 
     /// Attribute contextual information to an expression node.
-    pub fn add_expression<T: Into<Span>>(&mut self, span: T, attributes: ExpressionAttributes) {
-        self.expressions.insert(span.into(), attributes);
+    pub fn add_expression<T: Into<NodeId>>(
+        &mut self,
+        node_id: T,
+        attributes: ExpressionAttributes,
+    ) {
+        self.expressions.insert(node_id.into(), attributes);
     }
 
     /// Get information that has been attributed to an expression node.
-    pub fn get_expression<T: Into<Span>>(&self, span: T) -> Option<&ExpressionAttributes> {
-        self.expressions.get(&span.into())
+    pub fn get_expression<T: Into<NodeId>>(&self, node_id: T) -> Option<&ExpressionAttributes> {
+        self.expressions.get(&node_id.into())
     }
 
     /// Attribute contextual information to an emit statement node.
-    pub fn add_emit(&mut self, spanned: &Spanned<fe::FuncStmt>, event: EventDef) {
-        self.emits.insert(spanned.span, event);
+    pub fn add_emit<T: Into<NodeId>>(&mut self, node_id: T, event: EventDef) {
+        self.emits.insert(node_id.into(), event);
     }
 
     /// Get information that has been attributed to an emit statement node.
-    pub fn get_emit<T: Into<Span>>(&self, span: T) -> Option<&EventDef> {
-        self.emits.get(&span.into())
+    pub fn get_emit<T: Into<NodeId>>(&self, node_id: T) -> Option<&EventDef> {
+        self.emits.get(&node_id.into())
     }
 
     /// Attribute contextual information to a function definition node.
-    pub fn add_function(
-        &mut self,
-        spanned: &Spanned<fe::ContractStmt>,
-        attributes: FunctionAttributes,
-    ) {
-        self.functions.insert(spanned.span, attributes);
+    pub fn add_function<T: Into<NodeId>>(&mut self, node_id: T, attributes: FunctionAttributes) {
+        self.functions.insert(node_id.into(), attributes);
     }
 
     /// Get information that has been attributed to a function definition node.
-    pub fn get_function<T: Into<Span>>(&self, span: T) -> Option<&FunctionAttributes> {
-        self.functions.get(&span.into())
+    pub fn get_function<T: Into<NodeId>>(&self, node_id: T) -> Option<&FunctionAttributes> {
+        self.functions.get(&node_id.into())
     }
 
     /// Attribute contextual information to a declaration node.
-    pub fn add_declaration(&mut self, spanned: &Spanned<fe::FuncStmt>, typ: FixedSize) {
-        self.declarations.insert(spanned.span, typ);
+    pub fn add_declaration<T: Into<NodeId>>(&mut self, node_id: T, typ: FixedSize) {
+        self.declarations.insert(node_id.into(), typ);
     }
 
     /// Get information that has been attributed to a declaration node.
-    pub fn get_declaration<T: Into<Span>>(&self, span: T) -> Option<&FixedSize> {
-        self.declarations.get(&span.into())
+    pub fn get_declaration<T: Into<NodeId>>(&self, node_id: T) -> Option<&FixedSize> {
+        self.declarations.get(&node_id.into())
     }
 
     /// Attribute contextual information to a contract definition node.
-    pub fn add_contract(
-        &mut self,
-        spanned: &Spanned<fe::ModuleStmt>,
-        attributes: ContractAttributes,
-    ) {
-        self.contracts.insert(spanned.span, attributes);
+    pub fn add_contract<T: Into<NodeId>>(&mut self, node_id: T, attributes: ContractAttributes) {
+        self.contracts.insert(node_id.into(), attributes);
     }
 
     /// Get information that has been attributed to a contract definition node.
-    pub fn get_contract<T: Into<Span>>(&self, span: T) -> Option<&ContractAttributes> {
-        self.contracts.get(&span.into())
+    pub fn get_contract<T: Into<NodeId>>(&self, node_id: T) -> Option<&ContractAttributes> {
+        self.contracts.get(&node_id.into())
     }
 
     /// Attribute contextual information to a call expression node.
-    pub fn add_call(&mut self, spanned: &Spanned<fe::Expr>, call_type: CallType) {
-        self.calls.insert(spanned.span, call_type);
+    pub fn add_call<T: Into<NodeId>>(&mut self, node_id: T, call_type: CallType) {
+        self.calls.insert(node_id.into(), call_type);
     }
 
     /// Get information that has been attributed to a call expression node.
-    pub fn get_call<T: Into<Span>>(&self, span: T) -> Option<&CallType> {
-        self.calls.get(&span.into())
+    pub fn get_call<T: Into<NodeId>>(&self, node_id: T) -> Option<&CallType> {
+        self.calls.get(&node_id.into())
     }
 
     /// Attribute contextual information to an event definition node.
-    pub fn add_event(&mut self, spanned: &Spanned<fe::ContractStmt>, event: EventDef) {
-        self.events.insert(spanned.span, event);
+    pub fn add_event<T: Into<NodeId>>(&mut self, node_id: T, event: EventDef) {
+        self.events.insert(node_id.into(), event);
     }
 
     /// Get information that has been attributed to an event definition node.
-    pub fn get_event<T: Into<Span>>(&self, span: T) -> Option<&EventDef> {
-        self.events.get(&span.into())
+    pub fn get_event<T: Into<NodeId>>(&self, node_id: T) -> Option<&EventDef> {
+        self.events.get(&node_id.into())
     }
 }
 
@@ -406,6 +399,7 @@ pub fn analyze(module: &fe::Module) -> Result<Context, SemanticError> {
         .into_inner())
 }
 
+#[cfg(feature = "fix-context-harness")]
 pub mod test_utils {
     use crate::namespace::types::FixedSize;
     use crate::{
@@ -413,9 +407,9 @@ pub mod test_utils {
         ExpressionAttributes,
     };
     use fe_parser::ast as fe;
-    use fe_parser::span::{
+    use fe_parser::node::{
+        Node,
         Span,
-        Spanned,
     };
 
     pub struct ContextHarness {
@@ -445,11 +439,8 @@ pub mod test_utils {
 
         pub fn add_expression(&mut self, substr: &str, attributes: ExpressionAttributes) {
             let span = self.find_span(substr);
-            let mock_spanned = Spanned {
-                span,
-                node: fe::Expr::Name("foo"),
-            };
-            self.context.add_expression(&mock_spanned, attributes)
+            let mock_node = Node::new(fe::Expr::Name("foo"), span);
+            self.context.add_expression(&mock_node, attributes)
         }
 
         pub fn add_expressions(&mut self, substrs: Vec<&str>, attributes: ExpressionAttributes) {
@@ -460,13 +451,13 @@ pub mod test_utils {
 
         pub fn add_declaration(&mut self, substr: &str, typ: FixedSize) {
             let span = self.find_span(substr);
-            let mock_spanned = Spanned {
-                span,
-                node: fe::FuncStmt::Expr {
+            let mock_node = Node::new(
+                fe::FuncStmt::Expr {
                     value: fe::Expr::Name("foo"),
                 },
-            };
-            self.context.add_declaration(&mock_spanned, typ)
+                span,
+            );
+            self.context.add_declaration(&mock_node, typ)
         }
     }
 }

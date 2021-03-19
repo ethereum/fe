@@ -6,31 +6,31 @@ x % y
 x * y / z
 ---
 [
-  Spanned(
-    node: Name("x"),
+  Node(
+    kind: Name("x"),
     span: Span(
       start: 0,
       end: 1,
     ),
   ),
-  Spanned(
-    node: BinOperation(
-      left: Spanned(
-        node: Name("x"),
+  Node(
+    kind: BinOperation(
+      left: Node(
+        kind: Name("x"),
         span: Span(
           start: 2,
           end: 3,
         ),
       ),
-      op: Spanned(
-        node: Mult,
+      op: Node(
+        kind: Mult,
         span: Span(
           start: 4,
           end: 5,
         ),
       ),
-      right: Spanned(
-        node: Name("y"),
+      right: Node(
+        kind: Name("y"),
         span: Span(
           start: 6,
           end: 7,
@@ -42,24 +42,24 @@ x * y / z
       end: 7,
     ),
   ),
-  Spanned(
-    node: BinOperation(
-      left: Spanned(
-        node: Name("x"),
+  Node(
+    kind: BinOperation(
+      left: Node(
+        kind: Name("x"),
         span: Span(
           start: 8,
           end: 9,
         ),
       ),
-      op: Spanned(
-        node: Div,
+      op: Node(
+        kind: Div,
         span: Span(
           start: 10,
           end: 11,
         ),
       ),
-      right: Spanned(
-        node: Name("y"),
+      right: Node(
+        kind: Name("y"),
         span: Span(
           start: 12,
           end: 13,
@@ -71,24 +71,24 @@ x * y / z
       end: 13,
     ),
   ),
-  Spanned(
-    node: BinOperation(
-      left: Spanned(
-        node: Name("x"),
+  Node(
+    kind: BinOperation(
+      left: Node(
+        kind: Name("x"),
         span: Span(
           start: 14,
           end: 15,
         ),
       ),
-      op: Spanned(
-        node: FloorDiv,
+      op: Node(
+        kind: FloorDiv,
         span: Span(
           start: 16,
           end: 18,
         ),
       ),
-      right: Spanned(
-        node: Name("y"),
+      right: Node(
+        kind: Name("y"),
         span: Span(
           start: 19,
           end: 20,
@@ -100,24 +100,24 @@ x * y / z
       end: 20,
     ),
   ),
-  Spanned(
-    node: BinOperation(
-      left: Spanned(
-        node: Name("x"),
+  Node(
+    kind: BinOperation(
+      left: Node(
+        kind: Name("x"),
         span: Span(
           start: 21,
           end: 22,
         ),
       ),
-      op: Spanned(
-        node: Mod,
+      op: Node(
+        kind: Mod,
         span: Span(
           start: 23,
           end: 24,
         ),
       ),
-      right: Spanned(
-        node: Name("y"),
+      right: Node(
+        kind: Name("y"),
         span: Span(
           start: 25,
           end: 26,
@@ -129,26 +129,26 @@ x * y / z
       end: 26,
     ),
   ),
-  Spanned(
-    node: BinOperation(
-      left: Spanned(
-        node: BinOperation(
-          left: Spanned(
-            node: Name("x"),
+  Node(
+    kind: BinOperation(
+      left: Node(
+        kind: BinOperation(
+          left: Node(
+            kind: Name("x"),
             span: Span(
               start: 27,
               end: 28,
             ),
           ),
-          op: Spanned(
-            node: Mult,
+          op: Node(
+            kind: Mult,
             span: Span(
               start: 29,
               end: 30,
             ),
           ),
-          right: Spanned(
-            node: Name("y"),
+          right: Node(
+            kind: Name("y"),
             span: Span(
               start: 31,
               end: 32,
@@ -160,15 +160,15 @@ x * y / z
           end: 32,
         ),
       ),
-      op: Spanned(
-        node: Div,
+      op: Node(
+        kind: Div,
         span: Span(
           start: 33,
           end: 34,
         ),
       ),
-      right: Spanned(
-        node: Name("z"),
+      right: Node(
+        kind: Name("z"),
         span: Span(
           start: 35,
           end: 36,

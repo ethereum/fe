@@ -1,6 +1,6 @@
 use regex::Regex;
 
-use crate::span::Span;
+use crate::node::Span;
 use crate::string_utils::{
     lines_with_endings,
     lstrip_slice,

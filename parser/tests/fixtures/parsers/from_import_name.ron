@@ -2,10 +2,10 @@ abc
 foo as bar
 ---
 [
-  Spanned(
-    node: FromImportName(
-      name: Spanned(
-        node: "abc",
+  Node(
+    kind: FromImportName(
+      name: Node(
+        kind: "abc",
         span: Span(
           start: 0,
           end: 3,
@@ -18,17 +18,17 @@ foo as bar
       end: 3,
     ),
   ),
-  Spanned(
-    node: FromImportName(
-      name: Spanned(
-        node: "foo",
+  Node(
+    kind: FromImportName(
+      name: Node(
+        kind: "foo",
         span: Span(
           start: 4,
           end: 7,
         ),
       ),
-      alias: Some(Spanned(
-        node: "bar",
+      alias: Some(Node(
+        kind: "bar",
         span: Span(
           start: 11,
           end: 14,

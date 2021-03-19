@@ -6,7 +6,7 @@ use crate::yul::operations::{
     data as data_operations,
     structs as struct_operations,
 };
-use crate::yul::utils;
+use crate::yul::utils::call_arg_value;
 use builtins::{
     BlockField,
     ChainField,
@@ -32,15 +32,15 @@ use fe_analyzer::{
 };
 use fe_common::utils::keccak;
 use fe_parser::ast as fe;
-use fe_parser::span::Spanned;
+use fe_parser::node::Node;
 use std::convert::TryFrom;
 use std::str::FromStr;
 use yultsur::*;
 
 /// Builds a Yul expression from a Fe expression.
-pub fn expr(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
+pub fn expr(context: &Context, exp: &Node<fe::Expr>) -> Result<yul::Expression, CompileError> {
     if let Some(attributes) = context.get_expression(exp) {
-        let expression = match &exp.node {
+        let expression = match &exp.kind {
             fe::Expr::Name(_) => Ok(expr_name(exp)),
             fe::Expr::Num(_) => expr_num(exp),
             fe::Expr::Bool(_) => expr_bool(exp),
@@ -93,22 +93,19 @@ fn move_expression(
 
 pub fn call_arg(
     context: &Context,
-    arg: &Spanned<fe::CallArg>,
+    arg: &Node<fe::CallArg>,
 ) -> Result<yul::Expression, CompileError> {
-    match &arg.node {
-        fe::CallArg::Arg(value) => {
-            let spanned = utils::spanned_expression(&arg.span, value);
-            expr(context, &spanned)
-        }
+    match &arg.kind {
+        fe::CallArg::Arg(value) => expr(context, value),
         fe::CallArg::Kwarg(fe::Kwarg { name: _, value }) => expr(context, value),
     }
 }
 
-fn expr_call(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
-    if let fe::Expr::Call { args, func } = &exp.node {
+fn expr_call(context: &Context, exp: &Node<fe::Expr>) -> Result<yul::Expression, CompileError> {
+    if let fe::Expr::Call { args, func } = &exp.kind {
         if let Some(call_type) = context.get_call(func) {
             let yul_args: Vec<yul::Expression> = args
-                .node
+                .kind
                 .iter()
                 .map(|val| call_arg(context, val))
                 .collect::<Result<_, _>>()?;
@@ -116,11 +113,13 @@ fn expr_call(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressi
             return match call_type {
                 CallType::BuiltinFunction { func } => match func {
                     GlobalMethod::Keccak256 => {
-                        let first_arg = args.node.first().expect("Missing argument");
-                        let arg_expr = context
+                        let first_arg =
+                            call_arg_value(&args.kind.first().expect("Missing argument").kind);
+                        let attributes = context
                             .get_expression(first_arg)
-                            .expect("invalid attributes");
-                        let size = FixedSize::try_from(arg_expr.typ.clone()).expect("Invalid type");
+                            .expect("missing attributes");
+                        let size =
+                            FixedSize::try_from(attributes.typ.clone()).expect("Invalid type");
                         let func_name: &str = func.into();
 
                         let func_name = identifier! { (func_name) };
@@ -137,11 +136,11 @@ fn expr_call(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressi
                     Ok(expression! { [func_name]([yul_args...]) })
                 }
                 CallType::ValueAttribute => {
-                    if let fe::Expr::Attribute { value, attr } = &func.node {
+                    if let fe::Expr::Attribute { value, attr } = &func.kind {
                         let value_attributes =
                             context.get_expression(value).expect("invalid attributes");
 
-                        return match (value_attributes.typ.to_owned(), attr.node) {
+                        return match (value_attributes.typ.to_owned(), attr.kind) {
                             (Type::Contract(contract), func_name) => Ok(contract_operations::call(
                                 contract,
                                 func_name,
@@ -200,9 +199,9 @@ fn expr_call(context: &Context, exp: &Spanned<fe::Expr>) -> Result<yul::Expressi
 
 pub fn expr_comp_operation(
     context: &Context,
-    exp: &Spanned<fe::Expr>,
+    exp: &Node<fe::Expr>,
 ) -> Result<yul::Expression, CompileError> {
-    if let fe::Expr::CompOperation { left, op, right } = &exp.node {
+    if let fe::Expr::CompOperation { left, op, right } = &exp.kind {
         let yul_left = expr(context, left)?;
         let yul_right = expr(context, right)?;
 
@@ -211,7 +210,7 @@ pub fn expr_comp_operation(
             .expect("Missing `left` expression in context")
             .typ;
 
-        return match op.node {
+        return match op.kind {
             fe::CompOperator::Eq => Ok(expression! { eq([yul_left], [yul_right]) }),
             fe::CompOperator::NotEq => Ok(expression! { iszero((eq([yul_left], [yul_right]))) }),
             fe::CompOperator::Lt => match typ.is_signed_integer() {
@@ -239,9 +238,9 @@ pub fn expr_comp_operation(
 
 pub fn expr_bin_operation(
     context: &Context,
-    exp: &Spanned<fe::Expr>,
+    exp: &Node<fe::Expr>,
 ) -> Result<yul::Expression, CompileError> {
-    if let fe::Expr::BinOperation { left, op, right } = &exp.node {
+    if let fe::Expr::BinOperation { left, op, right } = &exp.kind {
         let yul_left = expr(context, left)?;
         let yul_right = expr(context, right)?;
 
@@ -250,7 +249,7 @@ pub fn expr_bin_operation(
             .expect("Missing `left` expression in context")
             .typ;
 
-        return match op.node {
+        return match op.kind {
             fe::BinOperator::Add => match typ {
                 Type::Base(Base::Numeric(integer)) => {
                     Ok(expression! { [names::checked_add(integer)]([yul_left], [yul_right]) })
@@ -304,12 +303,12 @@ pub fn expr_bin_operation(
 
 pub fn expr_unary_operation(
     context: &Context,
-    exp: &Spanned<fe::Expr>,
+    exp: &Node<fe::Expr>,
 ) -> Result<yul::Expression, CompileError> {
-    if let fe::Expr::UnaryOperation { op, operand } = &exp.node {
+    if let fe::Expr::UnaryOperation { op, operand } = &exp.kind {
         let yul_operand = expr(context, operand)?;
 
-        return match &op.node {
+        return match &op.kind {
             fe::UnaryOperator::USub => {
                 let zero = literal_expression! {0};
                 Ok(expression! { sub([zero], [yul_operand]) })
@@ -323,8 +322,8 @@ pub fn expr_unary_operation(
 }
 
 /// Retrieves the &str value of a name expression.
-pub fn expr_name_str<'a>(exp: &Spanned<fe::Expr<'a>>) -> &'a str {
-    if let fe::Expr::Name(name) = exp.node {
+pub fn expr_name_str<'a>(exp: &Node<fe::Expr<'a>>) -> &'a str {
+    if let fe::Expr::Name(name) = exp.kind {
         return name;
     }
 
@@ -334,9 +333,9 @@ pub fn expr_name_str<'a>(exp: &Spanned<fe::Expr<'a>>) -> &'a str {
 /// Builds a Yul expression from the first slice, if it is an index.
 pub fn slices_index(
     context: &Context,
-    slices: &Spanned<Vec<Spanned<fe::Slice>>>,
+    slices: &Node<Vec<Node<fe::Slice>>>,
 ) -> Result<yul::Expression, CompileError> {
-    if let Some(first_slice) = slices.node.first() {
+    if let Some(first_slice) = slices.kind.first() {
         return slice_index(context, first_slice);
     }
 
@@ -345,18 +344,17 @@ pub fn slices_index(
 
 pub fn slice_index(
     context: &Context,
-    slice: &Spanned<fe::Slice>,
+    slice: &Node<fe::Slice>,
 ) -> Result<yul::Expression, CompileError> {
-    if let fe::Slice::Index(index) = &slice.node {
-        let spanned = utils::spanned_expression(&slice.span, index.as_ref());
-        return expr(context, &spanned);
+    if let fe::Slice::Index(index) = &slice.kind {
+        return expr(context, index);
     }
 
     unreachable!()
 }
 
-fn expr_tuple(exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
-    if let fe::Expr::Tuple { elts } = &exp.node {
+fn expr_tuple(exp: &Node<fe::Expr>) -> Result<yul::Expression, CompileError> {
+    if let fe::Expr::Tuple { elts } = &exp.kind {
         if !elts.is_empty() {
             todo!("Non empty Tuples aren't yet supported")
         } else {
@@ -367,30 +365,30 @@ fn expr_tuple(exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> 
     unreachable!()
 }
 
-fn expr_name(exp: &Spanned<fe::Expr>) -> yul::Expression {
+fn expr_name(exp: &Node<fe::Expr>) -> yul::Expression {
     let name = expr_name_str(exp);
 
     identifier_expression! { [names::var_name(name)] }
 }
 
-fn expr_num(exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
-    if let fe::Expr::Num(num) = &exp.node {
+fn expr_num(exp: &Node<fe::Expr>) -> Result<yul::Expression, CompileError> {
+    if let fe::Expr::Num(num) = &exp.kind {
         return Ok(literal_expression! {(num)});
     }
 
     unreachable!()
 }
 
-fn expr_bool(exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
-    if let fe::Expr::Bool(val) = &exp.node {
+fn expr_bool(exp: &Node<fe::Expr>) -> Result<yul::Expression, CompileError> {
+    if let fe::Expr::Bool(val) = &exp.kind {
         return Ok(literal_expression! {(val)});
     }
 
     unreachable!()
 }
 
-fn expr_str(exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
-    if let fe::Expr::Str(lines) = &exp.node {
+fn expr_str(exp: &Node<fe::Expr>) -> Result<yul::Expression, CompileError> {
+    if let fe::Expr::Str(lines) = &exp.kind {
         let content = lines.join("");
         let string_identifier = format!(r#""{}""#, keccak::full(content.as_bytes()));
 
@@ -405,9 +403,9 @@ fn expr_str(exp: &Spanned<fe::Expr>) -> Result<yul::Expression, CompileError> {
 
 fn expr_subscript(
     context: &Context,
-    exp: &Spanned<fe::Expr>,
+    exp: &Node<fe::Expr>,
 ) -> Result<yul::Expression, CompileError> {
-    if let fe::Expr::Subscript { value, slices } = &exp.node {
+    if let fe::Expr::Subscript { value, slices } = &exp.kind {
         if let Some(value_attributes) = context.get_expression(value) {
             let value = expr(context, value)?;
             let index = slices_index(context, slices)?;
@@ -427,9 +425,9 @@ fn expr_subscript(
 
 fn expr_attribute(
     context: &Context,
-    exp: &Spanned<fe::Expr>,
+    exp: &Node<fe::Expr>,
 ) -> Result<yul::Expression, CompileError> {
-    if let fe::Expr::Attribute { value, attr } = &exp.node {
+    if let fe::Expr::Attribute { value, attr } = &exp.kind {
         // If the given value has expression attributes, we handle it as an expression
         // by first mapping the value and then performing the expected operation
         // inferred from the attribute name.
@@ -441,25 +439,25 @@ fn expr_attribute(
 
             match &attributes.typ {
                 Type::Struct(struct_) => {
-                    Ok(struct_operations::get_attribute(struct_, attr.node, value))
+                    Ok(struct_operations::get_attribute(struct_, attr.kind, value))
                 }
                 _ => panic!("invalid attributes"),
             }
         } else {
             match Object::from_str(expr_name_str(value)) {
                 Ok(Object::Self_) => expr_attribute_self(context, exp),
-                Ok(Object::Block) => match BlockField::from_str(attr.node) {
+                Ok(Object::Block) => match BlockField::from_str(attr.kind) {
                     Ok(BlockField::Coinbase) => Ok(expression! { coinbase() }),
                     Ok(BlockField::Difficulty) => Ok(expression! { difficulty() }),
                     Ok(BlockField::Number) => Ok(expression! { number() }),
                     Ok(BlockField::Timestamp) => Ok(expression! { timestamp() }),
                     Err(_) => Err(CompileError::static_str("invalid `block` attribute name")),
                 },
-                Ok(Object::Chain) => match ChainField::from_str(attr.node) {
+                Ok(Object::Chain) => match ChainField::from_str(attr.kind) {
                     Ok(ChainField::Id) => Ok(expression! { chainid() }),
                     Err(_) => Err(CompileError::static_str("invalid `chain` attribute name")),
                 },
-                Ok(Object::Msg) => match MsgField::from_str(attr.node) {
+                Ok(Object::Msg) => match MsgField::from_str(attr.kind) {
                     Ok(MsgField::Data) => todo!(),
                     Ok(MsgField::Sender) => Ok(expression! { caller() }),
                     Ok(MsgField::Sig) => Ok(expression! {
@@ -471,7 +469,7 @@ fn expr_attribute(
                     Ok(MsgField::Value) => Ok(expression! { callvalue() }),
                     Err(_) => Err(CompileError::static_str("invalid `msg` attribute name")),
                 },
-                Ok(Object::Tx) => match TxField::from_str(attr.node) {
+                Ok(Object::Tx) => match TxField::from_str(attr.kind) {
                     Ok(TxField::GasPrice) => Ok(expression! { gasprice() }),
                     Ok(TxField::Origin) => Ok(expression! { origin() }),
                     Err(_) => Err(CompileError::static_str("invalid `msg` attribute name")),
@@ -486,10 +484,10 @@ fn expr_attribute(
 
 fn expr_attribute_self(
     context: &Context,
-    exp: &Spanned<fe::Expr>,
+    exp: &Node<fe::Expr>,
 ) -> Result<yul::Expression, CompileError> {
-    if let fe::Expr::Attribute { attr, .. } = &exp.node {
-        if let Ok(builtins::SelfField::Address) = builtins::SelfField::from_str(attr.node) {
+    if let fe::Expr::Attribute { attr, .. } = &exp.kind {
+        if let Ok(builtins::SelfField::Address) = builtins::SelfField::from_str(attr.kind) {
             return Ok(expression! { address() });
         }
     }
@@ -520,15 +518,12 @@ pub fn nonce_to_ptr(nonce: usize) -> yul::Expression {
     literal_expression! { (ptr) }
 }
 
-fn expr_ternary(
-    context: &Context,
-    exp: &Spanned<fe::Expr>,
-) -> Result<yul::Expression, CompileError> {
+fn expr_ternary(context: &Context, exp: &Node<fe::Expr>) -> Result<yul::Expression, CompileError> {
     if let fe::Expr::Ternary {
         if_expr,
         test,
         else_expr,
-    } = &exp.node
+    } = &exp.kind
     {
         let yul_test_expr = expr(context, test)?;
         let yul_if_expr = expr(context, if_expr)?;
@@ -541,13 +536,13 @@ fn expr_ternary(
 
 fn expr_bool_operation(
     context: &Context,
-    exp: &Spanned<fe::Expr>,
+    exp: &Node<fe::Expr>,
 ) -> Result<yul::Expression, CompileError> {
-    if let fe::Expr::BoolOperation { left, op, right } = &exp.node {
+    if let fe::Expr::BoolOperation { left, op, right } = &exp.kind {
         let yul_left = expr(context, left)?;
         let yul_right = expr(context, right)?;
 
-        return match op.node {
+        return match op.kind {
             fe::BoolOperator::And => Ok(expression! {and([yul_left], [yul_right])}),
             fe::BoolOperator::Or => Ok(expression! {or([yul_left], [yul_right])}),
         };
@@ -557,6 +552,7 @@ fn expr_bool_operation(
 }
 
 #[cfg(test)]
+#[cfg(feature = "fix-context-harness")]
 mod tests {
     use crate::yul::mappers::expressions::{
         expr,

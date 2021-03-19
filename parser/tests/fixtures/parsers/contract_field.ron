@@ -3,18 +3,18 @@ const x: address
 pub x: address
 ---
 [
-  Spanned(
-    node: ContractField(
+  Node(
+    kind: ContractField(
       qual: None,
-      name: Spanned(
-        node: "x",
+      name: Node(
+        kind: "x",
         span: Span(
           start: 0,
           end: 1,
         ),
       ),
-      typ: Spanned(
-        node: Base(
+      typ: Node(
+        kind: Base(
           base: "address",
         ),
         span: Span(
@@ -28,24 +28,24 @@ pub x: address
       end: 10,
     ),
   ),
-  Spanned(
-    node: ContractField(
-      qual: Some(Spanned(
-        node: Const,
+  Node(
+    kind: ContractField(
+      qual: Some(Node(
+        kind: Const,
         span: Span(
           start: 11,
           end: 16,
         ),
       )),
-      name: Spanned(
-        node: "x",
+      name: Node(
+        kind: "x",
         span: Span(
           start: 17,
           end: 18,
         ),
       ),
-      typ: Spanned(
-        node: Base(
+      typ: Node(
+        kind: Base(
           base: "address",
         ),
         span: Span(
@@ -59,24 +59,24 @@ pub x: address
       end: 27,
     ),
   ),
-  Spanned(
-    node: ContractField(
-      qual: Some(Spanned(
-        node: Pub,
+  Node(
+    kind: ContractField(
+      qual: Some(Node(
+        kind: Pub,
         span: Span(
           start: 28,
           end: 31,
         ),
       )),
-      name: Spanned(
-        node: "x",
+      name: Node(
+        kind: "x",
         span: Span(
           start: 32,
           end: 33,
         ),
       ),
-      typ: Spanned(
-        node: Base(
+      typ: Node(
+        kind: Base(
           base: "address",
         ),
         span: Span(

@@ -5,26 +5,26 @@ use crate::yul::runtime;
 use fe_analyzer::Context;
 use fe_common::utils::keccak;
 use fe_parser::ast as fe;
-use fe_parser::span::Spanned;
+use fe_parser::node::Node;
 use yultsur::*;
 
 /// Builds a Yul object from a Fe contract.
 pub fn contract_def(
     context: &Context,
-    stmt: &Spanned<fe::ModuleStmt>,
+    stmt: &Node<fe::ModuleStmt>,
     created_contracts: Vec<yul::Object>,
 ) -> Result<yul::Object, CompileError> {
-    if let fe::ModuleStmt::ContractDef { name, body } = &stmt.node {
-        let contract_name = name.node;
+    if let fe::ModuleStmt::ContractDef { name, body } = &stmt.kind {
+        let contract_name = name.kind;
         let mut init_function = None;
         let mut user_functions = vec![];
 
         // map user defined functions
         for stmt in body.iter() {
             if let (Some(attributes), fe::ContractStmt::FuncDef { name, .. }) =
-                (context.get_function(stmt), &stmt.node)
+                (context.get_function(stmt), &stmt.kind)
             {
-                if name.node == "__init__" {
+                if name.kind == "__init__" {
                     init_function = Some((
                         functions::func_def(context, stmt)?,
                         attributes.param_types(),

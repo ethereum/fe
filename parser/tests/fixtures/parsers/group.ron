@@ -1,9 +1,9 @@
 (x)
 ---
 [
-  Spanned(
-    node: Spanned(
-      node: Name("x"),
+  Node(
+    kind: Node(
+      kind: Name("x"),
       span: Span(
         start: 1,
         end: 2,

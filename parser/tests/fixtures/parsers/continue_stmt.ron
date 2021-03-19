@@ -1,8 +1,8 @@
 continue
 ---
 [
-  Spanned(
-    node: Continue,
+  Node(
+    kind: Continue,
     span: Span(
       start: 0,
       end: 8,

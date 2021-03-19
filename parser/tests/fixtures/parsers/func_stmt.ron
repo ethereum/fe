@@ -4,19 +4,25 @@ pass
 ---
 [
   [
-    Spanned(
-      node: While(
-        test: Spanned(
-          node: Name("a"),
+    Node(
+      kind: While(
+        test: Node(
+          kind: Name("a"),
           span: Span(
             start: 6,
             end: 7,
           ),
         ),
         body: [
-          Spanned(
-            node: Expr(
-              value: Name("b"),
+          Node(
+            kind: Expr(
+              value: Node(
+                kind: Name("b"),
+                span: Span(
+                  start: 13,
+                  end: 14,
+                ),
+              ),
             ),
             span: Span(
               start: 13,
@@ -33,8 +39,8 @@ pass
     ),
   ],
   [
-    Spanned(
-      node: Pass,
+    Node(
+      kind: Pass,
       span: Span(
         start: 15,
         end: 19,

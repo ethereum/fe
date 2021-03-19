@@ -13,6 +13,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 regex = "1"
 serde = { version = "1", features = ["derive"] }
+uuid = { version = "0.8", features = ["v4", "stdweb"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2"

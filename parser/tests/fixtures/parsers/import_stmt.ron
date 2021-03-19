@@ -2,14 +2,14 @@ import foo
 from . import *
 ---
 [
-  Spanned(
-    node: SimpleImport(
+  Node(
+    kind: SimpleImport(
       names: [
-        Spanned(
-          node: SimpleImportName(
+        Node(
+          kind: SimpleImportName(
             path: [
-              Spanned(
-                node: "foo",
+              Node(
+                kind: "foo",
                 span: Span(
                   start: 7,
                   end: 10,
@@ -30,10 +30,10 @@ from . import *
       end: 10,
     ),
   ),
-  Spanned(
-    node: FromImport(
-      path: Spanned(
-        node: Relative(
+  Node(
+    kind: FromImport(
+      path: Node(
+        kind: Relative(
           parent_level: 0,
           path: [],
         ),
@@ -42,8 +42,8 @@ from . import *
           end: 17,
         ),
       ),
-      names: Spanned(
-        node: Star,
+      names: Node(
+        kind: Star,
         span: Span(
           start: 25,
           end: 26,

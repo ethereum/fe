@@ -1,17 +1,17 @@
 x: bool
 ---
 [
-  Spanned(
-    node: FuncDefArg(
-      name: Spanned(
-        node: "x",
+  Node(
+    kind: FuncDefArg(
+      name: Node(
+        kind: "x",
         span: Span(
           start: 0,
           end: 1,
         ),
       ),
-      typ: Spanned(
-        node: Base(
+      typ: Node(
+        kind: Base(
           base: "bool",
         ),
         span: Span(

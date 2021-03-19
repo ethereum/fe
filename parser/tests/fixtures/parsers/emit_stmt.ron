@@ -1,10 +1,10 @@
 emit x
 ---
 [
-  Spanned(
-    node: Emit(
-      value: Spanned(
-        node: Name("x"),
+  Node(
+    kind: Emit(
+      value: Node(
+        kind: Name("x"),
         span: Span(
           start: 5,
           end: 6,

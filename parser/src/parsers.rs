@@ -17,9 +17,9 @@ use crate::builders::{
     verify,
 };
 use crate::errors::ParseError;
-use crate::span::{
+use crate::node::{
+    Node,
     Span,
-    Spanned,
 };
 use crate::tokenizer::types::{
     Token,
@@ -108,26 +108,20 @@ pub fn endmarker_token(input: Cursor) -> ParseResult<&Token> {
 }
 
 /// Parse a module definition.
-pub fn file_input(input: Cursor) -> ParseResult<Spanned<Module>> {
+pub fn file_input(input: Cursor) -> ParseResult<Node<Module>> {
     alt((empty_file_input, non_empty_file_input))(input)
 }
 
 /// Parse an empty module definition.
-pub fn empty_file_input(input: Cursor) -> ParseResult<Spanned<Module>> {
+pub fn empty_file_input(input: Cursor) -> ParseResult<Node<Module>> {
     let (input, newline_tok) = newline_token(input)?;
     let (input, _) = endmarker_token(input)?;
 
-    Ok((
-        input,
-        Spanned {
-            node: Module { body: vec![] },
-            span: newline_tok.span,
-        },
-    ))
+    Ok((input, Node::new(Module { body: vec![] }, newline_tok.span)))
 }
 
 /// Parse a non-empty module definition.
-pub fn non_empty_file_input(input: Cursor) -> ParseResult<Spanned<Module>> {
+pub fn non_empty_file_input(input: Cursor) -> ParseResult<Node<Module>> {
     // module_stmt+
     let (input, body) = many1(module_stmt)(input)?;
 
@@ -141,27 +135,21 @@ pub fn non_empty_file_input(input: Cursor) -> ParseResult<Spanned<Module>> {
         Span::from_pair(first, last)
     };
 
-    Ok((
-        input,
-        Spanned {
-            node: Module { body },
-            span,
-        },
-    ))
+    Ok((input, Node::new(Module { body }, span)))
 }
 
 /// Parse a module statement, such as a contract definition.
-pub fn module_stmt(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
+pub fn module_stmt(input: Cursor) -> ParseResult<Node<ModuleStmt>> {
     alt((import_stmt, type_def, contract_def, struct_def))(input)
 }
 
 /// Parse an import statement.
-pub fn import_stmt(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
+pub fn import_stmt(input: Cursor) -> ParseResult<Node<ModuleStmt>> {
     terminated(alt((simple_import, from_import)), newline_token)(input)
 }
 
 /// Parse an import statement beginning with the "import" keyword.
-pub fn simple_import(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
+pub fn simple_import(input: Cursor) -> ParseResult<Node<ModuleStmt>> {
     let (input, import_kw) = name("import")(input)?;
     let (input, first_name) = simple_import_name(input)?;
     let (input, mut other_names) = many0(preceded(op(","), simple_import_name))(input)?;
@@ -174,16 +162,10 @@ pub fn simple_import(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
         Span::from_pair(import_kw, last)
     };
 
-    Ok((
-        input,
-        Spanned {
-            node: SimpleImport { names: result },
-            span,
-        },
-    ))
+    Ok((input, Node::new(SimpleImport { names: result }, span)))
 }
 
-pub fn simple_import_name(input: Cursor) -> ParseResult<Spanned<SimpleImportName>> {
+pub fn simple_import_name(input: Cursor) -> ParseResult<Node<SimpleImportName>> {
     let (input, path) = dotted_name(input)?;
     let (input, alias) = opt(preceded(name("as"), name_token))(input)?;
 
@@ -200,49 +182,43 @@ pub fn simple_import_name(input: Cursor) -> ParseResult<Spanned<SimpleImportName
 
     Ok((
         input,
-        Spanned {
-            node: SimpleImportName {
+        Node::new(
+            SimpleImportName {
                 path,
                 alias: alias.map(|t| t.into()),
             },
             span,
-        },
+        ),
     ))
 }
 
 /// Parse an import statement beginning with the "from" keyword.
-pub fn from_import(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
+pub fn from_import(input: Cursor) -> ParseResult<Node<ModuleStmt>> {
     alt((from_import_parent_alt, from_import_sub_alt))(input)
 }
 
 /// Parse a "from" import with a path that contains only parent module
 /// components.
-pub fn from_import_parent_alt(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
+pub fn from_import_parent_alt(input: Cursor) -> ParseResult<Node<ModuleStmt>> {
     let (input, from_kw) = name("from")(input)?;
     let (input, parent_level) = dots_to_int(input)?;
     let (input, _) = name("import")(input)?;
     let (input, names) = from_import_names(input)?;
 
-    let path = Spanned {
-        node: FromImportPath::Relative {
-            parent_level: parent_level.node,
+    let path = Node::new(
+        FromImportPath::Relative {
+            parent_level: parent_level.kind,
             path: vec![],
         },
-        span: parent_level.span,
-    };
+        parent_level.span,
+    );
     let span = Span::from_pair(from_kw, names.span);
 
-    Ok((
-        input,
-        Spanned {
-            node: FromImport { path, names },
-            span,
-        },
-    ))
+    Ok((input, Node::new(FromImport { path, names }, span)))
 }
 
 /// Parse a "from" import with a path that contains sub module components.
-pub fn from_import_sub_alt(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
+pub fn from_import_sub_alt(input: Cursor) -> ParseResult<Node<ModuleStmt>> {
     let (input, from_kw) = name("from")(input)?;
     let (input, path) = from_import_sub_path(input)?;
     let (input, _) = name("import")(input)?;
@@ -250,17 +226,11 @@ pub fn from_import_sub_alt(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
 
     let span = Span::from_pair(from_kw, names.span);
 
-    Ok((
-        input,
-        Spanned {
-            node: FromImport { path, names },
-            span,
-        },
-    ))
+    Ok((input, Node::new(FromImport { path, names }, span)))
 }
 
 /// Parse a path containing sub module components in a "from" import statement.
-pub fn from_import_sub_path(input: Cursor) -> ParseResult<Spanned<FromImportPath>> {
+pub fn from_import_sub_path(input: Cursor) -> ParseResult<Node<FromImportPath>> {
     let (input, opt_parent_level) = opt(dots_to_int)(input)?;
     let (input, path) = dotted_name(input)?;
 
@@ -271,25 +241,22 @@ pub fn from_import_sub_path(input: Cursor) -> ParseResult<Spanned<FromImportPath
     let result = match opt_parent_level {
         Some(parent_level) => {
             let span = Span::from_pair(&parent_level, span);
-            Spanned {
-                node: FromImportPath::Relative {
-                    parent_level: parent_level.node,
+            Node::new(
+                FromImportPath::Relative {
+                    parent_level: parent_level.kind,
                     path,
                 },
                 span,
-            }
+            )
         }
-        None => Spanned {
-            node: FromImportPath::Absolute { path },
-            span,
-        },
+        None => Node::new(FromImportPath::Absolute { path }, span),
     };
 
     Ok((input, result))
 }
 
 /// Parse the names to be imported by a "from" import statement.
-pub fn from_import_names(input: Cursor) -> ParseResult<Spanned<FromImportNames>> {
+pub fn from_import_names(input: Cursor) -> ParseResult<Node<FromImportNames>> {
     alt((
         from_import_names_star,
         from_import_names_parens,
@@ -298,36 +265,27 @@ pub fn from_import_names(input: Cursor) -> ParseResult<Spanned<FromImportNames>>
 }
 
 /// Parse a wildcard token ("*") in a "from" import statement.
-pub fn from_import_names_star(input: Cursor) -> ParseResult<Spanned<FromImportNames>> {
+pub fn from_import_names_star(input: Cursor) -> ParseResult<Node<FromImportNames>> {
     let (input, star) = op("*")(input)?;
 
-    Ok((
-        input,
-        Spanned {
-            node: FromImportNames::Star,
-            span: star.span,
-        },
-    ))
+    Ok((input, Node::new(FromImportNames::Star, star.span)))
 }
 
 /// Parse a parenthesized list of names to be imported by a "from" import
 /// statement.
-pub fn from_import_names_parens(input: Cursor) -> ParseResult<Spanned<FromImportNames>> {
+pub fn from_import_names_parens(input: Cursor) -> ParseResult<Node<FromImportNames>> {
     let (input, l_paren) = op("(")(input)?;
     let (input, names) = from_import_names_list(input)?;
     let (input, r_paren) = op(")")(input)?;
 
     Ok((
         input,
-        Spanned {
-            node: names.node,
-            span: Span::from_pair(l_paren, r_paren),
-        },
+        Node::new(names.kind, Span::from_pair(l_paren, r_paren)),
     ))
 }
 
 /// Parse a list of names to be imported by a "from" import statement.
-pub fn from_import_names_list(input: Cursor) -> ParseResult<Spanned<FromImportNames>> {
+pub fn from_import_names_list(input: Cursor) -> ParseResult<Node<FromImportNames>> {
     let (input, first_name) = from_import_name(input)?;
     let (input, mut other_names) = many0(preceded(op(","), from_import_name))(input)?;
     let (input, comma_tok) = opt(op(","))(input)?;
@@ -346,17 +304,11 @@ pub fn from_import_names_list(input: Cursor) -> ParseResult<Spanned<FromImportNa
         }
     };
 
-    Ok((
-        input,
-        Spanned {
-            node: FromImportNames::List(names),
-            span,
-        },
-    ))
+    Ok((input, Node::new(FromImportNames::List(names), span)))
 }
 
 /// Parse an import name with an optional alias in a "from" import statement.
-pub fn from_import_name(input: Cursor) -> ParseResult<Spanned<FromImportName>> {
+pub fn from_import_name(input: Cursor) -> ParseResult<Node<FromImportName>> {
     let (input, name_tok) = name_token(input)?;
     let (input, alias) = opt(preceded(name("as"), name_token))(input)?;
 
@@ -367,24 +319,24 @@ pub fn from_import_name(input: Cursor) -> ParseResult<Spanned<FromImportName>> {
 
     Ok((
         input,
-        Spanned {
-            node: FromImportName {
+        Node::new(
+            FromImportName {
                 name: name_tok.into(),
                 alias: alias.map(|t| t.into()),
             },
             span,
-        },
+        ),
     ))
 }
 
 /// Parse a dotted import name.
-pub fn dotted_name(input: Cursor) -> ParseResult<Vec<Spanned<&str>>> {
+pub fn dotted_name(input: Cursor) -> ParseResult<Vec<Node<&str>>> {
     separated(map(name_token, |t| t.into()), op("."), false)(input)
 }
 
 /// Parse preceding dots used to indicate parent module imports in import
 /// statements.
-pub fn dots_to_int(input: Cursor) -> ParseResult<Spanned<usize>> {
+pub fn dots_to_int(input: Cursor) -> ParseResult<Node<usize>> {
     let (input, toks) = many1(alt((op("."), op("..."))))(input)?;
 
     let value = toks
@@ -400,11 +352,11 @@ pub fn dots_to_int(input: Cursor) -> ParseResult<Spanned<usize>> {
         Span::from_pair(*first, *last)
     };
 
-    Ok((input, Spanned { node: value, span }))
+    Ok((input, Node::new(value, span)))
 }
 
 /// Parse a contract definition statement.
-pub fn contract_def(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
+pub fn contract_def(input: Cursor) -> ParseResult<Node<ModuleStmt>> {
     // "contract" name ":" NEWLINE
     let (input, contract_kw) = name("contract")(input)?;
     let (input, name_tok) = name_token(input)?;
@@ -421,23 +373,23 @@ pub fn contract_def(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
 
     Ok((
         input,
-        Spanned {
-            node: ContractDef {
+        Node::new(
+            ContractDef {
                 name: name_tok.into(),
                 body,
             },
             span,
-        },
+        ),
     ))
 }
 
 /// Parse a contract statement.
-pub fn contract_stmt(input: Cursor) -> ParseResult<Spanned<ContractStmt>> {
+pub fn contract_stmt(input: Cursor) -> ParseResult<Node<ContractStmt>> {
     alt((contract_field, event_def, func_def))(input)
 }
 
 /// Parse a contract field definition.
-pub fn contract_field(input: Cursor) -> ParseResult<Spanned<ContractStmt>> {
+pub fn contract_field(input: Cursor) -> ParseResult<Node<ContractStmt>> {
     let (input, (qual, name_tok)) = alt((
         // Look for a qualifier and field name first...
         map(pair(contract_field_qual, name_token), |res| {
@@ -453,25 +405,25 @@ pub fn contract_field(input: Cursor) -> ParseResult<Spanned<ContractStmt>> {
     let (input, _) = newline_token(input)?;
 
     let span = match &qual {
-        Some(spanned) => Span::from_pair(spanned, &typ),
+        Some(node) => Span::from_pair(node, &typ),
         None => Span::from_pair(name_tok, &typ),
     };
 
     Ok((
         input,
-        Spanned {
-            node: ContractStmt::ContractField {
+        Node::new(
+            ContractStmt::ContractField {
                 qual,
                 name: name_tok.into(),
                 typ,
             },
             span,
-        },
+        ),
     ))
 }
 
 /// Parse a struct definition statement.
-pub fn struct_def(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
+pub fn struct_def(input: Cursor) -> ParseResult<Node<ModuleStmt>> {
     // "struct" name ":" NEWLINE
     let (input, contract_kw) = name("struct")(input)?;
     let (input, name_tok) = name_token(input)?;
@@ -488,18 +440,18 @@ pub fn struct_def(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
 
     Ok((
         input,
-        Spanned {
-            node: StructDef {
+        Node::new(
+            StructDef {
                 name: name_tok.into(),
                 body,
             },
             span,
-        },
+        ),
     ))
 }
 
 /// Parse a struct field definition.
-pub fn struct_field(input: Cursor) -> ParseResult<Spanned<StructStmt>> {
+pub fn struct_field(input: Cursor) -> ParseResult<Node<StructStmt>> {
     let (input, (qual, name_tok)) = alt((
         // Look for a qualifier and field name first...
         map(pair(struct_field_qual, name_token), |res| {
@@ -515,25 +467,25 @@ pub fn struct_field(input: Cursor) -> ParseResult<Spanned<StructStmt>> {
     let (input, _) = newline_token(input)?;
 
     let span = match &qual {
-        Some(spanned) => Span::from_pair(spanned, &typ),
+        Some(node) => Span::from_pair(node, &typ),
         None => Span::from_pair(name_tok, &typ),
     };
 
     Ok((
         input,
-        Spanned {
-            node: StructStmt::StructField {
+        Node::new(
+            StructStmt::StructField {
                 qual,
                 name: name_tok.into(),
                 typ,
             },
             span,
-        },
+        ),
     ))
 }
 
 /// Parse an event definition statement.
-pub fn event_def(input: Cursor) -> ParseResult<Spanned<ContractStmt>> {
+pub fn event_def(input: Cursor) -> ParseResult<Node<ContractStmt>> {
     // "event" name ":" NEWLINE
     let (input, event_kw) = name("event")(input)?;
     let (input, name_tok) = name_token(input)?;
@@ -550,18 +502,18 @@ pub fn event_def(input: Cursor) -> ParseResult<Spanned<ContractStmt>> {
 
     Ok((
         input,
-        Spanned {
-            node: ContractStmt::EventDef {
+        Node::new(
+            ContractStmt::EventDef {
                 name: name_tok.into(),
                 fields,
             },
             span,
-        },
+        ),
     ))
 }
 
 /// Parse an event field definition.
-pub fn event_field(input: Cursor) -> ParseResult<Spanned<EventField>> {
+pub fn event_field(input: Cursor) -> ParseResult<Node<EventField>> {
     let (input, (qual, name_tok)) = alt((
         // Look for a qualifier and field name first...
         map(pair(event_field_qual, name_token), |res| {
@@ -577,24 +529,24 @@ pub fn event_field(input: Cursor) -> ParseResult<Spanned<EventField>> {
     let (input, _) = newline_token(input)?;
 
     let span = match &qual {
-        Some(spanned) => Span::from_pair(spanned, &typ),
+        Some(node) => Span::from_pair(node, &typ),
         None => Span::from_pair(name_tok, &typ),
     };
 
     Ok((
         input,
-        Spanned {
-            node: EventField {
+        Node::new(
+            EventField {
                 qual,
                 name: name_tok.into(),
                 typ,
             },
             span,
-        },
+        ),
     ))
 }
 
-pub fn func_def(input: Cursor) -> ParseResult<Spanned<ContractStmt>> {
+pub fn func_def(input: Cursor) -> ParseResult<Node<ContractStmt>> {
     let (input, qual) = opt(func_qual)(input)?;
     let (input, def_kw) = name("def")(input)?;
     let (input, name_tok) = name_token(input)?;
@@ -617,8 +569,8 @@ pub fn func_def(input: Cursor) -> ParseResult<Spanned<ContractStmt>> {
 
     Ok((
         input,
-        Spanned {
-            node: ContractStmt::FuncDef {
+        Node::new(
+            ContractStmt::FuncDef {
                 qual,
                 name: name_tok.into(),
                 args,
@@ -626,18 +578,18 @@ pub fn func_def(input: Cursor) -> ParseResult<Spanned<ContractStmt>> {
                 body,
             },
             span,
-        },
+        ),
     ))
 }
 
-pub fn arg_list(input: Cursor) -> ParseResult<Vec<Spanned<FuncDefArg>>> {
+pub fn arg_list(input: Cursor) -> ParseResult<Vec<Node<FuncDefArg>>> {
     match input[0] {
         Token { string: ")", .. } => Ok((input, vec![])),
         _ => separated(arg_def, op(","), true)(input),
     }
 }
 
-pub fn arg_def(input: Cursor) -> ParseResult<Spanned<FuncDefArg>> {
+pub fn arg_def(input: Cursor) -> ParseResult<Node<FuncDefArg>> {
     let (input, name_tok) = name_token(input)?;
     let (input, _) = op(":")(input)?;
     let (input, typ) = type_desc(input)?;
@@ -646,18 +598,18 @@ pub fn arg_def(input: Cursor) -> ParseResult<Spanned<FuncDefArg>> {
 
     Ok((
         input,
-        Spanned {
-            node: FuncDefArg {
+        Node::new(
+            FuncDefArg {
                 name: name_tok.into(),
                 typ,
             },
             span,
-        },
+        ),
     ))
 }
 
 /// Parse a type definition (type alias).
-pub fn type_def(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
+pub fn type_def(input: Cursor) -> ParseResult<Node<ModuleStmt>> {
     let (input, type_kw) = name("type")(input)?;
     let (input, name) = name_token(input)?;
     let (input, _) = op("=")(input)?;
@@ -668,28 +620,28 @@ pub fn type_def(input: Cursor) -> ParseResult<Spanned<ModuleStmt>> {
 
     Ok((
         input,
-        Spanned {
-            node: ModuleStmt::TypeDef {
+        Node::new(
+            ModuleStmt::TypeDef {
                 name: name.into(),
                 typ: type_desc,
             },
             span,
-        },
+        ),
     ))
 }
 
 /// Parse a type description e.g. "u256" or "map<address, bool>".
-pub fn type_desc(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
+pub fn type_desc(input: Cursor) -> ParseResult<Node<TypeDesc>> {
     alt((map_type, base_type, tuple_type))(input)
 }
 
 /// Parse all base and tuple types but not map types
-pub fn base_or_tuple_type(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
+pub fn base_or_tuple_type(input: Cursor) -> ParseResult<Node<TypeDesc>> {
     alt((base_type, tuple_type))(input)
 }
 
 /// Parse a map type e.g. "map<address, bool".
-pub fn map_type(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
+pub fn map_type(input: Cursor) -> ParseResult<Node<TypeDesc>> {
     alt((map_type_double, map_type_single))(input)
 }
 
@@ -697,7 +649,7 @@ pub fn map_type(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
 ///
 /// Example:
 /// map<address, map<u256, bool>>
-pub fn map_type_double(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
+pub fn map_type_double(input: Cursor) -> ParseResult<Node<TypeDesc>> {
     let (input, map_kw_1) = name("map")(input)?;
     let (input, _) = op("<")(input)?;
     let (input, from_1) = base_type(input)?;
@@ -711,23 +663,23 @@ pub fn map_type_double(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
     let (input, to) = type_desc(input)?;
     let (input, r_bracket) = op(">>")(input)?;
 
-    let inner_map = Spanned {
-        node: TypeDesc::Map {
+    let inner_map = Node::new(
+        TypeDesc::Map {
             from: Box::new(from_2),
             to: Box::new(to),
         },
-        span: Span::new(map_kw_2.span.start, r_bracket.span.end - 1),
-    };
+        Span::new(map_kw_2.span.start, r_bracket.span.end - 1),
+    );
 
     Ok((
         input,
-        Spanned {
-            node: TypeDesc::Map {
+        Node::new(
+            TypeDesc::Map {
                 from: Box::new(from_1),
                 to: Box::new(inner_map),
             },
-            span: Span::from_pair(map_kw_1, r_bracket),
-        },
+            Span::from_pair(map_kw_1, r_bracket),
+        ),
     ))
 }
 
@@ -735,7 +687,7 @@ pub fn map_type_double(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
 ///
 /// Example:
 /// map< address, map<u256, map<bool, int128>> >
-pub fn map_type_single(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
+pub fn map_type_single(input: Cursor) -> ParseResult<Node<TypeDesc>> {
     let (input, map_kw) = name("map")(input)?;
     let (input, _) = op("<")(input)?;
     let (input, from) = base_type(input)?;
@@ -745,13 +697,13 @@ pub fn map_type_single(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
 
     Ok((
         input,
-        Spanned {
-            node: TypeDesc::Map {
+        Node::new(
+            TypeDesc::Map {
                 from: Box::new(from),
                 to: Box::new(to),
             },
-            span: Span::from_pair(map_kw, r_bracket),
-        },
+            Span::from_pair(map_kw, r_bracket),
+        ),
     ))
 }
 
@@ -759,24 +711,21 @@ pub fn map_type_single(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
 ///
 /// Example:
 /// int128[2][3]
-pub fn base_type(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
+pub fn base_type(input: Cursor) -> ParseResult<Node<TypeDesc>> {
     let (input, base) = name_token(input)?;
     let (input, dims) = arr_list(input)?;
 
-    let mut result = Spanned {
-        node: TypeDesc::Base { base: base.string },
-        span: base.into(),
-    };
+    let mut result = Node::new(TypeDesc::Base { base: base.string }, base.into());
     for dim in dims {
         let span = Span::from_pair(&result, &dim);
 
-        result = Spanned {
-            node: TypeDesc::Array {
+        result = Node::new(
+            TypeDesc::Array {
                 typ: Box::new(result),
-                dimension: dim.node,
+                dimension: dim.kind,
             },
             span,
-        };
+        );
     }
 
     Ok((input, result))
@@ -786,7 +735,7 @@ pub fn base_type(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
 ///
 /// Example:
 /// (u64, bool)
-pub fn tuple_type(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
+pub fn tuple_type(input: Cursor) -> ParseResult<Node<TypeDesc>> {
     let (input, opening) = op("(")(input)?;
 
     let (input, types) = match input[0] {
@@ -796,21 +745,21 @@ pub fn tuple_type(input: Cursor) -> ParseResult<Spanned<TypeDesc>> {
 
     let (input, closing) = op(")")(input)?;
 
-    let result = Spanned {
-        node: TypeDesc::Tuple { items: types },
-        span: Span::from_pair(opening, closing),
-    };
+    let result = Node::new(
+        TypeDesc::Tuple { items: types },
+        Span::from_pair(opening, closing),
+    );
 
     Ok((input, result))
 }
 
 /// Parse an array dimension list e.g. "[2][3]"
-pub fn arr_list(input: Cursor) -> ParseResult<Vec<Spanned<usize>>> {
+pub fn arr_list(input: Cursor) -> ParseResult<Vec<Node<usize>>> {
     many0(arr_dim)(input)
 }
 
 /// Parse an array dimension e.g. "[2]"
-pub fn arr_dim(input: Cursor) -> ParseResult<Spanned<usize>> {
+pub fn arr_dim(input: Cursor) -> ParseResult<Node<usize>> {
     let (num_input, l_bracket) = op("[")(input)?;
     let (input, num_tok) = number_token(num_input)?;
     let (input, r_bracket) = op("]")(input)?;
@@ -825,13 +774,7 @@ pub fn arr_dim(input: Cursor) -> ParseResult<Spanned<usize>> {
         }
     };
 
-    Ok((
-        input,
-        Spanned {
-            node: n,
-            span: Span::from_pair(l_bracket, r_bracket),
-        },
-    ))
+    Ok((input, Node::new(n, Span::from_pair(l_bracket, r_bracket))))
 }
 
 pub fn try_from_tok<'a, P, O>(parser: P) -> impl Fn(Cursor<'a>) -> ParseResult<O>
@@ -844,34 +787,34 @@ where
 }
 
 /// Parse a contract field qualifier keyword e.g. "const".
-pub fn contract_field_qual(input: Cursor) -> ParseResult<Spanned<ContractFieldQual>> {
+pub fn contract_field_qual(input: Cursor) -> ParseResult<Node<ContractFieldQual>> {
     try_from_tok(alt((name("const"), name("pub"))))(input)
 }
 
 /// Parse a struct field qualifier keyword e.g. "const".
-pub fn struct_field_qual(input: Cursor) -> ParseResult<Spanned<StructFieldQual>> {
+pub fn struct_field_qual(input: Cursor) -> ParseResult<Node<StructFieldQual>> {
     try_from_tok(name("pub"))(input)
 }
 
 /// Parse an event field qualifier keyword i.e. "idx".
-pub fn event_field_qual(input: Cursor) -> ParseResult<Spanned<EventFieldQual>> {
+pub fn event_field_qual(input: Cursor) -> ParseResult<Node<EventFieldQual>> {
     try_from_tok(name("idx"))(input)
 }
 
 /// Parse a function qualifier keyword i.e. "pub".
-pub fn func_qual(input: Cursor) -> ParseResult<Spanned<FuncQual>> {
+pub fn func_qual(input: Cursor) -> ParseResult<Node<FuncQual>> {
     try_from_tok(name("pub"))(input)
 }
 
-pub fn func_stmt(input: Cursor) -> ParseResult<Vec<Spanned<FuncStmt>>> {
+pub fn func_stmt(input: Cursor) -> ParseResult<Vec<Node<FuncStmt>>> {
     alt((map(compound_stmt, |stmt| vec![stmt]), simple_stmt))(input)
 }
 
-pub fn simple_stmt(input: Cursor) -> ParseResult<Vec<Spanned<FuncStmt>>> {
+pub fn simple_stmt(input: Cursor) -> ParseResult<Vec<Node<FuncStmt>>> {
     terminated(separated(small_stmt, op(";"), true), newline_token)(input)
 }
 
-pub fn small_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+pub fn small_stmt(input: Cursor) -> ParseResult<Node<FuncStmt>> {
     alt((
         return_stmt,
         assert_stmt,
@@ -883,16 +826,18 @@ pub fn small_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
         vardecl_stmt,
         assign_stmt,
         augassign_stmt,
-        map(exprs, |spanned| Spanned {
-            node: FuncStmt::Expr {
-                value: spanned.node,
-            },
-            span: spanned.span,
+        map(exprs, |node| {
+            Node::new(
+                FuncStmt::Expr {
+                    value: Node::new(node.kind, node.span),
+                },
+                node.span,
+            )
         }),
     ))(input)
 }
 
-pub fn return_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+pub fn return_stmt(input: Cursor) -> ParseResult<Node<FuncStmt>> {
     let (input, return_kw) = name("return")(input)?;
     let (input, value) = opt(exprs)(input)?;
 
@@ -901,16 +846,10 @@ pub fn return_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
         None => return_kw.span,
     };
 
-    Ok((
-        input,
-        Spanned {
-            node: FuncStmt::Return { value },
-            span,
-        },
-    ))
+    Ok((input, Node::new(FuncStmt::Return { value }, span)))
 }
 
-pub fn assert_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+pub fn assert_stmt(input: Cursor) -> ParseResult<Node<FuncStmt>> {
     let (input, assert_kw) = name("assert")(input)?;
     let (input, test) = expr(input)?;
     let (input, msg) = opt(preceded(op(","), expr))(input)?;
@@ -920,62 +859,45 @@ pub fn assert_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
         None => Span::from_pair(assert_kw, &test),
     };
 
-    Ok((
-        input,
-        Spanned {
-            node: FuncStmt::Assert { test, msg },
-            span,
-        },
-    ))
+    Ok((input, Node::new(FuncStmt::Assert { test, msg }, span)))
 }
 
-pub fn emit_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+pub fn emit_stmt(input: Cursor) -> ParseResult<Node<FuncStmt>> {
     let (input, emit_kw) = name("emit")(input)?;
     let (input, value) = expr(input)?;
 
     let span = Span::from_pair(emit_kw, &value);
 
-    Ok((
-        input,
-        Spanned {
-            node: FuncStmt::Emit { value },
-            span,
-        },
-    ))
+    Ok((input, Node::new(FuncStmt::Emit { value }, span)))
 }
 
 pub fn keyword_statement<'a, G>(
     string: &'a str,
     get_stmt: G,
-) -> impl Fn(Cursor<'a>) -> ParseResult<Spanned<FuncStmt>>
+) -> impl Fn(Cursor<'a>) -> ParseResult<Node<FuncStmt>>
 where
     G: Fn() -> FuncStmt<'a>,
 {
-    move |input| {
-        map(name(string), |t| Spanned {
-            node: get_stmt(),
-            span: t.span,
-        })(input)
-    }
+    move |input| map(name(string), |t| Node::new(get_stmt(), t.span))(input)
 }
 
-pub fn pass_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+pub fn pass_stmt(input: Cursor) -> ParseResult<Node<FuncStmt>> {
     keyword_statement("pass", || FuncStmt::Pass)(input)
 }
 
-pub fn break_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+pub fn break_stmt(input: Cursor) -> ParseResult<Node<FuncStmt>> {
     keyword_statement("break", || FuncStmt::Break)(input)
 }
 
-pub fn continue_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+pub fn continue_stmt(input: Cursor) -> ParseResult<Node<FuncStmt>> {
     keyword_statement("continue", || FuncStmt::Continue)(input)
 }
 
-pub fn revert_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+pub fn revert_stmt(input: Cursor) -> ParseResult<Node<FuncStmt>> {
     keyword_statement("revert", || FuncStmt::Revert)(input)
 }
 
-pub fn vardecl_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+pub fn vardecl_stmt(input: Cursor) -> ParseResult<Node<FuncStmt>> {
     let (input, target_expr) = target(input)?;
     let (input, _) = op(":")(input)?;
     let (input, typ) = type_desc(input)?;
@@ -988,18 +910,18 @@ pub fn vardecl_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
 
     Ok((
         input,
-        Spanned {
-            node: FuncStmt::VarDecl {
+        Node::new(
+            FuncStmt::VarDecl {
                 target: target_expr,
                 typ,
                 value,
             },
             span,
-        },
+        ),
     ))
 }
 
-pub fn assign_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+pub fn assign_stmt(input: Cursor) -> ParseResult<Node<FuncStmt>> {
     let (input, targets_vec) = many1(terminated(targets, op("=")))(input)?;
     let (input, value) = exprs(input)?;
 
@@ -1008,17 +930,17 @@ pub fn assign_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
 
     Ok((
         input,
-        Spanned {
-            node: FuncStmt::Assign {
+        Node::new(
+            FuncStmt::Assign {
                 targets: targets_vec,
                 value,
             },
             span,
-        },
+        ),
     ))
 }
 
-pub fn augassign_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+pub fn augassign_stmt(input: Cursor) -> ParseResult<Node<FuncStmt>> {
     let (input, target_expr) = target(input)?;
     let (input, aug_tok) = alt((
         op("+="),
@@ -1040,25 +962,23 @@ pub fn augassign_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
 
     Ok((
         input,
-        Spanned {
-            node: FuncStmt::AugAssign {
+        Node::new(
+            FuncStmt::AugAssign {
                 target: target_expr,
                 op: TryFrom::try_from(aug_tok).unwrap(),
                 value,
             },
             span,
-        },
+        ),
     ))
 }
 
-pub fn compound_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+pub fn compound_stmt(input: Cursor) -> ParseResult<Node<FuncStmt>> {
     alt((if_stmt, while_stmt, for_stmt))(input)
 }
 
 #[allow(clippy::needless_lifetimes)]
-pub fn if_stmt_builder<'a>(
-    string: &'a str,
-) -> impl Fn(Cursor<'a>) -> ParseResult<Spanned<FuncStmt>> {
+pub fn if_stmt_builder<'a>(string: &'a str) -> impl Fn(Cursor<'a>) -> ParseResult<Node<FuncStmt>> {
     move |input| {
         alt((
             |input| {
@@ -1073,14 +993,14 @@ pub fn if_stmt_builder<'a>(
 
                 Ok((
                     input,
-                    Spanned {
-                        node: FuncStmt::If {
+                    Node::new(
+                        FuncStmt::If {
                             test,
                             body,
                             or_else,
                         },
                         span,
-                    },
+                    ),
                 ))
             },
             |input| {
@@ -1099,29 +1019,29 @@ pub fn if_stmt_builder<'a>(
 
                 Ok((
                     input,
-                    Spanned {
-                        node: FuncStmt::If {
+                    Node::new(
+                        FuncStmt::If {
                             test,
                             body,
                             or_else,
                         },
                         span,
-                    },
+                    ),
                 ))
             },
         ))(input)
     }
 }
 
-pub fn if_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+pub fn if_stmt(input: Cursor) -> ParseResult<Node<FuncStmt>> {
     if_stmt_builder("if")(input)
 }
 
-pub fn elif_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+pub fn elif_stmt(input: Cursor) -> ParseResult<Node<FuncStmt>> {
     if_stmt_builder("elif")(input)
 }
 
-pub fn else_block(input: Cursor) -> ParseResult<Vec<Spanned<FuncStmt>>> {
+pub fn else_block(input: Cursor) -> ParseResult<Vec<Node<FuncStmt>>> {
     let (input, _) = name("else")(input)?;
     let (input, _) = op(":")(input)?;
     let (input, stmts) = block(input)?;
@@ -1129,7 +1049,7 @@ pub fn else_block(input: Cursor) -> ParseResult<Vec<Spanned<FuncStmt>>> {
     Ok((input, stmts))
 }
 
-pub fn while_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+pub fn while_stmt(input: Cursor) -> ParseResult<Node<FuncStmt>> {
     let (input, while_kw) = name("while")(input)?;
     let (input, test) = expr(input)?;
     let (input, _) = op(":")(input)?;
@@ -1145,18 +1065,18 @@ pub fn while_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
 
     Ok((
         input,
-        Spanned {
-            node: FuncStmt::While {
+        Node::new(
+            FuncStmt::While {
                 test,
                 body,
                 or_else,
             },
             span,
-        },
+        ),
     ))
 }
 
-pub fn for_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
+pub fn for_stmt(input: Cursor) -> ParseResult<Node<FuncStmt>> {
     let (input, for_kw) = name("for")(input)?;
     let (input, target_expr) = targets(input)?;
     let (input, _) = name("in")(input)?;
@@ -1174,19 +1094,19 @@ pub fn for_stmt(input: Cursor) -> ParseResult<Spanned<FuncStmt>> {
 
     Ok((
         input,
-        Spanned {
-            node: FuncStmt::For {
+        Node::new(
+            FuncStmt::For {
                 target: target_expr,
                 iter,
                 body,
                 or_else,
             },
             span,
-        },
+        ),
     ))
 }
 
-pub fn block(input: Cursor) -> ParseResult<Vec<Spanned<FuncStmt>>> {
+pub fn block(input: Cursor) -> ParseResult<Vec<Node<FuncStmt>>> {
     alt((simple_stmt, |input| {
         let (input, _) = newline_token(input)?;
         let (input, _) = indent_token(input)?;
@@ -1200,7 +1120,7 @@ pub fn block(input: Cursor) -> ParseResult<Vec<Spanned<FuncStmt>>> {
 }
 
 /// Parse a comma-separated list of expressions.
-pub fn exprs(input: Cursor) -> ParseResult<Spanned<Expr>> {
+pub fn exprs(input: Cursor) -> ParseResult<Node<Expr>> {
     let (input, mut elts) = separated(expr, op(","), false)(input)?;
     let (input, comma) = opt(op(","))(input)?;
 
@@ -1210,20 +1130,14 @@ pub fn exprs(input: Cursor) -> ParseResult<Spanned<Expr>> {
         Some(comma_tok) => {
             let span = Span::from_pair(first, comma_tok);
 
-            Spanned {
-                node: Expr::Tuple { elts },
-                span,
-            }
+            Node::new(Expr::Tuple { elts }, span)
         }
         None => {
             if elts.len() > 1 {
                 let last = elts.last().unwrap();
                 let span = Span::from_pair(first, last);
 
-                Spanned {
-                    node: Expr::Tuple { elts },
-                    span,
-                }
+                Node::new(Expr::Tuple { elts }, span)
             } else {
                 elts.pop().unwrap()
             }
@@ -1233,7 +1147,7 @@ pub fn exprs(input: Cursor) -> ParseResult<Spanned<Expr>> {
     Ok((input, result))
 }
 
-pub fn expr(input: Cursor) -> ParseResult<Spanned<Expr>> {
+pub fn expr(input: Cursor) -> ParseResult<Node<Expr>> {
     let (input, if_expr) = disjunct(input)?;
     let (input, ternary) = opt(|input| {
         let (input, _) = name("if")(input)?;
@@ -1247,14 +1161,14 @@ pub fn expr(input: Cursor) -> ParseResult<Spanned<Expr>> {
         Some((test, else_expr)) => {
             let span = Span::from_pair(&if_expr, &else_expr);
 
-            Spanned {
-                node: Expr::Ternary {
+            Node::new(
+                Expr::Ternary {
                     if_expr: Box::new(if_expr),
                     test: Box::new(test),
                     else_expr: Box::new(else_expr),
                 },
                 span,
-            }
+            )
         }
         None => if_expr,
     };
@@ -1263,11 +1177,7 @@ pub fn expr(input: Cursor) -> ParseResult<Spanned<Expr>> {
 }
 
 #[inline]
-pub fn bool_op_builder<'a>(
-    left: Spanned<Expr<'a>>,
-    op: &'a Token,
-    right: Spanned<Expr<'a>>,
-) -> Expr<'a> {
+pub fn bool_op_builder<'a>(left: Node<Expr<'a>>, op: &'a Token, right: Node<Expr<'a>>) -> Expr<'a> {
     Expr::BoolOperation {
         left: Box::new(left),
         op: TryFrom::try_from(op).unwrap(),
@@ -1276,11 +1186,7 @@ pub fn bool_op_builder<'a>(
 }
 
 #[inline]
-pub fn bin_op_builder<'a>(
-    left: Spanned<Expr<'a>>,
-    op: &'a Token,
-    right: Spanned<Expr<'a>>,
-) -> Expr<'a> {
+pub fn bin_op_builder<'a>(left: Node<Expr<'a>>, op: &'a Token, right: Node<Expr<'a>>) -> Expr<'a> {
     Expr::BinOperation {
         left: Box::new(left),
         op: TryFrom::try_from(op).unwrap(),
@@ -1289,7 +1195,7 @@ pub fn bin_op_builder<'a>(
 }
 
 #[inline]
-pub fn unary_op_builder<'a>(op: &'a Token, operand: Spanned<Expr<'a>>) -> Expr<'a> {
+pub fn unary_op_builder<'a>(op: &'a Token, operand: Node<Expr<'a>>) -> Expr<'a> {
     Expr::UnaryOperation {
         op: TryFrom::try_from(op).unwrap(),
         operand: Box::new(operand),
@@ -1298,9 +1204,9 @@ pub fn unary_op_builder<'a>(op: &'a Token, operand: Spanned<Expr<'a>>) -> Expr<'
 
 #[inline]
 pub fn comp_op_builder<'a>(
-    left: Spanned<Expr<'a>>,
-    op: Spanned<CompOperator>,
-    right: Spanned<Expr<'a>>,
+    left: Node<Expr<'a>>,
+    op: Node<CompOperator>,
+    right: Node<Expr<'a>>,
 ) -> Expr<'a> {
     Expr::CompOperation {
         left: Box::new(left),
@@ -1309,15 +1215,15 @@ pub fn comp_op_builder<'a>(
     }
 }
 
-pub fn disjunct(input: Cursor) -> ParseResult<Spanned<Expr>> {
+pub fn disjunct(input: Cursor) -> ParseResult<Node<Expr>> {
     op_expr_builder(conjunct, name("or"), bool_op_builder)(input)
 }
 
-pub fn conjunct(input: Cursor) -> ParseResult<Spanned<Expr>> {
+pub fn conjunct(input: Cursor) -> ParseResult<Node<Expr>> {
     op_expr_builder(comparison, name("and"), bool_op_builder)(input)
 }
 
-pub fn comparison(input: Cursor) -> ParseResult<Spanned<Expr>> {
+pub fn comparison(input: Cursor) -> ParseResult<Node<Expr>> {
     let (input, nots) = many0(name("not"))(input)?;
     let (input, op_expr) = op_expr_builder(bitwise_or, comp_op, comp_op_builder)(input)?;
 
@@ -1325,16 +1231,13 @@ pub fn comparison(input: Cursor) -> ParseResult<Spanned<Expr>> {
     for not_tok in nots.into_iter().rev() {
         let span = Span::from_pair(not_tok, &result);
 
-        result = Spanned {
-            node: unary_op_builder(not_tok, result),
-            span,
-        };
+        result = Node::new(unary_op_builder(not_tok, result), span);
     }
 
     Ok((input, result))
 }
 
-pub fn comp_op(input: Cursor) -> ParseResult<Spanned<CompOperator>> {
+pub fn comp_op(input: Cursor) -> ParseResult<Node<CompOperator>> {
     alt((
         map(
             alt((pair(name("not"), name("in")), pair(name("is"), name("not")))),
@@ -1359,27 +1262,27 @@ pub fn comp_op(input: Cursor) -> ParseResult<Spanned<CompOperator>> {
     ))(input)
 }
 
-pub fn bitwise_or(input: Cursor) -> ParseResult<Spanned<Expr>> {
+pub fn bitwise_or(input: Cursor) -> ParseResult<Node<Expr>> {
     op_expr_builder(bitwise_xor, op("|"), bin_op_builder)(input)
 }
 
-pub fn bitwise_xor(input: Cursor) -> ParseResult<Spanned<Expr>> {
+pub fn bitwise_xor(input: Cursor) -> ParseResult<Node<Expr>> {
     op_expr_builder(bitwise_and, op("^"), bin_op_builder)(input)
 }
 
-pub fn bitwise_and(input: Cursor) -> ParseResult<Spanned<Expr>> {
+pub fn bitwise_and(input: Cursor) -> ParseResult<Node<Expr>> {
     op_expr_builder(shift_expr, op("&"), bin_op_builder)(input)
 }
 
-pub fn shift_expr(input: Cursor) -> ParseResult<Spanned<Expr>> {
+pub fn shift_expr(input: Cursor) -> ParseResult<Node<Expr>> {
     op_expr_builder(sum, alt((op("<<"), op(">>"))), bin_op_builder)(input)
 }
 
-pub fn sum(input: Cursor) -> ParseResult<Spanned<Expr>> {
+pub fn sum(input: Cursor) -> ParseResult<Node<Expr>> {
     op_expr_builder(term, alt((op("+"), op("-"))), bin_op_builder)(input)
 }
 
-pub fn term(input: Cursor) -> ParseResult<Spanned<Expr>> {
+pub fn term(input: Cursor) -> ParseResult<Node<Expr>> {
     op_expr_builder(
         factor,
         alt((op("*"), op("/"), op("//"), op("%"))),
@@ -1387,7 +1290,7 @@ pub fn term(input: Cursor) -> ParseResult<Spanned<Expr>> {
     )(input)
 }
 
-pub fn factor(input: Cursor) -> ParseResult<Spanned<Expr>> {
+pub fn factor(input: Cursor) -> ParseResult<Node<Expr>> {
     let unary_op = |input| {
         let (input, op_tok) = alt((op("+"), op("-"), op("~")))(input)?;
         let (input, factor_expr) = factor(input)?;
@@ -1396,17 +1299,14 @@ pub fn factor(input: Cursor) -> ParseResult<Spanned<Expr>> {
 
         Ok((
             input,
-            Spanned {
-                node: unary_op_builder(op_tok, factor_expr),
-                span,
-            },
+            Node::new(unary_op_builder(op_tok, factor_expr), span),
         ))
     };
 
     alt((unary_op, power))(input)
 }
 
-pub fn power(input: Cursor) -> ParseResult<Spanned<Expr>> {
+pub fn power(input: Cursor) -> ParseResult<Node<Expr>> {
     let power_op = |input| {
         let (input, primary_expr) = primary(input)?;
         let (input, op_tok) = op("**")(input)?;
@@ -1416,17 +1316,14 @@ pub fn power(input: Cursor) -> ParseResult<Spanned<Expr>> {
 
         Ok((
             input,
-            Spanned {
-                node: bin_op_builder(primary_expr, op_tok, factor_expr),
-                span,
-            },
+            Node::new(bin_op_builder(primary_expr, op_tok, factor_expr), span),
         ))
     };
 
     alt((power_op, primary))(input)
 }
 
-pub fn build_tail_expr<'a>(exp: Spanned<Expr<'a>>, tails: Vec<Tail<'a>>) -> Spanned<Expr<'a>> {
+pub fn build_tail_expr<'a>(exp: Node<Expr<'a>>, tails: Vec<Tail<'a>>) -> Node<Expr<'a>> {
     let mut result = exp;
 
     for tail in tails {
@@ -1434,35 +1331,35 @@ pub fn build_tail_expr<'a>(exp: Spanned<Expr<'a>>, tails: Vec<Tail<'a>>) -> Span
             Tail::Attr(name_tok) => {
                 let span = Span::from_pair(&result, name_tok);
 
-                result = Spanned {
-                    node: Expr::Attribute {
+                result = Node::new(
+                    Expr::Attribute {
                         value: Box::new(result),
                         attr: name_tok.into(),
                     },
                     span,
-                };
+                );
             }
             Tail::Index(slices) => {
                 let span = Span::from_pair(&result, &slices);
 
-                result = Spanned {
-                    node: Expr::Subscript {
+                result = Node::new(
+                    Expr::Subscript {
                         value: Box::new(result),
                         slices,
                     },
                     span,
-                };
+                );
             }
             Tail::Call(args) => {
                 let span = Span::from_pair(&result, &args);
 
-                result = Spanned {
-                    node: Expr::Call {
+                result = Node::new(
+                    Expr::Call {
                         func: Box::new(result),
                         args,
                     },
                     span,
-                };
+                );
             }
         }
     }
@@ -1470,18 +1367,18 @@ pub fn build_tail_expr<'a>(exp: Spanned<Expr<'a>>, tails: Vec<Tail<'a>>) -> Span
     result
 }
 
-pub fn primary(input: Cursor) -> ParseResult<Spanned<Expr>> {
+pub fn primary(input: Cursor) -> ParseResult<Node<Expr>> {
     let (input, atom_expr) = atom(input)?;
     let (input, tails) = many0(alt((attr_tail, index_tail, call_tail)))(input)?;
 
     Ok((input, build_tail_expr(atom_expr, tails)))
 }
 
-pub fn slices(input: Cursor) -> ParseResult<Vec<Spanned<Slice>>> {
+pub fn slices(input: Cursor) -> ParseResult<Vec<Node<Slice>>> {
     separated(slice, op(","), true)(input)
 }
 
-pub fn slice(input: Cursor) -> ParseResult<Spanned<Slice>> {
+pub fn slice(input: Cursor) -> ParseResult<Node<Slice>> {
     alt((
         |input| {
             let boxed_expr = map(expr, Box::new);
@@ -1503,44 +1400,26 @@ pub fn slice(input: Cursor) -> ParseResult<Spanned<Slice>> {
 
             let span = Span::from_pair(first, last);
 
-            Ok((
-                input,
-                Spanned {
-                    node: Slice::Slice { lower, upper, step },
-                    span,
-                },
-            ))
+            Ok((input, Node::new(Slice::Slice { lower, upper, step }, span)))
         },
-        map(expr, |e| Spanned {
-            node: Slice::Index(Box::new(e.node)),
-            span: e.span,
+        map(expr, |e| {
+            Node::new(Slice::Index(Box::new(Node::new(e.kind, e.span))), e.span)
         }),
     ))(input)
 }
 
-pub fn atom(input: Cursor) -> ParseResult<Spanned<Expr>> {
+pub fn atom(input: Cursor) -> ParseResult<Node<Expr>> {
     alt((
-        map(name("true"), |tok| Spanned {
-            node: Expr::Bool(true),
-            span: tok.span,
-        }),
-        map(name("false"), |tok| Spanned {
-            node: Expr::Bool(false),
-            span: tok.span,
-        }),
+        map(name("true"), |tok| Node::new(Expr::Bool(true), tok.span)),
+        map(name("false"), |tok| Node::new(Expr::Bool(false), tok.span)),
         list,
-        map(group, |exp| Spanned {
-            node: exp.node.node,
-            span: exp.span,
-        }),
+        map(group, |exp| Node::new(exp.kind.kind, exp.span)),
         tuple,
-        map(name_token, |tok| Spanned {
-            node: Expr::Name(tok.string),
-            span: tok.span,
+        map(name_token, |tok| {
+            Node::new(Expr::Name(tok.string), tok.span)
         }),
-        map(number_token, |tok| Spanned {
-            node: Expr::Num(tok.string),
-            span: tok.span,
+        map(number_token, |tok| {
+            Node::new(Expr::Num(tok.string), tok.span)
         }),
         map(many1(string_token), |toks| {
             let tok_strings: Vec<_> = toks
@@ -1554,62 +1433,56 @@ pub fn atom(input: Cursor) -> ParseResult<Spanned<Expr>> {
             let fst = toks.first().unwrap();
             let snd = toks.last().unwrap();
 
-            Spanned {
-                node: Expr::Str(tok_strings),
-                span: Span::from_pair(*fst, *snd),
-            }
+            Node::new(Expr::Str(tok_strings), Span::from_pair(*fst, *snd))
         }),
-        map(op("..."), |tok| Spanned {
-            node: Expr::Ellipsis,
-            span: tok.span,
-        }),
+        map(op("..."), |tok| Node::new(Expr::Ellipsis, tok.span)),
     ))(input)
 }
 
-pub fn list(input: Cursor) -> ParseResult<Spanned<Expr>> {
-    map(delimited(op("["), opt(exprs), op("]")), |spanned| {
+pub fn list(input: Cursor) -> ParseResult<Node<Expr>> {
+    map(delimited(op("["), opt(exprs), op("]")), |node| {
         use Expr::{
             List,
             Tuple,
         };
 
-        let node = match spanned.node {
-            Some(Spanned {
-                node: Tuple { elts },
+        let kind = match node.kind {
+            Some(Node {
+                kind: Tuple { elts },
                 ..
             }) => List { elts },
             Some(exp) => List { elts: vec![exp] },
             None => List { elts: vec![] },
         };
-        let span = spanned.span;
+        let span = node.span;
 
-        Spanned { node, span }
+        Node::new(kind, span)
     })(input)
 }
 
-pub fn tuple(input: Cursor) -> ParseResult<Spanned<Expr>> {
-    map(delimited(op("("), opt(exprs), op(")")), |spanned| {
+pub fn tuple(input: Cursor) -> ParseResult<Node<Expr>> {
+    map(delimited(op("("), opt(exprs), op(")")), |node| {
         use Expr::Tuple;
 
-        let node = match spanned.node {
-            Some(Spanned {
-                node: Tuple { elts },
+        let kind = match node.kind {
+            Some(Node {
+                kind: Tuple { elts },
                 ..
             }) => Tuple { elts },
-            Some(exp) => exp.node,
+            Some(exp) => exp.kind,
             None => Tuple { elts: vec![] },
         };
-        let span = spanned.span;
+        let span = node.span;
 
-        Spanned { node, span }
+        Node::new(kind, span)
     })(input)
 }
 
-pub fn group(input: Cursor) -> ParseResult<Spanned<Spanned<Expr>>> {
+pub fn group(input: Cursor) -> ParseResult<Node<Node<Expr>>> {
     delimited(op("("), expr, op(")"))(input)
 }
 
-pub fn args(input: Cursor) -> ParseResult<Vec<Spanned<CallArg>>> {
+pub fn args(input: Cursor) -> ParseResult<Vec<Node<CallArg>>> {
     let kw_result = kwargs(input);
     if kw_result.is_ok() {
         return kw_result;
@@ -1618,10 +1491,10 @@ pub fn args(input: Cursor) -> ParseResult<Vec<Spanned<CallArg>>> {
     let (input, first) = expr(input)?;
     let (input, rest) = opt(preceded(op(","), args))(input)?;
 
-    let mut results = vec![Spanned {
-        node: CallArg::Arg(first.node),
-        span: first.span,
-    }];
+    let mut results = vec![Node::new(
+        CallArg::Arg(Node::new(first.kind, first.span)),
+        first.span,
+    )];
     if let Some(mut rest) = rest {
         results.append(&mut rest);
     }
@@ -1629,11 +1502,11 @@ pub fn args(input: Cursor) -> ParseResult<Vec<Spanned<CallArg>>> {
     Ok((input, results))
 }
 
-pub fn kwargs(input: Cursor) -> ParseResult<Vec<Spanned<CallArg>>> {
+pub fn kwargs(input: Cursor) -> ParseResult<Vec<Node<CallArg>>> {
     separated(kwarg, op(","), false)(input)
 }
 
-pub fn kwarg(input: Cursor) -> ParseResult<Spanned<CallArg>> {
+pub fn kwarg(input: Cursor) -> ParseResult<Node<CallArg>> {
     let (input, name_tok) = name_token(input)?;
     let (input, _) = op("=")(input)?;
     let (input, value_expr) = expr(input)?;
@@ -1642,23 +1515,23 @@ pub fn kwarg(input: Cursor) -> ParseResult<Spanned<CallArg>> {
 
     Ok((
         input,
-        Spanned {
-            node: CallArg::Kwarg(Kwarg {
+        Node::new(
+            CallArg::Kwarg(Kwarg {
                 name: name_tok.into(),
                 value: Box::new(value_expr),
             }),
             span,
-        },
+        ),
     ))
 }
 
 pub enum Tail<'a> {
     Attr(&'a Token<'a>),
-    Index(Spanned<Vec<Spanned<Slice<'a>>>>),
-    Call(Spanned<Vec<Spanned<CallArg<'a>>>>),
+    Index(Node<Vec<Node<Slice<'a>>>>),
+    Call(Node<Vec<Node<CallArg<'a>>>>),
 }
 
-pub fn targets(input: Cursor) -> ParseResult<Spanned<Expr>> {
+pub fn targets(input: Cursor) -> ParseResult<Node<Expr>> {
     let (input, mut elts) = separated(target, op(","), false)(input)?;
     let (input, comma) = opt(op(","))(input)?;
 
@@ -1668,20 +1541,14 @@ pub fn targets(input: Cursor) -> ParseResult<Spanned<Expr>> {
         Some(comma_tok) => {
             let span = Span::from_pair(first, comma_tok);
 
-            Spanned {
-                node: Expr::Tuple { elts },
-                span,
-            }
+            Node::new(Expr::Tuple { elts }, span)
         }
         None => {
             if elts.len() > 1 {
                 let last = elts.last().unwrap();
                 let span = Span::from_pair(first, last);
 
-                Spanned {
-                    node: Expr::Tuple { elts },
-                    span,
-                }
+                Node::new(Expr::Tuple { elts }, span)
             } else {
                 elts.pop().unwrap()
             }
@@ -1691,7 +1558,7 @@ pub fn targets(input: Cursor) -> ParseResult<Spanned<Expr>> {
     Ok((input, result))
 }
 
-pub fn target(input: Cursor) -> ParseResult<Spanned<Expr>> {
+pub fn target(input: Cursor) -> ParseResult<Node<Expr>> {
     alt((
         |input| {
             let (input, atom_expr) = atom(input)?;
@@ -1712,42 +1579,41 @@ pub fn target(input: Cursor) -> ParseResult<Spanned<Expr>> {
     ))(input)
 }
 
-pub fn t_atom(input: Cursor) -> ParseResult<Spanned<Expr>> {
+pub fn t_atom(input: Cursor) -> ParseResult<Node<Expr>> {
     alt((
-        map(name_token, |tok| Spanned {
-            node: Expr::Name(tok.string),
-            span: tok.span,
+        map(name_token, |tok| {
+            Node::new(Expr::Name(tok.string), tok.span)
         }),
-        map(delimited(op("("), targets, op(")")), |spanned| {
+        map(delimited(op("("), targets, op(")")), |node| {
             use Expr::Tuple;
 
-            let node = match spanned.node {
-                Spanned {
-                    node: Tuple { elts },
+            let kind = match node.kind {
+                Node {
+                    kind: Tuple { elts },
                     ..
                 } => Tuple { elts },
                 exp => Tuple { elts: vec![exp] },
             };
-            let span = spanned.span;
+            let span = node.span;
 
-            Spanned { node, span }
+            Node::new(kind, span)
         }),
-        map(delimited(op("["), targets, op("]")), |spanned| {
+        map(delimited(op("["), targets, op("]")), |node| {
             use Expr::{
                 List,
                 Tuple,
             };
 
-            let node = match spanned.node {
-                Spanned {
-                    node: Tuple { elts },
+            let kind = match node.kind {
+                Node {
+                    kind: Tuple { elts },
                     ..
                 } => List { elts },
                 exp => List { elts: vec![exp] },
             };
-            let span = spanned.span;
+            let span = node.span;
 
-            Spanned { node, span }
+            Node::new(kind, span)
         }),
     ))(input)
 }
@@ -1771,9 +1637,8 @@ pub fn index_tail(input: Cursor) -> ParseResult<Tail> {
 
 pub fn call_tail(input: Cursor) -> ParseResult<Tail> {
     map(
-        map(delimited(op("("), opt(args), op(")")), |spanned| Spanned {
-            node: spanned.node.unwrap_or_else(Vec::new),
-            span: spanned.span,
+        map(delimited(op("("), opt(args), op(")")), |node| {
+            Node::new(node.kind.unwrap_or_else(Vec::new), node.span)
         }),
         Tail::Call,
     )(input)

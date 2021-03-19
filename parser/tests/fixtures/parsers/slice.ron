@@ -6,15 +6,21 @@ x:y
 x:y:z
 ---
 [
-  Spanned(
-    node: Index(Name("x")),
+  Node(
+    kind: Index(Node(
+      kind: Name("x"),
+      span: Span(
+        start: 0,
+        end: 1,
+      ),
+    )),
     span: Span(
       start: 0,
       end: 1,
     ),
   ),
-  Spanned(
-    node: Slice(
+  Node(
+    kind: Slice(
       lower: None,
       upper: None,
       step: None,
@@ -24,10 +30,10 @@ x:y:z
       end: 3,
     ),
   ),
-  Spanned(
-    node: Slice(
-      lower: Some(Spanned(
-        node: Name("x"),
+  Node(
+    kind: Slice(
+      lower: Some(Node(
+        kind: Name("x"),
         span: Span(
           start: 4,
           end: 5,
@@ -41,11 +47,11 @@ x:y:z
       end: 6,
     ),
   ),
-  Spanned(
-    node: Slice(
+  Node(
+    kind: Slice(
       lower: None,
-      upper: Some(Spanned(
-        node: Name("x"),
+      upper: Some(Node(
+        kind: Name("x"),
         span: Span(
           start: 8,
           end: 9,
@@ -58,17 +64,17 @@ x:y:z
       end: 9,
     ),
   ),
-  Spanned(
-    node: Slice(
-      lower: Some(Spanned(
-        node: Name("x"),
+  Node(
+    kind: Slice(
+      lower: Some(Node(
+        kind: Name("x"),
         span: Span(
           start: 10,
           end: 11,
         ),
       )),
-      upper: Some(Spanned(
-        node: Name("y"),
+      upper: Some(Node(
+        kind: Name("y"),
         span: Span(
           start: 12,
           end: 13,
@@ -81,24 +87,24 @@ x:y:z
       end: 13,
     ),
   ),
-  Spanned(
-    node: Slice(
-      lower: Some(Spanned(
-        node: Name("x"),
+  Node(
+    kind: Slice(
+      lower: Some(Node(
+        kind: Name("x"),
         span: Span(
           start: 14,
           end: 15,
         ),
       )),
-      upper: Some(Spanned(
-        node: Name("y"),
+      upper: Some(Node(
+        kind: Name("y"),
         span: Span(
           start: 16,
           end: 17,
         ),
       )),
-      step: Some(Spanned(
-        node: Name("z"),
+      step: Some(Node(
+        kind: Name("z"),
         span: Span(
           start: 18,
           end: 19,

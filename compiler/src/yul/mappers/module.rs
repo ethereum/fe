@@ -13,7 +13,7 @@ pub fn module(context: &Context, module: &fe::Module) -> Result<YulContracts, Co
         .body
         .iter()
         .try_fold(YulContracts::new(), |mut contracts, stmt| {
-            match &stmt.node {
+            match &stmt.kind {
                 fe::ModuleStmt::TypeDef { .. } => {}
                 fe::ModuleStmt::ContractDef { name, .. } => {
                     // Map the set of created contract names to their Yul objects so they can be
@@ -28,7 +28,7 @@ pub fn module(context: &Context, module: &fe::Module) -> Result<YulContracts, Co
 
                     let contract = contracts::contract_def(context, stmt, created_contracts)?;
 
-                    if contracts.insert(name.node.to_string(), contract).is_some() {
+                    if contracts.insert(name.kind.to_string(), contract).is_some() {
                         panic!("duplicate contract definition");
                     }
                 }

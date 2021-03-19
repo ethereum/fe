@@ -2,8 +2,8 @@ return
 return x
 ---
 [
-  Spanned(
-    node: Return(
+  Node(
+    kind: Return(
       value: None,
     ),
     span: Span(
@@ -11,10 +11,10 @@ return x
       end: 6,
     ),
   ),
-  Spanned(
-    node: Return(
-      value: Some(Spanned(
-        node: Name("x"),
+  Node(
+    kind: Return(
+      value: Some(Node(
+        kind: Name("x"),
         span: Span(
           start: 14,
           end: 15,

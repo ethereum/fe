@@ -11,16 +11,16 @@ use crate::traversal::{
 };
 use crate::Context;
 use fe_parser::ast as fe;
-use fe_parser::span::Spanned;
+use fe_parser::node::Node;
 use std::rc::Rc;
 
 /// Gather context information for var declarations and check for type errors.
 pub fn var_decl(
     scope: Shared<BlockScope>,
     context: Shared<Context>,
-    stmt: &Spanned<fe::FuncStmt>,
+    stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
-    if let fe::FuncStmt::VarDecl { target, typ, value } = &stmt.node {
+    if let fe::FuncStmt::VarDecl { target, typ, value } = &stmt.kind {
         let name = expressions::expr_name_str(target)?;
         let declared_type = types::type_desc_fixed_size(Scope::Block(Rc::clone(&scope)), typ)?;
         if let Some(value) = value {

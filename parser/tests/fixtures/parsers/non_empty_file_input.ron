@@ -1,16 +1,16 @@
 import foo
 ---
-Spanned(
-  node: Module(
+Node(
+  kind: Module(
     body: [
-      Spanned(
-        node: SimpleImport(
+      Node(
+        kind: SimpleImport(
           names: [
-            Spanned(
-              node: SimpleImportName(
+            Node(
+              kind: SimpleImportName(
                 path: [
-                  Spanned(
-                    node: "foo",
+                  Node(
+                    kind: "foo",
                     span: Span(
                       start: 7,
                       end: 10,

@@ -2,31 +2,31 @@ x
 x if y else z
 ---
 [
-  Spanned(
-    node: Name("x"),
+  Node(
+    kind: Name("x"),
     span: Span(
       start: 0,
       end: 1,
     ),
   ),
-  Spanned(
-    node: Ternary(
-      if_expr: Spanned(
-        node: Name("x"),
+  Node(
+    kind: Ternary(
+      if_expr: Node(
+        kind: Name("x"),
         span: Span(
           start: 2,
           end: 3,
         ),
       ),
-      test: Spanned(
-        node: Name("y"),
+      test: Node(
+        kind: Name("y"),
         span: Span(
           start: 7,
           end: 8,
         ),
       ),
-      else_expr: Spanned(
-        node: Name("z"),
+      else_expr: Node(
+        kind: Name("z"),
         span: Span(
           start: 14,
           end: 15,

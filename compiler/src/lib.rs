@@ -12,6 +12,7 @@ pub mod abi;
 pub mod errors;
 #[cfg(feature = "solc-backend")]
 pub mod evm;
+pub mod lowering;
 pub mod types;
 pub mod yul;
 
@@ -29,7 +30,7 @@ pub fn compile(
     let fe_module = fe_parser::parsers::file_input(&fe_tokens[..])
         .map_err(|error| CompileError::str(&error.format_user(src)))?
         .1
-        .node;
+        .kind;
 
     // analyze source code
     let context = fe_analyzer::analyze(&fe_module)
@@ -38,8 +39,15 @@ pub fn compile(
     // build abi
     let json_abis = abi::build(&context, &fe_module)?;
 
+    // lower the AST
+    let lowered_fe_module = lowering::lower(&context, &fe_module);
+
+    // analyze the lowered AST
+    let context = fe_analyzer::analyze(&lowered_fe_module)
+        .map_err(|error| CompileError::str(&error.format_user(src)))?;
+
     // compile to yul
-    let yul_contracts = yul::compile(&context, &fe_module)?;
+    let yul_contracts = yul::compile(&context, &lowered_fe_module)?;
 
     // compile to bytecode if required
     #[cfg(feature = "solc-backend")]

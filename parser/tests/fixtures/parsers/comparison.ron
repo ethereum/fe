@@ -4,24 +4,24 @@ not not x
 not x in y is True
 ---
 [
-  Spanned(
-    node: Name("x"),
+  Node(
+    kind: Name("x"),
     span: Span(
       start: 0,
       end: 1,
     ),
   ),
-  Spanned(
-    node: UnaryOperation(
-      op: Spanned(
-        node: Not,
+  Node(
+    kind: UnaryOperation(
+      op: Node(
+        kind: Not,
         span: Span(
           start: 2,
           end: 5,
         ),
       ),
-      operand: Spanned(
-        node: Name("x"),
+      operand: Node(
+        kind: Name("x"),
         span: Span(
           start: 6,
           end: 7,
@@ -33,26 +33,26 @@ not x in y is True
       end: 7,
     ),
   ),
-  Spanned(
-    node: UnaryOperation(
-      op: Spanned(
-        node: Not,
+  Node(
+    kind: UnaryOperation(
+      op: Node(
+        kind: Not,
         span: Span(
           start: 8,
           end: 11,
         ),
       ),
-      operand: Spanned(
-        node: UnaryOperation(
-          op: Spanned(
-            node: Not,
+      operand: Node(
+        kind: UnaryOperation(
+          op: Node(
+            kind: Not,
             span: Span(
               start: 12,
               end: 15,
             ),
           ),
-          operand: Spanned(
-            node: Name("x"),
+          operand: Node(
+            kind: Name("x"),
             span: Span(
               start: 16,
               end: 17,
@@ -70,35 +70,35 @@ not x in y is True
       end: 17,
     ),
   ),
-  Spanned(
-    node: UnaryOperation(
-      op: Spanned(
-        node: Not,
+  Node(
+    kind: UnaryOperation(
+      op: Node(
+        kind: Not,
         span: Span(
           start: 18,
           end: 21,
         ),
       ),
-      operand: Spanned(
-        node: CompOperation(
-          left: Spanned(
-            node: CompOperation(
-              left: Spanned(
-                node: Name("x"),
+      operand: Node(
+        kind: CompOperation(
+          left: Node(
+            kind: CompOperation(
+              left: Node(
+                kind: Name("x"),
                 span: Span(
                   start: 22,
                   end: 23,
                 ),
               ),
-              op: Spanned(
-                node: In,
+              op: Node(
+                kind: In,
                 span: Span(
                   start: 24,
                   end: 26,
                 ),
               ),
-              right: Spanned(
-                node: Name("y"),
+              right: Node(
+                kind: Name("y"),
                 span: Span(
                   start: 27,
                   end: 28,
@@ -110,15 +110,15 @@ not x in y is True
               end: 28,
             ),
           ),
-          op: Spanned(
-            node: Is,
+          op: Node(
+            kind: Is,
             span: Span(
               start: 29,
               end: 31,
             ),
           ),
-          right: Spanned(
-            node: Name("True"),
+          right: Node(
+            kind: Name("True"),
             span: Span(
               start: 32,
               end: 36,

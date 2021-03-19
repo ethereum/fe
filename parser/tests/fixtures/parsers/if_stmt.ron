@@ -35,19 +35,25 @@ else:
     g
 ---
 [
-  Spanned(
-    node: If(
-      test: Spanned(
-        node: Name("a"),
+  Node(
+    kind: If(
+      test: Node(
+        kind: Name("a"),
         span: Span(
           start: 3,
           end: 4,
         ),
       ),
       body: [
-        Spanned(
-          node: Expr(
-            value: Name("b"),
+        Node(
+          kind: Expr(
+            value: Node(
+              kind: Name("b"),
+              span: Span(
+                start: 10,
+                end: 11,
+              ),
+            ),
           ),
           span: Span(
             start: 10,
@@ -62,19 +68,25 @@ else:
       end: 11,
     ),
   ),
-  Spanned(
-    node: If(
-      test: Spanned(
-        node: Name("a"),
+  Node(
+    kind: If(
+      test: Node(
+        kind: Name("a"),
         span: Span(
           start: 16,
           end: 17,
         ),
       ),
       body: [
-        Spanned(
-          node: Expr(
-            value: Name("b"),
+        Node(
+          kind: Expr(
+            value: Node(
+              kind: Name("b"),
+              span: Span(
+                start: 23,
+                end: 24,
+              ),
+            ),
           ),
           span: Span(
             start: 23,
@@ -83,9 +95,15 @@ else:
         ),
       ],
       or_else: [
-        Spanned(
-          node: Expr(
-            value: Name("c"),
+        Node(
+          kind: Expr(
+            value: Node(
+              kind: Name("c"),
+              span: Span(
+                start: 35,
+                end: 36,
+              ),
+            ),
           ),
           span: Span(
             start: 35,
@@ -99,19 +117,25 @@ else:
       end: 36,
     ),
   ),
-  Spanned(
-    node: If(
-      test: Spanned(
-        node: Name("a"),
+  Node(
+    kind: If(
+      test: Node(
+        kind: Name("a"),
         span: Span(
           start: 41,
           end: 42,
         ),
       ),
       body: [
-        Spanned(
-          node: Expr(
-            value: Name("b"),
+        Node(
+          kind: Expr(
+            value: Node(
+              kind: Name("b"),
+              span: Span(
+                start: 48,
+                end: 49,
+              ),
+            ),
           ),
           span: Span(
             start: 48,
@@ -120,19 +144,25 @@ else:
         ),
       ],
       or_else: [
-        Spanned(
-          node: If(
-            test: Spanned(
-              node: Name("c"),
+        Node(
+          kind: If(
+            test: Node(
+              kind: Name("c"),
               span: Span(
                 start: 55,
                 end: 56,
               ),
             ),
             body: [
-              Spanned(
-                node: Expr(
-                  value: Name("d"),
+              Node(
+                kind: Expr(
+                  value: Node(
+                    kind: Name("d"),
+                    span: Span(
+                      start: 62,
+                      end: 63,
+                    ),
+                  ),
                 ),
                 span: Span(
                   start: 62,
@@ -154,19 +184,25 @@ else:
       end: 63,
     ),
   ),
-  Spanned(
-    node: If(
-      test: Spanned(
-        node: Name("a"),
+  Node(
+    kind: If(
+      test: Node(
+        kind: Name("a"),
         span: Span(
           start: 68,
           end: 69,
         ),
       ),
       body: [
-        Spanned(
-          node: Expr(
-            value: Name("b"),
+        Node(
+          kind: Expr(
+            value: Node(
+              kind: Name("b"),
+              span: Span(
+                start: 75,
+                end: 76,
+              ),
+            ),
           ),
           span: Span(
             start: 75,
@@ -175,19 +211,25 @@ else:
         ),
       ],
       or_else: [
-        Spanned(
-          node: If(
-            test: Spanned(
-              node: Name("c"),
+        Node(
+          kind: If(
+            test: Node(
+              kind: Name("c"),
               span: Span(
                 start: 82,
                 end: 83,
               ),
             ),
             body: [
-              Spanned(
-                node: Expr(
-                  value: Name("d"),
+              Node(
+                kind: Expr(
+                  value: Node(
+                    kind: Name("d"),
+                    span: Span(
+                      start: 89,
+                      end: 90,
+                    ),
+                  ),
                 ),
                 span: Span(
                   start: 89,
@@ -196,9 +238,15 @@ else:
               ),
             ],
             or_else: [
-              Spanned(
-                node: Expr(
-                  value: Name("e"),
+              Node(
+                kind: Expr(
+                  value: Node(
+                    kind: Name("e"),
+                    span: Span(
+                      start: 101,
+                      end: 102,
+                    ),
+                  ),
                 ),
                 span: Span(
                   start: 101,
@@ -219,19 +267,25 @@ else:
       end: 102,
     ),
   ),
-  Spanned(
-    node: If(
-      test: Spanned(
-        node: Name("a"),
+  Node(
+    kind: If(
+      test: Node(
+        kind: Name("a"),
         span: Span(
           start: 107,
           end: 108,
         ),
       ),
       body: [
-        Spanned(
-          node: Expr(
-            value: Name("b"),
+        Node(
+          kind: Expr(
+            value: Node(
+              kind: Name("b"),
+              span: Span(
+                start: 114,
+                end: 115,
+              ),
+            ),
           ),
           span: Span(
             start: 114,
@@ -240,19 +294,25 @@ else:
         ),
       ],
       or_else: [
-        Spanned(
-          node: If(
-            test: Spanned(
-              node: Name("c"),
+        Node(
+          kind: If(
+            test: Node(
+              kind: Name("c"),
               span: Span(
                 start: 121,
                 end: 122,
               ),
             ),
             body: [
-              Spanned(
-                node: Expr(
-                  value: Name("d"),
+              Node(
+                kind: Expr(
+                  value: Node(
+                    kind: Name("d"),
+                    span: Span(
+                      start: 128,
+                      end: 129,
+                    ),
+                  ),
                 ),
                 span: Span(
                   start: 128,
@@ -261,19 +321,25 @@ else:
               ),
             ],
             or_else: [
-              Spanned(
-                node: If(
-                  test: Spanned(
-                    node: Name("e"),
+              Node(
+                kind: If(
+                  test: Node(
+                    kind: Name("e"),
                     span: Span(
                       start: 135,
                       end: 136,
                     ),
                   ),
                   body: [
-                    Spanned(
-                      node: Expr(
-                        value: Name("f"),
+                    Node(
+                      kind: Expr(
+                        value: Node(
+                          kind: Name("f"),
+                          span: Span(
+                            start: 142,
+                            end: 143,
+                          ),
+                        ),
                       ),
                       span: Span(
                         start: 142,
@@ -302,19 +368,25 @@ else:
       end: 143,
     ),
   ),
-  Spanned(
-    node: If(
-      test: Spanned(
-        node: Name("a"),
+  Node(
+    kind: If(
+      test: Node(
+        kind: Name("a"),
         span: Span(
           start: 148,
           end: 149,
         ),
       ),
       body: [
-        Spanned(
-          node: Expr(
-            value: Name("b"),
+        Node(
+          kind: Expr(
+            value: Node(
+              kind: Name("b"),
+              span: Span(
+                start: 155,
+                end: 156,
+              ),
+            ),
           ),
           span: Span(
             start: 155,
@@ -323,19 +395,25 @@ else:
         ),
       ],
       or_else: [
-        Spanned(
-          node: If(
-            test: Spanned(
-              node: Name("c"),
+        Node(
+          kind: If(
+            test: Node(
+              kind: Name("c"),
               span: Span(
                 start: 162,
                 end: 163,
               ),
             ),
             body: [
-              Spanned(
-                node: Expr(
-                  value: Name("d"),
+              Node(
+                kind: Expr(
+                  value: Node(
+                    kind: Name("d"),
+                    span: Span(
+                      start: 169,
+                      end: 170,
+                    ),
+                  ),
                 ),
                 span: Span(
                   start: 169,
@@ -344,19 +422,25 @@ else:
               ),
             ],
             or_else: [
-              Spanned(
-                node: If(
-                  test: Spanned(
-                    node: Name("e"),
+              Node(
+                kind: If(
+                  test: Node(
+                    kind: Name("e"),
                     span: Span(
                       start: 176,
                       end: 177,
                     ),
                   ),
                   body: [
-                    Spanned(
-                      node: Expr(
-                        value: Name("f"),
+                    Node(
+                      kind: Expr(
+                        value: Node(
+                          kind: Name("f"),
+                          span: Span(
+                            start: 183,
+                            end: 184,
+                          ),
+                        ),
                       ),
                       span: Span(
                         start: 183,
@@ -365,9 +449,15 @@ else:
                     ),
                   ],
                   or_else: [
-                    Spanned(
-                      node: Expr(
-                        value: Name("g"),
+                    Node(
+                      kind: Expr(
+                        value: Node(
+                          kind: Name("g"),
+                          span: Span(
+                            start: 195,
+                            end: 196,
+                          ),
+                        ),
                       ),
                       span: Span(
                         start: 195,

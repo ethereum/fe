@@ -1,7 +1,7 @@
 //! Semantic errors.
 
 use ansi_term::Color::Red;
-use fe_parser::span::Span;
+use fe_parser::node::Span;
 
 /// Errors for things that may arise in a valid Fe AST.
 #[derive(Debug, PartialEq)]

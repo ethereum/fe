@@ -1,8 +1,8 @@
 idx
 ---
 [
-  Spanned(
-    node: Idx,
+  Node(
+    kind: Idx,
     span: Span(
       start: 0,
       end: 3,

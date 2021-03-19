@@ -1,8 +1,8 @@
 pub
 ---
 [
-  Spanned(
-    node: Pub,
+  Node(
+    kind: Pub,
     span: Span(
       start: 0,
       end: 3,

@@ -1,17 +1,17 @@
 x=y
 ---
 [
-  Spanned(
-    node: Kwarg(Kwarg(
-      name: Spanned(
-        node: "x",
+  Node(
+    kind: Kwarg(Kwarg(
+      name: Node(
+        kind: "x",
         span: Span(
           start: 0,
           end: 1,
         ),
       ),
-      value: Spanned(
-        node: Name("y"),
+      value: Node(
+        kind: Name("y"),
         span: Span(
           start: 2,
           end: 3,

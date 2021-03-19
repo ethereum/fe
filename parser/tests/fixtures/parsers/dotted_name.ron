@@ -4,8 +4,8 @@ abc.de.fghi
 ---
 [
   [
-    Spanned(
-      node: "abc",
+    Node(
+      kind: "abc",
       span: Span(
         start: 0,
         end: 3,
@@ -13,15 +13,15 @@ abc.de.fghi
     ),
   ],
   [
-    Spanned(
-      node: "abc",
+    Node(
+      kind: "abc",
       span: Span(
         start: 4,
         end: 7,
       ),
     ),
-    Spanned(
-      node: "def",
+    Node(
+      kind: "def",
       span: Span(
         start: 8,
         end: 11,
@@ -29,22 +29,22 @@ abc.de.fghi
     ),
   ],
   [
-    Spanned(
-      node: "abc",
+    Node(
+      kind: "abc",
       span: Span(
         start: 12,
         end: 15,
       ),
     ),
-    Spanned(
-      node: "de",
+    Node(
+      kind: "de",
       span: Span(
         start: 16,
         end: 18,
       ),
     ),
-    Spanned(
-      node: "fghi",
+    Node(
+      kind: "fghi",
       span: Span(
         start: 19,
         end: 23,

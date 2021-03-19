@@ -3,18 +3,18 @@ event Foo:
     x: address
 ---
 [
-  Spanned(
-    node: ContractField(
+  Node(
+    kind: ContractField(
       qual: None,
-      name: Spanned(
-        node: "x",
+      name: Node(
+        kind: "x",
         span: Span(
           start: 0,
           end: 1,
         ),
       ),
-      typ: Spanned(
-        node: Base(
+      typ: Node(
+        kind: Base(
           base: "address",
         ),
         span: Span(
@@ -28,28 +28,28 @@ event Foo:
       end: 10,
     ),
   ),
-  Spanned(
-    node: EventDef(
-      name: Spanned(
-        node: "Foo",
+  Node(
+    kind: EventDef(
+      name: Node(
+        kind: "Foo",
         span: Span(
           start: 17,
           end: 20,
         ),
       ),
       fields: [
-        Spanned(
-          node: EventField(
+        Node(
+          kind: EventField(
             qual: None,
-            name: Spanned(
-              node: "x",
+            name: Node(
+              kind: "x",
               span: Span(
                 start: 26,
                 end: 27,
               ),
             ),
-            typ: Spanned(
-              node: Base(
+            typ: Node(
+              kind: Base(
                 base: "address",
               ),
               span: Span(

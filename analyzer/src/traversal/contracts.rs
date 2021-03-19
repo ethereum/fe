@@ -20,7 +20,7 @@ use crate::{
     ContractAttributes,
 };
 use fe_parser::ast as fe;
-use fe_parser::span::Spanned;
+use fe_parser::node::Node;
 use std::rc::Rc;
 
 /// Gather context information for contract definitions and check for type
@@ -28,13 +28,13 @@ use std::rc::Rc;
 pub fn contract_def(
     module_scope: Shared<ModuleScope>,
     context: Shared<Context>,
-    stmt: &Spanned<fe::ModuleStmt>,
+    stmt: &Node<fe::ModuleStmt>,
 ) -> Result<Shared<ContractScope>, SemanticError> {
-    if let fe::ModuleStmt::ContractDef { name, body } = &stmt.node {
-        let contract_scope = ContractScope::new(name.node, Rc::clone(&module_scope));
+    if let fe::ModuleStmt::ContractDef { name, body } = &stmt.kind {
+        let contract_scope = ContractScope::new(name.kind, Rc::clone(&module_scope));
 
         for stmt in body.iter() {
-            match &stmt.node {
+            match &stmt.kind {
                 fe::ContractStmt::ContractField { .. } => {
                     // Contract fields are evaluated in the next pass together with function bodies
                     // so that they can use other contract types that may only be defined after the
@@ -58,9 +58,9 @@ pub fn contract_def(
             .module_scope()
             .borrow_mut()
             .add_type_def(
-                name.node,
+                name.kind,
                 Type::Contract(Contract {
-                    name: name.node.to_owned(),
+                    name: name.kind.to_owned(),
                     functions: contract_attributes.public_functions,
                 }),
             )?;
@@ -77,15 +77,15 @@ pub fn contract_def(
 pub fn contract_body(
     contract_scope: Shared<ContractScope>,
     context: Shared<Context>,
-    stmt: &Spanned<fe::ModuleStmt>,
+    stmt: &Node<fe::ModuleStmt>,
 ) -> Result<(), SemanticError> {
-    if let fe::ModuleStmt::ContractDef { body, .. } = &stmt.node {
+    if let fe::ModuleStmt::ContractDef { body, .. } = &stmt.kind {
         for stmt in body.iter() {
-            if let fe::ContractStmt::ContractField { .. } = &stmt.node {
+            if let fe::ContractStmt::ContractField { .. } = &stmt.kind {
                 contract_field(Rc::clone(&contract_scope), stmt)?;
             };
 
-            if let fe::ContractStmt::FuncDef { .. } = &stmt.node {
+            if let fe::ContractStmt::FuncDef { .. } = &stmt.kind {
                 functions::func_body(Rc::clone(&contract_scope), Rc::clone(&context), stmt)
                     .map_err(|error| error.with_context(stmt.span))?;
             };
@@ -103,11 +103,11 @@ pub fn contract_body(
 
 fn contract_field(
     scope: Shared<ContractScope>,
-    stmt: &Spanned<fe::ContractStmt>,
+    stmt: &Node<fe::ContractStmt>,
 ) -> Result<(), SemanticError> {
-    if let fe::ContractStmt::ContractField { qual: _, name, typ } = &stmt.node {
+    if let fe::ContractStmt::ContractField { qual: _, name, typ } = &stmt.kind {
         let typ = types::type_desc(Scope::Contract(Rc::clone(&scope)), typ)?;
-        return scope.borrow_mut().add_field(name.node, typ);
+        return scope.borrow_mut().add_field(name.kind, typ);
     }
 
     unreachable!()
@@ -116,10 +116,10 @@ fn contract_field(
 fn event_def(
     scope: Shared<ContractScope>,
     context: Shared<Context>,
-    stmt: &Spanned<fe::ContractStmt>,
+    stmt: &Node<fe::ContractStmt>,
 ) -> Result<(), SemanticError> {
-    if let fe::ContractStmt::EventDef { name, fields } = &stmt.node {
-        let name = name.node;
+    if let fe::ContractStmt::EventDef { name, fields } = &stmt.kind {
+        let name = name.kind;
 
         let (is_indexed_bools, fields): (Vec<bool>, Vec<(String, FixedSize)>) = fields
             .iter()
@@ -159,13 +159,13 @@ fn event_def(
 
 fn event_field(
     scope: Shared<ContractScope>,
-    field: &Spanned<fe::EventField>,
+    field: &Node<fe::EventField>,
 ) -> Result<(bool, (String, FixedSize)), SemanticError> {
     Ok((
-        field.node.qual.is_some(),
+        field.kind.qual.is_some(),
         (
-            field.node.name.node.to_string(),
-            types::type_desc_fixed_size(Scope::Contract(scope), &field.node.typ)?,
+            field.kind.name.kind.to_string(),
+            types::type_desc_fixed_size(Scope::Contract(scope), &field.kind.typ)?,
         ),
     ))
 }
