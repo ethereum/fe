@@ -93,8 +93,11 @@ impl ModuleScope {
     }
 
     /// Add a type definiton to the scope
-    pub fn add_type_def(&mut self, name: &str, typ: Type) {
-        self.type_defs.insert(name.to_owned(), typ);
+    pub fn add_type_def(&mut self, name: &str, typ: Type) -> Result<(), SemanticError> {
+        match self.type_defs.entry(name.to_owned()) {
+            Entry::Occupied(_) => Err(SemanticError::already_defined()),
+            Entry::Vacant(entry) => Ok(entry.insert(typ)).map(|_| ()),
+        }
     }
 
     /// Filter module scope for type definitions that match the given predicate

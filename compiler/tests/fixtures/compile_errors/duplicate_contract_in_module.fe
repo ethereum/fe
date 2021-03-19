@@ -1,0 +1,9 @@
+contract Foo:
+
+    pub def bar():
+        pass
+
+contract Foo:
+
+    pub def bar():
+        pass

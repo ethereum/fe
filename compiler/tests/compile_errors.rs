@@ -13,9 +13,12 @@ use std::fs;
     case("call_event_with_wrong_types.fe", "TypeError"),
     case("continue_without_loop_2.fe", "ContinueWithoutLoop"),
     case("continue_without_loop.fe", "ContinueWithoutLoop"),
+    case("duplicate_contract_in_module.fe", "AlreadyDefined"),
     case("duplicate_event_in_contract.fe", "AlreadyDefined"),
     case("duplicate_field_in_contract.fe", "AlreadyDefined"),
     case("duplicate_method_in_contract.fe", "AlreadyDefined"),
+    case("duplicate_struct_in_module.fe", "AlreadyDefined"),
+    case("duplicate_typedef_in_module.fe", "AlreadyDefined"),
     case("external_call_type_error.fe", "TypeError"),
     case("external_call_wrong_number_of_params.fe", "WrongNumberOfParams"),
     case("indexed_event.fe", "MoreThanThreeIndexedParams"),
@@ -40,8 +43,14 @@ use std::fs;
     case("numeric_capacity_mismatch/i64_pos.fe", "NumericCapacityMismatch"),
     case("numeric_capacity_mismatch/i8_neg.fe", "NumericCapacityMismatch"),
     case("numeric_capacity_mismatch/i8_pos.fe", "NumericCapacityMismatch"),
-    case("numeric_capacity_mismatch/literal_too_big.fe", "NumericCapacityMismatch"),
-    case("numeric_capacity_mismatch/literal_too_small.fe","NumericCapacityMismatch"),
+    case(
+        "numeric_capacity_mismatch/literal_too_big.fe",
+        "NumericCapacityMismatch"
+    ),
+    case(
+        "numeric_capacity_mismatch/literal_too_small.fe",
+        "NumericCapacityMismatch"
+    ),
     case("numeric_capacity_mismatch/u128_neg.fe", "NumericCapacityMismatch"),
     case("numeric_capacity_mismatch/u128_pos.fe", "NumericCapacityMismatch"),
     case("numeric_capacity_mismatch/u16_neg.fe", "NumericCapacityMismatch"),
@@ -65,7 +74,7 @@ use std::fs;
     case("struct_call_without_kw_args.fe", "KeyWordArgsRequired"),
     case("type_constructor_from_variable.fe", "NumericLiteralExpected"),
     case("unary_minus_on_bool.fe", "TypeError"),
-    case("unexpected_return.fe", "TypeError"),
+    case("unexpected_return.fe", "TypeError")
 )]
 fn test_compile_errors(fixture_file: &str, expected_error: &str) {
     let src = fs::read_to_string(format!("tests/fixtures/compile_errors/{}", fixture_file))
