@@ -315,10 +315,16 @@ fn test_runtime_set_zero() {
 #[test]
 fn test_runtime_house_struct() {
     let mut house = Struct::new("House");
-    house.add_field("price", &FixedSize::Base(Base::Numeric(Integer::U256)));
-    house.add_field("size", &FixedSize::Base(Base::Numeric(Integer::U256)));
-    house.add_field("rooms", &FixedSize::Base(Base::Numeric(Integer::U8)));
-    house.add_field("vacant", &FixedSize::bool());
+    house
+        .add_field("price", &FixedSize::Base(Base::Numeric(Integer::U256)))
+        .unwrap();
+    house
+        .add_field("size", &FixedSize::Base(Base::Numeric(Integer::U256)))
+        .unwrap();
+    house
+        .add_field("rooms", &FixedSize::Base(Base::Numeric(Integer::U8)))
+        .unwrap();
+    house.add_field("vacant", &FixedSize::bool()).unwrap();
     let house_api = functions::structs::struct_apis(house);
 
     with_executor(&|mut executor| {

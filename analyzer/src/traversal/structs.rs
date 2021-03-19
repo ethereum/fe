@@ -25,7 +25,7 @@ pub fn struct_def(
         let StructStmt::StructField { name, typ, .. } = &stmt.node;
         let field_type = type_desc(&module_scope.borrow().type_defs, &typ.node)?;
         if let Type::Base(base_typ) = field_type {
-            val.add_field(name.node, &FixedSize::Base(base_typ));
+            val.add_field(name.node, &FixedSize::Base(base_typ))?;
         } else {
             todo!("Non-Base type fields aren't yet supported")
         }

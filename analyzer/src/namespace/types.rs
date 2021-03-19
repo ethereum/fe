@@ -1,6 +1,7 @@
 use crate::errors::SemanticError;
 use fe_parser::ast as fe;
 use std::collections::{
+    btree_map::Entry,
     BTreeMap,
     HashMap,
 };
@@ -210,9 +211,15 @@ impl Struct {
     }
 
     /// Add a field to the struct
-    pub fn add_field(&mut self, name: &str, value: &FixedSize) -> Option<FixedSize> {
-        self.order.push(name.to_string());
-        self.fields.insert(name.to_string(), value.clone())
+    pub fn add_field(&mut self, name: &str, value: &FixedSize) -> Result<(), SemanticError> {
+        match self.fields.entry(name.to_owned()) {
+            Entry::Occupied(_) => Err(SemanticError::already_defined()),
+            Entry::Vacant(entry) => {
+                entry.insert(value.clone());
+                self.order.push(name.to_string());
+                Ok(())
+            }
+        }
     }
 
     /// Return the type of the given field name
