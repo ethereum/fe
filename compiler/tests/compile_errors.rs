@@ -13,6 +13,7 @@ use std::fs;
     case("call_event_with_wrong_types.fe", "TypeError"),
     case("continue_without_loop_2.fe", "ContinueWithoutLoop"),
     case("continue_without_loop.fe", "ContinueWithoutLoop"),
+    case("duplicate_field_in_contract.fe", "AlreadyDefined"),
     case("external_call_type_error.fe", "TypeError"),
     case("external_call_wrong_number_of_params.fe", "WrongNumberOfParams"),
     case("indexed_event.fe", "MoreThanThreeIndexedParams"),
