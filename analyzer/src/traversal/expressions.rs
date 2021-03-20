@@ -22,6 +22,7 @@ use crate::traversal::utils::{
     call_arg_value,
     expression_attributes_to_types,
     fixed_sizes_to_types,
+    types_to_fixed_sizes,
 };
 use crate::{
     CallType,
@@ -117,19 +118,37 @@ pub fn expr_list(
 
 /// Gather context information for a tuple expression and check for type errors.
 pub fn expr_tuple(
-    _scope: Shared<BlockScope>,
-    _context: Shared<Context>,
+    scope: Shared<BlockScope>,
+    context: Shared<Context>,
     exp: &Node<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::Tuple { elts } = &exp.kind {
-        if elts.is_empty() {
-            return Ok(ExpressionAttributes::new(
+        return if elts.is_empty() {
+            Ok(ExpressionAttributes::new(
                 Type::Tuple(Tuple::empty()),
                 Location::Memory,
-            ));
+            ))
         } else {
-            todo!("Non-empty Tuples not supported yet")
-        }
+            let types = elts
+                .iter()
+                .map(|elt| {
+                    assignable_expr(Rc::clone(&scope), Rc::clone(&context), elt)
+                        .map(|attributes| attributes.typ)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+
+            let tuple = Type::Tuple(Tuple {
+                items: types_to_fixed_sizes(types)?,
+            });
+
+            scope
+                .borrow()
+                .module_scope()
+                .borrow_mut()
+                .add_type_def("test", tuple.clone())?;
+
+            Ok(ExpressionAttributes::new(tuple, Location::Memory))
+        };
     }
     unreachable!()
 }

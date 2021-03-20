@@ -356,7 +356,7 @@ pub fn slice_index(
 fn expr_tuple(exp: &Node<fe::Expr>) -> Result<yul::Expression, CompileError> {
     if let fe::Expr::Tuple { elts } = &exp.kind {
         if !elts.is_empty() {
-            todo!("Non empty Tuples aren't yet supported")
+            unimplemented!()
         } else {
             return Ok(literal_expression! {0x0});
         }

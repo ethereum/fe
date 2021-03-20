@@ -15,6 +15,7 @@ use crate::namespace::events::EventDef;
 use crate::namespace::scopes::{
     ContractFunctionDef,
     ContractScope,
+    ModuleScope,
     Shared,
 };
 use crate::namespace::types::{
@@ -282,6 +283,19 @@ impl From<ContractFunctionDef> for FunctionAttributes {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct ModuleAttributes {
+    pub type_defs: HashMap<String, Type>,
+}
+
+impl From<Shared<ModuleScope>> for ModuleAttributes {
+    fn from(scope: Shared<ModuleScope>) -> Self {
+        Self {
+            type_defs: scope.borrow().type_defs.clone(),
+        }
+    }
+}
+
 /// Contains contextual information about a Fe module and can be queried using
 /// `Spanned` AST nodes.
 #[derive(Clone, Debug, Default)]
@@ -293,6 +307,7 @@ pub struct Context {
     contracts: HashMap<NodeId, ContractAttributes>,
     calls: HashMap<NodeId, CallType>,
     events: HashMap<NodeId, EventDef>,
+    module: Option<ModuleAttributes>,
 }
 
 impl Context {
@@ -309,6 +324,7 @@ impl Context {
             contracts: HashMap::new(),
             calls: HashMap::new(),
             events: HashMap::new(),
+            module: None,
         }
     }
 
@@ -384,6 +400,14 @@ impl Context {
     /// Get information that has been attributed to an event definition node.
     pub fn get_event<T: Into<NodeId>>(&self, node_id: T) -> Option<&EventDef> {
         self.events.get(&node_id.into())
+    }
+
+    pub fn set_module(&mut self, attributes: ModuleAttributes) {
+        self.module = Some(attributes);
+    }
+
+    pub fn get_module<T: Into<NodeId>>(&self) -> Option<&ModuleAttributes> {
+        self.module.as_ref()
     }
 }
 

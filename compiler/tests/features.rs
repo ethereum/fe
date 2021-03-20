@@ -1186,3 +1186,16 @@ fn self_address() {
         );
     });
 }
+
+#[test]
+fn base_tuple() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "base_tuple.fe", "Foo", &[]);
+        harness.test_function(
+            &mut executor,
+            "my_address",
+            &[],
+            Some(&ethabi::Token::Address(harness.address)),
+        );
+    });
+}

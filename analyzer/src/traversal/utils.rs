@@ -1,3 +1,4 @@
+use crate::errors::SemanticError;
 use crate::namespace::types::FixedSize;
 use crate::{
     ExpressionAttributes,
@@ -5,6 +6,7 @@ use crate::{
 };
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
+use std::convert::TryInto;
 
 pub fn call_arg_value<'a>(arg: &'a fe::CallArg<'a>) -> &'a Node<fe::Expr<'a>> {
     match arg {
@@ -22,4 +24,8 @@ pub fn expression_attributes_to_types(attributes: Vec<ExpressionAttributes>) -> 
 
 pub fn fixed_sizes_to_types(sizes: Vec<FixedSize>) -> Vec<Type> {
     sizes.iter().map(|param| param.clone().into()).collect()
+}
+
+pub fn types_to_fixed_sizes(sizes: Vec<Type>) -> Result<Vec<FixedSize>, SemanticError> {
+    sizes.iter().map(|param| param.clone().try_into()).collect()
 }

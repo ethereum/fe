@@ -175,7 +175,7 @@ pub struct Map {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
 pub struct Tuple {
-    pub items: Vec<Base>,
+    pub items: Vec<FixedSize>,
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
@@ -678,13 +678,7 @@ impl FeSized for Struct {
 
 impl AbiEncoding for Struct {
     fn abi_type_name(&self) -> String {
-        let field_names = self
-            .get_field_types()
-            .iter()
-            .map(|typ| typ.abi_type_name())
-            .collect::<Vec<String>>();
-        let joined_names = field_names.join(",");
-        format!("({})", joined_names)
+        "tuple".to_string()
     }
 
     fn abi_type_components(&self) -> Vec<AbiComponent> {
@@ -715,19 +709,29 @@ impl AbiEncoding for Struct {
 
 impl AbiEncoding for Tuple {
     fn abi_type_name(&self) -> String {
-        unimplemented!();
+        "tuple".to_string()
     }
 
     fn abi_type_components(&self) -> Vec<AbiComponent> {
-        unimplemented!()
+        self.items
+            .iter()
+            .enumerate()
+            .map(|(index, item)| AbiComponent {
+                name: format!("item{}", index),
+                typ: item.abi_type_name(),
+                components: vec![],
+            })
+            .collect()
     }
 
     fn abi_safe_name(&self) -> String {
-        unimplemented!();
+        unimplemented!()
     }
 
     fn abi_type(&self) -> AbiType {
-        unimplemented!();
+        AbiType::Tuple {
+            elems: self.items.iter().map(|typ| typ.abi_type()).collect(),
+        }
     }
 }
 
@@ -842,7 +846,7 @@ pub fn type_desc(defs: &HashMap<String, Type>, typ: &fe::TypeDesc) -> Result<Typ
         fe::TypeDesc::Tuple { items } => Ok(Type::Tuple(Tuple {
             items: items
                 .iter()
-                .map(|typ| type_desc_base(defs, &typ.kind))
+                .map(|typ| type_desc_fixed_size(defs, &typ.kind))
                 .collect::<Result<_, _>>()?,
         })),
     }
