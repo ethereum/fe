@@ -1186,3 +1186,34 @@ fn self_address() {
         );
     });
 }
+
+#[rstest(
+    target,
+    op,
+    value,
+    expected,
+    case(2, "add", 5, 7),
+    case(42, "sub", 26, 16),
+    case(10, "mul", 42, 420),
+    case(43, "div", 5, 8),
+    case(43, "mod", 5, 3),
+    case(3, "pow", 5, 243),
+    case(1, "lshift", 7, 128),
+    case(128, "rshift", 7, 1),
+    case(26, "bit_or", 42, 58),
+    case(26, "bit_xor", 42, 48),
+    case(26, "bit_and", 42, 10),
+    case(2, "add_from_sto", 5, 7),
+    case(2, "add_from_mem", 5, 7)
+)]
+fn aug_assign(target: usize, op: &str, value: usize, expected: usize) {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "aug_assign.fe", "Foo", &[]);
+        harness.test_function(
+            &mut executor,
+            op,
+            &[uint_token(target), uint_token(value)],
+            Some(&uint_token(expected)),
+        );
+    });
+}

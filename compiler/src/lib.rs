@@ -40,7 +40,7 @@ pub fn compile(
     let json_abis = abi::build(&context, &fe_module)?;
 
     // lower the AST
-    let lowered_fe_module = lowering::lower(&context, &fe_module);
+    let lowered_fe_module = lowering::lower(&context, fe_module.clone());
 
     // analyze the lowered AST
     let context = fe_analyzer::analyze(&lowered_fe_module)
@@ -81,8 +81,9 @@ pub fn compile(
         .collect::<NamedContracts>();
 
     Ok(CompiledModule {
-        fe_tokens: format!("{:#?}", fe_tokens),
-        fe_ast: format!("{:#?}", fe_module),
+        src_tokens: format!("{:#?}", fe_tokens),
+        src_ast: format!("{:#?}", fe_module),
+        lowered_ast: format!("{:#?}", lowered_fe_module),
         contracts,
     })
 }

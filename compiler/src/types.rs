@@ -34,7 +34,8 @@ pub type NamedContracts = HashMap<ContractName, CompiledContract>;
 
 /// The artifacts of a compiled module.
 pub struct CompiledModule {
-    pub fe_tokens: String,
-    pub fe_ast: String,
+    pub src_tokens: String,
+    pub src_ast: String,
+    pub lowered_ast: String,
     pub contracts: NamedContracts,
 }

@@ -185,7 +185,7 @@ fn func_stmt(
         fe::FuncStmt::VarDecl { .. } => declarations::var_decl(scope, context, stmt),
         fe::FuncStmt::Assign { .. } => assignments::assign(scope, context, stmt),
         fe::FuncStmt::Emit { .. } => emit(scope, context, stmt),
-        fe::FuncStmt::AugAssign { .. } => unimplemented!(),
+        fe::FuncStmt::AugAssign { .. } => assignments::aug_assign(scope, context, stmt),
         fe::FuncStmt::For { .. } => for_loop(scope, context, stmt),
         fe::FuncStmt::While { .. } => while_loop(scope, context, stmt),
         fe::FuncStmt::If { .. } => if_statement(scope, context, stmt),

@@ -3,6 +3,10 @@ use crate::namespace::scopes::{
     BlockScope,
     Shared,
 };
+use crate::namespace::types::{
+    Base,
+    Type,
+};
 use crate::traversal::expressions;
 use crate::Context;
 use crate::Location;
@@ -45,6 +49,36 @@ pub fn assign(
 
             return Ok(());
         }
+    }
+
+    unreachable!()
+}
+
+/// Gather context information for assignments and check for type errors.
+pub fn aug_assign(
+    scope: Shared<BlockScope>,
+    context: Shared<Context>,
+    stmt: &Node<fe::FuncStmt>,
+) -> Result<(), SemanticError> {
+    if let fe::FuncStmt::AugAssign {
+        target,
+        op: _,
+        value,
+    } = &stmt.kind
+    {
+        let target_attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), target)?;
+        let value_attributes = expressions::expr(scope, context, value)?;
+
+        return match target_attributes.typ {
+            Type::Base(Base::Numeric(_)) => {
+                if target_attributes.typ == value_attributes.typ {
+                    Ok(())
+                } else {
+                    Err(SemanticError::type_error())
+                }
+            }
+            _ => Err(SemanticError::type_error()),
+        };
     }
 
     unreachable!()

@@ -7,6 +7,6 @@ mod mappers;
 mod names;
 
 /// Lowers the Fe source AST to a Fe HIR AST.
-pub fn lower(_context: &Context, module: &FeModuleAst) -> FeModuleAst {
-    module.clone()
+pub fn lower(context: &Context, module: FeModuleAst) -> FeModuleAst {
+    mappers::module::module(context, module)
 }

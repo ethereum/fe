@@ -28,6 +28,7 @@ arg_enum! {
     pub enum CompilationTarget {
         Abi,
         Ast,
+        LoweredAst,
         Bytecode,
         Tokens,
         Yul,
@@ -59,7 +60,7 @@ pub fn main() {
                 .short("e")
                 .long("emit")
                 .help("Comma separated compile targets e.g. -e=bytecode,yul")
-                .possible_values(&["abi", "bytecode", "ast", "tokens", "yul"])
+                .possible_values(&["abi", "bytecode", "ast", "tokens", "yul", "loweredAst"])
                 .default_value("abi,bytecode")
                 .use_delimiter(true)
                 .takes_value(true),
@@ -134,11 +135,15 @@ fn write_compiled_module(
     fs::create_dir_all(output_dir).map_err(ioerr_to_string)?;
 
     if targets.contains(&CompilationTarget::Ast) {
-        write_output(&output_dir.join("module.ast"), &module.fe_ast)?;
+        write_output(&output_dir.join("module.ast"), &module.src_ast)?;
+    }
+
+    if targets.contains(&CompilationTarget::LoweredAst) {
+        write_output(&output_dir.join("lowered_module.ast"), &module.lowered_ast)?;
     }
 
     if targets.contains(&CompilationTarget::Tokens) {
-        write_output(&output_dir.join("module.tokens"), &module.fe_tokens)?;
+        write_output(&output_dir.join("module.tokens"), &module.src_tokens)?;
     }
 
     for (name, contract) in module.contracts.drain() {
