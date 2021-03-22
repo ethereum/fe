@@ -1,0 +1,3 @@
+contract C:
+    pub def __init__() -> i32:
+        return 0

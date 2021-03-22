@@ -63,6 +63,11 @@ pub fn func_def(
             .transpose()?
             .unwrap_or_else(|| Tuple::empty().into());
 
+        // `__init__` must not return any type other than `()`.
+        if name == "__init__" && !return_type.is_empty_tuple() {
+            return Err(SemanticError::type_error());
+        }
+
         let attributes: FunctionAttributes = contract_scope
             .borrow_mut()
             .add_function(
