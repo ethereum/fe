@@ -17,6 +17,7 @@ use clap::{
 
 mod _utils;
 use crate::_utils::pretty_curly_print;
+use fe_compiler::errors::install_compiler_panic_hook;
 use fe_compiler::types::CompiledModule;
 
 const DEFAULT_OUTPUT_DIR_NAME: &str = "output";
@@ -34,6 +35,8 @@ arg_enum! {
 }
 
 pub fn main() {
+    install_compiler_panic_hook();
+
     let matches = App::new("Fe")
         .version(VERSION)
         .about("Compiler for the Fe language")
