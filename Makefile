@@ -18,7 +18,7 @@ docker-wasm-test:
 
 .PHONY: coverage
 coverage:
-	cargo tarpaulin --workspace --all-features --verbose --exclude-files 'tests/*' --exclude-files 'main.rs' --out xml html
+	cargo tarpaulin --workspace --all-features --verbose --timeout 120 --exclude-files 'tests/*' --exclude-files 'main.rs' --out xml html
 
 .PHONY: clippy
 clippy:
