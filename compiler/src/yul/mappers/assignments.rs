@@ -1,4 +1,3 @@
-use crate::errors::CompileError;
 use crate::yul::mappers::expressions;
 use crate::yul::operations::data as data_operations;
 use fe_analyzer::namespace::types::FixedSize;
@@ -12,10 +11,7 @@ use std::convert::TryFrom;
 use yultsur::*;
 
 /// Builds a Yul statement from a Fe assignment.
-pub fn assign(
-    context: &Context,
-    stmt: &Node<fe::FuncStmt>,
-) -> Result<yul::Statement, CompileError> {
+pub fn assign(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     if let fe::FuncStmt::Assign { targets, value } = &stmt.kind {
         if targets.len() > 1 {
             unimplemented!("multiple assignment targets")
@@ -26,52 +22,50 @@ pub fn assign(
                 context.get_expression(first_target),
                 context.get_expression(value),
             ) {
-                let target = expressions::expr(&context, first_target)?;
-                let value = expressions::expr(&context, value)?;
+                let target = expressions::expr(&context, first_target);
+                let value = expressions::expr(&context, value);
 
                 let typ = FixedSize::try_from(target_attributes.typ.to_owned())
-                    .map_err(|_| CompileError::static_str("invalid attributes"))?;
+                    .expect("invalid attributes");
 
-                return Ok(
-                    match (
-                        value_attributes.final_location(),
-                        target_attributes.final_location(),
-                    ) {
-                        (Location::Memory, Location::Storage { .. }) => {
-                            data_operations::mcopys(typ, target, value)
-                        }
-                        (Location::Memory, Location::Value) => {
-                            let target = expr_as_ident(target)?;
-                            let value = data_operations::mload(typ, value);
-                            statement! { [target] := [value] }
-                        }
-                        (Location::Memory, Location::Memory) => {
-                            let target = expr_as_ident(target)?;
-                            statement! { [target] := [value] }
-                        }
-                        (Location::Storage { .. }, Location::Storage { .. }) => {
-                            data_operations::scopys(typ, target, value)
-                        }
-                        (Location::Storage { .. }, Location::Value) => {
-                            let target = expr_as_ident(target)?;
-                            let value = data_operations::sload(typ, value);
-                            statement! { [target] := [value] }
-                        }
-                        (Location::Storage { .. }, Location::Memory) => {
-                            unreachable!("raw sto to mem assign")
-                        }
-                        (Location::Value, Location::Memory) => {
-                            data_operations::mstore(typ, target, value)
-                        }
-                        (Location::Value, Location::Storage { .. }) => {
-                            data_operations::sstore(typ, target, value)
-                        }
-                        (Location::Value, Location::Value) => {
-                            let target = expr_as_ident(target)?;
-                            statement! { [target] := [value] }
-                        }
-                    },
-                );
+                return match (
+                    value_attributes.final_location(),
+                    target_attributes.final_location(),
+                ) {
+                    (Location::Memory, Location::Storage { .. }) => {
+                        data_operations::mcopys(typ, target, value)
+                    }
+                    (Location::Memory, Location::Value) => {
+                        let target = expr_as_ident(target);
+                        let value = data_operations::mload(typ, value);
+                        statement! { [target] := [value] }
+                    }
+                    (Location::Memory, Location::Memory) => {
+                        let target = expr_as_ident(target);
+                        statement! { [target] := [value] }
+                    }
+                    (Location::Storage { .. }, Location::Storage { .. }) => {
+                        data_operations::scopys(typ, target, value)
+                    }
+                    (Location::Storage { .. }, Location::Value) => {
+                        let target = expr_as_ident(target);
+                        let value = data_operations::sload(typ, value);
+                        statement! { [target] := [value] }
+                    }
+                    (Location::Storage { .. }, Location::Memory) => {
+                        unreachable!("raw sto to mem assign")
+                    }
+                    (Location::Value, Location::Memory) => {
+                        data_operations::mstore(typ, target, value)
+                    }
+                    (Location::Value, Location::Storage { .. }) => {
+                        data_operations::sstore(typ, target, value)
+                    }
+                    (Location::Value, Location::Value) => {
+                        let target = expr_as_ident(target);
+                        statement! { [target] := [value] }
+                    }
+                };
             }
         }
     }
@@ -79,12 +73,12 @@ pub fn assign(
     unreachable!()
 }
 
-fn expr_as_ident(expr: yul::Expression) -> Result<yul::Identifier, CompileError> {
+fn expr_as_ident(expr: yul::Expression) -> yul::Identifier {
     if let yul::Expression::Identifier(ident) = expr {
-        return Ok(ident);
+        ident
+    } else {
+        panic!("expression is not an identifier");
     }
-
-    Err(CompileError::static_str("expression is not an identifier"))
 }
 
 #[cfg(test)]

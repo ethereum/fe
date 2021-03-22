@@ -1,4 +1,3 @@
-use crate::errors::CompileError;
 use crate::yul::mappers::contracts;
 use fe_analyzer::Context;
 use fe_parser::ast as fe;
@@ -8,11 +7,11 @@ use yultsur::yul;
 pub type YulContracts = HashMap<String, yul::Object>;
 
 /// Builds a vector of Yul contracts from a Fe module.
-pub fn module(context: &Context, module: &fe::Module) -> Result<YulContracts, CompileError> {
+pub fn module(context: &Context, module: &fe::Module) -> YulContracts {
     module
         .body
         .iter()
-        .try_fold(YulContracts::new(), |mut contracts, stmt| {
+        .fold(YulContracts::new(), |mut contracts, stmt| {
             match &stmt.kind {
                 fe::ModuleStmt::TypeDef { .. } => {}
                 fe::ModuleStmt::ContractDef { name, .. } => {
@@ -26,7 +25,7 @@ pub fn module(context: &Context, module: &fe::Module) -> Result<YulContracts, Co
                         .map(|contract_name| contracts[contract_name].clone())
                         .collect::<Vec<_>>();
 
-                    let contract = contracts::contract_def(context, stmt, created_contracts)?;
+                    let contract = contracts::contract_def(context, stmt, created_contracts);
 
                     if contracts.insert(name.kind.to_string(), contract).is_some() {
                         panic!("duplicate contract definition");
@@ -37,6 +36,6 @@ pub fn module(context: &Context, module: &fe::Module) -> Result<YulContracts, Co
                 fe::ModuleStmt::SimpleImport { .. } => unimplemented!(),
             }
 
-            Ok(contracts)
+            contracts
         })
 }

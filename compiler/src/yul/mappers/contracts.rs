@@ -1,4 +1,3 @@
-use crate::errors::CompileError;
 use crate::yul::constructor;
 use crate::yul::mappers::functions;
 use crate::yul::runtime;
@@ -13,7 +12,7 @@ pub fn contract_def(
     context: &Context,
     stmt: &Node<fe::ModuleStmt>,
     created_contracts: Vec<yul::Object>,
-) -> Result<yul::Object, CompileError> {
+) -> yul::Object {
     if let fe::ModuleStmt::ContractDef { name, body } = &stmt.kind {
         let contract_name = name.kind;
         let mut init_function = None;
@@ -25,12 +24,10 @@ pub fn contract_def(
                 (context.get_function(stmt), &stmt.kind)
             {
                 if name.kind == "__init__" {
-                    init_function = Some((
-                        functions::func_def(context, stmt)?,
-                        attributes.param_types(),
-                    ))
+                    init_function =
+                        Some((functions::func_def(context, stmt), attributes.param_types()))
                 } else {
-                    user_functions.push(functions::func_def(context, stmt)?)
+                    user_functions.push(functions::func_def(context, stmt))
                 }
             }
         }
@@ -99,12 +96,12 @@ pub fn contract_def(
         };
 
         // We return the contract initialization object.
-        return Ok(yul::Object {
+        return yul::Object {
             name: identifier! { (contract_name) },
             code: constructor_code,
             objects: constructor_objects,
             data,
-        });
+        };
     }
 
     unreachable!()

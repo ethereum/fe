@@ -63,8 +63,7 @@ pub fn calls(contract: Contract) -> Vec<yul::Statement> {
                 }
             } else {
                 let decoding_size =
-                    abi_operations::static_encode_size(vec![function.return_type.clone()])
-                        .expect("failed to get the static encoding size");
+                    abi_operations::static_encode_size(vec![function.return_type.clone()]);
                 let decoding_operation = abi_operations::decode(
                     vec![function.return_type],
                     identifier_expression! { outstart },

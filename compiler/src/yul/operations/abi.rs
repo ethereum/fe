@@ -56,7 +56,11 @@ pub fn encode_size<T: AbiEncoding>(types: Vec<T>, vals: Vec<yul::Expression>) ->
 }
 
 /// Returns an expression that gives the max size of the encoded values.
-pub fn static_encode_size<T: AbiEncoding>(types: Vec<T>) -> Result<yul::Expression, String> {
+///
+/// # Panics
+/// This will panic if any of the elements of the `types` vector have dynamic
+/// size.
+pub fn static_encode_size<T: AbiEncoding>(types: Vec<T>) -> yul::Expression {
     let mut static_size = 0;
 
     for typ in types {
@@ -75,10 +79,7 @@ pub fn static_encode_size<T: AbiEncoding>(types: Vec<T>) -> Result<yul::Expressi
                         static_size += utils::ceil_32(inner_size * size)
                     }
                     AbiArraySize::Dynamic => {
-                        return Err(
-                            "tried to get the static encoding size of dynamically sized value"
-                                .to_string(),
-                        )
+                        panic!("tried to get the static encoding size of dynamically sized value")
                     }
                 }
             }
@@ -86,7 +87,7 @@ pub fn static_encode_size<T: AbiEncoding>(types: Vec<T>) -> Result<yul::Expressi
         }
     }
 
-    Ok(literal_expression! { (static_size) })
+    literal_expression! { (static_size) }
 }
 
 /// Returns a list of expressions that can be used to decode given types.
@@ -168,7 +169,6 @@ mod tests {
                 }),
                 FixedSize::bool()
             ])
-            .expect("failed to get static size")
             .to_string(),
             "1376"
         )
