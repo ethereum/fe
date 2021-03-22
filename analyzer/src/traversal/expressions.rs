@@ -824,13 +824,13 @@ fn expr_call_contract_attribute(
             return Err(SemanticError::type_error());
         }
 
-        return Ok(ExpressionAttributes::new(
+        Ok(ExpressionAttributes::new(
             return_type.clone().into(),
             Location::assign_location(return_type.into())?,
-        ));
+        ))
+    } else {
+        Err(SemanticError::undefined_value())
     }
-
-    unreachable!()
 }
 
 fn expr_call_type(
