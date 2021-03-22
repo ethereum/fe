@@ -1,11 +1,11 @@
-This directory collects "newsfragments": short files that each contain
-a snippet of ReST-formatted text that will be added to the next
+This directory collects "newsfragments": short files that each contains
+a snippet of markdown formatted text that will be added to the next
 release notes. This should be a description of aspects of the change
 (if any) that are relevant to users. (This contrasts with the
 commit message and PR description, which are a description of the change as
 relevant to people working on the code itself.)
 
-Each file should be named like `<ISSUE>.<TYPE>.rst`, where
+Each file should be named like `<ISSUE>.<TYPE>.md`, where
 `<ISSUE>` is an issue numbers, and `<TYPE>` is one of:
 
 * `feature`
