@@ -11,6 +11,7 @@ use std::fs;
     case("break_without_loop_2.fe", "BreakWithoutLoop"),
     case("break_without_loop.fe", "BreakWithoutLoop"),
     case("call_event_with_wrong_types.fe", "TypeError"),
+    case("call_undefined_function_on_external_contract.fe", "UndefinedValue"),
     case("continue_without_loop_2.fe", "ContinueWithoutLoop"),
     case("continue_without_loop.fe", "ContinueWithoutLoop"),
     case("duplicate_contract_in_module.fe", "AlreadyDefined"),
