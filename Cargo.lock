@@ -646,6 +646,7 @@ dependencies = [
  "fe-parser",
  "hex",
  "maplit",
+ "once_cell",
  "primitive-types",
  "rand",
  "rstest",

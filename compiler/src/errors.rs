@@ -1,7 +1,21 @@
 //! Errors returned by the compilers and ABI builder.
 
 use fe_parser::tokenizer::TokenizeError;
-use serde::export::Formatter;
+use once_cell::sync::Lazy;
+use std::fmt::Formatter;
+use std::panic;
+
+const BUG_REPORT_URL: &str = "https://github.com/ethereum/fe/issues/new";
+static DEFAULT_PANIC_HOOK: Lazy<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> =
+    Lazy::new(|| {
+        let hook = panic::take_hook();
+        panic::set_hook(Box::new(|info| report_ice(info)));
+        hook
+    });
+
+pub fn install_compiler_panic_hook() {
+    Lazy::force(&DEFAULT_PANIC_HOOK);
+}
 
 /// Errors can either be an object or static reference.
 #[derive(Debug)]
@@ -77,4 +91,15 @@ impl<'a> From<ethabi::Error> for CompileError {
     fn from(e: ethabi::Error) -> Self {
         CompileError::str(&format!("ethabi error: {}", e))
     }
+}
+
+fn report_ice(info: &panic::PanicInfo) {
+    (*DEFAULT_PANIC_HOOK)(info);
+
+    eprintln!();
+    eprintln!("You've hit an internal compiler error. This is a bug in the Fe compiler.");
+    eprintln!("Fe is still under heavy development, and isn't yet ready for production use.");
+    eprintln!();
+    eprintln!("If you would, please report this bug at the following URL:");
+    eprintln!("  {}", BUG_REPORT_URL);
 }
