@@ -1,4 +1,3 @@
-use crate::errors::CompileError;
 use crate::yul::names;
 use crate::yul::operations::{
     abi as abi_operations,
@@ -38,10 +37,10 @@ use std::str::FromStr;
 use yultsur::*;
 
 /// Builds a Yul expression from a Fe expression.
-pub fn expr(context: &Context, exp: &Node<fe::Expr>) -> Result<yul::Expression, CompileError> {
+pub fn expr(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
     if let Some(attributes) = context.get_expression(exp) {
         let expression = match &exp.kind {
-            fe::Expr::Name(_) => Ok(expr_name(exp)),
+            fe::Expr::Name(_) => expr_name(exp),
             fe::Expr::Num(_) => expr_num(exp),
             fe::Expr::Bool(_) => expr_bool(exp),
             fe::Expr::Subscript { .. } => expr_subscript(context, exp),
@@ -57,14 +56,14 @@ pub fn expr(context: &Context, exp: &Node<fe::Expr>) -> Result<yul::Expression, 
             fe::Expr::Tuple { .. } => expr_tuple(exp),
             fe::Expr::Str(_) => expr_str(exp),
             fe::Expr::Ellipsis => unimplemented!(),
-        }?;
+        };
 
         match (
             attributes.location.to_owned(),
             attributes.move_location.to_owned(),
         ) {
             (from, Some(to)) => move_expression(expression, attributes.typ.to_owned(), from, to),
-            (_, None) => Ok(expression),
+            (_, None) => expression,
         }
     } else {
         panic!("missing expression attributes for {:?}", exp)
@@ -76,39 +75,30 @@ fn move_expression(
     typ: Type,
     from: Location,
     to: Location,
-) -> Result<yul::Expression, CompileError> {
+) -> yul::Expression {
     let typ = FixedSize::try_from(typ).expect("Invalid type");
 
     match (from.clone(), to.clone()) {
-        (Location::Storage { .. }, Location::Value) => Ok(data_operations::sload(typ, val)),
-        (Location::Memory, Location::Value) => Ok(data_operations::mload(typ, val)),
-        (Location::Memory, Location::Memory) => Ok(data_operations::mcopym(typ, val)),
-        (Location::Storage { .. }, Location::Memory) => Ok(data_operations::scopym(typ, val)),
-        _ => Err(CompileError::str(&format!(
-            "invalid expression move: {:?} {:?}",
-            from, to
-        ))),
+        (Location::Storage { .. }, Location::Value) => data_operations::sload(typ, val),
+        (Location::Memory, Location::Value) => data_operations::mload(typ, val),
+        (Location::Memory, Location::Memory) => data_operations::mcopym(typ, val),
+        (Location::Storage { .. }, Location::Memory) => data_operations::scopym(typ, val),
+        _ => panic!("invalid expression move: {:?} {:?}", from, to),
     }
 }
 
-pub fn call_arg(
-    context: &Context,
-    arg: &Node<fe::CallArg>,
-) -> Result<yul::Expression, CompileError> {
+pub fn call_arg(context: &Context, arg: &Node<fe::CallArg>) -> yul::Expression {
     match &arg.kind {
         fe::CallArg::Arg(value) => expr(context, value),
         fe::CallArg::Kwarg(fe::Kwarg { name: _, value }) => expr(context, value),
     }
 }
 
-fn expr_call(context: &Context, exp: &Node<fe::Expr>) -> Result<yul::Expression, CompileError> {
+fn expr_call(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Call { args, func } = &exp.kind {
         if let Some(call_type) = context.get_call(func) {
-            let yul_args: Vec<yul::Expression> = args
-                .kind
-                .iter()
-                .map(|val| call_arg(context, val))
-                .collect::<Result<_, _>>()?;
+            let yul_args: Vec<yul::Expression> =
+                args.kind.iter().map(|val| call_arg(context, val)).collect();
 
             return match call_type {
                 CallType::BuiltinFunction { func } => match func {
@@ -124,16 +114,16 @@ fn expr_call(context: &Context, exp: &Node<fe::Expr>) -> Result<yul::Expression,
 
                         let func_name = identifier! { (func_name) };
                         let size = identifier_expression! { (size.size()) };
-                        Ok(expression! { [func_name]([yul_args[0].to_owned()], [size]) })
+                        expression! { [func_name]([yul_args[0].to_owned()], [size]) }
                     }
                 },
                 CallType::TypeConstructor {
                     typ: Type::Struct(val),
-                } => Ok(struct_operations::new(val, yul_args)),
-                CallType::TypeConstructor { .. } => Ok(yul_args[0].to_owned()),
+                } => struct_operations::new(val, yul_args),
+                CallType::TypeConstructor { .. } => yul_args[0].to_owned(),
                 CallType::SelfAttribute { func_name } => {
                     let func_name = names::func_name(func_name);
-                    Ok(expression! { [func_name]([yul_args...]) })
+                    expression! { [func_name]([yul_args...]) }
                 }
                 CallType::ValueAttribute => {
                     if let fe::Expr::Attribute { value, attr } = &func.kind {
@@ -141,12 +131,12 @@ fn expr_call(context: &Context, exp: &Node<fe::Expr>) -> Result<yul::Expression,
                             context.get_expression(value).expect("invalid attributes");
 
                         return match (value_attributes.typ.to_owned(), attr.kind) {
-                            (Type::Contract(contract), func_name) => Ok(contract_operations::call(
+                            (Type::Contract(contract), func_name) => contract_operations::call(
                                 contract,
                                 func_name,
-                                expr(context, value)?,
+                                expr(context, value),
                                 yul_args,
-                            )),
+                            ),
                             (typ, func_name) => {
                                 match builtins::ValueMethod::from_str(func_name)
                                     .expect("uncaught analyzer error")
@@ -157,10 +147,10 @@ fn expr_call(context: &Context, exp: &Node<fe::Expr>) -> Result<yul::Expression,
                                     builtins::ValueMethod::ToMem => expr(context, value),
                                     builtins::ValueMethod::Clone => expr(context, value),
                                     builtins::ValueMethod::AbiEncode => match typ {
-                                        Type::Struct(struct_) => Ok(abi_operations::encode(
+                                        Type::Struct(struct_) => abi_operations::encode(
                                             vec![struct_],
-                                            vec![expr(context, value)?],
-                                        )),
+                                            vec![expr(context, value)],
+                                        ),
                                         _ => panic!("invalid attributes"),
                                     },
                                     builtins::ValueMethod::AbiEncodePacked => todo!(),
@@ -178,15 +168,15 @@ fn expr_call(context: &Context, exp: &Node<fe::Expr>) -> Result<yul::Expression,
                             .expect("invalid attributes"),
                     ) {
                         (Type::Contract(contract), ContractTypeMethod::Create2) => {
-                            Ok(contract_operations::create2(
+                            contract_operations::create2(
                                 &contract,
                                 yul_args[0].to_owned(),
                                 yul_args[1].to_owned(),
-                            ))
+                            )
                         }
-                        (Type::Contract(contract), ContractTypeMethod::Create) => Ok(
-                            contract_operations::create(&contract, yul_args[0].to_owned()),
-                        ),
+                        (Type::Contract(contract), ContractTypeMethod::Create) => {
+                            contract_operations::create(&contract, yul_args[0].to_owned())
+                        }
                         _ => panic!("invalid attributes"),
                     }
                 }
@@ -197,13 +187,10 @@ fn expr_call(context: &Context, exp: &Node<fe::Expr>) -> Result<yul::Expression,
     unreachable!()
 }
 
-pub fn expr_comp_operation(
-    context: &Context,
-    exp: &Node<fe::Expr>,
-) -> Result<yul::Expression, CompileError> {
+pub fn expr_comp_operation(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::CompOperation { left, op, right } = &exp.kind {
-        let yul_left = expr(context, left)?;
-        let yul_right = expr(context, right)?;
+        let yul_left = expr(context, left);
+        let yul_right = expr(context, right);
 
         let typ = &context
             .get_expression(left)
@@ -211,23 +198,23 @@ pub fn expr_comp_operation(
             .typ;
 
         return match op.kind {
-            fe::CompOperator::Eq => Ok(expression! { eq([yul_left], [yul_right]) }),
-            fe::CompOperator::NotEq => Ok(expression! { iszero((eq([yul_left], [yul_right]))) }),
+            fe::CompOperator::Eq => expression! { eq([yul_left], [yul_right]) },
+            fe::CompOperator::NotEq => expression! { iszero((eq([yul_left], [yul_right]))) },
             fe::CompOperator::Lt => match typ.is_signed_integer() {
-                true => Ok(expression! { slt([yul_left], [yul_right]) }),
-                false => Ok(expression! { lt([yul_left], [yul_right]) }),
+                true => expression! { slt([yul_left], [yul_right]) },
+                false => expression! { lt([yul_left], [yul_right]) },
             },
             fe::CompOperator::LtE => match typ.is_signed_integer() {
-                true => Ok(expression! { iszero((sgt([yul_left], [yul_right]))) }),
-                false => Ok(expression! { iszero((gt([yul_left], [yul_right]))) }),
+                true => expression! { iszero((sgt([yul_left], [yul_right]))) },
+                false => expression! { iszero((gt([yul_left], [yul_right]))) },
             },
             fe::CompOperator::Gt => match typ.is_signed_integer() {
-                true => Ok(expression! { sgt([yul_left], [yul_right]) }),
-                false => Ok(expression! { gt([yul_left], [yul_right]) }),
+                true => expression! { sgt([yul_left], [yul_right]) },
+                false => expression! { gt([yul_left], [yul_right]) },
             },
             fe::CompOperator::GtE => match typ.is_signed_integer() {
-                true => Ok(expression! { iszero((slt([yul_left], [yul_right]))) }),
-                false => Ok(expression! { iszero((lt([yul_left], [yul_right]))) }),
+                true => expression! { iszero((slt([yul_left], [yul_right]))) },
+                false => expression! { iszero((lt([yul_left], [yul_right]))) },
             },
             _ => unimplemented!(),
         };
@@ -236,13 +223,10 @@ pub fn expr_comp_operation(
     unreachable!()
 }
 
-pub fn expr_bin_operation(
-    context: &Context,
-    exp: &Node<fe::Expr>,
-) -> Result<yul::Expression, CompileError> {
+pub fn expr_bin_operation(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::BinOperation { left, op, right } = &exp.kind {
-        let yul_left = expr(context, left)?;
-        let yul_right = expr(context, right)?;
+        let yul_left = expr(context, left);
+        let yul_right = expr(context, right);
 
         let typ = &context
             .get_expression(left)
@@ -252,45 +236,45 @@ pub fn expr_bin_operation(
         return match op.kind {
             fe::BinOperator::Add => match typ {
                 Type::Base(Base::Numeric(integer)) => {
-                    Ok(expression! { [names::checked_add(integer)]([yul_left], [yul_right]) })
+                    expression! { [names::checked_add(integer)]([yul_left], [yul_right]) }
                 }
                 _ => unimplemented!("Addition for non-numeric types not yet supported"),
             },
             fe::BinOperator::Sub => match typ {
                 Type::Base(Base::Numeric(integer)) => {
-                    Ok(expression! { [names::checked_sub(integer)]([yul_left], [yul_right]) })
+                    expression! { [names::checked_sub(integer)]([yul_left], [yul_right]) }
                 }
                 _ => unimplemented!("Subtraction for non-numeric types not yet supported"),
             },
             fe::BinOperator::Mult => match typ {
                 Type::Base(Base::Numeric(integer)) => {
-                    Ok(expression! { [names::checked_mul(integer)]([yul_left], [yul_right]) })
+                    expression! { [names::checked_mul(integer)]([yul_left], [yul_right]) }
                 }
                 _ => unreachable!(),
             },
             fe::BinOperator::Div => match typ {
                 Type::Base(Base::Numeric(integer)) => {
-                    Ok(expression! { [names::checked_div(integer)]([yul_left], [yul_right]) })
+                    expression! { [names::checked_div(integer)]([yul_left], [yul_right]) }
                 }
                 _ => unreachable!(),
             },
-            fe::BinOperator::BitAnd => Ok(expression! { and([yul_left], [yul_right]) }),
-            fe::BinOperator::BitOr => Ok(expression! { or([yul_left], [yul_right]) }),
-            fe::BinOperator::BitXor => Ok(expression! { xor([yul_left], [yul_right]) }),
-            fe::BinOperator::LShift => Ok(expression! { shl([yul_right], [yul_left]) }),
+            fe::BinOperator::BitAnd => expression! { and([yul_left], [yul_right]) },
+            fe::BinOperator::BitOr => expression! { or([yul_left], [yul_right]) },
+            fe::BinOperator::BitXor => expression! { xor([yul_left], [yul_right]) },
+            fe::BinOperator::LShift => expression! { shl([yul_right], [yul_left]) },
             fe::BinOperator::RShift => match typ.is_signed_integer() {
-                true => Ok(expression! { sar([yul_right], [yul_left]) }),
-                false => Ok(expression! { shr([yul_right], [yul_left]) }),
+                true => expression! { sar([yul_right], [yul_left]) },
+                false => expression! { shr([yul_right], [yul_left]) },
             },
             fe::BinOperator::Mod => match typ {
                 Type::Base(Base::Numeric(integer)) => {
-                    Ok(expression! { [names::checked_mod(integer)]([yul_left], [yul_right]) })
+                    expression! { [names::checked_mod(integer)]([yul_left], [yul_right]) }
                 }
                 _ => unreachable!(),
             },
             fe::BinOperator::Pow => match typ {
                 Type::Base(Base::Numeric(integer)) => {
-                    Ok(expression! { [names::checked_exp(integer)]([yul_left], [yul_right]) })
+                    expression! { [names::checked_exp(integer)]([yul_left], [yul_right]) }
                 }
                 _ => unreachable!(),
             },
@@ -301,19 +285,16 @@ pub fn expr_bin_operation(
     unreachable!()
 }
 
-pub fn expr_unary_operation(
-    context: &Context,
-    exp: &Node<fe::Expr>,
-) -> Result<yul::Expression, CompileError> {
+pub fn expr_unary_operation(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::UnaryOperation { op, operand } = &exp.kind {
-        let yul_operand = expr(context, operand)?;
+        let yul_operand = expr(context, operand);
 
         return match &op.kind {
             fe::UnaryOperator::USub => {
                 let zero = literal_expression! {0};
-                Ok(expression! { sub([zero], [yul_operand]) })
+                expression! { sub([zero], [yul_operand]) }
             }
-            fe::UnaryOperator::Not => Ok(expression! { iszero([yul_operand]) }),
+            fe::UnaryOperator::Not => expression! { iszero([yul_operand]) },
             _ => todo!(),
         };
     }
@@ -331,10 +312,7 @@ pub fn expr_name_str<'a>(exp: &Node<fe::Expr<'a>>) -> &'a str {
 }
 
 /// Builds a Yul expression from the first slice, if it is an index.
-pub fn slices_index(
-    context: &Context,
-    slices: &Node<Vec<Node<fe::Slice>>>,
-) -> Result<yul::Expression, CompileError> {
+pub fn slices_index(context: &Context, slices: &Node<Vec<Node<fe::Slice>>>) -> yul::Expression {
     if let Some(first_slice) = slices.kind.first() {
         return slice_index(context, first_slice);
     }
@@ -342,10 +320,7 @@ pub fn slices_index(
     unreachable!()
 }
 
-pub fn slice_index(
-    context: &Context,
-    slice: &Node<fe::Slice>,
-) -> Result<yul::Expression, CompileError> {
+pub fn slice_index(context: &Context, slice: &Node<fe::Slice>) -> yul::Expression {
     if let fe::Slice::Index(index) = &slice.kind {
         return expr(context, index);
     }
@@ -353,12 +328,12 @@ pub fn slice_index(
     unreachable!()
 }
 
-fn expr_tuple(exp: &Node<fe::Expr>) -> Result<yul::Expression, CompileError> {
+fn expr_tuple(exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Tuple { elts } = &exp.kind {
         if !elts.is_empty() {
             todo!("Non empty Tuples aren't yet supported")
         } else {
-            return Ok(literal_expression! {0x0});
+            return literal_expression! {0x0};
         }
     }
 
@@ -371,23 +346,23 @@ fn expr_name(exp: &Node<fe::Expr>) -> yul::Expression {
     identifier_expression! { [names::var_name(name)] }
 }
 
-fn expr_num(exp: &Node<fe::Expr>) -> Result<yul::Expression, CompileError> {
+fn expr_num(exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Num(num) = &exp.kind {
-        return Ok(literal_expression! {(num)});
+        return literal_expression! {(num)};
     }
 
     unreachable!()
 }
 
-fn expr_bool(exp: &Node<fe::Expr>) -> Result<yul::Expression, CompileError> {
+fn expr_bool(exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Bool(val) = &exp.kind {
-        return Ok(literal_expression! {(val)});
+        return literal_expression! {(val)};
     }
 
     unreachable!()
 }
 
-fn expr_str(exp: &Node<fe::Expr>) -> Result<yul::Expression, CompileError> {
+fn expr_str(exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Str(lines) = &exp.kind {
         let content = lines.join("");
         let string_identifier = format!(r#""{}""#, keccak::full(content.as_bytes()));
@@ -395,38 +370,32 @@ fn expr_str(exp: &Node<fe::Expr>) -> Result<yul::Expression, CompileError> {
         let offset = expression! { dataoffset([literal_expression! { (string_identifier) }]) };
         let size = expression! { datasize([literal_expression! { (string_identifier) }]) };
 
-        return Ok(expression! {load_data_string([offset], [size])});
+        return expression! {load_data_string([offset], [size])};
     }
 
     unreachable!()
 }
 
-fn expr_subscript(
-    context: &Context,
-    exp: &Node<fe::Expr>,
-) -> Result<yul::Expression, CompileError> {
+fn expr_subscript(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Subscript { value, slices } = &exp.kind {
         if let Some(value_attributes) = context.get_expression(value) {
-            let value = expr(context, value)?;
-            let index = slices_index(context, slices)?;
+            let value = expr(context, value);
+            let index = slices_index(context, slices);
 
             return match value_attributes.typ.to_owned() {
-                Type::Map(_) => Ok(data_operations::keyed_map(value, index)),
-                Type::Array(array) => Ok(data_operations::indexed_array(array, value, index)),
-                _ => Err(CompileError::static_str("invalid attributes")),
+                Type::Map(_) => data_operations::keyed_map(value, index),
+                Type::Array(array) => data_operations::indexed_array(array, value, index),
+                _ => panic!("invalid attributes"),
             };
         }
 
-        return Err(CompileError::static_str("missing attributes"));
+        panic!("missing attributes");
     }
 
     unreachable!()
 }
 
-fn expr_attribute(
-    context: &Context,
-    exp: &Node<fe::Expr>,
-) -> Result<yul::Expression, CompileError> {
+fn expr_attribute(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Attribute { value, attr } = &exp.kind {
         // If the given value has expression attributes, we handle it as an expression
         // by first mapping the value and then performing the expected operation
@@ -435,11 +404,11 @@ fn expr_attribute(
         // If the given value does not have expression attributes, we assume it is a
         // builtin object and map it as such.
         return if let Some(attributes) = context.get_expression(value) {
-            let value = expr(context, value)?;
+            let value = expr(context, value);
 
             match &attributes.typ {
                 Type::Struct(struct_) => {
-                    Ok(struct_operations::get_attribute(struct_, attr.kind, value))
+                    struct_operations::get_attribute(struct_, attr.kind, value)
                 }
                 _ => panic!("invalid attributes"),
             }
@@ -447,34 +416,34 @@ fn expr_attribute(
             match Object::from_str(expr_name_str(value)) {
                 Ok(Object::Self_) => expr_attribute_self(context, exp),
                 Ok(Object::Block) => match BlockField::from_str(attr.kind) {
-                    Ok(BlockField::Coinbase) => Ok(expression! { coinbase() }),
-                    Ok(BlockField::Difficulty) => Ok(expression! { difficulty() }),
-                    Ok(BlockField::Number) => Ok(expression! { number() }),
-                    Ok(BlockField::Timestamp) => Ok(expression! { timestamp() }),
-                    Err(_) => Err(CompileError::static_str("invalid `block` attribute name")),
+                    Ok(BlockField::Coinbase) => expression! { coinbase() },
+                    Ok(BlockField::Difficulty) => expression! { difficulty() },
+                    Ok(BlockField::Number) => expression! { number() },
+                    Ok(BlockField::Timestamp) => expression! { timestamp() },
+                    Err(_) => panic!("invalid `block` attribute name"),
                 },
                 Ok(Object::Chain) => match ChainField::from_str(attr.kind) {
-                    Ok(ChainField::Id) => Ok(expression! { chainid() }),
-                    Err(_) => Err(CompileError::static_str("invalid `chain` attribute name")),
+                    Ok(ChainField::Id) => expression! { chainid() },
+                    Err(_) => panic!("invalid `chain` attribute name"),
                 },
                 Ok(Object::Msg) => match MsgField::from_str(attr.kind) {
                     Ok(MsgField::Data) => todo!(),
-                    Ok(MsgField::Sender) => Ok(expression! { caller() }),
-                    Ok(MsgField::Sig) => Ok(expression! {
+                    Ok(MsgField::Sender) => expression! { caller() },
+                    Ok(MsgField::Sig) => expression! {
                         and(
                             [ expression! { calldataload(0) } ],
                             [ expression! { shl(224, 0xffffffff) } ]
                         )
-                    }),
-                    Ok(MsgField::Value) => Ok(expression! { callvalue() }),
-                    Err(_) => Err(CompileError::static_str("invalid `msg` attribute name")),
+                    },
+                    Ok(MsgField::Value) => expression! { callvalue() },
+                    Err(_) => panic!("invalid `msg` attribute name"),
                 },
                 Ok(Object::Tx) => match TxField::from_str(attr.kind) {
-                    Ok(TxField::GasPrice) => Ok(expression! { gasprice() }),
-                    Ok(TxField::Origin) => Ok(expression! { origin() }),
-                    Err(_) => Err(CompileError::static_str("invalid `msg` attribute name")),
+                    Ok(TxField::GasPrice) => expression! { gasprice() },
+                    Ok(TxField::Origin) => expression! { origin() },
+                    Err(_) => panic!("invalid `msg` attribute name"),
                 },
-                Err(_) => Err(CompileError::static_str("invalid attributes")),
+                Err(_) => panic!("invalid attributes"),
             }
         };
     }
@@ -482,13 +451,10 @@ fn expr_attribute(
     unreachable!()
 }
 
-fn expr_attribute_self(
-    context: &Context,
-    exp: &Node<fe::Expr>,
-) -> Result<yul::Expression, CompileError> {
+fn expr_attribute_self(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Attribute { attr, .. } = &exp.kind {
         if let Ok(builtins::SelfField::Address) = builtins::SelfField::from_str(attr.kind) {
-            return Ok(expression! { address() });
+            return expression! { address() };
         }
     }
 
@@ -496,16 +462,16 @@ fn expr_attribute_self(
         let nonce = if let Location::Storage { nonce: Some(nonce) } = attributes.location {
             nonce
         } else {
-            return Err(CompileError::static_str("invalid attributes"));
+            panic!("invalid attributes");
         };
 
         return match attributes.typ {
-            Type::Map(_) => Ok(literal_expression! { (nonce) }),
-            _ => Ok(nonce_to_ptr(nonce)),
+            Type::Map(_) => literal_expression! { (nonce) },
+            _ => nonce_to_ptr(nonce),
         };
     }
 
-    Err(CompileError::static_str("missing attributes"))
+    panic!("missing attributes")
 }
 
 /// Converts a storage nonce into a pointer based on the keccak256 hash
@@ -518,33 +484,30 @@ pub fn nonce_to_ptr(nonce: usize) -> yul::Expression {
     literal_expression! { (ptr) }
 }
 
-fn expr_ternary(context: &Context, exp: &Node<fe::Expr>) -> Result<yul::Expression, CompileError> {
+fn expr_ternary(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Ternary {
         if_expr,
         test,
         else_expr,
     } = &exp.kind
     {
-        let yul_test_expr = expr(context, test)?;
-        let yul_if_expr = expr(context, if_expr)?;
-        let yul_else_expr = expr(context, else_expr)?;
+        let yul_test_expr = expr(context, test);
+        let yul_if_expr = expr(context, if_expr);
+        let yul_else_expr = expr(context, else_expr);
 
-        return Ok(expression! {ternary([yul_test_expr], [yul_if_expr], [yul_else_expr])});
+        return expression! {ternary([yul_test_expr], [yul_if_expr], [yul_else_expr])};
     }
     unreachable!()
 }
 
-fn expr_bool_operation(
-    context: &Context,
-    exp: &Node<fe::Expr>,
-) -> Result<yul::Expression, CompileError> {
+fn expr_bool_operation(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::BoolOperation { left, op, right } = &exp.kind {
-        let yul_left = expr(context, left)?;
-        let yul_right = expr(context, right)?;
+        let yul_left = expr(context, left);
+        let yul_right = expr(context, right);
 
         return match op.kind {
-            fe::BoolOperator::And => Ok(expression! {and([yul_left], [yul_right])}),
-            fe::BoolOperator::Or => Ok(expression! {or([yul_left], [yul_right])}),
+            fe::BoolOperator::And => expression! {and([yul_left], [yul_right])},
+            fe::BoolOperator::Or => expression! {or([yul_left], [yul_right])},
         };
     }
 

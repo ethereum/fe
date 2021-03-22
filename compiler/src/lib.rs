@@ -47,7 +47,7 @@ pub fn compile(
         .map_err(|error| CompileError::str(&error.format_user(src)))?;
 
     // compile to yul
-    let yul_contracts = yul::compile(&context, &lowered_fe_module)?;
+    let yul_contracts = yul::compile(&context, &lowered_fe_module);
 
     // compile to bytecode if required
     #[cfg(feature = "solc-backend")]
