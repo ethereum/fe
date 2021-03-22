@@ -71,6 +71,7 @@ use std::fs;
     case("return_addition_with_mixed_types.fe", "TypeError"),
     case("return_call_to_fn_with_param_type_mismatch.fe", "TypeError"),
     case("return_call_to_fn_without_return.fe", "TypeError"),
+    case("return_from_init.fe", "TypeError"),
     case("return_lt_mixed_types.fe", "TypeError"),
     case("strict_boolean_if_else.fe", "TypeError"),
     case("string_capacity_mismatch.fe", "StringCapacityMismatch"),
