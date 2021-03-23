@@ -9,6 +9,7 @@ pub enum ErrorKind {
     BreakWithoutLoop,
     ContinueWithoutLoop,
     KeyWordArgsRequired,
+    MissingEventDefinition,
     MissingReturn,
     NotSubscriptable,
     NumericCapacityMismatch,
@@ -54,6 +55,14 @@ impl SemanticError {
     pub fn kw_args_required() -> Self {
         SemanticError {
             kind: ErrorKind::KeyWordArgsRequired,
+            context: vec![],
+        }
+    }
+
+    /// Create a new error with kind `MissingEventDefinition`
+    pub fn missing_event_definition() -> Self {
+        SemanticError {
+            kind: ErrorKind::MissingEventDefinition,
             context: vec![],
         }
     }

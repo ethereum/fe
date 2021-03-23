@@ -26,6 +26,7 @@ use std::fs;
     case("duplicate_typedef_in_module.fe", "AlreadyDefined"),
     case("duplicate_var_in_child_scope.fe", "AlreadyDefined"),
     case("duplicate_var_in_contract_method.fe", "AlreadyDefined"),
+    case("emit_undefined_event.fe", "MissingEventDefinition"),
     case("external_call_type_error.fe", "TypeError"),
     case("external_call_wrong_number_of_params.fe", "WrongNumberOfParams"),
     case("indexed_event.fe", "MoreThanThreeIndexedParams"),

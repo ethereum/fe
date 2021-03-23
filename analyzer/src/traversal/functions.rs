@@ -359,7 +359,7 @@ fn emit(
     {
         let event_name = expressions::expr_name_str(func)?;
 
-        if let Some(event) = scope.borrow().contract_event_def(event_name) {
+        return if let Some(event) = scope.borrow().contract_event_def(event_name) {
             context.borrow_mut().add_emit(stmt, event.clone());
 
             let argument_attributes = args
@@ -371,11 +371,13 @@ fn emit(
             if fixed_sizes_to_types(event.all_field_types())
                 != expression_attributes_to_types(argument_attributes)
             {
-                return Err(SemanticError::type_error());
+                Err(SemanticError::type_error())
+            } else {
+                Ok(())
             }
-        }
-
-        return Ok(());
+        } else {
+            Err(SemanticError::missing_event_definition())
+        };
     }
 
     unreachable!()
