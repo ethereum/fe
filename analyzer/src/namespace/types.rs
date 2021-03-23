@@ -290,7 +290,7 @@ impl Integer {
 
     // Returns `true` if `num` represents a number that fits the type
     pub fn fits(&self, num: &str) -> bool {
-        let radix = 10;
+        const RADIX: u32 = 10;
 
         fn handle_parse_error<T>(result: Result<T, ParseIntError>) -> bool {
             if let Err(error) = result {
@@ -308,20 +308,25 @@ impl Integer {
             true
         }
 
+        // We reject octal number literals.
+        if num.len() > 1 && num.starts_with('0') {
+            return false;
+        }
+
         match self {
-            Integer::U8 => handle_parse_error(u8::from_str_radix(num, radix)),
-            Integer::U16 => handle_parse_error(u16::from_str_radix(num, radix)),
-            Integer::U32 => handle_parse_error(u32::from_str_radix(num, radix)),
-            Integer::U64 => handle_parse_error(u64::from_str_radix(num, radix)),
-            Integer::U128 => handle_parse_error(u128::from_str_radix(num, radix)),
-            Integer::U256 => BigInt::parse_bytes(num.as_bytes(), radix)
+            Integer::U8 => handle_parse_error(u8::from_str_radix(num, RADIX)),
+            Integer::U16 => handle_parse_error(u16::from_str_radix(num, RADIX)),
+            Integer::U32 => handle_parse_error(u32::from_str_radix(num, RADIX)),
+            Integer::U64 => handle_parse_error(u64::from_str_radix(num, RADIX)),
+            Integer::U128 => handle_parse_error(u128::from_str_radix(num, RADIX)),
+            Integer::U256 => BigInt::parse_bytes(num.as_bytes(), RADIX)
                 .map_or(false, |val| val >= BigInt::from(0) && val <= u256_max()),
-            Integer::I8 => handle_parse_error(i8::from_str_radix(num, radix)),
-            Integer::I16 => handle_parse_error(i16::from_str_radix(num, radix)),
-            Integer::I32 => handle_parse_error(i32::from_str_radix(num, radix)),
-            Integer::I64 => handle_parse_error(i64::from_str_radix(num, radix)),
-            Integer::I128 => handle_parse_error(i128::from_str_radix(num, radix)),
-            Integer::I256 => BigInt::parse_bytes(num.as_bytes(), radix)
+            Integer::I8 => handle_parse_error(i8::from_str_radix(num, RADIX)),
+            Integer::I16 => handle_parse_error(i16::from_str_radix(num, RADIX)),
+            Integer::I32 => handle_parse_error(i32::from_str_radix(num, RADIX)),
+            Integer::I64 => handle_parse_error(i64::from_str_radix(num, RADIX)),
+            Integer::I128 => handle_parse_error(i128::from_str_radix(num, RADIX)),
+            Integer::I256 => BigInt::parse_bytes(num.as_bytes(), RADIX)
                 .map_or(false, |val| val >= i256_min() && val <= i256_max()),
         }
     }

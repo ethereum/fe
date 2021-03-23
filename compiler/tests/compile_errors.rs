@@ -58,6 +58,7 @@ use std::fs;
         "numeric_capacity_mismatch/literal_too_small.fe",
         "NumericCapacityMismatch"
     ),
+    case("numeric_capacity_mismatch/octal_number.fe", "NumericCapacityMismatch"),
     case("numeric_capacity_mismatch/u128_neg.fe", "NumericCapacityMismatch"),
     case("numeric_capacity_mismatch/u128_pos.fe", "NumericCapacityMismatch"),
     case("numeric_capacity_mismatch/u16_neg.fe", "NumericCapacityMismatch"),
