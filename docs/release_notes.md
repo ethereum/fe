@@ -11,6 +11,173 @@ Fe is moving fast. Read up on all the latest improvements.
 **WARNING: All Fe releases are alpha releases and only meant to share the development progress with developers and enthusiasts. It is NOT yet ready for production usage.**
 
 [//]: # (towncrier release notes start)
+## 0.3.0-alpha "Calamine" (2021-03-24)
+
+
+### Features
+
+
+- Add over/underflow checks for multiplications of all integers ([#271](https://github.com/ethereum/fe/issues/271))
+- Add full support for empty Tuples. ([#276](https://github.com/ethereum/fe/issues/276))
+
+  All functions in Fe implicitly return an empty Tuple if they have no other return value.
+  However, before this change one was not able to use the empty Tuple syntax `()` explicitly.
+
+  With this change, all of these are treated equally:
+
+  ```
+  contract Foo:
+
+    pub def explicit_return_a1():
+      return
+
+    pub def explicit_return_a2():
+      return ()
+
+    pub def explicit_return_b1() ->():
+      return
+
+    pub def explicit_return_b2() ->():
+      return ()
+
+    pub def implicit_a1():
+      pass
+
+    pub def implicit_a2() ->():
+      pass
+  ```
+  
+- The JSON ABI builder now supports structs as both input and output. ([#296](https://github.com/ethereum/fe/issues/296))
+- Make subsequently defined contracts visible.
+
+  Before this change:
+
+  ```
+  # can't see Bar
+  contract Foo:
+     ...
+  # can see Foo
+  contract Bar:
+     ...
+  ```
+
+  With this change the restriction is lifted and the following becomes possible. ([#298](https://github.com/ethereum/fe/issues/298))
+
+  ```
+  contract Foo:
+      bar: Bar
+      pub def external_bar() -> u256:
+          return self.bar.bar()
+  contract Bar:
+      foo: Foo
+      pub def external_foo() -> u256:
+          return self.foo.foo()
+  ```
+
+- Perform checks for divison operations on integers ([#308](https://github.com/ethereum/fe/issues/308))
+- Support for msg.sig to read the function identifier. ([#311](https://github.com/ethereum/fe/issues/311))
+- Perform checks for modulo operations on integers ([#312](https://github.com/ethereum/fe/issues/312))
+- Perform over/underflow checks for exponentiation operations on integers ([#313](https://github.com/ethereum/fe/issues/313))
+
+
+### Bugfixes
+
+
+- Properly reject `emit` not followed by an event invocation ([#212](https://github.com/ethereum/fe/issues/212))
+- Properly reject octal number literals ([#222](https://github.com/ethereum/fe/issues/222))
+- Properly reject code that tries to emit a non-existing event. ([#250](https://github.com/ethereum/fe/issues/250))
+
+  Example that now produces a compile time error:
+
+  ```
+  emit DoesNotExist()
+  ```
+- Contracts that create other contracts can now include `__init__` functions.
+
+  See https://github.com/ethereum/fe/issues/284 ([#304](https://github.com/ethereum/fe/issues/304))
+- Prevent multiple types with same name in one module. ([#317](https://github.com/ethereum/fe/issues/317))
+
+  Examples that now produce compile time errors:
+
+  ```
+  type bar = u8
+  type bar = u16
+  ```
+
+  or
+
+  ```
+  struct SomeStruct:
+      some_field: u8
+
+  struct SomeStruct:
+      other: u8
+  ```
+
+  or
+
+  ```
+  contract SomeContract:
+      some_field: u8
+
+  contract SomeContract:
+      other: u8
+  ```
+
+
+  Prevent multiple fields with same name in one struct.
+
+  Example that now produces a compile time error:
+
+  ```
+  struct SomeStruct:
+      some_field: u8
+      some_field: u8
+  ```
+
+
+  Prevent variable definition in child scope when name already taken in parent scope.
+
+  Example that now produces a compile time error:
+
+  ```
+  pub def bar():
+      my_array: u256[3]
+      sum: u256 = 0
+      for i in my_array:
+          sum: u256 = 0
+  ```
+- The CLI was using the overwrite flag to enable Yul optimization.
+
+  i.e.
+
+  ```
+  # Would both overwite output files and run the Yul optimizer. 
+  $ fe my_contract.fe --overwrite
+  ```
+
+
+  Using the overwrite flag now only overwrites and optimization is enabled with the optimize flag. ([#320](https://github.com/ethereum/fe/issues/320))
+- Ensure analyzer rejects code that uses return values for `__init__` functions. ([#323](https://github.com/ethereum/fe/issues/323))
+
+  An example that now produces a compile time error:
+
+  ```
+  contract C:
+      pub def __init__() -> i32:
+          return 0
+  ```
+- Properly reject calling an undefined function on an external contract ([#324](https://github.com/ethereum/fe/issues/324))
+
+
+### Internal Changes - for Fe Contributors
+
+
+- Added the Uniswap demo contracts to our testing fixtures and validated their behaviour. ([#179](https://github.com/ethereum/fe/issues/179))
+- IDs added to AST nodes. ([#315](https://github.com/ethereum/fe/issues/315))
+- Failures in the Yul generation phase now panic; any failure is a bug. ([#327](https://github.com/ethereum/fe/issues/327))
+
+
 ## 0.2.0-alpha "Borax" (2021-02-27)
 
 
