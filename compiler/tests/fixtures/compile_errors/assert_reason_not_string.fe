@@ -1,0 +1,4 @@
+contract Foo:
+
+    pub def foo():
+        assert true, 1

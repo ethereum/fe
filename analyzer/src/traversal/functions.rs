@@ -395,8 +395,10 @@ fn assert(
     if let fe::FuncStmt::Assert { test, msg } = &stmt.kind {
         verify_is_boolean(Rc::clone(&scope), Rc::clone(&context), test)?;
         if let Some(msg) = msg {
-            // TODO: type check for a string once strings are supported
-            let _msg_attributes = expressions::expr(scope, context, msg)?;
+            let msg_attributes = expressions::expr(scope, context, msg)?;
+            if !matches!(msg_attributes.typ, Type::String(_)) {
+                return Err(SemanticError::type_error());
+            }
         }
 
         return Ok(());
