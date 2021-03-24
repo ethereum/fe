@@ -31,7 +31,7 @@ pub fn contract_def(
     stmt: &Node<fe::ModuleStmt>,
 ) -> Result<Shared<ContractScope>, SemanticError> {
     if let fe::ModuleStmt::ContractDef { name, body } = &stmt.kind {
-        let contract_scope = ContractScope::new(name.kind, Rc::clone(&module_scope));
+        let contract_scope = ContractScope::new(&name.kind, Rc::clone(&module_scope));
 
         for stmt in body.iter() {
             match &stmt.kind {
@@ -58,9 +58,9 @@ pub fn contract_def(
             .module_scope()
             .borrow_mut()
             .add_type_def(
-                name.kind,
+                &name.kind,
                 Type::Contract(Contract {
-                    name: name.kind.to_owned(),
+                    name: name.kind.to_string(),
                     functions: contract_attributes.public_functions,
                 }),
             )?;
@@ -107,7 +107,7 @@ fn contract_field(
 ) -> Result<(), SemanticError> {
     if let fe::ContractStmt::ContractField { qual: _, name, typ } = &stmt.kind {
         let typ = types::type_desc(Scope::Contract(Rc::clone(&scope)), typ)?;
-        return scope.borrow_mut().add_field(name.kind, typ);
+        return scope.borrow_mut().add_field(&name.kind, typ);
     }
 
     unreachable!()
@@ -119,7 +119,7 @@ fn event_def(
     stmt: &Node<fe::ContractStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::ContractStmt::EventDef { name, fields } = &stmt.kind {
-        let name = name.kind;
+        let name = &name.kind;
 
         let (is_indexed_bools, fields): (Vec<bool>, Vec<(String, FixedSize)>) = fields
             .iter()

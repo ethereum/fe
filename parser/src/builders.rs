@@ -329,7 +329,7 @@ pub fn op_expr_builder<'a, F, G, B, OperatorT>(
 where
     F: Fn(Cursor<'a>) -> ParseResult<Node<Expr>>,
     G: Fn(Cursor<'a>) -> ParseResult<OperatorT>,
-    B: Fn(Node<Expr<'a>>, OperatorT, Node<Expr<'a>>) -> Expr<'a>,
+    B: Fn(Node<Expr>, OperatorT, Node<Expr>) -> Expr,
 {
     move |input| {
         let (input, head) = operand(input)?;

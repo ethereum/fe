@@ -811,31 +811,34 @@ pub fn type_desc_base(
 
 pub fn type_desc(defs: &HashMap<String, Type>, typ: &fe::TypeDesc) -> Result<Type, SemanticError> {
     match typ {
-        fe::TypeDesc::Base { base: "u256" } => Ok(Type::Base(U256)),
-        fe::TypeDesc::Base { base: "u128" } => Ok(Type::Base(Base::Numeric(Integer::U128))),
-        fe::TypeDesc::Base { base: "u64" } => Ok(Type::Base(Base::Numeric(Integer::U64))),
-        fe::TypeDesc::Base { base: "u32" } => Ok(Type::Base(Base::Numeric(Integer::U32))),
-        fe::TypeDesc::Base { base: "u16" } => Ok(Type::Base(Base::Numeric(Integer::U16))),
-        fe::TypeDesc::Base { base: "u8" } => Ok(Type::Base(Base::Numeric(Integer::U8))),
-        fe::TypeDesc::Base { base: "i256" } => Ok(Type::Base(Base::Numeric(Integer::I256))),
-        fe::TypeDesc::Base { base: "i128" } => Ok(Type::Base(Base::Numeric(Integer::I128))),
-        fe::TypeDesc::Base { base: "i64" } => Ok(Type::Base(Base::Numeric(Integer::I64))),
-        fe::TypeDesc::Base { base: "i32" } => Ok(Type::Base(Base::Numeric(Integer::I32))),
-        fe::TypeDesc::Base { base: "i16" } => Ok(Type::Base(Base::Numeric(Integer::I16))),
-        fe::TypeDesc::Base { base: "i8" } => Ok(Type::Base(Base::Numeric(Integer::I8))),
-        fe::TypeDesc::Base { base: "bool" } => Ok(Type::Base(Base::Bool)),
-        fe::TypeDesc::Base { base: "bytes" } => Ok(Type::Base(Base::Byte)),
-        fe::TypeDesc::Base { base: "address" } => Ok(Type::Base(Base::Address)),
-        fe::TypeDesc::Base { base } if base.starts_with("string") => Ok(Type::String(
-            TryFrom::try_from(*base).map_err(|_| SemanticError::type_error())?,
-        )),
-        fe::TypeDesc::Base { base } => {
-            if let Some(typ) = defs.get(base.to_owned()) {
-                return Ok(typ.clone());
+        fe::TypeDesc::Base { base } => match base.as_str() {
+            "u256" => Ok(Type::Base(U256)),
+            "u128" => Ok(Type::Base(Base::Numeric(Integer::U128))),
+            "u64" => Ok(Type::Base(Base::Numeric(Integer::U64))),
+            "u32" => Ok(Type::Base(Base::Numeric(Integer::U32))),
+            "u16" => Ok(Type::Base(Base::Numeric(Integer::U16))),
+            "u8" => Ok(Type::Base(Base::Numeric(Integer::U8))),
+            "i256" => Ok(Type::Base(Base::Numeric(Integer::I256))),
+            "i128" => Ok(Type::Base(Base::Numeric(Integer::I128))),
+            "i64" => Ok(Type::Base(Base::Numeric(Integer::I64))),
+            "i32" => Ok(Type::Base(Base::Numeric(Integer::I32))),
+            "i16" => Ok(Type::Base(Base::Numeric(Integer::I16))),
+            "i8" => Ok(Type::Base(Base::Numeric(Integer::I8))),
+            "bool" => Ok(Type::Base(Base::Bool)),
+            "bytes" => Ok(Type::Base(Base::Byte)),
+            "address" => Ok(Type::Base(Base::Address)),
+            base => {
+                if base.starts_with("string") {
+                    Ok(Type::String(
+                        TryFrom::try_from(base).map_err(|_| SemanticError::type_error())?,
+                    ))
+                } else if let Some(typ) = defs.get(base) {
+                    Ok(typ.clone())
+                } else {
+                    Err(SemanticError::undefined_value())
+                }
             }
-
-            Err(SemanticError::undefined_value())
-        }
+        },
         fe::TypeDesc::Array { typ, dimension } => Ok(Type::Array(Array {
             inner: type_desc_base(defs, &typ.kind)?,
             size: *dimension,

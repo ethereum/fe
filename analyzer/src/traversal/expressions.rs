@@ -164,11 +164,12 @@ pub fn assignable_expr(
     Ok(attributes)
 }
 
-/// Retrieves the &str value of a name expression.
-pub fn expr_name_str<'a>(exp: &Node<fe::Expr<'a>>) -> Result<&'a str, SemanticError> {
-    if let fe::Expr::Name(name) = exp.kind {
-        return Ok(name);
+/// Retrieves the String value of a name expression.
+pub fn expr_name_string(exp: &Node<fe::Expr>) -> Result<String, SemanticError> {
+    if let fe::Expr::Name(name) = &exp.kind {
+        return Ok(name.to_owned());
     }
+
     unreachable!()
 }
 
@@ -204,7 +205,7 @@ fn expr_name(
     scope: Shared<BlockScope>,
     exp: &Node<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
-    if let fe::Expr::Name(name) = exp.kind {
+    if let fe::Expr::Name(name) = &exp.kind {
         return match scope.borrow().get_variable_def(name) {
             Some(FixedSize::Base(base)) => {
                 Ok(ExpressionAttributes::new(Type::Base(base), Location::Value))
@@ -271,7 +272,7 @@ fn expr_bool(exp: &Node<fe::Expr>) -> Result<ExpressionAttributes, SemanticError
 
 fn expr_num(exp: &Node<fe::Expr>) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::Num(num) = &exp.kind {
-        validate_numeric_literal_fits_type(*num, &Type::Base(U256))?;
+        validate_numeric_literal_fits_type(num, &Type::Base(U256))?;
         return Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value));
     }
 
@@ -318,11 +319,11 @@ fn expr_attribute(
         let undefined_value_err = Err(SemanticError::undefined_value());
 
         // If the value is a name, check if it is a builtin object and attribute.
-        if let fe::Expr::Name(name) = value.kind {
+        if let fe::Expr::Name(name) = &value.kind {
             match Object::from_str(name) {
                 Ok(Object::Self_) => return expr_attribute_self(scope, attr),
                 Ok(Object::Block) => {
-                    return match BlockField::from_str(attr.kind) {
+                    return match BlockField::from_str(&attr.kind) {
                         Ok(BlockField::Coinbase) => base_type(Base::Address),
                         Ok(BlockField::Difficulty) => base_type(U256),
                         Ok(BlockField::Number) => base_type(U256),
@@ -331,13 +332,13 @@ fn expr_attribute(
                     }
                 }
                 Ok(Object::Chain) => {
-                    return match ChainField::from_str(attr.kind) {
+                    return match ChainField::from_str(&attr.kind) {
                         Ok(ChainField::Id) => base_type(U256),
                         Err(_) => undefined_value_err,
                     }
                 }
                 Ok(Object::Msg) => {
-                    return match MsgField::from_str(attr.kind) {
+                    return match MsgField::from_str(&attr.kind) {
                         Ok(MsgField::Data) => todo!(),
                         Ok(MsgField::Sender) => base_type(Base::Address),
                         Ok(MsgField::Sig) => array_type(Array {
@@ -349,7 +350,7 @@ fn expr_attribute(
                     }
                 }
                 Ok(Object::Tx) => {
-                    return match TxField::from_str(attr.kind) {
+                    return match TxField::from_str(&attr.kind) {
                         Ok(TxField::GasPrice) => base_type(U256),
                         Ok(TxField::Origin) => base_type(Base::Address),
                         Err(_) => undefined_value_err,
@@ -369,7 +370,7 @@ fn expr_attribute(
                 location,
                 ..
             } => {
-                if let Some(typ) = struct_.get_field_type(attr.kind) {
+                if let Some(typ) = struct_.get_field_type(&attr.kind) {
                     Ok(ExpressionAttributes::new(typ.to_owned().into(), location))
                 } else {
                     undefined_value_err
@@ -384,16 +385,16 @@ fn expr_attribute(
 
 fn expr_attribute_self(
     scope: Shared<BlockScope>,
-    attr: &Node<&str>,
+    attr: &Node<String>,
 ) -> Result<ExpressionAttributes, SemanticError> {
-    if let Ok(builtins::SelfField::Address) = builtins::SelfField::from_str(attr.kind) {
+    if let Ok(builtins::SelfField::Address) = builtins::SelfField::from_str(&attr.kind) {
         return Ok(ExpressionAttributes::new(
             Type::Base(Base::Address),
             Location::Value,
         ));
     }
 
-    match scope.borrow().contract_field_def(attr.kind) {
+    match scope.borrow().contract_field_def(&attr.kind) {
         Some(field) => Ok(ExpressionAttributes::new(
             field.typ,
             Location::Storage {
@@ -695,7 +696,7 @@ fn expr_call_value_attribute(
         let value_attributes = expr(Rc::clone(&scope), Rc::clone(&context), &value)?;
 
         if let Type::Contract(contract) = value_attributes.typ {
-            return expr_call_contract_attribute(scope, context, contract, attr.kind, args);
+            return expr_call_contract_attribute(scope, context, contract, &attr.kind, args);
         }
 
         // for now all of these function expect 0 arguments
@@ -703,7 +704,7 @@ fn expr_call_value_attribute(
             return Err(SemanticError::wrong_number_of_params());
         }
 
-        return match ValueMethod::from_str(attr.kind)
+        return match ValueMethod::from_str(&attr.kind)
             .map_err(|_| SemanticError::undefined_value())?
         {
             ValueMethod::Clone => value_attributes.into_cloned(),
@@ -917,8 +918,8 @@ fn expr_attribute_call_type(
     exp: &Node<fe::Expr>,
 ) -> Result<CallType, SemanticError> {
     if let fe::Expr::Attribute { value, attr } = &exp.kind {
-        if let fe::Expr::Name(name) = value.kind {
-            match Object::from_str(name) {
+        if let fe::Expr::Name(name) = &value.kind {
+            match Object::from_str(&name) {
                 Ok(Object::Block) | Ok(Object::Chain) | Ok(Object::Msg) | Ok(Object::Tx) => {
                     return Err(SemanticError::undefined_value())
                 }
@@ -930,7 +931,7 @@ fn expr_attribute_call_type(
                 Err(_) => {}
             }
 
-            if let Some(typ) = scope.borrow().get_module_type_def(name) {
+            if let Some(typ) = scope.borrow().get_module_type_def(&name) {
                 return Ok(CallType::TypeAttribute {
                     typ,
                     func_name: attr.kind.to_string(),
@@ -959,10 +960,10 @@ fn validate_is_numeric_literal(call_arg: &fe::CallArg) -> Result<String, Semanti
     let value = call_arg_value(call_arg);
 
     if let fe::Expr::UnaryOperation { operand, op: _ } = &value.kind {
-        if let fe::Expr::Num(num) = operand.kind {
+        if let fe::Expr::Num(num) = &operand.kind {
             return Ok(format!("-{}", num));
         }
-    } else if let fe::Expr::Num(num) = value.kind {
+    } else if let fe::Expr::Num(num) = &value.kind {
         return Ok(num.to_string());
     }
 

@@ -330,7 +330,7 @@ pub fn from_import_name(input: Cursor) -> ParseResult<Node<FromImportName>> {
 }
 
 /// Parse a dotted import name.
-pub fn dotted_name(input: Cursor) -> ParseResult<Vec<Node<&str>>> {
+pub fn dotted_name(input: Cursor) -> ParseResult<Vec<Node<String>>> {
     separated(map(name_token, |t| t.into()), op("."), false)(input)
 }
 
@@ -715,7 +715,12 @@ pub fn base_type(input: Cursor) -> ParseResult<Node<TypeDesc>> {
     let (input, base) = name_token(input)?;
     let (input, dims) = arr_list(input)?;
 
-    let mut result = Node::new(TypeDesc::Base { base: base.string }, base.into());
+    let mut result = Node::new(
+        TypeDesc::Base {
+            base: base.string.to_string(),
+        },
+        base.into(),
+    );
     for dim in dims {
         let span = Span::from_pair(&result, &dim);
 
@@ -876,7 +881,7 @@ pub fn keyword_statement<'a, G>(
     get_stmt: G,
 ) -> impl Fn(Cursor<'a>) -> ParseResult<Node<FuncStmt>>
 where
-    G: Fn() -> FuncStmt<'a>,
+    G: Fn() -> FuncStmt,
 {
     move |input| map(name(string), |t| Node::new(get_stmt(), t.span))(input)
 }
@@ -1177,7 +1182,7 @@ pub fn expr(input: Cursor) -> ParseResult<Node<Expr>> {
 }
 
 #[inline]
-pub fn bool_op_builder<'a>(left: Node<Expr<'a>>, op: &'a Token, right: Node<Expr<'a>>) -> Expr<'a> {
+pub fn bool_op_builder(left: Node<Expr>, op: &Token, right: Node<Expr>) -> Expr {
     Expr::BoolOperation {
         left: Box::new(left),
         op: TryFrom::try_from(op).unwrap(),
@@ -1186,7 +1191,7 @@ pub fn bool_op_builder<'a>(left: Node<Expr<'a>>, op: &'a Token, right: Node<Expr
 }
 
 #[inline]
-pub fn bin_op_builder<'a>(left: Node<Expr<'a>>, op: &'a Token, right: Node<Expr<'a>>) -> Expr<'a> {
+pub fn bin_op_builder(left: Node<Expr>, op: &Token, right: Node<Expr>) -> Expr {
     Expr::BinOperation {
         left: Box::new(left),
         op: TryFrom::try_from(op).unwrap(),
@@ -1195,7 +1200,7 @@ pub fn bin_op_builder<'a>(left: Node<Expr<'a>>, op: &'a Token, right: Node<Expr<
 }
 
 #[inline]
-pub fn unary_op_builder<'a>(op: &'a Token, operand: Node<Expr<'a>>) -> Expr<'a> {
+pub fn unary_op_builder(op: &Token, operand: Node<Expr>) -> Expr {
     Expr::UnaryOperation {
         op: TryFrom::try_from(op).unwrap(),
         operand: Box::new(operand),
@@ -1203,11 +1208,7 @@ pub fn unary_op_builder<'a>(op: &'a Token, operand: Node<Expr<'a>>) -> Expr<'a> 
 }
 
 #[inline]
-pub fn comp_op_builder<'a>(
-    left: Node<Expr<'a>>,
-    op: Node<CompOperator>,
-    right: Node<Expr<'a>>,
-) -> Expr<'a> {
+pub fn comp_op_builder(left: Node<Expr>, op: Node<CompOperator>, right: Node<Expr>) -> Expr {
     Expr::CompOperation {
         left: Box::new(left),
         op,
@@ -1323,7 +1324,7 @@ pub fn power(input: Cursor) -> ParseResult<Node<Expr>> {
     alt((power_op, primary))(input)
 }
 
-pub fn build_tail_expr<'a>(exp: Node<Expr<'a>>, tails: Vec<Tail<'a>>) -> Node<Expr<'a>> {
+pub fn build_tail_expr(exp: Node<Expr>, tails: Vec<Tail<'_>>) -> Node<Expr> {
     let mut result = exp;
 
     for tail in tails {
@@ -1416,10 +1417,10 @@ pub fn atom(input: Cursor) -> ParseResult<Node<Expr>> {
         map(group, |exp| Node::new(exp.kind.kind, exp.span)),
         tuple,
         map(name_token, |tok| {
-            Node::new(Expr::Name(tok.string), tok.span)
+            Node::new(Expr::Name(tok.string.to_string()), tok.span)
         }),
         map(number_token, |tok| {
-            Node::new(Expr::Num(tok.string), tok.span)
+            Node::new(Expr::Num(tok.string.to_string()), tok.span)
         }),
         map(many1(string_token), |toks| {
             let tok_strings: Vec<_> = toks
@@ -1433,7 +1434,10 @@ pub fn atom(input: Cursor) -> ParseResult<Node<Expr>> {
             let fst = toks.first().unwrap();
             let snd = toks.last().unwrap();
 
-            Node::new(Expr::Str(tok_strings), Span::from_pair(*fst, *snd))
+            Node::new(
+                Expr::Str(tok_strings.iter().map(|tok| tok.to_string()).collect()),
+                Span::from_pair(*fst, *snd),
+            )
         }),
         map(op("..."), |tok| Node::new(Expr::Ellipsis, tok.span)),
     ))(input)
@@ -1527,8 +1531,8 @@ pub fn kwarg(input: Cursor) -> ParseResult<Node<CallArg>> {
 
 pub enum Tail<'a> {
     Attr(&'a Token<'a>),
-    Index(Node<Vec<Node<Slice<'a>>>>),
-    Call(Node<Vec<Node<CallArg<'a>>>>),
+    Index(Node<Vec<Node<Slice>>>),
+    Call(Node<Vec<Node<CallArg>>>),
 }
 
 pub fn targets(input: Cursor) -> ParseResult<Node<Expr>> {
@@ -1582,7 +1586,7 @@ pub fn target(input: Cursor) -> ParseResult<Node<Expr>> {
 pub fn t_atom(input: Cursor) -> ParseResult<Node<Expr>> {
     alt((
         map(name_token, |tok| {
-            Node::new(Expr::Name(tok.string), tok.span)
+            Node::new(Expr::Name(tok.string.to_string()), tok.span)
         }),
         map(delimited(op("("), targets, op(")")), |node| {
             use Expr::Tuple;

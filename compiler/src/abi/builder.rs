@@ -11,10 +11,7 @@ use fe_parser::ast as fe;
 use fe_parser::node::Node;
 
 /// Parse a map of contract ABIs from the input `module`.
-pub fn module<'a>(
-    context: &Context,
-    module: &'a fe::Module<'a>,
-) -> Result<ModuleAbis, CompileError> {
+pub fn module(context: &Context, module: &fe::Module) -> Result<ModuleAbis, CompileError> {
     module
         .body
         .iter()
@@ -32,9 +29,9 @@ pub fn module<'a>(
         })
 }
 
-fn contract_def<'a>(
+fn contract_def(
     context: &Context,
-    body: &[Node<fe::ContractStmt<'a>>],
+    body: &[Node<fe::ContractStmt>],
 ) -> Result<Contract, CompileError> {
     body.iter().try_fold(Contract::new(), |mut contract, stmt| {
         match &stmt.kind {

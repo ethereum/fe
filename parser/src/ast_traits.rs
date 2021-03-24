@@ -71,9 +71,14 @@ impl TryFrom<&Token<'_>> for Node<FuncQual> {
     }
 }
 
-impl<'a> From<&'a Token<'a>> for Node<TypeDesc<'a>> {
+impl<'a> From<&'a Token<'a>> for Node<TypeDesc> {
     fn from(token: &'a Token<'a>) -> Self {
-        Node::new(TypeDesc::Base { base: token.string }, token.span)
+        Node::new(
+            TypeDesc::Base {
+                base: token.string.to_string(),
+            },
+            token.span,
+        )
     }
 }
 

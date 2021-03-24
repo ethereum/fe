@@ -130,15 +130,15 @@ fn expr_call(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
                         let value_attributes =
                             context.get_expression(value).expect("invalid attributes");
 
-                        return match (value_attributes.typ.to_owned(), attr.kind) {
+                        return match (value_attributes.typ.to_owned(), &attr.kind) {
                             (Type::Contract(contract), func_name) => contract_operations::call(
                                 contract,
-                                func_name,
+                                &func_name,
                                 expr(context, value),
                                 yul_args,
                             ),
                             (typ, func_name) => {
-                                match builtins::ValueMethod::from_str(func_name)
+                                match builtins::ValueMethod::from_str(&func_name)
                                     .expect("uncaught analyzer error")
                                 {
                                     // Copying is done in `expr(..)` based on the move location set
@@ -302,10 +302,10 @@ pub fn expr_unary_operation(context: &Context, exp: &Node<fe::Expr>) -> yul::Exp
     unreachable!()
 }
 
-/// Retrieves the &str value of a name expression.
-pub fn expr_name_str<'a>(exp: &Node<fe::Expr<'a>>) -> &'a str {
-    if let fe::Expr::Name(name) = exp.kind {
-        return name;
+/// Retrieves the String value of a name expression.
+pub fn expr_name_string(exp: &Node<fe::Expr>) -> String {
+    if let fe::Expr::Name(name) = &exp.kind {
+        return name.to_owned();
     }
 
     unreachable!()
@@ -341,9 +341,9 @@ fn expr_tuple(exp: &Node<fe::Expr>) -> yul::Expression {
 }
 
 fn expr_name(exp: &Node<fe::Expr>) -> yul::Expression {
-    let name = expr_name_str(exp);
+    let name = expr_name_string(exp);
 
-    identifier_expression! { [names::var_name(name)] }
+    identifier_expression! { [names::var_name(&name)] }
 }
 
 fn expr_num(exp: &Node<fe::Expr>) -> yul::Expression {
@@ -408,25 +408,25 @@ fn expr_attribute(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
 
             match &attributes.typ {
                 Type::Struct(struct_) => {
-                    struct_operations::get_attribute(struct_, attr.kind, value)
+                    struct_operations::get_attribute(struct_, &attr.kind, value)
                 }
                 _ => panic!("invalid attributes"),
             }
         } else {
-            match Object::from_str(expr_name_str(value)) {
+            match Object::from_str(&expr_name_string(value)) {
                 Ok(Object::Self_) => expr_attribute_self(context, exp),
-                Ok(Object::Block) => match BlockField::from_str(attr.kind) {
+                Ok(Object::Block) => match BlockField::from_str(&attr.kind) {
                     Ok(BlockField::Coinbase) => expression! { coinbase() },
                     Ok(BlockField::Difficulty) => expression! { difficulty() },
                     Ok(BlockField::Number) => expression! { number() },
                     Ok(BlockField::Timestamp) => expression! { timestamp() },
                     Err(_) => panic!("invalid `block` attribute name"),
                 },
-                Ok(Object::Chain) => match ChainField::from_str(attr.kind) {
+                Ok(Object::Chain) => match ChainField::from_str(&attr.kind) {
                     Ok(ChainField::Id) => expression! { chainid() },
                     Err(_) => panic!("invalid `chain` attribute name"),
                 },
-                Ok(Object::Msg) => match MsgField::from_str(attr.kind) {
+                Ok(Object::Msg) => match MsgField::from_str(&attr.kind) {
                     Ok(MsgField::Data) => todo!(),
                     Ok(MsgField::Sender) => expression! { caller() },
                     Ok(MsgField::Sig) => expression! {
@@ -438,7 +438,7 @@ fn expr_attribute(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
                     Ok(MsgField::Value) => expression! { callvalue() },
                     Err(_) => panic!("invalid `msg` attribute name"),
                 },
-                Ok(Object::Tx) => match TxField::from_str(attr.kind) {
+                Ok(Object::Tx) => match TxField::from_str(&attr.kind) {
                     Ok(TxField::GasPrice) => expression! { gasprice() },
                     Ok(TxField::Origin) => expression! { origin() },
                     Err(_) => panic!("invalid `msg` attribute name"),
@@ -453,7 +453,7 @@ fn expr_attribute(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
 
 fn expr_attribute_self(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Attribute { attr, .. } = &exp.kind {
-        if let Ok(builtins::SelfField::Address) = builtins::SelfField::from_str(attr.kind) {
+        if let Ok(builtins::SelfField::Address) = builtins::SelfField::from_str(&attr.kind) {
             return expression! { address() };
         }
     }

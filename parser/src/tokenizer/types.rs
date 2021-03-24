@@ -49,8 +49,8 @@ impl<'a> From<&Token<'a>> for Span {
     }
 }
 
-impl<'a> From<&Token<'a>> for Node<&'a str> {
+impl<'a> From<&Token<'a>> for Node<String> {
     fn from(tok: &Token<'a>) -> Self {
-        Node::new(tok.string, tok.span)
+        Node::new(tok.string.to_string(), tok.span)
     }
 }

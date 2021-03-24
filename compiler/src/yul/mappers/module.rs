@@ -27,7 +27,7 @@ pub fn module(context: &Context, module: &fe::Module) -> YulContracts {
 
                     let contract = contracts::contract_def(context, stmt, created_contracts);
 
-                    if contracts.insert(name.kind.to_string(), contract).is_some() {
+                    if contracts.insert(name.kind.clone(), contract).is_some() {
                         panic!("duplicate contract definition");
                     }
                 }

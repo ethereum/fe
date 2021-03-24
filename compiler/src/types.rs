@@ -4,7 +4,7 @@ use std::collections::HashMap;
 /// The name of a Fe contract.
 pub type ContractName = String;
 /// The AST of a Fe module.
-pub type FeModuleAst<'a> = fe::Module<'a>;
+pub type FeModuleAst = fe::Module;
 /// The ABI of a contract as a string.
 pub type JsonAbi = String;
 /// The source of a Fe module as a static string.
