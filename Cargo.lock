@@ -604,7 +604,7 @@ dependencies = [
 
 [[package]]
 name = "fe"
-version = "0.2.0-alpha"
+version = "0.3.0-alpha"
 dependencies = [
  "cargo-release",
  "clap",
@@ -614,7 +614,7 @@ dependencies = [
 
 [[package]]
 name = "fe-analyzer"
-version = "0.2.0-alpha"
+version = "0.3.0-alpha"
 dependencies = [
  "ansi_term 0.12.1",
  "fe-common",
@@ -628,7 +628,7 @@ dependencies = [
 
 [[package]]
 name = "fe-common"
-version = "0.2.0-alpha"
+version = "0.3.0-alpha"
 dependencies = [
  "hex",
  "tiny-keccak 2.0.2",
@@ -636,7 +636,7 @@ dependencies = [
 
 [[package]]
 name = "fe-compiler"
-version = "0.2.0-alpha"
+version = "0.3.0-alpha"
 dependencies = [
  "ethabi",
  "evm",
@@ -659,7 +659,7 @@ dependencies = [
 
 [[package]]
 name = "fe-parser"
-version = "0.2.0-alpha"
+version = "0.3.0-alpha"
 dependencies = [
  "difference",
  "regex",
