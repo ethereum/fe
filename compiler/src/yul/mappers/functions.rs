@@ -40,7 +40,7 @@ pub fn func_def(context: &Context, def: &Node<fe::ContractStmt>) -> yul::Stateme
         },
     ) = (context.get_function(def).to_owned(), &def.kind)
     {
-        let function_name = names::func_name(name.kind);
+        let function_name = names::func_name(&name.kind);
         let param_names = args.iter().map(|arg| func_def_arg(arg)).collect::<Vec<_>>();
         let function_statements = multiple_func_stmt(context, body);
 
@@ -63,7 +63,7 @@ pub fn func_def(context: &Context, def: &Node<fe::ContractStmt>) -> yul::Stateme
 }
 
 fn func_def_arg(arg: &Node<fe::FuncDefArg>) -> yul::Identifier {
-    let name = arg.kind.name.kind;
+    let name = &arg.kind.name.kind;
 
     names::var_name(name)
 }
@@ -96,7 +96,7 @@ fn for_loop(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     } = &stmt.kind
     {
         let iterator = expressions::expr(context, iter);
-        let target_var = names::var_name(expressions::expr_name_str(target));
+        let target_var = names::var_name(&expressions::expr_name_string(target));
         let yul_body = multiple_func_stmt(context, body);
         return if let Some(ExpressionAttributes {
             typ: Type::Array(array),

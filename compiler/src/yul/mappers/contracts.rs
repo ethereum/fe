@@ -14,7 +14,7 @@ pub fn contract_def(
     created_contracts: Vec<yul::Object>,
 ) -> yul::Object {
     if let fe::ModuleStmt::ContractDef { name, body } = &stmt.kind {
-        let contract_name = name.kind;
+        let contract_name = &name.kind;
         let mut init_function = None;
         let mut user_functions = vec![];
 

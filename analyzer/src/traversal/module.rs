@@ -23,7 +23,7 @@ pub fn module(context: Shared<Context>, module: &fe::Module) -> Result<(), Seman
         match &stmt.kind {
             fe::ModuleStmt::TypeDef { .. } => type_def(Rc::clone(&scope), stmt)?,
             fe::ModuleStmt::StructDef { name, body } => {
-                structs::struct_def(Rc::clone(&scope), name.kind, body)?
+                structs::struct_def(Rc::clone(&scope), &name.kind, body)?
             }
             fe::ModuleStmt::ContractDef { .. } => {
                 // Collect contract statements and the scope that we create for them. After we
@@ -50,7 +50,7 @@ pub fn module(context: Shared<Context>, module: &fe::Module) -> Result<(), Seman
 fn type_def(scope: Shared<ModuleScope>, def: &Node<fe::ModuleStmt>) -> Result<(), SemanticError> {
     if let fe::ModuleStmt::TypeDef { name, typ } = &def.kind {
         let typ = types::type_desc(&scope.borrow().type_defs, &typ.kind)?;
-        scope.borrow_mut().add_type_def(name.kind, typ)?;
+        scope.borrow_mut().add_type_def(&name.kind, typ)?;
         return Ok(());
     }
 

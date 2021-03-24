@@ -14,7 +14,7 @@ pub fn var_decl(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement 
     let decl_type = context.get_declaration(stmt).expect("missing attributes");
 
     if let fe::FuncStmt::VarDecl { target, value, .. } = &stmt.kind {
-        let target = names::var_name(expressions::expr_name_str(&target));
+        let target = names::var_name(&expressions::expr_name_string(&target));
 
         return if let Some(value) = value {
             let value = expressions::expr(context, &value);

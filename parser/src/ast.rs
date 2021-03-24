@@ -6,120 +6,106 @@ use serde::{
 use crate::node::Node;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct Module<'a> {
-    #[serde(borrow)]
-    pub body: Vec<Node<ModuleStmt<'a>>>,
+pub struct Module {
+    pub body: Vec<Node<ModuleStmt>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum ModuleStmt<'a> {
+pub enum ModuleStmt {
     TypeDef {
-        name: Node<&'a str>,
-        #[serde(borrow)]
-        typ: Node<TypeDesc<'a>>,
+        name: Node<String>,
+        typ: Node<TypeDesc>,
     },
     SimpleImport {
-        #[serde(borrow)]
-        names: Vec<Node<SimpleImportName<'a>>>,
+        names: Vec<Node<SimpleImportName>>,
     },
     FromImport {
-        #[serde(borrow)]
-        path: Node<FromImportPath<'a>>,
-        #[serde(borrow)]
-        names: Node<FromImportNames<'a>>,
+        path: Node<FromImportPath>,
+        names: Node<FromImportNames>,
     },
     ContractDef {
-        name: Node<&'a str>,
-        #[serde(borrow)]
-        body: Vec<Node<ContractStmt<'a>>>,
+        name: Node<String>,
+        body: Vec<Node<ContractStmt>>,
     },
     StructDef {
-        name: Node<&'a str>,
-        #[serde(borrow)]
-        body: Vec<Node<StructStmt<'a>>>,
+        name: Node<String>,
+        body: Vec<Node<StructStmt>>,
     },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum TypeDesc<'a> {
+pub enum TypeDesc {
     Base {
-        base: &'a str,
+        base: String,
     },
     Array {
-        typ: Box<Node<TypeDesc<'a>>>,
+        typ: Box<Node<TypeDesc>>,
         dimension: usize,
     },
     Map {
-        from: Box<Node<TypeDesc<'a>>>,
-        to: Box<Node<TypeDesc<'a>>>,
+        from: Box<Node<TypeDesc>>,
+        to: Box<Node<TypeDesc>>,
     },
     Tuple {
-        items: Vec<Node<TypeDesc<'a>>>,
+        items: Vec<Node<TypeDesc>>,
     },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct SimpleImportName<'a> {
-    #[serde(borrow)]
-    pub path: Vec<Node<&'a str>>,
-    pub alias: Option<Node<&'a str>>,
+pub struct SimpleImportName {
+    pub path: Vec<Node<String>>,
+    pub alias: Option<Node<String>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum FromImportPath<'a> {
+pub enum FromImportPath {
     Absolute {
-        #[serde(borrow)]
-        path: Vec<Node<&'a str>>,
+        path: Vec<Node<String>>,
     },
     Relative {
         parent_level: usize,
-        #[serde(borrow)]
-        path: Vec<Node<&'a str>>,
+        path: Vec<Node<String>>,
     },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum FromImportNames<'a> {
+pub enum FromImportNames {
     Star,
-    #[serde(borrow)]
-    List(Vec<Node<FromImportName<'a>>>),
+    List(Vec<Node<FromImportName>>),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct FromImportName<'a> {
-    #[serde(borrow)]
-    pub name: Node<&'a str>,
-    pub alias: Option<Node<&'a str>>,
+pub struct FromImportName {
+    pub name: Node<String>,
+    pub alias: Option<Node<String>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum ContractStmt<'a> {
+pub enum ContractStmt {
     ContractField {
         qual: Option<Node<ContractFieldQual>>,
-        #[serde(borrow)]
-        name: Node<&'a str>,
-        typ: Node<TypeDesc<'a>>,
+        name: Node<String>,
+        typ: Node<TypeDesc>,
     },
     EventDef {
-        name: Node<&'a str>,
-        fields: Vec<Node<EventField<'a>>>,
+        name: Node<String>,
+        fields: Vec<Node<EventField>>,
     },
     FuncDef {
         qual: Option<Node<FuncQual>>,
-        name: Node<&'a str>,
-        args: Vec<Node<FuncDefArg<'a>>>,
-        return_type: Option<Node<TypeDesc<'a>>>,
-        body: Vec<Node<FuncStmt<'a>>>,
+        name: Node<String>,
+        args: Vec<Node<FuncDefArg>>,
+        return_type: Option<Node<TypeDesc>>,
+        body: Vec<Node<FuncStmt>>,
     },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum StructStmt<'a> {
+pub enum StructStmt {
     StructField {
         qual: Option<Node<StructFieldQual>>,
-        #[serde(borrow)]
-        name: Node<&'a str>,
-        typ: Node<TypeDesc<'a>>,
+        name: Node<String>,
+        typ: Node<TypeDesc>,
     },
 }
 
@@ -136,11 +122,10 @@ pub enum StructFieldQual {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct EventField<'a> {
+pub struct EventField {
     pub qual: Option<Node<EventFieldQual>>,
-    #[serde(borrow)]
-    pub name: Node<&'a str>,
-    pub typ: Node<TypeDesc<'a>>,
+    pub name: Node<String>,
+    pub typ: Node<TypeDesc>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -154,57 +139,55 @@ pub enum FuncQual {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct FuncDefArg<'a> {
-    #[serde(borrow)]
-    pub name: Node<&'a str>,
-    pub typ: Node<TypeDesc<'a>>,
+pub struct FuncDefArg {
+    pub name: Node<String>,
+    pub typ: Node<TypeDesc>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum FuncStmt<'a> {
+pub enum FuncStmt {
     Return {
-        #[serde(borrow)]
-        value: Option<Node<Expr<'a>>>,
+        value: Option<Node<Expr>>,
     },
     VarDecl {
-        target: Node<Expr<'a>>,
-        typ: Node<TypeDesc<'a>>,
-        value: Option<Node<Expr<'a>>>,
+        target: Node<Expr>,
+        typ: Node<TypeDesc>,
+        value: Option<Node<Expr>>,
     },
     Assign {
-        targets: Vec<Node<Expr<'a>>>,
-        value: Node<Expr<'a>>,
+        targets: Vec<Node<Expr>>,
+        value: Node<Expr>,
     },
     AugAssign {
-        target: Node<Expr<'a>>,
+        target: Node<Expr>,
         op: Node<BinOperator>,
-        value: Node<Expr<'a>>,
+        value: Node<Expr>,
     },
     For {
-        target: Node<Expr<'a>>,
-        iter: Node<Expr<'a>>,
-        body: Vec<Node<FuncStmt<'a>>>,
-        or_else: Vec<Node<FuncStmt<'a>>>,
+        target: Node<Expr>,
+        iter: Node<Expr>,
+        body: Vec<Node<FuncStmt>>,
+        or_else: Vec<Node<FuncStmt>>,
     },
     While {
-        test: Node<Expr<'a>>,
-        body: Vec<Node<FuncStmt<'a>>>,
-        or_else: Vec<Node<FuncStmt<'a>>>,
+        test: Node<Expr>,
+        body: Vec<Node<FuncStmt>>,
+        or_else: Vec<Node<FuncStmt>>,
     },
     If {
-        test: Node<Expr<'a>>,
-        body: Vec<Node<FuncStmt<'a>>>,
-        or_else: Vec<Node<FuncStmt<'a>>>,
+        test: Node<Expr>,
+        body: Vec<Node<FuncStmt>>,
+        or_else: Vec<Node<FuncStmt>>,
     },
     Assert {
-        test: Node<Expr<'a>>,
-        msg: Option<Node<Expr<'a>>>,
+        test: Node<Expr>,
+        msg: Option<Node<Expr>>,
     },
     Emit {
-        value: Node<Expr<'a>>,
+        value: Node<Expr>,
     },
     Expr {
-        value: Node<Expr<'a>>,
+        value: Node<Expr>,
     },
     Pass,
     Break,
@@ -213,91 +196,87 @@ pub enum FuncStmt<'a> {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum Expr<'a> {
+pub enum Expr {
     Ternary {
-        if_expr: Box<Node<Expr<'a>>>,
-        test: Box<Node<Expr<'a>>>,
-        else_expr: Box<Node<Expr<'a>>>,
+        if_expr: Box<Node<Expr>>,
+        test: Box<Node<Expr>>,
+        else_expr: Box<Node<Expr>>,
     },
     BoolOperation {
-        left: Box<Node<Expr<'a>>>,
+        left: Box<Node<Expr>>,
         op: Node<BoolOperator>,
-        right: Box<Node<Expr<'a>>>,
+        right: Box<Node<Expr>>,
     },
     BinOperation {
-        left: Box<Node<Expr<'a>>>,
+        left: Box<Node<Expr>>,
         op: Node<BinOperator>,
-        right: Box<Node<Expr<'a>>>,
+        right: Box<Node<Expr>>,
     },
     UnaryOperation {
         op: Node<UnaryOperator>,
-        operand: Box<Node<Expr<'a>>>,
+        operand: Box<Node<Expr>>,
     },
     CompOperation {
-        left: Box<Node<Expr<'a>>>,
+        left: Box<Node<Expr>>,
         op: Node<CompOperator>,
-        right: Box<Node<Expr<'a>>>,
+        right: Box<Node<Expr>>,
     },
     Attribute {
-        value: Box<Node<Expr<'a>>>,
-        attr: Node<&'a str>,
+        value: Box<Node<Expr>>,
+        attr: Node<String>,
     },
     Subscript {
-        value: Box<Node<Expr<'a>>>,
-        slices: Node<Vec<Node<Slice<'a>>>>,
+        value: Box<Node<Expr>>,
+        slices: Node<Vec<Node<Slice>>>,
     },
     Call {
-        func: Box<Node<Expr<'a>>>,
-        args: Node<Vec<Node<CallArg<'a>>>>,
+        func: Box<Node<Expr>>,
+        args: Node<Vec<Node<CallArg>>>,
     },
     List {
-        elts: Vec<Node<Expr<'a>>>,
+        elts: Vec<Node<Expr>>,
     },
     ListComp {
-        elt: Box<Node<Expr<'a>>>,
-        comps: Vec<Node<Comprehension<'a>>>,
+        elt: Box<Node<Expr>>,
+        comps: Vec<Node<Comprehension>>,
     },
     Tuple {
-        elts: Vec<Node<Expr<'a>>>,
+        elts: Vec<Node<Expr>>,
     },
     Bool(bool),
-    Name(&'a str),
-    Num(&'a str),
-    Str(Vec<&'a str>),
+    Name(String),
+    Num(String),
+    Str(Vec<String>),
     Ellipsis,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum Slice<'a> {
+pub enum Slice {
     Slice {
-        #[serde(borrow)]
-        lower: Option<Box<Node<Expr<'a>>>>,
-        upper: Option<Box<Node<Expr<'a>>>>,
-        step: Option<Box<Node<Expr<'a>>>>,
+        lower: Option<Box<Node<Expr>>>,
+        upper: Option<Box<Node<Expr>>>,
+        step: Option<Box<Node<Expr>>>,
     },
-    Index(Box<Node<Expr<'a>>>),
+    Index(Box<Node<Expr>>),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum CallArg<'a> {
-    #[serde(borrow)]
-    Arg(Node<Expr<'a>>),
-    Kwarg(Kwarg<'a>),
+pub enum CallArg {
+    Arg(Node<Expr>),
+    Kwarg(Kwarg),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct Kwarg<'a> {
-    #[serde(borrow)]
-    pub name: Node<&'a str>,
-    pub value: Box<Node<Expr<'a>>>,
+pub struct Kwarg {
+    pub name: Node<String>,
+    pub value: Box<Node<Expr>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct Comprehension<'a> {
-    #[serde(borrow)]
-    pub target: Box<Node<Expr<'a>>>,
-    pub iter: Box<Node<Expr<'a>>>,
-    pub ifs: Vec<Node<Expr<'a>>>,
+pub struct Comprehension {
+    pub target: Box<Node<Expr>>,
+    pub iter: Box<Node<Expr>>,
+    pub ifs: Vec<Node<Expr>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]

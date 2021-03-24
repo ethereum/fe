@@ -7,7 +7,7 @@ use fe_analyzer::namespace::types::{
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 
-pub fn call_arg_value<'a>(arg: &'a fe::CallArg<'a>) -> &'a Node<fe::Expr<'a>> {
+pub fn call_arg_value(arg: &fe::CallArg) -> &Node<fe::Expr> {
     match arg {
         fe::CallArg::Arg(value) => value,
         fe::CallArg::Kwarg(fe::Kwarg { value, .. }) => value,
