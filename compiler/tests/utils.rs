@@ -202,9 +202,64 @@ pub fn deploy_contract(
         .contracts
         .get(contract_name)
         .expect("could not find contract in fixture");
-    let abi = ethabi::Contract::load(StringReader::new(&compiled_contract.json_abi))
-        .expect("unable to load the ABI");
-    let mut bytecode = hex::decode(&compiled_contract.bytecode).expect("failed to decode bytecode");
+
+    return _deploy_contract(
+        executor,
+        &compiled_contract.bytecode,
+        &compiled_contract.json_abi,
+        init_params,
+    );
+}
+
+#[allow(dead_code)]
+pub fn deploy_solidity_contract(
+    executor: &mut Executor,
+    fixture: &str,
+    contract_name: &str,
+    init_params: &[ethabi::Token],
+) -> ContractHarness {
+    let src = fs::read_to_string(format!("tests/fixtures/solidity/{}", fixture))
+        .expect("unable to read fixture file")
+        .replace("\n", "")
+        .replace("\"", "\\\"");
+
+    let (bytecode, abi) =
+        compile_solidity_contract(contract_name, &src).expect("Could not compile contract");
+
+    return _deploy_contract(executor, &bytecode, &abi, init_params);
+}
+
+#[allow(dead_code)]
+pub fn encode_error_reason(reason: &str) -> Vec<u8> {
+    // Function selector for Error(string)
+    const SELECTOR: &str = "08c379a0";
+    // Data offset
+    const DATA_OFFSET: &str = "0000000000000000000000000000000000000000000000000000000000000020";
+
+    // Length of the string padded to 32 bit hex
+    let string_len = format!("{:0>64x}", reason.len());
+
+    let mut string_bytes = reason.as_bytes().to_vec();
+    while string_bytes.len() % 32 != 0 {
+        string_bytes.push(0)
+    }
+    // The bytes of the string itself, right padded to consume a multiple of 32
+    // bytes
+    let string_bytes = hex::encode(&string_bytes);
+
+    let all = format!("{}{}{}{}", SELECTOR, DATA_OFFSET, string_len, string_bytes);
+    hex::decode(&all).expect(&format!("No valid hex: {}", &all))
+}
+
+fn _deploy_contract(
+    executor: &mut Executor,
+    bytecode: &str,
+    abi: &str,
+    init_params: &[ethabi::Token],
+) -> ContractHarness {
+    let abi = ethabi::Contract::load(StringReader::new(abi)).expect("unable to load the ABI");
+
+    let mut bytecode = hex::decode(bytecode).expect("failed to decode bytecode");
 
     if let Some(constructor) = &abi.constructor {
         bytecode = constructor.encode_input(bytecode, init_params).unwrap()
@@ -223,6 +278,36 @@ pub fn deploy_contract(
     }
 
     panic!("Failed to create contract")
+}
+
+pub fn compile_solidity_contract(name: &str, solidity_src: &str) -> Result<(String, String), ()> {
+    let solc_config = r#"
+    {
+        "language": "Solidity",
+        "sources": { "input.sol": { "content": "{src}" } },
+        "settings": {
+          "outputSelection": { "*": { "*": ["*"], "": [ "*" ] } }
+        }
+      }
+    "#;
+    let solc_config = solc_config.replace("{src}", &solidity_src);
+
+    let raw_output = solc::compile(&solc_config);
+
+    let output: serde_json::Value =
+        serde_json::from_str(&raw_output).expect("Unable to compile contract");
+
+    let bytecode = output["contracts"]["input.sol"][name]["evm"]["bytecode"]["object"]
+        .to_string()
+        .replace("\"", "");
+
+    let abi = output["contracts"]["input.sol"][name]["abi"].to_string();
+
+    if [&bytecode, &abi].iter().any(|val| val == &"null") {
+        return Err(());
+    }
+
+    Ok((bytecode, abi))
 }
 
 #[allow(dead_code)]
@@ -246,6 +331,34 @@ pub fn test_runtime_functions(
     functions: Vec<yul::Statement>,
     test_statements: Vec<yul::Statement>,
 ) {
+    let (reason, _) = execute_runtime_functions(executor, functions, test_statements);
+    if !matches!(reason, ExitReason::Succeed(_)) {
+        panic!("Runtime function test failed: {:?}", reason)
+    }
+}
+
+#[allow(dead_code)]
+pub fn test_runtime_functions_revert(
+    executor: &mut Executor,
+    functions: Vec<yul::Statement>,
+    test_statements: Vec<yul::Statement>,
+    expected_output: &[u8],
+) {
+    let (reason, output) = execute_runtime_functions(executor, functions, test_statements);
+    if output != expected_output {
+        panic!("Runtime function test failed (wrong output): {:?}", output)
+    }
+
+    if !matches!(reason, ExitReason::Revert(_)) {
+        panic!("Runtime function did not revert: {:?}", reason)
+    }
+}
+
+fn execute_runtime_functions(
+    executor: &mut Executor,
+    functions: Vec<yul::Statement>,
+    test_statements: Vec<yul::Statement>,
+) -> (ExitReason, Vec<u8>) {
     let all_statements = [functions, test_statements].concat();
     let yul_code = yul::Object {
         name: identifier! { Contract },
@@ -259,7 +372,7 @@ pub fn test_runtime_functions(
         .expect("failed to compile Yul");
     let bytecode = hex::decode(&bytecode).expect("failed to decode bytecode");
 
-    if let evm::Capture::Exit((reason, _, _)) = executor.create(
+    if let evm::Capture::Exit((reason, _, output)) = executor.create(
         address(DEFAULT_CALLER),
         evm_runtime::CreateScheme::Legacy {
             caller: address(DEFAULT_CALLER),
@@ -268,9 +381,7 @@ pub fn test_runtime_functions(
         bytecode,
         None,
     ) {
-        if !matches!(reason, ExitReason::Succeed(_)) {
-            panic!("Runtime function test failed: {:?}", reason)
-        }
+        (reason, output)
     } else {
         panic!("EVM trap during test")
     }
