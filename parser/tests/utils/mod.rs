@@ -1,10 +1,10 @@
-use std::fmt;
-
 use difference::{
     Changeset,
     Difference,
 };
 use serde::Serialize;
+use std::fmt;
+use std::path::PathBuf;
 
 /// Return the lines of text in the string `lines` prefixed with the prefix in
 /// the string `prefix`.
@@ -93,6 +93,22 @@ where
     value.serialize(&mut serializer)?;
 
     Ok(serializer.into_output_string())
+}
+
+#[allow(dead_code)]
+pub fn get_fixture_content(fixture_name: &str) -> (String, PathBuf) {
+    let fe_fixtures_path = std::env::var("FE_FIXTURES_PATH")
+        .expect("must set FE_FIXTURES_PATH env var to write fixtures");
+
+    let mut path = PathBuf::from(fe_fixtures_path);
+    path.push(fixture_name);
+
+    let content = std::fs::read_to_string(&path).expect(&format!(
+        "could not read content from fixture path {}",
+        path.to_str().unwrap(),
+    ));
+
+    (content, path)
 }
 
 /// Parse file content containing a test example into a tuple of input text and

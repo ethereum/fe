@@ -2,7 +2,11 @@ use serde::{
     Deserialize,
     Serialize,
 };
-
+use std::ops::{
+    Add,
+    AddAssign,
+    Range,
+};
 use uuid::Uuid;
 
 /// An exclusive span of byte offsets in a source file.
@@ -41,6 +45,71 @@ impl Span {
         Self {
             start: start_span.start,
             end: end_span.end,
+        }
+    }
+}
+
+impl Add for Span {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        use std::cmp::{
+            max,
+            min,
+        };
+        Self {
+            start: min(self.start, other.start),
+            end: max(self.end, other.end),
+        }
+    }
+}
+
+impl<T> Add<&Node<T>> for Span {
+    type Output = Self;
+
+    fn add(self, other: &Node<T>) -> Self {
+        self + other.span
+    }
+}
+
+impl<T> Add<Option<T>> for Span
+where
+    Span: Add<T, Output = Self>,
+{
+    type Output = Self;
+
+    fn add(self, other: Option<T>) -> Self {
+        if let Some(other) = other {
+            self + other
+        } else {
+            self
+        }
+    }
+}
+
+impl<T> Add<&Option<Node<T>>> for Span {
+    type Output = Self;
+
+    fn add(self, other: &Option<Node<T>>) -> Self {
+        if let Some(other) = other {
+            self + other.span
+        } else {
+            self
+        }
+    }
+}
+
+impl AddAssign for Span {
+    fn add_assign(&mut self, other: Self) {
+        *self = *self + other
+    }
+}
+
+impl From<Span> for Range<usize> {
+    fn from(span: Span) -> Self {
+        Range {
+            start: span.start,
+            end: span.end,
         }
     }
 }

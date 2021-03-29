@@ -1,6 +1,6 @@
-x: bool
-x: bool,
-x: bool, y: int128
+(x: bool)
+(x: bool,)
+(x: bool, y: int128)
 ---
 [
   [
@@ -9,8 +9,8 @@ x: bool, y: int128
         name: Node(
           kind: "x",
           span: Span(
-            start: 0,
-            end: 1,
+            start: 1,
+            end: 2,
           ),
         ),
         typ: Node(
@@ -18,14 +18,14 @@ x: bool, y: int128
             base: "bool",
           ),
           span: Span(
-            start: 3,
-            end: 7,
+            start: 4,
+            end: 8,
           ),
         ),
       ),
       span: Span(
-        start: 0,
-        end: 7,
+        start: 1,
+        end: 8,
       ),
     ),
   ],
@@ -34,50 +34,50 @@ x: bool, y: int128
       kind: FuncDefArg(
         name: Node(
           kind: "x",
-          span: Span(
-            start: 8,
-            end: 9,
-          ),
-        ),
-        typ: Node(
-          kind: Base(
-            base: "bool",
-          ),
           span: Span(
             start: 11,
-            end: 15,
+            end: 12,
           ),
         ),
-      ),
-      span: Span(
-        start: 8,
-        end: 15,
-      ),
-    ),
-  ],
-  [
-    Node(
-      kind: FuncDefArg(
-        name: Node(
-          kind: "x",
+        typ: Node(
+          kind: Base(
+            base: "bool",
+          ),
           span: Span(
-            start: 17,
+            start: 14,
             end: 18,
           ),
         ),
+      ),
+      span: Span(
+        start: 11,
+        end: 18,
+      ),
+    ),
+  ],
+  [
+    Node(
+      kind: FuncDefArg(
+        name: Node(
+          kind: "x",
+          span: Span(
+            start: 22,
+            end: 23,
+          ),
+        ),
         typ: Node(
           kind: Base(
             base: "bool",
           ),
           span: Span(
-            start: 20,
-            end: 24,
+            start: 25,
+            end: 29,
           ),
         ),
       ),
       span: Span(
-        start: 17,
-        end: 24,
+        start: 22,
+        end: 29,
       ),
     ),
     Node(
@@ -85,8 +85,8 @@ x: bool, y: int128
         name: Node(
           kind: "y",
           span: Span(
-            start: 26,
-            end: 27,
+            start: 31,
+            end: 32,
           ),
         ),
         typ: Node(
@@ -94,14 +94,14 @@ x: bool, y: int128
             base: "int128",
           ),
           span: Span(
-            start: 29,
-            end: 35,
+            start: 34,
+            end: 40,
           ),
         ),
       ),
       span: Span(
-        start: 26,
-        end: 35,
+        start: 31,
+        end: 40,
       ),
     ),
   ],

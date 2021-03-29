@@ -37,6 +37,7 @@ contract Foo:
                 end: 28,
               ),
             ),
+            value: None,
           ),
           span: Span(
             start: 18,
@@ -69,6 +70,7 @@ contract Foo:
                 end: 44,
               ),
             ),
+            value: None,
           ),
           span: Span(
             start: 33,
@@ -101,6 +103,7 @@ contract Foo:
                 end: 60,
               ),
             ),
+            value: None,
           ),
           span: Span(
             start: 49,
@@ -139,6 +142,7 @@ contract Foo:
                 end: 80,
               ),
             ),
+            value: None,
           ),
           span: Span(
             start: 65,

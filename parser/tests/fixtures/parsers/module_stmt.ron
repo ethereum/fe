@@ -61,6 +61,7 @@ contract Foo:
                 end: 35,
               ),
             ),
+            value: None,
           ),
           span: Span(
             start: 29,

@@ -24,6 +24,7 @@ pub const x: address
           end: 10,
         ),
       ),
+      value: None,
     ),
     span: Span(
       start: 0,
@@ -56,6 +57,7 @@ pub const x: address
           end: 27,
         ),
       ),
+      value: None,
     ),
     span: Span(
       start: 11,
@@ -88,6 +90,7 @@ pub const x: address
           end: 42,
         ),
       ),
+      value: None,
     ),
     span: Span(
       start: 28,
@@ -126,6 +129,7 @@ pub const x: address
           end: 63,
         ),
       ),
+      value: None,
     ),
     span: Span(
       start: 43,

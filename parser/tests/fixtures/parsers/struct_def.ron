@@ -35,6 +35,7 @@ struct Foo:
                 end: 26,
               ),
             ),
+            value: None,
           ),
           span: Span(
             start: 16,
@@ -67,6 +68,7 @@ struct Foo:
                 end: 42,
               ),
             ),
+            value: None,
           ),
           span: Span(
             start: 31,
@@ -99,6 +101,7 @@ struct Foo:
                 end: 58,
               ),
             ),
+            value: None,
           ),
           span: Span(
             start: 47,
@@ -137,6 +140,7 @@ struct Foo:
                 end: 78,
               ),
             ),
+            value: None,
           ),
           span: Span(
             start: 63,

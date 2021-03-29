@@ -50,6 +50,16 @@ pub enum TypeDesc {
     Tuple {
         items: Vec<Node<TypeDesc>>,
     },
+    Generic {
+        base: Node<String>,
+        args: Vec<Node<GenericArg>>,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub enum GenericArg {
+    TypeDesc(TypeDesc),
+    Int(usize),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -88,6 +98,7 @@ pub struct Field {
     pub const_qual: Option<Node<ConstQualifier>>,
     pub name: Node<String>,
     pub typ: Node<TypeDesc>,
+    pub value: Option<Node<Expr>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -131,7 +142,7 @@ pub enum FuncStmt {
         value: Option<Node<Expr>>,
     },
     VarDecl {
-        target: Node<Expr>,
+        target: Node<Expr>, // TODO: change to String
         typ: Node<TypeDesc>,
         value: Option<Node<Expr>>,
     },
@@ -145,7 +156,7 @@ pub enum FuncStmt {
         value: Node<Expr>,
     },
     For {
-        target: Node<Expr>,
+        target: Node<Expr>, // TODO: change to Vec<Node<String>>
         iter: Node<Expr>,
         body: Vec<Node<FuncStmt>>,
         or_else: Vec<Node<FuncStmt>>,
@@ -244,7 +255,7 @@ pub enum Slice {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum CallArg {
     Arg(Node<Expr>),
-    Kwarg(Kwarg),
+    Kwarg(Kwarg), // TODO: inline Kwarg struct here
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]

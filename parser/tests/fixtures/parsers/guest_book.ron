@@ -103,6 +103,7 @@ Node(
                     end: 88,
                   ),
                 ),
+                value: None,
               ),
               span: Span(
                 start: 51,
