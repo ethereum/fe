@@ -9,7 +9,6 @@ x ^= y
 x <<= y
 x >>= y
 x **= y
-x //= y
 ---
 [
   Node(
@@ -329,35 +328,6 @@ x //= y
     span: Span(
       start: 72,
       end: 79,
-    ),
-  ),
-  Node(
-    kind: AugAssign(
-      target: Node(
-        kind: Name("x"),
-        span: Span(
-          start: 80,
-          end: 81,
-        ),
-      ),
-      op: Node(
-        kind: FloorDiv,
-        span: Span(
-          start: 82,
-          end: 85,
-        ),
-      ),
-      value: Node(
-        kind: Name("y"),
-        span: Span(
-          start: 86,
-          end: 87,
-        ),
-      ),
-    ),
-    span: Span(
-      start: 80,
-      end: 87,
     ),
   ),
 ]

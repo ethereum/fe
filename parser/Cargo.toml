@@ -11,6 +11,8 @@ description = "Parser lib for Fe."
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+codespan-reporting = "0.11.1"
+logos = { version = "0.11.4", default-features = false, features = ["export_derive"] }
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 uuid = { version = "0.8", features = ["v4", "stdweb"] }

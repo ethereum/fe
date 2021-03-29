@@ -847,6 +847,7 @@ pub fn type_desc(defs: &HashMap<String, Type>, typ: &fe::TypeDesc) -> Result<Typ
             key: type_desc_base(defs, &from.kind)?,
             value: Box::new(type_desc(defs, &to.kind)?),
         })),
+        fe::TypeDesc::Generic { .. } => todo!(),
         fe::TypeDesc::Tuple { items } => Ok(Type::Tuple(Tuple {
             items: items
                 .iter()

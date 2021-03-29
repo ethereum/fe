@@ -1,0 +1,488 @@
+foo<address, bytes[100]>
+foo<MyType, foo<bool, uint128>>
+foo<MyType, foo<bool, uint128> >
+foo<MyType, foo<bool, foo<asdf, foo>>>
+foo<MyType, foo<bool, foo<asdf, foo<foo, bar>>>>
+foo<MyType, foo<bool, foo<asdf, foo<foo, bar> > > >
+---
+[
+  Node(
+    kind: Generic(
+      base: Node(
+        kind: "foo",
+        span: Span(
+          start: 0,
+          end: 3,
+        ),
+      ),
+      args: [
+        Node(
+          kind: TypeDesc(Base(
+            base: "address",
+          )),
+          span: Span(
+            start: 4,
+            end: 11,
+          ),
+        ),
+        Node(
+          kind: TypeDesc(Array(
+            typ: Node(
+              kind: Base(
+                base: "bytes",
+              ),
+              span: Span(
+                start: 13,
+                end: 18,
+              ),
+            ),
+            dimension: 100,
+          )),
+          span: Span(
+            start: 13,
+            end: 23,
+          ),
+        ),
+      ],
+    ),
+    span: Span(
+      start: 0,
+      end: 24,
+    ),
+  ),
+  Node(
+    kind: Generic(
+      base: Node(
+        kind: "foo",
+        span: Span(
+          start: 25,
+          end: 28,
+        ),
+      ),
+      args: [
+        Node(
+          kind: TypeDesc(Base(
+            base: "MyType",
+          )),
+          span: Span(
+            start: 29,
+            end: 35,
+          ),
+        ),
+        Node(
+          kind: TypeDesc(Generic(
+            base: Node(
+              kind: "foo",
+              span: Span(
+                start: 37,
+                end: 40,
+              ),
+            ),
+            args: [
+              Node(
+                kind: TypeDesc(Base(
+                  base: "bool",
+                )),
+                span: Span(
+                  start: 41,
+                  end: 45,
+                ),
+              ),
+              Node(
+                kind: TypeDesc(Base(
+                  base: "uint128",
+                )),
+                span: Span(
+                  start: 47,
+                  end: 54,
+                ),
+              ),
+            ],
+          )),
+          span: Span(
+            start: 37,
+            end: 55,
+          ),
+        ),
+      ],
+    ),
+    span: Span(
+      start: 25,
+      end: 56,
+    ),
+  ),
+  Node(
+    kind: Generic(
+      base: Node(
+        kind: "foo",
+        span: Span(
+          start: 57,
+          end: 60,
+        ),
+      ),
+      args: [
+        Node(
+          kind: TypeDesc(Base(
+            base: "MyType",
+          )),
+          span: Span(
+            start: 61,
+            end: 67,
+          ),
+        ),
+        Node(
+          kind: TypeDesc(Generic(
+            base: Node(
+              kind: "foo",
+              span: Span(
+                start: 69,
+                end: 72,
+              ),
+            ),
+            args: [
+              Node(
+                kind: TypeDesc(Base(
+                  base: "bool",
+                )),
+                span: Span(
+                  start: 73,
+                  end: 77,
+                ),
+              ),
+              Node(
+                kind: TypeDesc(Base(
+                  base: "uint128",
+                )),
+                span: Span(
+                  start: 79,
+                  end: 86,
+                ),
+              ),
+            ],
+          )),
+          span: Span(
+            start: 69,
+            end: 87,
+          ),
+        ),
+      ],
+    ),
+    span: Span(
+      start: 57,
+      end: 89,
+    ),
+  ),
+  Node(
+    kind: Generic(
+      base: Node(
+        kind: "foo",
+        span: Span(
+          start: 90,
+          end: 93,
+        ),
+      ),
+      args: [
+        Node(
+          kind: TypeDesc(Base(
+            base: "MyType",
+          )),
+          span: Span(
+            start: 94,
+            end: 100,
+          ),
+        ),
+        Node(
+          kind: TypeDesc(Generic(
+            base: Node(
+              kind: "foo",
+              span: Span(
+                start: 102,
+                end: 105,
+              ),
+            ),
+            args: [
+              Node(
+                kind: TypeDesc(Base(
+                  base: "bool",
+                )),
+                span: Span(
+                  start: 106,
+                  end: 110,
+                ),
+              ),
+              Node(
+                kind: TypeDesc(Generic(
+                  base: Node(
+                    kind: "foo",
+                    span: Span(
+                      start: 112,
+                      end: 115,
+                    ),
+                  ),
+                  args: [
+                    Node(
+                      kind: TypeDesc(Base(
+                        base: "asdf",
+                      )),
+                      span: Span(
+                        start: 116,
+                        end: 120,
+                      ),
+                    ),
+                    Node(
+                      kind: TypeDesc(Base(
+                        base: "foo",
+                      )),
+                      span: Span(
+                        start: 122,
+                        end: 125,
+                      ),
+                    ),
+                  ],
+                )),
+                span: Span(
+                  start: 112,
+                  end: 126,
+                ),
+              ),
+            ],
+          )),
+          span: Span(
+            start: 102,
+            end: 127,
+          ),
+        ),
+      ],
+    ),
+    span: Span(
+      start: 90,
+      end: 128,
+    ),
+  ),
+  Node(
+    kind: Generic(
+      base: Node(
+        kind: "foo",
+        span: Span(
+          start: 129,
+          end: 132,
+        ),
+      ),
+      args: [
+        Node(
+          kind: TypeDesc(Base(
+            base: "MyType",
+          )),
+          span: Span(
+            start: 133,
+            end: 139,
+          ),
+        ),
+        Node(
+          kind: TypeDesc(Generic(
+            base: Node(
+              kind: "foo",
+              span: Span(
+                start: 141,
+                end: 144,
+              ),
+            ),
+            args: [
+              Node(
+                kind: TypeDesc(Base(
+                  base: "bool",
+                )),
+                span: Span(
+                  start: 145,
+                  end: 149,
+                ),
+              ),
+              Node(
+                kind: TypeDesc(Generic(
+                  base: Node(
+                    kind: "foo",
+                    span: Span(
+                      start: 151,
+                      end: 154,
+                    ),
+                  ),
+                  args: [
+                    Node(
+                      kind: TypeDesc(Base(
+                        base: "asdf",
+                      )),
+                      span: Span(
+                        start: 155,
+                        end: 159,
+                      ),
+                    ),
+                    Node(
+                      kind: TypeDesc(Generic(
+                        base: Node(
+                          kind: "foo",
+                          span: Span(
+                            start: 161,
+                            end: 164,
+                          ),
+                        ),
+                        args: [
+                          Node(
+                            kind: TypeDesc(Base(
+                              base: "foo",
+                            )),
+                            span: Span(
+                              start: 165,
+                              end: 168,
+                            ),
+                          ),
+                          Node(
+                            kind: TypeDesc(Base(
+                              base: "bar",
+                            )),
+                            span: Span(
+                              start: 170,
+                              end: 173,
+                            ),
+                          ),
+                        ],
+                      )),
+                      span: Span(
+                        start: 161,
+                        end: 174,
+                      ),
+                    ),
+                  ],
+                )),
+                span: Span(
+                  start: 151,
+                  end: 175,
+                ),
+              ),
+            ],
+          )),
+          span: Span(
+            start: 141,
+            end: 176,
+          ),
+        ),
+      ],
+    ),
+    span: Span(
+      start: 129,
+      end: 177,
+    ),
+  ),
+  Node(
+    kind: Generic(
+      base: Node(
+        kind: "foo",
+        span: Span(
+          start: 178,
+          end: 181,
+        ),
+      ),
+      args: [
+        Node(
+          kind: TypeDesc(Base(
+            base: "MyType",
+          )),
+          span: Span(
+            start: 182,
+            end: 188,
+          ),
+        ),
+        Node(
+          kind: TypeDesc(Generic(
+            base: Node(
+              kind: "foo",
+              span: Span(
+                start: 190,
+                end: 193,
+              ),
+            ),
+            args: [
+              Node(
+                kind: TypeDesc(Base(
+                  base: "bool",
+                )),
+                span: Span(
+                  start: 194,
+                  end: 198,
+                ),
+              ),
+              Node(
+                kind: TypeDesc(Generic(
+                  base: Node(
+                    kind: "foo",
+                    span: Span(
+                      start: 200,
+                      end: 203,
+                    ),
+                  ),
+                  args: [
+                    Node(
+                      kind: TypeDesc(Base(
+                        base: "asdf",
+                      )),
+                      span: Span(
+                        start: 204,
+                        end: 208,
+                      ),
+                    ),
+                    Node(
+                      kind: TypeDesc(Generic(
+                        base: Node(
+                          kind: "foo",
+                          span: Span(
+                            start: 210,
+                            end: 213,
+                          ),
+                        ),
+                        args: [
+                          Node(
+                            kind: TypeDesc(Base(
+                              base: "foo",
+                            )),
+                            span: Span(
+                              start: 214,
+                              end: 217,
+                            ),
+                          ),
+                          Node(
+                            kind: TypeDesc(Base(
+                              base: "bar",
+                            )),
+                            span: Span(
+                              start: 219,
+                              end: 222,
+                            ),
+                          ),
+                        ],
+                      )),
+                      span: Span(
+                        start: 210,
+                        end: 223,
+                      ),
+                    ),
+                  ],
+                )),
+                span: Span(
+                  start: 200,
+                  end: 225,
+                ),
+              ),
+            ],
+          )),
+          span: Span(
+            start: 190,
+            end: 227,
+          ),
+        ),
+      ],
+    ),
+    span: Span(
+      start: 178,
+      end: 229,
+    ),
+  ),
+]

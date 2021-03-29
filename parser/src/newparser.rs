@@ -1,0 +1,436 @@
+#![allow(unused_variables, dead_code, unused_imports)]
+
+use codespan_reporting::diagnostic::{
+    Diagnostic,
+    Label as CsLabel,
+    LabelStyle,
+    Severity,
+};
+
+use crate::lexer::{
+    Lexer,
+    Token,
+    TokenKind,
+};
+use crate::node::Span;
+
+pub mod grammar;
+
+pub type ParseResult<T> = Result<T, ()>;
+
+pub struct Parser<'a> {
+    lexer: Lexer<'a>,
+
+    /// Tokens that have been "peeked", or split from a larger token.
+    /// Eg. `>>` may be split into two `>` tokens when parsing the end of a
+    /// generic type parameter list (eg. `map<u256, map<u256, address>>`).
+    buffered: Vec<Token<'a>>,
+
+    paren_stack: Vec<Span>,
+    indent_stack: Vec<BlockIndent<'a>>,
+    indent_style: Option<char>,
+    pub diagnostics: Vec<Diagnostic<()>>,
+}
+
+impl<'a> Parser<'a> {
+    pub fn new(content: &'a str) -> Self {
+        Parser {
+            lexer: Lexer::new(content),
+            buffered: vec![],
+            paren_stack: vec![],
+            indent_stack: vec![BlockIndent {
+                context_span: Span::new(0, 0),
+                context_name: "module".into(),
+                indent: "",
+                indent_span: Span::new(0, 0),
+            }],
+            indent_style: None,
+            diagnostics: vec![],
+        }
+    }
+
+    pub fn next(&mut self) -> ParseResult<Token<'a>> {
+        // TODO: allow newlines inside square brackets
+        // TODO: allow newlines inside angle brackets?
+        //   eg `fn f(x: map\n <\n u8\n, ...`
+        if !self.paren_stack.is_empty() {
+            self.eat_newlines();
+        }
+        if let Some(tok) = self.next_raw() {
+            if tok.kind == TokenKind::ParenOpen {
+                self.paren_stack.push(tok.span);
+            } else if tok.kind == TokenKind::ParenClose {
+                if self.paren_stack.pop().is_none() {
+                    self.error(tok.span, "Unmatched right parenthesis");
+                    if self.peek_raw() == Some(TokenKind::ParenClose) {
+                        // another unmatched closing paren; fail.
+                        return Err(());
+                    }
+                }
+            }
+            Ok(tok)
+        } else {
+            self.error(
+                Span::new(self.lexer.source().len(), self.lexer.source().len()),
+                "unexpected end of file",
+            );
+            Err(())
+        }
+    }
+
+    fn next_raw(&mut self) -> Option<Token<'a>> {
+        self.buffered.pop().or_else(|| self.lexer.next())
+    }
+
+    pub fn peek_or_err(&mut self) -> ParseResult<TokenKind> {
+        if !self.paren_stack.is_empty() {
+            self.eat_newlines();
+        }
+        if let Some(tk) = self.peek_raw() {
+            Ok(tk)
+        } else {
+            let index = self.lexer.source().len();
+            self.error(Span::new(index, index), "unexpected end of file");
+            Err(())
+        }
+    }
+
+    pub fn peek(&mut self) -> Option<TokenKind> {
+        if !self.paren_stack.is_empty() {
+            self.eat_newlines();
+        }
+        self.peek_raw()
+    }
+
+    fn peek_raw(&mut self) -> Option<TokenKind> {
+        if self.buffered.is_empty() {
+            if let Some(tok) = self.lexer.next() {
+                self.buffered.push(tok);
+            } else {
+                return None;
+            }
+        }
+        Some(self.buffered.last().unwrap().kind)
+    }
+
+    pub fn split_next(&mut self) -> ParseResult<Token<'a>> {
+        let gtgt = self.next()?;
+        assert_eq!(gtgt.kind, TokenKind::GtGt);
+
+        let (gt1, gt2) = gtgt.text.split_at(1);
+        self.buffered.push(Token {
+            kind: TokenKind::Gt,
+            text: gt2,
+            span: Span::new(gtgt.span.start + 1, gtgt.span.end),
+        });
+
+        Ok(Token {
+            kind: TokenKind::Gt,
+            text: gt1,
+            span: Span::new(gtgt.span.start, gtgt.span.end - 1),
+        })
+    }
+
+    pub fn done(&mut self) -> bool {
+        self.peek_raw() == None
+    }
+
+    pub fn last_indent(&self) -> &'a str {
+        self.indent_stack.last().unwrap().indent
+    }
+
+    pub fn eat_newlines(&mut self) {
+        while self.peek_raw() == Some(TokenKind::Newline) {
+            self.next_raw();
+        }
+    }
+
+    /// If the next token kind isn't `tk`, panic because there's a bug in the
+    /// parsing code.
+    pub fn assert(&mut self, tk: TokenKind) -> Token<'a> {
+        let tok = self.next().unwrap();
+        assert_eq!(tok.kind, tk, "internal parser error");
+        tok
+    }
+
+    pub fn expect<S: Into<String>>(
+        &mut self,
+        expected: TokenKind,
+        message: S,
+    ) -> ParseResult<Token<'a>> {
+        self.expect_with_notes(expected, message, || vec![])
+    }
+
+    pub fn expect_with_notes<Str, NotesFn>(
+        &mut self,
+        expected: TokenKind,
+        message: Str,
+        notes_fn: NotesFn,
+    ) -> ParseResult<Token<'a>>
+    where
+        Str: Into<String>,
+        NotesFn: FnOnce() -> Vec<String>,
+    {
+        let tok = self.next()?;
+        if tok.kind == expected {
+            Ok(tok)
+        } else {
+            let label = if let Some(symbol) = expected.symbol_str() {
+                format!("expected `{}`", symbol)
+            } else {
+                format!("expected {}", expected.friendly_str().unwrap())
+            };
+            self.fancy_error(
+                message.into(),
+                vec![Label::primary(tok.span, label)],
+                notes_fn(),
+            );
+            Err(())
+        }
+    }
+
+    pub fn unexpected_token_error<S: Into<String>>(
+        &mut self,
+        span: Span,
+        message: S,
+        notes: Vec<String>,
+    ) {
+        self.fancy_error(
+            message,
+            vec![Label::primary(span, "unexpected token".to_string())],
+            notes,
+        );
+    }
+
+    pub fn enter_block(&mut self, context_span: Span, context_name: &str) -> ParseResult<()> {
+        assert!(self.paren_stack.is_empty());
+
+        let colon = if self.peek_raw() == Some(TokenKind::Colon) {
+            self.next_raw()
+        } else {
+            None
+        };
+
+        self.handle_newline_indent(context_name)?;
+
+        let indent = self.next()?;
+        if indent.kind == TokenKind::Indent {
+            self.indent_stack.push(BlockIndent {
+                context_span,
+                context_name: context_name.into(),
+                indent: indent.text,
+                indent_span: indent.span,
+            });
+            Ok(())
+        } else {
+            self.fancy_error(
+                format!("failed to parse {} body", context_name),
+                vec![
+                    Label::primary(indent.span, "unexpected token".into()),
+                    Label::secondary(
+                        context_span,
+                        format!(
+                            "the body of this {} must be indented and non-empty",
+                            context_name,
+                        ),
+                    ),
+                ],
+                vec![],
+            );
+            Err(())
+        }
+    }
+
+    pub fn expect_newline(&mut self, context_name: &str) -> ParseResult<()> {
+        self.handle_newline_indent(context_name)?;
+        if self.peek() == Some(TokenKind::Indent) {
+            let indent = self.next()?;
+            self.fancy_error(
+                "unexpected indentation",
+                vec![Label::primary(
+                    indent.span,
+                    "this line indented further than other lines in the current block".into(),
+                )],
+                vec![],
+            );
+            Err(())
+        } else {
+            Ok(())
+        }
+    }
+
+    fn handle_newline_indent(&mut self, context_name: &str) -> ParseResult<()> {
+        assert!(
+            self.paren_stack.is_empty(),
+            "Parser::handle_newline_indent called within parens"
+        );
+
+        match self.peek_raw() {
+            None => Ok(()), // eof is an acceptable newline
+            Some(TokenKind::Newline) => {
+                let mut last_nl = self.next_raw().unwrap();
+                while self.peek_raw() == Some(TokenKind::Newline) {
+                    last_nl = self.next_raw().unwrap();
+                }
+                if self.done() {
+                    return Ok(());
+                }
+
+                let (indent, indent_span) = indent_str(&last_nl);
+                self.check_indent_style(indent, indent_span)?;
+
+                if indent.len() > self.last_indent().len() {
+                    self.buffered.push(Token {
+                        kind: TokenKind::Indent,
+                        text: indent,
+                        span: indent_span,
+                    });
+                    return Ok(());
+                }
+                while indent.len() < self.last_indent().len() {
+                    self.buffered.push(Token {
+                        kind: TokenKind::Dedent,
+                        text: indent,
+                        span: indent_span,
+                    });
+                    self.indent_stack.pop();
+                }
+                if indent.len() != self.last_indent().len() {
+                    self.indentation_error(
+                        indent_span,
+                        "this indentation doesn't match other lines in the current block or an enclosing block"
+                    );
+                    return Err(());
+                }
+                Ok(())
+            }
+            Some(_) => {
+                let tok = self.next()?;
+                self.unexpected_token_error(
+                    tok.span,
+                    format!("unexpected token while parsing {}", context_name),
+                    vec!["expected a newline".into()],
+                );
+                Err(())
+            }
+        }
+    }
+
+    /// Emit an error diagnostic, but don't stop parsing
+    pub fn error<S: Into<String>>(&mut self, span: Span, message: S) {
+        self.diagnostics.push(Diagnostic {
+            severity: Severity::Error,
+            code: None,
+            message: message.into(),
+            labels: vec![CsLabel {
+                style: LabelStyle::Primary,
+                file_id: (),
+                range: span.into(),
+                message: String::new(),
+            }],
+            notes: vec![],
+        })
+    }
+
+    pub fn fancy_error<S: Into<String>>(
+        &mut self,
+        message: S,
+        labels: Vec<Label>,
+        notes: Vec<String>,
+    ) {
+        let labels = labels
+            .into_iter()
+            .map(|lbl| CsLabel {
+                style: lbl.style,
+                file_id: (),
+                range: lbl.span.into(),
+                message: lbl.message,
+            })
+            .collect();
+
+        self.diagnostics.push(Diagnostic {
+            severity: Severity::Error,
+            code: None,
+            message: message.into(),
+            labels,
+            notes,
+        })
+    }
+
+    pub fn indentation_error<S: Into<String>>(&mut self, span: Span, message: S) {
+        self.fancy_error(
+            "inconsistent indentation",
+            vec![Label::primary(span, message.into())],
+            vec![],
+        );
+    }
+
+    fn check_indent_style(&mut self, indent: &str, span: Span) -> ParseResult<()> {
+        if indent.is_empty() {
+            Ok(())
+        } else if indent.find(' ').is_some() && indent.find('\t').is_some() {
+            self.indentation_error(span, "this indent contains both tabs and spaces");
+            Err(())
+        } else if self.indent_style.is_none() {
+            self.indent_style = Some(indent.chars().next().unwrap());
+            Ok(())
+        } else if indent.chars().next() != self.indent_style {
+            self.indentation_error(
+                span,
+                format!(
+                    "This line is indented with {}s, while prior lines are indented with {}s.",
+                    indent_char_name(indent.chars().next().unwrap()),
+                    indent_char_name(self.indent_style.unwrap())
+                ),
+            );
+            Err(())
+        } else {
+            Ok(())
+        }
+    }
+}
+
+fn indent_char_name(c: char) -> &'static str {
+    match c {
+        ' ' => "space",
+        '\t' => "tab",
+        _ => panic!(),
+    }
+}
+
+fn indent_str<'a>(tok: &Token<'a>) -> (&'a str, Span) {
+    assert_eq!(tok.kind, TokenKind::Newline);
+    let text = tok.text.trim_start_matches(&['\r', '\n'][..]);
+    let span = Span::new(tok.span.start + (tok.text.len() - text.len()), tok.span.end);
+    (text, span)
+}
+
+pub struct Label {
+    style: LabelStyle,
+    span: Span,
+    message: String,
+}
+impl Label {
+    pub fn primary(span: Span, message: String) -> Self {
+        Label {
+            style: LabelStyle::Primary,
+            span,
+            message,
+        }
+    }
+
+    pub fn secondary(span: Span, message: String) -> Self {
+        Label {
+            style: LabelStyle::Secondary,
+            span,
+            message,
+        }
+    }
+}
+
+struct BlockIndent<'a> {
+    context_span: Span,
+    context_name: String,
+    indent: &'a str,
+    indent_span: Span,
+}

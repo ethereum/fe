@@ -396,23 +396,15 @@ pub fn contract_stmt(input: Cursor) -> ParseResult<Node<ContractStmt>> {
 
 /// Parse a struct or contract field definition.
 pub fn field(input: Cursor) -> ParseResult<Node<Field>> {
-    let (input, pub_qual) = opt_qualifier(input, "pub", PubQualifier {})?;
-    let (input, const_qual) = opt_qualifier(input, "const", ConstQualifier {})?;
+    let (input, pub_qual) = parse_opt_qualifier(input, "pub", PubQualifier {})?;
+    let (input, const_qual) = parse_opt_qualifier(input, "const", ConstQualifier {})?;
     let (input, name) = name_token(input)?;
 
     let (input, _) = op(":")(input)?;
     let (input, typ) = type_desc(input)?;
     let (input, _) = newline_token(input)?;
 
-    let left_span = if let Some(node) = &pub_qual {
-        node.span
-    } else if let Some(node) = &const_qual {
-        node.span
-    } else {
-        name.span
-    };
-
-    let span = Span::from_pair(left_span, &typ);
+    let span = name.span + &pub_qual + &const_qual + &typ;
 
     Ok((
         input,
@@ -422,6 +414,7 @@ pub fn field(input: Cursor) -> ParseResult<Node<Field>> {
                 const_qual,
                 name: name.into(),
                 typ,
+                value: None,
             },
             span,
         ),
@@ -486,7 +479,7 @@ pub fn event_def(input: Cursor) -> ParseResult<Node<ContractStmt>> {
 
 /// Parse an event field definition.
 pub fn event_field(input: Cursor) -> ParseResult<Node<EventField>> {
-    let (input, idx_qual) = opt_qualifier(input, "idx", IdxQualifier {})?;
+    let (input, idx_qual) = parse_opt_qualifier(input, "idx", IdxQualifier {})?;
     let (input, name) = name_token(input)?;
     let (input, _) = op(":")(input)?;
     let (input, typ) = type_desc(input)?;
@@ -511,7 +504,7 @@ pub fn event_field(input: Cursor) -> ParseResult<Node<EventField>> {
 }
 
 pub fn func_def(input: Cursor) -> ParseResult<Node<ContractStmt>> {
-    let (input, pub_qual) = opt_qualifier(input, "pub", PubQualifier {})?;
+    let (input, pub_qual) = parse_opt_qualifier(input, "pub", PubQualifier {})?;
     let (input, def_kw) = name("def")(input)?;
     let (input, name_tok) = name_token(input)?;
 
@@ -755,7 +748,7 @@ where
     map(parser, |tok| TryFrom::try_from(tok).unwrap())
 }
 
-pub fn opt_qualifier<'a, T>(
+pub fn parse_opt_qualifier<'a, T>(
     input: Cursor<'a>,
     qual: &'static str,
     ast_struct: T,

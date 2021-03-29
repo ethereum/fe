@@ -1,6 +1,6 @@
 x
-x,
-x, y
+(x,)
+(x, y)
 ---
 [
   Node(
@@ -16,15 +16,15 @@ x, y
         Node(
           kind: Name("x"),
           span: Span(
-            start: 2,
-            end: 3,
+            start: 3,
+            end: 4,
           ),
         ),
       ],
     ),
     span: Span(
       start: 2,
-      end: 4,
+      end: 6,
     ),
   ),
   Node(
@@ -33,22 +33,22 @@ x, y
         Node(
           kind: Name("x"),
           span: Span(
-            start: 5,
-            end: 6,
+            start: 8,
+            end: 9,
           ),
         ),
         Node(
           kind: Name("y"),
           span: Span(
-            start: 8,
-            end: 9,
+            start: 11,
+            end: 12,
           ),
         ),
       ],
     ),
     span: Span(
-      start: 5,
-      end: 9,
+      start: 7,
+      end: 13,
     ),
   ),
 ]

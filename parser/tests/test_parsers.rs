@@ -87,6 +87,7 @@ macro_rules! assert_fixture_parsed_with {
             let (actual_remaining, actual_ast) = actual.unwrap();
             let actual_ser = to_ron_string_pretty(&actual_ast).unwrap();
 
+            eprintln!("{}", &actual_ser);
             assert_eq!(actual_remaining, empty_slice!());
             assert_strings_eq!(
                 actual_ser,
@@ -112,30 +113,10 @@ macro_rules! parser_fixture_tests {
         )+
 
         mod fixture_writers {
-            use std::path::{
-                Path,
-                PathBuf,
-            };
+            use std::path::Path;
             use std::fs;
-            use std::env;
 
             use super::*;
-
-            fn get_fixture_content(fixture_name: &str) -> (String, PathBuf) {
-                let fe_fixtures_path = env::var("FE_FIXTURES_PATH")
-                    .expect("must set FE_FIXTURES_PATH env var to write fixtures");
-
-                let mut path = PathBuf::from(fe_fixtures_path);
-                path.push(fixture_name);
-
-                let content = fs::read_to_string(&path)
-                    .expect(&format!(
-                        "could not read content from fixture path {}",
-                        path.to_str().unwrap(),
-                    ));
-
-                (content, path)
-            }
 
             mod writers {
                 use super::*;
@@ -146,9 +127,8 @@ macro_rules! parser_fixture_tests {
                         .file_name()
                         .expect("fixture path invalid");
 
-                    let (content, path) = get_fixture_content(fixture_name.to_str().unwrap());
-
-                    let (inp, _old_ser) = $crate::utils::parse_fixture(&content).unwrap();
+                    let (content, path) = utils::get_fixture_content(fixture_name.to_str().unwrap());
+                    let (inp, _old_ser) = utils::parse_fixture(&content).unwrap();
 
                     let tokens = get_parse_tokens(inp).unwrap();
                     let (_, result) = $parser(&tokens[..]).unwrap();
@@ -344,12 +324,12 @@ parser_fixture_tests! {
         write_func_def,
         "fixtures/parsers/func_def.ron",
     ),
-    (
-        repeat_newline(arg_list),
-        test_arg_list,
-        write_arg_list,
-        "fixtures/parsers/arg_list.ron",
-    ),
+    // (
+    //     repeat_newline(arg_list),
+    //     test_arg_list,
+    //     write_arg_list,
+    //     "fixtures/parsers/arg_list.ron",
+    // ),
     (
         repeat_newline(arg_def),
         test_arg_def,
@@ -494,12 +474,12 @@ parser_fixture_tests! {
         write_while_stmt,
         "fixtures/parsers/while_stmt.ron",
     ),
-    (
-        repeat_newline(exprs),
-        test_exprs,
-        write_exprs,
-        "fixtures/parsers/exprs.ron",
-    ),
+    // (
+    //     repeat_newline(exprs),
+    //     test_exprs,
+    //     write_exprs,
+    //     "fixtures/parsers/exprs.ron",
+    // ),
     (
         repeat_newline(expr),
         test_expr,
