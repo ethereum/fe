@@ -1,0 +1,3 @@
+contract Foo:
+    pub def bar(a: u256, b: bool):
+        a += b

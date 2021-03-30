@@ -87,7 +87,8 @@ use std::fs;
     case("struct_call_without_kw_args.fe", "KeyWordArgsRequired"),
     case("type_constructor_from_variable.fe", "NumericLiteralExpected"),
     case("unary_minus_on_bool.fe", "TypeError"),
-    case("unexpected_return.fe", "TypeError")
+    case("unexpected_return.fe", "TypeError"),
+    case("aug_assign_non_numeric.fe", "TypeError")
 )]
 fn test_compile_errors(fixture_file: &str, expected_error: &str) {
     let src = fs::read_to_string(format!("tests/fixtures/compile_errors/{}", fixture_file))

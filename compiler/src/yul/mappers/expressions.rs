@@ -278,7 +278,7 @@ pub fn expr_bin_operation(context: &Context, exp: &Node<fe::Expr>) -> yul::Expre
                 }
                 _ => unreachable!(),
             },
-            _ => unimplemented!(),
+            fe::BinOperator::FloorDiv => unimplemented!(),
         };
     }
 

@@ -61,6 +61,12 @@ impl<T> Node<T> {
             span,
         }
     }
+
+    /// Sets a new node ID.
+    pub fn new_id(mut self) -> Self {
+        self.id = NodeId::create();
+        self
+    }
 }
 
 impl<T> From<&Node<T>> for Span {
