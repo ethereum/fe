@@ -1,0 +1,3 @@
+contract Foo:
+    pub def foo(a: u256, b: u8):
+        a + b

@@ -1,6 +1,5 @@
 use crate::builtins;
 use crate::errors::SemanticError;
-use crate::namespace::operations;
 use crate::namespace::scopes::{
     BlockScope,
     ContractFunctionDef,
@@ -18,6 +17,7 @@ use crate::namespace::types::{
     Type,
     U256,
 };
+use crate::operations;
 use crate::traversal::utils::{
     call_arg_value,
     expression_attributes_to_types,
@@ -414,35 +414,8 @@ fn expr_bin_operation(
         let left_attributes = value_expr(Rc::clone(&scope), Rc::clone(&context), left)?;
         let right_attributes = value_expr(Rc::clone(&scope), Rc::clone(&context), right)?;
 
-        if let fe::BinOperator::Pow = op.kind {
-            if let (Type::Base(Base::Numeric(left)), Type::Base(Base::Numeric(right))) =
-                (&left_attributes.typ, &right_attributes.typ)
-            {
-                // The exponent is not allowed to be a signed integer. To allow calculations
-                // such as -2 ** 3 we allow the right hand side to be an unsigned integer
-                // even if the left side is a signed integer. It is allowed as long as the
-                // right side is the same size or smaller than the left side (e.g. i16 ** u16
-                // but not i16 ** u32). The type of the result will be the type of the left
-                // side and under/overflow checks are based on that type.
-                if right.is_signed() {
-                    return Err(SemanticError::signed_exponent_not_allowed());
-                }
-                if left.is_signed() && left.can_hold(&right) {
-                    return Ok(ExpressionAttributes::new(
-                        left_attributes.typ,
-                        Location::Value,
-                    ));
-                }
-            } else {
-                return Err(SemanticError::type_error());
-            }
-        }
-
-        validate_types_equal(&left_attributes, &right_attributes)?;
-
-        // for now we assume these are the only possible attributes
         return Ok(ExpressionAttributes::new(
-            left_attributes.typ,
+            operations::bin(&left_attributes.typ, &op.kind, &right_attributes.typ)?,
             Location::Value,
         ));
     }

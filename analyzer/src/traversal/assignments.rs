@@ -3,10 +3,7 @@ use crate::namespace::scopes::{
     BlockScope,
     Shared,
 };
-use crate::namespace::types::{
-    Base,
-    Type,
-};
+use crate::operations;
 use crate::traversal::expressions;
 use crate::Context;
 use crate::Location;
@@ -60,25 +57,12 @@ pub fn aug_assign(
     context: Shared<Context>,
     stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
-    if let fe::FuncStmt::AugAssign {
-        target,
-        op: _,
-        value,
-    } = &stmt.kind
-    {
+    if let fe::FuncStmt::AugAssign { target, op, value } = &stmt.kind {
         let target_attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), target)?;
         let value_attributes = expressions::expr(scope, context, value)?;
 
-        return match target_attributes.typ {
-            Type::Base(Base::Numeric(_)) => {
-                if target_attributes.typ == value_attributes.typ {
-                    Ok(())
-                } else {
-                    Err(SemanticError::type_error())
-                }
-            }
-            _ => Err(SemanticError::type_error()),
-        };
+        operations::bin(&target_attributes.typ, &op.kind, &value_attributes.typ)?;
+        return Ok(());
     }
 
     unreachable!()
