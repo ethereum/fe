@@ -8,6 +8,7 @@
 pub mod builtins;
 pub mod errors;
 pub mod namespace;
+mod operations;
 mod traversal;
 
 use crate::errors::SemanticError;
