@@ -40,7 +40,7 @@ pub fn func_def(
     def: &Node<fe::ContractStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::ContractStmt::FuncDef {
-        qual,
+        pub_qual,
         name,
         args,
         return_type,
@@ -50,7 +50,7 @@ pub fn func_def(
         let name = &name.kind;
         let function_scope = BlockScope::from_contract_scope(name, Rc::clone(&contract_scope));
 
-        let is_public = qual.is_some();
+        let is_public = pub_qual.is_some();
 
         let params = args
             .iter()
@@ -94,14 +94,7 @@ pub fn func_body(
     context: Shared<Context>,
     def: &Node<fe::ContractStmt>,
 ) -> Result<(), SemanticError> {
-    if let fe::ContractStmt::FuncDef {
-        qual: _,
-        name,
-        args: _,
-        return_type: _,
-        body,
-    } = &def.kind
-    {
+    if let fe::ContractStmt::FuncDef { name, body, .. } = &def.kind {
         let host_func_def = contract_scope
             .borrow()
             .function_def(&name.kind)

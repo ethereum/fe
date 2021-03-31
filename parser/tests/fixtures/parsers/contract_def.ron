@@ -1,5 +1,10 @@
 contract Foo:
     x: address
+    pub y: u256
+    const z: u8
+    pub const a: u8
+    pub def foo() -> u8:
+        return 10
 ---
 [
   Node(
@@ -11,10 +16,11 @@ contract Foo:
           end: 12,
         ),
       ),
-      body: [
+      fields: [
         Node(
-          kind: ContractField(
-            qual: None,
+          kind: Field(
+            pub_qual: None,
+            const_qual: None,
             name: Node(
               kind: "x",
               span: Span(
@@ -37,11 +43,164 @@ contract Foo:
             end: 28,
           ),
         ),
+        Node(
+          kind: Field(
+            pub_qual: Some(Node(
+              kind: PubQualifier(),
+              span: Span(
+                start: 33,
+                end: 36,
+              ),
+            )),
+            const_qual: None,
+            name: Node(
+              kind: "y",
+              span: Span(
+                start: 37,
+                end: 38,
+              ),
+            ),
+            typ: Node(
+              kind: Base(
+                base: "u256",
+              ),
+              span: Span(
+                start: 40,
+                end: 44,
+              ),
+            ),
+          ),
+          span: Span(
+            start: 33,
+            end: 44,
+          ),
+        ),
+        Node(
+          kind: Field(
+            pub_qual: None,
+            const_qual: Some(Node(
+              kind: ConstQualifier(),
+              span: Span(
+                start: 49,
+                end: 54,
+              ),
+            )),
+            name: Node(
+              kind: "z",
+              span: Span(
+                start: 55,
+                end: 56,
+              ),
+            ),
+            typ: Node(
+              kind: Base(
+                base: "u8",
+              ),
+              span: Span(
+                start: 58,
+                end: 60,
+              ),
+            ),
+          ),
+          span: Span(
+            start: 49,
+            end: 60,
+          ),
+        ),
+        Node(
+          kind: Field(
+            pub_qual: Some(Node(
+              kind: PubQualifier(),
+              span: Span(
+                start: 65,
+                end: 68,
+              ),
+            )),
+            const_qual: Some(Node(
+              kind: ConstQualifier(),
+              span: Span(
+                start: 69,
+                end: 74,
+              ),
+            )),
+            name: Node(
+              kind: "a",
+              span: Span(
+                start: 75,
+                end: 76,
+              ),
+            ),
+            typ: Node(
+              kind: Base(
+                base: "u8",
+              ),
+              span: Span(
+                start: 78,
+                end: 80,
+              ),
+            ),
+          ),
+          span: Span(
+            start: 65,
+            end: 80,
+          ),
+        ),
+      ],
+      body: [
+        Node(
+          kind: FuncDef(
+            pub_qual: Some(Node(
+              kind: PubQualifier(),
+              span: Span(
+                start: 85,
+                end: 88,
+              ),
+            )),
+            name: Node(
+              kind: "foo",
+              span: Span(
+                start: 93,
+                end: 96,
+              ),
+            ),
+            args: [],
+            return_type: Some(Node(
+              kind: Base(
+                base: "u8",
+              ),
+              span: Span(
+                start: 102,
+                end: 104,
+              ),
+            )),
+            body: [
+              Node(
+                kind: Return(
+                  value: Some(Node(
+                    kind: Num("10"),
+                    span: Span(
+                      start: 121,
+                      end: 123,
+                    ),
+                  )),
+                ),
+                span: Span(
+                  start: 114,
+                  end: 123,
+                ),
+              ),
+            ],
+          ),
+          span: Span(
+            start: 85,
+            end: 123,
+          ),
+        ),
       ],
     ),
     span: Span(
       start: 0,
-      end: 28,
+      end: 123,
     ),
   ),
 ]

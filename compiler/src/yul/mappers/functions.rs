@@ -32,7 +32,7 @@ pub fn func_def(context: &Context, def: &Node<fe::ContractStmt>) -> yul::Stateme
     if let (
         Some(attributes),
         fe::ContractStmt::FuncDef {
-            qual: _,
+            pub_qual: _,
             name,
             args,
             return_type: _,

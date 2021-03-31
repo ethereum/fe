@@ -1,5 +1,8 @@
 struct Foo:
     x: address
+    pub y: u256
+    const z: u8
+    pub const a: u8
 ---
 [
   Node(
@@ -11,10 +14,11 @@ struct Foo:
           end: 10,
         ),
       ),
-      body: [
+      fields: [
         Node(
-          kind: StructField(
-            qual: None,
+          kind: Field(
+            pub_qual: None,
+            const_qual: None,
             name: Node(
               kind: "x",
               span: Span(
@@ -37,11 +41,113 @@ struct Foo:
             end: 26,
           ),
         ),
+        Node(
+          kind: Field(
+            pub_qual: Some(Node(
+              kind: PubQualifier(),
+              span: Span(
+                start: 31,
+                end: 34,
+              ),
+            )),
+            const_qual: None,
+            name: Node(
+              kind: "y",
+              span: Span(
+                start: 35,
+                end: 36,
+              ),
+            ),
+            typ: Node(
+              kind: Base(
+                base: "u256",
+              ),
+              span: Span(
+                start: 38,
+                end: 42,
+              ),
+            ),
+          ),
+          span: Span(
+            start: 31,
+            end: 42,
+          ),
+        ),
+        Node(
+          kind: Field(
+            pub_qual: None,
+            const_qual: Some(Node(
+              kind: ConstQualifier(),
+              span: Span(
+                start: 47,
+                end: 52,
+              ),
+            )),
+            name: Node(
+              kind: "z",
+              span: Span(
+                start: 53,
+                end: 54,
+              ),
+            ),
+            typ: Node(
+              kind: Base(
+                base: "u8",
+              ),
+              span: Span(
+                start: 56,
+                end: 58,
+              ),
+            ),
+          ),
+          span: Span(
+            start: 47,
+            end: 58,
+          ),
+        ),
+        Node(
+          kind: Field(
+            pub_qual: Some(Node(
+              kind: PubQualifier(),
+              span: Span(
+                start: 63,
+                end: 66,
+              ),
+            )),
+            const_qual: Some(Node(
+              kind: ConstQualifier(),
+              span: Span(
+                start: 67,
+                end: 72,
+              ),
+            )),
+            name: Node(
+              kind: "a",
+              span: Span(
+                start: 73,
+                end: 74,
+              ),
+            ),
+            typ: Node(
+              kind: Base(
+                base: "u8",
+              ),
+              span: Span(
+                start: 76,
+                end: 78,
+              ),
+            ),
+          ),
+          span: Span(
+            start: 63,
+            end: 78,
+          ),
+        ),
       ],
     ),
     span: Span(
       start: 0,
-      end: 26,
+      end: 78,
     ),
   ),
 ]

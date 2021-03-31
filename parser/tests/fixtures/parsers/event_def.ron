@@ -14,7 +14,7 @@ event Foo:
       fields: [
         Node(
           kind: EventField(
-            qual: None,
+            idx_qual: None,
             name: Node(
               kind: "x",
               span: Span(

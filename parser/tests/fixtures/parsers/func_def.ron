@@ -8,7 +8,7 @@ pub def foo(x: bool) -> bool:
 [
   Node(
     kind: FuncDef(
-      qual: None,
+      pub_qual: None,
       name: Node(
         kind: "foo",
         span: Span(
@@ -68,7 +68,7 @@ pub def foo(x: bool) -> bool:
   ),
   Node(
     kind: FuncDef(
-      qual: None,
+      pub_qual: None,
       name: Node(
         kind: "foo",
         span: Span(
@@ -136,8 +136,8 @@ pub def foo(x: bool) -> bool:
   ),
   Node(
     kind: FuncDef(
-      qual: Some(Node(
-        kind: Pub,
+      pub_qual: Some(Node(
+        kind: PubQualifier(),
         span: Span(
           start: 54,
           end: 57,

@@ -6,7 +6,7 @@ use fe_parser::node::Node;
 /// Lowers a function definition.
 pub fn func_def(context: &Context, def: Node<fe::ContractStmt>) -> Node<fe::ContractStmt> {
     if let fe::ContractStmt::FuncDef {
-        qual,
+        pub_qual,
         name,
         args,
         return_type,
@@ -16,7 +16,7 @@ pub fn func_def(context: &Context, def: Node<fe::ContractStmt>) -> Node<fe::Cont
         let lowered_body = multiple_stmts(context, body);
 
         let lowered_kind = fe::ContractStmt::FuncDef {
-            qual,
+            pub_qual,
             name,
             args,
             return_type,

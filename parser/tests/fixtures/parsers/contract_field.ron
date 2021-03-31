@@ -1,11 +1,13 @@
 x: address
 const x: address
 pub x: address
+pub const x: address
 ---
 [
   Node(
-    kind: ContractField(
-      qual: None,
+    kind: Field(
+      pub_qual: None,
+      const_qual: None,
       name: Node(
         kind: "x",
         span: Span(
@@ -29,9 +31,10 @@ pub x: address
     ),
   ),
   Node(
-    kind: ContractField(
-      qual: Some(Node(
-        kind: Const,
+    kind: Field(
+      pub_qual: None,
+      const_qual: Some(Node(
+        kind: ConstQualifier(),
         span: Span(
           start: 11,
           end: 16,
@@ -60,14 +63,15 @@ pub x: address
     ),
   ),
   Node(
-    kind: ContractField(
-      qual: Some(Node(
-        kind: Pub,
+    kind: Field(
+      pub_qual: Some(Node(
+        kind: PubQualifier(),
         span: Span(
           start: 28,
           end: 31,
         ),
       )),
+      const_qual: None,
       name: Node(
         kind: "x",
         span: Span(
@@ -88,6 +92,44 @@ pub x: address
     span: Span(
       start: 28,
       end: 42,
+    ),
+  ),
+  Node(
+    kind: Field(
+      pub_qual: Some(Node(
+        kind: PubQualifier(),
+        span: Span(
+          start: 43,
+          end: 46,
+        ),
+      )),
+      const_qual: Some(Node(
+        kind: ConstQualifier(),
+        span: Span(
+          start: 47,
+          end: 52,
+        ),
+      )),
+      name: Node(
+        kind: "x",
+        span: Span(
+          start: 53,
+          end: 54,
+        ),
+      ),
+      typ: Node(
+        kind: Base(
+          base: "address",
+        ),
+        span: Span(
+          start: 56,
+          end: 63,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 43,
+      end: 63,
     ),
   ),
 ]

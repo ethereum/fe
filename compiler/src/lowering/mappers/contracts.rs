@@ -7,11 +7,10 @@ use fe_parser::node::Node;
 
 /// Lowers a contract definition.
 pub fn contract_def(context: &Context, stmt: Node<fe::ModuleStmt>) -> Node<fe::ModuleStmt> {
-    if let fe::ModuleStmt::ContractDef { name, body } = stmt.kind {
+    if let fe::ModuleStmt::ContractDef { name, fields, body } = stmt.kind {
         let lowered_body = body
             .into_iter()
             .map(|stmt| match stmt.kind {
-                ContractStmt::ContractField { .. } => stmt,
                 ContractStmt::EventDef { .. } => stmt,
                 ContractStmt::FuncDef { .. } => functions::func_def(context, stmt),
             })
@@ -20,6 +19,7 @@ pub fn contract_def(context: &Context, stmt: Node<fe::ModuleStmt>) -> Node<fe::M
         return Node::new(
             fe::ModuleStmt::ContractDef {
                 name,
+                fields,
                 body: lowered_body,
             },
             stmt.span,

@@ -1,5 +1,5 @@
 use fe_parser::{
-    ast::StructStmt,
+    ast::Field,
     node::Node,
 };
 
@@ -18,11 +18,11 @@ use crate::namespace::types::{
 pub fn struct_def(
     module_scope: Shared<ModuleScope>,
     name: &str,
-    struct_stmts: &[Node<StructStmt>],
+    fields: &[Node<Field>],
 ) -> Result<(), SemanticError> {
     let mut val = Struct::new(name);
-    for stmt in struct_stmts {
-        let StructStmt::StructField { name, typ, .. } = &stmt.kind;
+    for field in fields {
+        let Field { name, typ, .. } = &field.kind;
         let field_type = type_desc(&module_scope.borrow().type_defs, &typ.kind)?;
         if let Type::Base(base_typ) = field_type {
             val.add_field(&name.kind, &FixedSize::Base(base_typ))?;

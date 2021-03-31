@@ -22,8 +22,8 @@ pub fn module(context: Shared<Context>, module: &fe::Module) -> Result<(), Seman
     for stmt in module.body.iter() {
         match &stmt.kind {
             fe::ModuleStmt::TypeDef { .. } => type_def(Rc::clone(&scope), stmt)?,
-            fe::ModuleStmt::StructDef { name, body } => {
-                structs::struct_def(Rc::clone(&scope), &name.kind, body)?
+            fe::ModuleStmt::StructDef { name, fields } => {
+                structs::struct_def(Rc::clone(&scope), &name.kind, fields)?
             }
             fe::ModuleStmt::ContractDef { .. } => {
                 // Collect contract statements and the scope that we create for them. After we

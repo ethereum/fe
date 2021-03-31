@@ -59,16 +59,17 @@ Node(
               end: 45,
             ),
           ),
-          body: [
+          fields: [
             Node(
-              kind: ContractField(
-                qual: Some(Node(
-                  kind: Pub,
+              kind: Field(
+                pub_qual: Some(Node(
+                  kind: PubQualifier(),
                   span: Span(
                     start: 51,
                     end: 54,
                   ),
                 )),
+                const_qual: None,
                 name: Node(
                   kind: "guest_book",
                   span: Span(
@@ -108,6 +109,8 @@ Node(
                 end: 88,
               ),
             ),
+          ],
+          body: [
             Node(
               kind: EventDef(
                 name: Node(
@@ -120,8 +123,8 @@ Node(
                 fields: [
                   Node(
                     kind: EventField(
-                      qual: Some(Node(
-                        kind: Idx,
+                      idx_qual: Some(Node(
+                        kind: IdxQualifier(),
                         span: Span(
                           start: 116,
                           end: 119,
@@ -158,8 +161,8 @@ Node(
             ),
             Node(
               kind: FuncDef(
-                qual: Some(Node(
-                  kind: Pub,
+                pub_qual: Some(Node(
+                  kind: PubQualifier(),
                   span: Span(
                     start: 143,
                     end: 146,
@@ -345,8 +348,8 @@ Node(
             ),
             Node(
               kind: FuncDef(
-                qual: Some(Node(
-                  kind: Pub,
+                pub_qual: Some(Node(
+                  kind: PubQualifier(),
                   span: Span(
                     start: 268,
                     end: 271,

@@ -40,10 +40,11 @@ contract Foo:
           end: 23,
         ),
       ),
-      body: [
+      fields: [
         Node(
-          kind: ContractField(
-            qual: None,
+          kind: Field(
+            pub_qual: None,
+            const_qual: None,
             name: Node(
               kind: "x",
               span: Span(
@@ -67,6 +68,7 @@ contract Foo:
           ),
         ),
       ],
+      body: [],
     ),
     span: Span(
       start: 11,

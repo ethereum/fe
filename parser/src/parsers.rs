@@ -365,10 +365,15 @@ pub fn contract_def(input: Cursor) -> ParseResult<Node<ModuleStmt>> {
 
     // INDENT contract_stmt+ DEDENT
     let (input, _) = indent_token(input)?;
-    let (input, body) = many1(contract_stmt)(input)?;
+    let (input, fields) = many0(field)(input)?;
+    let (input, body) = many0(contract_stmt)(input)?;
     let (input, _) = dedent_token(input)?;
 
-    let last_stmt = body.last().unwrap();
+    let last_stmt = body
+        .last()
+        .map(|node| node.span)
+        .or_else(|| fields.last().map(|node| node.span))
+        .unwrap();
     let span = Span::from_pair(contract_kw, last_stmt);
 
     Ok((
@@ -376,6 +381,7 @@ pub fn contract_def(input: Cursor) -> ParseResult<Node<ModuleStmt>> {
         Node::new(
             ContractDef {
                 name: name_tok.into(),
+                fields,
                 body,
             },
             span,
@@ -385,36 +391,36 @@ pub fn contract_def(input: Cursor) -> ParseResult<Node<ModuleStmt>> {
 
 /// Parse a contract statement.
 pub fn contract_stmt(input: Cursor) -> ParseResult<Node<ContractStmt>> {
-    alt((contract_field, event_def, func_def))(input)
+    alt((event_def, func_def))(input)
 }
 
-/// Parse a contract field definition.
-pub fn contract_field(input: Cursor) -> ParseResult<Node<ContractStmt>> {
-    let (input, (qual, name_tok)) = alt((
-        // Look for a qualifier and field name first...
-        map(pair(contract_field_qual, name_token), |res| {
-            let (qual, tok) = res;
-            (Some(qual), tok)
-        }),
-        // ...then fall back to just a field name
-        map(name_token, |tok| (None, tok)),
-    ))(input)?;
+/// Parse a struct or contract field definition.
+pub fn field(input: Cursor) -> ParseResult<Node<Field>> {
+    let (input, pub_qual) = opt_qualifier(input, "pub", PubQualifier {})?;
+    let (input, const_qual) = opt_qualifier(input, "const", ConstQualifier {})?;
+    let (input, name) = name_token(input)?;
 
     let (input, _) = op(":")(input)?;
     let (input, typ) = type_desc(input)?;
     let (input, _) = newline_token(input)?;
 
-    let span = match &qual {
-        Some(node) => Span::from_pair(node, &typ),
-        None => Span::from_pair(name_tok, &typ),
+    let left_span = if let Some(node) = &pub_qual {
+        node.span
+    } else if let Some(node) = &const_qual {
+        node.span
+    } else {
+        name.span
     };
+
+    let span = Span::from_pair(left_span, &typ);
 
     Ok((
         input,
         Node::new(
-            ContractStmt::ContractField {
-                qual,
-                name: name_tok.into(),
+            Field {
+                pub_qual,
+                const_qual,
+                name: name.into(),
                 typ,
             },
             span,
@@ -432,10 +438,10 @@ pub fn struct_def(input: Cursor) -> ParseResult<Node<ModuleStmt>> {
 
     // INDENT struct_field+ DEDENT
     let (input, _) = indent_token(input)?;
-    let (input, body) = many1(struct_field)(input)?;
+    let (input, fields) = many1(field)(input)?;
     let (input, _) = dedent_token(input)?;
 
-    let last_stmt = body.last().unwrap();
+    let last_stmt = fields.last().unwrap();
     let span = Span::from_pair(contract_kw, last_stmt);
 
     Ok((
@@ -443,41 +449,7 @@ pub fn struct_def(input: Cursor) -> ParseResult<Node<ModuleStmt>> {
         Node::new(
             StructDef {
                 name: name_tok.into(),
-                body,
-            },
-            span,
-        ),
-    ))
-}
-
-/// Parse a struct field definition.
-pub fn struct_field(input: Cursor) -> ParseResult<Node<StructStmt>> {
-    let (input, (qual, name_tok)) = alt((
-        // Look for a qualifier and field name first...
-        map(pair(struct_field_qual, name_token), |res| {
-            let (qual, tok) = res;
-            (Some(qual), tok)
-        }),
-        // ...then fall back to just a field name
-        map(name_token, |tok| (None, tok)),
-    ))(input)?;
-
-    let (input, _) = op(":")(input)?;
-    let (input, typ) = type_desc(input)?;
-    let (input, _) = newline_token(input)?;
-
-    let span = match &qual {
-        Some(node) => Span::from_pair(node, &typ),
-        None => Span::from_pair(name_tok, &typ),
-    };
-
-    Ok((
-        input,
-        Node::new(
-            StructStmt::StructField {
-                qual,
-                name: name_tok.into(),
-                typ,
+                fields,
             },
             span,
         ),
@@ -514,31 +486,23 @@ pub fn event_def(input: Cursor) -> ParseResult<Node<ContractStmt>> {
 
 /// Parse an event field definition.
 pub fn event_field(input: Cursor) -> ParseResult<Node<EventField>> {
-    let (input, (qual, name_tok)) = alt((
-        // Look for a qualifier and field name first...
-        map(pair(event_field_qual, name_token), |res| {
-            let (qual, tok) = res;
-            (Some(qual), tok)
-        }),
-        // ...then fall back to just a field name
-        map(name_token, |tok| (None, tok)),
-    ))(input)?;
-
+    let (input, idx_qual) = opt_qualifier(input, "idx", IdxQualifier {})?;
+    let (input, name) = name_token(input)?;
     let (input, _) = op(":")(input)?;
     let (input, typ) = type_desc(input)?;
     let (input, _) = newline_token(input)?;
 
-    let span = match &qual {
+    let span = match &idx_qual {
         Some(node) => Span::from_pair(node, &typ),
-        None => Span::from_pair(name_tok, &typ),
+        None => Span::from_pair(name, &typ),
     };
 
     Ok((
         input,
         Node::new(
             EventField {
-                qual,
-                name: name_tok.into(),
+                idx_qual,
+                name: name.into(),
                 typ,
             },
             span,
@@ -547,7 +511,7 @@ pub fn event_field(input: Cursor) -> ParseResult<Node<EventField>> {
 }
 
 pub fn func_def(input: Cursor) -> ParseResult<Node<ContractStmt>> {
-    let (input, qual) = opt(func_qual)(input)?;
+    let (input, pub_qual) = opt_qualifier(input, "pub", PubQualifier {})?;
     let (input, def_kw) = name("def")(input)?;
     let (input, name_tok) = name_token(input)?;
 
@@ -562,8 +526,8 @@ pub fn func_def(input: Cursor) -> ParseResult<Node<ContractStmt>> {
     let (input, body) = block(input)?;
 
     let last = body.last().unwrap();
-    let span = match &qual {
-        Some(qual) => Span::from_pair(qual, last),
+    let span = match &pub_qual {
+        Some(pub_qual) => Span::from_pair(pub_qual, last),
         None => Span::from_pair(def_kw, last),
     };
 
@@ -571,7 +535,7 @@ pub fn func_def(input: Cursor) -> ParseResult<Node<ContractStmt>> {
         input,
         Node::new(
             ContractStmt::FuncDef {
-                qual,
+                pub_qual,
                 name: name_tok.into(),
                 args,
                 return_type,
@@ -791,24 +755,33 @@ where
     map(parser, |tok| TryFrom::try_from(tok).unwrap())
 }
 
-/// Parse a contract field qualifier keyword e.g. "const".
-pub fn contract_field_qual(input: Cursor) -> ParseResult<Node<ContractFieldQual>> {
-    try_from_tok(alt((name("const"), name("pub"))))(input)
+pub fn opt_qualifier<'a, T>(
+    input: Cursor<'a>,
+    qual: &'static str,
+    ast_struct: T,
+) -> ParseResult<'a, Option<Node<T>>> {
+    let (input, maybe_tok) = opt(name(qual))(input)?;
+    if let Some(tok) = maybe_tok {
+        Ok((input, Some(Node::new(ast_struct, tok.span))))
+    } else {
+        Ok((input, None))
+    }
 }
 
-/// Parse a struct field qualifier keyword e.g. "const".
-pub fn struct_field_qual(input: Cursor) -> ParseResult<Node<StructFieldQual>> {
-    try_from_tok(name("pub"))(input)
+/// Parse 'pub' qualifier
+pub fn pub_qualifier(input: Cursor) -> ParseResult<Node<PubQualifier>> {
+    let (input, tok) = name("idx")(input)?;
+    Ok((input, Node::new(PubQualifier {}, tok.span)))
 }
-
-/// Parse an event field qualifier keyword i.e. "idx".
-pub fn event_field_qual(input: Cursor) -> ParseResult<Node<EventFieldQual>> {
-    try_from_tok(name("idx"))(input)
+/// Parse 'const' qualifier
+pub fn const_qualifier(input: Cursor) -> ParseResult<Node<ConstQualifier>> {
+    let (input, tok) = name("idx")(input)?;
+    Ok((input, Node::new(ConstQualifier {}, tok.span)))
 }
-
-/// Parse a function qualifier keyword i.e. "pub".
-pub fn func_qual(input: Cursor) -> ParseResult<Node<FuncQual>> {
-    try_from_tok(name("pub"))(input)
+/// Parse 'idx' qualifier
+pub fn idx_qualifier(input: Cursor) -> ParseResult<Node<IdxQualifier>> {
+    let (input, tok) = name("idx")(input)?;
+    Ok((input, Node::new(IdxQualifier {}, tok.span)))
 }
 
 pub fn func_stmt(input: Cursor) -> ParseResult<Vec<Node<FuncStmt>>> {
