@@ -4,7 +4,7 @@ idx x: address
 [
   Node(
     kind: EventField(
-      qual: None,
+      idx_qual: None,
       name: Node(
         kind: "x",
         span: Span(
@@ -29,8 +29,8 @@ idx x: address
   ),
   Node(
     kind: EventField(
-      qual: Some(Node(
-        kind: Idx,
+      idx_qual: Some(Node(
+        kind: IdxQualifier(),
         span: Span(
           start: 11,
           end: 14,

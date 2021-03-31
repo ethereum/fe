@@ -30,17 +30,20 @@ pub fn contract_def(
     context: Shared<Context>,
     stmt: &Node<fe::ModuleStmt>,
 ) -> Result<Shared<ContractScope>, SemanticError> {
-    if let fe::ModuleStmt::ContractDef { name, body } = &stmt.kind {
+    if let fe::ModuleStmt::ContractDef {
+        name,
+        fields: _,
+        body,
+    } = &stmt.kind
+    {
         let contract_scope = ContractScope::new(&name.kind, Rc::clone(&module_scope));
 
-        for stmt in body.iter() {
+        // Contract fields are evaluated in the next pass together with function bodies
+        // so that they can use other contract types that may only be defined after the
+        // current contract.
+
+        for stmt in body {
             match &stmt.kind {
-                fe::ContractStmt::ContractField { .. } => {
-                    // Contract fields are evaluated in the next pass together with function bodies
-                    // so that they can use other contract types that may only be defined after the
-                    // current contract.
-                    Ok(())
-                }
                 fe::ContractStmt::EventDef { .. } => {
                     event_def(Rc::clone(&contract_scope), Rc::clone(&context), stmt)
                 }
@@ -79,12 +82,12 @@ pub fn contract_body(
     context: Shared<Context>,
     stmt: &Node<fe::ModuleStmt>,
 ) -> Result<(), SemanticError> {
-    if let fe::ModuleStmt::ContractDef { body, .. } = &stmt.kind {
-        for stmt in body.iter() {
-            if let fe::ContractStmt::ContractField { .. } = &stmt.kind {
-                contract_field(Rc::clone(&contract_scope), stmt)?;
-            };
+    if let fe::ModuleStmt::ContractDef { fields, body, .. } = &stmt.kind {
+        for field in fields {
+            contract_field(Rc::clone(&contract_scope), field)?;
+        }
 
+        for stmt in body {
             if let fe::ContractStmt::FuncDef { .. } = &stmt.kind {
                 functions::func_body(Rc::clone(&contract_scope), Rc::clone(&context), stmt)
                     .map_err(|error| error.with_context(stmt.span))?;
@@ -103,14 +106,11 @@ pub fn contract_body(
 
 fn contract_field(
     scope: Shared<ContractScope>,
-    stmt: &Node<fe::ContractStmt>,
+    stmt: &Node<fe::Field>,
 ) -> Result<(), SemanticError> {
-    if let fe::ContractStmt::ContractField { qual: _, name, typ } = &stmt.kind {
-        let typ = types::type_desc(Scope::Contract(Rc::clone(&scope)), typ)?;
-        return scope.borrow_mut().add_field(&name.kind, typ);
-    }
-
-    unreachable!()
+    let fe::Field { name, typ, .. } = &stmt.kind;
+    let typ = types::type_desc(Scope::Contract(Rc::clone(&scope)), typ)?;
+    scope.borrow_mut().add_field(&name.kind, typ)
 }
 
 fn event_def(
@@ -162,7 +162,7 @@ fn event_field(
     field: &Node<fe::EventField>,
 ) -> Result<(bool, (String, FixedSize)), SemanticError> {
     Ok((
-        field.kind.qual.is_some(),
+        field.kind.idx_qual.is_some(),
         (
             field.kind.name.kind.to_string(),
             types::type_desc_fixed_size(Scope::Contract(scope), &field.kind.typ)?,

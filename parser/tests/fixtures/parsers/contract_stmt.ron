@@ -1,51 +1,27 @@
-x: address
 event Foo:
     x: address
+pub def foo():
+    pass
 ---
 [
-  Node(
-    kind: ContractField(
-      qual: None,
-      name: Node(
-        kind: "x",
-        span: Span(
-          start: 0,
-          end: 1,
-        ),
-      ),
-      typ: Node(
-        kind: Base(
-          base: "address",
-        ),
-        span: Span(
-          start: 3,
-          end: 10,
-        ),
-      ),
-    ),
-    span: Span(
-      start: 0,
-      end: 10,
-    ),
-  ),
   Node(
     kind: EventDef(
       name: Node(
         kind: "Foo",
         span: Span(
-          start: 17,
-          end: 20,
+          start: 6,
+          end: 9,
         ),
       ),
       fields: [
         Node(
           kind: EventField(
-            qual: None,
+            idx_qual: None,
             name: Node(
               kind: "x",
               span: Span(
-                start: 26,
-                end: 27,
+                start: 15,
+                end: 16,
               ),
             ),
             typ: Node(
@@ -53,21 +29,54 @@ event Foo:
                 base: "address",
               ),
               span: Span(
-                start: 29,
-                end: 36,
+                start: 18,
+                end: 25,
               ),
             ),
           ),
           span: Span(
-            start: 26,
-            end: 36,
+            start: 15,
+            end: 25,
           ),
         ),
       ],
     ),
     span: Span(
-      start: 11,
-      end: 36,
+      start: 0,
+      end: 25,
+    ),
+  ),
+  Node(
+    kind: FuncDef(
+      pub_qual: Some(Node(
+        kind: PubQualifier(),
+        span: Span(
+          start: 26,
+          end: 29,
+        ),
+      )),
+      name: Node(
+        kind: "foo",
+        span: Span(
+          start: 34,
+          end: 37,
+        ),
+      ),
+      args: [],
+      return_type: None,
+      body: [
+        Node(
+          kind: Pass,
+          span: Span(
+            start: 45,
+            end: 49,
+          ),
+        ),
+      ],
+    ),
+    span: Span(
+      start: 26,
+      end: 49,
     ),
   ),
 ]

@@ -321,7 +321,7 @@ parser_fixture_tests! {
         "fixtures/parsers/contract_stmt.ron",
     ),
     (
-        repeat(contract_field),
+        repeat(field),
         test_contract_field,
         write_contract_field,
         "fixtures/parsers/contract_field.ron",
@@ -391,24 +391,6 @@ parser_fixture_tests! {
         test_arr_dim,
         write_arr_dim,
         "fixtures/parsers/arr_dim.ron",
-    ),
-    (
-        repeat_newline(contract_field_qual),
-        test_contract_field_qual,
-        write_contract_field_qual,
-        "fixtures/parsers/contract_field_qual.ron",
-    ),
-    (
-        repeat_newline(event_field_qual),
-        test_event_field_qual,
-        write_event_field_qual,
-        "fixtures/parsers/event_field_qual.ron",
-    ),
-    (
-        repeat_newline(func_qual),
-        test_func_qual,
-        write_func_qual,
-        "fixtures/parsers/func_qual.ron",
     ),
     (
         repeat(func_stmt),

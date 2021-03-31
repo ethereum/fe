@@ -25,11 +25,12 @@ pub enum ModuleStmt {
     },
     ContractDef {
         name: Node<String>,
+        fields: Vec<Node<Field>>,
         body: Vec<Node<ContractStmt>>,
     },
     StructDef {
         name: Node<String>,
-        body: Vec<Node<StructStmt>>,
+        fields: Vec<Node<Field>>,
     },
 }
 
@@ -80,19 +81,30 @@ pub struct FromImportName {
     pub alias: Option<Node<String>>,
 }
 
+/// struct or contract field, with optional 'pub' and 'const' qualifiers
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct Field {
+    pub pub_qual: Option<Node<PubQualifier>>,
+    pub const_qual: Option<Node<ConstQualifier>>,
+    pub name: Node<String>,
+    pub typ: Node<TypeDesc>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct PubQualifier {}
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct ConstQualifier {}
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct IdxQualifier {}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ContractStmt {
-    ContractField {
-        qual: Option<Node<ContractFieldQual>>,
-        name: Node<String>,
-        typ: Node<TypeDesc>,
-    },
     EventDef {
         name: Node<String>,
         fields: Vec<Node<EventField>>,
     },
     FuncDef {
-        qual: Option<Node<FuncQual>>,
+        pub_qual: Option<Node<PubQualifier>>,
         name: Node<String>,
         args: Vec<Node<FuncDefArg>>,
         return_type: Option<Node<TypeDesc>>,
@@ -101,41 +113,10 @@ pub enum ContractStmt {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum StructStmt {
-    StructField {
-        qual: Option<Node<StructFieldQual>>,
-        name: Node<String>,
-        typ: Node<TypeDesc>,
-    },
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum ContractFieldQual {
-    Const,
-    Pub,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum StructFieldQual {
-    Const,
-    Pub,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct EventField {
-    pub qual: Option<Node<EventFieldQual>>,
+    pub idx_qual: Option<Node<IdxQualifier>>,
     pub name: Node<String>,
     pub typ: Node<TypeDesc>,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum EventFieldQual {
-    Idx,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum FuncQual {
-    Pub,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]

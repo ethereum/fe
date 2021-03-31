@@ -16,7 +16,7 @@ pub fn module(context: &Context, module: &fe::Module) -> Result<ModuleAbis, Comp
         .body
         .iter()
         .try_fold(ModuleAbis::new(), |mut abis, stmt| {
-            if let fe::ModuleStmt::ContractDef { name, body } = &stmt.kind {
+            if let fe::ModuleStmt::ContractDef { name, body, .. } = &stmt.kind {
                 if abis
                     .insert(name.kind.to_string(), contract_def(context, body)?)
                     .is_some()
@@ -67,7 +67,6 @@ fn contract_def(
 
                 contract.events.push(event);
             }
-            fe::ContractStmt::ContractField { .. } => {}
         }
 
         Ok(contract)
