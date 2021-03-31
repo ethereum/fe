@@ -61,14 +61,13 @@ pub fn var_name(name: &str) -> yul::Identifier {
 
 /// Generates an ABI encoding function name for a given set of types.
 pub fn encode_name<T: AbiEncoding>(types: &[T]) -> yul::Identifier {
-    let mut full_name = "abi_encode".to_string();
+    let type_names = types
+        .iter()
+        .map(|typ| typ.lower_snake())
+        .collect::<Vec<_>>();
+    let name = format!("abi_encode_{}", type_names.join("_"));
 
-    for typ in types {
-        full_name.push('_');
-        full_name.push_str(&typ.abi_safe_name());
-    }
-
-    identifier! { (full_name) }
+    identifier! { (name) }
 }
 
 /// Generates an ABI decoding function name for a given type and location.
@@ -79,7 +78,7 @@ pub fn decode_name<T: AbiEncoding>(typ: &T, location: AbiDecodeLocation) -> yul:
         AbiDecodeLocation::Calldata => "calldata",
     };
     full_name.push('_');
-    full_name.push_str(&typ.abi_safe_name());
+    full_name.push_str(&typ.lower_snake());
     full_name.push('_');
     full_name.push_str(loc);
 
@@ -127,7 +126,7 @@ mod tests {
                 })
             ])
             .to_string(),
-            "abi_encode_uint256_bytes100"
+            "abi_encode_u256_array_byte_100"
         )
     }
 
@@ -135,7 +134,7 @@ mod tests {
     fn test_decode_name_u256_calldata() {
         assert_eq!(
             decode_name(&U256, AbiDecodeLocation::Calldata).to_string(),
-            "abi_decode_uint256_calldata"
+            "abi_decode_u256_calldata"
         )
     }
 
@@ -143,7 +142,7 @@ mod tests {
     fn test_decode_name() {
         assert_eq!(
             decode_name(&FeString { max_size: 42 }, AbiDecodeLocation::Memory).to_string(),
-            "abi_decode_string42_mem"
+            "abi_decode_string_42_mem"
         )
     }
 }

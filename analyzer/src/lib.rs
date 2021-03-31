@@ -12,13 +12,13 @@ mod traversal;
 
 use crate::errors::SemanticError;
 use crate::namespace::events::EventDef;
-use crate::namespace::scopes::{ContractFunctionDef, ContractScope, Shared};
-use crate::namespace::types::{Contract, FixedSize, Struct, Type};
+use crate::namespace::scopes::{ContractFunctionDef, ContractScope, ModuleScope, Shared};
+use crate::namespace::types::{Contract, FixedSize, Struct, Tuple, Type};
 use builtins::GlobalMethod;
 use fe_parser::ast as fe;
 use fe_parser::node::NodeId;
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::rc::Rc;
 
 /// Indicates where an expression is stored.
@@ -270,6 +270,25 @@ impl From<ContractFunctionDef> for FunctionAttributes {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct ModuleAttributes {
+    /// Type definitions in a module.
+    pub type_defs: HashMap<String, Type>,
+    /// Tuples that were used inside of a module.
+    ///
+    /// BTreeSet is used for ordering, this way items are retrieved in the same order every time.
+    pub tuples_used: BTreeSet<Tuple>,
+}
+
+impl From<Shared<ModuleScope>> for ModuleAttributes {
+    fn from(scope: Shared<ModuleScope>) -> Self {
+        Self {
+            type_defs: scope.borrow().type_defs.clone(),
+            tuples_used: scope.borrow().tuples_used.clone(),
+        }
+    }
+}
+
 /// Contains contextual information about a Fe module and can be queried using
 /// `Spanned` AST nodes.
 #[derive(Clone, Debug, Default)]
@@ -281,6 +300,8 @@ pub struct Context {
     contracts: HashMap<NodeId, ContractAttributes>,
     calls: HashMap<NodeId, CallType>,
     events: HashMap<NodeId, EventDef>,
+    type_descs: HashMap<NodeId, Type>,
+    module: Option<ModuleAttributes>,
 }
 
 impl Context {
@@ -297,6 +318,8 @@ impl Context {
             contracts: HashMap::new(),
             calls: HashMap::new(),
             events: HashMap::new(),
+            type_descs: HashMap::new(),
+            module: None,
         }
     }
 
@@ -372,6 +395,26 @@ impl Context {
     /// Get information that has been attributed to an event definition node.
     pub fn get_event<T: Into<NodeId>>(&self, node_id: T) -> Option<&EventDef> {
         self.events.get(&node_id.into())
+    }
+
+    /// Attribute contextual information to a type description node.
+    pub fn add_type_desc<T: Into<NodeId>>(&mut self, node_id: T, typ: Type) {
+        self.type_descs.insert(node_id.into(), typ);
+    }
+
+    /// Get information that has been attributed to a type description node.
+    pub fn get_type_desc<T: Into<NodeId>>(&self, node_id: T) -> Option<&Type> {
+        self.type_descs.get(&node_id.into())
+    }
+
+    /// Attribute contextual information to the module.
+    pub fn set_module(&mut self, attributes: ModuleAttributes) {
+        self.module = Some(attributes);
+    }
+
+    /// Get information that has been attributed to the module.
+    pub fn get_module(&self) -> Option<&ModuleAttributes> {
+        self.module.as_ref()
     }
 }
 

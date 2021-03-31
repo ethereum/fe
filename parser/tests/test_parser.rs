@@ -1,11 +1,12 @@
 use fe_common::{diagnostics::print_diagnostics, files::FileStore};
 
+use fe_common::assert_strings_eq;
+use fe_common::utils::ron::{to_ron_string_pretty, Diff};
 use fe_parser::ast;
 use fe_parser::grammar::{contracts, expressions, functions, module, types};
 use fe_parser::{ParseResult, Parser, TokenKind};
 use serde::Serialize;
 
-#[macro_use]
 mod utils;
 
 #[derive(PartialEq)]
@@ -41,10 +42,10 @@ where
                 parser.next().unwrap();
             }
         }
-        utils::to_ron_string_pretty(&results).unwrap()
+        to_ron_string_pretty(&results).unwrap()
     } else {
         if let Ok(res) = parse_fn(&mut parser) {
-            utils::to_ron_string_pretty(&res).unwrap()
+            to_ron_string_pretty(&res).unwrap()
         } else {
             parser_err = true;
             String::new()

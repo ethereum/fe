@@ -51,7 +51,7 @@ pub fn compile(
     let lowered_fe_module = lowering::lower(&context, fe_module.clone());
 
     // analyze the lowered AST
-    let context = fe_analyzer::analyze(&lowered_fe_module)?;
+    let context = fe_analyzer::analyze(&lowered_fe_module).expect("failed to analyze lowered AST");
 
     // compile to yul
     let yul_contracts = yul::compile(&context, &lowered_fe_module);

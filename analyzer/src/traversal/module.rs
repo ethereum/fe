@@ -38,6 +38,8 @@ pub fn module(context: Shared<Context>, module: &fe::Module) -> Result<(), Seman
         }
     }
 
+    context.borrow_mut().set_module(scope.into());
+
     Ok(())
 }
 

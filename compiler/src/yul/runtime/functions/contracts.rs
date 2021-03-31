@@ -23,7 +23,7 @@ pub fn calls(contract: Contract) -> Vec<yul::Statement> {
             let param_names = function
                 .param_types()
                 .iter()
-                .map(|typ| typ.abi_type_name())
+                .map(|typ| typ.abi_selector_name())
                 .collect::<Vec<String>>();
 
             // create a pair of identifiers and expressions for the parameters

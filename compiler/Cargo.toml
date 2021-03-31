@@ -34,3 +34,4 @@ evm = "0.18"
 primitive-types = { version = "0.7", default-features = false, features = ["rlp"] }
 rand = "0.7.3"
 rstest = "0.6.4"
+regex="1.1.0"

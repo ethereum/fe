@@ -13,7 +13,7 @@ impl EventDef {
     pub fn new(name: &str, fields: Vec<(String, FixedSize)>, indexed_fields: Vec<usize>) -> Self {
         let abi_fields = fields
             .iter()
-            .map(|(_, typ)| typ.abi_type_name())
+            .map(|(_, typ)| typ.abi_selector_name())
             .collect::<Vec<String>>();
         let topic = build_event_topic(name, abi_fields);
 

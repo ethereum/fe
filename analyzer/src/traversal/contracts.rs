@@ -69,7 +69,7 @@ pub fn contract_body(
 ) -> Result<(), SemanticError> {
     if let fe::ModuleStmt::ContractDef { fields, body, .. } = &stmt.kind {
         for field in fields {
-            contract_field(Rc::clone(&contract_scope), field)?;
+            contract_field(Rc::clone(&contract_scope), Rc::clone(&context), field)?;
         }
 
         for stmt in body {
@@ -91,10 +91,11 @@ pub fn contract_body(
 
 fn contract_field(
     scope: Shared<ContractScope>,
+    context: Shared<Context>,
     stmt: &Node<fe::Field>,
 ) -> Result<(), SemanticError> {
     let fe::Field { name, typ, .. } = &stmt.kind;
-    let typ = types::type_desc(Scope::Contract(Rc::clone(&scope)), typ)?;
+    let typ = types::type_desc(Scope::Contract(Rc::clone(&scope)), context, typ)?;
     scope.borrow_mut().add_field(&name.kind, typ)
 }
 
@@ -108,7 +109,7 @@ fn event_def(
 
         let (is_indexed_bools, fields): (Vec<bool>, Vec<(String, FixedSize)>) = fields
             .iter()
-            .map(|field| event_field(Rc::clone(&scope), field))
+            .map(|field| event_field(Rc::clone(&scope), Rc::clone(&context), field))
             .collect::<Result<Vec<_>, _>>()?
             .into_iter()
             .unzip();
@@ -144,13 +145,14 @@ fn event_def(
 
 fn event_field(
     scope: Shared<ContractScope>,
+    context: Shared<Context>,
     field: &Node<fe::EventField>,
 ) -> Result<(bool, (String, FixedSize)), SemanticError> {
     Ok((
         field.kind.idx_qual.is_some(),
         (
             field.kind.name.kind.to_string(),
-            types::type_desc_fixed_size(Scope::Contract(scope), &field.kind.typ)?,
+            types::type_desc_fixed_size(Scope::Contract(scope), context, &field.kind.typ)?,
         ),
     ))
 }

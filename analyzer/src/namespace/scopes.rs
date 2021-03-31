@@ -1,9 +1,9 @@
 use crate::errors::SemanticError;
 use crate::namespace::events::EventDef;
-use crate::namespace::types::{FixedSize, Type};
+use crate::namespace::types::{FixedSize, Tuple, Type};
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::rc::Rc;
 
 pub type Shared<T> = Rc<RefCell<T>>;
@@ -25,7 +25,12 @@ pub struct ContractFieldDef {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ModuleScope {
+    /// Type definitions in a module.
     pub type_defs: HashMap<String, Type>,
+    /// Tuples that were used inside of a module.
+    ///
+    /// BTreeSet is used for ordering, this way items are retrieved in the same order every time.
+    pub tuples_used: BTreeSet<Tuple>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -83,6 +88,7 @@ impl ModuleScope {
     pub fn new() -> Shared<Self> {
         Rc::new(RefCell::new(ModuleScope {
             type_defs: HashMap::new(),
+            tuples_used: BTreeSet::new(),
         }))
     }
 

@@ -1,4 +1,4 @@
-use crate::abi::elements::{Contract, Event, EventField, ModuleAbis};
+use crate::abi::elements::{Component, Contract, Event, EventField, ModuleAbis};
 use crate::errors::CompileError;
 use fe_analyzer::namespace::types::AbiEncoding;
 use fe_analyzer::Context;
@@ -53,8 +53,13 @@ fn contract_def(
                         .enumerate()
                         .map(|(index, (name, typ))| EventField {
                             name: name.to_owned(),
-                            typ: typ.abi_type_name(),
+                            typ: typ.abi_json_name(),
                             indexed: attributes.indexed_fields.contains(&index),
+                            components: typ
+                                .abi_components()
+                                .iter()
+                                .map(|component| Component::from(component.to_owned()))
+                                .collect(),
                         })
                         .collect(),
                     anonymous: false,

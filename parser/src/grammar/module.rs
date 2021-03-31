@@ -22,7 +22,7 @@ pub fn parse_module(par: &mut Parser) -> ParseResult<Node<Module>> {
         }
     }
     let span = if body.is_empty() {
-        Span::new(0, 0)
+        Span::zero()
     } else {
         body.first().unwrap().span + body.last()
     };

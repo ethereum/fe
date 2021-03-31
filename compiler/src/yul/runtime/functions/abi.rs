@@ -367,7 +367,7 @@ mod tests {
     fn test_encode() {
         assert_eq!(
             encode(vec![U256, Base::Address]).to_string(),
-            "function abi_encode_uint256_address(val_0, val_1) -> ptr { ptr := avail() pop(alloc_mstoren(val_0, 32)) pop(alloc_mstoren(val_1, 32)) }"
+            "function abi_encode_u256_address(val_0, val_1) -> ptr { ptr := avail() pop(alloc_mstoren(val_0, 32)) pop(alloc_mstoren(val_1, 32)) }"
         )
     }
 
@@ -375,7 +375,7 @@ mod tests {
     fn test_decode_string_mem() {
         assert_eq!(
             decode(FeString { max_size: 100 }, AbiDecodeLocation::Memory).to_string(),
-            "function abi_decode_string100_mem(start_ptr, offset) -> decoded_ptr { let head_ptr := add(start_ptr, offset) decoded_ptr := add(start_ptr, mload(head_ptr)) }"
+            "function abi_decode_string_100_mem(start_ptr, offset) -> decoded_ptr { let head_ptr := add(start_ptr, offset) decoded_ptr := add(start_ptr, mload(head_ptr)) }"
         )
     }
 
@@ -383,7 +383,7 @@ mod tests {
     fn test_decode_string_calldata() {
         assert_eq!(
             decode(FeString { max_size: 100 }, AbiDecodeLocation::Calldata).to_string(),
-            "function abi_decode_string100_calldata(start_ptr, offset) -> decoded_ptr { let head_ptr := add(start_ptr, offset) decoded_ptr := ccopym(add(start_ptr, calldataload(head_ptr)), add(mul(calldataload(add(start_ptr, calldataload(head_ptr))), 1), 32)) }"
+            "function abi_decode_string_100_calldata(start_ptr, offset) -> decoded_ptr { let head_ptr := add(start_ptr, offset) decoded_ptr := ccopym(add(start_ptr, calldataload(head_ptr)), add(mul(calldataload(add(start_ptr, calldataload(head_ptr))), 1), 32)) }"
         )
     }
 
@@ -391,7 +391,7 @@ mod tests {
     fn test_decode_u256_mem() {
         assert_eq!(
             decode(U256, AbiDecodeLocation::Memory).to_string(),
-            "function abi_decode_uint256_mem(start_ptr, offset) -> decoded_ptr { let head_ptr := add(start_ptr, offset) decoded_ptr := mload(head_ptr) }"
+            "function abi_decode_u256_mem(start_ptr, offset) -> decoded_ptr { let head_ptr := add(start_ptr, offset) decoded_ptr := mload(head_ptr) }"
         )
     }
 }

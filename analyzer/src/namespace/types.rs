@@ -82,28 +82,24 @@ pub struct AbiComponent {
 }
 
 /// Information relevant to ABI encoding.
-pub trait AbiEncoding {
+pub trait AbiEncoding: SafeNames {
     /// Name of the type as it appears in the Json ABI.
-    fn abi_type_name(&self) -> String;
+    fn abi_json_name(&self) -> String;
+
+    /// Name of the type as it appears in the selector preimage.
+    fn abi_selector_name(&self) -> String;
 
     /// The components of an ABI tuple.
-    fn abi_type_components(&self) -> Vec<AbiComponent>;
-
-    /// A name that uses identifier-friendly characters and avoids collisions.
-    /// This is used internally for generating encoding/decoding functions.
-    ///
-    /// Examples:
-    /// - `address[100]` cannot be used in an identifier, so we use the safe
-    /// name address100 instead.
-    /// - All strings are represented as "string" in the Json ABI. This is
-    /// is not compatible with our internal ABI functions because our decoding
-    /// function will need to account for maximum sizes. Therefore, we can
-    /// not use the same decoding function for two `string`s with different
-    /// max sizes and we need to differentiate the two.
-    fn abi_safe_name(&self) -> String;
+    fn abi_components(&self) -> Vec<AbiComponent>;
 
     /// The ABI type of a Fe type.
     fn abi_type(&self) -> AbiType;
+}
+
+/// Names that can be used to build identifiers without collision.
+pub trait SafeNames {
+    /// Name in the lower snake format (e.g. lower_snake_case).
+    fn lower_snake(&self) -> String;
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -167,7 +163,7 @@ pub struct Map {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
 pub struct Tuple {
-    pub items: Vec<Base>,
+    pub items: Vec<FixedSize>,
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
@@ -360,84 +356,6 @@ impl From<Base> for Type {
     }
 }
 
-impl FeSized for FixedSize {
-    fn size(&self) -> usize {
-        match self {
-            FixedSize::Base(base) => base.size(),
-            FixedSize::Array(array) => array.size(),
-            FixedSize::Tuple(tuple) => tuple.size(),
-            FixedSize::String(string) => string.size(),
-            FixedSize::Contract(contract) => contract.size(),
-            FixedSize::Struct(val) => val.size(),
-        }
-    }
-}
-
-impl FeSized for Integer {
-    fn size(&self) -> usize {
-        match self {
-            Integer::U8 => 1,
-            Integer::U16 => 2,
-            Integer::U32 => 4,
-            Integer::U64 => 8,
-            Integer::U128 => 16,
-            Integer::U256 => 32,
-            Integer::I8 => 1,
-            Integer::I16 => 2,
-            Integer::I32 => 4,
-            Integer::I64 => 8,
-            Integer::I128 => 16,
-            Integer::I256 => 32,
-        }
-    }
-}
-
-impl AbiEncoding for FixedSize {
-    fn abi_type_name(&self) -> String {
-        match self {
-            FixedSize::Array(array) => array.abi_type_name(),
-            FixedSize::Base(base) => base.abi_type_name(),
-            FixedSize::Tuple(tuple) => tuple.abi_type_name(),
-            FixedSize::String(string) => string.abi_type_name(),
-            FixedSize::Contract(contract) => contract.abi_type_name(),
-            FixedSize::Struct(val) => val.abi_type_name(),
-        }
-    }
-
-    fn abi_type_components(&self) -> Vec<AbiComponent> {
-        match self {
-            FixedSize::Array(array) => array.abi_type_components(),
-            FixedSize::Base(base) => base.abi_type_components(),
-            FixedSize::Tuple(tuple) => tuple.abi_type_components(),
-            FixedSize::String(string) => string.abi_type_components(),
-            FixedSize::Contract(contract) => contract.abi_type_components(),
-            FixedSize::Struct(val) => val.abi_type_components(),
-        }
-    }
-
-    fn abi_safe_name(&self) -> String {
-        match self {
-            FixedSize::Array(array) => array.abi_safe_name(),
-            FixedSize::Base(base) => base.abi_safe_name(),
-            FixedSize::Tuple(tuple) => tuple.abi_safe_name(),
-            FixedSize::String(string) => string.abi_safe_name(),
-            FixedSize::Contract(contract) => contract.abi_safe_name(),
-            FixedSize::Struct(val) => val.abi_safe_name(),
-        }
-    }
-
-    fn abi_type(&self) -> AbiType {
-        match self {
-            FixedSize::Base(base) => base.abi_type(),
-            FixedSize::Array(array) => array.abi_type(),
-            FixedSize::Tuple(tuple) => tuple.abi_type(),
-            FixedSize::String(string) => string.abi_type(),
-            FixedSize::Contract(contract) => contract.abi_type(),
-            FixedSize::Struct(val) => val.abi_type(),
-        }
-    }
-}
-
 impl FixedSize {
     pub fn empty_tuple() -> Self {
         FixedSize::Tuple(Tuple::empty())
@@ -472,6 +390,54 @@ impl TryFrom<Type> for FixedSize {
     }
 }
 
+impl Tuple {
+    pub fn empty() -> Tuple {
+        Tuple { items: vec![] }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.size() == 0
+    }
+}
+
+impl From<Tuple> for FixedSize {
+    fn from(value: Tuple) -> Self {
+        FixedSize::Tuple(value)
+    }
+}
+
+impl FeSized for FixedSize {
+    fn size(&self) -> usize {
+        match self {
+            FixedSize::Base(base) => base.size(),
+            FixedSize::Array(array) => array.size(),
+            FixedSize::Tuple(tuple) => tuple.size(),
+            FixedSize::String(string) => string.size(),
+            FixedSize::Contract(contract) => contract.size(),
+            FixedSize::Struct(val) => val.size(),
+        }
+    }
+}
+
+impl FeSized for Integer {
+    fn size(&self) -> usize {
+        match self {
+            Integer::U8 => 1,
+            Integer::U16 => 2,
+            Integer::U32 => 4,
+            Integer::U64 => 8,
+            Integer::U128 => 16,
+            Integer::U256 => 32,
+            Integer::I8 => 1,
+            Integer::I16 => 2,
+            Integer::I32 => 4,
+            Integer::I64 => 8,
+            Integer::I128 => 16,
+            Integer::I256 => 32,
+        }
+    }
+}
+
 impl FeSized for Base {
     fn size(&self) -> usize {
         match self {
@@ -483,8 +449,84 @@ impl FeSized for Base {
     }
 }
 
+impl FeSized for Array {
+    fn size(&self) -> usize {
+        self.size * self.inner.size()
+    }
+}
+
+impl FeSized for Tuple {
+    fn size(&self) -> usize {
+        self.items.iter().map(|typ| typ.size()).sum()
+    }
+}
+
+impl FeSized for Struct {
+    fn size(&self) -> usize {
+        self.fields.len() * 32
+    }
+}
+
+impl FeSized for FeString {
+    fn size(&self) -> usize {
+        self.max_size + 32
+    }
+}
+
+impl FeSized for Contract {
+    fn size(&self) -> usize {
+        32
+    }
+}
+
+impl AbiEncoding for FixedSize {
+    fn abi_json_name(&self) -> String {
+        match self {
+            FixedSize::Array(array) => array.abi_json_name(),
+            FixedSize::Base(base) => base.abi_json_name(),
+            FixedSize::Tuple(tuple) => tuple.abi_json_name(),
+            FixedSize::String(string) => string.abi_json_name(),
+            FixedSize::Contract(contract) => contract.abi_json_name(),
+            FixedSize::Struct(val) => val.abi_json_name(),
+        }
+    }
+
+    fn abi_selector_name(&self) -> String {
+        match self {
+            FixedSize::Array(array) => array.abi_selector_name(),
+            FixedSize::Base(base) => base.abi_selector_name(),
+            FixedSize::Tuple(tuple) => tuple.abi_selector_name(),
+            FixedSize::String(string) => string.abi_selector_name(),
+            FixedSize::Contract(contract) => contract.abi_selector_name(),
+            FixedSize::Struct(val) => val.abi_selector_name(),
+        }
+    }
+
+    fn abi_components(&self) -> Vec<AbiComponent> {
+        match self {
+            FixedSize::Array(array) => array.abi_components(),
+            FixedSize::Base(base) => base.abi_components(),
+            FixedSize::Tuple(tuple) => tuple.abi_components(),
+            FixedSize::String(string) => string.abi_components(),
+            FixedSize::Contract(contract) => contract.abi_components(),
+            FixedSize::Struct(val) => val.abi_components(),
+        }
+    }
+
+    fn abi_type(&self) -> AbiType {
+        match self {
+            FixedSize::Base(base) => base.abi_type(),
+            FixedSize::Array(array) => array.abi_type(),
+            FixedSize::Tuple(tuple) => tuple.abi_type(),
+            FixedSize::String(string) => string.abi_type(),
+            FixedSize::Contract(contract) => contract.abi_type(),
+            FixedSize::Struct(val) => val.abi_type(),
+        }
+    }
+}
+
 impl AbiEncoding for Base {
-    fn abi_type_name(&self) -> String {
+    fn abi_json_name(&self) -> String {
         match self {
             Base::Numeric(Integer::U256) => "uint256".to_string(),
             Base::Numeric(Integer::U128) => "uint128".to_string(),
@@ -504,12 +546,12 @@ impl AbiEncoding for Base {
         }
     }
 
-    fn abi_type_components(&self) -> Vec<AbiComponent> {
-        vec![]
+    fn abi_selector_name(&self) -> String {
+        self.abi_json_name()
     }
 
-    fn abi_safe_name(&self) -> String {
-        self.abi_type_name()
+    fn abi_components(&self) -> Vec<AbiComponent> {
+        vec![]
     }
 
     fn abi_type(&self) -> AbiType {
@@ -610,31 +652,21 @@ impl AbiEncoding for Base {
     }
 }
 
-impl FeSized for Array {
-    fn size(&self) -> usize {
-        self.size * self.inner.size()
-    }
-}
-
 impl AbiEncoding for Array {
-    fn abi_type_name(&self) -> String {
+    fn abi_json_name(&self) -> String {
         if self.inner == Base::Byte {
             return format!("bytes{}", self.size);
         }
 
-        format!("{}[{}]", self.inner.abi_type_name(), self.size)
+        format!("{}[{}]", self.inner.abi_json_name(), self.size)
     }
 
-    fn abi_type_components(&self) -> Vec<AbiComponent> {
+    fn abi_selector_name(&self) -> String {
+        self.abi_json_name()
+    }
+
+    fn abi_components(&self) -> Vec<AbiComponent> {
         vec![]
-    }
-
-    fn abi_safe_name(&self) -> String {
-        if self.inner == Base::Byte {
-            return format!("bytes{}", self.size);
-        }
-
-        format!("{}{}", self.inner.abi_type_name(), self.size)
     }
 
     fn abi_type(&self) -> AbiType {
@@ -645,58 +677,30 @@ impl AbiEncoding for Array {
     }
 }
 
-impl Tuple {
-    pub fn empty() -> Tuple {
-        Tuple { items: vec![] }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.size() == 0
-    }
-}
-
-impl From<Tuple> for FixedSize {
-    fn from(value: Tuple) -> Self {
-        FixedSize::Tuple(value)
-    }
-}
-
-impl FeSized for Tuple {
-    fn size(&self) -> usize {
-        self.items.iter().map(|typ| typ.size()).sum()
-    }
-}
-
-impl FeSized for Struct {
-    fn size(&self) -> usize {
-        self.fields.len() * 32
-    }
-}
-
 impl AbiEncoding for Struct {
-    fn abi_type_name(&self) -> String {
+    fn abi_json_name(&self) -> String {
+        "tuple".to_string()
+    }
+
+    fn abi_selector_name(&self) -> String {
         let field_names = self
             .get_field_types()
             .iter()
-            .map(|typ| typ.abi_type_name())
+            .map(|typ| typ.abi_json_name())
             .collect::<Vec<String>>();
         let joined_names = field_names.join(",");
         format!("({})", joined_names)
     }
 
-    fn abi_type_components(&self) -> Vec<AbiComponent> {
+    fn abi_components(&self) -> Vec<AbiComponent> {
         self.order
             .iter()
             .map(|name| AbiComponent {
                 name: name.to_owned(),
-                typ: self.fields[name].abi_type_name(),
+                typ: self.fields[name].abi_json_name(),
                 components: vec![],
             })
             .collect()
-    }
-
-    fn abi_safe_name(&self) -> String {
-        self.name.clone()
     }
 
     fn abi_type(&self) -> AbiType {
@@ -711,16 +715,54 @@ impl AbiEncoding for Struct {
 }
 
 impl AbiEncoding for Tuple {
-    fn abi_type_name(&self) -> String {
+    fn abi_json_name(&self) -> String {
+        if self.is_empty() {
+            "".to_string()
+        } else {
+            "tuple".to_string()
+        }
+    }
+
+    fn abi_selector_name(&self) -> String {
+        let field_names = self
+            .items
+            .iter()
+            .map(|typ| typ.abi_json_name())
+            .collect::<Vec<String>>();
+        let joined_names = field_names.join(",");
+        format!("({})", joined_names)
+    }
+
+    fn abi_components(&self) -> Vec<AbiComponent> {
+        self.items
+            .iter()
+            .enumerate()
+            .map(|(index, item)| AbiComponent {
+                name: format!("item{}", index),
+                typ: item.abi_json_name(),
+                components: vec![],
+            })
+            .collect()
+    }
+
+    fn abi_type(&self) -> AbiType {
+        AbiType::Tuple {
+            elems: self.items.iter().map(|typ| typ.abi_type()).collect(),
+        }
+    }
+}
+
+impl AbiEncoding for Contract {
+    fn abi_json_name(&self) -> String {
         unimplemented!();
     }
 
-    fn abi_type_components(&self) -> Vec<AbiComponent> {
+    fn abi_selector_name(&self) -> String {
         unimplemented!()
     }
 
-    fn abi_safe_name(&self) -> String {
-        unimplemented!();
+    fn abi_components(&self) -> Vec<AbiComponent> {
+        unimplemented!()
     }
 
     fn abi_type(&self) -> AbiType {
@@ -728,23 +770,17 @@ impl AbiEncoding for Tuple {
     }
 }
 
-impl FeSized for FeString {
-    fn size(&self) -> usize {
-        self.max_size + 32
-    }
-}
-
 impl AbiEncoding for FeString {
-    fn abi_type_name(&self) -> String {
+    fn abi_json_name(&self) -> String {
         "string".to_string()
     }
 
-    fn abi_type_components(&self) -> Vec<AbiComponent> {
-        vec![]
+    fn abi_selector_name(&self) -> String {
+        "string".to_string()
     }
 
-    fn abi_safe_name(&self) -> String {
-        format!("string{}", self.max_size)
+    fn abi_components(&self) -> Vec<AbiComponent> {
+        vec![]
     }
 
     fn abi_type(&self) -> AbiType {
@@ -760,27 +796,74 @@ impl AbiEncoding for FeString {
     }
 }
 
-impl FeSized for Contract {
-    fn size(&self) -> usize {
-        32
+impl SafeNames for FixedSize {
+    fn lower_snake(&self) -> String {
+        match self {
+            FixedSize::Array(array) => array.lower_snake(),
+            FixedSize::Base(base) => base.lower_snake(),
+            FixedSize::Tuple(tuple) => tuple.lower_snake(),
+            FixedSize::String(string) => string.lower_snake(),
+            FixedSize::Contract(contract) => contract.lower_snake(),
+            FixedSize::Struct(val) => val.lower_snake(),
+        }
     }
 }
 
-impl AbiEncoding for Contract {
-    fn abi_type_name(&self) -> String {
+impl SafeNames for Base {
+    fn lower_snake(&self) -> String {
+        match self {
+            Base::Numeric(Integer::U256) => "u256".to_string(),
+            Base::Numeric(Integer::U128) => "u128".to_string(),
+            Base::Numeric(Integer::U64) => "u64".to_string(),
+            Base::Numeric(Integer::U32) => "u32".to_string(),
+            Base::Numeric(Integer::U16) => "u16".to_string(),
+            Base::Numeric(Integer::U8) => "u8".to_string(),
+            Base::Numeric(Integer::I256) => "i256".to_string(),
+            Base::Numeric(Integer::I128) => "i128".to_string(),
+            Base::Numeric(Integer::I64) => "i64".to_string(),
+            Base::Numeric(Integer::I32) => "i32".to_string(),
+            Base::Numeric(Integer::I16) => "i16".to_string(),
+            Base::Numeric(Integer::I8) => "i8".to_string(),
+            Base::Address => "address".to_string(),
+            Base::Byte => "byte".to_string(),
+            Base::Bool => "bool".to_string(),
+        }
+    }
+}
+
+impl SafeNames for Array {
+    fn lower_snake(&self) -> String {
+        format!("array_{}_{}", self.inner.lower_snake(), self.size)
+    }
+}
+
+impl SafeNames for Struct {
+    fn lower_snake(&self) -> String {
+        format!("struct_{}", self.name)
+    }
+}
+
+impl SafeNames for Tuple {
+    fn lower_snake(&self) -> String {
+        let field_names = self
+            .items
+            .iter()
+            .map(|typ| typ.lower_snake())
+            .collect::<Vec<String>>();
+        let joined_names = field_names.join("_");
+        format!("tuple_{}", joined_names)
+    }
+}
+
+impl SafeNames for Contract {
+    fn lower_snake(&self) -> String {
         unimplemented!();
     }
+}
 
-    fn abi_type_components(&self) -> Vec<AbiComponent> {
-        unimplemented!()
-    }
-
-    fn abi_safe_name(&self) -> String {
-        unimplemented!();
-    }
-
-    fn abi_type(&self) -> AbiType {
-        unimplemented!();
+impl SafeNames for FeString {
+    fn lower_snake(&self) -> String {
+        format!("string_{}", self.max_size)
     }
 }
 
@@ -843,7 +926,7 @@ pub fn type_desc(defs: &HashMap<String, Type>, typ: &fe::TypeDesc) -> Result<Typ
         fe::TypeDesc::Tuple { items } => Ok(Type::Tuple(Tuple {
             items: items
                 .iter()
-                .map(|typ| type_desc_base(defs, &typ.kind))
+                .map(|typ| type_desc_fixed_size(defs, &typ.kind))
                 .collect::<Result<_, _>>()?,
         })),
     }

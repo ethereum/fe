@@ -11,3 +11,5 @@ tiny-keccak = { version = "2.0", features = ["keccak"] }
 hex = "0.4"
 codespan-reporting = "0.11.1"
 serde = { version = "1", features = ["derive"] }
+ron = "0.5.1"
+difference = "2.0"

@@ -67,7 +67,7 @@ impl ContractHarness {
 
         let input = function
             .encode_input(input)
-            .expect("Unable to encode input");
+            .expect(&format!("Unable to encode input for {}", name));
 
         executor.call(self.address, None, input, None, false, context)
     }
@@ -95,7 +95,10 @@ impl ContractHarness {
             evm::Capture::Exit((ExitReason::Succeed(_), output)) => {
                 let output = function
                     .decode_output(&output)
-                    .expect(&format!("unable to decode output: {:?}", &output))
+                    .expect(&format!(
+                        "unable to decode output of {}: {:?}",
+                        name, &output
+                    ))
                     .pop();
                 return output;
             }
