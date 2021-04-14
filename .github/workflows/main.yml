@@ -21,9 +21,7 @@ jobs:
     steps:
     - name: Install system dependencies
       run: |
-        sudo apt-get install -y libboost-all-dev
-        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 50
-        sudo update-alternatives --set g++ "/usr/bin/g++-8"
+        "${GITHUB_WORKSPACE}/.github/install_deps.sh"
     - uses: actions/checkout@v2
     - name: Cache Rust dependencies
       uses: actions/cache@v1.1.2
@@ -50,9 +48,7 @@ jobs:
     steps:
     - name: Install system dependencies
       run: |
-        sudo apt-get install -y libboost-all-dev
-        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 50
-        sudo update-alternatives --set g++ "/usr/bin/g++-8"
+        "${GITHUB_WORKSPACE}/.github/install_deps.sh"
     - uses: actions/checkout@v2
     - name: Cache Rust dependencies
       uses: actions/cache@v1.1.2
@@ -109,9 +105,7 @@ jobs:
     - name: Install Linux dependencies
       if: startsWith(matrix.os,'ubuntu')
       run: |
-        sudo apt-get install -y libboost-all-dev
-        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 50
-        sudo update-alternatives --set g++ "/usr/bin/g++-8"
+        "${GITHUB_WORKSPACE}/.github/install_deps.sh"
     - name: Install latest nightly
       uses: actions-rs/toolchain@v1
       with:
@@ -156,9 +150,7 @@ jobs:
         - name: Install Linux dependencies
           if: startsWith(matrix.os,'ubuntu')
           run: |
-            sudo apt-get install -y libboost-all-dev
-            sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 50
-            sudo update-alternatives --set g++ "/usr/bin/g++-8"
+            "${GITHUB_WORKSPACE}/.github/install_deps.sh"
         - name: Install Mac System dependencies
           if: startsWith(matrix.os,'macOS')
           run: |
