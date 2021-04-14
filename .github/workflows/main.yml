@@ -50,7 +50,7 @@ jobs:
     steps:
     - name: Install system dependencies
       run: |
-        sudo apt-get install -y libboost-all-dev gcc-8 g++-8
+        sudo apt-get install -y libboost-all-dev
         sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 50
         sudo update-alternatives --set g++ "/usr/bin/g++-8"
     - uses: actions/checkout@v2
