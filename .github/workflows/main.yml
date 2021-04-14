@@ -72,8 +72,6 @@ jobs:
       with:
         command: fmt
         args: --all -- --check
-    - name: Build
-      run: cargo build --all-features --verbose
     - name: Lint with clippy
       uses: actions-rs/cargo@v1
       with:
