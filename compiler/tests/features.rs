@@ -75,17 +75,41 @@ fn test_assert() {
 
         let exit1 = harness.capture_call(&mut executor, "bar", &[uint_token(4)]);
 
-        assert!(matches!(
-            exit1,
-            evm::Capture::Exit((evm::ExitReason::Revert(_), _))
-        ));
+        match exit1 {
+            evm::Capture::Exit((evm::ExitReason::Revert(_), output)) => assert_eq!(output.len(), 0),
+            _ => panic!("Did not revert correctly"),
+        }
 
         let exit2 = harness.capture_call(&mut executor, "bar", &[uint_token(42)]);
 
         assert!(matches!(
             exit2,
             evm::Capture::Exit((evm::ExitReason::Succeed(_), _))
-        ))
+        ));
+
+        let exit3 =
+            harness.capture_call(&mut executor, "revert_with_static_string", &[uint_token(4)]);
+
+        match exit3 {
+            evm::Capture::Exit((evm::ExitReason::Revert(_), output)) => {
+                assert_eq!(output, encode_error_reason("Must be greater than five"))
+            }
+            _ => panic!("Did not revert correctly"),
+        }
+
+        let reason = "A very looooooooooooooong reason that consumes multiple words";
+        let exit4 = harness.capture_call(
+            &mut executor,
+            "revert_with",
+            &[uint_token(4), string_token(&reason)],
+        );
+
+        match exit4 {
+            evm::Capture::Exit((evm::ExitReason::Revert(_), output)) => {
+                assert_eq!(output, encode_error_reason(reason))
+            }
+            _ => panic!("Did not revert correctly"),
+        }
     })
 }
 
