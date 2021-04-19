@@ -1,3 +1,9 @@
 contract Foo:
     pub def bar(baz: u256):
         assert baz > 5
+
+    pub def revert_with_static_string(baz: u256):
+        assert baz > 5, "Must be greater than five"
+
+    pub def revert_with(baz: u256, reason: string1000):
+        assert baz > 5, reason

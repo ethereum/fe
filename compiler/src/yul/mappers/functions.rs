@@ -188,10 +188,15 @@ fn emit(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
 }
 
 fn assert(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
-    if let fe::FuncStmt::Assert { test, msg: _ } = &stmt.kind {
+    if let fe::FuncStmt::Assert { test, msg } = &stmt.kind {
         let test = expressions::expr(context, test);
-
-        return statement! { if (iszero([test])) { (revert(0, 0)) } };
+        return match msg {
+            Some(val) => {
+                let msg = expressions::expr(context, val);
+                statement! { if (iszero([test])) { (revert_with_reason_string([msg])) } }
+            }
+            None => statement! { if (iszero([test])) { (revert(0, 0)) } },
+        };
     }
 
     unreachable!()
