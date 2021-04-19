@@ -2,6 +2,7 @@
 
 #![cfg(feature = "solc-backend")]
 use fe_compiler::yul::runtime::functions;
+use rstest::rstest;
 use yultsur::*;
 
 mod utils;
@@ -11,6 +12,7 @@ use fe_analyzer::namespace::types::{
     Integer,
     Struct,
 };
+use fe_common::utils::keccak;
 use utils::*;
 
 macro_rules! assert_eq {
@@ -23,13 +25,37 @@ macro_rules! assert_eq {
     };
 }
 
+#[rstest(
+    reason,
+    case("foo"),
+    case("A very looooooooooooooong reason that consumes multiple words")
+)]
+fn test_revert_with_reason_string(reason: &str) {
+    let reason_id = format!(r#""{}""#, keccak::full(reason.as_bytes()));
+
+    with_executor(&|mut executor| {
+        test_runtime_functions_revert(
+            &mut executor,
+            Runtime::default()
+                .with_data(
+                    vec![yul::Data { name: keccak::full(reason.as_bytes()), value: reason.to_owned() }]
+                )
+                .with_test_statements(
+                statements! {
+                    (let reason := load_data_string((dataoffset([literal_expression! { (reason_id) }])), (datasize([literal_expression! { (reason_id) }]))))
+                    (revert_with_reason_string(reason))
+                }),
+            &encode_error_reason(reason)
+        );
+    })
+}
+
 #[test]
 fn test_runtime_alloc_and_avail() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
-            functions::std(),
-            statements! {
+            Runtime::default().with_test_statements(statements! {
                 (let a := avail())
                 (let b := alloc(5))
                 (let c := alloc(10))
@@ -38,7 +64,7 @@ fn test_runtime_alloc_and_avail() {
                 [assert_eq!(b, a)]
                 [assert_eq!(c, (add(b, 5)))]
                 [assert_eq!(d, (add(c, 10)))]
-            },
+            }),
         );
     })
 }
@@ -48,8 +74,7 @@ fn test_runtime_mcopys() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
-            functions::std(),
-            statements! {
+            Runtime::default().with_test_statements(statements! {
                 (let a := 0x0111114211111111011111112342311101111112221151110111111111111111)
                 (let b := 0x0111111234111111011123411111111101112431111111110111111234411111)
                 (let c := 0x0111341111111111011111111123411101111123411111110111111234111111)
@@ -75,7 +100,7 @@ fn test_runtime_mcopys() {
                 [assert_eq!(b, (sload(47)))]
                 [assert_eq!(c, (sload(48)))]
                 [assert_eq!(d, (sload(49)))]
-            },
+            }),
         );
     })
 }
@@ -85,8 +110,7 @@ fn test_runtime_scopym() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
-            functions::std(),
-            statements! {
+            Runtime::default().with_test_statements(statements! {
                 (let a := 0x0111114211111111011111112342311101111112221151110111111111111111)
                 (let b := 0x0111111234111111011123411111111101112431111111110111111234411111)
                 (let c := 0x0111341111111111011111111123411101111123411111110111111234111111)
@@ -118,7 +142,7 @@ fn test_runtime_scopym() {
                 [assert_eq!(b, (mload(ptr6)))]
                 [assert_eq!(c, (mload(ptr7)))]
                 [assert_eq!(d, (mload(ptr8)))]
-            },
+            }),
         );
     })
 }
@@ -128,8 +152,7 @@ fn test_runtime_mloadn() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
-            functions::std(),
-            statements! {
+            Runtime::default().with_test_statements(statements! {
                 (let a := 0x4200000000000000000000000000000000000000000000000000000000420026)
                 (mstore(100, a))
 
@@ -137,7 +160,7 @@ fn test_runtime_mloadn() {
                 [assert_eq!(0x420026, (mloadn(129, 3)))]
                 [assert_eq!(0x26, (mloadn(130, 2)))]
                 [assert_eq!(0x26, (mloadn(131, 1)))]
-            },
+            }),
         );
     })
 }
@@ -147,8 +170,7 @@ fn test_runtime_storage_sanity() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
-            vec![],
-            statements! {
+            Runtime::new().with_test_statements(statements! {
                 (let a := 0x4200000000000000000000000000000000000000000000000000000000000026)
                 (let b := 0x9900000000000000000000000000000000000000000000000000000000000077)
                 (sstore(0, a))
@@ -156,7 +178,7 @@ fn test_runtime_storage_sanity() {
 
                 [assert_eq!(a, (sload(0)))]
                 [assert_eq!(b, (sload(1)))]
-            },
+            }),
         );
     })
 }
@@ -166,8 +188,7 @@ fn test_runtime_sloadn() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
-            functions::std(),
-            statements! {
+            Runtime::default().with_test_statements(statements! {
                 (let a := 0x4200000000000000000000000000000000000000000000000000000000000026)
                 (let b := 0x9900530000003900000000000000000000000000000000000000000000000077)
                 (sstore(1000, a))
@@ -184,7 +205,7 @@ fn test_runtime_sloadn() {
                 [assert_eq!(0x77, (sloadn(1001, 31, 1)))]
                 [assert_eq!(0x990053, (sloadn(1001, 0, 3)))]
                 [assert_eq!(0x5300000039, (sloadn(1001, 2, 5)))]
-            },
+            }),
         );
     })
 }
@@ -194,8 +215,7 @@ fn test_runtime_sstoren() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
-            functions::std(),
-            statements! {
+            Runtime::default().with_test_statements(statements! {
                 (let a := 0x0111111111111111011111111111111101111111111111110111111111111111)
                 //         dashes indicate which bytes are to be replaced in this test
                 //         0----2          8----10      15----------------23            31--32
@@ -213,7 +233,7 @@ fn test_runtime_sstoren() {
                 (sstoren(1000, 0, 32, c))
 
                 [assert_eq!(c, (sload(1000)))]
-            },
+            }),
         );
     })
 }
@@ -223,11 +243,10 @@ fn test_runtime_ceil32() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
-            functions::std(),
-            statements! {
+            Runtime::default().with_test_statements(statements! {
                 [assert_eq!(32, (ceil32(29)))]
                 [assert_eq!(256, (ceil32(225)))]
-            },
+            }),
         );
     })
 }
@@ -237,14 +256,13 @@ fn test_runtime_ternary() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
-            functions::std(),
-            statements! {
+            Runtime::default().with_test_statements(statements! {
                 (let a := ternary(0, 42, 26))
                 (let b := ternary(1, 42, 26))
 
                 [assert_eq!(a, 26)]
                 [assert_eq!(b, 42)]
-            },
+            }),
         );
     })
 }
@@ -254,8 +272,7 @@ fn test_runtime_abi_unpack() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
-            functions::std(),
-            statements! {
+            Runtime::default().with_test_statements(statements! {
                 (let a := 0x0042002600530000000000000000000000000000000000000000000000000000)
                 (let packed := alloc_mstoren(a, 32))
                 (let unpacked := avail())
@@ -268,7 +285,7 @@ fn test_runtime_abi_unpack() {
                 [assert_eq!(elem0, 0x0042)]
                 [assert_eq!(elem1, 0x0026)]
                 [assert_eq!(elem2, 0x0053)]
-            },
+            }),
         );
     })
 }
@@ -278,7 +295,7 @@ fn test_keccak256() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
-            functions::std(),
+            Runtime::default().with_test_statements(
             statements! {
                 (let num := 63806209331542711802848847270949280092855778197726125910674179583545433573378)
                 (let result :=109966633016701122630199943745061001312678661825260870342362413625737614346915)
@@ -288,6 +305,7 @@ fn test_keccak256() {
                 (mstore(0, num))
                 [assert_eq!(result, (keccak256(0, 32)))]
             },
+        )
         );
     })
 }
@@ -297,8 +315,7 @@ fn test_runtime_set_zero() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
-            functions::std(),
-            statements! {
+            Runtime::default().with_test_statements(statements! {
                 (let a := 0x1111111111111111111111111111111111111111111111111111111111111111)
                 (let b := 0x1111110000000000000000000000000000000000000000000000001111111111)
                 (let c := 0x1111100000000000000000000000000000000000000000000000000000000000)
@@ -307,7 +324,7 @@ fn test_runtime_set_zero() {
                 [assert_eq!(0x11, (set_zero(0, 248, a)))]
                 [assert_eq!(b, (set_zero(24, 216, a)))]
                 [assert_eq!(c, (set_zero(20, 256, a)))]
-            },
+            }),
         );
     })
 }
@@ -330,7 +347,7 @@ fn test_runtime_house_struct() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
-            [functions::std(), house_api.clone()].concat(),
+            Runtime::new().with_functions([functions::std(), house_api.clone()].concat()).with_test_statements(
             statements! {
                 (let price := 42)
                 (let size := 26)
@@ -369,6 +386,7 @@ fn test_runtime_house_struct() {
                 [assert_eq!(rooms, (bytes_sloadn((struct_House_get_rooms_ptr(house_storage)), 1)))]
                 [assert_eq!(vacant, (bytes_sloadn((struct_House_get_vacant_ptr(house_storage)), 1)))]
             },
+        )
         );
     })
 }
@@ -378,10 +396,9 @@ fn checked_exp_signed() {
     with_executor(&|mut executor| {
         test_runtime_functions(
             &mut executor,
-            functions::std(),
-            statements! {
+            Runtime::default().with_test_statements(statements! {
                 [assert_eq!(4, (checked_exp_signed(2, 2, 0, 100)))]
-            },
+            }),
         );
     })
 }

@@ -3,30 +3,31 @@ use yultsur::*;
 /// Return all data runtime functions
 pub fn all() -> Vec<yul::Statement> {
     vec![
-        avail(),
-        alloc(),
         alloc_mstoren(),
-        free(),
-        ccopym(),
-        load_data_string(),
-        mcopys(),
-        scopym(),
-        mcopym(),
-        scopys(),
-        mloadn(),
-        sloadn(),
-        bytes_sloadn(),
-        cloadn(),
-        mstoren(),
-        sstoren(),
-        bytes_sstoren(),
+        alloc(),
+        avail(),
         bytes_mcopys(),
         bytes_scopym(),
         bytes_scopys(),
-        map_value_ptr(),
+        bytes_sloadn(),
+        bytes_sstoren(),
+        ccopym(),
         ceil32(),
-        ternary(),
+        cloadn(),
+        free(),
+        load_data_string(),
+        map_value_ptr(),
+        mcopym(),
+        mcopys(),
+        mloadn(),
+        mstoren(),
+        revert_with_reason_string(),
+        scopym(),
+        scopys(),
         set_zero(),
+        sloadn(),
+        sstoren(),
+        ternary(),
     ]
 }
 
@@ -377,6 +378,31 @@ pub fn load_data_string() -> yul::Statement {
             (mstore(mptr, size))
             (let content_ptr := alloc(size))
             (datacopy(content_ptr, code_ptr, size))
+        }
+    }
+}
+
+/// Revert with encoded reason string
+pub fn revert_with_reason_string() -> yul::Statement {
+    function_definition! {
+        function revert_with_reason_string(reason) {
+            // Function selector for Error(string)
+            (let ptr := alloc_mstoren(0x08C379A0, 4))
+
+            // Write the (fixed) data offset into the next 32 bytes of memory
+            (pop((alloc_mstoren(0x0000000000000000000000000000000000000000000000000000000000000020, 32))))
+
+            // Read the size of the string
+            (let reason_size := mloadn(reason, 32))
+
+            //Copy the whole reason string (length + data) to the current segment of memory
+            (pop((mcopym(reason , (add(reason_size, 32))))))
+
+            // Right pad the reason bytes to a multiple of 32 bytes
+            (let padding := sub((ceil32(reason_size)), reason_size))
+            (pop((alloc(padding))))
+
+            (revert(ptr, (add(68, (add(reason_size, padding))))))
         }
     }
 }
