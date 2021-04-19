@@ -4,6 +4,7 @@ use evm_runtime::{
     Handler,
 };
 use fe_compiler as compiler;
+use fe_compiler::yul::runtime::functions;
 use primitive_types::{
     H160,
     H256,
@@ -326,12 +327,8 @@ pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> Contr
 }
 
 #[allow(dead_code)]
-pub fn test_runtime_functions(
-    executor: &mut Executor,
-    functions: Vec<yul::Statement>,
-    test_statements: Vec<yul::Statement>,
-) {
-    let (reason, _) = execute_runtime_functions(executor, functions, test_statements);
+pub fn test_runtime_functions(executor: &mut Executor, runtime: Runtime) {
+    let (reason, _) = execute_runtime_functions(executor, runtime);
     if !matches!(reason, ExitReason::Succeed(_)) {
         panic!("Runtime function test failed: {:?}", reason)
     }
@@ -340,11 +337,10 @@ pub fn test_runtime_functions(
 #[allow(dead_code)]
 pub fn test_runtime_functions_revert(
     executor: &mut Executor,
-    functions: Vec<yul::Statement>,
-    test_statements: Vec<yul::Statement>,
+    runtime: Runtime,
     expected_output: &[u8],
 ) {
-    let (reason, output) = execute_runtime_functions(executor, functions, test_statements);
+    let (reason, output) = execute_runtime_functions(executor, runtime);
     if output != expected_output {
         panic!("Runtime function test failed (wrong output): {:?}", output)
     }
@@ -354,20 +350,63 @@ pub fn test_runtime_functions_revert(
     }
 }
 
-fn execute_runtime_functions(
-    executor: &mut Executor,
+pub struct Runtime {
     functions: Vec<yul::Statement>,
     test_statements: Vec<yul::Statement>,
-) -> (ExitReason, Vec<u8>) {
-    let all_statements = [functions, test_statements].concat();
-    let yul_code = yul::Object {
-        name: identifier! { Contract },
-        code: code! { [all_statements...] },
-        objects: vec![],
-        data: vec![],
+    data: Vec<yul::Data>,
+}
+
+#[allow(dead_code)]
+impl Runtime {
+    /// Create a `Runtime` instance with all `std` functions.
+    pub fn default() -> Runtime {
+        Runtime::new().with_functions(functions::std())
     }
-    .to_string()
-    .replace("\"", "\\\"");
+
+    /// Create a new `Runtime` instance.
+    pub fn new() -> Runtime {
+        Runtime {
+            functions: vec![],
+            test_statements: vec![],
+            data: vec![],
+        }
+    }
+
+    /// Add the given set of functions
+    pub fn with_functions(self, fns: Vec<yul::Statement>) -> Runtime {
+        Runtime {
+            functions: fns,
+            ..self
+        }
+    }
+
+    /// Add the given set of test statements
+    pub fn with_test_statements(self, statements: Vec<yul::Statement>) -> Runtime {
+        Runtime {
+            test_statements: statements,
+            ..self
+        }
+    }
+
+    // Add the given set of data
+    pub fn with_data(self, data: Vec<yul::Data>) -> Runtime {
+        Runtime { data: data, ..self }
+    }
+
+    /// Generate the top level YUL object
+    pub fn to_yul(&self) -> yul::Object {
+        let all_statements = [self.functions.clone(), self.test_statements.clone()].concat();
+        yul::Object {
+            name: identifier! { Contract },
+            code: code! { [all_statements...] },
+            objects: vec![],
+            data: self.data.clone(),
+        }
+    }
+}
+
+fn execute_runtime_functions(executor: &mut Executor, runtime: Runtime) -> (ExitReason, Vec<u8>) {
+    let yul_code = runtime.to_yul().to_string().replace("\"", "\\\"");
     let bytecode = compiler::evm::compile_single_contract("Contract", yul_code, false)
         .expect("failed to compile Yul");
     let bytecode = hex::decode(&bytecode).expect("failed to decode bytecode");
