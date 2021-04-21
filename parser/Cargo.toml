@@ -11,7 +11,7 @@ description = "Parser lib for Fe."
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-codespan-reporting = "0.11.1"
+fe-common = {path = "../common", version = "^0.3.0-alpha"}
 logos = { version = "0.11.4", default-features = false, features = ["export_derive"] }
 regex = "1"
 serde = { version = "1", features = ["derive"] }

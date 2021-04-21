@@ -9,3 +9,5 @@ edition = "2018"
 [dependencies]
 tiny-keccak = { version = "2.0", features = ["keccak"] }
 hex = "0.4"
+codespan-reporting = "0.11.1"
+serde = { version = "1", features = ["derive"] }

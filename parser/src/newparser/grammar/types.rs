@@ -136,7 +136,7 @@ pub fn parse_event_field<'a>(par: &mut Parser<'a>) -> ParseResult<Node<EventFiel
 
     let typ = parse_type_desc(par)?;
     par.expect_newline("event field")?;
-    let span = name.span + &idx_qual + &typ;
+    let span = name.span + idx_qual.as_ref() + &typ;
     Ok(Node::new(
         EventField {
             idx_qual,
@@ -173,7 +173,7 @@ pub fn parse_field_def<'a>(
         None
     };
     par.expect_newline("field definition")?;
-    let span = name.span + &pub_qual + &const_qual + &typ;
+    let span = name.span + pub_qual.as_ref() + const_qual.as_ref() + &typ;
     Ok(Node::new(
         Field {
             pub_qual,
@@ -187,7 +187,11 @@ pub fn parse_field_def<'a>(
 }
 
 /// Parse an optional qualifier (pub, const, or idx)
-pub fn parse_opt_qualifier<'a, T>(par: &mut Parser<'a>, tk: TokenKind, node_kind: T) -> Option<Node<T>> {
+pub fn parse_opt_qualifier<'a, T>(
+    par: &mut Parser<'a>,
+    tk: TokenKind,
+    node_kind: T,
+) -> Option<Node<T>> {
     if par.peek() == Some(tk) {
         let tok = par.next().unwrap();
         Some(Node::new(node_kind, tok.span))

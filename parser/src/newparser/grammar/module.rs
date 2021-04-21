@@ -95,7 +95,7 @@ pub fn parse_simple_import<'a>(par: &mut Parser<'a>) -> ParseResult<Node<ModuleS
             None
         };
 
-        let span = name.span + &alias;
+        let span = name.span + alias.as_ref();
         names.push(Node::new(
             SimpleImportName {
                 path: vec![Node::new(name.text.to_string(), name.span)],

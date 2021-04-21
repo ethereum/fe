@@ -646,7 +646,9 @@ dependencies = [
 name = "fe-common"
 version = "0.3.0-alpha"
 dependencies = [
+ "codespan-reporting",
  "hex",
+ "serde",
  "tiny-keccak 2.0.2",
 ]
 
@@ -677,8 +679,8 @@ dependencies = [
 name = "fe-parser"
 version = "0.3.0-alpha"
 dependencies = [
- "codespan-reporting",
  "difference",
+ "fe-common",
  "logos",
  "regex",
  "ron",
