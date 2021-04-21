@@ -30,7 +30,7 @@ pub fn parse_fn_def<'a>(
 ) -> ParseResult<Node<ContractStmt>> {
     let def_tok = par.assert(TokenKind::Def);
     let name = par.expect(TokenKind::Name, "failed to parse function definition")?;
-    let def_span = def_tok.span + &pub_qual + name.span;
+    let def_span = def_tok.span + pub_qual.as_ref() + name.span;
 
     let args = match par.peek_or_err()? {
         TokenKind::ParenOpen => parse_fn_param_list(par)?,
@@ -239,7 +239,7 @@ fn parse_expr_stmt<'a>(par: &mut Parser<'a>) -> ParseResult<Node<FuncStmt>> {
             } else {
                 None
             };
-            let span = expr.span + typ.span + &value;
+            let span = expr.span + typ.span + value.as_ref();
             // TODO: restrict VarDecl target type?
             Node::new(
                 FuncStmt::VarDecl {
@@ -382,7 +382,7 @@ pub fn parse_return_stmt<'a>(par: &mut Parser<'a>) -> ParseResult<Node<FuncStmt>
         Some(_) => Some(parse_expr(par)?),
     };
     par.expect_newline("return statement")?;
-    let span = ret.span + &value;
+    let span = ret.span + value.as_ref();
     Ok(Node::new(FuncStmt::Return { value }, span))
 }
 
@@ -402,6 +402,6 @@ pub fn parse_assert_stmt<'a>(par: &mut Parser<'a>) -> ParseResult<Node<FuncStmt>
         }
     };
     par.expect_newline("assert statement")?;
-    let span = assert_tok.span + test.span + &msg;
+    let span = assert_tok.span + test.span + msg.as_ref();
     Ok(Node::new(FuncStmt::Assert { test, msg }, span))
 }

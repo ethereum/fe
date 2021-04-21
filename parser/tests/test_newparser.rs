@@ -1,9 +1,8 @@
-use codespan_reporting::files::SimpleFile;
-use codespan_reporting::term;
-use codespan_reporting::term::termcolor::{
-    BufferWriter,
-    ColorChoice,
+use fe_common::{
+    diagnostics::print_diagnostics,
+    files::FileStore,
 };
+
 use fe_parser::ast;
 use fe_parser::lexer::TokenKind;
 use fe_parser::newparser::grammar::{
@@ -36,7 +35,9 @@ where
     let (input, expected_ser) = utils::parse_fixture(content)
         .expect(&format!("Test example has wrong format {}", fixture_name));
 
-    let mut parser = Parser::new(&input);
+    let mut file_store = FileStore::new();
+    let id = file_store.add_file(fixture_name.to_string(), input.to_string());
+    let mut parser = Parser::new(input, id);
 
     let mut parser_err = false;
     let actual_ser = if repeat == Repeat::Yes {
@@ -62,7 +63,7 @@ where
             String::new()
         }
     };
-    print_diags(fixture_name, &parser, &input);
+    print_diagnostics(&parser.diagnostics, &file_store);
     assert!(parser.diagnostics.is_empty());
     if parser_err {
         eprintln!("parsing failed, but no diagnostics were generated. this should be fixed.");
@@ -74,7 +75,7 @@ where
                 next.unwrap().span,
                 "this is the next token at time of parsing failure",
             );
-            print_diags(fixture_name, &parser, &input);
+            print_diagnostics(&parser.diagnostics, &file_store);
         }
         assert!(!parser_err);
     }
@@ -86,22 +87,6 @@ where
         "\nParsing results did not match for {}",
         fixture_name,
     );
-}
-
-fn print_diags(fixture_name: &str, parser: &Parser, input: &str) {
-    if parser.diagnostics.is_empty() {
-        return;
-    }
-    let file = SimpleFile::new(fixture_name, input);
-    let writer = BufferWriter::stderr(ColorChoice::Auto);
-    let mut buffer = writer.buffer();
-    let config = term::Config::default();
-
-    for diag in &parser.diagnostics {
-        term::emit(&mut buffer, &config, &file, &diag).unwrap();
-    }
-    // If we use `writer` here, the output won't be captured by rust's test system.
-    eprintln!("{}", std::str::from_utf8(buffer.as_slice()).unwrap());
 }
 
 /// Include a test example file and parse it.

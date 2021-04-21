@@ -404,7 +404,7 @@ pub fn field(input: Cursor) -> ParseResult<Node<Field>> {
     let (input, typ) = type_desc(input)?;
     let (input, _) = newline_token(input)?;
 
-    let span = name.span + &pub_qual + &const_qual + &typ;
+    let span = name.span + pub_qual.as_ref() + const_qual.as_ref() + &typ;
 
     Ok((
         input,

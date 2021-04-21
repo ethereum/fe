@@ -1,11 +1,12 @@
 #![allow(unused_variables, dead_code, unused_imports)]
 
-use codespan_reporting::diagnostic::{
+use fe_common::diagnostics::{
     Diagnostic,
     Label as CsLabel,
     LabelStyle,
     Severity,
 };
+use fe_common::files::SourceFileId;
 
 use crate::lexer::{
     Lexer,
@@ -29,11 +30,12 @@ pub struct Parser<'a> {
     paren_stack: Vec<Span>,
     indent_stack: Vec<BlockIndent<'a>>,
     indent_style: Option<char>,
-    pub diagnostics: Vec<Diagnostic<()>>,
+    pub diagnostics: Vec<Diagnostic>,
+    file_id: SourceFileId,
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(content: &'a str) -> Self {
+    pub fn new(content: &'a str, file_id: SourceFileId) -> Self {
         Parser {
             lexer: Lexer::new(content),
             buffered: vec![],
@@ -46,6 +48,7 @@ impl<'a> Parser<'a> {
             }],
             indent_style: None,
             diagnostics: vec![],
+            file_id,
         }
     }
 
@@ -324,7 +327,7 @@ impl<'a> Parser<'a> {
             message: message.into(),
             labels: vec![CsLabel {
                 style: LabelStyle::Primary,
-                file_id: (),
+                file_id: self.file_id,
                 range: span.into(),
                 message: String::new(),
             }],
@@ -342,7 +345,7 @@ impl<'a> Parser<'a> {
             .into_iter()
             .map(|lbl| CsLabel {
                 style: lbl.style,
-                file_id: (),
+                file_id: self.file_id,
                 range: lbl.span.into(),
                 message: lbl.message,
             })
