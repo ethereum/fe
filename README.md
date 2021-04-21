@@ -81,4 +81,4 @@ The most advanced example that we can provide at this point is a fully working [
 ## Community
 
 - Twitter: [@official_fe](https://twitter.com/official_fe)
-- Chat: [gitter/ethereum/fe](http://gitter.im/ethereum/fe)
+- Chat: [Discord](https://discord.gg/ywpkAXFjZH)
