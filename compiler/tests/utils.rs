@@ -326,34 +326,15 @@ pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> Contr
     ContractHarness::new(address, abi)
 }
 
-#[allow(dead_code)]
-pub fn test_runtime_functions(executor: &mut Executor, runtime: Runtime) {
-    let (reason, _) = execute_runtime_functions(executor, runtime);
-    if !matches!(reason, ExitReason::Succeed(_)) {
-        panic!("Runtime function test failed: {:?}", reason)
-    }
-}
-
-#[allow(dead_code)]
-pub fn test_runtime_functions_revert(
-    executor: &mut Executor,
-    runtime: Runtime,
-    expected_output: &[u8],
-) {
-    let (reason, output) = execute_runtime_functions(executor, runtime);
-    if output != expected_output {
-        panic!("Runtime function test failed (wrong output): {:?}", output)
-    }
-
-    if !matches!(reason, ExitReason::Revert(_)) {
-        panic!("Runtime function did not revert: {:?}", reason)
-    }
-}
-
 pub struct Runtime {
     functions: Vec<yul::Statement>,
     test_statements: Vec<yul::Statement>,
     data: Vec<yul::Data>,
+}
+
+pub struct ExecutionOutput {
+    exit_reason: ExitReason,
+    data: Vec<u8>,
 }
 
 #[allow(dead_code)]
@@ -403,9 +384,54 @@ impl Runtime {
             data: self.data.clone(),
         }
     }
+
+    pub fn execute(&self, executor: &mut Executor) -> ExecutionOutput {
+        let (exit_reason, data) = execute_runtime_functions(executor, &self);
+        ExecutionOutput::new(exit_reason, data)
+    }
 }
 
-fn execute_runtime_functions(executor: &mut Executor, runtime: Runtime) -> (ExitReason, Vec<u8>) {
+#[allow(dead_code)]
+impl ExecutionOutput {
+    /// Create an `ExecutionOutput` instance
+    pub fn new(exit_reason: ExitReason, data: Vec<u8>) -> ExecutionOutput {
+        ExecutionOutput { exit_reason, data }
+    }
+
+    /// Panic if the execution did not succeed.
+    pub fn expect_success(self) -> ExecutionOutput {
+        if let ExecutionOutput {
+            exit_reason: ExitReason::Succeed(_),
+            ..
+        } = &self
+        {
+            self
+        } else {
+            panic!("Execution did not succeed: {:?}", &self.exit_reason)
+        }
+    }
+
+    /// Panic if the execution did not revert.
+    pub fn expect_revert(self) -> ExecutionOutput {
+        if let ExecutionOutput {
+            exit_reason: ExitReason::Revert(_),
+            ..
+        } = &self
+        {
+            self
+        } else {
+            panic!("Execution did not revert: {:?}", &self.exit_reason)
+        }
+    }
+
+    /// Panic if the output is not an encoded error reason of the given string.
+    pub fn expect_revert_reason(self, reason: &str) -> ExecutionOutput {
+        assert_eq!(self.data, encode_error_reason(reason));
+        self
+    }
+}
+
+fn execute_runtime_functions(executor: &mut Executor, runtime: &Runtime) -> (ExitReason, Vec<u8>) {
     let yul_code = runtime.to_yul().to_string().replace("\"", "\\\"");
     let bytecode = compiler::evm::compile_single_contract("Contract", yul_code, false)
         .expect("failed to compile Yul");
