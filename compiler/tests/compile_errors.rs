@@ -16,6 +16,8 @@ use std::fs;
     case("call_undefined_function_on_external_contract.fe", "UndefinedValue"),
     case("call_undefined_function_on_memory_struct.fe", "UndefinedValue"),
     case("call_undefined_function_on_storage_struct.fe", "UndefinedValue"),
+    case("circular_dependency_create.fe", "CircularDependency"),
+    case("circular_dependency_create2.fe", "CircularDependency"),
     case("continue_without_loop_2.fe", "ContinueWithoutLoop"),
     case("continue_without_loop.fe", "ContinueWithoutLoop"),
     case("duplicate_contract_in_module.fe", "AlreadyDefined"),

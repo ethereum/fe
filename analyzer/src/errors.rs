@@ -9,6 +9,7 @@ pub enum ErrorKind {
     AlreadyDefined,
     BreakWithoutLoop,
     CannotMove,
+    CircularDependency,
     ContinueWithoutLoop,
     EventInvocationExpected,
     KeyWordArgsRequired,
@@ -40,6 +41,14 @@ impl SemanticError {
     pub fn break_without_loop() -> Self {
         SemanticError {
             kind: ErrorKind::BreakWithoutLoop,
+            context: vec![],
+        }
+    }
+
+    /// Create a new error with kind `CircularDependency`
+    pub fn circular_dependency() -> Self {
+        SemanticError {
+            kind: ErrorKind::CircularDependency,
             context: vec![],
         }
     }
