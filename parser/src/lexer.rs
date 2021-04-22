@@ -11,12 +11,14 @@ pub struct Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
-    pub fn new(s: &'a str) -> Lexer {
+    /// Create a new lexer with the given source code string.
+    pub fn new(src: &'a str) -> Lexer {
         Lexer {
-            inner: TokenKind::lexer(s),
+            inner: TokenKind::lexer(src),
         }
     }
 
+    /// Return the full source code string that's being tokenized.
     pub fn source(&self) -> &'a str {
         self.inner.source()
     }

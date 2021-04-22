@@ -33,7 +33,7 @@ pub type ParseResult<T> = Result<T, ParseFailed>;
 
 /// `Parser` maintains the parsing state, such as the token stream,
 /// indent stack, paren stack, diagnostics, etc.
-/// Syntax parsing logic is in the [`grammar`] module.
+/// Syntax parsing logic is in the [`crate::grammar`] module.
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
 
@@ -45,11 +45,14 @@ pub struct Parser<'a> {
     paren_stack: Vec<Span>,
     indent_stack: Vec<BlockIndent<'a>>,
     indent_style: Option<char>,
+
+    /// The diagnostics (errors and warnings) emitted during parsing.
     pub diagnostics: Vec<Diagnostic>,
     file_id: SourceFileId,
 }
 
 impl<'a> Parser<'a> {
+    /// Create a new parser for a source code string and associated file id.
     pub fn new(content: &'a str, file_id: SourceFileId) -> Self {
         Parser {
             lexer: Lexer::new(content),
@@ -67,6 +70,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Return the next token, or an error if we've reached the end of the file.
     #[allow(clippy::should_implement_trait)] // next() is a nice short name for a common task
     pub fn next(&mut self) -> ParseResult<Token<'a>> {
         // TODO: allow newlines inside square brackets
@@ -99,6 +103,8 @@ impl<'a> Parser<'a> {
         self.buffered.pop().or_else(|| self.lexer.next())
     }
 
+    /// Take a peek at the next token kind without consuming it, or return an
+    /// error if we've reached the end of the file.
     pub fn peek_or_err(&mut self) -> ParseResult<TokenKind> {
         if !self.paren_stack.is_empty() {
             self.eat_newlines();
@@ -112,6 +118,8 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Take a peek at the next token kind. Returns `None` if we've reached the
+    /// end of the file.
     pub fn peek(&mut self) -> Option<TokenKind> {
         if !self.paren_stack.is_empty() {
             self.eat_newlines();
@@ -119,6 +127,15 @@ impl<'a> Parser<'a> {
         self.peek_raw()
     }
 
+    /// Peek at the text of the next token, without consuming it. This is useful
+    /// for words that are keywords in some contexts, but not others. E.g.
+    /// `from` can be used as a variable or field name, but it's the leading
+    /// keyword of a `from x import y` statement.
+    ///
+    /// # Panics
+    /// This function must only be used in cases where the kind of the next
+    /// token has already been [`Parser::peek`]ed. If there is no next token, it
+    /// will panic.
     pub fn peeked_text(&mut self) -> &'a str {
         self.buffered.last().unwrap().text
     }
@@ -134,6 +151,13 @@ impl<'a> Parser<'a> {
         Some(self.buffered.last().unwrap().kind)
     }
 
+    /// Split the next token into two tokens, returning the first. Only supports
+    /// splitting the `>>` token into two `>` tokens, specifically for
+    /// parsing the closing angle bracket of a generic type argument list
+    /// (`map<x, map<y, z>>`).
+    ///
+    /// # Panics
+    /// Panics if the next token isn't `>>`
     pub fn split_next(&mut self) -> ParseResult<Token<'a>> {
         let gtgt = self.next()?;
         assert_eq!(gtgt.kind, TokenKind::GtGt);
@@ -152,28 +176,37 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// Returns `true` if the parser has reached the end of the file.
     pub fn done(&mut self) -> bool {
         self.peek_raw() == None
     }
 
+    /// The leading whitespace string of the last-seen indented line.
+    /// This does not include lines inside of parentheses.
     pub fn last_indent(&self) -> &'a str {
         self.indent_stack.last().unwrap().indent
     }
 
-    pub fn eat_newlines(&mut self) {
+    fn eat_newlines(&mut self) {
         while self.peek_raw() == Some(TokenKind::Newline) {
             self.next_raw();
         }
     }
 
-    /// If the next token kind isn't `tk`, panic because there's a bug in the
-    /// parsing code.
+    /// Assert that the next token kind it matches the expected token
+    /// kind, and return it. This should be used in cases where the next token
+    /// kind is expected to have been checked already.
+    ///
+    /// # Panics
+    /// Panics if the next token kind isn't `tk`.
     pub fn assert(&mut self, tk: TokenKind) -> Token<'a> {
         let tok = self.next().unwrap();
         assert_eq!(tok.kind, tk, "internal parser error");
         tok
     }
 
+    /// If the next token matches the expected kind, return it. Otherwise emit
+    /// an error diagnostic with the given message and return an error.
     pub fn expect<S: Into<String>>(
         &mut self,
         expected: TokenKind,
@@ -182,6 +215,10 @@ impl<'a> Parser<'a> {
         self.expect_with_notes(expected, message, Vec::new)
     }
 
+    /// Like [`Parser::expect`], but with additional notes to be appended to the
+    /// bottom of the diagnostic message. The notes are provided by a
+    /// function that returns a `Vec<String>`, to avoid allocations in the
+    /// case where the token is as expected.
     pub fn expect_with_notes<Str, NotesFn>(
         &mut self,
         expected: TokenKind,
@@ -213,6 +250,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Emit an "unexpected token" error diagnostic with the given message.
     pub fn unexpected_token_error<S: Into<String>>(
         &mut self,
         span: Span,
@@ -226,12 +264,28 @@ impl<'a> Parser<'a> {
         );
     }
 
+    /// Enter an indented block, which is expected to be non-empty. This checks
+    /// for and consumes the colon that precedes the block. If no colon is
+    /// found, it emits an error and keeps parsing. Any number of
+    /// newlines are allowed before the first non-empty indented line.
+    /// Returns an error if the block has no non-empty indented line.
+    ///
+    /// # Panics
+    /// Panics if called while the parser is inside a set of parentheses.
     pub fn enter_block(&mut self, context_span: Span, context_name: &str) -> ParseResult<()> {
         assert!(self.paren_stack.is_empty());
 
         let colon = if self.peek_raw() == Some(TokenKind::Colon) {
             self.next_raw()
         } else {
+            self.fancy_error(
+                format!("missing colon in {}", context_name),
+                vec![Label::primary(
+                    Span::new(context_span.end, context_span.end),
+                    "expected `:` here".into(),
+                )],
+                vec![],
+            );
             None
         };
 
@@ -252,7 +306,7 @@ impl<'a> Parser<'a> {
                 vec![
                     Label::primary(indent.span, "unexpected token".into()),
                     Label::secondary(
-                        context_span,
+                        context_span + colon.as_ref(),
                         format!(
                             "the body of this {} must be indented and non-empty",
                             context_name,
@@ -265,6 +319,13 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Expect and consume one or more newlines, without returning them.
+    /// Returns an error if the next token isn't a newline or the end of the
+    /// file, or if the indent of the next non-empty line doesn't match the
+    /// current indentation.
+    ///
+    /// # Panics
+    /// Panics if called while the parser is inside a set of parentheses.
     pub fn expect_newline(&mut self, context_name: &str) -> ParseResult<()> {
         self.handle_newline_indent(context_name)?;
         if self.peek() == Some(TokenKind::Indent) {
@@ -356,6 +417,8 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// Emit a "fancy" error diagnostic with any number of labels and notes,
+    /// but don't stop parsing.
     pub fn fancy_error<S: Into<String>>(
         &mut self,
         message: S,
@@ -381,7 +444,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub fn indentation_error<S: Into<String>>(&mut self, span: Span, message: S) {
+    fn indentation_error<S: Into<String>>(&mut self, span: Span, message: S) {
         self.fancy_error(
             "inconsistent indentation",
             vec![Label::primary(span, message.into())],
@@ -435,6 +498,8 @@ pub struct Label {
     message: String,
 }
 impl Label {
+    /// Create a primary label with the given message. This will underline the
+    /// given span with carets (`^^^^`).
     pub fn primary(span: Span, message: String) -> Self {
         Label {
             style: LabelStyle::Primary,
@@ -443,6 +508,8 @@ impl Label {
         }
     }
 
+    /// Create a secondary label with the given message. This will underline the
+    /// given span with hyphens (`----`).
     pub fn secondary(span: Span, message: String) -> Self {
         Label {
             style: LabelStyle::Secondary,

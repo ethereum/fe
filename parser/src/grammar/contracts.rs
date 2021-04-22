@@ -1,7 +1,7 @@
 use super::functions::parse_fn_def;
 use super::types::{
     parse_event_def,
-    parse_field_def,
+    parse_field,
     parse_opt_qualifier,
 };
 
@@ -24,6 +24,9 @@ use crate::{
 // trailing newlines to check whether it's followed by an `else` block, and is
 // done for all statements for consistency.
 
+/// Parse a contract definition.
+/// # Panics
+/// Panics if the next token isn't `contract`.
 pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     use TokenKind::*;
     let contract_tok = par.assert(Contract);
@@ -66,7 +69,7 @@ pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
 
         match par.peek() {
             Some(TokenKind::Name) => {
-                let field = parse_field_def(par, pub_qual, const_qual)?;
+                let field = parse_field(par, pub_qual, const_qual)?;
                 if !defs.is_empty() {
                     par.error(field.span, "contract field definitions must come before any function or event definitions");
                 }

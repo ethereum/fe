@@ -18,12 +18,10 @@ pub struct Span {
 }
 
 impl Span {
-    #[inline]
     pub fn new(start: usize, end: usize) -> Self {
         Span { start, end }
     }
 
-    #[inline]
     pub fn from_pair<S, E>(start_elem: S, end_elem: E) -> Self
     where
         S: Into<Span>,
@@ -61,16 +59,19 @@ where
     type Output = Self;
 
     fn add(self, other: Option<&'a T>) -> Self {
-        if let Some(t) = other {
-            self + t
+        if let Some(other) = other {
+            self + other
         } else {
             self
         }
     }
 }
 
-impl AddAssign for Span {
-    fn add_assign(&mut self, other: Self) {
+impl<T> AddAssign<T> for Span
+where
+    Span: Add<T, Output = Self>,
+{
+    fn add_assign(&mut self, other: T) {
         *self = *self + other
     }
 }

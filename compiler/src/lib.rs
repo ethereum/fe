@@ -31,12 +31,25 @@ pub fn compile(
 ) -> Result<CompiledModule, CompileError> {
     // parse source
 
-    let fe_module = parse_file(src, file_id).map_err(|diags| CompileError {
-        errors: vec![ErrorKind::Parser(diags)],
-    })?;
+    let mut errors = vec![];
+
+    let (fe_module, parser_diagnostics) =
+        parse_file(src, file_id).map_err(|diags| CompileError {
+            errors: vec![ErrorKind::Parser(diags)],
+        })?;
+    if !parser_diagnostics.is_empty() {
+        errors.push(ErrorKind::Parser(parser_diagnostics));
+    }
 
     // analyze source code
-    let context = fe_analyzer::analyze(&fe_module)?;
+    let context = match fe_analyzer::analyze(&fe_module) {
+        Ok(_) if !errors.is_empty() => return Err(CompileError { errors }),
+        Ok(context) => context,
+        Err(err) => {
+            errors.push(ErrorKind::Analyzer(err));
+            return Err(CompileError { errors });
+        }
+    };
 
     // build abi
     let json_abis = abi::build(&context, &fe_module)?;
@@ -45,8 +58,7 @@ pub fn compile(
     let lowered_fe_module = lowering::lower(&context, fe_module.clone());
 
     // analyze the lowered AST
-    let context = fe_analyzer::analyze(&lowered_fe_module)
-        .map_err(|error| CompileError::str(&error.format_user(src)))?;
+    let context = fe_analyzer::analyze(&lowered_fe_module)?;
 
     // compile to yul
     let yul_contracts = yul::compile(&context, &lowered_fe_module);

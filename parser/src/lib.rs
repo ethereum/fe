@@ -14,31 +14,43 @@ pub use parser::{
 };
 pub mod node;
 
+use ast::Module;
 use fe_common::{
     diagnostics::Diagnostic,
     files::SourceFileId,
 };
 
 /// Parse a [`Module`] from the file content string.
-/// A [`SourceFileId`] is required to associate any parsing errors with the
+///
+/// If there was no fatal error during parsing, it returns the parsed module and
+/// a vector of [`Diagnostic`]s, which should be printed. If any of the returned
+/// diagnostics are errors, the compilation of this file should ultimately fail.
+///
+/// If the parser does reach a fatal error, this returns the list of generated
+/// diagnostics.
+///
+/// A [`SourceFileId`] is required to associate any diagnostics with the
 /// underlying file.
 pub fn parse_file(
     file_content: &str,
     file_id: SourceFileId,
-) -> Result<ast::Module, Vec<Diagnostic>> {
+) -> Result<(Module, Vec<Diagnostic>), Vec<Diagnostic>> {
     let mut parser = Parser::new(file_content, file_id);
     match crate::grammar::module::parse_module(&mut parser) {
         Err(_) => Err(parser.diagnostics),
-        Ok(node) => Ok(node.kind),
+        Ok(node) => Ok((node.kind, parser.diagnostics)),
     }
 }
 
+/// Apply the given parsing function to the code string, returning the result.
+/// If the parsing fails, the parser's diagnostics will be printed.
+/// This function is provided for easy testing of later compiler stages.
 pub fn parse_code_chunk<F, T>(mut parse_fn: F, src: &str) -> ParseResult<T>
 where
     F: FnMut(&mut Parser) -> ParseResult<T>,
 {
     let mut files = fe_common::files::FileStore::new();
-    let id = files.add_file("parse_code_chunk test snippet".to_string(), src.to_string());
+    let id = files.add_file("parse_code_chunk test snippet", src);
     let mut parser = Parser::new(src, id);
     if let Ok(node) = parse_fn(&mut parser) {
         Ok(node)

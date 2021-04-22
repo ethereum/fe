@@ -1,11 +1,9 @@
-//! Parsing function for statements.
 use super::contracts::parse_contract_def;
 use super::types::{
     parse_struct_def,
     parse_type_def,
 };
 use crate::ast::{
-    FromImportPath,
     Module,
     ModuleStmt,
     SimpleImportName,
@@ -21,6 +19,7 @@ use crate::{
     TokenKind,
 };
 
+/// Parse a [`Module`].
 pub fn parse_module(par: &mut Parser) -> ParseResult<Node<Module>> {
     let mut body = vec![];
     loop {
@@ -46,6 +45,7 @@ pub fn parse_module(par: &mut Parser) -> ParseResult<Node<Module>> {
     Ok(Node::new(Module { body }, span))
 }
 
+/// Parse a [`ModuleStmt`].
 pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     match par.peek().unwrap() {
         TokenKind::Import => parse_simple_import(par),
@@ -70,6 +70,11 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     }
 }
 
+/// Parse an `import` statement. This does not yet support paths, just module
+/// names. Note that `from x import y` style imports are handled in
+/// [`parse_from_import`].
+/// # Panics
+/// Panics if the next token isn't `import`.
 pub fn parse_simple_import(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     let import_tok = par.assert(TokenKind::Import);
 
@@ -120,10 +125,9 @@ pub fn parse_simple_import(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     Ok(Node::new(ModuleStmt::SimpleImport { names }, span))
 }
 
-pub fn parse_import_path(_par: &mut Parser) -> ParseResult<FromImportPath> {
-    todo!("parse import path (not supported in rest of compiler yet)")
-}
-
+/// Parse a `from x import y` style import statement.
+/// # Panics
+/// Always panics. Unimplemented.
 pub fn parse_from_import(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     let tok = par.assert(TokenKind::Name);
     assert_eq!(tok.text, "from");
