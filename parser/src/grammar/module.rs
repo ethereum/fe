@@ -1,11 +1,8 @@
 //! Parsing function for statements.
 use super::contracts::parse_contract_def;
 use super::types::{
-    parse_field_def,
-    parse_opt_qualifier,
     parse_struct_def,
     parse_type_def,
-    parse_type_desc,
 };
 use crate::ast::{
     FromImportPath,
@@ -13,17 +10,18 @@ use crate::ast::{
     ModuleStmt,
     SimpleImportName,
 };
-use crate::newparser::{
-    ParseResult,
-    Parser,
-    TokenKind,
-};
 use crate::node::{
     Node,
     Span,
 };
+use crate::{
+    ParseFailed,
+    ParseResult,
+    Parser,
+    TokenKind,
+};
 
-pub fn parse_module<'a>(par: &mut Parser<'a>) -> ParseResult<Node<Module>> {
+pub fn parse_module(par: &mut Parser) -> ParseResult<Node<Module>> {
     let mut body = vec![];
     loop {
         match par.peek() {
@@ -48,10 +46,10 @@ pub fn parse_module<'a>(par: &mut Parser<'a>) -> ParseResult<Node<Module>> {
     Ok(Node::new(Module { body }, span))
 }
 
-pub fn parse_module_stmt<'a>(par: &mut Parser<'a>) -> ParseResult<Node<ModuleStmt>> {
+pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     match par.peek().unwrap() {
         TokenKind::Import => parse_simple_import(par),
-        TokenKind::From => parse_from_import(par),
+        TokenKind::Name if par.peeked_text() == "from" => parse_from_import(par),
         TokenKind::Contract => parse_contract_def(par),
         TokenKind::Struct => parse_struct_def(par),
         TokenKind::Type => parse_type_def(par),
@@ -67,12 +65,12 @@ pub fn parse_module_stmt<'a>(par: &mut Parser<'a>) -> ParseResult<Node<ModuleStm
                 tok.span,
                 format!("Unexpected token when parsing module: `{:?}`", tok.kind),
             );
-            Err(())
+            Err(ParseFailed)
         }
     }
 }
 
-pub fn parse_simple_import<'a>(par: &mut Parser<'a>) -> ParseResult<Node<ModuleStmt>> {
+pub fn parse_simple_import(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     let import_tok = par.assert(TokenKind::Import);
 
     // TODO: only handles `import foo, bar as baz`
@@ -88,7 +86,7 @@ pub fn parse_simple_import<'a>(par: &mut Parser<'a>) -> ParseResult<Node<ModuleS
             })?;
 
         let alias = if par.peek() == Some(TokenKind::As) {
-            let as_tok = par.next().unwrap();
+            par.next()?;
             let tok = par.expect(TokenKind::Name, "failed to parse import statement")?;
             Some(tok.into())
         } else {
@@ -113,7 +111,7 @@ pub fn parse_simple_import<'a>(par: &mut Parser<'a>) -> ParseResult<Node<ModuleS
             Some(_) => {
                 let tok = par.next()?;
                 par.unexpected_token_error(tok.span, "failed to parse `import` statement", vec![]);
-                return Err(());
+                return Err(ParseFailed);
             }
         }
     }
@@ -122,11 +120,12 @@ pub fn parse_simple_import<'a>(par: &mut Parser<'a>) -> ParseResult<Node<ModuleS
     Ok(Node::new(ModuleStmt::SimpleImport { names }, span))
 }
 
-pub fn parse_import_path<'a>(par: &mut Parser<'a>) -> ParseResult<FromImportPath> {
+pub fn parse_import_path(_par: &mut Parser) -> ParseResult<FromImportPath> {
     todo!("parse import path (not supported in rest of compiler yet)")
 }
 
-pub fn parse_from_import<'a>(par: &mut Parser<'a>) -> ParseResult<Node<ModuleStmt>> {
-    par.assert(TokenKind::From);
+pub fn parse_from_import(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
+    let tok = par.assert(TokenKind::Name);
+    assert_eq!(tok.text, "from");
     todo!("parse from .. import (not supported in rest of compiler yet)")
 }

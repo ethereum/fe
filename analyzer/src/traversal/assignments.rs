@@ -89,7 +89,10 @@ mod tests {
     };
     use crate::traversal::assignments::assign;
     use crate::Context;
-    use fe_parser as parser;
+    use fe_parser::{
+        grammar::functions::parse_stmt,
+        parse_code_chunk,
+    };
     use rstest::rstest;
     use std::rc::Rc;
 
@@ -130,12 +133,10 @@ mod tests {
 
     fn analyze(scope: Shared<BlockScope>, src: &str) -> Result<Context, SemanticError> {
         let context = Context::new_shared();
-        let tokens = parser::get_parse_tokens(src).expect("Couldn't parse expression");
-        let assignment = &parser::parsers::assign_stmt(&tokens[..])
-            .expect("Couldn't build assigment AST")
-            .1;
 
-        assign(scope, Rc::clone(&context), assignment)?;
+        let assignment = parse_code_chunk(parse_stmt, src).expect("Couldn't build assignment AST");
+
+        assign(scope, Rc::clone(&context), &assignment)?;
         Ok(Rc::try_unwrap(context)
             .map_err(|_| "")
             .unwrap()

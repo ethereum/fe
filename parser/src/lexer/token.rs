@@ -11,12 +11,6 @@ pub struct Token<'a> {
     pub span: Span,
 }
 
-impl<'a> Token<'a> {
-    pub fn len(&self) -> usize {
-        self.text.len()
-    }
-}
-
 impl<'a> From<Token<'a>> for Node<String> {
     fn from(tok: Token<'a>) -> Node<String> {
         Node::new(tok.text.into(), tok.span)
@@ -85,8 +79,6 @@ pub enum TokenKind {
     Pass,
     #[token("for")]
     For,
-    #[token("from")]
-    From,
     #[token("pub")]
     Pub,
     #[token("return")]
@@ -106,12 +98,8 @@ pub enum TokenKind {
     As,
     #[token("in")]
     In,
-    #[token("not in")]
-    NotIn,
     #[token("is")]
     Is,
-    #[token("is not")]
-    IsNot,
     #[token("not")]
     Not,
     #[token("or")]
@@ -240,7 +228,6 @@ impl TokenKind {
             Import => "import",
             Pass => "pass",
             For => "for",
-            From => "from",
             Pub => "pub",
             Return => "return",
             Revert => "revert",
@@ -250,9 +237,7 @@ impl TokenKind {
             And => "and",
             As => "as",
             In => "in",
-            NotIn => "not in",
             Is => "is",
-            IsNot => "is not",
             Not => "not",
             Or => "or",
             ParenOpen => "(",

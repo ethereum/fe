@@ -18,8 +18,8 @@ pub struct SourceFile {
     line_starts: Vec<usize>,
 }
 
-#[derive(PartialEq, Copy, Clone, Eq, Hash)]
-pub struct SourceFileId(u128);
+#[derive(PartialEq, Copy, Clone, Eq, Hash, Debug)]
+pub struct SourceFileId(pub u128);
 
 impl SourceFile {
     pub fn new(name: String, content: String) -> Self {
@@ -40,10 +40,12 @@ impl SourceFile {
     }
 
     pub fn line_span(&self, line_index: usize) -> Option<Span> {
-        Some(Span::new(
-            *self.line_starts.get(line_index)?,
-            *self.line_starts.get(line_index + 1)?,
-        ))
+        let end = if line_index == self.line_starts.len() - 1 {
+            self.content.len()
+        } else {
+            *self.line_starts.get(line_index + 1)?
+        };
+        Some(Span::new(*self.line_starts.get(line_index)?, end))
     }
 }
 
@@ -86,10 +88,10 @@ impl FileStore {
         id
     }
 
-    pub fn load_file(&mut self, path: String) -> io::Result<(SourceFileId, String)> {
+    pub fn load_file(&mut self, path: String) -> io::Result<(String, SourceFileId)> {
         let content = self.loader.load_file(&Path::new(&path))?;
         let id = self.add_file(path, content.clone());
-        Ok((id, content))
+        Ok((content, id))
     }
 
     pub fn get_file(&self, id: SourceFileId) -> Option<&SourceFile> {
@@ -130,5 +132,11 @@ impl<'a> cs::files::Files<'a> for FileStore {
                 max: file.line_starts.len() - 1,
             })?
             .into())
+    }
+}
+
+impl Default for FileStore {
+    fn default() -> Self {
+        Self::new()
     }
 }

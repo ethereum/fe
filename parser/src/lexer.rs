@@ -65,10 +65,10 @@ mod tests {
     #[test]
     fn basic() {
         check(
-            "contract Foo:\n  x: u32\n  def f() -> u32:",
+            "contract Foo:\n  x: u32\n  def f() -> u32: not x",
             &[
-                Contract, Name, Colon, Newline, Name, Colon, Name, Newline, Def, Name,
-                ParenOpen, ParenClose, Arrow, Name, Colon,
+                Contract, Name, Colon, Newline, Name, Colon, Name, Newline, Def, Name, ParenOpen,
+                ParenClose, Arrow, Name, Colon, Not, Name,
             ],
         );
     }
@@ -83,20 +83,11 @@ mod tests {
         assert!(lex.next() == None);
     }
 
-    // #[test]
-    // fn num_types() {
-    //     check(
-    //         " i8       i9     i16      i128     u256",
-    //         &[IntType, Name, IntType, IntType, UintType],
-    //     );
-    // }
     #[test]
     fn errors() {
         check(
             "contract Foo@ 5u8 \n  self.bar",
-            &[
-                Contract, Name, Error, Int, Name, Newline, Name, Dot, Name,
-            ],
+            &[Contract, Name, Error, Int, Name, Newline, Name, Dot, Name],
         );
     }
 

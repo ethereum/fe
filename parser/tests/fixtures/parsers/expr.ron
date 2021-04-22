@@ -1,5 +1,7 @@
 x
 x if y else z
+not x
+"a \"string\"\t"
 ---
 [
   Node(
@@ -36,6 +38,37 @@ x if y else z
     span: Span(
       start: 2,
       end: 15,
+    ),
+  ),
+  Node(
+    kind: UnaryOperation(
+      op: Node(
+        kind: Not,
+        span: Span(
+          start: 16,
+          end: 19,
+        ),
+      ),
+      operand: Node(
+        kind: Name("x"),
+        span: Span(
+          start: 20,
+          end: 21,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 16,
+      end: 21,
+    ),
+  ),
+  Node(
+    kind: Str([
+      "a \"string\"\t",
+    ]),
+    span: Span(
+      start: 22,
+      end: 38,
     ),
   ),
 ]

@@ -8,9 +8,8 @@ pub use codespan_reporting::diagnostic::{
     LabelStyle,
     Severity,
 };
-
 use codespan_reporting::term;
-use codespan_reporting::term::termcolor::{
+use term::termcolor::{
     BufferWriter,
     ColorChoice,
 };

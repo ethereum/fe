@@ -1,35 +1,49 @@
-extern crate regex;
-
 pub mod ast;
-pub mod builders;
-pub mod errors;
+pub mod grammar;
 pub mod lexer;
-pub mod newparser;
-pub mod node;
-pub mod parsers;
-pub mod string_utils;
-pub mod tokenizer;
-
-mod ast_traits;
-
-use errors::ParseError;
-use tokenizer::{
-    tokenize,
+pub use lexer::{
     Token,
-    TokenType,
-    TokenizeError,
+    TokenKind,
+};
+mod parser;
+pub use parser::{
+    Label,
+    ParseFailed,
+    ParseResult,
+    Parser,
+};
+pub mod node;
+
+use fe_common::{
+    diagnostics::Diagnostic,
+    files::SourceFileId,
 };
 
-pub type Cursor<'a> = &'a [Token<'a>];
-pub type ParseResult<'a, O> = Result<(Cursor<'a>, O), ParseError<'a>>;
+/// Parse a [`Module`] from the file content string.
+/// A [`SourceFileId`] is required to associate any parsing errors with the
+/// underlying file.
+pub fn parse_file(
+    file_content: &str,
+    file_id: SourceFileId,
+) -> Result<ast::Module, Vec<Diagnostic>> {
+    let mut parser = Parser::new(file_content, file_id);
+    match crate::grammar::module::parse_module(&mut parser) {
+        Err(_) => Err(parser.diagnostics),
+        Ok(node) => Ok(node.kind),
+    }
+}
 
-/// Tokenize the given source code in `source` and filter out tokens not
-/// relevant to parsing.
-pub fn get_parse_tokens(source: &str) -> Result<Vec<Token>, TokenizeError> {
-    let tokens = tokenize(source)?;
-
-    Ok(tokens
-        .into_iter()
-        .filter(|t| t.typ != TokenType::NL && t.typ != TokenType::COMMENT)
-        .collect())
+pub fn parse_code_chunk<F, T>(mut parse_fn: F, src: &str) -> ParseResult<T>
+where
+    F: FnMut(&mut Parser) -> ParseResult<T>,
+{
+    let mut files = fe_common::files::FileStore::new();
+    let id = files.add_file("parse_code_chunk test snippet".to_string(), src.to_string());
+    let mut parser = Parser::new(src, id);
+    if let Ok(node) = parse_fn(&mut parser) {
+        Ok(node)
+    } else {
+        fe_common::diagnostics::print_diagnostics(&parser.diagnostics, &files);
+        Err(ParseFailed)
+    }
 }

@@ -17,6 +17,7 @@ members = [".", "parser", "compiler"]
 solc-backend = ["fe-compiler/solc-backend"]
 
 [dependencies]
+fe-common = {path = "common", version = "^0.3.0-alpha"}
 fe-parser = {path = "parser", version = "^0.3.0-alpha"}
 fe-compiler = {path = "compiler", version = "^0.3.0-alpha"}
 clap = "2.33.3"

@@ -6,26 +6,19 @@ use crate::ast::{
     ContractStmt,
     FuncDefArg,
     FuncStmt,
-    GenericArg,
     PubQualifier,
-    TypeDesc,
 };
-use crate::lexer::{
-    Token,
-    TokenKind,
-};
-use crate::newparser::{
+use crate::lexer::TokenKind;
+use crate::node::Node;
+use crate::{
     Label,
+    ParseFailed,
     ParseResult,
     Parser,
 };
-use crate::node::{
-    Node,
-    Span,
-};
 
-pub fn parse_fn_def<'a>(
-    par: &mut Parser<'a>,
+pub fn parse_fn_def(
+    par: &mut Parser,
     pub_qual: Option<Node<PubQualifier>>,
 ) -> ParseResult<Node<ContractStmt>> {
     let def_tok = par.assert(TokenKind::Def);
@@ -63,12 +56,12 @@ pub fn parse_fn_def<'a>(
                     "Example: `def foo(x: address, y: u256)` or `def f()`".into(),
                 ],
             );
-            return Err(());
+            return Err(ParseFailed);
         }
     };
 
     let return_type = if par.peek() == Some(TokenKind::Arrow) {
-        let arrow_token = par.next();
+        par.next()?;
         Some(parse_type_desc(par)?)
     } else {
         None
@@ -91,7 +84,7 @@ pub fn parse_fn_def<'a>(
     ))
 }
 
-pub fn parse_fn_param_list<'a>(par: &mut Parser<'a>) -> ParseResult<Vec<Node<FuncDefArg>>> {
+pub fn parse_fn_param_list(par: &mut Parser) -> ParseResult<Vec<Node<FuncDefArg>>> {
     par.assert(TokenKind::ParenOpen);
     let mut params = vec![];
     loop {
@@ -134,14 +127,14 @@ pub fn parse_fn_param_list<'a>(par: &mut Parser<'a>) -> ParseResult<Vec<Node<Fun
                     break;
                 }
             }
-            tk => {
+            _ => {
                 let tok = par.next()?;
                 par.unexpected_token_error(
                     tok.span,
                     "failed to parse function parameter list",
                     vec![],
                 );
-                return Err(());
+                return Err(ParseFailed);
             }
         }
     }
@@ -185,7 +178,7 @@ fn aug_assign_op(tk: TokenKind) -> Option<BinOperator> {
     Some(op)
 }
 
-pub fn parse_single_word_stmt<'a>(par: &mut Parser<'a>) -> ParseResult<Node<FuncStmt>> {
+pub fn parse_single_word_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let tok = par.next().unwrap();
     par.expect_newline(tok.kind.symbol_str().unwrap())?;
     let stmt = match tok.kind {
@@ -198,7 +191,7 @@ pub fn parse_single_word_stmt<'a>(par: &mut Parser<'a>) -> ParseResult<Node<Func
     Ok(Node::new(stmt, tok.span))
 }
 
-pub fn parse_stmt<'a>(par: &mut Parser<'a>) -> ParseResult<Node<FuncStmt>> {
+pub fn parse_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     use TokenKind::*;
 
     // rule: stmt parsing fns eat the trailing separator (newline, semi, eof)
@@ -222,7 +215,7 @@ pub fn parse_stmt<'a>(par: &mut Parser<'a>) -> ParseResult<Node<FuncStmt>> {
 
 /// Parse a (function) statement that begins with an expression. This might be
 /// a `VarDecl`, `Assign`, or an expression.
-fn parse_expr_stmt<'a>(par: &mut Parser<'a>) -> ParseResult<Node<FuncStmt>> {
+fn parse_expr_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     use TokenKind::*;
     let expr = parse_expr(par)?;
     let node = match par.peek() {
@@ -279,7 +272,7 @@ fn parse_expr_stmt<'a>(par: &mut Parser<'a>) -> ParseResult<Node<FuncStmt>> {
             } else {
                 let tok = par.next()?;
                 par.unexpected_token_error(tok.span, "invalid syntax in function body", vec![]);
-                return Err(());
+                return Err(ParseFailed);
             }
         }
     };
@@ -287,7 +280,7 @@ fn parse_expr_stmt<'a>(par: &mut Parser<'a>) -> ParseResult<Node<FuncStmt>> {
     Ok(node)
 }
 
-pub fn parse_if_stmt<'a>(par: &mut Parser<'a>) -> ParseResult<Node<FuncStmt>> {
+pub fn parse_if_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let if_tok = par.next()?;
     assert!(matches!(if_tok.kind, TokenKind::If | TokenKind::Elif));
 
@@ -318,7 +311,7 @@ pub fn parse_if_stmt<'a>(par: &mut Parser<'a>) -> ParseResult<Node<FuncStmt>> {
     ))
 }
 
-pub fn parse_while_stmt<'a>(par: &mut Parser<'a>) -> ParseResult<Node<FuncStmt>> {
+pub fn parse_while_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let while_tok = par.assert(TokenKind::While);
 
     let test = parse_expr(par)?;
@@ -345,7 +338,7 @@ pub fn parse_while_stmt<'a>(par: &mut Parser<'a>) -> ParseResult<Node<FuncStmt>>
     ))
 }
 
-pub fn parse_for_stmt<'a>(par: &mut Parser<'a>) -> ParseResult<Node<FuncStmt>> {
+pub fn parse_for_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let for_tok = par.assert(TokenKind::For);
 
     let target = parse_expr(par)?;
@@ -375,7 +368,7 @@ pub fn parse_for_stmt<'a>(par: &mut Parser<'a>) -> ParseResult<Node<FuncStmt>> {
     ))
 }
 
-pub fn parse_return_stmt<'a>(par: &mut Parser<'a>) -> ParseResult<Node<FuncStmt>> {
+pub fn parse_return_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let ret = par.assert(TokenKind::Return);
     let value = match par.peek() {
         None | Some(TokenKind::Newline) => None,
@@ -386,19 +379,19 @@ pub fn parse_return_stmt<'a>(par: &mut Parser<'a>) -> ParseResult<Node<FuncStmt>
     Ok(Node::new(FuncStmt::Return { value }, span))
 }
 
-pub fn parse_assert_stmt<'a>(par: &mut Parser<'a>) -> ParseResult<Node<FuncStmt>> {
+pub fn parse_assert_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let assert_tok = par.assert(TokenKind::Assert);
     let test = parse_expr(par)?;
     let msg = match par.peek() {
         None | Some(TokenKind::Newline) => None,
         Some(TokenKind::Comma) => {
-            let comma = par.next()?;
+            par.next()?;
             Some(parse_expr(par)?)
         }
-        Some(tk) => {
+        Some(_) => {
             let tok = par.next()?;
             par.unexpected_token_error(tok.span, "failed to parse `assert` statement", vec![]);
-            return Err(());
+            return Err(ParseFailed);
         }
     };
     par.expect_newline("assert statement")?;

@@ -77,12 +77,14 @@ fn contract_def(
 mod tests {
     use crate::abi::builder;
     use fe_analyzer;
-    use fe_parser::parsers;
+    use fe_parser::{
+        grammar::module::parse_module,
+        parse_code_chunk,
+    };
 
     #[test]
     fn build_contract_abi() {
-        let tokens = fe_parser::get_parse_tokens(
-            "\
+        let contract = "\
             \ncontract Foo:\
             \n  event Food:\
             \n    idx barge: u256
@@ -91,13 +93,10 @@ mod tests {
             \n  def baz(x: address) -> u256:\
             \n    revert\
             \n  pub def bar(x: u256) -> u256[10]:\
-            \n    revert",
-        )
-        .expect("unable to parse contract");
+            \n    revert";
 
-        let module = parsers::file_input(&tokens[..])
+        let module = parse_code_chunk(parse_module, contract)
             .expect("unable to build module AST")
-            .1
             .kind;
         let context = fe_analyzer::analyze(&module).expect("failed to analyze source");
         let abis = builder::module(&context, &module).expect("unable to build ABI");
