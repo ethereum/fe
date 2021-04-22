@@ -1,7 +1,16 @@
 #![cfg(feature = "solc-backend")]
+use compiler::errors::{
+    CompileError,
+    ErrorKind,
+};
 use evm_runtime::{
     ExitReason,
     Handler,
+};
+use fe_common::diagnostics::print_diagnostics;
+use fe_common::files::{
+    FileStore,
+    SourceFileId,
 };
 use fe_compiler as compiler;
 use fe_compiler::yul::runtime::functions;
@@ -189,6 +198,25 @@ pub fn with_executor_backend(backend: evm::backend::MemoryBackend, test: &dyn Fn
     test(executor)
 }
 
+pub fn read_fixture(path: String) -> (String, SourceFileId) {
+    let mut files = FileStore::new();
+    files
+        .load_file(path.clone())
+        .expect(&format!("unable to read fixture file: {}", path))
+}
+
+fn print_compiler_errors(error: CompileError, src: &str, files: &FileStore) {
+    for err in error.errors {
+        match err {
+            ErrorKind::Str(err) => eprintln!("Compiler error: {}", err),
+            ErrorKind::Analyzer(err) => {
+                eprintln!("Analyzer error: {}", err.format_user(&src))
+            }
+            ErrorKind::Parser(diags) => print_diagnostics(&diags, &files),
+        }
+    }
+}
+
 #[allow(dead_code)]
 pub fn deploy_contract(
     executor: &mut Executor,
@@ -196,9 +224,20 @@ pub fn deploy_contract(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    let src = fs::read_to_string(format!("tests/fixtures/{}", fixture))
+    let path = format!("tests/fixtures/{}", fixture);
+    let mut files = FileStore::new();
+    let (src, id) = files
+        .load_file(path.clone())
         .expect("unable to read fixture file");
-    let compiled_module = compiler::compile(&src, true, true).expect("failed to compile module");
+
+    let compiled_module = match compiler::compile(&src, id, true, true) {
+        Ok(module) => module,
+        Err(error) => {
+            print_compiler_errors(error, &src, &files);
+            panic!("failed to compile module: {}", path)
+        }
+    };
+
     let compiled_contract = compiled_module
         .contracts
         .get(contract_name)
@@ -313,9 +352,9 @@ pub fn compile_solidity_contract(name: &str, solidity_src: &str) -> Result<(Stri
 
 #[allow(dead_code)]
 pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
-    let src = fs::read_to_string(format!("tests/fixtures/{}", fixture))
-        .expect("unable to read fixture file");
-    let compiled_module = compiler::compile(&src, true, true).expect("failed to compile module");
+    let (src, id) = read_fixture(format!("tests/fixtures/{}", fixture));
+    let compiled_module =
+        compiler::compile(&src, id, true, true).expect("failed to compile module");
     let compiled_contract = compiled_module
         .contracts
         .get(contract_name)

@@ -4,17 +4,17 @@ use fe_common::{
 };
 
 use fe_parser::ast;
-use fe_parser::lexer::TokenKind;
-use fe_parser::newparser::grammar::{
+use fe_parser::grammar::{
     contracts,
     expressions,
     functions,
     module,
     types,
 };
-use fe_parser::newparser::{
+use fe_parser::{
     ParseResult,
     Parser,
+    TokenKind,
 };
 use serde::Serialize;
 

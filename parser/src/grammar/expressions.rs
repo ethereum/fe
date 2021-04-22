@@ -4,20 +4,15 @@ use crate::ast::{
     Expr,
     Kwarg,
     Slice,
-    TypeDesc,
 };
-use crate::lexer::{
-    Token,
-    TokenKind,
-};
-use crate::newparser::{
+use crate::node::Node;
+use crate::{
     Label,
+    ParseFailed,
     ParseResult,
     Parser,
-};
-use crate::node::{
-    Node,
-    Span,
+    Token,
+    TokenKind,
 };
 
 ///! Expressions are parsed in Pratt's top-down operator precedence style.
@@ -25,13 +20,13 @@ use crate::node::{
 ///! <https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html>
 
 /// Parse an expression, starting with the next token.
-pub fn parse_expr<'a>(par: &mut Parser<'a>) -> ParseResult<Node<Expr>> {
+pub fn parse_expr(par: &mut Parser) -> ParseResult<Node<Expr>> {
     parse_expr_with_min_bp(par, 0)
 }
 
 /// Parse an expression, stopping if/when we reach an operator that binds less
 /// tightly than given binding power.
-pub fn parse_expr_with_min_bp<'a>(par: &mut Parser<'a>, min_bp: u8) -> ParseResult<Node<Expr>> {
+pub fn parse_expr_with_min_bp(par: &mut Parser, min_bp: u8) -> ParseResult<Node<Expr>> {
     let mut expr_head = parse_expr_head(par)?;
 
     while let Some(op) = par.peek() {
@@ -103,11 +98,14 @@ pub fn parse_expr_with_min_bp<'a>(par: &mut Parser<'a>, min_bp: u8) -> ParseResu
 }
 
 /// Try to build an expression starting with the given token.
-fn parse_expr_head<'a>(par: &mut Parser<'a>) -> ParseResult<Node<Expr>> {
+fn parse_expr_head(par: &mut Parser) -> ParseResult<Node<Expr>> {
     use TokenKind::*;
 
     match par.peek_or_err()? {
-        Name | Int | Hex | Text | True | False => Ok(atom(&par.next()?)),
+        Name | Int | Hex | Text | True | False => {
+            let tok = par.next()?;
+            Ok(atom(par, &tok)?)
+        }
         Plus | Minus | Not | Tilde => {
             let op = par.next()?;
             let operand = parse_expr_with_min_bp(par, prefix_binding_power(op.kind))?;
@@ -122,7 +120,7 @@ fn parse_expr_head<'a>(par: &mut Parser<'a>) -> ParseResult<Node<Expr>> {
                 format!("Unexpected token while parsing expression: `{}`", tok.text),
                 vec![],
             );
-            Err(())
+            Err(ParseFailed)
         }
     }
 }
@@ -152,7 +150,8 @@ fn infix_binding_power(op: TokenKind) -> Option<(u8, u8)> {
 
         // all comparisons are the same
         // In | NotIn => todo!("in, not in"), // conflicts with current `for` parsing impl
-        Is | IsNot => (70, 71),
+        // TODO: `is not`
+        Is => (70, 71),
         Lt | LtEq | Gt | GtEq | NotEq | EqEq => (70, 71),
 
         Pipe => (80, 81),
@@ -222,7 +221,7 @@ fn parse_call_args(par: &mut Parser) -> ParseResult<Node<Vec<Node<CallArg>>>> {
                     ],
                     vec![],
                 );
-                return Err(());
+                return Err(ParseFailed);
             }
         } else {
             let span = arg.span;
@@ -300,7 +299,7 @@ fn parse_group_or_tuple(par: &mut Parser) -> ParseResult<Node<Expr>> {
                 "Unexpected token while parsing expression in parentheses",
                 vec![],
             );
-            Err(())
+            Err(ParseFailed)
         }
     }
 }
@@ -334,7 +333,7 @@ fn parse_expr_list(
                     "Unexpected token while parsing list of expressions",
                     vec![],
                 );
-                return Err(());
+                return Err(ParseFailed);
             }
         }
     }
@@ -345,17 +344,29 @@ fn parse_expr_list(
 /* node building utils */
 
 /// Create an "atom" expr from the given `Token` (`Name`, `Num`, `Bool`, etc)
-fn atom(tok: &Token) -> Node<Expr> {
+fn atom(par: &mut Parser, tok: &Token) -> ParseResult<Node<Expr>> {
     use TokenKind::*;
 
     let expr = match tok.kind {
         Name => Expr::Name(tok.text.to_owned()),
         Int | Hex => Expr::Num(tok.text.to_owned()),
-        Text => Expr::Str(vec![tok.text.to_owned()]),
         True | False => Expr::Bool(tok.kind == True),
+        Text => {
+            if let Some(string) = unescape_string(tok.text) {
+                Expr::Str(vec![string])
+            } else {
+                par.error(tok.span, "String contains an invalid escape sequence");
+                return Err(ParseFailed);
+            }
+        }
         _ => panic!("Unexpected atom token: {:?}", tok),
     };
-    Node::new(expr, tok.span)
+    Ok(Node::new(expr, tok.span))
+}
+
+fn unescape_string(quoted_string: &str) -> Option<String> {
+    let inner = &quoted_string[1..quoted_string.len() - 1];
+    unescape::unescape(inner)
 }
 
 /// Create an expr from the given infix operator and operands.
@@ -368,7 +379,7 @@ fn infix_op(left: Node<Expr>, op: &Token, right: Node<Expr>) -> Node<Expr> {
             bin_op(left, op, right)
         }
 
-        In | NotIn => todo!("in, not in"),
+        In => todo!("in, not in"),
         Is | Lt | LtEq | Gt | GtEq | NotEq | EqEq => comp_op(left, op, right),
 
         Dot => {
@@ -469,8 +480,7 @@ pub fn comp_op(left: Node<Expr>, op: &Token, right: Node<Expr>) -> Node<Expr> {
     use ast::CompOperator;
     use TokenKind::*;
     let astop = match op.kind {
-        In => todo!("in"),        // CompOperator::In,
-        NotIn => todo!("not in"), // CompOperator::NotIn,
+        In => todo!("in"), // CompOperator::In,
         Is => CompOperator::Is,
         Lt => CompOperator::Lt,
         LtEq => CompOperator::LtE,

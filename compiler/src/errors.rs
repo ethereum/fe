@@ -1,8 +1,9 @@
 //! Errors returned by the compilers and ABI builder.
 
-use fe_parser::tokenizer::TokenizeError;
+use fe_analyzer::errors::SemanticError;
+use fe_common::diagnostics::Diagnostic;
 use once_cell::sync::Lazy;
-use std::fmt::Formatter;
+use std::borrow::Cow;
 use std::panic;
 
 const BUG_REPORT_URL: &str = "https://github.com/ethereum/fe/issues/new";
@@ -20,8 +21,9 @@ pub fn install_compiler_panic_hook() {
 /// Errors can either be an object or static reference.
 #[derive(Debug)]
 pub enum ErrorKind {
-    StaticStr(&'static str),
-    Str(String),
+    Str(Cow<'static, str>),
+    Analyzer(SemanticError),
+    Parser(Vec<Diagnostic>),
 }
 
 /// List of errors encountered during compilation.
@@ -30,28 +32,9 @@ pub struct CompileError {
     pub errors: Vec<ErrorKind>,
 }
 
-impl std::fmt::Display for ErrorKind {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::StaticStr(s) => write!(f, "{}", s),
-            Self::Str(s) => write!(f, "{}", s),
-        }
-    }
-}
-
 impl Default for CompileError {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl std::fmt::Display for CompileError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        if let Some(err) = self.errors.first() {
-            write!(f, "{}", err)
-        } else {
-            write!(f, "empty compiler error")
-        }
     }
 }
 
@@ -63,21 +46,21 @@ impl CompileError {
     /// Create a single error with a static string.
     pub fn static_str(val: &'static str) -> Self {
         Self {
-            errors: vec![ErrorKind::StaticStr(val)],
+            errors: vec![ErrorKind::Str(val.into())],
         }
     }
 
     /// Create a single error with a string object.
     pub fn str(val: &str) -> Self {
         Self {
-            errors: vec![ErrorKind::Str(val.to_owned())],
+            errors: vec![ErrorKind::Str(val.to_string().into())],
         }
     }
-}
 
-impl<'a> From<TokenizeError> for CompileError {
-    fn from(_: TokenizeError) -> Self {
-        CompileError::static_str("tokenize error")
+    pub fn analyzer(err: SemanticError) -> Self {
+        Self {
+            errors: vec![ErrorKind::Analyzer(err)],
+        }
     }
 }
 
@@ -90,6 +73,12 @@ impl<'a> From<serde_json::error::Error> for CompileError {
 impl<'a> From<ethabi::Error> for CompileError {
     fn from(e: ethabi::Error) -> Self {
         CompileError::str(&format!("ethabi error: {}", e))
+    }
+}
+
+impl<'a> From<SemanticError> for CompileError {
+    fn from(e: SemanticError) -> Self {
+        CompileError::analyzer(e)
     }
 }
 

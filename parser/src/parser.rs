@@ -8,17 +8,32 @@ use fe_common::diagnostics::{
 };
 use fe_common::files::SourceFileId;
 
+use crate::ast::Module;
 use crate::lexer::{
     Lexer,
     Token,
     TokenKind,
 };
 use crate::node::Span;
+use std::{
+    error,
+    fmt,
+};
 
-pub mod grammar;
+#[derive(Debug)]
+pub struct ParseFailed;
+impl fmt::Display for ParseFailed {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(fmt, "ParseFailed")
+    }
+}
+impl error::Error for ParseFailed {}
 
-pub type ParseResult<T> = Result<T, ()>;
+pub type ParseResult<T> = Result<T, ParseFailed>;
 
+/// `Parser` maintains the parsing state, such as the token stream,
+/// indent stack, paren stack, diagnostics, etc.
+/// Syntax parsing logic is in the [`grammar`] module.
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
 
@@ -52,6 +67,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    #[allow(clippy::should_implement_trait)] // next() is a nice short name for a common task
     pub fn next(&mut self) -> ParseResult<Token<'a>> {
         // TODO: allow newlines inside square brackets
         // TODO: allow newlines inside angle brackets?
@@ -62,13 +78,11 @@ impl<'a> Parser<'a> {
         if let Some(tok) = self.next_raw() {
             if tok.kind == TokenKind::ParenOpen {
                 self.paren_stack.push(tok.span);
-            } else if tok.kind == TokenKind::ParenClose {
-                if self.paren_stack.pop().is_none() {
-                    self.error(tok.span, "Unmatched right parenthesis");
-                    if self.peek_raw() == Some(TokenKind::ParenClose) {
-                        // another unmatched closing paren; fail.
-                        return Err(());
-                    }
+            } else if tok.kind == TokenKind::ParenClose && self.paren_stack.pop().is_none() {
+                self.error(tok.span, "Unmatched right parenthesis");
+                if self.peek_raw() == Some(TokenKind::ParenClose) {
+                    // another unmatched closing paren; fail.
+                    return Err(ParseFailed);
                 }
             }
             Ok(tok)
@@ -77,7 +91,7 @@ impl<'a> Parser<'a> {
                 Span::new(self.lexer.source().len(), self.lexer.source().len()),
                 "unexpected end of file",
             );
-            Err(())
+            Err(ParseFailed)
         }
     }
 
@@ -94,7 +108,7 @@ impl<'a> Parser<'a> {
         } else {
             let index = self.lexer.source().len();
             self.error(Span::new(index, index), "unexpected end of file");
-            Err(())
+            Err(ParseFailed)
         }
     }
 
@@ -103,6 +117,10 @@ impl<'a> Parser<'a> {
             self.eat_newlines();
         }
         self.peek_raw()
+    }
+
+    pub fn peeked_text(&mut self) -> &'a str {
+        self.buffered.last().unwrap().text
     }
 
     fn peek_raw(&mut self) -> Option<TokenKind> {
@@ -161,7 +179,7 @@ impl<'a> Parser<'a> {
         expected: TokenKind,
         message: S,
     ) -> ParseResult<Token<'a>> {
-        self.expect_with_notes(expected, message, || vec![])
+        self.expect_with_notes(expected, message, Vec::new)
     }
 
     pub fn expect_with_notes<Str, NotesFn>(
@@ -179,16 +197,19 @@ impl<'a> Parser<'a> {
             Ok(tok)
         } else {
             let label = if let Some(symbol) = expected.symbol_str() {
-                format!("expected `{}`", symbol)
+                format!("Unexpected token. Expected `{}`", symbol)
             } else {
-                format!("expected {}", expected.friendly_str().unwrap())
+                format!(
+                    "Unexpected token. Expected {}",
+                    expected.friendly_str().unwrap()
+                )
             };
             self.fancy_error(
                 message.into(),
                 vec![Label::primary(tok.span, label)],
                 notes_fn(),
             );
-            Err(())
+            Err(ParseFailed)
         }
     }
 
@@ -240,7 +261,7 @@ impl<'a> Parser<'a> {
                 ],
                 vec![],
             );
-            Err(())
+            Err(ParseFailed)
         }
     }
 
@@ -256,7 +277,7 @@ impl<'a> Parser<'a> {
                 )],
                 vec![],
             );
-            Err(())
+            Err(ParseFailed)
         } else {
             Ok(())
         }
@@ -303,7 +324,7 @@ impl<'a> Parser<'a> {
                         indent_span,
                         "this indentation doesn't match other lines in the current block or an enclosing block"
                     );
-                    return Err(());
+                    return Err(ParseFailed);
                 }
                 Ok(())
             }
@@ -314,7 +335,7 @@ impl<'a> Parser<'a> {
                     format!("unexpected token while parsing {}", context_name),
                     vec!["expected a newline".into()],
                 );
-                Err(())
+                Err(ParseFailed)
             }
         }
     }
@@ -373,7 +394,7 @@ impl<'a> Parser<'a> {
             Ok(())
         } else if indent.find(' ').is_some() && indent.find('\t').is_some() {
             self.indentation_error(span, "this indent contains both tabs and spaces");
-            Err(())
+            Err(ParseFailed)
         } else if self.indent_style.is_none() {
             self.indent_style = Some(indent.chars().next().unwrap());
             Ok(())
@@ -386,7 +407,7 @@ impl<'a> Parser<'a> {
                     indent_char_name(self.indent_style.unwrap())
                 ),
             );
-            Err(())
+            Err(ParseFailed)
         } else {
             Ok(())
         }

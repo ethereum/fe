@@ -59,7 +59,10 @@ mod tests {
     };
     use crate::traversal::declarations::var_decl;
     use crate::Context;
-    use fe_parser as parser;
+    use fe_parser::{
+        grammar::functions::parse_stmt,
+        parse_code_chunk,
+    };
     use std::rc::Rc;
 
     fn scope() -> Shared<BlockScope> {
@@ -70,12 +73,10 @@ mod tests {
 
     fn analyze(scope: Shared<BlockScope>, src: &str) -> Result<Context, SemanticError> {
         let context = Context::new_shared();
-        let tokens = parser::get_parse_tokens(src).expect("Couldn't parse expression");
-        let statement = &parser::parsers::vardecl_stmt(&tokens[..])
-            .expect("Couldn't build statement AST")
-            .1;
 
-        var_decl(scope, Rc::clone(&context), statement)?;
+        let statement = parse_code_chunk(parse_stmt, src).expect("Couldn't build statement AST");
+
+        var_decl(scope, Rc::clone(&context), &statement)?;
         Ok(Rc::try_unwrap(context)
             .map_err(|_| "")
             .unwrap()

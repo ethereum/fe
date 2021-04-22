@@ -7,22 +7,15 @@ use super::types::{
 
 use crate::ast::{
     ConstQualifier,
-    ContractStmt,
     ModuleStmt,
     PubQualifier,
 };
-use crate::lexer::{
-    Token,
-    TokenKind,
-};
-use crate::newparser::{
-    Label,
+use crate::node::Node;
+use crate::{
+    ParseFailed,
     ParseResult,
     Parser,
-};
-use crate::node::{
-    Node,
-    Span,
+    TokenKind,
 };
 
 // Rule: all "statement" level parse functions consume their trailing
@@ -31,7 +24,7 @@ use crate::node::{
 // trailing newlines to check whether it's followed by an `else` block, and is
 // done for all statements for consistency.
 
-pub fn parse_contract_def<'a>(par: &mut Parser<'a>) -> ParseResult<Node<ModuleStmt>> {
+pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     use TokenKind::*;
     let contract_tok = par.assert(Contract);
 
@@ -80,24 +73,24 @@ pub fn parse_contract_def<'a>(par: &mut Parser<'a>) -> ParseResult<Node<ModuleSt
                 fields.push(field);
             }
             Some(TokenKind::Def) => {
-                if const_qual.is_some() {
+                if let Some(node) = const_qual {
                     par.error(
-                        const_qual.unwrap().span,
+                        node.span,
                         "`const` qualifier can't be used with function definitions",
                     );
                 }
                 defs.push(parse_fn_def(par, pub_qual)?);
             }
             Some(TokenKind::Event) => {
-                if pub_qual.is_some() {
+                if let Some(node) = pub_qual {
                     par.error(
-                        pub_qual.unwrap().span,
+                        node.span,
                         "`pub` qualifier can't be used with event definitions",
                     );
                 }
-                if const_qual.is_some() {
+                if let Some(node) = const_qual {
                     par.error(
-                        const_qual.unwrap().span,
+                        node.span,
                         "`const` qualifier can't be used with event definitions",
                     );
                 }
@@ -115,7 +108,7 @@ pub fn parse_contract_def<'a>(par: &mut Parser<'a>) -> ParseResult<Node<ModuleSt
                     "failed to parse contract definition body",
                     vec![],
                 );
-                return Err(());
+                return Err(ParseFailed);
             }
         };
     }

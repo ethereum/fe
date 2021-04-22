@@ -9,22 +9,19 @@ use crate::ast::{
     PubQualifier,
     TypeDesc,
 };
-use crate::lexer::{
-    Token,
-    TokenKind,
-};
-use crate::newparser::{
-    grammar::expressions::parse_expr,
-    Label,
-    ParseResult,
-    Parser,
-};
 use crate::node::{
     Node,
     Span,
 };
+use crate::{
+    grammar::expressions::parse_expr,
+    ParseFailed,
+    ParseResult,
+    Parser,
+    TokenKind,
+};
 
-pub fn parse_struct_def<'a>(par: &mut Parser<'a>) -> ParseResult<Node<ModuleStmt>> {
+pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     use TokenKind::*;
 
     let struct_tok = par.assert(Struct);
@@ -49,7 +46,7 @@ pub fn parse_struct_def<'a>(par: &mut Parser<'a>) -> ParseResult<Node<ModuleStmt
             Some(_) => {
                 let tok = par.next()?;
                 par.unexpected_token_error(tok.span, "failed to parse struct def", vec![]);
-                return Err(());
+                return Err(ParseFailed);
             }
         }
     }
@@ -63,7 +60,7 @@ pub fn parse_struct_def<'a>(par: &mut Parser<'a>) -> ParseResult<Node<ModuleStmt
     ))
 }
 
-pub fn parse_type_def<'a>(par: &mut Parser<'a>) -> ParseResult<Node<ModuleStmt>> {
+pub fn parse_type_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     let type_tok = par.assert(TokenKind::Type);
     let name = par.expect(TokenKind::Name, "failed to parse type declaration")?;
     par.expect_with_notes(TokenKind::Eq, "failed to parse type declaration", || {
@@ -85,7 +82,7 @@ pub fn parse_type_def<'a>(par: &mut Parser<'a>) -> ParseResult<Node<ModuleStmt>>
 }
 
 /// Parse an event definition block
-pub fn parse_event_def<'a>(par: &mut Parser<'a>) -> ParseResult<Node<ContractStmt>> {
+pub fn parse_event_def(par: &mut Parser) -> ParseResult<Node<ContractStmt>> {
     use TokenKind::*;
 
     let event_tok = par.assert(Event);
@@ -106,7 +103,7 @@ pub fn parse_event_def<'a>(par: &mut Parser<'a>) -> ParseResult<Node<ContractStm
             Some(_) => {
                 let tok = par.next()?;
                 par.unexpected_token_error(tok.span, "failed to parse event definition", vec![]);
-                return Err(());
+                return Err(ParseFailed);
             }
         }
     }
@@ -120,7 +117,7 @@ pub fn parse_event_def<'a>(par: &mut Parser<'a>) -> ParseResult<Node<ContractStm
     ))
 }
 
-pub fn parse_event_field<'a>(par: &mut Parser<'a>) -> ParseResult<Node<EventField>> {
+pub fn parse_event_field(par: &mut Parser) -> ParseResult<Node<EventField>> {
     let idx_qual = parse_opt_qualifier(par, TokenKind::Idx, IdxQualifier {});
     let name = par.assert(TokenKind::Name);
     par.expect_with_notes(TokenKind::Colon, "failed to parse event field", || {
@@ -147,8 +144,8 @@ pub fn parse_event_field<'a>(par: &mut Parser<'a>) -> ParseResult<Node<EventFiel
     ))
 }
 
-pub fn parse_field_def<'a>(
-    par: &mut Parser<'a>,
+pub fn parse_field_def(
+    par: &mut Parser,
     pub_qual: Option<Node<PubQualifier>>,
     const_qual: Option<Node<ConstQualifier>>,
 ) -> ParseResult<Node<Field>> {
@@ -187,11 +184,7 @@ pub fn parse_field_def<'a>(
 }
 
 /// Parse an optional qualifier (pub, const, or idx)
-pub fn parse_opt_qualifier<'a, T>(
-    par: &mut Parser<'a>,
-    tk: TokenKind,
-    node_kind: T,
-) -> Option<Node<T>> {
+pub fn parse_opt_qualifier<T>(par: &mut Parser, tk: TokenKind, node_kind: T) -> Option<Node<T>> {
     if par.peek() == Some(tk) {
         let tok = par.next().unwrap();
         Some(Node::new(node_kind, tok.span))
@@ -202,7 +195,7 @@ pub fn parse_opt_qualifier<'a, T>(
 
 /// Parse an angle-bracket-wrapped list of generic arguments (eg. the tail end
 /// of `map<address, u256>`)
-fn parse_generic_args<'a>(par: &mut Parser<'a>) -> ParseResult<(Vec<Node<GenericArg>>, Span)> {
+fn parse_generic_args(par: &mut Parser) -> ParseResult<(Vec<Node<GenericArg>>, Span)> {
     use TokenKind::*;
     let mut span = par.assert(Lt).span;
 
@@ -224,7 +217,7 @@ fn parse_generic_args<'a>(par: &mut Parser<'a>) -> ParseResult<(Vec<Node<Generic
                     args.push(Node::new(GenericArg::Int(num), tok.span));
                 } else {
                     par.error(tok.span, "failed to parse integer literal");
-                    return Err(());
+                    return Err(ParseFailed);
                 }
             }
             Name | ParenOpen => {
@@ -250,7 +243,7 @@ fn parse_generic_args<'a>(par: &mut Parser<'a>) -> ParseResult<(Vec<Node<Generic
                                 "Unexpected token while parsing generic arg list",
                                 vec![],
                             );
-                            return Err(());
+                            return Err(ParseFailed);
                         }
                     }
                 }
@@ -262,7 +255,7 @@ fn parse_generic_args<'a>(par: &mut Parser<'a>) -> ParseResult<(Vec<Node<Generic
                     "failed to parse generic type argument list",
                     vec![],
                 );
-                return Err(());
+                return Err(ParseFailed);
             }
         }
     }
@@ -271,7 +264,6 @@ fn parse_generic_args<'a>(par: &mut Parser<'a>) -> ParseResult<(Vec<Node<Generic
 
 // TODO: remove TypeDesc::Map and this fn
 fn temporary_backward_compatible_map_type(
-    name: &Token,
     mut args: Vec<Node<GenericArg>>,
     span: Span,
 ) -> Node<TypeDesc> {
@@ -291,7 +283,7 @@ fn temporary_backward_compatible_map_type(
 }
 
 /// Parse a type description
-pub fn parse_type_desc<'a>(par: &mut Parser<'a>) -> ParseResult<Node<TypeDesc>> {
+pub fn parse_type_desc(par: &mut Parser) -> ParseResult<Node<TypeDesc>> {
     use TokenKind::*;
 
     let mut typ = match par.peek_or_err()? {
@@ -302,7 +294,7 @@ pub fn parse_type_desc<'a>(par: &mut Parser<'a>) -> ParseResult<Node<TypeDesc>> 
                     let (args, argspan) = parse_generic_args(par)?;
                     let span = name.span + argspan;
                     if name.text == "map" {
-                        temporary_backward_compatible_map_type(&name, args, span)
+                        temporary_backward_compatible_map_type(args, span)
                     } else {
                         Node::new(
                             TypeDesc::Generic {
@@ -353,7 +345,7 @@ pub fn parse_type_desc<'a>(par: &mut Parser<'a>) -> ParseResult<Node<TypeDesc>> 
                             "failed to parse type description",
                             vec![],
                         );
-                        return Err(());
+                        return Err(ParseFailed);
                     }
                 }
             }
@@ -362,7 +354,7 @@ pub fn parse_type_desc<'a>(par: &mut Parser<'a>) -> ParseResult<Node<TypeDesc>> 
         _ => {
             let tok = par.next()?;
             par.unexpected_token_error(tok.span, "failed to parse type description", vec![]);
-            return Err(());
+            return Err(ParseFailed);
         }
     };
 
@@ -381,7 +373,7 @@ pub fn parse_type_desc<'a>(par: &mut Parser<'a>) -> ParseResult<Node<TypeDesc>> 
             );
         } else {
             par.error(num.span, "failed to parse number literal");
-            return Err(());
+            return Err(ParseFailed);
         }
     }
     Ok(typ)

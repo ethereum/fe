@@ -136,6 +136,8 @@ pub struct FuncDefArg {
     pub typ: Node<TypeDesc>,
 }
 
+// TODO: `Node`s are very large. VarDecl is 328 bytes
+#[allow(clippy::large_enum_variant)]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum FuncStmt {
     Return {

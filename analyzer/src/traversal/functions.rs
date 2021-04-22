@@ -444,7 +444,10 @@ mod tests {
         func_def,
     };
     use crate::Context;
-    use fe_parser as parser;
+    use fe_parser::{
+        grammar::functions::parse_fn_def,
+        parse_code_chunk,
+    };
     use std::rc::Rc;
 
     fn scope() -> Shared<ContractScope> {
@@ -454,13 +457,11 @@ mod tests {
 
     fn analyze(scope: Shared<ContractScope>, src: &str) -> Context {
         let context = Context::new_shared();
-        let tokens = parser::get_parse_tokens(src).expect("Couldn't parse expression");
-        let def = &parser::parsers::func_def(&tokens[..])
-            .expect("Couldn't build func def AST")
-            .1;
-
-        func_def(Rc::clone(&scope), Rc::clone(&context), def).expect("Couldn't map func def AST");
-        func_body(scope, Rc::clone(&context), def).expect("Couldn't map func body AST");
+        // parse_fn_def takes Option<Node<PubQualifier>>
+        let def = parse_code_chunk(|par| parse_fn_def(par, None), src)
+            .expect("Couldn't build func def AST");
+        func_def(Rc::clone(&scope), Rc::clone(&context), &def).expect("Couldn't map func def AST");
+        func_body(scope, Rc::clone(&context), &def).expect("Couldn't map func body AST");
         Rc::try_unwrap(context)
             .map_err(|_| "")
             .unwrap()
@@ -471,7 +472,7 @@ mod tests {
     fn simple_func_def() {
         let scope = scope();
         let func_def = "\
-        def foo(x: u256) -> u256:\
+        def foo(x: u256) -> u256:\n \
             return x + x\
         ";
         let context = analyze(Rc::clone(&scope), func_def);

@@ -17,7 +17,12 @@ use clap::{
 
 mod _utils;
 use crate::_utils::pretty_curly_print;
-use fe_compiler::errors::install_compiler_panic_hook;
+use fe_common::diagnostics::print_diagnostics;
+use fe_common::files::FileStore;
+use fe_compiler::errors::{
+    install_compiler_panic_hook,
+    ErrorKind,
+};
 use fe_compiler::types::CompiledModule;
 
 const DEFAULT_OUTPUT_DIR_NAME: &str = "output";
@@ -83,39 +88,53 @@ pub fn main() {
     let optimize = matches.is_present("optimize");
     let targets =
         values_t!(matches.values_of("emit"), CompilationTarget).unwrap_or_else(|e| e.exit());
-
-    match compile_and_write(input_file, &targets, &output_dir, overwrite, optimize) {
-        Ok(_) => println!("Compiled {}. Outputs in `{}`", input_file, output_dir),
-        Err(err) => {
-            println!("Unable to compile {}. \nError: {}", input_file, err);
-            std::process::exit(1)
-        }
-    }
-}
-
-fn compile_and_write(
-    src_file: &str,
-    targets: &[CompilationTarget],
-    output_dir: &str,
-    overwrite: bool,
-    optimize: bool,
-) -> Result<(), String> {
-    let src = fs::read_to_string(src_file).map_err(ioerr_to_string)?;
     let with_bytecode = targets.contains(&CompilationTarget::Bytecode);
-
     #[cfg(not(feature = "solc-backend"))]
     if with_bytecode {
         eprintln!("Warning: bytecode output requires 'solc-backend' feature. Try `cargo build --release --features solc-backend`. Skipping.");
     }
 
-    let compiled_module =
-        fe_compiler::compile(&src, with_bytecode, optimize).map_err(|error| error.to_string())?;
+    let mut files = FileStore::new();
+    let file = files
+        .load_file(input_file.to_string())
+        .map_err(ioerr_to_string);
+    if let Err(err) = file {
+        eprintln!("Failed to load file: `{}`. Error: {}", input_file, err);
+        std::process::exit(1);
+    }
+    let (content, id) = file.unwrap();
 
-    write_compiled_module(compiled_module, targets, output_dir, overwrite)
+    let compiled_module = match fe_compiler::compile(&content, id, with_bytecode, optimize) {
+        Ok(module) => module,
+        Err(error) => {
+            eprintln!("Unable to compile {}.", input_file);
+            for err in error.errors {
+                match err {
+                    ErrorKind::Str(err) => eprintln!("Compiler error: {}", err),
+                    ErrorKind::Analyzer(err) => {
+                        eprintln!("Analyzer error: {}", err.format_user(&content))
+                    }
+                    ErrorKind::Parser(diags) => print_diagnostics(&diags, &files),
+                }
+            }
+            std::process::exit(1)
+        }
+    };
+    match write_compiled_module(compiled_module, &content, &targets, &output_dir, overwrite) {
+        Ok(_) => println!("Compiled {}. Outputs in `{}`", input_file, output_dir),
+        Err(err) => {
+            eprintln!(
+                "Failed to write output to directory: `{}`. Error: {}",
+                output_dir, err
+            );
+            std::process::exit(1)
+        }
+    }
 }
 
 fn write_compiled_module(
     mut module: CompiledModule,
+    file_content: &str,
     targets: &[CompilationTarget],
     output_dir: &str,
     overwrite: bool,
@@ -143,7 +162,11 @@ fn write_compiled_module(
     }
 
     if targets.contains(&CompilationTarget::Tokens) {
-        write_output(&output_dir.join("module.tokens"), &module.src_tokens)?;
+        let tokens = {
+            let lexer = fe_parser::lexer::Lexer::new(file_content);
+            lexer.collect::<Vec<_>>()
+        };
+        write_output(&output_dir.join("module.tokens"), &format!("{:#?}", tokens))?;
     }
 
     for (name, contract) in module.contracts.drain() {
