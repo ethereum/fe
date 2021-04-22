@@ -95,9 +95,7 @@ pub fn main() {
     }
 
     let mut files = FileStore::new();
-    let file = files
-        .load_file(input_file.to_string())
-        .map_err(ioerr_to_string);
+    let file = files.load_file(input_file).map_err(ioerr_to_string);
     if let Err(err) = file {
         eprintln!("Failed to load file: `{}`. Error: {}", input_file, err);
         std::process::exit(1);

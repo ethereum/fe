@@ -15,9 +15,9 @@ use crate::{
     TokenKind,
 };
 
-///! Expressions are parsed in Pratt's top-down operator precedence style.
-///! See this article for a nice explanation:
-///! <https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html>
+// Expressions are parsed in Pratt's top-down operator precedence style.
+// See this article for a nice explanation:
+// <https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html>
 
 /// Parse an expression, starting with the next token.
 pub fn parse_expr(par: &mut Parser) -> ParseResult<Node<Expr>> {
@@ -265,7 +265,7 @@ fn parse_list(par: &mut Parser) -> ParseResult<Node<Expr>> {
     Ok(Node::new(Expr::List { elts }, span))
 }
 
-/// Parses a paren-wrapped expression, which might turn out to be a tuple
+/// Parse a paren-wrapped expression, which might turn out to be a tuple
 /// if it contains commas.
 fn parse_group_or_tuple(par: &mut Parser) -> ParseResult<Node<Expr>> {
     use TokenKind::*;
@@ -402,7 +402,7 @@ fn infix_op(left: Node<Expr>, op: &Token, right: Node<Expr>) -> Node<Expr> {
 }
 
 /// Create an `Expr::BoolOperation` node for the given operator and operands.
-pub fn bool_op(left: Node<Expr>, op: &Token, right: Node<Expr>) -> Node<Expr> {
+fn bool_op(left: Node<Expr>, op: &Token, right: Node<Expr>) -> Node<Expr> {
     use TokenKind::*;
     let astop = match op.kind {
         And => ast::BoolOperator::And,
@@ -422,7 +422,7 @@ pub fn bool_op(left: Node<Expr>, op: &Token, right: Node<Expr>) -> Node<Expr> {
 }
 
 /// Create an `Expr::BinOperation` node for the given operator and operands.
-pub fn bin_op(left: Node<Expr>, op: &Token, right: Node<Expr>) -> Node<Expr> {
+fn bin_op(left: Node<Expr>, op: &Token, right: Node<Expr>) -> Node<Expr> {
     use ast::BinOperator::*;
     use TokenKind::*;
 
@@ -453,7 +453,7 @@ pub fn bin_op(left: Node<Expr>, op: &Token, right: Node<Expr>) -> Node<Expr> {
 }
 
 /// Create an `Expr::UnaryOperation` node for the given operator and operands.
-pub fn unary_op(op: &Token, operand: Node<Expr>) -> Node<Expr> {
+fn unary_op(op: &Token, operand: Node<Expr>) -> Node<Expr> {
     use ast::UnaryOperator;
     use TokenKind::*;
 
@@ -476,7 +476,7 @@ pub fn unary_op(op: &Token, operand: Node<Expr>) -> Node<Expr> {
 }
 
 /// Create an `Expr::CompOperation` node for the given operator and operands.
-pub fn comp_op(left: Node<Expr>, op: &Token, right: Node<Expr>) -> Node<Expr> {
+fn comp_op(left: Node<Expr>, op: &Token, right: Node<Expr>) -> Node<Expr> {
     use ast::CompOperator;
     use TokenKind::*;
     let astop = match op.kind {

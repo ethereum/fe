@@ -2,13 +2,13 @@ use crate::utils::keccak;
 use crate::Span;
 use codespan_reporting as cs;
 use cs::files::Error as CsError;
+use std::collections::HashMap;
+use std::convert::TryInto;
+use std::ops::Range;
+use std::path::Path;
 use std::{
-    collections::HashMap,
-    convert::TryInto,
     fs,
     io,
-    ops::Range,
-    path::Path,
 };
 
 pub struct SourceFile {
@@ -22,13 +22,13 @@ pub struct SourceFile {
 pub struct SourceFileId(pub u128);
 
 impl SourceFile {
-    pub fn new(name: String, content: String) -> Self {
+    pub fn new(name: &str, content: &str) -> Self {
         let hash = keccak::full_as_bytes(content.as_bytes());
         let line_starts = cs::files::line_starts(&content).collect();
         Self {
             id: SourceFileId(u128::from_be_bytes(hash[..16].try_into().unwrap())),
-            name,
-            content,
+            name: name.to_string(),
+            content: content.to_string(),
             line_starts,
         }
     }
@@ -81,16 +81,16 @@ impl FileStore {
         }
     }
 
-    pub fn add_file(&mut self, path: String, content: String) -> SourceFileId {
+    pub fn add_file(&mut self, path: &str, content: &str) -> SourceFileId {
         let file = SourceFile::new(path, content);
         let id = file.id;
         self.files.insert(id, file);
         id
     }
 
-    pub fn load_file(&mut self, path: String) -> io::Result<(String, SourceFileId)> {
+    pub fn load_file(&mut self, path: &str) -> io::Result<(String, SourceFileId)> {
         let content = self.loader.load_file(&Path::new(&path))?;
-        let id = self.add_file(path, content.clone());
+        let id = self.add_file(path, &content);
         Ok((content, id))
     }
 

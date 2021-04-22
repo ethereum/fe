@@ -9,18 +9,21 @@ use crate::ast::{
     PubQualifier,
     TypeDesc,
 };
+use crate::grammar::expressions::parse_expr;
 use crate::node::{
     Node,
     Span,
 };
 use crate::{
-    grammar::expressions::parse_expr,
     ParseFailed,
     ParseResult,
     Parser,
     TokenKind,
 };
 
+/// Parse a [`ModuleStmt::StructDef`].
+/// # Panics
+/// Panics if the next token isn't `struct`.
 pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     use TokenKind::*;
 
@@ -36,7 +39,7 @@ pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
             Some(Name) | Some(Pub) | Some(Const) => {
                 let pub_qual = parse_opt_qualifier(par, TokenKind::Pub, PubQualifier {});
                 let const_qual = parse_opt_qualifier(par, TokenKind::Const, ConstQualifier {});
-                fields.push(parse_field_def(par, pub_qual, const_qual)?);
+                fields.push(parse_field(par, pub_qual, const_qual)?);
             }
             Some(Dedent) => {
                 par.next()?;
@@ -60,6 +63,9 @@ pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     ))
 }
 
+/// Parse a type definition, e.g. `type MyMap = map<u8, address>`.
+/// # Panics
+/// Panics if the next token isn't `type`.
 pub fn parse_type_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     let type_tok = par.assert(TokenKind::Type);
     let name = par.expect(TokenKind::Name, "failed to parse type declaration")?;
@@ -81,7 +87,9 @@ pub fn parse_type_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     ))
 }
 
-/// Parse an event definition block
+/// Parse an event definition.
+/// # Panics
+/// Panics if the next token isn't `event`.
 pub fn parse_event_def(par: &mut Parser) -> ParseResult<Node<ContractStmt>> {
     use TokenKind::*;
 
@@ -117,9 +125,10 @@ pub fn parse_event_def(par: &mut Parser) -> ParseResult<Node<ContractStmt>> {
     ))
 }
 
+/// Parse an event field, e.g. `foo: u8` or `idx from: address`.
 pub fn parse_event_field(par: &mut Parser) -> ParseResult<Node<EventField>> {
     let idx_qual = parse_opt_qualifier(par, TokenKind::Idx, IdxQualifier {});
-    let name = par.assert(TokenKind::Name);
+    let name = par.expect(TokenKind::Name, "failed to parse event field")?;
     par.expect_with_notes(TokenKind::Colon, "failed to parse event field", || {
         vec![
             "Note: event field name must be followed by a colon and a type description".into(),
@@ -144,7 +153,10 @@ pub fn parse_event_field(par: &mut Parser) -> ParseResult<Node<EventField>> {
     ))
 }
 
-pub fn parse_field_def(
+/// Parse a field for a struct or contract. The leading optional `pub` and
+/// `const` qualifiers must be parsed by the caller, and passed in.
+/// Note that `event` fields are handled in [`parse_event_field`].
+pub fn parse_field(
     par: &mut Parser,
     pub_qual: Option<Node<PubQualifier>>,
     const_qual: Option<Node<ConstQualifier>>,
@@ -183,7 +195,7 @@ pub fn parse_field_def(
     ))
 }
 
-/// Parse an optional qualifier (pub, const, or idx)
+/// Parse an optional qualifier (`pub`, `const`, or `idx`).
 pub fn parse_opt_qualifier<T>(par: &mut Parser, tk: TokenKind, node_kind: T) -> Option<Node<T>> {
     if par.peek() == Some(tk) {
         let tok = par.next().unwrap();
@@ -194,7 +206,9 @@ pub fn parse_opt_qualifier<T>(par: &mut Parser, tk: TokenKind, node_kind: T) -> 
 }
 
 /// Parse an angle-bracket-wrapped list of generic arguments (eg. the tail end
-/// of `map<address, u256>`)
+/// of `map<address, u256>`).
+/// # Panics
+/// Panics if the first token isn't `<`.
 fn parse_generic_args(par: &mut Parser) -> ParseResult<(Vec<Node<GenericArg>>, Span)> {
     use TokenKind::*;
     let mut span = par.assert(Lt).span;
@@ -282,7 +296,7 @@ fn temporary_backward_compatible_map_type(
     }
 }
 
-/// Parse a type description
+/// Parse a type description, e.g. `u8` or `map<address, u256>`.
 pub fn parse_type_desc(par: &mut Parser) -> ParseResult<Node<TypeDesc>> {
     use TokenKind::*;
 
@@ -330,10 +344,12 @@ pub fn parse_type_desc(par: &mut Parser) -> ParseResult<Node<TypeDesc>> {
                         if par.peek_or_err()? == Comma {
                             par.next()?;
                         } else {
-                            par.expect(
-                                ParenClose,
-                                "Unexpected token while parsing tuple type description",
-                            )?;
+                            span += par
+                                .expect(
+                                    ParenClose,
+                                    "Unexpected token while parsing tuple type description",
+                                )?
+                                .span;
                             break;
                         }
                     }

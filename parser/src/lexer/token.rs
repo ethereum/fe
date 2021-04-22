@@ -3,6 +3,7 @@ use crate::node::{
     Span,
 };
 use logos::Logos;
+use std::ops::Add;
 
 #[derive(Debug, PartialEq)]
 pub struct Token<'a> {
@@ -14,6 +15,14 @@ pub struct Token<'a> {
 impl<'a> From<Token<'a>> for Node<String> {
     fn from(tok: Token<'a>) -> Node<String> {
         Node::new(tok.text.into(), tok.span)
+    }
+}
+
+impl<'a> Add<&Token<'a>> for Span {
+    type Output = Self;
+
+    fn add(self, other: &Token<'a>) -> Self {
+        self + other.span
     }
 }
 
@@ -37,7 +46,7 @@ pub enum TokenKind {
     Name,
     #[regex("[0-9]+")]
     Int,
-    #[regex("0[xX](?:_?[0-9a-fA-F])")]
+    #[regex("0[xX][0-9a-fA-F]+")]
     Hex,
     // Float,
     #[regex(r#""([^"\\]|\\.)*""#)]
@@ -194,6 +203,9 @@ pub enum TokenKind {
 }
 
 impl TokenKind {
+    /// Return a user-friendly description of the token kind. E.g.
+    /// `TokenKind::Newline => "a newline"`
+    /// Returns [`TokenKind::symbol_str`] for symbol tokens.
     pub fn friendly_str(&self) -> Option<&'static str> {
         use TokenKind::*;
         let val = match self {
@@ -208,6 +220,8 @@ impl TokenKind {
         Some(val)
     }
 
+    /// If the token is a symbol or keyword, return the string representation.
+    /// E.g. `TokenKind::EqEq => "=="`
     pub fn symbol_str(&self) -> Option<&'static str> {
         use TokenKind::*;
         let val = match self {

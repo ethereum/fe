@@ -17,16 +17,25 @@ use crate::{
     Parser,
 };
 
+/// Parse a function definition. The optional `pub` qualifier must be parsed by
+/// the caller, and passed in.
+///
+/// # Panics
+/// Panics if the next token isn't `def`.
 pub fn parse_fn_def(
     par: &mut Parser,
     pub_qual: Option<Node<PubQualifier>>,
 ) -> ParseResult<Node<ContractStmt>> {
     let def_tok = par.assert(TokenKind::Def);
     let name = par.expect(TokenKind::Name, "failed to parse function definition")?;
-    let def_span = def_tok.span + pub_qual.as_ref() + name.span;
+    let mut span = def_tok.span + pub_qual.as_ref() + name.span;
 
     let args = match par.peek_or_err()? {
-        TokenKind::ParenOpen => parse_fn_param_list(par)?,
+        TokenKind::ParenOpen => {
+            let node = parse_fn_param_list(par)?;
+            span += node.span;
+            node.kind
+        }
         TokenKind::Colon | TokenKind::Arrow => {
             par.fancy_error(
                 "function definition requires a list of parameters",
@@ -59,19 +68,19 @@ pub fn parse_fn_def(
             return Err(ParseFailed);
         }
     };
-
     let return_type = if par.peek() == Some(TokenKind::Arrow) {
         par.next()?;
         Some(parse_type_desc(par)?)
     } else {
         None
     };
+    span += return_type.as_ref();
 
     // TODO: allow multi-line return type? `def f()\n ->\n u8`
     // TODO: allow single-line fn defs?
-    par.enter_block(def_span, "Function definition")?;
+    par.enter_block(span, "function definition")?;
     let body = parse_block_stmts(par)?;
-    let span = def_span + body.last();
+    span += body.last();
     Ok(Node::new(
         ContractStmt::FuncDef {
             pub_qual,
@@ -84,13 +93,13 @@ pub fn parse_fn_def(
     ))
 }
 
-pub fn parse_fn_param_list(par: &mut Parser) -> ParseResult<Vec<Node<FuncDefArg>>> {
-    par.assert(TokenKind::ParenOpen);
+fn parse_fn_param_list(par: &mut Parser) -> ParseResult<Node<Vec<Node<FuncDefArg>>>> {
+    let mut span = par.assert(TokenKind::ParenOpen).span;
     let mut params = vec![];
     loop {
         match par.peek_or_err()? {
             TokenKind::ParenClose => {
-                par.next()?;
+                span += par.next()?.span;
                 break;
             }
             TokenKind::Name => {
@@ -108,22 +117,24 @@ pub fn parse_fn_param_list(par: &mut Parser) -> ParseResult<Vec<Node<FuncDefArg>
                     },
                 )?;
                 let typ = parse_type_desc(par)?;
-                let span = name.span + typ.span;
+                let param_span = name.span + typ.span;
                 params.push(Node::new(
                     FuncDefArg {
                         name: Node::new(name.text.into(), name.span),
                         typ,
                     },
-                    span,
+                    param_span,
                 ));
 
                 if par.peek() == Some(TokenKind::Comma) {
                     par.next()?;
                 } else {
-                    par.expect(
-                        TokenKind::ParenClose,
-                        "unexpected token while parsing function parameter list",
-                    )?;
+                    span += par
+                        .expect(
+                            TokenKind::ParenClose,
+                            "unexpected token while parsing function parameter list",
+                        )?
+                        .span;
                     break;
                 }
             }
@@ -138,7 +149,7 @@ pub fn parse_fn_param_list(par: &mut Parser) -> ParseResult<Vec<Node<FuncDefArg>
             }
         }
     }
-    Ok(params)
+    Ok(Node::new(params, span))
 }
 
 /// Parse (function) statements until a block dedent or end-of-file is reached.
@@ -178,6 +189,10 @@ fn aug_assign_op(tk: TokenKind) -> Option<BinOperator> {
     Some(op)
 }
 
+/// Parse a `continue`, `break`, `pass`, or `revert` statement.
+///
+/// # Panics
+/// Panics if the next token isn't one of the above.
 pub fn parse_single_word_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let tok = par.next().unwrap();
     par.expect_newline(tok.kind.symbol_str().unwrap())?;
@@ -191,6 +206,7 @@ pub fn parse_single_word_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     Ok(Node::new(stmt, tok.span))
 }
 
+/// Parse a function-level statement.
 pub fn parse_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     use TokenKind::*;
 
@@ -280,6 +296,10 @@ fn parse_expr_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     Ok(node)
 }
 
+/// Parse an `if` statement, or an `elif` block.
+///
+/// # Panics
+/// Panics if the next token isn't `if` or `elif`.
 pub fn parse_if_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let if_tok = par.next()?;
     assert!(matches!(if_tok.kind, TokenKind::If | TokenKind::Elif));
@@ -311,6 +331,10 @@ pub fn parse_if_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     ))
 }
 
+/// Parse a `while` statement.
+///
+/// # Panics
+/// Panics if the next token isn't `while`.
 pub fn parse_while_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let while_tok = par.assert(TokenKind::While);
 
@@ -338,13 +362,17 @@ pub fn parse_while_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     ))
 }
 
+/// Parse a `for` statement.
+///
+/// # Panics
+/// Panics if the next token isn't `for`.
 pub fn parse_for_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let for_tok = par.assert(TokenKind::For);
 
     let target = parse_expr(par)?;
-    let in_tok = par.expect(TokenKind::In, "failed to parse `for` statement")?;
+    par.expect(TokenKind::In, "failed to parse `for` statement")?;
     let iter = parse_expr(par)?;
-    par.enter_block(for_tok.span + in_tok.span, "`for` statement")?;
+    par.enter_block(for_tok.span + iter.span, "`for` statement")?;
     let body = parse_block_stmts(par)?;
 
     let else_block = match par.peek() {
@@ -368,6 +396,10 @@ pub fn parse_for_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     ))
 }
 
+/// Parse a `return` statement.
+///
+/// # Panics
+/// Panics if the next token isn't `return`.
 pub fn parse_return_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let ret = par.assert(TokenKind::Return);
     let value = match par.peek() {
@@ -379,6 +411,10 @@ pub fn parse_return_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     Ok(Node::new(FuncStmt::Return { value }, span))
 }
 
+/// Parse an `assert` statement.
+///
+/// # Panics
+/// Panics if the next token isn't `assert`.
 pub fn parse_assert_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let assert_tok = par.assert(TokenKind::Assert);
     let test = parse_expr(par)?;

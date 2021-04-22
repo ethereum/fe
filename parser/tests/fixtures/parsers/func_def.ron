@@ -2,7 +2,7 @@ def foo(x: bool):
     x
 def foo(x: bool) -> ():
     x
-pub def foo(x: bool) -> bool:
+pub def foo(x: bool, y: address,) -> bool:
     x
 ---
 [
@@ -175,14 +175,38 @@ pub def foo(x: bool) -> bool:
             end: 73,
           ),
         ),
+        Node(
+          kind: FuncDefArg(
+            name: Node(
+              kind: "y",
+              span: Span(
+                start: 75,
+                end: 76,
+              ),
+            ),
+            typ: Node(
+              kind: Base(
+                base: "address",
+              ),
+              span: Span(
+                start: 78,
+                end: 85,
+              ),
+            ),
+          ),
+          span: Span(
+            start: 75,
+            end: 85,
+          ),
+        ),
       ],
       return_type: Some(Node(
         kind: Base(
           base: "bool",
         ),
         span: Span(
-          start: 78,
-          end: 82,
+          start: 91,
+          end: 95,
         ),
       )),
       body: [
@@ -191,21 +215,21 @@ pub def foo(x: bool) -> bool:
             value: Node(
               kind: Name("x"),
               span: Span(
-                start: 88,
-                end: 89,
+                start: 101,
+                end: 102,
               ),
             ),
           ),
           span: Span(
-            start: 88,
-            end: 89,
+            start: 101,
+            end: 102,
           ),
         ),
       ],
     ),
     span: Span(
       start: 54,
-      end: 89,
+      end: 102,
     ),
   ),
 ]

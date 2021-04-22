@@ -1,5 +1,6 @@
 event Foo:
     x: bar
+    idx y: address
 ---
 [
   Node(
@@ -37,11 +38,42 @@ event Foo:
             end: 21,
           ),
         ),
+        Node(
+          kind: EventField(
+            idx_qual: Some(Node(
+              kind: IdxQualifier(),
+              span: Span(
+                start: 26,
+                end: 29,
+              ),
+            )),
+            name: Node(
+              kind: "y",
+              span: Span(
+                start: 30,
+                end: 31,
+              ),
+            ),
+            typ: Node(
+              kind: Base(
+                base: "address",
+              ),
+              span: Span(
+                start: 33,
+                end: 40,
+              ),
+            ),
+          ),
+          span: Span(
+            start: 26,
+            end: 40,
+          ),
+        ),
       ],
     ),
     span: Span(
       start: 0,
-      end: 21,
+      end: 40,
     ),
   ),
 ]

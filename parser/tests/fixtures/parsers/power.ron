@@ -1,5 +1,7 @@
 x ** y
 x
+1 ** 2 ** 3
+(1 ** 2) ** 3
 ---
 [
   Node(
@@ -36,6 +38,108 @@ x
     span: Span(
       start: 7,
       end: 8,
+    ),
+  ),
+  Node(
+    kind: BinOperation(
+      left: Node(
+        kind: Num("1"),
+        span: Span(
+          start: 9,
+          end: 10,
+        ),
+      ),
+      op: Node(
+        kind: Pow,
+        span: Span(
+          start: 11,
+          end: 13,
+        ),
+      ),
+      right: Node(
+        kind: BinOperation(
+          left: Node(
+            kind: Num("2"),
+            span: Span(
+              start: 14,
+              end: 15,
+            ),
+          ),
+          op: Node(
+            kind: Pow,
+            span: Span(
+              start: 16,
+              end: 18,
+            ),
+          ),
+          right: Node(
+            kind: Num("3"),
+            span: Span(
+              start: 19,
+              end: 20,
+            ),
+          ),
+        ),
+        span: Span(
+          start: 14,
+          end: 20,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 9,
+      end: 20,
+    ),
+  ),
+  Node(
+    kind: BinOperation(
+      left: Node(
+        kind: BinOperation(
+          left: Node(
+            kind: Num("1"),
+            span: Span(
+              start: 22,
+              end: 23,
+            ),
+          ),
+          op: Node(
+            kind: Pow,
+            span: Span(
+              start: 24,
+              end: 26,
+            ),
+          ),
+          right: Node(
+            kind: Num("2"),
+            span: Span(
+              start: 27,
+              end: 28,
+            ),
+          ),
+        ),
+        span: Span(
+          start: 21,
+          end: 29,
+        ),
+      ),
+      op: Node(
+        kind: Pow,
+        span: Span(
+          start: 30,
+          end: 32,
+        ),
+      ),
+      right: Node(
+        kind: Num("3"),
+        span: Span(
+          start: 33,
+          end: 34,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 21,
+      end: 34,
     ),
   ),
 ]

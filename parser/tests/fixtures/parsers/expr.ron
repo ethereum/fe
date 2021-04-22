@@ -2,6 +2,9 @@ x
 x if y else z
 not x
 "a \"string\"\t"
+123
+foo.bar(1, 2, x=3)
+x[y]
 ---
 [
   Node(
@@ -69,6 +72,135 @@ not x
     span: Span(
       start: 22,
       end: 38,
+    ),
+  ),
+  Node(
+    kind: Num("123"),
+    span: Span(
+      start: 39,
+      end: 42,
+    ),
+  ),
+  Node(
+    kind: Call(
+      func: Node(
+        kind: Attribute(
+          value: Node(
+            kind: Name("foo"),
+            span: Span(
+              start: 43,
+              end: 46,
+            ),
+          ),
+          attr: Node(
+            kind: "bar",
+            span: Span(
+              start: 47,
+              end: 50,
+            ),
+          ),
+        ),
+        span: Span(
+          start: 43,
+          end: 50,
+        ),
+      ),
+      args: Node(
+        kind: [
+          Node(
+            kind: Arg(Node(
+              kind: Num("1"),
+              span: Span(
+                start: 51,
+                end: 52,
+              ),
+            )),
+            span: Span(
+              start: 51,
+              end: 52,
+            ),
+          ),
+          Node(
+            kind: Arg(Node(
+              kind: Num("2"),
+              span: Span(
+                start: 54,
+                end: 55,
+              ),
+            )),
+            span: Span(
+              start: 54,
+              end: 55,
+            ),
+          ),
+          Node(
+            kind: Kwarg(Kwarg(
+              name: Node(
+                kind: "x",
+                span: Span(
+                  start: 57,
+                  end: 58,
+                ),
+              ),
+              value: Node(
+                kind: Num("3"),
+                span: Span(
+                  start: 59,
+                  end: 60,
+                ),
+              ),
+            )),
+            span: Span(
+              start: 57,
+              end: 60,
+            ),
+          ),
+        ],
+        span: Span(
+          start: 50,
+          end: 61,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 43,
+      end: 61,
+    ),
+  ),
+  Node(
+    kind: Subscript(
+      value: Node(
+        kind: Name("x"),
+        span: Span(
+          start: 62,
+          end: 63,
+        ),
+      ),
+      slices: Node(
+        kind: [
+          Node(
+            kind: Index(Node(
+              kind: Name("y"),
+              span: Span(
+                start: 64,
+                end: 65,
+              ),
+            )),
+            span: Span(
+              start: 64,
+              end: 65,
+            ),
+          ),
+        ],
+        span: Span(
+          start: 63,
+          end: 66,
+        ),
+      ),
+    ),
+    span: Span(
+      start: 62,
+      end: 66,
     ),
   ),
 ]

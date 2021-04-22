@@ -198,10 +198,10 @@ pub fn with_executor_backend(backend: evm::backend::MemoryBackend, test: &dyn Fn
     test(executor)
 }
 
-pub fn read_fixture(path: String) -> (String, SourceFileId) {
+pub fn read_fixture(path: &str) -> (String, SourceFileId) {
     let mut files = FileStore::new();
     files
-        .load_file(path.clone())
+        .load_file(path)
         .expect(&format!("unable to read fixture file: {}", path))
 }
 
@@ -226,9 +226,7 @@ pub fn deploy_contract(
 ) -> ContractHarness {
     let path = format!("tests/fixtures/{}", fixture);
     let mut files = FileStore::new();
-    let (src, id) = files
-        .load_file(path.clone())
-        .expect("unable to read fixture file");
+    let (src, id) = files.load_file(&path).expect("unable to read fixture file");
 
     let compiled_module = match compiler::compile(&src, id, true, true) {
         Ok(module) => module,
@@ -352,7 +350,7 @@ pub fn compile_solidity_contract(name: &str, solidity_src: &str) -> Result<(Stri
 
 #[allow(dead_code)]
 pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
-    let (src, id) = read_fixture(format!("tests/fixtures/{}", fixture));
+    let (src, id) = read_fixture(&format!("tests/fixtures/{}", fixture));
     let compiled_module =
         compiler::compile(&src, id, true, true).expect("failed to compile module");
     let compiled_contract = compiled_module

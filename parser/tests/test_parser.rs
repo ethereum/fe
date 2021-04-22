@@ -36,7 +36,7 @@ where
         .expect(&format!("Test example has wrong format {}", fixture_name));
 
     let mut file_store = FileStore::new();
-    let id = file_store.add_file(fixture_name.to_string(), input.to_string());
+    let id = file_store.add_file(fixture_name, input);
     let mut parser = Parser::new(input, id);
 
     let mut parser_err = false;
@@ -108,25 +108,21 @@ macro_rules! test_fn {
     };
 }
 
-test_fn! {arg_list, functions::parse_fn_param_list}
 test_fn! {assert_stmt, functions::parse_stmt}
 test_fn! {augassign_stmt, functions::parse_stmt}
 test_fn! {base_type, types::parse_type_desc}
 test_fn! {bitwise_and, expressions::parse_expr}
 test_fn! {bitwise_or, expressions::parse_expr}
 test_fn! {bitwise_xor, expressions::parse_expr}
-test_fn! {break_stmt, functions::parse_stmt}
 // test_fn! {comparison, expressions::parse_expr} // TODO: `x in y`
 test_fn! {compound_stmt, functions::parse_stmt}
 test_fn! {conjunct, expressions::parse_expr}
-test_fn! {continue_stmt, functions::parse_stmt}
 test_fn! {contract_def, contracts::parse_contract_def}
 test_fn! {disjunct, expressions::parse_expr}
 test_fn! {emit_stmt, functions::parse_stmt}
 test_fn! {event_def, types::parse_event_def}
 test_fn! {event_field, types::parse_event_field}
 test_fn! {expr, expressions::parse_expr}
-test_fn! {exprs, expressions::parse_expr}
 test_fn! {factor, expressions::parse_expr}
 test_fn! {for_stmt, functions::parse_for_stmt}
 test_fn! {func_def, |par| {
@@ -145,7 +141,8 @@ test_fn! {if_stmt, functions::parse_if_stmt}
 test_fn! {list, expressions::parse_expr}
 test_fn! {map_type, types::parse_type_desc}
 test_fn! {module_stmt, module::parse_module_stmt}
-test_fn! {pass_stmt, functions::parse_stmt}
+test_fn! {numbers, expressions::parse_expr}
+test_fn! {op_precedence, expressions::parse_expr}
 test_fn! {power, expressions::parse_expr}
 test_fn! {primary, expressions::parse_expr}
 test_fn! {return_stmt, functions::parse_stmt}
@@ -159,5 +156,10 @@ test_fn! {small_stmt, functions::parse_stmt}
 
 test_fn! {struct_def, types::parse_struct_def}
 test_fn! {sum, expressions::parse_expr}
+test_fn! {target, expressions::parse_expr}
 test_fn! {term, expressions::parse_expr}
+test_fn! {tuple, expressions::parse_expr}
+test_fn! {type_def, types::parse_type_def}
+test_fn! {type_desc, types::parse_type_desc}
+test_fn! {vardecl_stmt, functions::parse_stmt}
 test_fn! {while_stmt, functions::parse_while_stmt}
