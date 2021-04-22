@@ -6,25 +6,25 @@ use fe_parser::node::Span;
 /// Errors for things that may arise in a valid Fe AST.
 #[derive(Debug, PartialEq)]
 pub enum ErrorKind {
+    AlreadyDefined,
     BreakWithoutLoop,
+    CannotMove,
     ContinueWithoutLoop,
     EventInvocationExpected,
     KeyWordArgsRequired,
     MissingEventDefinition,
     MissingReturn,
+    MoreThanThreeIndexedParams,
+    NotCallable,
     NotSubscriptable,
     NumericCapacityMismatch,
+    NumericLiteralExpected,
     SignedExponentNotAllowed,
     StringCapacityMismatch,
+    TypeError,
     UndefinedValue,
     UnexpectedReturn,
-    TypeError,
-    CannotMove,
-    NotCallable,
-    NumericLiteralExpected,
-    MoreThanThreeIndexedParams,
     WrongNumberOfParams,
-    AlreadyDefined,
 }
 
 #[derive(Debug, PartialEq)]
