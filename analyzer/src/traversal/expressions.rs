@@ -713,11 +713,16 @@ fn expr_call_type_attribute(
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     let arg_attributes = expr_call_args(Rc::clone(&scope), context, args)?;
+    let contract_name = scope.borrow().contract_scope().borrow().name.clone();
 
     match (typ, ContractTypeMethod::from_str(func_name)) {
         (Type::Contract(contract), Ok(ContractTypeMethod::Create2)) => {
             if arg_attributes.len() != 2 {
                 return Err(SemanticError::wrong_number_of_params());
+            }
+
+            if contract_name == contract.name {
+                return Err(SemanticError::circular_dependency());
             }
 
             if matches!(
@@ -741,6 +746,10 @@ fn expr_call_type_attribute(
         (Type::Contract(contract), Ok(ContractTypeMethod::Create)) => {
             if arg_attributes.len() != 1 {
                 return Err(SemanticError::wrong_number_of_params());
+            }
+
+            if contract_name == contract.name {
+                return Err(SemanticError::circular_dependency());
             }
 
             if matches!(&arg_attributes[0].typ, Type::Base(Base::Numeric(_))) {
