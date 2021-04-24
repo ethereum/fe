@@ -35,6 +35,9 @@ lint: rustfmt clippy
 build-docs:
 	cargo doc --no-deps --workspace
 
+README.md: src/main.rs
+	cargo readme --no-title --no-indent-headings > README.md
+
 notes:
 	towncrier --yes --version $(version)
 	git commit -m "Compile release notes"
