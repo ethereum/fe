@@ -6,10 +6,6 @@ use std::collections::{
     HashMap,
 };
 use std::convert::TryFrom;
-use std::num::{
-    IntErrorKind,
-    ParseIntError,
-};
 
 use crate::FunctionAttributes;
 use num_bigint::BigInt;
@@ -282,30 +278,33 @@ impl Integer {
         )
     }
 
-    // Returns `true` if the integer is at least the same size (or larger) than
-    // `other`
+    /// Returns `true` if the integer is at least the same size (or larger) than
+    /// `other`
     pub fn can_hold(&self, other: &Integer) -> bool {
         self.size() >= other.size()
     }
 
-    // Returns `true` if `num` represents a number that fits the type
+    /// Returns `true` if `num` represents a number that fits the type
     pub fn fits(&self, num: &str) -> bool {
-        const RADIX: u32 = 10;
-
-        fn handle_parse_error<T>(result: Result<T, ParseIntError>) -> bool {
-            if let Err(error) = result {
-                return match error.kind() {
-                    IntErrorKind::PosOverflow => false,
-                    IntErrorKind::NegOverflow => false,
+        use lexical_core::{
+            parse,
+            ErrorCode,
+            FromLexical,
+        };
+        fn check_fit<T: FromLexical>(num: &str) -> bool {
+            if let Err(err) = parse::<T>(num.as_bytes()) {
+                match err.code {
+                    ErrorCode::Overflow => false,
+                    ErrorCode::Underflow => false,
                     // If we try to parse a negative value for an unsigned type
-                    IntErrorKind::InvalidDigit => false,
+                    ErrorCode::InvalidDigit => false,
                     // We don't expect this but it would be tragic if we would map this to `false`
                     // incase it happens because it would mean we sweep a bug under the rug.
                     other => panic!("Unexpected ParseIntError: {:?}", other),
-                };
+                }
+            } else {
+                true
             }
-
-            true
         }
 
         // We reject octal number literals.
@@ -313,20 +312,21 @@ impl Integer {
             return false;
         }
 
+        let radix = 10;
         match self {
-            Integer::U8 => handle_parse_error(u8::from_str_radix(num, RADIX)),
-            Integer::U16 => handle_parse_error(u16::from_str_radix(num, RADIX)),
-            Integer::U32 => handle_parse_error(u32::from_str_radix(num, RADIX)),
-            Integer::U64 => handle_parse_error(u64::from_str_radix(num, RADIX)),
-            Integer::U128 => handle_parse_error(u128::from_str_radix(num, RADIX)),
-            Integer::U256 => BigInt::parse_bytes(num.as_bytes(), RADIX)
+            Integer::U8 => check_fit::<u8>(num),
+            Integer::U16 => check_fit::<u16>(num),
+            Integer::U32 => check_fit::<u32>(num),
+            Integer::U64 => check_fit::<u64>(num),
+            Integer::U128 => check_fit::<u128>(num),
+            Integer::U256 => BigInt::parse_bytes(num.as_bytes(), radix)
                 .map_or(false, |val| val >= BigInt::from(0) && val <= u256_max()),
-            Integer::I8 => handle_parse_error(i8::from_str_radix(num, RADIX)),
-            Integer::I16 => handle_parse_error(i16::from_str_radix(num, RADIX)),
-            Integer::I32 => handle_parse_error(i32::from_str_radix(num, RADIX)),
-            Integer::I64 => handle_parse_error(i64::from_str_radix(num, RADIX)),
-            Integer::I128 => handle_parse_error(i128::from_str_radix(num, RADIX)),
-            Integer::I256 => BigInt::parse_bytes(num.as_bytes(), RADIX)
+            Integer::I8 => check_fit::<i8>(num),
+            Integer::I16 => check_fit::<i16>(num),
+            Integer::I32 => check_fit::<i32>(num),
+            Integer::I64 => check_fit::<i64>(num),
+            Integer::I128 => check_fit::<i128>(num),
+            Integer::I256 => BigInt::parse_bytes(num.as_bytes(), radix)
                 .map_or(false, |val| val >= i256_min() && val <= i256_max()),
         }
     }
