@@ -6,12 +6,7 @@ use rstest::rstest;
 use yultsur::*;
 
 mod utils;
-use fe_analyzer::namespace::types::{
-    Base,
-    FixedSize,
-    Integer,
-    Struct,
-};
+use fe_analyzer::namespace::types::{Base, FixedSize, Integer, Struct};
 use fe_common::utils::keccak;
 use utils::*;
 

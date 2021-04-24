@@ -1,9 +1,4 @@
-use fe_analyzer::namespace::types::{
-    AbiArraySize,
-    AbiEncoding,
-    AbiType,
-    AbiUintSize,
-};
+use fe_analyzer::namespace::types::{AbiArraySize, AbiEncoding, AbiType, AbiUintSize};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 
@@ -56,13 +51,7 @@ pub fn ceil_32(n: usize) -> usize {
 #[cfg(test)]
 mod tests {
     use crate::yul::utils::abi_head_offsets;
-    use fe_analyzer::namespace::types::{
-        Array,
-        Base,
-        FeString,
-        FixedSize,
-        U256,
-    };
+    use fe_analyzer::namespace::types::{Array, Base, FeString, FixedSize, U256};
 
     #[test]
     fn test_head_offsets() {

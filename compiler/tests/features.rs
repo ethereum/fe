@@ -2,10 +2,7 @@
 
 #![cfg(feature = "solc-backend")]
 use evm_runtime::Handler;
-use primitive_types::{
-    H160,
-    U256,
-};
+use primitive_types::{H160, U256};
 use rstest::rstest;
 use std::collections::BTreeMap;
 use std::iter;

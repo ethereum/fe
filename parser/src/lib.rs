@@ -1,24 +1,13 @@
 pub mod ast;
 pub mod grammar;
 pub mod lexer;
-pub use lexer::{
-    Token,
-    TokenKind,
-};
+pub use lexer::{Token, TokenKind};
 mod parser;
-pub use parser::{
-    Label,
-    ParseFailed,
-    ParseResult,
-    Parser,
-};
+pub use parser::{Label, ParseFailed, ParseResult, Parser};
 pub mod node;
 
 use ast::Module;
-use fe_common::{
-    diagnostics::Diagnostic,
-    files::SourceFileId,
-};
+use fe_common::{diagnostics::Diagnostic, files::SourceFileId};
 
 /// Parse a [`Module`] from the file content string.
 ///

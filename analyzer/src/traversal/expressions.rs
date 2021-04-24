@@ -1,45 +1,19 @@
 use crate::builtins;
 use crate::errors::SemanticError;
-use crate::namespace::scopes::{
-    BlockScope,
-    ContractFunctionDef,
-    Shared,
-};
+use crate::namespace::scopes::{BlockScope, ContractFunctionDef, Shared};
 use crate::namespace::types::{
-    Array,
-    Base,
-    Contract,
-    FeString,
-    FixedSize,
-    Integer,
-    Struct,
-    Tuple,
-    Type,
-    U256,
+    Array, Base, Contract, FeString, FixedSize, Integer, Struct, Tuple, Type, U256,
 };
 use crate::operations;
 use crate::traversal::utils::{
-    call_arg_value,
-    expression_attributes_to_types,
-    fixed_sizes_to_types,
+    call_arg_value, expression_attributes_to_types, fixed_sizes_to_types,
 };
-use crate::{
-    CallType,
-    Context,
-    ExpressionAttributes,
-    Location,
-};
+use crate::{CallType, Context, ExpressionAttributes, Location};
 
 use crate::builtins::ContractTypeMethod;
 use builtins::GlobalMethod;
 use builtins::ValueMethod;
-use builtins::{
-    BlockField,
-    ChainField,
-    MsgField,
-    Object,
-    TxField,
-};
+use builtins::{BlockField, ChainField, MsgField, Object, TxField};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use std::convert::TryFrom;
@@ -1064,27 +1038,10 @@ fn expr_bool_operation(
 #[cfg(test)]
 #[cfg(feature = "fix-context-harness")]
 mod tests {
-    use crate::namespace::scopes::{
-        BlockScope,
-        ContractScope,
-        ModuleScope,
-        Shared,
-    };
-    use crate::namespace::types::{
-        Array,
-        Base,
-        FixedSize,
-        Integer,
-        Map,
-        Type,
-        U256,
-    };
+    use crate::namespace::scopes::{BlockScope, ContractScope, ModuleScope, Shared};
+    use crate::namespace::types::{Array, Base, FixedSize, Integer, Map, Type, U256};
     use crate::traversal::expressions::expr;
-    use crate::{
-        Context,
-        ExpressionAttributes,
-        Location,
-    };
+    use crate::{Context, ExpressionAttributes, Location};
     use fe_parser as parser;
     use rstest::rstest;
     use std::rc::Rc;

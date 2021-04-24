@@ -31,11 +31,11 @@ jobs:
           target
           !target/**/*serde*
         key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
-    - name: Install latest nightly
+    - name: Install rust
       uses: actions-rs/toolchain@v1
       with:
         profile: minimal
-        toolchain: nightly-2021-03-15
+        toolchain: stable
         override: true
     - name: coverage with tarpaulin
       run: |
@@ -58,11 +58,11 @@ jobs:
           target
           !target/**/*serde*
         key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
-    - name: Install latest nightly
+    - name: Install rust
       uses: actions-rs/toolchain@v1
       with:
         profile: minimal
-        toolchain: nightly-2021-03-15
+        toolchain: stable
         override: true
         components: rustfmt, clippy
     - name: Validate release notes entry
@@ -76,7 +76,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: clippy
-        args: --all-targets --all-features -- -D warnings -A clippy::upper-case-acronyms
+        args: --all-targets --all-features -- -D warnings
 
   test:
     # Build & Test runs on all platforms
@@ -104,11 +104,11 @@ jobs:
       if: startsWith(matrix.os,'ubuntu')
       run: |
         "${GITHUB_WORKSPACE}/.github/install_deps.sh"
-    - name: Install latest nightly
+    - name: Install rust
       uses: actions-rs/toolchain@v1
       with:
         profile: minimal
-        toolchain: nightly-2021-03-15
+        toolchain: stable
         override: true
     - name: Build
       run: cargo build --all-features --verbose
@@ -120,11 +120,11 @@ jobs:
       container: davesque/rust-wasm
       steps:
       - uses: actions/checkout@v2
-      - name: Install latest nightly
+      - name: Install rust
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly-2021-03-15
+          toolchain: stable
           override: true
       - name: Run WASM tests
         run: wasm-pack test --node -- --workspace
@@ -153,11 +153,11 @@ jobs:
           if: startsWith(matrix.os,'macOS')
           run: |
             brew install boost
-        - name: Install latest nightly
+        - name: Install rust
           uses: actions-rs/toolchain@v1
           with:
             profile: minimal
-            toolchain: nightly-2021-03-15
+            toolchain: stable
             override: true
         - name: Build
           run: cargo build --all-features --release && strip target/release/fe && mv target/release/fe target/release/${{ matrix.BIN_FILE }}

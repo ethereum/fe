@@ -1,23 +1,8 @@
 use super::contracts::parse_contract_def;
-use super::types::{
-    parse_struct_def,
-    parse_type_def,
-};
-use crate::ast::{
-    Module,
-    ModuleStmt,
-    SimpleImportName,
-};
-use crate::node::{
-    Node,
-    Span,
-};
-use crate::{
-    ParseFailed,
-    ParseResult,
-    Parser,
-    TokenKind,
-};
+use super::types::{parse_struct_def, parse_type_def};
+use crate::ast::{Module, ModuleStmt, SimpleImportName};
+use crate::node::{Node, Span};
+use crate::{ParseFailed, ParseResult, Parser, TokenKind};
 
 /// Parse a [`Module`].
 pub fn parse_module(par: &mut Parser) -> ParseResult<Node<Module>> {

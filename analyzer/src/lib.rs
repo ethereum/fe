@@ -12,25 +12,13 @@ mod traversal;
 
 use crate::errors::SemanticError;
 use crate::namespace::events::EventDef;
-use crate::namespace::scopes::{
-    ContractFunctionDef,
-    ContractScope,
-    Shared,
-};
-use crate::namespace::types::{
-    Contract,
-    FixedSize,
-    Struct,
-    Type,
-};
+use crate::namespace::scopes::{ContractFunctionDef, ContractScope, Shared};
+use crate::namespace::types::{Contract, FixedSize, Struct, Type};
 use builtins::GlobalMethod;
 use fe_parser::ast as fe;
 use fe_parser::node::NodeId;
 use std::cell::RefCell;
-use std::collections::{
-    HashMap,
-    HashSet,
-};
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 /// Indicates where an expression is stored.
@@ -402,15 +390,9 @@ pub fn analyze(module: &fe::Module) -> Result<Context, SemanticError> {
 #[cfg(feature = "fix-context-harness")]
 pub mod test_utils {
     use crate::namespace::types::FixedSize;
-    use crate::{
-        Context,
-        ExpressionAttributes,
-    };
+    use crate::{Context, ExpressionAttributes};
     use fe_parser::ast as fe;
-    use fe_parser::node::{
-        Node,
-        Span,
-    };
+    use fe_parser::node::{Node, Span};
 
     pub struct ContextHarness {
         pub context: Context,

@@ -1,8 +1,5 @@
 use crate::namespace::types::FixedSize;
-use crate::{
-    ExpressionAttributes,
-    Type,
-};
+use crate::{ExpressionAttributes, Type};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 

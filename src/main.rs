@@ -87,27 +87,16 @@ The most advanced example that we can provide at this point is a fully working [
 */
 
 use std::fs;
-use std::io::{
-    Error,
-    Write,
-};
+use std::io::{Error, Write};
 use std::path::Path;
 
-use clap::{
-    arg_enum,
-    values_t,
-    App,
-    Arg,
-};
+use clap::{arg_enum, values_t, App, Arg};
 
 mod _utils;
 use crate::_utils::pretty_curly_print;
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::files::FileStore;
-use fe_compiler::errors::{
-    install_compiler_panic_hook,
-    ErrorKind,
-};
+use fe_compiler::errors::{install_compiler_panic_hook, ErrorKind};
 use fe_compiler::types::CompiledModule;
 
 const DEFAULT_OUTPUT_DIR_NAME: &str = "output";

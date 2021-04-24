@@ -1,15 +1,8 @@
 use crate::errors::CompileError;
-use fe_analyzer::namespace::types::{
-    AbiComponent,
-    AbiEncoding,
-    FixedSize,
-};
+use fe_analyzer::namespace::types::{AbiComponent, AbiEncoding, FixedSize};
 use fe_analyzer::FunctionAttributes;
 use serde::ser::SerializeSeq;
-use serde::{
-    Serialize,
-    Serializer,
-};
+use serde::{Serialize, Serializer};
 use std::collections::HashMap;
 
 /// The ABIs for each contract in a Fe module.
@@ -242,13 +235,7 @@ impl From<FunctionAttributes> for Function {
 #[cfg(test)]
 mod tests {
     use crate::abi::elements::{
-        Contract,
-        Event,
-        EventField,
-        FuncInput,
-        FuncOutput,
-        FuncType,
-        Function,
+        Contract, Event, EventField, FuncInput, FuncOutput, FuncType, Function,
     };
 
     #[test]

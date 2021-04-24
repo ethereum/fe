@@ -2,10 +2,7 @@ use crate::abi::utils as abi_utils;
 use crate::yul::names;
 use crate::yul::operations::abi as abi_operations;
 use fe_analyzer::namespace::types::Contract;
-use fe_analyzer::namespace::types::{
-    AbiDecodeLocation,
-    AbiEncoding,
-};
+use fe_analyzer::namespace::types::{AbiDecodeLocation, AbiEncoding};
 use yultsur::*;
 
 /// Return all contacts runtime functions

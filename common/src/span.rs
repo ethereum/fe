@@ -1,12 +1,5 @@
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use std::ops::{
-    Add,
-    AddAssign,
-    Range,
-};
+use serde::{Deserialize, Serialize};
+use std::ops::{Add, AddAssign, Range};
 
 /// An exclusive span of byte offsets in a source file.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Copy, Clone, Hash, Eq)]
@@ -41,10 +34,7 @@ impl Add for Span {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
-        use std::cmp::{
-            max,
-            min,
-        };
+        use std::cmp::{max, min};
         Self {
             start: min(self.start, other.start),
             end: max(self.end, other.end),

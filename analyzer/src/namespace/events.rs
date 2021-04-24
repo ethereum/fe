@@ -1,7 +1,4 @@
-use crate::namespace::types::{
-    AbiEncoding,
-    FixedSize,
-};
+use crate::namespace::types::{AbiEncoding, FixedSize};
 use fe_common::utils::keccak;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -74,10 +71,7 @@ fn build_event_topic(name: &str, fields: Vec<String>) -> String {
 #[cfg(test)]
 mod tests {
     use crate::namespace::events::EventDef;
-    use crate::namespace::types::{
-        Base,
-        FixedSize,
-    };
+    use crate::namespace::types::{Base, FixedSize};
 
     #[test]
     fn test_new_event() {

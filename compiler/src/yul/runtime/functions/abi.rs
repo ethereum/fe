@@ -2,11 +2,7 @@ use crate::yul::names;
 use crate::yul::operations::data as data_operations;
 use crate::yul::utils;
 use fe_analyzer::namespace::types::{
-    AbiArraySize,
-    AbiDecodeLocation,
-    AbiEncoding,
-    AbiType,
-    AbiUintSize,
+    AbiArraySize, AbiDecodeLocation, AbiEncoding, AbiType, AbiUintSize,
 };
 use yultsur::*;
 
@@ -364,16 +360,8 @@ fn decode_tuple(elems: Vec<AbiType>, location: AbiDecodeLocation) -> yul::Expres
 
 #[cfg(test)]
 mod tests {
-    use crate::yul::runtime::functions::abi::{
-        decode,
-        encode,
-    };
-    use fe_analyzer::namespace::types::{
-        AbiDecodeLocation,
-        Base,
-        FeString,
-        U256,
-    };
+    use crate::yul::runtime::functions::abi::{decode, encode};
+    use fe_analyzer::namespace::types::{AbiDecodeLocation, Base, FeString, U256};
 
     #[test]
     fn test_encode() {

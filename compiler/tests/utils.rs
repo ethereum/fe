@@ -1,24 +1,11 @@
 #![cfg(feature = "solc-backend")]
-use compiler::errors::{
-    CompileError,
-    ErrorKind,
-};
-use evm_runtime::{
-    ExitReason,
-    Handler,
-};
+use compiler::errors::{CompileError, ErrorKind};
+use evm_runtime::{ExitReason, Handler};
 use fe_common::diagnostics::print_diagnostics;
-use fe_common::files::{
-    FileStore,
-    SourceFileId,
-};
+use fe_common::files::{FileStore, SourceFileId};
 use fe_compiler as compiler;
 use fe_compiler::yul::runtime::functions;
-use primitive_types::{
-    H160,
-    H256,
-    U256,
-};
+use primitive_types::{H160, H256, U256};
 use std::collections::BTreeMap;
 use std::fs;
 use std::str::FromStr;

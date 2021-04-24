@@ -6,10 +6,7 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 use std::ops::Range;
 use std::path::Path;
-use std::{
-    fs,
-    io,
-};
+use std::{fs, io};
 
 pub struct SourceFile {
     id: SourceFileId,

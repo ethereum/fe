@@ -19,10 +19,7 @@ pub fn get_attribute(
 #[cfg(test)]
 mod tests {
     use crate::yul::operations::structs;
-    use fe_analyzer::namespace::types::{
-        FixedSize,
-        Struct,
-    };
+    use fe_analyzer::namespace::types::{FixedSize, Struct};
     use yultsur::*;
 
     #[test]

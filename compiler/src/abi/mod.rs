@@ -1,10 +1,7 @@
 //! Fe to ABI builder.
 
 use crate::errors::CompileError;
-use crate::types::{
-    FeModuleAst,
-    NamedAbis,
-};
+use crate::types::{FeModuleAst, NamedAbis};
 use fe_analyzer::Context;
 
 mod builder;

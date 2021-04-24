@@ -1,8 +1,5 @@
 use crate::yul::operations::abi as abi_operations;
-use fe_analyzer::namespace::types::{
-    AbiDecodeLocation,
-    FixedSize,
-};
+use fe_analyzer::namespace::types::{AbiDecodeLocation, FixedSize};
 use yultsur::*;
 
 /// Builds a constructor for a contract with no init function.

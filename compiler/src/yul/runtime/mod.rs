@@ -1,15 +1,8 @@
 mod abi_dispatcher;
 pub mod functions;
 
-use fe_analyzer::namespace::types::{
-    AbiDecodeLocation,
-    Contract,
-    FixedSize,
-};
-use fe_analyzer::{
-    Context,
-    FunctionAttributes,
-};
+use fe_analyzer::namespace::types::{AbiDecodeLocation, Contract, FixedSize};
+use fe_analyzer::{Context, FunctionAttributes};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use yultsur::*;

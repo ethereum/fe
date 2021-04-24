@@ -1,22 +1,9 @@
 use super::functions::parse_fn_def;
-use super::types::{
-    parse_event_def,
-    parse_field,
-    parse_opt_qualifier,
-};
+use super::types::{parse_event_def, parse_field, parse_opt_qualifier};
 
-use crate::ast::{
-    ConstQualifier,
-    ModuleStmt,
-    PubQualifier,
-};
+use crate::ast::{ConstQualifier, ModuleStmt, PubQualifier};
 use crate::node::Node;
-use crate::{
-    ParseFailed,
-    ParseResult,
-    Parser,
-    TokenKind,
-};
+use crate::{ParseFailed, ParseResult, Parser, TokenKind};
 
 // Rule: all "statement" level parse functions consume their trailing
 // newline(s), either directly or via a function they call.

@@ -1,8 +1,4 @@
-use fe_analyzer::namespace::types::{
-    AbiDecodeLocation,
-    AbiEncoding,
-    Integer,
-};
+use fe_analyzer::namespace::types::{AbiDecodeLocation, AbiEncoding, Integer};
 use yultsur::*;
 
 /// Generate a function name to perform checked addition
@@ -115,17 +111,9 @@ pub fn struct_getter_call(struct_name: &str, field_name: &str) -> yul::Identifie
 
 #[cfg(test)]
 mod tests {
-    use crate::yul::names::{
-        decode_name,
-        encode_name,
-    };
+    use crate::yul::names::{decode_name, encode_name};
     use fe_analyzer::namespace::types::{
-        AbiDecodeLocation,
-        Array,
-        Base,
-        FeString,
-        FixedSize,
-        U256,
+        AbiDecodeLocation, Array, Base, FeString, FixedSize, U256,
     };
 
     #[test]

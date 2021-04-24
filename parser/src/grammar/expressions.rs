@@ -1,19 +1,6 @@
-use crate::ast::{
-    self,
-    CallArg,
-    Expr,
-    Kwarg,
-    Slice,
-};
+use crate::ast::{self, CallArg, Expr, Kwarg, Slice};
 use crate::node::Node;
-use crate::{
-    Label,
-    ParseFailed,
-    ParseResult,
-    Parser,
-    Token,
-    TokenKind,
-};
+use crate::{Label, ParseFailed, ParseResult, Parser, Token, TokenKind};
 
 // Expressions are parsed in Pratt's top-down operator precedence style.
 // See this article for a nice explanation:

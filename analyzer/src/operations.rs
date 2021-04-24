@@ -1,11 +1,5 @@
 use crate::errors::SemanticError;
-use crate::namespace::types::{
-    Array,
-    Base,
-    Map,
-    Type,
-    U256,
-};
+use crate::namespace::types::{Array, Base, Map, Type, U256};
 
 use fe_parser::ast as fe;
 
@@ -127,13 +121,7 @@ fn bin_bit(left: &Type, right: &Type) -> Result<Type, SemanticError> {
 #[cfg(test)]
 mod tests {
     use crate::errors::ErrorKind;
-    use crate::namespace::types::{
-        Array,
-        Base,
-        Map,
-        Type,
-        U256,
-    };
+    use crate::namespace::types::{Array, Base, Map, Type, U256};
     use crate::operations;
     use rstest::rstest;
 

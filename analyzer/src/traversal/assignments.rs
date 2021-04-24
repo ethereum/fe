@@ -1,8 +1,5 @@
 use crate::errors::SemanticError;
-use crate::namespace::scopes::{
-    BlockScope,
-    Shared,
-};
+use crate::namespace::scopes::{BlockScope, Shared};
 use crate::operations;
 use crate::traversal::expressions;
 use crate::Context;
@@ -70,29 +67,12 @@ pub fn aug_assign(
 
 #[cfg(test)]
 mod tests {
-    use crate::errors::{
-        ErrorKind,
-        SemanticError,
-    };
-    use crate::namespace::scopes::{
-        BlockScope,
-        ContractScope,
-        ModuleScope,
-        Shared,
-    };
-    use crate::namespace::types::{
-        Array,
-        FixedSize,
-        Map,
-        Type,
-        U256,
-    };
+    use crate::errors::{ErrorKind, SemanticError};
+    use crate::namespace::scopes::{BlockScope, ContractScope, ModuleScope, Shared};
+    use crate::namespace::types::{Array, FixedSize, Map, Type, U256};
     use crate::traversal::assignments::assign;
     use crate::Context;
-    use fe_parser::{
-        grammar::functions::parse_stmt,
-        parse_code_chunk,
-    };
+    use fe_parser::{grammar::functions::parse_stmt, parse_code_chunk};
     use rstest::rstest;
     use std::rc::Rc;
 

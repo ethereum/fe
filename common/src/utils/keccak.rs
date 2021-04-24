@@ -1,7 +1,4 @@
-use tiny_keccak::{
-    Hasher,
-    Keccak,
-};
+use tiny_keccak::{Hasher, Keccak};
 
 /// Get the full 32 byte hash of the content.
 pub fn full(content: &[u8]) -> String {

@@ -1,34 +1,14 @@
 use crate::yul::names;
 use crate::yul::operations::{
-    abi as abi_operations,
-    contracts as contract_operations,
-    data as data_operations,
+    abi as abi_operations, contracts as contract_operations, data as data_operations,
     structs as struct_operations,
 };
 use crate::yul::utils::call_arg_value;
-use builtins::{
-    BlockField,
-    ChainField,
-    MsgField,
-    Object,
-    TxField,
-};
+use builtins::{BlockField, ChainField, MsgField, Object, TxField};
 use fe_analyzer::builtins;
-use fe_analyzer::builtins::{
-    ContractTypeMethod,
-    GlobalMethod,
-};
-use fe_analyzer::namespace::types::{
-    Base,
-    FeSized,
-    FixedSize,
-    Type,
-};
-use fe_analyzer::{
-    CallType,
-    Context,
-    Location,
-};
+use fe_analyzer::builtins::{ContractTypeMethod, GlobalMethod};
+use fe_analyzer::namespace::types::{Base, FeSized, FixedSize, Type};
+use fe_analyzer::{CallType, Context, Location};
 use fe_common::utils::keccak;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
@@ -517,22 +497,10 @@ fn expr_bool_operation(context: &Context, exp: &Node<fe::Expr>) -> yul::Expressi
 #[cfg(test)]
 #[cfg(feature = "fix-context-harness")]
 mod tests {
-    use crate::yul::mappers::expressions::{
-        expr,
-        Location,
-    };
-    use fe_analyzer::namespace::types::{
-        Array,
-        Base,
-        Map,
-        Type,
-        U256,
-    };
+    use crate::yul::mappers::expressions::{expr, Location};
+    use fe_analyzer::namespace::types::{Array, Base, Map, Type, U256};
     use fe_analyzer::test_utils::ContextHarness;
-    use fe_analyzer::{
-        Context,
-        ExpressionAttributes,
-    };
+    use fe_analyzer::{Context, ExpressionAttributes};
     use fe_parser as parser;
     use rstest::rstest;
 

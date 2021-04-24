@@ -1,7 +1,4 @@
-use crate::node::{
-    Node,
-    Span,
-};
+use crate::node::{Node, Span};
 use logos::Logos;
 use std::ops::Add;
 
