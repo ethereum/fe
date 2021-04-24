@@ -1,6 +1,6 @@
 
 <img src="https://raw.githubusercontent.com/ethereum/fe/master/logo/fe_svg/fe_source.svg" width="150px">
- 
+
 Fe is an emerging smart contract language for the Ethereum blockchain.
 
 [![Build Status](https://github.com/ethereum/fe/workflows/CI/badge.svg)](https://github.com/ethereum/fe/actions)
@@ -56,7 +56,7 @@ Run `fe --help` to explore further options.
 
 The following is a simple contract implemented in Fe.
 
-```
+```fe
 type BookMsg = bytes[100]
 
 contract GuestBook:
@@ -82,3 +82,6 @@ The most advanced example that we can provide at this point is a fully working [
 
 - Twitter: [@official_fe](https://twitter.com/official_fe)
 - Chat: [Discord](https://discord.gg/ywpkAXFjZH)
+
+
+License: Apache-2.0
