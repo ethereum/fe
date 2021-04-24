@@ -1,20 +1,9 @@
 #![cfg(feature = "ignore")]
 use fe_analyzer;
-use fe_analyzer::namespace::types::{
-    Array,
-    Base,
-    Map,
-    Type,
-};
-use fe_analyzer::{
-    ExpressionAttributes,
-    Location,
-};
+use fe_analyzer::namespace::types::{Array, Base, Map, Type};
+use fe_analyzer::{ExpressionAttributes, Location};
 use fe_parser::ast as fe;
-use fe_parser::node::{
-    Node,
-    Span,
-};
+use fe_parser::node::{Node, Span};
 
 const GUEST_BOOK: &str = include_str!("fixtures/guest_book.fe");
 

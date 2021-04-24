@@ -1,12 +1,7 @@
 //! Fe to EVM compiler.
 
 use crate::errors::CompileError;
-use crate::types::{
-    Bytecode,
-    NamedBytecodeContracts,
-    NamedYulContracts,
-    YulIr,
-};
+use crate::types::{Bytecode, NamedBytecodeContracts, NamedYulContracts, YulIr};
 
 /// Compile a map of Yul contracts to a map of bytecode contracts.
 pub fn compile(

@@ -1,10 +1,7 @@
 mod token;
 use crate::node::Span;
 use logos::Logos;
-pub use token::{
-    Token,
-    TokenKind,
-};
+pub use token::{Token, TokenKind};
 
 pub struct Lexer<'a> {
     inner: logos::Lexer<'a, TokenKind>,
@@ -45,10 +42,7 @@ impl<'a> Iterator for Lexer<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::lexer::{
-        Lexer,
-        TokenKind,
-    };
+    use crate::lexer::{Lexer, TokenKind};
     use TokenKind::*;
 
     fn check(input: &str, expected: &[TokenKind]) {

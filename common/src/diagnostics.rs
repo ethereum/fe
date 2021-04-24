@@ -1,18 +1,7 @@
-use crate::files::{
-    FileStore,
-    SourceFileId,
-};
-pub use codespan_reporting::diagnostic::{
-    Diagnostic as CsDiagnostic,
-    Label,
-    LabelStyle,
-    Severity,
-};
+use crate::files::{FileStore, SourceFileId};
+pub use codespan_reporting::diagnostic::{Diagnostic as CsDiagnostic, Label, LabelStyle, Severity};
 use codespan_reporting::term;
-use term::termcolor::{
-    BufferWriter,
-    ColorChoice,
-};
+use term::termcolor::{BufferWriter, ColorChoice};
 
 pub type Diagnostic = CsDiagnostic<SourceFileId>;
 

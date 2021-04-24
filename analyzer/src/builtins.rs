@@ -1,7 +1,4 @@
-use strum::{
-    EnumString,
-    IntoStaticStr,
-};
+use strum::{EnumString, IntoStaticStr};
 
 #[derive(Debug, PartialEq, EnumString)]
 #[strum(serialize_all = "snake_case")]

@@ -1,10 +1,6 @@
 use crate::errors::SemanticError;
 use fe_parser::ast as fe;
-use std::collections::{
-    btree_map::Entry,
-    BTreeMap,
-    HashMap,
-};
+use std::collections::{btree_map::Entry, BTreeMap, HashMap};
 use std::convert::TryFrom;
 
 use crate::FunctionAttributes;
@@ -286,11 +282,7 @@ impl Integer {
 
     /// Returns `true` if `num` represents a number that fits the type
     pub fn fits(&self, num: &str) -> bool {
-        use lexical_core::{
-            parse,
-            ErrorCode,
-            FromLexical,
-        };
+        use lexical_core::{parse, ErrorCode, FromLexical};
         fn check_fit<T: FromLexical>(num: &str) -> bool {
             if let Err(err) = parse::<T>(num.as_bytes()) {
                 match err.code {

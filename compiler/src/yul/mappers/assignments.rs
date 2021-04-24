@@ -1,10 +1,7 @@
 use crate::yul::mappers::expressions;
 use crate::yul::operations::data as data_operations;
 use fe_analyzer::namespace::types::FixedSize;
-use fe_analyzer::{
-    Context,
-    Location,
-};
+use fe_analyzer::{Context, Location};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use std::convert::TryFrom;
@@ -85,17 +82,9 @@ fn expr_as_ident(expr: yul::Expression) -> yul::Identifier {
 #[cfg(feature = "fix-context-harness")]
 mod tests {
     use crate::yul::mappers::assignments::assign;
-    use fe_analyzer::namespace::types::{
-        Array,
-        Type,
-        U256,
-    };
+    use fe_analyzer::namespace::types::{Array, Type, U256};
     use fe_analyzer::test_utils::ContextHarness;
-    use fe_analyzer::{
-        Context,
-        ExpressionAttributes,
-        Location,
-    };
+    use fe_analyzer::{Context, ExpressionAttributes, Location};
     use fe_parser as parser;
     use rstest::rstest;
 

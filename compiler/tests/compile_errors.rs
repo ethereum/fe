@@ -2,10 +2,7 @@
 
 #![cfg(feature = "solc-backend")]
 mod utils;
-use fe_analyzer::errors::{
-    ErrorKind::*,
-    SemanticError,
-};
+use fe_analyzer::errors::{ErrorKind::*, SemanticError};
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::files::FileStore;
 use fe_compiler::errors::ErrorKind;

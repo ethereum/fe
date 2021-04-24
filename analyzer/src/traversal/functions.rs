@@ -1,33 +1,9 @@
 use crate::errors::SemanticError;
-use crate::namespace::scopes::{
-    BlockScope,
-    BlockScopeType,
-    ContractScope,
-    Scope,
-    Shared,
-};
-use crate::namespace::types::{
-    Base,
-    FixedSize,
-    Tuple,
-    Type,
-};
-use crate::traversal::utils::{
-    expression_attributes_to_types,
-    fixed_sizes_to_types,
-};
-use crate::traversal::{
-    assignments,
-    declarations,
-    expressions,
-    types,
-};
-use crate::{
-    Context,
-    ExpressionAttributes,
-    FunctionAttributes,
-    Location,
-};
+use crate::namespace::scopes::{BlockScope, BlockScopeType, ContractScope, Scope, Shared};
+use crate::namespace::types::{Base, FixedSize, Tuple, Type};
+use crate::traversal::utils::{expression_attributes_to_types, fixed_sizes_to_types};
+use crate::traversal::{assignments, declarations, expressions, types};
+use crate::{Context, ExpressionAttributes, FunctionAttributes, Location};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use std::rc::Rc;
@@ -415,26 +391,12 @@ fn func_return(
 #[cfg(test)]
 mod tests {
     use crate::namespace::scopes::{
-        BlockScope,
-        BlockScopeParent,
-        BlockScopeType,
-        ContractScope,
-        ModuleScope,
-        Shared,
+        BlockScope, BlockScopeParent, BlockScopeType, ContractScope, ModuleScope, Shared,
     };
-    use crate::namespace::types::{
-        FixedSize,
-        U256,
-    };
-    use crate::traversal::functions::{
-        func_body,
-        func_def,
-    };
+    use crate::namespace::types::{FixedSize, U256};
+    use crate::traversal::functions::{func_body, func_def};
     use crate::Context;
-    use fe_parser::{
-        grammar::functions::parse_fn_def,
-        parse_code_chunk,
-    };
+    use fe_parser::{grammar::functions::parse_fn_def, parse_code_chunk};
     use std::rc::Rc;
 
     fn scope() -> Shared<ContractScope> {

@@ -1,8 +1,5 @@
 pub use fe_common::Span;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use serde::{Deserialize, Serialize};
 use std::ops::Add;
 use uuid::Uuid;
 

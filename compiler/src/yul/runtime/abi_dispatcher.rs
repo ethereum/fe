@@ -1,11 +1,7 @@
 use crate::abi::utils as abi_utils;
 use crate::yul::names;
 use crate::yul::operations::abi as abi_operations;
-use fe_analyzer::namespace::types::{
-    AbiDecodeLocation,
-    AbiEncoding,
-    FixedSize,
-};
+use fe_analyzer::namespace::types::{AbiDecodeLocation, AbiEncoding, FixedSize};
 use fe_analyzer::FunctionAttributes;
 use yultsur::*;
 
@@ -84,10 +80,7 @@ fn selection_as_statement(name: &str, params: &[FixedSize]) -> yul::Statement {
 #[cfg(test)]
 mod tests {
     use crate::yul::runtime::abi_dispatcher::selector;
-    use fe_analyzer::namespace::types::{
-        FixedSize,
-        U256,
-    };
+    use fe_analyzer::namespace::types::{FixedSize, U256};
 
     #[test]
     fn test_selector_literal_basic() {

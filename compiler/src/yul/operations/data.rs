@@ -1,10 +1,6 @@
 use crate::yul::operations::abi as abi_operations;
 use fe_analyzer::namespace::events::EventDef;
-use fe_analyzer::namespace::types::{
-    Array,
-    FeSized,
-    FixedSize,
-};
+use fe_analyzer::namespace::types::{Array, FeSized, FixedSize};
 use yultsur::*;
 
 /// Loads a value of the given type from storage.
@@ -124,16 +120,9 @@ pub fn indexed_array(
 
 #[cfg(test)]
 mod tests {
-    use crate::yul::operations::data::{
-        emit_event,
-        sum,
-    };
+    use crate::yul::operations::data::{emit_event, sum};
     use fe_analyzer::namespace::events::EventDef;
-    use fe_analyzer::namespace::types::{
-        Base,
-        FixedSize,
-        U256,
-    };
+    use fe_analyzer::namespace::types::{Base, FixedSize, U256};
     use yultsur::*;
 
     #[test]

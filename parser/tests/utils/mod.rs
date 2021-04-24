@@ -1,7 +1,4 @@
-use difference::{
-    Changeset,
-    Difference,
-};
+use difference::{Changeset, Difference};
 use serde::Serialize;
 use std::fmt;
 use std::path::PathBuf;

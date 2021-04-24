@@ -1,13 +1,7 @@
 use crate::errors::SemanticError;
-use crate::namespace::scopes::{
-    ModuleScope,
-    Shared,
-};
+use crate::namespace::scopes::{ModuleScope, Shared};
 use crate::namespace::types;
-use crate::traversal::{
-    contracts,
-    structs,
-};
+use crate::traversal::{contracts, structs};
 use crate::Context;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;

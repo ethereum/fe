@@ -1,19 +1,8 @@
-use fe_parser::{
-    ast::Field,
-    node::Node,
-};
+use fe_parser::{ast::Field, node::Node};
 
 use crate::errors::SemanticError;
-use crate::namespace::scopes::{
-    ModuleScope,
-    Shared,
-};
-use crate::namespace::types::{
-    type_desc,
-    FixedSize,
-    Struct,
-    Type,
-};
+use crate::namespace::scopes::{ModuleScope, Shared};
+use crate::namespace::types::{type_desc, FixedSize, Struct, Type};
 
 pub fn struct_def(
     module_scope: Shared<ModuleScope>,

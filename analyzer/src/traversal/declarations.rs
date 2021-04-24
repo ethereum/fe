@@ -1,14 +1,7 @@
 use crate::errors::SemanticError;
-use crate::namespace::scopes::{
-    BlockScope,
-    Scope,
-    Shared,
-};
+use crate::namespace::scopes::{BlockScope, Scope, Shared};
 use crate::namespace::types::Type;
-use crate::traversal::{
-    expressions,
-    types,
-};
+use crate::traversal::{expressions, types};
 use crate::Context;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
@@ -43,26 +36,12 @@ pub fn var_decl(
 
 #[cfg(test)]
 mod tests {
-    use crate::errors::{
-        ErrorKind,
-        SemanticError,
-    };
-    use crate::namespace::scopes::{
-        BlockScope,
-        ContractScope,
-        ModuleScope,
-        Shared,
-    };
-    use crate::namespace::types::{
-        FixedSize,
-        U256,
-    };
+    use crate::errors::{ErrorKind, SemanticError};
+    use crate::namespace::scopes::{BlockScope, ContractScope, ModuleScope, Shared};
+    use crate::namespace::types::{FixedSize, U256};
     use crate::traversal::declarations::var_decl;
     use crate::Context;
-    use fe_parser::{
-        grammar::functions::parse_stmt,
-        parse_code_chunk,
-    };
+    use fe_parser::{grammar::functions::parse_stmt, parse_code_chunk};
     use std::rc::Rc;
 
     fn scope() -> Shared<BlockScope> {

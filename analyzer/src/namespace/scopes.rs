@@ -1,15 +1,9 @@
 use crate::errors::SemanticError;
 use crate::namespace::events::EventDef;
-use crate::namespace::types::{
-    FixedSize,
-    Type,
-};
+use crate::namespace::types::{FixedSize, Type};
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
-use std::collections::{
-    HashMap,
-    HashSet,
-};
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 pub type Shared<T> = Rc<RefCell<T>>;
@@ -344,12 +338,7 @@ impl BlockScope {
 
 #[cfg(test)]
 mod tests {
-    use crate::namespace::scopes::{
-        BlockScope,
-        BlockScopeType,
-        ContractScope,
-        ModuleScope,
-    };
+    use crate::namespace::scopes::{BlockScope, BlockScopeType, ContractScope, ModuleScope};
     use crate::namespace::types::FixedSize;
     use std::rc::Rc;
 

@@ -2,11 +2,7 @@ use crate::yul::names;
 use crate::yul::operations::data as data_operations;
 use crate::yul::utils;
 use fe_analyzer::namespace::types::{
-    AbiArraySize,
-    AbiDecodeLocation,
-    AbiEncoding,
-    AbiType,
-    AbiUintSize,
+    AbiArraySize, AbiDecodeLocation, AbiEncoding, AbiType, AbiUintSize,
 };
 use yultsur::*;
 
@@ -114,19 +110,9 @@ pub fn decode<T: AbiEncoding>(
 
 #[cfg(test)]
 mod tests {
-    use crate::yul::operations::abi::{
-        decode,
-        encode,
-        encode_size,
-        static_encode_size,
-    };
+    use crate::yul::operations::abi::{decode, encode, encode_size, static_encode_size};
     use fe_analyzer::namespace::types::{
-        AbiDecodeLocation,
-        Array,
-        Base,
-        FeString,
-        FixedSize,
-        U256,
+        AbiDecodeLocation, Array, Base, FeString, FixedSize, U256,
     };
     use yultsur::*;
 

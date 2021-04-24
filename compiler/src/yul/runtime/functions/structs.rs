@@ -1,8 +1,5 @@
 use crate::yul::names;
-use fe_analyzer::namespace::types::{
-    FeSized,
-    Struct,
-};
+use fe_analyzer::namespace::types::{FeSized, Struct};
 use yultsur::*;
 
 /// Generate a YUL function that can be used to create an instance of
@@ -101,10 +98,7 @@ pub fn struct_apis(struct_type: Struct) -> Vec<yul::Statement> {
 #[cfg(test)]
 mod tests {
     use crate::yul::runtime::functions::structs;
-    use fe_analyzer::namespace::types::{
-        FixedSize,
-        Struct,
-    };
+    use fe_analyzer::namespace::types::{FixedSize, Struct};
 
     #[test]
     fn test_empty_struct() {

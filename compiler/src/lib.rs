@@ -1,14 +1,7 @@
 //! Modules for compiling Fe and building ABIs.
 
-use crate::errors::{
-    CompileError,
-    ErrorKind,
-};
-use crate::types::{
-    CompiledContract,
-    CompiledModule,
-    NamedContracts,
-};
+use crate::errors::{CompileError, ErrorKind};
+use crate::types::{CompiledContract, CompiledModule, NamedContracts};
 use fe_common::files::SourceFileId;
 use fe_parser::parse_file;
 pub mod abi;

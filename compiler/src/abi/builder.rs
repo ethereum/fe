@@ -1,9 +1,4 @@
-use crate::abi::elements::{
-    Contract,
-    Event,
-    EventField,
-    ModuleAbis,
-};
+use crate::abi::elements::{Contract, Event, EventField, ModuleAbis};
 use crate::errors::CompileError;
 use fe_analyzer::namespace::types::AbiEncoding;
 use fe_analyzer::Context;
@@ -77,10 +72,7 @@ fn contract_def(
 mod tests {
     use crate::abi::builder;
     use fe_analyzer;
-    use fe_parser::{
-        grammar::module::parse_module,
-        parse_code_chunk,
-    };
+    use fe_parser::{grammar::module::parse_module, parse_code_chunk};
 
     #[test]
     fn build_contract_abi() {

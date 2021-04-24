@@ -1,21 +1,8 @@
-use fe_common::{
-    diagnostics::print_diagnostics,
-    files::FileStore,
-};
+use fe_common::{diagnostics::print_diagnostics, files::FileStore};
 
 use fe_parser::ast;
-use fe_parser::grammar::{
-    contracts,
-    expressions,
-    functions,
-    module,
-    types,
-};
-use fe_parser::{
-    ParseResult,
-    Parser,
-    TokenKind,
-};
+use fe_parser::grammar::{contracts, expressions, functions, module, types};
+use fe_parser::{ParseResult, Parser, TokenKind};
 use serde::Serialize;
 
 #[macro_use]

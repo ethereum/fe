@@ -1,25 +1,10 @@
 use crate::ast::{
-    ConstQualifier,
-    ContractStmt,
-    EventField,
-    Field,
-    GenericArg,
-    IdxQualifier,
-    ModuleStmt,
-    PubQualifier,
-    TypeDesc,
+    ConstQualifier, ContractStmt, EventField, Field, GenericArg, IdxQualifier, ModuleStmt,
+    PubQualifier, TypeDesc,
 };
 use crate::grammar::expressions::parse_expr;
-use crate::node::{
-    Node,
-    Span,
-};
-use crate::{
-    ParseFailed,
-    ParseResult,
-    Parser,
-    TokenKind,
-};
+use crate::node::{Node, Span};
+use crate::{ParseFailed, ParseResult, Parser, TokenKind};
 
 /// Parse a [`ModuleStmt::StructDef`].
 /// # Panics

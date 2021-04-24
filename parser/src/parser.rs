@@ -1,24 +1,12 @@
 #![allow(unused_variables, dead_code, unused_imports)]
 
-use fe_common::diagnostics::{
-    Diagnostic,
-    Label as CsLabel,
-    LabelStyle,
-    Severity,
-};
+use fe_common::diagnostics::{Diagnostic, Label as CsLabel, LabelStyle, Severity};
 use fe_common::files::SourceFileId;
 
 use crate::ast::Module;
-use crate::lexer::{
-    Lexer,
-    Token,
-    TokenKind,
-};
+use crate::lexer::{Lexer, Token, TokenKind};
 use crate::node::Span;
-use std::{
-    error,
-    fmt,
-};
+use std::{error, fmt};
 
 #[derive(Debug)]
 pub struct ParseFailed;

@@ -4,21 +4,10 @@ use super::expressions::{
 };
 use super::types::parse_type_desc;
 
-use crate::ast::{
-    BinOperator,
-    ContractStmt,
-    FuncDefArg,
-    FuncStmt,
-    PubQualifier,
-};
+use crate::ast::{BinOperator, ContractStmt, FuncDefArg, FuncStmt, PubQualifier};
 use crate::lexer::TokenKind;
 use crate::node::Node;
-use crate::{
-    Label,
-    ParseFailed,
-    ParseResult,
-    Parser,
-};
+use crate::{Label, ParseFailed, ParseResult, Parser};
 
 /// Parse a function definition. The optional `pub` qualifier must be parsed by
 /// the caller, and passed in.

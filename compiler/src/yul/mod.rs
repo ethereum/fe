@@ -1,9 +1,6 @@
 //! Fe to Yul compiler.
 
-use crate::types::{
-    FeModuleAst,
-    NamedYulContracts,
-};
+use crate::types::{FeModuleAst, NamedYulContracts};
 use fe_analyzer::Context;
 
 pub mod constants;
