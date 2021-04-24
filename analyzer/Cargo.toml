@@ -15,3 +15,4 @@ hex = "0.4"
 ansi_term = "0.12.1"
 num-bigint = "0.3.1"
 strum = { version = "0.20.0", features = ["derive"] }
+lexical-core = "0.7.6"
