@@ -1,0 +1,14 @@
+---
+source: parser/tests/errors.rs
+expression: err
+
+---
+error: failed to parse contract definition
+  ┌─ [test snippet]:1:10
+  │
+1 │ contract 1X:
+  │          ^ Unexpected token. Expected a name
+  │
+  = Note: `contract` must be followed by a name, which must start with a letter and contain only letters, numbers, or underscores
+
+

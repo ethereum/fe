@@ -1,0 +1,14 @@
+---
+source: parser/tests/errors.rs
+expression: err
+
+---
+error: failed to parse module
+  ┌─ [test snippet]:1:1
+  │
+1 │ if x:
+  │ ^^ unexpected token
+  │
+  = Note: expected import, contract, struct, type, or event
+
+

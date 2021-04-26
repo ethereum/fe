@@ -1,0 +1,18 @@
+---
+source: parser/tests/errors.rs
+expression: err
+
+---
+error: `const pub` should be written `pub const`
+  ┌─ [test snippet]:2:2
+  │
+2 │  const pub def f():
+  │  ^^^^^^^^^
+
+error: `const` qualifier can't be used with function definitions
+  ┌─ [test snippet]:2:2
+  │
+2 │  const pub def f():
+  │  ^^^^^
+
+

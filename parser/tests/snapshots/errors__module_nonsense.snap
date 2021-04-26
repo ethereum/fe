@@ -1,0 +1,12 @@
+---
+source: parser/tests/errors.rs
+expression: err
+
+---
+error: Unmatched right parenthesis
+  ┌─ [test snippet]:1:1
+  │
+1 │ ))
+  │ ^
+
+

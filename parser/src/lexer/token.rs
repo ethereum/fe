@@ -208,7 +208,7 @@ impl TokenKind {
         let val = match self {
             Newline => "a newline",
             Dedent => "a dedent",
-            Name => "an identifier",
+            Name => "a name",
             Int => "a number",
             Hex => "a hexadecimal number",
             Text => "a string",

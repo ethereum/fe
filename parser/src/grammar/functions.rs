@@ -1,7 +1,4 @@
-use super::expressions::{
-    parse_call_args,
-    parse_expr,
-};
+use super::expressions::{parse_call_args, parse_expr};
 use super::types::parse_type_desc;
 
 use crate::ast::{BinOperator, ContractStmt, FuncDefArg, FuncStmt, PubQualifier};
@@ -186,7 +183,7 @@ fn aug_assign_op(tk: TokenKind) -> Option<BinOperator> {
 /// # Panics
 /// Panics if the next token isn't one of the above.
 pub fn parse_single_word_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
-    let tok = par.next().unwrap();
+    let tok = par.next()?;
     par.expect_newline(tok.kind.symbol_str().unwrap())?;
     let stmt = match tok.kind {
         TokenKind::Continue => FuncStmt::Continue,

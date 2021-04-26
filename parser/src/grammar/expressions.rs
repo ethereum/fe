@@ -73,7 +73,7 @@ pub fn parse_expr_with_min_bp(par: &mut Parser, min_bp: u8) -> ParseResult<Node<
                 break;
             }
 
-            let op_tok = par.next().unwrap();
+            let op_tok = par.next()?;
             let rhs = parse_expr_with_min_bp(par, rbp)?;
             expr_head = infix_op(expr_head, &op_tok, rhs);
             continue;
@@ -149,7 +149,7 @@ fn parse_expr_head(par: &mut Parser) -> ParseResult<Node<Expr>> {
     match par.peek_or_err()? {
         Name | Int | Hex | Text | True | False => {
             let tok = par.next()?;
-            Ok(atom(par, &tok)?)
+            Ok(atom(par, &tok))
         }
         Plus | Minus | Not | Tilde => {
             let op = par.next()?;
@@ -332,7 +332,7 @@ fn parse_expr_list(
 /* node building utils */
 
 /// Create an "atom" expr from the given `Token` (`Name`, `Num`, `Bool`, etc)
-fn atom(par: &mut Parser, tok: &Token) -> ParseResult<Node<Expr>> {
+fn atom(par: &mut Parser, tok: &Token) -> Node<Expr> {
     use TokenKind::*;
 
     let expr = match tok.kind {
@@ -344,12 +344,12 @@ fn atom(par: &mut Parser, tok: &Token) -> ParseResult<Node<Expr>> {
                 Expr::Str(vec![string])
             } else {
                 par.error(tok.span, "String contains an invalid escape sequence");
-                return Err(ParseFailed);
+                Expr::Str(vec![tok.text.into()])
             }
         }
         _ => panic!("Unexpected atom token: {:?}", tok),
     };
-    Ok(Node::new(expr, tok.span))
+    Node::new(expr, tok.span)
 }
 
 fn unescape_string(quoted_string: &str) -> Option<String> {

@@ -1,0 +1,17 @@
+---
+source: parser/tests/errors.rs
+expression: "err_string(|par| functions::parse_fn_def(par, None), false,\n           \"def f:\\n  return 5\")"
+
+---
+error: function definition requires a list of parameters
+  ┌─ [test snippet]:1:5
+  │
+1 │ def f:
+  │     ^ function name must be followed by `(`
+  │
+  = Note: if the function `f` takes no parameters, use an empty set of parentheses.
+  = Example: def f()
+  = Note: each parameter must have a name and a type.
+  = Example: def f(my_value: u256, x: bool)
+
+
