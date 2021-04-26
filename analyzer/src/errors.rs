@@ -11,7 +11,6 @@ pub enum ErrorKind {
     CannotMove,
     CircularDependency,
     ContinueWithoutLoop,
-    EventInvocationExpected,
     KeyWordArgsRequired,
     MissingEventDefinition,
     MissingReturn,
@@ -57,14 +56,6 @@ impl SemanticError {
     pub fn continue_without_loop() -> Self {
         SemanticError {
             kind: ErrorKind::ContinueWithoutLoop,
-            context: vec![],
-        }
-    }
-
-    /// Create a new error with kind `EventIncovationExpected`
-    pub fn event_invocation_expected() -> Self {
-        SemanticError {
-            kind: ErrorKind::EventInvocationExpected,
             context: vec![],
         }
     }

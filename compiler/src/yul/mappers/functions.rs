@@ -166,22 +166,18 @@ fn revert(stmt: &Node<fe::FuncStmt>) -> yul::Statement {
 }
 
 fn emit(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
-    if let fe::FuncStmt::Emit { value } = &stmt.kind {
-        if let fe::Expr::Call { func: _, args } = &value.kind {
-            let event_values = args
-                .kind
-                .iter()
-                .map(|arg| expressions::call_arg(context, arg))
-                .collect();
+    if let fe::FuncStmt::Emit { args, .. } = &stmt.kind {
+        let event_values = args
+            .kind
+            .iter()
+            .map(|arg| expressions::call_arg(context, arg))
+            .collect();
 
-            if let Some(event) = context.get_emit(stmt) {
-                return data_operations::emit_event(event.to_owned(), event_values);
-            }
-
-            panic!("missing event definition");
+        if let Some(event) = context.get_emit(stmt) {
+            return data_operations::emit_event(event.to_owned(), event_values);
         }
 
-        panic!("emit statements must contain a call expression",);
+        panic!("missing event definition");
     }
 
     unreachable!()

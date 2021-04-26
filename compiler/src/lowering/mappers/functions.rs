@@ -43,8 +43,9 @@ fn func_stmt(context: &Context, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::FuncSt
             targets: expressions::multiple_exprs(context, targets),
             value: expressions::expr(context, value),
         }],
-        fe::FuncStmt::Emit { value } => vec![fe::FuncStmt::Emit {
-            value: expressions::expr(context, value),
+        fe::FuncStmt::Emit { name, args } => vec![fe::FuncStmt::Emit {
+            name,
+            args: expressions::call_args(context, args),
         }],
         fe::FuncStmt::AugAssign { target, op, value } => aug_assign(context, target, op, value),
         fe::FuncStmt::For {

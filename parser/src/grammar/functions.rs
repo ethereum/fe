@@ -1,4 +1,7 @@
-use super::expressions::parse_expr;
+use super::expressions::{
+    parse_call_args,
+    parse_expr,
+};
 use super::types::parse_type_desc;
 
 use crate::ast::{
@@ -218,13 +221,7 @@ pub fn parse_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
         Return => parse_return_stmt(par),
         Assert => parse_assert_stmt(par),
         Continue | Break | Pass | Revert => parse_single_word_stmt(par),
-        Emit => {
-            let emit_tok = par.next()?;
-            let value = parse_expr(par)?;
-            par.expect_newline("emit statement")?;
-            let span = emit_tok.span + value.span;
-            Ok(Node::new(FuncStmt::Emit { value }, span))
-        }
+        Emit => parse_emit_statement(par),
         _ => parse_expr_stmt(par),
     }
 }
@@ -433,4 +430,28 @@ pub fn parse_assert_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     par.expect_newline("assert statement")?;
     let span = assert_tok.span + test.span + msg.as_ref();
     Ok(Node::new(FuncStmt::Assert { test, msg }, span))
+}
+
+/// Parse an `emit` statement
+///
+/// # Panics
+/// Panics if the next token isn't `emit`
+pub fn parse_emit_statement(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
+    let emit_tok = par.assert(TokenKind::Emit);
+    let event_name = par.expect(TokenKind::Name, "failed to parse emit statement")?;
+
+    if let Some(TokenKind::ParenOpen) = par.peek() {
+        let args = parse_call_args(par)?;
+        par.expect_newline("emit statement")?;
+        let span = emit_tok.span + args.span;
+        let name = Node::new(event_name.text.to_string(), event_name.span);
+        return Ok(Node::new(FuncStmt::Emit { name, args }, span));
+    } else {
+        par.expect(
+            TokenKind::ParenOpen,
+            "failed to parse event invocation parameter list",
+        )?;
+    }
+
+    Err(ParseFailed)
 }

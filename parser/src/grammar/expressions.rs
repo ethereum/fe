@@ -97,6 +97,64 @@ pub fn parse_expr_with_min_bp(par: &mut Parser, min_bp: u8) -> ParseResult<Node<
     Ok(expr_head)
 }
 
+/// Parse call arguments
+pub fn parse_call_args(par: &mut Parser) -> ParseResult<Node<Vec<Node<CallArg>>>> {
+    use TokenKind::*;
+    let lparen = par.assert(ParenOpen);
+    let mut args = vec![];
+    let mut span = lparen.span;
+    loop {
+        if par.peek_or_err()? == ParenClose {
+            span += par.next()?.span;
+            break;
+        }
+        let arg = parse_expr(par)?;
+        if par.peek_or_err()? == Eq {
+            let eq_tok = par.next()?;
+            let value = parse_expr(par)?;
+            if let Expr::Name(name) = arg.kind {
+                let span = arg.span + value.span;
+                args.push(Node::new(
+                    CallArg::Kwarg(Kwarg {
+                        name: Node::new(name, arg.span),
+                        value: Box::new(value),
+                    }),
+                    span,
+                ));
+            } else {
+                par.fancy_error(
+                    "Syntax error in function call argument list",
+                    vec![
+                        Label::primary(
+                            eq_tok.span,
+                            "In a function call, `=` is used for named arguments".to_string(),
+                        ),
+                        Label::secondary(
+                            arg.span,
+                            "this should be a function parameter name".to_string(),
+                        ),
+                    ],
+                    vec![],
+                );
+                return Err(ParseFailed);
+            }
+        } else {
+            let span = arg.span;
+            args.push(Node::new(CallArg::Arg(arg), span));
+        }
+        if par.peek_or_err()? == Comma {
+            par.next()?;
+        } else {
+            span += par
+                .expect(ParenClose, "failed to parse function call argument list")?
+                .span;
+            break;
+        }
+    }
+
+    Ok(Node::new(args, span))
+}
+
 /// Try to build an expression starting with the given token.
 fn parse_expr_head(par: &mut Parser) -> ParseResult<Node<Expr>> {
     use TokenKind::*;
@@ -181,63 +239,6 @@ fn postfix_binding_power(op: TokenKind) -> Option<u8> {
         ParenOpen => Some(150),
         _ => None,
     }
-}
-
-fn parse_call_args(par: &mut Parser) -> ParseResult<Node<Vec<Node<CallArg>>>> {
-    use TokenKind::*;
-    let lparen = par.assert(ParenOpen);
-    let mut args = vec![];
-    let mut span = lparen.span;
-    loop {
-        if par.peek_or_err()? == ParenClose {
-            span += par.next()?.span;
-            break;
-        }
-        let arg = parse_expr(par)?;
-        if par.peek_or_err()? == Eq {
-            let eq_tok = par.next()?;
-            let value = parse_expr(par)?;
-            if let Expr::Name(name) = arg.kind {
-                let span = arg.span + value.span;
-                args.push(Node::new(
-                    CallArg::Kwarg(Kwarg {
-                        name: Node::new(name, arg.span),
-                        value: Box::new(value),
-                    }),
-                    span,
-                ));
-            } else {
-                par.fancy_error(
-                    "Syntax error in function call argument list",
-                    vec![
-                        Label::primary(
-                            eq_tok.span,
-                            "In a function call, `=` is used for named arguments".to_string(),
-                        ),
-                        Label::secondary(
-                            arg.span,
-                            "this should be a function parameter name".to_string(),
-                        ),
-                    ],
-                    vec![],
-                );
-                return Err(ParseFailed);
-            }
-        } else {
-            let span = arg.span;
-            args.push(Node::new(CallArg::Arg(arg), span));
-        }
-        if par.peek_or_err()? == Comma {
-            par.next()?;
-        } else {
-            span += par
-                .expect(ParenClose, "failed to parse function call argument list")?
-                .span;
-            break;
-        }
-    }
-
-    Ok(Node::new(args, span))
 }
 
 /// Parse a trailing square-bracket-enclosed subscript operation.

@@ -343,37 +343,24 @@ fn emit(
     context: Shared<Context>,
     stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
-    if let fe::FuncStmt::Emit {
-        value: Node { kind, .. },
-    } = &stmt.kind
-    {
-        return match kind {
-            fe::Expr::Call { func, args } if matches!(&func.kind, fe::Expr::Name(_)) => {
-                let event_name = expressions::expr_name_string(func)?;
+    if let fe::FuncStmt::Emit { name, args } = &stmt.kind {
+        return if let Some(event) = scope.borrow().contract_event_def(&name.kind) {
+            context.borrow_mut().add_emit(stmt, event.clone());
+            let argument_attributes = args
+                .kind
+                .iter()
+                .map(|arg| expressions::call_arg(Rc::clone(&scope), Rc::clone(&context), arg))
+                .collect::<Result<Vec<_>, _>>()?;
 
-                return if let Some(event) = scope.borrow().contract_event_def(&event_name) {
-                    context.borrow_mut().add_emit(stmt, event.clone());
-
-                    let argument_attributes = args
-                        .kind
-                        .iter()
-                        .map(|arg| {
-                            expressions::call_arg(Rc::clone(&scope), Rc::clone(&context), arg)
-                        })
-                        .collect::<Result<Vec<_>, _>>()?;
-
-                    if fixed_sizes_to_types(event.all_field_types())
-                        != expression_attributes_to_types(argument_attributes)
-                    {
-                        Err(SemanticError::type_error())
-                    } else {
-                        Ok(())
-                    }
-                } else {
-                    Err(SemanticError::missing_event_definition())
-                };
+            if fixed_sizes_to_types(event.all_field_types())
+                != expression_attributes_to_types(argument_attributes)
+            {
+                Err(SemanticError::type_error())
+            } else {
+                Ok(())
             }
-            _ => Err(SemanticError::event_invocation_expected()),
+        } else {
+            Err(SemanticError::missing_event_definition())
         };
     }
 
