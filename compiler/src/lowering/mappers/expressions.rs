@@ -95,7 +95,8 @@ pub fn multiple_exprs(context: &Context, exp: Vec<Node<fe::Expr>>) -> Vec<Node<f
     exp.into_iter().map(|exp| expr(context, exp)).collect()
 }
 
-fn call_args(
+/// Lowers call arguments
+pub fn call_args(
     context: &Context,
     args: Node<Vec<Node<fe::CallArg>>>,
 ) -> Node<Vec<Node<fe::CallArg>>> {

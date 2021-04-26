@@ -178,7 +178,8 @@ pub enum FuncStmt {
         msg: Option<Node<Expr>>,
     },
     Emit {
-        value: Node<Expr>,
+        name: Node<String>,
+        args: Node<Vec<Node<CallArg>>>,
     },
     Expr {
         value: Node<Expr>,

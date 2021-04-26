@@ -1,6 +1,6 @@
 return
 assert x
-emit x
+emit Foo()
 pass
 break
 continue
@@ -38,45 +38,52 @@ x
   ),
   Node(
     kind: Emit(
-      value: Node(
-        kind: Name("x"),
+      name: Node(
+        kind: "Foo",
         span: Span(
           start: 21,
-          end: 22,
+          end: 24,
+        ),
+      ),
+      args: Node(
+        kind: [],
+        span: Span(
+          start: 24,
+          end: 26,
         ),
       ),
     ),
     span: Span(
       start: 16,
-      end: 22,
+      end: 26,
     ),
   ),
   Node(
     kind: Pass,
     span: Span(
-      start: 23,
-      end: 27,
+      start: 27,
+      end: 31,
     ),
   ),
   Node(
     kind: Break,
     span: Span(
-      start: 28,
-      end: 33,
+      start: 32,
+      end: 37,
     ),
   ),
   Node(
     kind: Continue,
     span: Span(
-      start: 34,
-      end: 42,
+      start: 38,
+      end: 46,
     ),
   ),
   Node(
     kind: Revert,
     span: Span(
-      start: 43,
-      end: 49,
+      start: 47,
+      end: 53,
     ),
   ),
   Node(
@@ -84,8 +91,8 @@ x
       target: Node(
         kind: Name("x"),
         span: Span(
-          start: 50,
-          end: 51,
+          start: 54,
+          end: 55,
         ),
       ),
       typ: Node(
@@ -93,21 +100,21 @@ x
           base: "bool",
         ),
         span: Span(
-          start: 53,
-          end: 57,
+          start: 57,
+          end: 61,
         ),
       ),
       value: Some(Node(
         kind: Name("y"),
         span: Span(
-          start: 60,
-          end: 61,
+          start: 64,
+          end: 65,
         ),
       )),
     ),
     span: Span(
-      start: 50,
-      end: 61,
+      start: 54,
+      end: 65,
     ),
   ),
   Node(
@@ -116,22 +123,22 @@ x
         Node(
           kind: Name("x"),
           span: Span(
-            start: 62,
-            end: 63,
+            start: 66,
+            end: 67,
           ),
         ),
       ],
       value: Node(
         kind: Name("y"),
         span: Span(
-          start: 66,
-          end: 67,
+          start: 70,
+          end: 71,
         ),
       ),
     ),
     span: Span(
-      start: 62,
-      end: 67,
+      start: 66,
+      end: 71,
     ),
   ),
   Node(
@@ -139,28 +146,28 @@ x
       target: Node(
         kind: Name("x"),
         span: Span(
-          start: 68,
-          end: 69,
+          start: 72,
+          end: 73,
         ),
       ),
       op: Node(
         kind: Add,
         span: Span(
-          start: 70,
-          end: 72,
+          start: 74,
+          end: 76,
         ),
       ),
       value: Node(
         kind: Name("y"),
         span: Span(
-          start: 73,
-          end: 74,
+          start: 77,
+          end: 78,
         ),
       ),
     ),
     span: Span(
-      start: 68,
-      end: 74,
+      start: 72,
+      end: 78,
     ),
   ),
   Node(
@@ -168,14 +175,14 @@ x
       value: Node(
         kind: Name("x"),
         span: Span(
-          start: 75,
-          end: 76,
+          start: 79,
+          end: 80,
         ),
       ),
     ),
     span: Span(
-      start: 75,
-      end: 76,
+      start: 79,
+      end: 80,
     ),
   ),
 ]

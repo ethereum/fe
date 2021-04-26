@@ -289,48 +289,40 @@ Node(
                   ),
                   Node(
                     kind: Emit(
-                      value: Node(
-                        kind: Call(
-                          func: Node(
-                            kind: Name("Signed"),
-                            span: Span(
-                              start: 237,
-                              end: 243,
-                            ),
-                          ),
-                          args: Node(
-                            kind: [
-                              Node(
-                                kind: Kwarg(Kwarg(
-                                  name: Node(
-                                    kind: "book_msg",
-                                    span: Span(
-                                      start: 244,
-                                      end: 252,
-                                    ),
-                                  ),
-                                  value: Node(
-                                    kind: Name("book_msg"),
-                                    span: Span(
-                                      start: 253,
-                                      end: 261,
-                                    ),
-                                  ),
-                                )),
+                      name: Node(
+                        kind: "Signed",
+                        span: Span(
+                          start: 237,
+                          end: 243,
+                        ),
+                      ),
+                      args: Node(
+                        kind: [
+                          Node(
+                            kind: Kwarg(Kwarg(
+                              name: Node(
+                                kind: "book_msg",
                                 span: Span(
                                   start: 244,
+                                  end: 252,
+                                ),
+                              ),
+                              value: Node(
+                                kind: Name("book_msg"),
+                                span: Span(
+                                  start: 253,
                                   end: 261,
                                 ),
                               ),
-                            ],
+                            )),
                             span: Span(
-                              start: 243,
-                              end: 262,
+                              start: 244,
+                              end: 261,
                             ),
                           ),
-                        ),
+                        ],
                         span: Span(
-                          start: 237,
+                          start: 243,
                           end: 262,
                         ),
                       ),
