@@ -1,0 +1,20 @@
+[package]
+authors = ["SatyamAgrawal <satyam0499@gmail.com>"]
+edition = "2018"
+name = "fe-compiler-test-utils"
+version = "0.3.0-alpha"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ethabi = "12.0"
+evm = "0.18"
+evm-runtime = "0.18"
+fe-compiler = {path = "..", features = ["solc-backend"]}
+hex = "0.4"
+primitive-types = {version = "0.7", default-features = false, features = ["rlp"]}
+stringreader = "0.1"
+yultsur = {git = "https://github.com/g-r-a-n-t/yultsur"}
+
+[features]
+solc-backend = ["fe-compiler/solc-backend"]
