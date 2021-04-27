@@ -1,10 +1,10 @@
 ---
 source: parser/tests/errors.rs
-expression: "err_string(parse_emit_statement, true, \"emit MyEvent(1)()\")"
+expression: err
 
 ---
 error: unexpected token while parsing emit statement
-  ┌─ [test snippet]:1:16
+  ┌─ emit_bad_call:1:16
   │
 1 │ emit MyEvent(1)()
   │                ^ unexpected token

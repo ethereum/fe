@@ -4,7 +4,7 @@ expression: err
 
 ---
 error: `const` qualifier can't be used with function definitions
-  ┌─ [test snippet]:2:2
+  ┌─ contract_const_fn:2:2
   │
 2 │  const def f():
   │  ^^^^^

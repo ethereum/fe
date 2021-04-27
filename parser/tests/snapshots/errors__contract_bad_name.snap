@@ -4,7 +4,7 @@ expression: err
 
 ---
 error: failed to parse contract definition
-  ┌─ [test snippet]:1:10
+  ┌─ contract_bad_name:1:10
   │
 1 │ contract 1X:
   │          ^ Unexpected token. Expected a name

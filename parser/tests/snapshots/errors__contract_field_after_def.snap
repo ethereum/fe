@@ -4,7 +4,7 @@ expression: err
 
 ---
 error: contract field definitions must come before any function or event definitions
-  ┌─ [test snippet]:5:3
+  ┌─ contract_field_after_def:5:3
   │
 5 │   x: u8
   │   ^^^^^

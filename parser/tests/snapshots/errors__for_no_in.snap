@@ -4,7 +4,7 @@ expression: err
 
 ---
 error: failed to parse `for` statement
-  ┌─ [test snippet]:1:6
+  ┌─ for_no_in:1:6
   │
 1 │ for x:
   │      ^ Unexpected token. Expected `in`

@@ -1,16 +1,15 @@
 use fe_common::diagnostics::diagnostics_string;
 use fe_parser::grammar::{contracts, expressions, functions, module, types};
-
 use fe_parser::{ParseResult, Parser};
 use insta::assert_snapshot;
 
-pub fn err_string<F, T>(mut parse_fn: F, should_fail: bool, src: &str) -> String
+pub fn err_string<F, T>(test_name: &str, mut parse_fn: F, should_fail: bool, src: &str) -> String
 where
     F: FnMut(&mut Parser) -> ParseResult<T>,
     T: std::fmt::Debug,
 {
     let mut files = fe_common::files::FileStore::new();
-    let id = files.add_file("[test snippet]", src);
+    let id = files.add_file(test_name, src);
     let mut parser = Parser::new(src, id);
 
     if should_fail != parse_fn(&mut parser).is_err() {
@@ -23,10 +22,10 @@ where
 }
 
 macro_rules! test_parse_err {
-    ($name:ident, $parse_fn:expr, $should_fail:expr, $string:expr) => {
+    ($name:ident, $parse_fn:expr, $should_fail:expr, $src:expr) => {
         #[test]
         fn $name() {
-            let err = err_string($parse_fn, $should_fail, $string);
+            let err = err_string(stringify!($name), $parse_fn, $should_fail, $src);
             assert_snapshot!(err);
         }
     };

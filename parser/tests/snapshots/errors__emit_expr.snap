@@ -1,10 +1,10 @@
 ---
 source: parser/tests/errors.rs
-expression: "err_string(parse_emit_statement, true, \"emit x + 1\")"
+expression: err
 
 ---
 error: failed to parse event invocation parameter list
-  ┌─ [test snippet]:1:8
+  ┌─ emit_expr:1:8
   │
 1 │ emit x + 1
   │        ^ Unexpected token. Expected `(`

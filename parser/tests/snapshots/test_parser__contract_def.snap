@@ -1,0 +1,237 @@
+---
+source: parser/tests/test_parser.rs
+expression: "ast_string(stringify!(contract_def), contracts::parse_contract_def,\n           r#\"contract Foo:\n  x: address\n  pub y: u8\n  pub const z: map<u8, address>\n  pub def foo() -> u8:\n    return 10\n  event Bar:\n    idx from: address\n\"#)"
+
+---
+Node(
+  kind: ContractDef(
+    name: Node(
+      kind: "Foo",
+      span: Span(
+        start: 9,
+        end: 12,
+      ),
+    ),
+    fields: [
+      Node(
+        kind: Field(
+          pub_qual: None,
+          const_qual: None,
+          name: Node(
+            kind: "x",
+            span: Span(
+              start: 16,
+              end: 17,
+            ),
+          ),
+          typ: Node(
+            kind: Base(
+              base: "address",
+            ),
+            span: Span(
+              start: 19,
+              end: 26,
+            ),
+          ),
+          value: None,
+        ),
+        span: Span(
+          start: 16,
+          end: 26,
+        ),
+      ),
+      Node(
+        kind: Field(
+          pub_qual: Some(Node(
+            kind: PubQualifier(),
+            span: Span(
+              start: 29,
+              end: 32,
+            ),
+          )),
+          const_qual: None,
+          name: Node(
+            kind: "y",
+            span: Span(
+              start: 33,
+              end: 34,
+            ),
+          ),
+          typ: Node(
+            kind: Base(
+              base: "u8",
+            ),
+            span: Span(
+              start: 36,
+              end: 38,
+            ),
+          ),
+          value: None,
+        ),
+        span: Span(
+          start: 29,
+          end: 38,
+        ),
+      ),
+      Node(
+        kind: Field(
+          pub_qual: Some(Node(
+            kind: PubQualifier(),
+            span: Span(
+              start: 41,
+              end: 44,
+            ),
+          )),
+          const_qual: Some(Node(
+            kind: ConstQualifier(),
+            span: Span(
+              start: 45,
+              end: 50,
+            ),
+          )),
+          name: Node(
+            kind: "z",
+            span: Span(
+              start: 51,
+              end: 52,
+            ),
+          ),
+          typ: Node(
+            kind: Map(
+              from: Node(
+                kind: Base(
+                  base: "u8",
+                ),
+                span: Span(
+                  start: 58,
+                  end: 60,
+                ),
+              ),
+              to: Node(
+                kind: Base(
+                  base: "address",
+                ),
+                span: Span(
+                  start: 62,
+                  end: 69,
+                ),
+              ),
+            ),
+            span: Span(
+              start: 54,
+              end: 70,
+            ),
+          ),
+          value: None,
+        ),
+        span: Span(
+          start: 41,
+          end: 70,
+        ),
+      ),
+    ],
+    body: [
+      Node(
+        kind: FuncDef(
+          pub_qual: Some(Node(
+            kind: PubQualifier(),
+            span: Span(
+              start: 73,
+              end: 76,
+            ),
+          )),
+          name: Node(
+            kind: "foo",
+            span: Span(
+              start: 81,
+              end: 84,
+            ),
+          ),
+          args: [],
+          return_type: Some(Node(
+            kind: Base(
+              base: "u8",
+            ),
+            span: Span(
+              start: 90,
+              end: 92,
+            ),
+          )),
+          body: [
+            Node(
+              kind: Return(
+                value: Some(Node(
+                  kind: Num("10"),
+                  span: Span(
+                    start: 105,
+                    end: 107,
+                  ),
+                )),
+              ),
+              span: Span(
+                start: 98,
+                end: 107,
+              ),
+            ),
+          ],
+        ),
+        span: Span(
+          start: 73,
+          end: 107,
+        ),
+      ),
+      Node(
+        kind: EventDef(
+          name: Node(
+            kind: "Bar",
+            span: Span(
+              start: 116,
+              end: 119,
+            ),
+          ),
+          fields: [
+            Node(
+              kind: EventField(
+                idx_qual: Some(Node(
+                  kind: IdxQualifier(),
+                  span: Span(
+                    start: 125,
+                    end: 128,
+                  ),
+                )),
+                name: Node(
+                  kind: "from",
+                  span: Span(
+                    start: 129,
+                    end: 133,
+                  ),
+                ),
+                typ: Node(
+                  kind: Base(
+                    base: "address",
+                  ),
+                  span: Span(
+                    start: 135,
+                    end: 142,
+                  ),
+                ),
+              ),
+              span: Span(
+                start: 125,
+                end: 142,
+              ),
+            ),
+          ],
+        ),
+        span: Span(
+          start: 110,
+          end: 142,
+        ),
+      ),
+    ],
+  ),
+  span: Span(
+    start: 0,
+    end: 142,
+  ),
+)

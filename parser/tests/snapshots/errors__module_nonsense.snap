@@ -4,7 +4,7 @@ expression: err
 
 ---
 error: Unmatched right parenthesis
-  ┌─ [test snippet]:1:1
+  ┌─ module_nonsense:1:1
   │
 1 │ ))
   │ ^
