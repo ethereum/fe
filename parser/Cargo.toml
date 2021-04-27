@@ -24,6 +24,7 @@ serde_json = "1"
 
 [dev-dependencies]
 difference = "2.0"
+insta = "1.7.1"
 ron = "0.5.1"
 serde_json = "1"
 wasm-bindgen-test = "0.3"

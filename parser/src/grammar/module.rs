@@ -32,7 +32,7 @@ pub fn parse_module(par: &mut Parser) -> ParseResult<Node<Module>> {
 
 /// Parse a [`ModuleStmt`].
 pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
-    match par.peek().unwrap() {
+    match par.peek_or_err()? {
         TokenKind::Import => parse_simple_import(par),
         TokenKind::Name if par.peeked_text() == "from" => parse_from_import(par),
         TokenKind::Contract => parse_contract_def(par),
@@ -40,15 +40,11 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
         TokenKind::Type => parse_type_def(par),
         TokenKind::Event => todo!("module-level event def"),
         _ => {
-            let tok = par.next().unwrap();
+            let tok = par.next()?;
             par.unexpected_token_error(
                 tok.span,
                 "failed to parse module",
                 vec!["Note: expected import, contract, struct, type, or event".into()],
-            );
-            par.error(
-                tok.span,
-                format!("Unexpected token when parsing module: `{:?}`", tok.kind),
             );
             Err(ParseFailed)
         }

@@ -291,16 +291,13 @@ impl<'a> Parser<'a> {
         } else {
             self.fancy_error(
                 format!("failed to parse {} body", context_name),
-                vec![
-                    Label::primary(indent.span, "unexpected token".into()),
-                    Label::secondary(
-                        context_span + colon.as_ref(),
-                        format!(
-                            "the body of this {} must be indented and non-empty",
-                            context_name,
-                        ),
+                vec![Label::primary(
+                    context_span + colon.as_ref(),
+                    format!(
+                        "the body of this {} must be indented and non-empty",
+                        context_name,
                     ),
-                ],
+                )],
                 vec![],
             );
             Err(ParseFailed)

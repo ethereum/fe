@@ -146,7 +146,7 @@ pub fn parse_field(
     pub_qual: Option<Node<PubQualifier>>,
     const_qual: Option<Node<ConstQualifier>>,
 ) -> ParseResult<Node<Field>> {
-    let name = par.assert(TokenKind::Name);
+    let name = par.expect(TokenKind::Name, "failed to parse field definition")?;
     par.expect_with_notes(TokenKind::Colon, "failed to parse field definition", || {
         vec![
             "Note: field name must be followed by a colon and a type description".into(),

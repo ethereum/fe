@@ -141,7 +141,7 @@ pub enum FuncStmt {
         value: Option<Node<Expr>>,
     },
     VarDecl {
-        target: Node<Expr>, // TODO: change to String
+        target: Node<Expr>,
         typ: Node<TypeDesc>,
         value: Option<Node<Expr>>,
     },

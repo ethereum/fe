@@ -1,0 +1,12 @@
+---
+source: parser/tests/errors.rs
+expression: err
+
+---
+error: `const` qualifier can't be used with function definitions
+  ┌─ [test snippet]:2:2
+  │
+2 │  const def f():
+  │  ^^^^^
+
+
