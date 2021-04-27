@@ -1,0 +1,27 @@
+---
+source: parser/tests/test_parser.rs
+expression: "ast_string(stringify!(stmt_emit1), functions::parse_stmt, \"emit Foo()\")"
+
+---
+Node(
+  kind: Emit(
+    name: Node(
+      kind: "Foo",
+      span: Span(
+        start: 5,
+        end: 8,
+      ),
+    ),
+    args: Node(
+      kind: [],
+      span: Span(
+        start: 8,
+        end: 10,
+      ),
+    ),
+  ),
+  span: Span(
+    start: 0,
+    end: 10,
+  ),
+)

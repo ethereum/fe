@@ -1,0 +1,228 @@
+---
+source: parser/tests/test_parser.rs
+expression: "ast_string(stringify!(module_stmts), module::parse_module,\n           r#\"\nimport foo as bar, baz as bum\n\ntype X = map<u8, u16>\n\ncontract A:\n    pub const x: u256 = 10\n\ncontract B:\n    pub x: X\n\"#)"
+
+---
+Node(
+  kind: Module(
+    body: [
+      Node(
+        kind: SimpleImport(
+          names: [
+            Node(
+              kind: SimpleImportName(
+                path: [
+                  Node(
+                    kind: "foo",
+                    span: Span(
+                      start: 8,
+                      end: 11,
+                    ),
+                  ),
+                ],
+                alias: Some(Node(
+                  kind: "bar",
+                  span: Span(
+                    start: 15,
+                    end: 18,
+                  ),
+                )),
+              ),
+              span: Span(
+                start: 8,
+                end: 18,
+              ),
+            ),
+            Node(
+              kind: SimpleImportName(
+                path: [
+                  Node(
+                    kind: "baz",
+                    span: Span(
+                      start: 20,
+                      end: 23,
+                    ),
+                  ),
+                ],
+                alias: Some(Node(
+                  kind: "bum",
+                  span: Span(
+                    start: 27,
+                    end: 30,
+                  ),
+                )),
+              ),
+              span: Span(
+                start: 20,
+                end: 30,
+              ),
+            ),
+          ],
+        ),
+        span: Span(
+          start: 1,
+          end: 30,
+        ),
+      ),
+      Node(
+        kind: TypeDef(
+          name: Node(
+            kind: "X",
+            span: Span(
+              start: 37,
+              end: 38,
+            ),
+          ),
+          typ: Node(
+            kind: Map(
+              from: Node(
+                kind: Base(
+                  base: "u8",
+                ),
+                span: Span(
+                  start: 45,
+                  end: 47,
+                ),
+              ),
+              to: Node(
+                kind: Base(
+                  base: "u16",
+                ),
+                span: Span(
+                  start: 49,
+                  end: 52,
+                ),
+              ),
+            ),
+            span: Span(
+              start: 41,
+              end: 53,
+            ),
+          ),
+        ),
+        span: Span(
+          start: 32,
+          end: 53,
+        ),
+      ),
+      Node(
+        kind: ContractDef(
+          name: Node(
+            kind: "A",
+            span: Span(
+              start: 64,
+              end: 65,
+            ),
+          ),
+          fields: [
+            Node(
+              kind: Field(
+                pub_qual: Some(Node(
+                  kind: PubQualifier(),
+                  span: Span(
+                    start: 71,
+                    end: 74,
+                  ),
+                )),
+                const_qual: Some(Node(
+                  kind: ConstQualifier(),
+                  span: Span(
+                    start: 75,
+                    end: 80,
+                  ),
+                )),
+                name: Node(
+                  kind: "x",
+                  span: Span(
+                    start: 81,
+                    end: 82,
+                  ),
+                ),
+                typ: Node(
+                  kind: Base(
+                    base: "u256",
+                  ),
+                  span: Span(
+                    start: 84,
+                    end: 88,
+                  ),
+                ),
+                value: Some(Node(
+                  kind: Num("10"),
+                  span: Span(
+                    start: 91,
+                    end: 93,
+                  ),
+                )),
+              ),
+              span: Span(
+                start: 71,
+                end: 88,
+              ),
+            ),
+          ],
+          body: [],
+        ),
+        span: Span(
+          start: 55,
+          end: 88,
+        ),
+      ),
+      Node(
+        kind: ContractDef(
+          name: Node(
+            kind: "B",
+            span: Span(
+              start: 104,
+              end: 105,
+            ),
+          ),
+          fields: [
+            Node(
+              kind: Field(
+                pub_qual: Some(Node(
+                  kind: PubQualifier(),
+                  span: Span(
+                    start: 111,
+                    end: 114,
+                  ),
+                )),
+                const_qual: None,
+                name: Node(
+                  kind: "x",
+                  span: Span(
+                    start: 115,
+                    end: 116,
+                  ),
+                ),
+                typ: Node(
+                  kind: Base(
+                    base: "X",
+                  ),
+                  span: Span(
+                    start: 118,
+                    end: 119,
+                  ),
+                ),
+                value: None,
+              ),
+              span: Span(
+                start: 111,
+                end: 119,
+              ),
+            ),
+          ],
+          body: [],
+        ),
+        span: Span(
+          start: 95,
+          end: 119,
+        ),
+      ),
+    ],
+  ),
+  span: Span(
+    start: 1,
+    end: 119,
+  ),
+)

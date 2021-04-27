@@ -4,7 +4,7 @@ expression: err
 
 ---
 error: failed to parse `if` statement body
-  ┌─ [test snippet]:1:1
+  ┌─ if_no_body:1:1
   │
 1 │ if x:
   │ ^^^^^ the body of this `if` statement must be indented and non-empty

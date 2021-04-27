@@ -4,7 +4,7 @@ expression: err
 
 ---
 error: failed to parse field definition
-  ┌─ [test snippet]:2:6
+  ┌─ struct_bad_field_name:2:6
   │
 2 │  pub def
   │      ^^^ Unexpected token. Expected a name

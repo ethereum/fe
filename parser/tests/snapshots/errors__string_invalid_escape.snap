@@ -4,7 +4,7 @@ expression: err
 
 ---
 error: String contains an invalid escape sequence
-  ┌─ [test snippet]:1:1
+  ┌─ string_invalid_escape:1:1
   │
 1 │ "a string \c "
   │ ^^^^^^^^^^^^^^

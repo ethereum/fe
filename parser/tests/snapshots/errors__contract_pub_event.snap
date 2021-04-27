@@ -4,7 +4,7 @@ expression: err
 
 ---
 error: `pub` qualifier can't be used with event definitions
-  ┌─ [test snippet]:2:2
+  ┌─ contract_pub_event:2:2
   │
 2 │  pub event E:
   │  ^^^

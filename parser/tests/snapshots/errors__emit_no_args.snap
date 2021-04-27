@@ -1,10 +1,10 @@
 ---
 source: parser/tests/errors.rs
-expression: "err_string(parse_emit_statement, true, \"emit x\")"
+expression: err
 
 ---
 error: unexpected end of file
-  ┌─ [test snippet]:1:7
+  ┌─ emit_no_args:1:7
   │
 1 │ emit x
   │       ^

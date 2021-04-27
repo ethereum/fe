@@ -4,7 +4,7 @@ expression: err
 
 ---
 error: `const pub` should be written `pub const`
-  ┌─ [test snippet]:2:2
+  ┌─ contract_const_pub:2:2
   │
 2 │  const pub x: u8
   │  ^^^^^^^^^
