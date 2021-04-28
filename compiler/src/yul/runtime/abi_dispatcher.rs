@@ -55,7 +55,7 @@ fn dispatch_arm(attributes: FunctionAttributes) -> yul::Case {
 fn selector(name: &str, params: &[FixedSize]) -> yul::Literal {
     let params = params
         .iter()
-        .map(|param| param.abi_type_name())
+        .map(|param| param.abi_selector_name())
         .collect::<Vec<String>>();
 
     literal! {(abi_utils::func_selector(name, params))}

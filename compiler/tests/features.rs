@@ -1238,3 +1238,16 @@ fn aug_assign(target: usize, op: &str, value: usize, expected: usize) {
         );
     });
 }
+
+#[test]
+fn base_tuple() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "base_tuple.fe", "Foo", &[]);
+        harness.test_function(
+            &mut executor,
+            "bar",
+            &[uint_token(42), bool_token(true)],
+            Some(&tuple_token(&[uint_token(42), bool_token(true)])),
+        );
+    });
+}

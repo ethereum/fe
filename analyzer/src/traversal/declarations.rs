@@ -15,7 +15,8 @@ pub fn var_decl(
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::VarDecl { target, typ, value } = &stmt.kind {
         let name = expressions::expr_name_string(target)?;
-        let declared_type = types::type_desc_fixed_size(Scope::Block(Rc::clone(&scope)), typ)?;
+        let declared_type =
+            types::type_desc_fixed_size(Scope::Block(Rc::clone(&scope)), Rc::clone(&context), typ)?;
         if let Some(value) = value {
             let value_attributes =
                 expressions::assignable_expr(Rc::clone(&scope), Rc::clone(&context), value)?;

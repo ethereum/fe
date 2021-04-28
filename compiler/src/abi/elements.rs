@@ -1,5 +1,5 @@
 use crate::errors::CompileError;
-use fe_analyzer::namespace::types::{AbiComponent, AbiEncoding, FixedSize};
+use fe_analyzer::namespace::types::{AbiComponent, AbiEncoding};
 use fe_analyzer::FunctionAttributes;
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
@@ -88,6 +88,10 @@ pub struct EventField {
     /// True if the field is part of the log’s topics, false if it is one of the
     /// log’s data segment.
     pub indexed: bool,
+    /// Components of a tuple. This field is excluded if there are no
+    /// components.
+    #[serde(skip_serializing_if = "should_skip_components")]
+    pub components: Vec<Component>,
 }
 
 /// A function interface.
@@ -193,9 +197,9 @@ impl From<FunctionAttributes> for Function {
             .iter()
             .map(|(name, typ)| FuncInput {
                 name: name.to_owned(),
-                typ: typ.abi_type_name(),
+                typ: typ.abi_json_name(),
                 components: typ
-                    .abi_type_components()
+                    .abi_components()
                     .iter()
                     .map(|component| Component::from(component.to_owned()))
                     .collect(),
@@ -206,19 +210,15 @@ impl From<FunctionAttributes> for Function {
         let outputs = if return_type.is_empty_tuple() {
             vec![]
         } else {
-            let components = if let FixedSize::Struct(struct_) = return_type {
-                struct_
-                    .abi_type_components()
-                    .iter()
-                    .map(|component| Component::from(component.to_owned()))
-                    .collect()
-            } else {
-                vec![]
-            };
+            let components = return_type
+                .abi_components()
+                .into_iter()
+                .map(Component::from)
+                .collect();
 
             vec![FuncOutput {
                 name: "".to_string(),
-                typ: return_type.abi_type_name(),
+                typ: return_type.abi_json_name(),
                 components,
             }]
         };
@@ -248,6 +248,7 @@ mod tests {
                     name: "input_name".to_string(),
                     typ: "uint256".to_string(),
                     indexed: true,
+                    components: vec![],
                 }],
                 anonymous: false,
             }],

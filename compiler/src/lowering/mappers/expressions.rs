@@ -1,9 +1,14 @@
+use crate::lowering::names::tuple_struct_name;
+use fe_analyzer::namespace::types::Type;
 use fe_analyzer::Context;
 use fe_parser::ast as fe;
+use fe_parser::ast::Kwarg;
 use fe_parser::node::Node;
 
 /// Lowers an expression and all sub expressions.
 pub fn expr(context: &Context, exp: Node<fe::Expr>) -> Node<fe::Expr> {
+    let span = exp.span;
+
     let lowered_kind = match exp.kind {
         fe::Expr::Name(_) => exp.kind,
         fe::Expr::Num(_) => exp.kind,
@@ -52,12 +57,12 @@ pub fn expr(context: &Context, exp: Node<fe::Expr>) -> Node<fe::Expr> {
         fe::Expr::ListComp { .. } => unimplemented!(),
         // We only accept empty tuples for now. We may want to completely eliminate tuple
         // expressions before the Yul codegen pass, tho.
-        fe::Expr::Tuple { .. } => exp.kind,
+        fe::Expr::Tuple { .. } => expr_tuple(context, exp),
         fe::Expr::Str(_) => exp.kind,
         fe::Expr::Ellipsis => unimplemented!(),
     };
 
-    Node::new(lowered_kind, exp.span)
+    Node::new(lowered_kind, span)
 }
 
 fn slices_index_expr(
@@ -121,4 +126,43 @@ fn kwarg(context: &Context, kwarg: fe::Kwarg) -> fe::Kwarg {
         name: kwarg.name,
         value: boxed_expr(context, kwarg.value),
     }
+}
+
+fn expr_tuple(context: &Context, exp: Node<fe::Expr>) -> fe::Expr {
+    let attributes = context.get_expression(&exp).expect("missing attributes");
+
+    if let Type::Tuple(tuple) = &attributes.typ {
+        if tuple.is_empty() {
+            return exp.kind;
+        }
+
+        let name = tuple_struct_name(tuple);
+
+        if let fe::Expr::Tuple { elts } = exp.kind {
+            // map the tuple args to kwargs
+            let args = Node::new(
+                elts.into_iter()
+                    .enumerate()
+                    .map(|(index, elt)| {
+                        Node::new(
+                            fe::CallArg::Kwarg(Kwarg {
+                                name: Node::new(format!("item{}", index), elt.span),
+                                value: Box::new(elt.clone()),
+                            }),
+                            elt.span,
+                        )
+                    })
+                    .collect(),
+                exp.span,
+            );
+
+            // create type constructor call for the lowered tuple
+            return fe::Expr::Call {
+                func: Box::new(Node::new(name, exp.span)),
+                args,
+            };
+        }
+    }
+
+    unreachable!()
 }

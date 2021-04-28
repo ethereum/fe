@@ -176,3 +176,88 @@ fn abi_encoding_stress() {
         );
     });
 }
+
+#[test]
+fn tuple_stress() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "tuple_stress.fe", "Foo", &[]);
+
+        let my_num = uint_token(26);
+        let my_bool = bool_token(true);
+        let my_address = address_token("42");
+        let my_tuple = tuple_token(&[my_num.clone(), my_bool.clone(), my_address.clone()]);
+        let my_tuple_encoded = ethabi::Token::FixedBytes(vec![
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 26, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 66,
+        ]);
+
+        harness.test_function(
+            &mut executor,
+            "build_my_tuple",
+            &[my_num.clone(), my_bool.clone(), my_address.clone()],
+            Some(&my_tuple),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "read_my_tuple_item0",
+            &[my_tuple.clone()],
+            Some(&my_num),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "read_my_tuple_item1",
+            &[my_tuple.clone()],
+            Some(&my_bool),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "read_my_tuple_item2",
+            &[my_tuple.clone()],
+            Some(&my_address),
+        );
+
+        let my_sto_u256 = uint_token(42);
+        let my_sto_i32 = int_token(-26);
+        let my_sto_tuple = tuple_token(&[my_sto_u256.clone(), my_sto_i32.clone()]);
+
+        harness.test_function(
+            &mut executor,
+            "set_my_sto_tuple",
+            &[my_sto_u256, my_sto_i32],
+            None,
+        );
+
+        harness.test_function(&mut executor, "get_my_sto_tuple", &[], Some(&my_sto_tuple));
+
+        harness.test_function(&mut executor, "emit_my_event", &[my_tuple.clone()], None);
+
+        harness.test_function(&mut executor, "build_tuple_and_emit", &[], None);
+
+        harness.test_function(
+            &mut executor,
+            "encode_my_tuple",
+            &[my_tuple.clone()],
+            Some(&my_tuple_encoded),
+        );
+
+        harness.events_emitted(
+            executor,
+            &[
+                ("MyEvent", &[my_tuple]),
+                (
+                    "MyEvent",
+                    &[tuple_token(&[
+                        uint_token(42),
+                        bool_token(false),
+                        address_token("1a"),
+                    ])],
+                ),
+            ],
+        );
+    });
+}

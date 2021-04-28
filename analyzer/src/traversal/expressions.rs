@@ -6,7 +6,7 @@ use crate::namespace::types::{
 };
 use crate::operations;
 use crate::traversal::utils::{
-    call_arg_value, expression_attributes_to_types, fixed_sizes_to_types,
+    call_arg_value, expression_attributes_to_types, fixed_sizes_to_types, types_to_fixed_sizes,
 };
 use crate::{CallType, Context, ExpressionAttributes, Location};
 
@@ -89,25 +89,6 @@ pub fn expr_list(
     unreachable!()
 }
 
-/// Gather context information for a tuple expression and check for type errors.
-pub fn expr_tuple(
-    _scope: Shared<BlockScope>,
-    _context: Shared<Context>,
-    exp: &Node<fe::Expr>,
-) -> Result<ExpressionAttributes, SemanticError> {
-    if let fe::Expr::Tuple { elts } = &exp.kind {
-        if elts.is_empty() {
-            return Ok(ExpressionAttributes::new(
-                Type::Tuple(Tuple::empty()),
-                Location::Memory,
-            ));
-        } else {
-            todo!("Non-empty Tuples not supported yet")
-        }
-    }
-    unreachable!()
-}
-
 /// Gather context information for expressions and check for type errors.
 ///
 /// Also ensures that the expression is on the stack.
@@ -175,6 +156,47 @@ pub fn slice_index(
     unreachable!()
 }
 
+fn expr_tuple(
+    scope: Shared<BlockScope>,
+    context: Shared<Context>,
+    exp: &Node<fe::Expr>,
+) -> Result<ExpressionAttributes, SemanticError> {
+    if let fe::Expr::Tuple { elts } = &exp.kind {
+        return if elts.is_empty() {
+            Ok(ExpressionAttributes::new(
+                Type::Tuple(Tuple::empty()),
+                Location::Memory,
+            ))
+        } else {
+            let types = elts
+                .iter()
+                .map(|elt| {
+                    assignable_expr(Rc::clone(&scope), Rc::clone(&context), elt)
+                        .map(|attributes| attributes.typ)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+
+            let tuple = Tuple {
+                items: types_to_fixed_sizes(types)?,
+            };
+
+            scope
+                .borrow()
+                .module_scope()
+                .borrow_mut()
+                .tuples_used
+                .insert(tuple.clone());
+
+            Ok(ExpressionAttributes::new(
+                Type::Tuple(tuple),
+                Location::Memory,
+            ))
+        };
+    }
+
+    unreachable!()
+}
+
 fn expr_name(
     scope: Shared<BlockScope>,
     exp: &Node<fe::Expr>,
@@ -196,7 +218,10 @@ fn expr_name(
                 Type::String(string),
                 Location::Memory,
             )),
-            Some(FixedSize::Tuple(_)) => unimplemented!(),
+            Some(FixedSize::Tuple(tuple)) => Ok(ExpressionAttributes::new(
+                Type::Tuple(tuple),
+                Location::Memory,
+            )),
             Some(FixedSize::Struct(val)) => Ok(ExpressionAttributes::new(
                 Type::Struct(val),
                 Location::Memory,
@@ -334,7 +359,7 @@ fn expr_attribute(
             }
         }
 
-        // We attempt to analyze the value as an expression. If this is succesfull, we
+        // We attempt to analyze the value as an expression. If this is successful, we
         // build a new set of attributes from the value attributes.
         return match expr(scope, context, value)? {
             // If the value is a struct, we return the type of the attribute. The location stays the
@@ -350,11 +375,30 @@ fn expr_attribute(
                     undefined_value_err
                 }
             }
+            ExpressionAttributes {
+                typ: Type::Tuple(tuple),
+                location,
+                ..
+            } => {
+                let item_index = tuple_item_index(&attr.kind)?;
+                if let Some(typ) = tuple.items.get(item_index) {
+                    Ok(ExpressionAttributes::new(typ.to_owned().into(), location))
+                } else {
+                    undefined_value_err
+                }
+            }
             _ => undefined_value_err,
         };
     }
 
     unreachable!()
+}
+
+/// Pull the item index from the attribute string (e.g. "item4" -> "4").
+fn tuple_item_index(item: &str) -> Result<usize, SemanticError> {
+    item[4..]
+        .parse::<usize>()
+        .map_err(|_| SemanticError::undefined_value())
 }
 
 fn expr_attribute_self(
@@ -666,6 +710,19 @@ fn expr_call_value_attribute(
                         Type::Array(Array {
                             inner: Base::Byte,
                             size: struct_.get_num_fields() * 32,
+                        }),
+                        Location::Memory,
+                    ))
+                }
+                Type::Tuple(tuple) => {
+                    if value_attributes.final_location() != Location::Memory {
+                        todo!("encode tuple from storage")
+                    }
+
+                    Ok(ExpressionAttributes::new(
+                        Type::Array(Array {
+                            inner: Base::Byte,
+                            size: tuple.items.len() * 32,
                         }),
                         Location::Memory,
                     ))

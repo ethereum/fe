@@ -47,10 +47,10 @@ impl<'a> Parser<'a> {
             buffered: vec![],
             paren_stack: vec![],
             indent_stack: vec![BlockIndent {
-                context_span: Span::new(0, 0),
+                context_span: Span::zero(),
                 context_name: "module".into(),
                 indent: "",
-                indent_span: Span::new(0, 0),
+                indent_span: Span::zero(),
             }],
             indent_style: None,
             diagnostics: vec![],

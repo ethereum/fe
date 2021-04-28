@@ -15,6 +15,10 @@ impl Span {
         Span { start, end }
     }
 
+    pub fn zero() -> Self {
+        Span { start: 0, end: 0 }
+    }
+
     pub fn from_pair<S, E>(start_elem: S, end_elem: E) -> Self
     where
         S: Into<Span>,

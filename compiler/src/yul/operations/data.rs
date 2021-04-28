@@ -138,7 +138,7 @@ mod tests {
 
         assert_eq!(
             emit_event(event, vec![expression! { 26 }, expression! { 0x00 }]).to_string(),
-            "log1(abi_encode_uint256_address(26, 0x00), add(64, 0), 0x74bffa18f2b20140b65de9264a54040b23ab0a34e7643d52f67f7fb18be9bbcb)"
+            "log1(abi_encode_u256_address(26, 0x00), add(64, 0), 0x74bffa18f2b20140b65de9264a54040b23ab0a34e7643d52f67f7fb18be9bbcb)"
         )
     }
 

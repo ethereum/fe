@@ -120,7 +120,7 @@ mod tests {
     fn test_encode() {
         assert_eq!(
             encode(vec![U256], vec![expression! { 42 }]).to_string(),
-            "abi_encode_uint256(42)"
+            "abi_encode_u256(42)"
         )
     }
 
@@ -141,7 +141,7 @@ mod tests {
                 AbiDecodeLocation::Calldata
             )[0]
             .to_string(),
-            "abi_decode_string26_calldata(42, 0)"
+            "abi_decode_string_26_calldata(42, 0)"
         )
     }
 

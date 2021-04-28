@@ -30,12 +30,18 @@ pub fn func_def(
 
         let params = args
             .iter()
-            .map(|arg| func_def_arg(Rc::clone(&function_scope), arg))
+            .map(|arg| func_def_arg(Rc::clone(&function_scope), Rc::clone(&context), arg))
             .collect::<Result<Vec<_>, _>>()?;
 
         let return_type = return_type
             .as_ref()
-            .map(|typ| types::type_desc_fixed_size(Scope::Block(Rc::clone(&function_scope)), &typ))
+            .map(|typ| {
+                types::type_desc_fixed_size(
+                    Scope::Block(Rc::clone(&function_scope)),
+                    Rc::clone(&context),
+                    &typ,
+                )
+            })
             .transpose()?
             .unwrap_or_else(|| Tuple::empty().into());
 
@@ -134,10 +140,11 @@ fn validate_all_paths_return_or_revert(block: &[Node<fe::FuncStmt>]) -> Result<(
 
 fn func_def_arg(
     scope: Shared<BlockScope>,
+    context: Shared<Context>,
     arg: &Node<fe::FuncDefArg>,
 ) -> Result<(String, FixedSize), SemanticError> {
     let name = &arg.kind.name.kind;
-    let typ = types::type_desc_fixed_size(Scope::Block(Rc::clone(&scope)), &arg.kind.typ)?;
+    let typ = types::type_desc_fixed_size(Scope::Block(Rc::clone(&scope)), context, &arg.kind.typ)?;
 
     scope.borrow_mut().add_var(name, typ.clone())?;
 

@@ -1,16 +1,3 @@
-struct Pair:
-    token0: address
-    token1: address
-
-struct TwoNums:
-    num1: u256
-    num2: u256
-
-struct ThreeNums:
-    num1: u256
-    num2: u256
-    num3: u256
-
 contract ERC20:
     pub def balanceOf(account: address) -> u256:
         return 0
@@ -122,12 +109,8 @@ contract UniswapV2Pair:
     pub def balanceOf(account: address) -> u256:
         return self.balances[account]
 
-    pub def get_reserves() -> ThreeNums:
-        return ThreeNums(
-            num1=self.reserve0,
-            num2=self.reserve1,
-            num3=self.block_timestamp_last
-        )
+    pub def get_reserves() -> (u256, u256, u256):
+        return (self.reserve0, self.reserve1, self.block_timestamp_last)
 
     # called once by the factory at time of deployment
     pub def initialize(token0: address, token1: address):
@@ -203,8 +186,7 @@ contract UniswapV2Pair:
         return liquidity
 
     # this low-level function should be called from a contract which performs important safety checks
-    pub def burn(to: address) -> TwoNums:
-        # (reserve0: u112, reserve1: u112) = self.get_reserves() # gas savings
+    pub def burn(to: address) -> (u256, u256):
         reserve0: u256 = self.reserve0
         reserve1: u256 = self.reserve1
         token0: ERC20 = ERC20(self.token0)
@@ -230,7 +212,7 @@ contract UniswapV2Pair:
             self.k_last = reserve0 * reserve1 # reserve0 and reserve1 are up-to-date
 
         emit Burn(msg.sender, amount0, amount1, to)
-        return TwoNums(num1=amount0, num2=amount1)
+        return (amount0, amount1)
 
     # this low-level function should be called from a contract which performs important safety checks
     # TODO: add support for the bytes type (https://github.com/ethereum/fe/issues/280)
@@ -335,12 +317,7 @@ contract UniswapV2Factory:
         assert token0 != address(0), "UniswapV2: ZERO_ADDRESS"
         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
 
-        salt: u256 = keccak256(
-            Pair(
-                address1=token0,
-                address2=token1
-            ).abi_encode()
-        )
+        salt: u256 = keccak256((token0, token1).abi_encode())
         pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
         pair.initialize(token0, token1)
 

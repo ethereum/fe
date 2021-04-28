@@ -1,0 +1,28 @@
+contract Foo:
+    my_tuple_field: (bool, address)
+
+    event MyEvent:
+        my_tuple: (bool, bool)
+        my_other_tuple: (address, address)
+
+    pub def bar(my_num: u256, my_bool: bool) -> (u256, bool):
+        return (my_num, my_bool)
+
+    pub def baz() -> (u256, bool, u8, address):
+        return (999999, false, u8(42), address(26))
+
+    pub def bing():
+        foo: (address, address, u16, i32, bool) = (address(0), address(0), u16(0), i32(0), false)
+
+    pub def bop(
+        my_tuple1: (u256, bool),
+        my_tuple2: (u256, bool, u8, address),
+        my_tuple3: (address, address, u16, i32, bool)
+    ):
+        pass
+
+    pub def food():
+        emit MyEvent(
+            (false, true),
+            (address(0), address(1))
+        )

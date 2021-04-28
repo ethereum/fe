@@ -674,7 +674,9 @@ name = "fe-common"
 version = "0.3.0-alpha"
 dependencies = [
  "codespan-reporting",
+ "difference",
  "hex",
+ "ron",
  "serde",
  "tiny-keccak 2.0.2",
 ]
@@ -694,6 +696,7 @@ dependencies = [
  "once_cell",
  "primitive-types",
  "rand",
+ "regex",
  "rstest",
  "serde",
  "serde_json",
@@ -706,12 +709,10 @@ dependencies = [
 name = "fe-parser"
 version = "0.3.0-alpha"
 dependencies = [
- "difference",
  "fe-common",
  "insta",
  "logos",
  "regex",
- "ron",
  "serde",
  "serde_json",
  "unescape",

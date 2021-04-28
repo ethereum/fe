@@ -1,4 +1,5 @@
 use crate::lowering::mappers::expressions;
+use crate::lowering::mappers::types;
 use fe_analyzer::Context;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
@@ -13,13 +14,27 @@ pub fn func_def(context: &Context, def: Node<fe::ContractStmt>) -> Node<fe::Cont
         body,
     } = def.kind
     {
+        let lowered_return_type =
+            return_type.map(|return_type| types::type_desc(context, return_type));
         let lowered_body = multiple_stmts(context, body);
+        let lowered_args = args
+            .into_iter()
+            .map(|arg| {
+                Node::new(
+                    fe::FuncDefArg {
+                        name: arg.kind.name,
+                        typ: types::type_desc(context, arg.kind.typ),
+                    },
+                    arg.span,
+                )
+            })
+            .collect();
 
         let lowered_kind = fe::ContractStmt::FuncDef {
             pub_qual,
             name,
-            args,
-            return_type,
+            args: lowered_args,
+            return_type: lowered_return_type,
             body: lowered_body,
         };
 
@@ -36,7 +51,7 @@ fn func_stmt(context: &Context, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::FuncSt
         }],
         fe::FuncStmt::VarDecl { target, typ, value } => vec![fe::FuncStmt::VarDecl {
             target: expressions::expr(context, target),
-            typ,
+            typ: types::type_desc(context, typ),
             value: expressions::optional_expr(context, value),
         }],
         fe::FuncStmt::Assign { targets, value } => vec![fe::FuncStmt::Assign {
