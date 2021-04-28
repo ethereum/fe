@@ -54,7 +54,6 @@ pub fn expr(context: &Context, exp: Node<fe::Expr>) -> Node<fe::Expr> {
         // expressions before the Yul codegen pass, tho.
         fe::Expr::Tuple { .. } => exp.kind,
         fe::Expr::Str(_) => exp.kind,
-        fe::Expr::Ellipsis => unimplemented!(),
     };
 
     Node::new(lowered_kind, exp.span)

@@ -239,7 +239,6 @@ pub enum Expr {
     Name(String),
     Num(String),
     Str(Vec<String>),
-    Ellipsis,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
