@@ -42,7 +42,6 @@ pub fn expr(
         fe::Expr::ListComp { .. } => unimplemented!(),
         fe::Expr::Tuple { .. } => expr_tuple(scope, Rc::clone(&context), exp),
         fe::Expr::Str(_) => expr_str(scope, exp),
-        fe::Expr::Ellipsis => unimplemented!(),
     }
     .map_err(|error| error.with_context(exp.span))?;
 

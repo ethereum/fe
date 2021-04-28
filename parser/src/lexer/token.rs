@@ -193,8 +193,6 @@ pub enum TokenKind {
     LtLtEq,
     #[token(">>=")]
     GtGtEq,
-    #[token("...")]
-    Ellipsis,
     #[token("->")]
     Arrow,
 }
@@ -292,7 +290,6 @@ impl TokenKind {
             HatEq => "^=",
             LtLtEq => "<<=",
             GtGtEq => ">>=",
-            Ellipsis => "...",
             Arrow => "->",
             Error | Newline | Indent | Dedent | Name | Int | Hex | Text => return None,
         };

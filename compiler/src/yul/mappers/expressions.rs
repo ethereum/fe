@@ -35,7 +35,6 @@ pub fn expr(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
             fe::Expr::ListComp { .. } => unimplemented!(),
             fe::Expr::Tuple { .. } => expr_tuple(exp),
             fe::Expr::Str(_) => expr_str(exp),
-            fe::Expr::Ellipsis => unimplemented!(),
         };
 
         match (
