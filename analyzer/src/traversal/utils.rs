@@ -1,6 +1,6 @@
+use crate::context::ExpressionAttributes;
 use crate::errors::SemanticError;
-use crate::namespace::types::FixedSize;
-use crate::{ExpressionAttributes, Type};
+use crate::namespace::types::{FixedSize, Type};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use std::convert::TryInto;

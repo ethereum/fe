@@ -1,7 +1,7 @@
 use crate::yul::mappers::expressions;
 use crate::yul::names;
+use fe_analyzer::context::Context;
 use fe_analyzer::namespace::types::{FeSized, FixedSize};
-use fe_analyzer::Context;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use yultsur::*;

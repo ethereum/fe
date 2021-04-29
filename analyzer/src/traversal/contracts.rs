@@ -1,9 +1,9 @@
+use crate::context::{Context, ContractAttributes};
 use crate::errors::SemanticError;
 use crate::namespace::events::EventDef;
 use crate::namespace::scopes::{ContractScope, ModuleScope, Scope, Shared};
 use crate::namespace::types::{Contract, FixedSize, Type};
 use crate::traversal::{functions, types};
-use crate::{Context, ContractAttributes};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use std::rc::Rc;

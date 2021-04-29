@@ -1,4 +1,5 @@
 use crate::builtins;
+use crate::context::{CallType, Context, ExpressionAttributes, Location};
 use crate::errors::SemanticError;
 use crate::namespace::scopes::{BlockScope, ContractFunctionDef, Shared};
 use crate::namespace::types::{
@@ -8,12 +9,11 @@ use crate::operations;
 use crate::traversal::utils::{
     call_arg_value, expression_attributes_to_types, fixed_sizes_to_types, types_to_fixed_sizes,
 };
-use crate::{CallType, Context, ExpressionAttributes, Location};
 
-use crate::builtins::ContractTypeMethod;
-use builtins::GlobalMethod;
-use builtins::ValueMethod;
-use builtins::{BlockField, ChainField, MsgField, Object, TxField};
+use builtins::{
+    BlockField, ChainField, ContractTypeMethod, GlobalMethod, MsgField, Object, TxField,
+    ValueMethod,
+};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use std::convert::TryFrom;

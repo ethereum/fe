@@ -1,7 +1,7 @@
 use crate::yul::mappers::expressions;
 use crate::yul::operations::data as data_operations;
+use fe_analyzer::context::{Context, Location};
 use fe_analyzer::namespace::types::FixedSize;
-use fe_analyzer::{Context, Location};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use std::convert::TryFrom;

@@ -1,7 +1,7 @@
 use crate::yul::constructor;
 use crate::yul::mappers::functions;
 use crate::yul::runtime;
-use fe_analyzer::Context;
+use fe_analyzer::context::Context;
 use fe_common::utils::keccak;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;

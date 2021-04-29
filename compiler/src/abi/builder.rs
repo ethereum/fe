@@ -1,7 +1,7 @@
 use crate::abi::elements::{Component, Contract, Event, EventField, ModuleAbis};
 use crate::errors::CompileError;
+use fe_analyzer::context::Context;
 use fe_analyzer::namespace::types::AbiEncoding;
-use fe_analyzer::Context;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 

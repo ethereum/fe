@@ -1,9 +1,9 @@
+use crate::context::{Context, ExpressionAttributes, FunctionAttributes, Location};
 use crate::errors::SemanticError;
 use crate::namespace::scopes::{BlockScope, BlockScopeType, ContractScope, Scope, Shared};
 use crate::namespace::types::{Base, FixedSize, Tuple, Type};
 use crate::traversal::utils::{expression_attributes_to_types, fixed_sizes_to_types};
 use crate::traversal::{assignments, declarations, expressions, types};
-use crate::{Context, ExpressionAttributes, FunctionAttributes, Location};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use std::rc::Rc;

@@ -1,7 +1,7 @@
 //! Fe Lowering.
 
 use crate::types::FeModuleAst;
-use fe_analyzer::Context;
+use fe_analyzer::context::Context;
 
 mod mappers;
 mod names;

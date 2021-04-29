@@ -1,8 +1,8 @@
+use crate::context::Context;
 use crate::errors::SemanticError;
 use crate::namespace::scopes::{Scope, Shared};
 use crate::namespace::types;
 use crate::namespace::types::{FixedSize, Type};
-use crate::Context;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 

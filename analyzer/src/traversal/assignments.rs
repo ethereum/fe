@@ -1,9 +1,8 @@
+use crate::context::{Context, Location};
 use crate::errors::SemanticError;
 use crate::namespace::scopes::{BlockScope, Shared};
 use crate::operations;
 use crate::traversal::expressions;
-use crate::Context;
-use crate::Location;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use std::rc::Rc;
