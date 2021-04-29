@@ -1,6 +1,6 @@
 [package]
 name = "fe-parser"
-version = "0.3.0-alpha"
+version = "0.4.0-alpha"
 authors = ["David Sanders <david@ethereum.org>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -11,7 +11,7 @@ description = "Parser lib for Fe."
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-fe-common = {path = "../common", version = "^0.3.0-alpha"}
+fe-common = {path = "../common", version = "^0.4.0-alpha"}
 logos = { version = "0.11.4", default-features = false, features = ["export_derive"] }
 regex = "1"
 serde = { version = "1", features = ["derive"] }
