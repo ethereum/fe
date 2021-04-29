@@ -11,6 +11,125 @@ Fe is moving fast. Read up on all the latest improvements.
 **WARNING: All Fe releases are alpha releases and only meant to share the development progress with developers and enthusiasts. It is NOT yet ready for production usage.**
 
 [//]: # (towncrier release notes start)
+## 0.4.0-alpha (2021-04-28)## 0.4.0-alpha (2021-04-28)
+
+
+### Features
+
+
+- Support for revert messages in assert statements
+
+  E.g
+
+  ```
+  assert a == b, "my revert statement"
+  ```
+
+  The provided string is abi-encoded as if it were a call
+  to a function `Error(string)`. For example, the revert string `"Not enough Ether provided."` returns the following hexadecimal as error return data:
+
+  ```
+  0x08c379a0                                                         // Function selector for Error(string)
+  0x0000000000000000000000000000000000000000000000000000000000000020 // Data offset
+  0x000000000000000000000000000000000000000000000000000000000000001a // String length
+  0x4e6f7420656e6f7567682045746865722070726f76696465642e000000000000 // String data
+  ``` ([#288](https://github.com/ethereum/fe/issues/288))
+- Added support for augmented assignments.
+
+  e.g.
+
+  ```
+  contract Foo:
+      pub def add(a: u256, b: u256) -> u256:
+          a += b
+          return a
+
+      pub def sub(a: u256, b: u256) -> u256:
+          a -= b
+          return a
+
+      pub def mul(a: u256, b: u256) -> u256:
+          a *= b
+          return a
+
+      pub def div(a: u256, b: u256) -> u256:
+          a /= b
+          return a
+
+      pub def mod(a: u256, b: u256) -> u256:
+          a %= b
+          return a
+
+      pub def pow(a: u256, b: u256) -> u256:
+          a **= b
+          return a
+
+      pub def lshift(a: u8, b: u8) -> u8:
+          a <<= b
+          return a
+
+      pub def rshift(a: u8, b: u8) -> u8:
+          a >>= b
+          return a
+
+      pub def bit_or(a: u8, b: u8) -> u8:
+          a |= b
+          return a
+
+      pub def bit_xor(a: u8, b: u8) -> u8:
+          a ^= b
+          return a
+
+      pub def bit_and(a: u8, b: u8) -> u8:
+          a &= b
+          return a
+  ``` ([#338](https://github.com/ethereum/fe/issues/338))
+- A new parser implementation, which provides more helpful error messages
+  with fancy underlines and code context. ([#346](https://github.com/ethereum/fe/issues/346))
+- Added support for tuples with base type items.
+
+  e.g.
+
+  ```
+  contract Foo:
+      my_num: u256
+
+      pub def bar(my_num: u256, my_bool: bool) -> (u256, bool):
+          my_tuple: (u256, bool) = (my_num, my_bool)
+          self.my_num = my_tuple.item0
+          return my_tuple
+  ``` ([#352](https://github.com/ethereum/fe/issues/352))
+
+
+### Bugfixes
+
+
+- Properly reject invalid emit ([#211](https://github.com/ethereum/fe/issues/211))
+- Properly tokenize numeric literals when they start with 0 ([#331](https://github.com/ethereum/fe/issues/331))
+- Reject non-string assert reasons as type error ([#335](https://github.com/ethereum/fe/issues/335))
+- Properly reject code that creates a circular dependency when using `create` or `create2`.
+
+  Example, the follwing code is now rightfully rejected because it tries to create an
+  instance of `Foo` from within the `Foo` contract itself.
+
+  ```
+  contract Foo:
+    pub def bar()->address:
+      foo:Foo=Foo.create(0)
+
+      return address(foo)
+  ``` ([#362](https://github.com/ethereum/fe/issues/362))
+
+
+### Internal Changes - for Fe Contributors
+
+
+- AST nodes use `String`s instead of `&str`s. This way we can perform incremental compilation on the AST. ([#332](https://github.com/ethereum/fe/issues/332))
+- Added support for running tests against solidity fixtures.
+  Also added tests that cover how solidity encodes revert reason strings. ([#342](https://github.com/ethereum/fe/issues/342))
+- Refactoring of binary operation type checking. ([#347](https://github.com/ethereum/fe/issues/347))
+
+
 ## 0.3.0-alpha "Calamine" (2021-03-24)
 
 
