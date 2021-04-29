@@ -1,4 +1,4 @@
-use fe_analyzer::Context;
+use fe_analyzer::context::Context;
 
 use crate::lowering::mappers::functions;
 use crate::lowering::mappers::types;

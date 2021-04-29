@@ -1,5 +1,5 @@
+use fe_analyzer::context::Context;
 use fe_analyzer::namespace::types::Tuple;
-use fe_analyzer::Context;
 
 use crate::lowering::mappers::contracts;
 use crate::lowering::names;

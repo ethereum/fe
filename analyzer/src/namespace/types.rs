@@ -3,7 +3,7 @@ use fe_parser::ast as fe;
 use std::collections::{btree_map::Entry, BTreeMap, HashMap};
 use std::convert::TryFrom;
 
-use crate::FunctionAttributes;
+use crate::context::FunctionAttributes;
 use num_bigint::BigInt;
 use strum::IntoStaticStr;
 

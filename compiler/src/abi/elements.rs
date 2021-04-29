@@ -1,6 +1,6 @@
 use crate::errors::CompileError;
+use fe_analyzer::context::FunctionAttributes;
 use fe_analyzer::namespace::types::{AbiComponent, AbiEncoding};
-use fe_analyzer::FunctionAttributes;
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;

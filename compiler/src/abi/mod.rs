@@ -2,7 +2,7 @@
 
 use crate::errors::CompileError;
 use crate::types::{FeModuleAst, NamedAbis};
-use fe_analyzer::Context;
+use fe_analyzer::context::Context;
 
 mod builder;
 pub mod utils;

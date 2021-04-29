@@ -1,6 +1,6 @@
 use crate::lowering::names;
+use fe_analyzer::context::Context;
 use fe_analyzer::namespace::types::Type;
-use fe_analyzer::Context;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 

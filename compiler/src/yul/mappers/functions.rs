@@ -1,8 +1,8 @@
 use crate::yul::mappers::{assignments, declarations, expressions};
 use crate::yul::names;
 use crate::yul::operations::data as data_operations;
+use fe_analyzer::context::{Context, ExpressionAttributes};
 use fe_analyzer::namespace::types::{FeSized, Type};
-use fe_analyzer::{Context, ExpressionAttributes};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use yultsur::*;

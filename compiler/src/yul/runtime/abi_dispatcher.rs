@@ -1,8 +1,8 @@
 use crate::abi::utils as abi_utils;
 use crate::yul::names;
 use crate::yul::operations::abi as abi_operations;
+use fe_analyzer::context::FunctionAttributes;
 use fe_analyzer::namespace::types::{AbiDecodeLocation, AbiEncoding, FixedSize};
-use fe_analyzer::FunctionAttributes;
 use yultsur::*;
 
 /// Builds a switch statement that dispatches calls to the contract.
