@@ -33,7 +33,9 @@ Fe is moving fast. Read up on all the latest improvements.
   0x0000000000000000000000000000000000000000000000000000000000000020 // Data offset
   0x000000000000000000000000000000000000000000000000000000000000001a // String length
   0x4e6f7420656e6f7567682045746865722070726f76696465642e000000000000 // String data
-  ``` ([#288](https://github.com/ethereum/fe/issues/288))
+  ```
+  ([#288](https://github.com/ethereum/fe/issues/288))
+
 - Added support for augmented assignments.
 
   e.g.
@@ -83,7 +85,9 @@ Fe is moving fast. Read up on all the latest improvements.
       pub def bit_and(a: u8, b: u8) -> u8:
           a &= b
           return a
-  ``` ([#338](https://github.com/ethereum/fe/issues/338))
+  ```
+  ([#338](https://github.com/ethereum/fe/issues/338))
+
 - A new parser implementation, which provides more helpful error messages
   with fancy underlines and code context. ([#346](https://github.com/ethereum/fe/issues/346))
 - Added support for tuples with base type items.
@@ -98,7 +102,8 @@ Fe is moving fast. Read up on all the latest improvements.
           my_tuple: (u256, bool) = (my_num, my_bool)
           self.my_num = my_tuple.item0
           return my_tuple
-  ``` ([#352](https://github.com/ethereum/fe/issues/352))
+  ```
+  ([#352](https://github.com/ethereum/fe/issues/352))
 
 
 ### Bugfixes
@@ -118,7 +123,8 @@ Fe is moving fast. Read up on all the latest improvements.
       foo:Foo=Foo.create(0)
 
       return address(foo)
-  ``` ([#362](https://github.com/ethereum/fe/issues/362))
+  ```
+  ([#362](https://github.com/ethereum/fe/issues/362))
 
 
 ### Internal Changes - for Fe Contributors
