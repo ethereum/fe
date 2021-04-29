@@ -29,14 +29,21 @@ assert num_args in {0, 1}
 if num_args == 1:
     assert sys.argv[1] in ('is-empty', )
 
-for fragment_file in THIS_DIR.iterdir():
+def ends_with_newline(file):
+    with open(file, 'r') as file:
+        return file.read().endswith('\n')
 
+for fragment_file in THIS_DIR.iterdir():
     if fragment_file.name in ALLOWED_FILES:
         continue
     elif num_args == 0:
         full_extension = "".join(fragment_file.suffixes)
         if full_extension not in ALLOWED_EXTENSIONS:
             raise Exception(f"Unexpected file: {fragment_file}")
+        elif not ends_with_newline(fragment_file):
+            raise Exception(
+                    f"Fragment files need to end with new line but { fragment_file.name } does not."
+                )
     elif sys.argv[1] == 'is-empty':
         raise Exception(f"Unexpected file: {fragment_file}")
     else:
