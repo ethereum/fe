@@ -1,7 +1,6 @@
 //! Stress tests that test broad behavior
 
 #![cfg(feature = "solc-backend")]
-use primitive_types::H160;
 use std::iter;
 
 mod utils;

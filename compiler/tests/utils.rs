@@ -9,7 +9,6 @@ use primitive_types::{H160, H256, U256};
 use std::collections::BTreeMap;
 use std::fs;
 use std::str::FromStr;
-use stringreader::StringReader;
 use yultsur::*;
 
 pub trait ToBeBytes {
@@ -285,7 +284,7 @@ fn _deploy_contract(
     abi: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    let abi = ethabi::Contract::load(StringReader::new(abi)).expect("unable to load the ABI");
+    let abi = ethabi::Contract::load(abi.as_bytes()).expect("unable to load the ABI");
 
     let mut bytecode = hex::decode(bytecode).expect("failed to decode bytecode");
 
@@ -347,7 +346,7 @@ pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> Contr
         .contracts
         .get(contract_name)
         .expect("could not find contract in fixture");
-    let abi = ethabi::Contract::load(StringReader::new(&compiled_contract.json_abi))
+    let abi = ethabi::Contract::load(compiled_contract.json_abi.as_bytes())
         .expect("unable to load the ABI");
 
     ContractHarness::new(address, abi)
