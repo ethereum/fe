@@ -1,0 +1,14 @@
+---
+source: parser/tests/cases/errors.rs
+expression: err
+
+---
+error: unexpected token while parsing emit statement
+  ┌─ emit_bad_call:1:16
+  │
+1 │ emit MyEvent(1)()
+  │                ^ unexpected token
+  │
+  = expected a newline
+
+

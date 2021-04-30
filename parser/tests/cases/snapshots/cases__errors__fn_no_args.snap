@@ -1,0 +1,17 @@
+---
+source: parser/tests/cases/errors.rs
+expression: err
+
+---
+error: function definition requires a list of parameters
+  ┌─ fn_no_args:1:5
+  │
+1 │ def f:
+  │     ^ function name must be followed by `(`
+  │
+  = Note: if the function `f` takes no parameters, use an empty set of parentheses.
+  = Example: def f()
+  = Note: each parameter must have a name and a type.
+  = Example: def f(my_value: u256, x: bool)
+
+

@@ -1,0 +1,46 @@
+---
+source: parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(type_def), types::parse_type_def,\n           \"type X = map<address, u256>\")"
+
+---
+Node(
+  kind: TypeDef(
+    name: Node(
+      kind: "X",
+      span: Span(
+        start: 5,
+        end: 6,
+      ),
+    ),
+    typ: Node(
+      kind: Map(
+        from: Node(
+          kind: Base(
+            base: "address",
+          ),
+          span: Span(
+            start: 13,
+            end: 20,
+          ),
+        ),
+        to: Node(
+          kind: Base(
+            base: "u256",
+          ),
+          span: Span(
+            start: 22,
+            end: 26,
+          ),
+        ),
+      ),
+      span: Span(
+        start: 9,
+        end: 27,
+      ),
+    ),
+  ),
+  span: Span(
+    start: 0,
+    end: 27,
+  ),
+)
