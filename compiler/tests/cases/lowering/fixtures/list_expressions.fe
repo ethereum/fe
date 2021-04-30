@@ -1,0 +1,4 @@
+contract Foo:
+
+    pub def foo():
+        x: u256[3] = [10, 20, 30]

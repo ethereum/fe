@@ -26,7 +26,12 @@ fn replace_spans(input: String) -> String {
     span_re.replace_all(&input, "[span omitted]").to_string()
 }
 
-#[rstest(fixture, case("aug_assign"), case("base_tuple"))]
+#[rstest(
+    fixture,
+    case("aug_assign"),
+    case("base_tuple"),
+    case("list_expressions")
+)]
 fn test_lowering(fixture: &str) {
     let src = fs::read_to_string(format!("tests/cases/lowering/fixtures/{}.fe", fixture))
         .expect("unable to src read fixture file");

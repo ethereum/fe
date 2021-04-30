@@ -22,7 +22,7 @@ pub enum ContractTypeMethod {
     Create2,
 }
 
-#[derive(Debug, PartialEq, EnumString)]
+#[derive(strum::ToString, Debug, PartialEq, EnumString)]
 #[strum(serialize_all = "lowercase")]
 pub enum Object {
     Block,

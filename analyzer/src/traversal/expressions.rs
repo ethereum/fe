@@ -73,12 +73,20 @@ pub fn expr_list(
             // TODO: Right now we are only supporting Base type arrays
             // Potential we can support the tuples as well.
             if let Type::Base(base) = attribute_to_be_matched.typ {
+                let array_typ = Array {
+                    size: elts.len(),
+                    inner: base,
+                };
+
+                scope
+                    .borrow()
+                    .contract_scope()
+                    .borrow_mut()
+                    .add_used_list_expression(array_typ.clone());
+
                 return Ok(ExpressionAttributes {
-                    typ: Type::Array(Array {
-                        size: elts.len(),
-                        inner: base,
-                    }),
-                    location: attribute_to_be_matched.location,
+                    typ: Type::Array(array_typ),
+                    location: Location::Memory,
                     move_location: None,
                 });
             }

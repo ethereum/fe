@@ -2,7 +2,7 @@ use crate::builtins::GlobalMethod;
 use crate::errors::SemanticError;
 use crate::namespace::events::EventDef;
 use crate::namespace::scopes::{ContractFunctionDef, ContractScope, ModuleScope, Shared};
-use crate::namespace::types::{Contract, FixedSize, Struct, Tuple, Type};
+use crate::namespace::types::{Array, Contract, FixedSize, Struct, Tuple, Type};
 use fe_common::Span;
 use fe_parser::ast as fe;
 use fe_parser::node::{Node, NodeId};
@@ -49,6 +49,8 @@ pub struct ContractAttributes {
     pub init_function: Option<FunctionAttributes>,
     /// Events that have been defined by the user.
     pub events: Vec<EventDef>,
+    /// List expressions that the contract uses
+    pub list_expressions: BTreeSet<Array>,
     /// Static strings that the contract defines
     pub string_literals: BTreeSet<String>,
     /// Structs that have been defined by the user
@@ -116,6 +118,7 @@ impl From<Shared<ContractScope>> for ContractAttributes {
                 .values()
                 .map(|event| event.to_owned())
                 .collect::<Vec<EventDef>>(),
+            list_expressions: scope.borrow().list_expressions.clone(),
             string_literals: scope.borrow().string_defs.clone(),
             structs,
             external_contracts,

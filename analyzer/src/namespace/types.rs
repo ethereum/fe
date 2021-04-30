@@ -357,6 +357,12 @@ impl From<Base> for Type {
     }
 }
 
+impl From<Base> for FixedSize {
+    fn from(value: Base) -> Self {
+        FixedSize::Base(value)
+    }
+}
+
 impl FixedSize {
     pub fn empty_tuple() -> Self {
         FixedSize::Tuple(Tuple::empty())
