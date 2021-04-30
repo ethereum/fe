@@ -1,5 +1,11 @@
-use fe_analyzer::namespace::types::{Base, FixedSize, Integer, SafeNames, Tuple};
+use crate::lowering::utils::ZeroSpanNode;
+use fe_analyzer::namespace::types::{Array, Base, FixedSize, Integer, SafeNames, Tuple};
 use fe_parser::ast as fe;
+
+/// The name of a lowered list expression generator function.
+pub fn list_expr_generator_fn_name(list_expr_type: &Array) -> String {
+    format!("list_expr_{}", list_expr_type.lower_snake())
+}
 
 /// The name of a lowered tuple struct definition.
 pub fn tuple_struct_string(tuple: &Tuple) -> String {
@@ -24,7 +30,10 @@ pub fn fixed_size_type_desc(typ: &FixedSize) -> fe::TypeDesc {
         FixedSize::Base(base) => fe::TypeDesc::Base {
             base: base_type_name(base),
         },
-        FixedSize::Array(_) => todo!(),
+        FixedSize::Array(array) => fe::TypeDesc::Array {
+            dimension: array.size,
+            typ: fixed_size_type_desc(&array.inner.clone().into()).into_boxed_node(),
+        },
         FixedSize::Tuple(_) => todo!(),
         FixedSize::String(_) => todo!(),
         FixedSize::Contract(_) => todo!(),

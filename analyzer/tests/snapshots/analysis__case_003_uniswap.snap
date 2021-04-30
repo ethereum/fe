@@ -25779,6 +25779,7 @@ note:
         ],
         init_function: None,
         events: [],
+        list_expressions: {},
         string_literals: {},
         structs: [],
         external_contracts: [
@@ -26652,6 +26653,7 @@ note:
                   ],
               },
           ],
+          list_expressions: {},
           string_literals: {
               "UniswapV2: FORBIDDEN",
               "UniswapV2: INSUFFICIENT_INPUT_AMOUNT",
@@ -26952,6 +26954,7 @@ note:
                   ],
               },
           ],
+          list_expressions: {},
           string_literals: {
               "UniswapV2: FORBIDDEN",
               "UniswapV2: IDENTICAL_ADDRESSES",

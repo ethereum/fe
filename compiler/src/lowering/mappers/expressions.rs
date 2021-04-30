@@ -1,4 +1,6 @@
-use crate::lowering::names::tuple_struct_name;
+use crate::lowering::names::{list_expr_generator_fn_name, tuple_struct_name};
+use crate::lowering::utils::ZeroSpanNode;
+use fe_analyzer::builtins::Object;
 use fe_analyzer::context::Context;
 use fe_analyzer::namespace::types::Type;
 use fe_parser::ast as fe;
@@ -53,7 +55,7 @@ pub fn expr(context: &Context, exp: Node<fe::Expr>) -> Node<fe::Expr> {
             func: boxed_expr(context, func),
             args: call_args(context, args),
         },
-        fe::Expr::List { .. } => unimplemented!(),
+        fe::Expr::List { .. } => expr_list(context, exp),
         fe::Expr::ListComp { .. } => unimplemented!(),
         fe::Expr::Tuple { .. } => expr_tuple(context, exp),
         fe::Expr::Str(_) => exp.kind,
@@ -156,6 +158,34 @@ fn expr_tuple(context: &Context, exp: Node<fe::Expr>) -> fe::Expr {
             // create type constructor call for the lowered tuple
             return fe::Expr::Call {
                 func: Box::new(Node::new(name, exp.span)),
+                args,
+            };
+        }
+    }
+
+    unreachable!()
+}
+
+fn expr_list(context: &Context, exp: Node<fe::Expr>) -> fe::Expr {
+    let attributes = context.get_expression(&exp).expect("missing attributes");
+
+    if let Type::Array(array) = &attributes.typ {
+        let fn_name = list_expr_generator_fn_name(array);
+
+        if let fe::Expr::List { elts } = exp.kind {
+            let args = elts
+                .into_iter()
+                .map(|list_val| fe::CallArg::Arg(list_val).into_node())
+                .collect::<Vec<_>>()
+                .into_node();
+
+            // Turn List Expression into a function call
+            return fe::Expr::Call {
+                func: fe::Expr::Attribute {
+                    value: fe::Expr::Name(Object::Self_.to_string()).into_boxed_node(),
+                    attr: fn_name.into_node(),
+                }
+                .into_boxed_node(),
                 args,
             };
         }

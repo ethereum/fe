@@ -1,6 +1,6 @@
 use crate::errors::SemanticError;
 use crate::namespace::events::EventDef;
-use crate::namespace::types::{FixedSize, Tuple, Type};
+use crate::namespace::types::{Array, FixedSize, Tuple, Type};
 use std::cell::RefCell;
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, BTreeSet};
@@ -41,6 +41,7 @@ pub struct ContractScope {
     pub event_defs: BTreeMap<String, EventDef>,
     pub field_defs: BTreeMap<String, ContractFieldDef>,
     pub function_defs: BTreeMap<String, ContractFunctionDef>,
+    pub list_expressions: BTreeSet<Array>,
     pub string_defs: BTreeSet<String>,
     pub created_contracts: BTreeSet<String>,
     num_fields: usize,
@@ -122,6 +123,7 @@ impl ContractScope {
             string_defs: BTreeSet::new(),
             interface: vec![],
             created_contracts: BTreeSet::new(),
+            list_expressions: BTreeSet::new(),
             num_fields: 0,
         }))
     }
@@ -208,6 +210,11 @@ impl ContractScope {
     /// contract.
     pub fn add_created_contract(&mut self, name: &str) {
         self.created_contracts.insert(name.to_owned());
+    }
+
+    /// Add the array type of a list expression that was used within the contract.
+    pub fn add_used_list_expression(&mut self, typ: Array) {
+        self.list_expressions.insert(typ);
     }
 }
 
