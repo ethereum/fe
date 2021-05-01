@@ -1,0 +1,19 @@
+contract Foo:
+
+  pub def explicit_return_a1():
+    return
+
+  pub def explicit_return_a2():
+    return ()
+
+  pub def explicit_return_b1() ->():
+    return
+
+  pub def explicit_return_b2() ->():
+    return ()
+
+  pub def implicit_a1():
+    pass
+
+  pub def implicit_a2() ->():
+    pass

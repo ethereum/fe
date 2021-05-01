@@ -1,0 +1,515 @@
+---
+source: analyzer/tests/analysis.rs
+expression: "build_snapshot(fixture, src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "get_my_num",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+        "FooFactory": Contract(
+            Contract {
+                name: "FooFactory",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "create2_foo",
+                        params: [],
+                        return_type: Base(
+                            Address,
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+    tuples_used: {},
+}
+
+note: 
+  ┌─ features/create2_contract.fe:3:16
+  │
+3 │         return 42
+  │                ^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/create2_contract.fe:3:16
+  │
+3 │         return 42
+  │                ^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/create2_contract.fe:8:32
+  │
+8 │         foo: Foo = Foo.create2(0, 52)
+  │                                ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/create2_contract.fe:8:32
+  │
+8 │         foo: Foo = Foo.create2(0, 52)
+  │                                ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/create2_contract.fe:8:35
+  │
+8 │         foo: Foo = Foo.create2(0, 52)
+  │                                   ^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/create2_contract.fe:8:35
+  │
+8 │         foo: Foo = Foo.create2(0, 52)
+  │                                   ^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/create2_contract.fe:8:20
+  │
+8 │         foo: Foo = Foo.create2(0, 52)
+  │                    ^^^^^^^^^^^^^^^^^^ attributes hash: 8552961459538575979
+  │
+  = ExpressionAttributes {
+        typ: Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "get_my_num",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/create2_contract.fe:8:20
+  │
+8 │         foo: Foo = Foo.create2(0, 52)
+  │                    ^^^^^^^^^^^^^^^^^^ attributes hash: 8552961459538575979
+  │
+  = ExpressionAttributes {
+        typ: Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "get_my_num",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/create2_contract.fe:9:24
+  │
+9 │         return address(foo)
+  │                        ^^^ attributes hash: 8552961459538575979
+  │
+  = ExpressionAttributes {
+        typ: Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "get_my_num",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/create2_contract.fe:9:24
+  │
+9 │         return address(foo)
+  │                        ^^^ attributes hash: 8552961459538575979
+  │
+  = ExpressionAttributes {
+        typ: Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "get_my_num",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/create2_contract.fe:9:16
+  │
+9 │         return address(foo)
+  │                ^^^^^^^^^^^^ attributes hash: 513065555763557710
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Address,
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/create2_contract.fe:9:16
+  │
+9 │         return address(foo)
+  │                ^^^^^^^^^^^^ attributes hash: 513065555763557710
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Address,
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/create2_contract.fe:2:5
+  │  
+2 │ ╭     pub def get_my_num() -> u256:
+3 │ │         return 42
+  │ ╰─────────────────^ attributes hash: 10550548704405770348
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "get_my_num",
+        params: [],
+        return_type: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/create2_contract.fe:6:5
+  │  
+6 │ ╭     pub def create2_foo() -> address:
+7 │ │         # value and salt
+8 │ │         foo: Foo = Foo.create2(0, 52)
+9 │ │         return address(foo)
+  │ ╰───────────────────────────^ attributes hash: 11270695810756310777
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "create2_foo",
+        params: [],
+        return_type: Base(
+            Address,
+        ),
+    }
+
+note: 
+  ┌─ features/create2_contract.fe:8:9
+  │
+8 │         foo: Foo = Foo.create2(0, 52)
+  │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11013990582171916248
+  │
+  = Contract(
+        Contract {
+            name: "Foo",
+            functions: [
+                FunctionAttributes {
+                    is_public: true,
+                    name: "get_my_num",
+                    params: [],
+                    return_type: Base(
+                        Numeric(
+                            U256,
+                        ),
+                    ),
+                },
+            ],
+        },
+    )
+
+note: 
+  ┌─ features/create2_contract.fe:1:1
+  │  
+1 │ ╭ contract Foo:
+2 │ │     pub def get_my_num() -> u256:
+3 │ │         return 42
+  │ ╰─────────────────^ attributes hash: 8309658977386373707
+  │  
+  = ContractAttributes {
+        public_functions: [
+            FunctionAttributes {
+                is_public: true,
+                name: "get_my_num",
+                params: [],
+                return_type: Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            },
+        ],
+        init_function: None,
+        events: [],
+        string_literals: {},
+        structs: [],
+        external_contracts: [
+            Contract {
+                name: "FooFactory",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "create2_foo",
+                        params: [],
+                        return_type: Base(
+                            Address,
+                        ),
+                    },
+                ],
+            },
+        ],
+        created_contracts: {},
+    }
+
+note: 
+  ┌─ features/create2_contract.fe:5:1
+  │  
+5 │ ╭ contract FooFactory:
+6 │ │     pub def create2_foo() -> address:
+7 │ │         # value and salt
+8 │ │         foo: Foo = Foo.create2(0, 52)
+9 │ │         return address(foo)
+  │ ╰───────────────────────────^ attributes hash: 6058629679001745727
+  │  
+  = ContractAttributes {
+        public_functions: [
+            FunctionAttributes {
+                is_public: true,
+                name: "create2_foo",
+                params: [],
+                return_type: Base(
+                    Address,
+                ),
+            },
+        ],
+        init_function: None,
+        events: [],
+        string_literals: {},
+        structs: [],
+        external_contracts: [
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "get_my_num",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ],
+        created_contracts: {
+            "Foo",
+        },
+    }
+
+note: 
+  ┌─ features/create2_contract.fe:8:20
+  │
+8 │         foo: Foo = Foo.create2(0, 52)
+  │                    ^^^^^^^^^^^ attributes hash: 7190587645396562862
+  │
+  = TypeAttribute {
+        typ: Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "get_my_num",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+        func_name: "create2",
+    }
+
+note: 
+  ┌─ features/create2_contract.fe:9:16
+  │
+9 │         return address(foo)
+  │                ^^^^^^^ attributes hash: 6114858510168753394
+  │
+  = TypeConstructor {
+        typ: Base(
+            Address,
+        ),
+    }
+
+note: 
+  ┌─ features/create2_contract.fe:2:29
+  │
+2 │     pub def get_my_num() -> u256:
+  │                             ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/create2_contract.fe:6:30
+  │
+6 │     pub def create2_foo() -> address:
+  │                              ^^^^^^^ attributes hash: 574436082528610497
+  │
+  = Base(
+        Address,
+    )
+
+note: 
+  ┌─ features/create2_contract.fe:8:14
+  │
+8 │         foo: Foo = Foo.create2(0, 52)
+  │              ^^^ attributes hash: 2324270301873557290
+  │
+  = Contract(
+        Contract {
+            name: "Foo",
+            functions: [
+                FunctionAttributes {
+                    is_public: true,
+                    name: "get_my_num",
+                    params: [],
+                    return_type: Base(
+                        Numeric(
+                            U256,
+                        ),
+                    ),
+                },
+            ],
+        },
+    )
+
+

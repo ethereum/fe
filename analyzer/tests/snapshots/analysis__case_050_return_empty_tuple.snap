@@ -1,0 +1,374 @@
+---
+source: analyzer/tests/analysis.rs
+expression: "build_snapshot(fixture, src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "explicit_return_a1",
+                        params: [],
+                        return_type: Tuple(
+                            Tuple {
+                                items: [],
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "explicit_return_a2",
+                        params: [],
+                        return_type: Tuple(
+                            Tuple {
+                                items: [],
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "explicit_return_b1",
+                        params: [],
+                        return_type: Tuple(
+                            Tuple {
+                                items: [],
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "explicit_return_b2",
+                        params: [],
+                        return_type: Tuple(
+                            Tuple {
+                                items: [],
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "implicit_a1",
+                        params: [],
+                        return_type: Tuple(
+                            Tuple {
+                                items: [],
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "implicit_a2",
+                        params: [],
+                        return_type: Tuple(
+                            Tuple {
+                                items: [],
+                            },
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+    tuples_used: {
+        Tuple {
+            items: [],
+        },
+    },
+}
+
+note: 
+  ┌─ features/return_empty_tuple.fe:7:12
+  │
+7 │     return ()
+  │            ^^ attributes hash: 2354569150226010475
+  │
+  = ExpressionAttributes {
+        typ: Tuple(
+            Tuple {
+                items: [],
+            },
+        ),
+        location: Memory,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/return_empty_tuple.fe:7:12
+  │
+7 │     return ()
+  │            ^^ attributes hash: 2354569150226010475
+  │
+  = ExpressionAttributes {
+        typ: Tuple(
+            Tuple {
+                items: [],
+            },
+        ),
+        location: Memory,
+        move_location: None,
+    }
+
+note: 
+   ┌─ features/return_empty_tuple.fe:13:12
+   │
+13 │     return ()
+   │            ^^ attributes hash: 2354569150226010475
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/return_empty_tuple.fe:13:12
+   │
+13 │     return ()
+   │            ^^ attributes hash: 2354569150226010475
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+  ┌─ features/return_empty_tuple.fe:3:3
+  │  
+3 │ ╭   pub def explicit_return_a1():
+4 │ │     return
+  │ ╰──────────^ attributes hash: 5387465810868374579
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "explicit_return_a1",
+        params: [],
+        return_type: Tuple(
+            Tuple {
+                items: [],
+            },
+        ),
+    }
+
+note: 
+  ┌─ features/return_empty_tuple.fe:6:3
+  │  
+6 │ ╭   pub def explicit_return_a2():
+7 │ │     return ()
+  │ ╰─────────────^ attributes hash: 3416037266624242016
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "explicit_return_a2",
+        params: [],
+        return_type: Tuple(
+            Tuple {
+                items: [],
+            },
+        ),
+    }
+
+note: 
+   ┌─ features/return_empty_tuple.fe:9:3
+   │  
+ 9 │ ╭   pub def explicit_return_b1() ->():
+10 │ │     return
+   │ ╰──────────^ attributes hash: 3540845135429586176
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "explicit_return_b1",
+         params: [],
+         return_type: Tuple(
+             Tuple {
+                 items: [],
+             },
+         ),
+     }
+
+note: 
+   ┌─ features/return_empty_tuple.fe:12:3
+   │  
+12 │ ╭   pub def explicit_return_b2() ->():
+13 │ │     return ()
+   │ ╰─────────────^ attributes hash: 552543371937876773
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "explicit_return_b2",
+         params: [],
+         return_type: Tuple(
+             Tuple {
+                 items: [],
+             },
+         ),
+     }
+
+note: 
+   ┌─ features/return_empty_tuple.fe:15:3
+   │  
+15 │ ╭   pub def implicit_a1():
+16 │ │     pass
+   │ ╰────────^ attributes hash: 3022167154523733176
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "implicit_a1",
+         params: [],
+         return_type: Tuple(
+             Tuple {
+                 items: [],
+             },
+         ),
+     }
+
+note: 
+   ┌─ features/return_empty_tuple.fe:18:3
+   │  
+18 │ ╭   pub def implicit_a2() ->():
+19 │ │     pass
+   │ ╰────────^ attributes hash: 6055707558081335397
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "implicit_a2",
+         params: [],
+         return_type: Tuple(
+             Tuple {
+                 items: [],
+             },
+         ),
+     }
+
+note: 
+   ┌─ features/return_empty_tuple.fe:1:1
+   │  
+ 1 │ ╭ contract Foo:
+ 2 │ │ 
+ 3 │ │   pub def explicit_return_a1():
+ 4 │ │     return
+   · │
+18 │ │   pub def implicit_a2() ->():
+19 │ │     pass
+   │ ╰────────^ attributes hash: 14663897423479039015
+   │  
+   = ContractAttributes {
+         public_functions: [
+             FunctionAttributes {
+                 is_public: true,
+                 name: "explicit_return_a1",
+                 params: [],
+                 return_type: Tuple(
+                     Tuple {
+                         items: [],
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "explicit_return_a2",
+                 params: [],
+                 return_type: Tuple(
+                     Tuple {
+                         items: [],
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "explicit_return_b1",
+                 params: [],
+                 return_type: Tuple(
+                     Tuple {
+                         items: [],
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "explicit_return_b2",
+                 params: [],
+                 return_type: Tuple(
+                     Tuple {
+                         items: [],
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "implicit_a1",
+                 params: [],
+                 return_type: Tuple(
+                     Tuple {
+                         items: [],
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "implicit_a2",
+                 params: [],
+                 return_type: Tuple(
+                     Tuple {
+                         items: [],
+                     },
+                 ),
+             },
+         ],
+         init_function: None,
+         events: [],
+         string_literals: {},
+         structs: [],
+         external_contracts: [],
+         created_contracts: {},
+     }
+
+note: 
+  ┌─ features/return_empty_tuple.fe:9:34
+  │
+9 │   pub def explicit_return_b1() ->():
+  │                                  ^^ attributes hash: 12732076152379315004
+  │
+  = Tuple(
+        Tuple {
+            items: [],
+        },
+    )
+
+note: 
+   ┌─ features/return_empty_tuple.fe:12:34
+   │
+12 │   pub def explicit_return_b2() ->():
+   │                                  ^^ attributes hash: 12732076152379315004
+   │
+   = Tuple(
+         Tuple {
+             items: [],
+         },
+     )
+
+note: 
+   ┌─ features/return_empty_tuple.fe:18:27
+   │
+18 │   pub def implicit_a2() ->():
+   │                           ^^ attributes hash: 12732076152379315004
+   │
+   = Tuple(
+         Tuple {
+             items: [],
+         },
+     )
+
+

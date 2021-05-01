@@ -1,0 +1,8 @@
+contract Foo:
+    pub bar: map<u128, u128>
+
+    pub def read_bar(key: u128) -> u128:
+        return self.bar[key]
+
+    pub def write_bar(key: u128, value: u128):
+        self.bar[key] = value

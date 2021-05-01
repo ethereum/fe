@@ -1,0 +1,1199 @@
+---
+source: analyzer/tests/analysis.rs
+expression: "build_snapshot(fixture, src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "emit_event",
+                        params: [],
+                        return_type: Tuple(
+                            Tuple {
+                                items: [],
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "read_num",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "read_nums",
+                        params: [],
+                        return_type: Array(
+                            Array {
+                                size: 42,
+                                inner: Numeric(
+                                    U256,
+                                ),
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "read_str",
+                        params: [],
+                        return_type: String(
+                            FeString {
+                                max_size: 26,
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "write_num",
+                        params: [
+                            (
+                                "x",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Tuple(
+                            Tuple {
+                                items: [],
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "write_nums",
+                        params: [
+                            (
+                                "x",
+                                Array(
+                                    Array {
+                                        size: 42,
+                                        inner: Numeric(
+                                            U256,
+                                        ),
+                                    },
+                                ),
+                            ),
+                        ],
+                        return_type: Tuple(
+                            Tuple {
+                                items: [],
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "write_str",
+                        params: [
+                            (
+                                "x",
+                                String(
+                                    FeString {
+                                        max_size: 26,
+                                    },
+                                ),
+                            ),
+                        ],
+                        return_type: Tuple(
+                            Tuple {
+                                items: [],
+                            },
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+    tuples_used: {},
+}
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:12:9
+   │
+12 │         self.num = x
+   │         ^^^^^^^^ attributes hash: 14248074759348295768
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:12:20
+   │
+12 │         self.num = x
+   │                    ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:15:16
+   │
+15 │         return self.num
+   │                ^^^^^^^^ attributes hash: 4679040613115932727
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:15:16
+   │
+15 │         return self.num
+   │                ^^^^^^^^ attributes hash: 4679040613115932727
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:18:9
+   │
+18 │         self.nums = x
+   │         ^^^^^^^^^ attributes hash: 12193891266906267938
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 42,
+                 inner: Numeric(
+                     U256,
+                 ),
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 1,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:18:21
+   │
+18 │         self.nums = x
+   │                     ^ attributes hash: 18027785772772007759
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 42,
+                 inner: Numeric(
+                     U256,
+                 ),
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:21:16
+   │
+21 │         return self.nums.to_mem()
+   │                ^^^^^^^^^ attributes hash: 12193891266906267938
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 42,
+                 inner: Numeric(
+                     U256,
+                 ),
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 1,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:21:16
+   │
+21 │         return self.nums.to_mem()
+   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 2528791973804439794
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 42,
+                 inner: Numeric(
+                     U256,
+                 ),
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 1,
+             ),
+         },
+         move_location: Some(
+             Memory,
+         ),
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:21:16
+   │
+21 │         return self.nums.to_mem()
+   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 2528791973804439794
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 42,
+                 inner: Numeric(
+                     U256,
+                 ),
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 1,
+             ),
+         },
+         move_location: Some(
+             Memory,
+         ),
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:24:9
+   │
+24 │         self.str = x
+   │         ^^^^^^^^ attributes hash: 10752831359363589163
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 26,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 2,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:24:20
+   │
+24 │         self.str = x
+   │                    ^ attributes hash: 10420235251610747606
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 26,
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:27:16
+   │
+27 │         return self.str.to_mem()
+   │                ^^^^^^^^ attributes hash: 10752831359363589163
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 26,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 2,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:27:16
+   │
+27 │         return self.str.to_mem()
+   │                ^^^^^^^^^^^^^^^^^ attributes hash: 8485417019611755295
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 26,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 2,
+             ),
+         },
+         move_location: Some(
+             Memory,
+         ),
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:27:16
+   │
+27 │         return self.str.to_mem()
+   │                ^^^^^^^^^^^^^^^^^ attributes hash: 8485417019611755295
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 26,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 2,
+             ),
+         },
+         move_location: Some(
+             Memory,
+         ),
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:31:13
+   │
+31 │             self.num,
+   │             ^^^^^^^^ attributes hash: 4679040613115932727
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:31:13
+   │
+31 │             self.num,
+   │             ^^^^^^^^ attributes hash: 4679040613115932727
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:32:13
+   │
+32 │             self.nums.to_mem(),
+   │             ^^^^^^^^^ attributes hash: 12193891266906267938
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 42,
+                 inner: Numeric(
+                     U256,
+                 ),
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 1,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:32:13
+   │
+32 │             self.nums.to_mem(),
+   │             ^^^^^^^^^^^^^^^^^^ attributes hash: 2528791973804439794
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 42,
+                 inner: Numeric(
+                     U256,
+                 ),
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 1,
+             ),
+         },
+         move_location: Some(
+             Memory,
+         ),
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:32:13
+   │
+32 │             self.nums.to_mem(),
+   │             ^^^^^^^^^^^^^^^^^^ attributes hash: 2528791973804439794
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 42,
+                 inner: Numeric(
+                     U256,
+                 ),
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 1,
+             ),
+         },
+         move_location: Some(
+             Memory,
+         ),
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:33:13
+   │
+33 │             self.str.to_mem()
+   │             ^^^^^^^^ attributes hash: 10752831359363589163
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 26,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 2,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:33:13
+   │
+33 │             self.str.to_mem()
+   │             ^^^^^^^^^^^^^^^^^ attributes hash: 8485417019611755295
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 26,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 2,
+             ),
+         },
+         move_location: Some(
+             Memory,
+         ),
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:33:13
+   │
+33 │             self.str.to_mem()
+   │             ^^^^^^^^^^^^^^^^^ attributes hash: 8485417019611755295
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 26,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 2,
+             ),
+         },
+         move_location: Some(
+             Memory,
+         ),
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:30:9
+   │  
+30 │ ╭         emit MyEvent(
+31 │ │             self.num,
+32 │ │             self.nums.to_mem(),
+33 │ │             self.str.to_mem()
+34 │ │         )
+   │ ╰─────────^ attributes hash: 17206441778791770980
+   │  
+   = EventDef {
+         name: "MyEvent",
+         topic: "0xa1df37e97e04df228bf0d77958ff8e03261b1070a21f3aa7a439f6d234c1dcf2",
+         fields: [
+             (
+                 "num",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+             (
+                 "nums",
+                 Array(
+                     Array {
+                         size: 42,
+                         inner: Numeric(
+                             U256,
+                         ),
+                     },
+                 ),
+             ),
+             (
+                 "str",
+                 String(
+                     FeString {
+                         max_size: 26,
+                     },
+                 ),
+             ),
+         ],
+         indexed_fields: [],
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:11:5
+   │  
+11 │ ╭     pub def write_num(x: u256):
+12 │ │         self.num = x
+   │ ╰────────────────────^ attributes hash: 2464432602967739658
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "write_num",
+         params: [
+             (
+                 "x",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+         ],
+         return_type: Tuple(
+             Tuple {
+                 items: [],
+             },
+         ),
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:14:5
+   │  
+14 │ ╭     pub def read_num() -> u256:
+15 │ │         return self.num
+   │ ╰───────────────────────^ attributes hash: 6194838042470413447
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "read_num",
+         params: [],
+         return_type: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:17:5
+   │  
+17 │ ╭     pub def write_nums(x: u256[42]):
+18 │ │         self.nums = x
+   │ ╰─────────────────────^ attributes hash: 1613064510716257135
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "write_nums",
+         params: [
+             (
+                 "x",
+                 Array(
+                     Array {
+                         size: 42,
+                         inner: Numeric(
+                             U256,
+                         ),
+                     },
+                 ),
+             ),
+         ],
+         return_type: Tuple(
+             Tuple {
+                 items: [],
+             },
+         ),
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:20:5
+   │  
+20 │ ╭     pub def read_nums() -> u256[42]:
+21 │ │         return self.nums.to_mem()
+   │ ╰─────────────────────────────────^ attributes hash: 12459582510725921654
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "read_nums",
+         params: [],
+         return_type: Array(
+             Array {
+                 size: 42,
+                 inner: Numeric(
+                     U256,
+                 ),
+             },
+         ),
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:23:5
+   │  
+23 │ ╭     pub def write_str(x: string26):
+24 │ │         self.str = x
+   │ ╰────────────────────^ attributes hash: 17299579049592555284
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "write_str",
+         params: [
+             (
+                 "x",
+                 String(
+                     FeString {
+                         max_size: 26,
+                     },
+                 ),
+             ),
+         ],
+         return_type: Tuple(
+             Tuple {
+                 items: [],
+             },
+         ),
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:26:5
+   │  
+26 │ ╭     pub def read_str() -> string26:
+27 │ │         return self.str.to_mem()
+   │ ╰────────────────────────────────^ attributes hash: 14969878574351140770
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "read_str",
+         params: [],
+         return_type: String(
+             FeString {
+                 max_size: 26,
+             },
+         ),
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:29:5
+   │  
+29 │ ╭     pub def emit_event():
+30 │ │         emit MyEvent(
+31 │ │             self.num,
+32 │ │             self.nums.to_mem(),
+33 │ │             self.str.to_mem()
+34 │ │         )
+   │ ╰─────────^ attributes hash: 16088778846117250470
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "emit_event",
+         params: [],
+         return_type: Tuple(
+             Tuple {
+                 items: [],
+             },
+         ),
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:1:1
+   │  
+ 1 │ ╭ contract Foo:
+ 2 │ │     num: u256
+ 3 │ │     nums: u256[42]
+ 4 │ │     str: string26
+   · │
+33 │ │             self.str.to_mem()
+34 │ │         )
+   │ ╰─────────^ attributes hash: 15737525148715434146
+   │  
+   = ContractAttributes {
+         public_functions: [
+             FunctionAttributes {
+                 is_public: true,
+                 name: "emit_event",
+                 params: [],
+                 return_type: Tuple(
+                     Tuple {
+                         items: [],
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "read_num",
+                 params: [],
+                 return_type: Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "read_nums",
+                 params: [],
+                 return_type: Array(
+                     Array {
+                         size: 42,
+                         inner: Numeric(
+                             U256,
+                         ),
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "read_str",
+                 params: [],
+                 return_type: String(
+                     FeString {
+                         max_size: 26,
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "write_num",
+                 params: [
+                     (
+                         "x",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Tuple(
+                     Tuple {
+                         items: [],
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "write_nums",
+                 params: [
+                     (
+                         "x",
+                         Array(
+                             Array {
+                                 size: 42,
+                                 inner: Numeric(
+                                     U256,
+                                 ),
+                             },
+                         ),
+                     ),
+                 ],
+                 return_type: Tuple(
+                     Tuple {
+                         items: [],
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "write_str",
+                 params: [
+                     (
+                         "x",
+                         String(
+                             FeString {
+                                 max_size: 26,
+                             },
+                         ),
+                     ),
+                 ],
+                 return_type: Tuple(
+                     Tuple {
+                         items: [],
+                     },
+                 ),
+             },
+         ],
+         init_function: None,
+         events: [
+             EventDef {
+                 name: "MyEvent",
+                 topic: "0xa1df37e97e04df228bf0d77958ff8e03261b1070a21f3aa7a439f6d234c1dcf2",
+                 fields: [
+                     (
+                         "num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "nums",
+                         Array(
+                             Array {
+                                 size: 42,
+                                 inner: Numeric(
+                                     U256,
+                                 ),
+                             },
+                         ),
+                     ),
+                     (
+                         "str",
+                         String(
+                             FeString {
+                                 max_size: 26,
+                             },
+                         ),
+                     ),
+                 ],
+                 indexed_fields: [],
+             },
+         ],
+         string_literals: {},
+         structs: [],
+         external_contracts: [],
+         created_contracts: {},
+     }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:21:16
+   │
+21 │         return self.nums.to_mem()
+   │                ^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │
+   = ValueAttribute
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:27:16
+   │
+27 │         return self.str.to_mem()
+   │                ^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │
+   = ValueAttribute
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:32:13
+   │
+32 │             self.nums.to_mem(),
+   │             ^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │
+   = ValueAttribute
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:33:13
+   │
+33 │             self.str.to_mem()
+   │             ^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │
+   = ValueAttribute
+
+note: 
+  ┌─ features/sized_vals_in_sto.fe:6:5
+  │  
+6 │ ╭     event MyEvent:
+7 │ │         num: u256
+8 │ │         nums: u256[42]
+9 │ │         str: string26
+  │ ╰─────────────────────^ attributes hash: 17206441778791770980
+  │  
+  = EventDef {
+        name: "MyEvent",
+        topic: "0xa1df37e97e04df228bf0d77958ff8e03261b1070a21f3aa7a439f6d234c1dcf2",
+        fields: [
+            (
+                "num",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+            (
+                "nums",
+                Array(
+                    Array {
+                        size: 42,
+                        inner: Numeric(
+                            U256,
+                        ),
+                    },
+                ),
+            ),
+            (
+                "str",
+                String(
+                    FeString {
+                        max_size: 26,
+                    },
+                ),
+            ),
+        ],
+        indexed_fields: [],
+    }
+
+note: 
+  ┌─ features/sized_vals_in_sto.fe:7:14
+  │
+7 │         num: u256
+  │              ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/sized_vals_in_sto.fe:8:15
+  │
+8 │         nums: u256[42]
+  │               ^^^^^^^^ attributes hash: 239151071937436552
+  │
+  = Array(
+        Array {
+            size: 42,
+            inner: Numeric(
+                U256,
+            ),
+        },
+    )
+
+note: 
+  ┌─ features/sized_vals_in_sto.fe:9:14
+  │
+9 │         str: string26
+  │              ^^^^^^^^ attributes hash: 14735093766067758717
+  │
+  = String(
+        FeString {
+            max_size: 26,
+        },
+    )
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:11:26
+   │
+11 │     pub def write_num(x: u256):
+   │                          ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:14:27
+   │
+14 │     pub def read_num() -> u256:
+   │                           ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:17:27
+   │
+17 │     pub def write_nums(x: u256[42]):
+   │                           ^^^^^^^^ attributes hash: 239151071937436552
+   │
+   = Array(
+         Array {
+             size: 42,
+             inner: Numeric(
+                 U256,
+             ),
+         },
+     )
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:20:28
+   │
+20 │     pub def read_nums() -> u256[42]:
+   │                            ^^^^^^^^ attributes hash: 239151071937436552
+   │
+   = Array(
+         Array {
+             size: 42,
+             inner: Numeric(
+                 U256,
+             ),
+         },
+     )
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:23:26
+   │
+23 │     pub def write_str(x: string26):
+   │                          ^^^^^^^^ attributes hash: 14735093766067758717
+   │
+   = String(
+         FeString {
+             max_size: 26,
+         },
+     )
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:26:27
+   │
+26 │     pub def read_str() -> string26:
+   │                           ^^^^^^^^ attributes hash: 14735093766067758717
+   │
+   = String(
+         FeString {
+             max_size: 26,
+         },
+     )
+
+note: 
+  ┌─ features/sized_vals_in_sto.fe:2:10
+  │
+2 │     num: u256
+  │          ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/sized_vals_in_sto.fe:3:11
+  │
+3 │     nums: u256[42]
+  │           ^^^^^^^^ attributes hash: 239151071937436552
+  │
+  = Array(
+        Array {
+            size: 42,
+            inner: Numeric(
+                U256,
+            ),
+        },
+    )
+
+note: 
+  ┌─ features/sized_vals_in_sto.fe:4:10
+  │
+4 │     str: string26
+  │          ^^^^^^^^ attributes hash: 14735093766067758717
+  │
+  = String(
+        FeString {
+            max_size: 26,
+        },
+    )
+
+
