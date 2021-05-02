@@ -67,25 +67,34 @@ Node(
                   ),
                 ),
                 typ: Node(
-                  kind: Map(
-                    from: Node(
-                      kind: Base(
-                        base: "address",
-                      ),
+                  kind: Generic(
+                    base: Node(
+                      kind: "map",
                       span: Span(
-                        start: 72,
-                        end: 79,
+                        start: 68,
+                        end: 71,
                       ),
                     ),
-                    to: Node(
-                      kind: Base(
-                        base: "BookMsg",
+                    args: [
+                      Node(
+                        kind: TypeDesc(Base(
+                          base: "address",
+                        )),
+                        span: Span(
+                          start: 72,
+                          end: 79,
+                        ),
                       ),
-                      span: Span(
-                        start: 81,
-                        end: 88,
+                      Node(
+                        kind: TypeDesc(Base(
+                          base: "BookMsg",
+                        )),
+                        span: Span(
+                          start: 81,
+                          end: 88,
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                   span: Span(
                     start: 68,

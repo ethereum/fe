@@ -261,26 +261,6 @@ fn parse_generic_args(par: &mut Parser) -> ParseResult<(Vec<Node<GenericArg>>, S
     Ok((args, span))
 }
 
-// TODO: remove TypeDesc::Map and this fn
-fn temporary_backward_compatible_map_type(
-    mut args: Vec<Node<GenericArg>>,
-    span: Span,
-) -> Node<TypeDesc> {
-    let to_node = args.pop().unwrap();
-    let from_node = args.pop().unwrap();
-    if let (GenericArg::TypeDesc(from), GenericArg::TypeDesc(to)) = (from_node.kind, to_node.kind) {
-        Node::new(
-            TypeDesc::Map {
-                from: Box::new(Node::new(from, from_node.span)),
-                to: Box::new(Node::new(to, to_node.span)),
-            },
-            span,
-        )
-    } else {
-        panic!()
-    }
-}
-
 /// Parse a type description, e.g. `u8` or `map<address, u256>`.
 pub fn parse_type_desc(par: &mut Parser) -> ParseResult<Node<TypeDesc>> {
     use TokenKind::*;
@@ -292,17 +272,13 @@ pub fn parse_type_desc(par: &mut Parser) -> ParseResult<Node<TypeDesc>> {
                 Some(Lt) => {
                     let (args, argspan) = parse_generic_args(par)?;
                     let span = name.span + argspan;
-                    if name.text == "map" {
-                        temporary_backward_compatible_map_type(args, span)
-                    } else {
-                        Node::new(
-                            TypeDesc::Generic {
-                                base: name.into(),
-                                args,
-                            },
-                            span,
-                        )
-                    }
+                    Node::new(
+                        TypeDesc::Generic {
+                            base: name.into(),
+                            args,
+                        },
+                        span,
+                    )
                 }
                 _ => Node::new(
                     TypeDesc::Base {
