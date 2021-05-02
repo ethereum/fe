@@ -1,10 +1,8 @@
 //! Stress tests that test broad behavior
 
 #![cfg(feature = "solc-backend")]
+use fe_compiler_test_utils::*;
 use std::iter;
-
-use crate::utils;
-use crate::utils::*;
 
 pub fn deploy_contract(
     executor: &mut Executor,
@@ -14,7 +12,7 @@ pub fn deploy_contract(
 ) -> ContractHarness {
     utils::deploy_contract(
         executor,
-        &format!("stress/{}", fixture),
+        &format!("../tests/fixtures/stress/{}", fixture),
         contract_name,
         init_params,
     )

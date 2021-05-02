@@ -1,3 +1,4 @@
+#![cfg(feature = "solc-backend")]
 use fe_compiler::lowering;
 use fe_parser::ast as fe;
 use regex::Regex;

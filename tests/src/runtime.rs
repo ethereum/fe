@@ -5,9 +5,9 @@ use fe_compiler::yul::runtime::functions;
 use rstest::rstest;
 use yultsur::*;
 
-use crate::utils::*;
 use fe_analyzer::namespace::types::{Base, FixedSize, Integer, Struct};
 use fe_common::utils::keccak;
+use fe_compiler_test_utils::*;
 
 macro_rules! assert_eq {
     ($a:tt, $b:tt) => {

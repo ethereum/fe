@@ -1,11 +1,15 @@
 #![cfg(feature = "solc-backend")]
+use compiler::errors::{CompileError, ErrorKind};
 use evm_runtime::{ExitReason, Handler};
+use fe_common::diagnostics::print_diagnostics;
+use fe_common::files::{FileStore, SourceFileId};
 use fe_compiler as compiler;
+use fe_compiler::yul::runtime::functions;
 use primitive_types::{H160, H256, U256};
 use std::collections::BTreeMap;
 use std::fs;
+use std::path::Path;
 use std::str::FromStr;
-use stringreader::StringReader;
 use yultsur::*;
 
 pub trait ToBeBytes {
@@ -63,7 +67,7 @@ impl ContractHarness {
 
         let input = function
             .encode_input(input)
-            .expect("Unable to encode input");
+            .unwrap_or_else(|_| panic!("Unable to encode input for {}", name));
 
         executor.call(self.address, None, input, None, false, context)
     }
@@ -88,13 +92,10 @@ impl ContractHarness {
         let function = &self.abi.functions[name][0];
 
         match self.capture_call(executor, name, &input) {
-            evm::Capture::Exit((ExitReason::Succeed(_), output)) => {
-                let output = function
-                    .decode_output(&output)
-                    .expect(&format!("unable to decode output: {:?}", &output))
-                    .pop();
-                return output;
-            }
+            evm::Capture::Exit((ExitReason::Succeed(_), output)) => function
+                .decode_output(&output)
+                .unwrap_or_else(|_| panic!("unable to decode output of {}: {:?}", name, &output))
+                .pop(),
             evm::Capture::Exit((reason, _)) => panic!("failed to run \"{}\": {:?}", name, reason),
             _ => panic!("trap"),
         }
@@ -140,7 +141,7 @@ impl ContractHarness {
                 })
                 .collect::<Vec<_>>();
 
-            if !outputs_for_event.iter().any(|v| &v == expected_output) {
+            if !outputs_for_event.iter().any(|v| v == expected_output) {
                 panic!(
                     "no {} logs matching: {:?}\nfound: {:?}",
                     name, expected_output, outputs_for_event
@@ -181,6 +182,28 @@ pub fn with_executor_backend(backend: evm::backend::MemoryBackend, test: &dyn Fn
     test(executor)
 }
 
+pub fn read_fixture(path: &str) -> (String, SourceFileId) {
+    let file_path = Path::new(path);
+    let absolute_path = fs::canonicalize(file_path)
+        .unwrap_or_else(|_| panic!("unable to find the file at: {:?}", file_path));
+    let mut files = FileStore::new();
+    files
+        .load_file(absolute_path.to_str().unwrap())
+        .unwrap_or_else(|_| panic!("unable to read fixture file: {}", path))
+}
+
+fn print_compiler_errors(error: CompileError, src: &str, files: &FileStore) {
+    for err in error.errors {
+        match err {
+            ErrorKind::Str(err) => eprintln!("Compiler error: {}", err),
+            ErrorKind::Analyzer(err) => {
+                eprintln!("Analyzer error: {}", err.format_user(&src))
+            }
+            ErrorKind::Parser(diags) => print_diagnostics(&diags, &files),
+        }
+    }
+}
+
 #[allow(dead_code)]
 pub fn deploy_contract(
     executor: &mut Executor,
@@ -188,15 +211,81 @@ pub fn deploy_contract(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    let src = fs::read_to_string(fixture).expect("unable to read fixture file");
-    let compiled_module = compiler::compile(&src, true, true).expect("failed to compile module");
+    let mut files = FileStore::new();
+    let (src, id) = files
+        .load_file(&fixture)
+        .expect("unable to read fixture file");
+
+    let compiled_module = match compiler::compile(&src, id, true, true) {
+        Ok(module) => module,
+        Err(error) => {
+            print_compiler_errors(error, &src, &files);
+            panic!("failed to compile module: {}", fixture)
+        }
+    };
+
     let compiled_contract = compiled_module
         .contracts
         .get(contract_name)
         .expect("could not find contract in fixture");
-    let abi = ethabi::Contract::load(StringReader::new(&compiled_contract.json_abi))
-        .expect("unable to load the ABI");
-    let mut bytecode = hex::decode(&compiled_contract.bytecode).expect("failed to decode bytecode");
+
+    _deploy_contract(
+        executor,
+        &compiled_contract.bytecode,
+        &compiled_contract.json_abi,
+        init_params,
+    )
+}
+
+#[allow(dead_code)]
+pub fn deploy_solidity_contract(
+    executor: &mut Executor,
+    fixture: &str,
+    contract_name: &str,
+    init_params: &[ethabi::Token],
+) -> ContractHarness {
+    let src = fs::read_to_string(&fixture)
+        .expect("unable to read fixture file")
+        .replace("\n", "")
+        .replace("\"", "\\\"");
+
+    let (bytecode, abi) =
+        compile_solidity_contract(contract_name, &src).expect("Could not compile contract");
+
+    _deploy_contract(executor, &bytecode, &abi, init_params)
+}
+
+#[allow(dead_code)]
+pub fn encode_error_reason(reason: &str) -> Vec<u8> {
+    // Function selector for Error(string)
+    const SELECTOR: &str = "08c379a0";
+    // Data offset
+    const DATA_OFFSET: &str = "0000000000000000000000000000000000000000000000000000000000000020";
+
+    // Length of the string padded to 32 bit hex
+    let string_len = format!("{:0>64x}", reason.len());
+
+    let mut string_bytes = reason.as_bytes().to_vec();
+    while string_bytes.len() % 32 != 0 {
+        string_bytes.push(0)
+    }
+    // The bytes of the string itself, right padded to consume a multiple of 32
+    // bytes
+    let string_bytes = hex::encode(&string_bytes);
+
+    let all = format!("{}{}{}{}", SELECTOR, DATA_OFFSET, string_len, string_bytes);
+    hex::decode(&all).unwrap_or_else(|_| panic!("No valid hex: {}", &all))
+}
+
+fn _deploy_contract(
+    executor: &mut Executor,
+    bytecode: &str,
+    abi: &str,
+    init_params: &[ethabi::Token],
+) -> ContractHarness {
+    let abi = ethabi::Contract::load(abi.as_bytes()).expect("unable to load the ABI");
+
+    let mut bytecode = hex::decode(bytecode).expect("failed to decode bytecode");
 
     if let Some(constructor) = &abi.constructor {
         bytecode = constructor.encode_input(bytecode, init_params).unwrap()
@@ -217,41 +306,163 @@ pub fn deploy_contract(
     panic!("Failed to create contract")
 }
 
+pub fn compile_solidity_contract(name: &str, solidity_src: &str) -> Result<(String, String), ()> {
+    let solc_config = r#"
+    {
+        "language": "Solidity",
+        "sources": { "input.sol": { "content": "{src}" } },
+        "settings": {
+          "outputSelection": { "*": { "*": ["*"], "": [ "*" ] } }
+        }
+      }
+    "#;
+    let solc_config = solc_config.replace("{src}", &solidity_src);
+
+    let raw_output = solc::compile(&solc_config);
+
+    let output: serde_json::Value =
+        serde_json::from_str(&raw_output).expect("Unable to compile contract");
+
+    let bytecode = output["contracts"]["input.sol"][name]["evm"]["bytecode"]["object"]
+        .to_string()
+        .replace("\"", "");
+
+    let abi = output["contracts"]["input.sol"][name]["abi"].to_string();
+
+    if [&bytecode, &abi].iter().any(|val| val == &"null") {
+        return Err(());
+    }
+
+    Ok((bytecode, abi))
+}
+
 #[allow(dead_code)]
 pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
-    let src = fs::read_to_string(format!("tests/fixtures/{}", fixture))
-        .expect("unable to read fixture file");
-    let compiled_module = compiler::compile(&src, true, true).expect("failed to compile module");
+    let (src, id) = read_fixture(&fixture);
+    let compiled_module =
+        compiler::compile(&src, id, true, true).expect("failed to compile module");
     let compiled_contract = compiled_module
         .contracts
         .get(contract_name)
         .expect("could not find contract in fixture");
-    let abi = ethabi::Contract::load(StringReader::new(&compiled_contract.json_abi))
+    let abi = ethabi::Contract::load(compiled_contract.json_abi.as_bytes())
         .expect("unable to load the ABI");
 
     ContractHarness::new(address, abi)
 }
 
-#[allow(dead_code)]
-pub fn test_runtime_functions(
-    executor: &mut Executor,
+pub struct Runtime {
     functions: Vec<yul::Statement>,
     test_statements: Vec<yul::Statement>,
-) {
-    let all_statements = [functions, test_statements].concat();
-    let yul_code = yul::Object {
-        name: identifier! { Contract },
-        code: code! { [all_statements...] },
-        objects: vec![],
-        data: vec![],
+    data: Vec<yul::Data>,
+}
+
+pub struct ExecutionOutput {
+    exit_reason: ExitReason,
+    data: Vec<u8>,
+}
+
+#[allow(dead_code)]
+impl Runtime {
+    /// Create a `Runtime` instance with all `std` functions.
+    pub fn default() -> Runtime {
+        Runtime::new().with_functions(functions::std())
     }
-    .to_string()
-    .replace("\"", "\\\"");
+
+    /// Create a new `Runtime` instance.
+    pub fn new() -> Runtime {
+        Runtime {
+            functions: vec![],
+            test_statements: vec![],
+            data: vec![],
+        }
+    }
+
+    /// Add the given set of functions
+    pub fn with_functions(self, fns: Vec<yul::Statement>) -> Runtime {
+        Runtime {
+            functions: fns,
+            ..self
+        }
+    }
+
+    /// Add the given set of test statements
+    pub fn with_test_statements(self, statements: Vec<yul::Statement>) -> Runtime {
+        Runtime {
+            test_statements: statements,
+            ..self
+        }
+    }
+
+    // Add the given set of data
+    pub fn with_data(self, data: Vec<yul::Data>) -> Runtime {
+        Runtime { data, ..self }
+    }
+
+    /// Generate the top level YUL object
+    pub fn to_yul(&self) -> yul::Object {
+        let all_statements = [self.functions.clone(), self.test_statements.clone()].concat();
+        yul::Object {
+            name: identifier! { Contract },
+            code: code! { [all_statements...] },
+            objects: vec![],
+            data: self.data.clone(),
+        }
+    }
+
+    pub fn execute(&self, executor: &mut Executor) -> ExecutionOutput {
+        let (exit_reason, data) = execute_runtime_functions(executor, &self);
+        ExecutionOutput::new(exit_reason, data)
+    }
+}
+
+#[allow(dead_code)]
+impl ExecutionOutput {
+    /// Create an `ExecutionOutput` instance
+    pub fn new(exit_reason: ExitReason, data: Vec<u8>) -> ExecutionOutput {
+        ExecutionOutput { exit_reason, data }
+    }
+
+    /// Panic if the execution did not succeed.
+    pub fn expect_success(self) -> ExecutionOutput {
+        if let ExecutionOutput {
+            exit_reason: ExitReason::Succeed(_),
+            ..
+        } = &self
+        {
+            self
+        } else {
+            panic!("Execution did not succeed: {:?}", &self.exit_reason)
+        }
+    }
+
+    /// Panic if the execution did not revert.
+    pub fn expect_revert(self) -> ExecutionOutput {
+        if let ExecutionOutput {
+            exit_reason: ExitReason::Revert(_),
+            ..
+        } = &self
+        {
+            self
+        } else {
+            panic!("Execution did not revert: {:?}", &self.exit_reason)
+        }
+    }
+
+    /// Panic if the output is not an encoded error reason of the given string.
+    pub fn expect_revert_reason(self, reason: &str) -> ExecutionOutput {
+        assert_eq!(self.data, encode_error_reason(reason));
+        self
+    }
+}
+
+fn execute_runtime_functions(executor: &mut Executor, runtime: &Runtime) -> (ExitReason, Vec<u8>) {
+    let yul_code = runtime.to_yul().to_string().replace("\"", "\\\"");
     let bytecode = compiler::evm::compile_single_contract("Contract", yul_code, false)
         .expect("failed to compile Yul");
     let bytecode = hex::decode(&bytecode).expect("failed to decode bytecode");
 
-    if let evm::Capture::Exit((reason, _, _)) = executor.create(
+    if let evm::Capture::Exit((reason, _, output)) = executor.create(
         address(DEFAULT_CALLER),
         evm_runtime::CreateScheme::Legacy {
             caller: address(DEFAULT_CALLER),
@@ -260,9 +471,7 @@ pub fn test_runtime_functions(
         bytecode,
         None,
     ) {
-        if !matches!(reason, ExitReason::Succeed(_)) {
-            panic!("Runtime function test failed: {:?}", reason)
-        }
+        (reason, output)
     } else {
         panic!("EVM trap during test")
     }
@@ -290,7 +499,7 @@ pub fn string_token(s: &str) -> ethabi::Token {
 
 #[allow(dead_code)]
 pub fn address(s: &str) -> H160 {
-    H160::from_str(s).expect(&format!("couldn't create address from: {}", s))
+    H160::from_str(s).unwrap_or_else(|_| panic!("couldn't create address from: {}", s))
 }
 
 #[allow(dead_code)]
@@ -312,7 +521,7 @@ pub fn bytes_token(s: &str) -> ethabi::Token {
 #[allow(dead_code)]
 pub fn bytes32(val: &str) -> Vec<u8> {
     H256::from_str(val)
-        .expect(&format!("couldn't create bytes[32] from: {}", val))
+        .unwrap_or_else(|_| panic!("couldn't create bytes[32] from: {}", val))
         .as_bytes()
         .to_vec()
 }
@@ -349,7 +558,7 @@ pub fn to_2s_complement(val: isize) -> U256 {
     if val >= 0 {
         U256::from(val)
     } else {
-        let positive_val = val * -1;
+        let positive_val = -val;
         get_2s_complement_for_negative(U256::from(positive_val))
     }
 }
@@ -392,7 +601,7 @@ impl NumericAbiTokenBounds {
             U256::from(2).pow(U256::from(255)),
         ));
 
-        let sizes = [
+        [
             NumericAbiTokenBounds {
                 size: 8,
                 u_min: zero.clone(),
@@ -417,26 +626,24 @@ impl NumericAbiTokenBounds {
             NumericAbiTokenBounds {
                 size: 64,
                 u_min: zero.clone(),
-                i_min: i64_min.clone(),
-                u_max: u64_max.clone(),
+                i_min: i64_min,
+                u_max: u64_max,
                 i_max: int_token(9223372036854775807),
             },
             NumericAbiTokenBounds {
                 size: 128,
                 u_min: zero.clone(),
-                i_min: i128_min.clone(),
-                u_max: u128_max.clone(),
-                i_max: i128_max.clone(),
+                i_min: i128_min,
+                u_max: u128_max,
+                i_max: i128_max,
             },
             NumericAbiTokenBounds {
                 size: 256,
-                u_min: zero.clone(),
-                i_min: i256_min.clone(),
-                u_max: u256_max.clone(),
-                i_max: i256_max.clone(),
+                u_min: zero,
+                i_min: i256_min,
+                u_max: u256_max,
+                i_max: i256_max,
             },
-        ];
-
-        sizes
+        ]
     }
 }
