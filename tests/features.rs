@@ -7,10 +7,8 @@ use rstest::rstest;
 use std::collections::BTreeMap;
 use std::iter;
 
-mod utils;
 use fe_common::utils::keccak;
-use utils::ToBeBytes;
-use utils::*;
+use fe_compiler_test_utils::*;
 
 pub fn deploy_contract(
     executor: &mut Executor,
@@ -18,16 +16,16 @@ pub fn deploy_contract(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    utils::deploy_contract(
+    fe_compiler_test_utils::deploy_contract(
         executor,
-        &format!("features/{}", fixture),
+        &format!("tests/fixtures/features/{}", fixture),
         contract_name,
         init_params,
     )
 }
 
 pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
-    utils::load_contract(address, &format!("features/{}", fixture), contract_name)
+    fe_compiler_test_utils::load_contract(address, &format!("tests/fixtures/features/{}", fixture), contract_name)
 }
 
 #[test]

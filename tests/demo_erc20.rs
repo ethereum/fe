@@ -1,6 +1,5 @@
 #![cfg(feature = "solc-backend")]
-mod utils;
-use utils::*;
+use fe_compiler_test_utils::*;
 
 #[test]
 fn erc20_token() {
@@ -10,7 +9,7 @@ fn erc20_token() {
 
         let mut harness = deploy_contract(
             &mut executor,
-            "demos/erc20_token.fe",
+            "tests/fixtures/demos/erc20_token.fe",
             "ERC20",
             &[token_name.clone(), token_symbol.clone()],
         );

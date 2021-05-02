@@ -652,6 +652,7 @@ dependencies = [
  "fe-common",
  "fe-compiler",
  "fe-compiler-test-utils",
+ "fe-compiler-tests",
  "fe-parser",
 ]
 
@@ -716,6 +717,24 @@ dependencies = [
  "fe-compiler",
  "hex",
  "primitive-types",
+ "stringreader",
+ "yultsur",
+]
+
+[[package]]
+name = "fe-compiler-tests"
+version = "0.3.0-alpha"
+dependencies = [
+ "ethabi",
+ "evm",
+ "evm-runtime",
+ "fe-analyzer",
+ "fe-common",
+ "fe-compiler",
+ "fe-compiler-test-utils",
+ "primitive-types",
+ "rand",
+ "rstest",
  "stringreader",
  "yultsur",
 ]

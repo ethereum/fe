@@ -4,8 +4,7 @@
 use primitive_types::H160;
 use std::iter;
 
-mod utils;
-use utils::*;
+use fe_compiler_test_utils::*;
 
 pub fn deploy_contract(
     executor: &mut Executor,
@@ -13,16 +12,16 @@ pub fn deploy_contract(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    utils::deploy_contract(
+    fe_compiler_test_utils::deploy_contract(
         executor,
-        &format!("stress/{}", fixture),
+        &format!("tests/fixtures/stress/{}", fixture),
         contract_name,
         init_params,
     )
 }
 
 pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
-    utils::load_contract(address, &format!("stress/{}", fixture), contract_name)
+    fe_compiler_test_utils::load_contract(address, &format!("tests/fixtures/stress/{}", fixture), contract_name)
 }
 
 #[test]
