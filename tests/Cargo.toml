@@ -2,7 +2,7 @@
 authors = ["SatyamAgrawal <satyam0499@gmail.com>"]
 edition = "2018"
 name = "fe-compiler-tests"
-version = "0.3.0-alpha"
+version = "0.4.0-alpha"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -15,8 +15,8 @@ rand = "0.7.3"
 rstest = "0.6.4"
 # This fork contains the shorthand macros and some other necessary updates.
 ethabi = "12.0"
-fe-analyzer = {path = "../analyzer", version = "^0.3.0-alpha"}
-fe-common = {path = "../common", version = "^0.3.0-alpha"}
+fe-analyzer = {path = "../analyzer", version = "^0.4.0-alpha"}
+fe-common = {path = "../common", version = "^0.4.0-alpha"}
 fe-compiler-test-utils = {path = "../test-utils", features = ["solc-backend"]}
 stringreader = "0.1"
 yultsur = {git = "https://github.com/g-r-a-n-t/yultsur"}
