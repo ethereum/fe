@@ -1,0 +1,12 @@
+---
+source: parser/tests/cases/errors.rs
+expression: err
+
+---
+error: Unexpected token while parsing expression: `*`
+  ┌─ expr_bad_prefix:1:1
+  │
+1 │ *x + 1
+  │ ^ unexpected token
+
+

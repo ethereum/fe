@@ -24,3 +24,6 @@ clap = "2.33.3"
 
 [dev-dependencies]
 cargo-release = "0.13.9"
+
+[profile.dev.package.solc]
+opt-level = 3

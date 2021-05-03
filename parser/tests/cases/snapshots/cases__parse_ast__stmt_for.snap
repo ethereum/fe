@@ -1,0 +1,66 @@
+---
+source: parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(stmt_for), functions::parse_stmt,\n           \"for a in b[0]:\\n pass\")"
+
+---
+Node(
+  kind: For(
+    target: Node(
+      kind: Name("a"),
+      span: Span(
+        start: 4,
+        end: 5,
+      ),
+    ),
+    iter: Node(
+      kind: Subscript(
+        value: Node(
+          kind: Name("b"),
+          span: Span(
+            start: 9,
+            end: 10,
+          ),
+        ),
+        slices: Node(
+          kind: [
+            Node(
+              kind: Index(Node(
+                kind: Num("0"),
+                span: Span(
+                  start: 11,
+                  end: 12,
+                ),
+              )),
+              span: Span(
+                start: 11,
+                end: 12,
+              ),
+            ),
+          ],
+          span: Span(
+            start: 10,
+            end: 13,
+          ),
+        ),
+      ),
+      span: Span(
+        start: 9,
+        end: 13,
+      ),
+    ),
+    body: [
+      Node(
+        kind: Pass,
+        span: Span(
+          start: 16,
+          end: 20,
+        ),
+      ),
+    ],
+    or_else: [],
+  ),
+  span: Span(
+    start: 0,
+    end: 20,
+  ),
+)

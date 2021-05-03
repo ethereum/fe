@@ -1,0 +1,61 @@
+---
+source: parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(stmt_for_else), functions::parse_stmt,\n           \"for a in b:\\n c\\nelse:\\n d\")"
+
+---
+Node(
+  kind: For(
+    target: Node(
+      kind: Name("a"),
+      span: Span(
+        start: 4,
+        end: 5,
+      ),
+    ),
+    iter: Node(
+      kind: Name("b"),
+      span: Span(
+        start: 9,
+        end: 10,
+      ),
+    ),
+    body: [
+      Node(
+        kind: Expr(
+          value: Node(
+            kind: Name("c"),
+            span: Span(
+              start: 13,
+              end: 14,
+            ),
+          ),
+        ),
+        span: Span(
+          start: 13,
+          end: 14,
+        ),
+      ),
+    ],
+    or_else: [
+      Node(
+        kind: Expr(
+          value: Node(
+            kind: Name("d"),
+            span: Span(
+              start: 22,
+              end: 23,
+            ),
+          ),
+        ),
+        span: Span(
+          start: 22,
+          end: 23,
+        ),
+      ),
+    ],
+  ),
+  span: Span(
+    start: 0,
+    end: 23,
+  ),
+)

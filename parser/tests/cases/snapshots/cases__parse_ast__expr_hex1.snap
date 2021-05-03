@@ -1,0 +1,12 @@
+---
+source: parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(expr_hex1), expressions::parse_expr, \"0xbeefbeef\")"
+
+---
+Node(
+  kind: Num("0xbeefbeef"),
+  span: Span(
+    start: 0,
+    end: 10,
+  ),
+)

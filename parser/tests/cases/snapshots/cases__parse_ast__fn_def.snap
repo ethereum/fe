@@ -1,0 +1,97 @@
+---
+source: parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(fn_def), |par| functions::parse_fn_def(par, None),\n           \"def foo21(x: bool, y: address,) -> bool:\\n x\")"
+
+---
+Node(
+  kind: FuncDef(
+    pub_qual: None,
+    name: Node(
+      kind: "foo21",
+      span: Span(
+        start: 4,
+        end: 9,
+      ),
+    ),
+    args: [
+      Node(
+        kind: FuncDefArg(
+          name: Node(
+            kind: "x",
+            span: Span(
+              start: 10,
+              end: 11,
+            ),
+          ),
+          typ: Node(
+            kind: Base(
+              base: "bool",
+            ),
+            span: Span(
+              start: 13,
+              end: 17,
+            ),
+          ),
+        ),
+        span: Span(
+          start: 10,
+          end: 17,
+        ),
+      ),
+      Node(
+        kind: FuncDefArg(
+          name: Node(
+            kind: "y",
+            span: Span(
+              start: 19,
+              end: 20,
+            ),
+          ),
+          typ: Node(
+            kind: Base(
+              base: "address",
+            ),
+            span: Span(
+              start: 22,
+              end: 29,
+            ),
+          ),
+        ),
+        span: Span(
+          start: 19,
+          end: 29,
+        ),
+      ),
+    ],
+    return_type: Some(Node(
+      kind: Base(
+        base: "bool",
+      ),
+      span: Span(
+        start: 35,
+        end: 39,
+      ),
+    )),
+    body: [
+      Node(
+        kind: Expr(
+          value: Node(
+            kind: Name("x"),
+            span: Span(
+              start: 42,
+              end: 43,
+            ),
+          ),
+        ),
+        span: Span(
+          start: 42,
+          end: 43,
+        ),
+      ),
+    ],
+  ),
+  span: Span(
+    start: 0,
+    end: 43,
+  ),
+)
