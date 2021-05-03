@@ -9,6 +9,7 @@ use std::iter;
 
 use fe_common::utils::keccak;
 use fe_compiler_test_utils::*;
+use fe_compiler_test_utils::{self as test_utils};
 
 pub fn deploy_contract(
     executor: &mut Executor,
@@ -16,7 +17,7 @@ pub fn deploy_contract(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    fe_compiler_test_utils::deploy_contract(
+    test_utils::deploy_contract(
         executor,
         &format!("tests/fixtures/features/{}", fixture),
         contract_name,
@@ -25,7 +26,7 @@ pub fn deploy_contract(
 }
 
 pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
-    fe_compiler_test_utils::load_contract(address, &format!("tests/fixtures/features/{}", fixture), contract_name)
+    test_utils::load_contract(address, &format!("tests/fixtures/features/{}", fixture), contract_name)
 }
 
 #[test]

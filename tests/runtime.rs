@@ -5,20 +5,9 @@ use fe_compiler::yul::runtime::functions;
 use rstest::rstest;
 use yultsur::*;
 
-<<<<<<< HEAD:compiler/tests/runtime.rs
-mod utils;
 use fe_analyzer::namespace::types::{Base, FixedSize, Integer, Struct};
 use fe_common::utils::keccak;
-use utils::*;
-=======
-use fe_analyzer::namespace::types::{
-    Base,
-    FixedSize,
-    Integer,
-    Struct,
-};
 use fe_compiler_test_utils::*;
->>>>>>> rearrangement of tests:tests/runtime.rs
 
 macro_rules! assert_eq {
     ($a:tt, $b:tt) => {

@@ -52,7 +52,7 @@ fn uniswap_contracts() {
         // test.
         let factory_harness = deploy_contract(
             &mut executor,
-            "tests/fixtures/demos/uniswap.fe",
+            "tests/fixtures/demos/erc20_token.fe",
             "UniswapV2Factory",
             &[address_token("0")],
         );
@@ -72,7 +72,7 @@ fn uniswap_contracts() {
         // Set the pair address for convenience.
         let pair_harness = load_contract(
             pair_address.clone().to_address().expect("not an address"),
-            "tests/fixtures/demos/uniswap.fe",
+            "demos/uniswap.fe",
             "UniswapV2Pair",
         );
 

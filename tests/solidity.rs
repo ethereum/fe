@@ -4,8 +4,7 @@
 #![cfg(feature = "solc-backend")]
 use rstest::rstest;
 
-mod utils;
-use utils::*;
+use fe_compiler_test_utils::*;
 
 #[rstest(
     method,
@@ -19,7 +18,7 @@ use utils::*;
 )]
 fn test_revert_string_reason(method: &str, reason: &str) {
     with_executor(&|mut executor| {
-        let harness = deploy_solidity_contract(&mut executor, "revert_test.sol", "Foo", &[]);
+        let harness = deploy_solidity_contract(&mut executor, "tests/fixtures/solidity/revert_test.sol", "Foo", &[]);
 
         let exit = harness.capture_call(&mut executor, method, &[]);
 

@@ -1,3 +1,0 @@
-contract Foo:
-  pub def foo():
-    emit MyEvent("foo", 1000)()
