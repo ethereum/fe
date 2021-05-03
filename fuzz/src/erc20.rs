@@ -34,7 +34,6 @@ pub fn erc20_constructor(details: TokenDetails) {
             );
 
             // validate state after init
-            // ALICE starts with 2600 Fe Coins
             harness.test_function(&mut executor, "name", &[], Some(&token_name));
             harness.test_function(&mut executor, "symbol", &[], Some(&token_symbol));
             harness.test_function(&mut executor, "decimals", &[], Some(&uint_token(18)));
