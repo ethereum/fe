@@ -14,7 +14,10 @@ pub fn var_decl(
     stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::VarDecl { target, typ, value } = &stmt.kind {
-        let name = expressions::expr_name_string(target)?;
+        let name = match &target.kind {
+            fe::VarDeclTarget::Name(name) => name,
+            fe::VarDeclTarget::Tuple(_) => todo!("tuple destructuring variable declaration"),
+        };
         let declared_type =
             types::type_desc_fixed_size(Scope::Block(Rc::clone(&scope)), Rc::clone(&context), typ)?;
         if let Some(value) = value {

@@ -25,8 +25,7 @@ macro_rules! test_parse_err {
     ($name:ident, $parse_fn:expr, $should_fail:expr, $src:expr) => {
         #[test]
         fn $name() {
-            let err = err_string(stringify!($name), $parse_fn, $should_fail, $src);
-            assert_snapshot!(err);
+            assert_snapshot!(err_string(stringify!($name), $parse_fn, $should_fail, $src));
         }
     };
 }
@@ -57,5 +56,20 @@ test_parse_err! { if_no_body, functions::parse_stmt, true, "if x:\nelse:\n x" }
 test_parse_err! { import_bad_name, module::parse_simple_import, true, "import x as 123" }
 test_parse_err! { module_bad_stmt, module::parse_module, true, "if x:\n y" }
 test_parse_err! { module_nonsense, module::parse_module, true, "))" }
-test_parse_err! { string_invalid_escape, expressions::parse_expr, false, r#""a string \c ""# }
 test_parse_err! { struct_bad_field_name, types::parse_struct_def, true, "struct f:\n pub def" }
+test_parse_err! { stmt_vardecl_attr, functions::parse_stmt, true, "f.s : u" }
+test_parse_err! { stmt_vardecl_tuple, functions::parse_stmt, true, "(a, x+1) : u256" }
+test_parse_err! { stmt_vardecl_tuple_empty, functions::parse_stmt, true, "(a, ()) : u256" }
+test_parse_err! { stmt_vardecl_subscript, functions::parse_stmt, true, "a[1] : u256" }
+
+// assert_snapshot! doesn't like the invalid escape code
+#[test]
+fn string_invalid_escape() {
+    let err = err_string(
+        "string_invalid_escape",
+        expressions::parse_expr,
+        false,
+        r#""a string \c ""#,
+    );
+    assert_snapshot!(err);
+}

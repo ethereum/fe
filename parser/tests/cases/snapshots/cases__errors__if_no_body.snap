@@ -1,6 +1,6 @@
 ---
 source: parser/tests/cases/errors.rs
-expression: err
+expression: "err_string(stringify!(if_no_body), functions::parse_stmt, true,\n           \"if x:\\nelse:\\n x\")"
 
 ---
 error: failed to parse `if` statement body

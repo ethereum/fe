@@ -1,6 +1,6 @@
 ---
 source: parser/tests/cases/errors.rs
-expression: err
+expression: "err_string(stringify!(emit_bad_call), functions::parse_stmt, true,\n           \"emit MyEvent(1)()\")"
 
 ---
 error: unexpected token while parsing emit statement

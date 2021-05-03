@@ -1,6 +1,6 @@
 ---
 source: parser/tests/cases/errors.rs
-expression: err
+expression: "err_string(stringify!(fn_no_args), |par| functions::parse_fn_def(par, None),\n           false, \"def f:\\n  return 5\")"
 
 ---
 error: function definition requires a list of parameters

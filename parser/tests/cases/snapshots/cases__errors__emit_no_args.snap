@@ -1,6 +1,6 @@
 ---
 source: parser/tests/cases/errors.rs
-expression: err
+expression: "err_string(stringify!(emit_no_args), functions::parse_stmt, true, \"emit x\")"
 
 ---
 error: unexpected end of file

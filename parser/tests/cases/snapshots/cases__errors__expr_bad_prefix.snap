@@ -1,6 +1,6 @@
 ---
 source: parser/tests/cases/errors.rs
-expression: err
+expression: "err_string(stringify!(expr_bad_prefix), expressions::parse_expr, true,\n           \"*x + 1\")"
 
 ---
 error: Unexpected token while parsing expression: `*`

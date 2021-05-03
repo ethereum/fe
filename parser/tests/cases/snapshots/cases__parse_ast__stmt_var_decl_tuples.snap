@@ -1,0 +1,75 @@
+---
+source: parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(stmt_var_decl_tuples), functions::parse_stmt,\n           \"(a, (b, (c, d))): x\")"
+
+---
+Node(
+  kind: VarDecl(
+    target: Node(
+      kind: Tuple([
+        Node(
+          kind: Name("a"),
+          span: Span(
+            start: 1,
+            end: 2,
+          ),
+        ),
+        Node(
+          kind: Tuple([
+            Node(
+              kind: Name("b"),
+              span: Span(
+                start: 5,
+                end: 6,
+              ),
+            ),
+            Node(
+              kind: Tuple([
+                Node(
+                  kind: Name("c"),
+                  span: Span(
+                    start: 9,
+                    end: 10,
+                  ),
+                ),
+                Node(
+                  kind: Name("d"),
+                  span: Span(
+                    start: 12,
+                    end: 13,
+                  ),
+                ),
+              ]),
+              span: Span(
+                start: 8,
+                end: 14,
+              ),
+            ),
+          ]),
+          span: Span(
+            start: 4,
+            end: 15,
+          ),
+        ),
+      ]),
+      span: Span(
+        start: 0,
+        end: 16,
+      ),
+    ),
+    typ: Node(
+      kind: Base(
+        base: "x",
+      ),
+      span: Span(
+        start: 18,
+        end: 19,
+      ),
+    ),
+    value: None,
+  ),
+  span: Span(
+    start: 0,
+    end: 19,
+  ),
+)

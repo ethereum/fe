@@ -1,6 +1,6 @@
 ---
 source: parser/tests/cases/errors.rs
-expression: err
+expression: "err_string(stringify!(module_bad_stmt), module::parse_module, true,\n           \"if x:\\n y\")"
 
 ---
 error: failed to parse module

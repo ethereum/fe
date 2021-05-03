@@ -1,0 +1,15 @@
+---
+source: parser/tests/cases/errors.rs
+expression: "err_string(stringify!(stmt_vardecl_subscript), functions::parse_stmt, true,\n           \"a[1] : u256\")"
+
+---
+error: failed to parse variable declaration
+  ┌─ stmt_vardecl_subscript:1:1
+  │
+1 │ a[1] : u256
+  │ ^^^^ invalid variable declaration target
+  │
+  = The left side of a variable declaration can be either a name
+    or a non-empty tuple.
+
+

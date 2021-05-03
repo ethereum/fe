@@ -1,6 +1,6 @@
 ---
 source: parser/tests/cases/errors.rs
-expression: err
+expression: "err_string(stringify!(contract_empty_body), module::parse_module, true,\n           \"contract X:\\n \\n \\ncontract Y:\\n x: u8\")"
 
 ---
 error: failed to parse contract definition body

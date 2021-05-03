@@ -1,6 +1,6 @@
 ---
 source: parser/tests/cases/errors.rs
-expression: err
+expression: "err_string(stringify!(contract_bad_name), contracts::parse_contract_def, true,\n           \"contract 1X:\\n x: u8\")"
 
 ---
 error: failed to parse contract definition
