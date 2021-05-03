@@ -1,6 +1,6 @@
 ---
 source: parser/tests/cases/errors.rs
-expression: err
+expression: "err_string(stringify!(module_nonsense), module::parse_module, true, \"))\")"
 
 ---
 error: Unmatched right parenthesis

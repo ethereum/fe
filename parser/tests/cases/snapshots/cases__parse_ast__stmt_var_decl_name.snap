@@ -1,0 +1,30 @@
+---
+source: parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(stmt_var_decl_name), functions::parse_stmt, \"foo: u256\")"
+
+---
+Node(
+  kind: VarDecl(
+    target: Node(
+      kind: Name("foo"),
+      span: Span(
+        start: 0,
+        end: 3,
+      ),
+    ),
+    typ: Node(
+      kind: Base(
+        base: "u256",
+      ),
+      span: Span(
+        start: 5,
+        end: 9,
+      ),
+    ),
+    value: None,
+  ),
+  span: Span(
+    start: 0,
+    end: 9,
+  ),
+)

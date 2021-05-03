@@ -49,11 +49,14 @@ fn func_stmt(context: &Context, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::FuncSt
         fe::FuncStmt::Return { value } => vec![fe::FuncStmt::Return {
             value: expressions::optional_expr(context, value),
         }],
-        fe::FuncStmt::VarDecl { target, typ, value } => vec![fe::FuncStmt::VarDecl {
-            target: expressions::expr(context, target),
-            typ: types::type_desc(context, typ),
-            value: expressions::optional_expr(context, value),
-        }],
+        fe::FuncStmt::VarDecl { target, typ, value } => match target.kind {
+            fe::VarDeclTarget::Name(_) => vec![fe::FuncStmt::VarDecl {
+                target,
+                typ: types::type_desc(context, typ),
+                value: expressions::optional_expr(context, value),
+            }],
+            fe::VarDeclTarget::Tuple(_) => todo!("tuple var decl lowering"),
+        },
         fe::FuncStmt::Assign { targets, value } => vec![fe::FuncStmt::Assign {
             targets: expressions::multiple_exprs(context, targets),
             value: expressions::expr(context, value),

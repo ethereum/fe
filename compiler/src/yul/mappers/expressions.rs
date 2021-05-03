@@ -309,10 +309,10 @@ pub fn slice_index(context: &Context, slice: &Node<fe::Slice>) -> yul::Expressio
 
 fn expr_tuple(exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Tuple { elts } = &exp.kind {
-        if !elts.is_empty() {
-            todo!("Non empty Tuples aren't yet supported")
-        } else {
+        if elts.is_empty() {
             return literal_expression! {0x0};
+        } else {
+            panic!("Non-empty Tuples should be lowered to structs")
         }
     }
 

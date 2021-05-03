@@ -1,6 +1,6 @@
 ---
 source: parser/tests/cases/errors.rs
-expression: err
+expression: "err_string(stringify!(struct_bad_field_name), types::parse_struct_def, true,\n           \"struct f:\\n pub def\")"
 
 ---
 error: failed to parse field definition

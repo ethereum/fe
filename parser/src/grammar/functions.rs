@@ -1,7 +1,9 @@
 use super::expressions::{parse_call_args, parse_expr};
 use super::types::parse_type_desc;
 
-use crate::ast::{BinOperator, ContractStmt, FuncDefArg, FuncStmt, PubQualifier};
+use crate::ast::{
+    BinOperator, ContractStmt, Expr, FuncDefArg, FuncStmt, PubQualifier, VarDeclTarget,
+};
 use crate::lexer::TokenKind;
 use crate::node::Node;
 use crate::{Label, ParseFailed, ParseResult, Parser};
@@ -224,6 +226,8 @@ fn parse_expr_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
         }
         Some(Colon) => {
             par.next()?;
+
+            let target = expr_to_vardecl_target(par, expr)?;
             let typ = parse_type_desc(par)?;
             let value = if par.peek() == Some(Eq) {
                 par.next()?;
@@ -231,16 +235,8 @@ fn parse_expr_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
             } else {
                 None
             };
-            let span = expr.span + typ.span + value.as_ref();
-            // TODO: restrict VarDecl target type?
-            Node::new(
-                FuncStmt::VarDecl {
-                    target: expr,
-                    typ,
-                    value,
-                },
-                span,
-            )
+            let span = target.span + typ.span + value.as_ref();
+            Node::new(FuncStmt::VarDecl { target, typ, value }, span)
         }
         Some(Eq) => {
             par.next()?;
@@ -277,6 +273,34 @@ fn parse_expr_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     };
     par.expect_newline("statement")?;
     Ok(node)
+}
+
+fn expr_to_vardecl_target(par: &mut Parser, expr: Node<Expr>) -> ParseResult<Node<VarDeclTarget>> {
+    match expr.kind {
+        Expr::Name(name) => Ok(Node::new(VarDeclTarget::Name(name), expr.span)),
+        Expr::Tuple { elts } if !elts.is_empty() => Ok(Node::new(
+            VarDeclTarget::Tuple(
+                elts.into_iter()
+                    .map(|elt| expr_to_vardecl_target(par, elt))
+                    .collect::<ParseResult<Vec<_>>>()?,
+            ),
+            expr.span,
+        )),
+        _ => {
+            par.fancy_error(
+                "failed to parse variable declaration",
+                vec![Label::primary(
+                    expr.span,
+                    "invalid variable declaration target".into(),
+                )],
+                vec![
+                    "The left side of a variable declaration can be either a name\nor a non-empty tuple."
+                        .into(),
+                ],
+            );
+            Err(ParseFailed)
+        }
+    }
 }
 
 /// Parse an `if` statement, or an `elif` block.

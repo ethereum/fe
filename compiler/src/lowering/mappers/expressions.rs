@@ -55,8 +55,6 @@ pub fn expr(context: &Context, exp: Node<fe::Expr>) -> Node<fe::Expr> {
         },
         fe::Expr::List { .. } => unimplemented!(),
         fe::Expr::ListComp { .. } => unimplemented!(),
-        // We only accept empty tuples for now. We may want to completely eliminate tuple
-        // expressions before the Yul codegen pass, tho.
         fe::Expr::Tuple { .. } => expr_tuple(context, exp),
         fe::Expr::Str(_) => exp.kind,
     };
