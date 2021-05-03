@@ -4,42 +4,60 @@ expression: "ast_string(stringify!(type_map4), types::parse_type_desc,\n        
 
 ---
 Node(
-  kind: Map(
-    from: Node(
-      kind: Base(
-        base: "address",
-      ),
+  kind: Generic(
+    base: Node(
+      kind: "map",
       span: Span(
-        start: 6,
-        end: 13,
+        start: 0,
+        end: 3,
       ),
     ),
-    to: Node(
-      kind: Map(
-        from: Node(
-          kind: Base(
-            base: "u8",
-          ),
-          span: Span(
-            start: 22,
-            end: 24,
-          ),
-        ),
-        to: Node(
-          kind: Base(
-            base: "u256",
-          ),
-          span: Span(
-            start: 26,
-            end: 30,
-          ),
+    args: [
+      Node(
+        kind: TypeDesc(Base(
+          base: "address",
+        )),
+        span: Span(
+          start: 6,
+          end: 13,
         ),
       ),
-      span: Span(
-        start: 16,
-        end: 32,
+      Node(
+        kind: TypeDesc(Generic(
+          base: Node(
+            kind: "map",
+            span: Span(
+              start: 16,
+              end: 19,
+            ),
+          ),
+          args: [
+            Node(
+              kind: TypeDesc(Base(
+                base: "u8",
+              )),
+              span: Span(
+                start: 22,
+                end: 24,
+              ),
+            ),
+            Node(
+              kind: TypeDesc(Base(
+                base: "u256",
+              )),
+              span: Span(
+                start: 26,
+                end: 30,
+              ),
+            ),
+          ],
+        )),
+        span: Span(
+          start: 16,
+          end: 32,
+        ),
       ),
-    ),
+    ],
   ),
   span: Span(
     start: 0,

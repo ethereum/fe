@@ -40,10 +40,6 @@ pub enum TypeDesc {
         typ: Box<Node<TypeDesc>>,
         dimension: usize,
     },
-    Map {
-        from: Box<Node<TypeDesc>>,
-        to: Box<Node<TypeDesc>>,
-    },
     Tuple {
         items: Vec<Node<TypeDesc>>,
     },

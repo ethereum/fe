@@ -1,5 +1,6 @@
-use crate::errors::SemanticError;
+use crate::errors::{ErrorKind, SemanticError};
 use fe_parser::ast as fe;
+use fe_parser::node::Node;
 use std::collections::{btree_map::Entry, BTreeMap, HashMap};
 use std::convert::TryFrom;
 
@@ -918,11 +919,28 @@ pub fn type_desc(defs: &HashMap<String, Type>, typ: &fe::TypeDesc) -> Result<Typ
             inner: type_desc_base(defs, &typ.kind)?,
             size: *dimension,
         })),
-        fe::TypeDesc::Map { from, to } => Ok(Type::Map(Map {
-            key: type_desc_base(defs, &from.kind)?,
-            value: Box::new(type_desc(defs, &to.kind)?),
-        })),
-        fe::TypeDesc::Generic { .. } => todo!(),
+        fe::TypeDesc::Generic { base, args } => {
+            if base.kind == "map" {
+                match &args[..] {
+                    [Node {
+                        kind: fe::GenericArg::TypeDesc(from),
+                        ..
+                    }, Node {
+                        kind: fe::GenericArg::TypeDesc(to),
+                        ..
+                    }] => Ok(Type::Map(Map {
+                        key: type_desc_base(defs, &from)?,
+                        value: Box::new(type_desc(defs, &to)?),
+                    })),
+                    _ => Err(SemanticError {
+                        kind: ErrorKind::MapTypeError,
+                        context: vec![],
+                    }),
+                }
+            } else {
+                Err(SemanticError::undefined_value())
+            }
+        }
         fe::TypeDesc::Tuple { items } => Ok(Type::Tuple(Tuple {
             items: items
                 .iter()

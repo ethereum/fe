@@ -11,6 +11,7 @@ pub enum ErrorKind {
     CannotMove,
     CircularDependency,
     ContinueWithoutLoop,
+    MapTypeError,
     KeyWordArgsRequired,
     MissingEventDefinition,
     MissingReturn,

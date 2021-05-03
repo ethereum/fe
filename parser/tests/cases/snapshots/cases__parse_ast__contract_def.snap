@@ -97,25 +97,34 @@ Node(
             ),
           ),
           typ: Node(
-            kind: Map(
-              from: Node(
-                kind: Base(
-                  base: "u8",
-                ),
+            kind: Generic(
+              base: Node(
+                kind: "map",
                 span: Span(
-                  start: 58,
-                  end: 60,
+                  start: 54,
+                  end: 57,
                 ),
               ),
-              to: Node(
-                kind: Base(
-                  base: "address",
+              args: [
+                Node(
+                  kind: TypeDesc(Base(
+                    base: "u8",
+                  )),
+                  span: Span(
+                    start: 58,
+                    end: 60,
+                  ),
                 ),
-                span: Span(
-                  start: 62,
-                  end: 69,
+                Node(
+                  kind: TypeDesc(Base(
+                    base: "address",
+                  )),
+                  span: Span(
+                    start: 62,
+                    end: 69,
+                  ),
                 ),
-              ),
+              ],
             ),
             span: Span(
               start: 54,
