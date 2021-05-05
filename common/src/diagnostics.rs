@@ -25,7 +25,7 @@ pub fn diagnostics_string(diagnostics: &[Diagnostic], files: &FileStore) -> Stri
     let config = term::Config::default();
 
     for diag in diagnostics {
-        term::emit(&mut buffer, &config, files, &diag).unwrap();
+        term::emit(&mut buffer, &config, files, &diag).expect("failed to emit diagnostic");
     }
     std::str::from_utf8(buffer.as_slice()).unwrap().to_string()
 }

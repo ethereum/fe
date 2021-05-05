@@ -1,7 +1,7 @@
 use crate::errors::{ErrorKind, SemanticError};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
-use std::collections::{btree_map::Entry, BTreeMap, HashMap};
+use std::collections::{btree_map::Entry, BTreeMap};
 use std::convert::TryFrom;
 
 use crate::context::FunctionAttributes;
@@ -103,7 +103,7 @@ pub trait SafeNames {
     fn lower_snake(&self) -> String;
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub enum Type {
     Base(Base),
     Array(Array),
@@ -114,7 +114,7 @@ pub enum Type {
     Struct(Struct),
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub enum FixedSize {
     Base(Base),
     Array(Array),
@@ -124,7 +124,7 @@ pub enum FixedSize {
     Struct(Struct),
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub enum Base {
     Numeric(Integer),
     Bool,
@@ -150,36 +150,36 @@ pub enum Integer {
 
 pub const U256: Base = Base::Numeric(Integer::U256);
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct Array {
     pub size: usize,
     pub inner: Base,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct Map {
     pub key: Base,
     pub value: Box<Type>,
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct Tuple {
     pub items: Vec<FixedSize>,
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct Struct {
     pub name: String,
     fields: BTreeMap<String, FixedSize>,
     order: Vec<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct FeString {
     pub max_size: usize,
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct Contract {
     pub name: String,
     pub functions: Vec<FunctionAttributes>,
@@ -869,14 +869,14 @@ impl SafeNames for FeString {
 }
 
 pub fn type_desc_fixed_size(
-    defs: &HashMap<String, Type>,
+    defs: &BTreeMap<String, Type>,
     typ: &fe::TypeDesc,
 ) -> Result<FixedSize, SemanticError> {
     FixedSize::try_from(type_desc(defs, typ)?)
 }
 
 pub fn type_desc_base(
-    defs: &HashMap<String, Type>,
+    defs: &BTreeMap<String, Type>,
     typ: &fe::TypeDesc,
 ) -> Result<Base, SemanticError> {
     match type_desc(defs, typ)? {
@@ -885,7 +885,7 @@ pub fn type_desc_base(
     }
 }
 
-pub fn type_desc(defs: &HashMap<String, Type>, typ: &fe::TypeDesc) -> Result<Type, SemanticError> {
+pub fn type_desc(defs: &BTreeMap<String, Type>, typ: &fe::TypeDesc) -> Result<Type, SemanticError> {
     match typ {
         fe::TypeDesc::Base { base } => match base.as_str() {
             "u256" => Ok(Type::Base(U256)),

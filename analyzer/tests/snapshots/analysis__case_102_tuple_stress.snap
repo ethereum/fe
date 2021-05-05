@@ -1,0 +1,2912 @@
+---
+source: analyzer/tests/analysis.rs
+expression: "build_snapshot(fixture, src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "build_my_tuple",
+                        params: [
+                            (
+                                "my_num",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "my_bool",
+                                Base(
+                                    Bool,
+                                ),
+                            ),
+                            (
+                                "my_address",
+                                Base(
+                                    Address,
+                                ),
+                            ),
+                        ],
+                        return_type: Tuple(
+                            Tuple {
+                                items: [
+                                    Base(
+                                        Numeric(
+                                            U256,
+                                        ),
+                                    ),
+                                    Base(
+                                        Bool,
+                                    ),
+                                    Base(
+                                        Address,
+                                    ),
+                                ],
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "build_tuple_and_emit",
+                        params: [],
+                        return_type: Tuple(
+                            Tuple {
+                                items: [],
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "emit_my_event",
+                        params: [
+                            (
+                                "my_tuple",
+                                Tuple(
+                                    Tuple {
+                                        items: [
+                                            Base(
+                                                Numeric(
+                                                    U256,
+                                                ),
+                                            ),
+                                            Base(
+                                                Bool,
+                                            ),
+                                            Base(
+                                                Address,
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            ),
+                        ],
+                        return_type: Tuple(
+                            Tuple {
+                                items: [],
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "encode_my_tuple",
+                        params: [
+                            (
+                                "my_tuple",
+                                Tuple(
+                                    Tuple {
+                                        items: [
+                                            Base(
+                                                Numeric(
+                                                    U256,
+                                                ),
+                                            ),
+                                            Base(
+                                                Bool,
+                                            ),
+                                            Base(
+                                                Address,
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            ),
+                        ],
+                        return_type: Array(
+                            Array {
+                                size: 96,
+                                inner: Byte,
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "get_my_sto_tuple",
+                        params: [],
+                        return_type: Tuple(
+                            Tuple {
+                                items: [
+                                    Base(
+                                        Numeric(
+                                            U256,
+                                        ),
+                                    ),
+                                    Base(
+                                        Numeric(
+                                            I32,
+                                        ),
+                                    ),
+                                ],
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "read_my_tuple_item0",
+                        params: [
+                            (
+                                "my_tuple",
+                                Tuple(
+                                    Tuple {
+                                        items: [
+                                            Base(
+                                                Numeric(
+                                                    U256,
+                                                ),
+                                            ),
+                                            Base(
+                                                Bool,
+                                            ),
+                                            Base(
+                                                Address,
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "read_my_tuple_item1",
+                        params: [
+                            (
+                                "my_tuple",
+                                Tuple(
+                                    Tuple {
+                                        items: [
+                                            Base(
+                                                Numeric(
+                                                    U256,
+                                                ),
+                                            ),
+                                            Base(
+                                                Bool,
+                                            ),
+                                            Base(
+                                                Address,
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Bool,
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "read_my_tuple_item2",
+                        params: [
+                            (
+                                "my_tuple",
+                                Tuple(
+                                    Tuple {
+                                        items: [
+                                            Base(
+                                                Numeric(
+                                                    U256,
+                                                ),
+                                            ),
+                                            Base(
+                                                Bool,
+                                            ),
+                                            Base(
+                                                Address,
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Address,
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "set_my_sto_tuple",
+                        params: [
+                            (
+                                "my_u256",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "my_i32",
+                                Base(
+                                    Numeric(
+                                        I32,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Tuple(
+                            Tuple {
+                                items: [],
+                            },
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+    tuples_used: {
+        Tuple {
+            items: [
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+                Base(
+                    Numeric(
+                        I32,
+                    ),
+                ),
+            ],
+        },
+        Tuple {
+            items: [
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+                Base(
+                    Bool,
+                ),
+                Base(
+                    Address,
+                ),
+            ],
+        },
+    },
+}
+
+note: 
+   ┌─ stress/tuple_stress.fe:12:17
+   │
+12 │         return (my_num, my_bool, my_address)
+   │                 ^^^^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:12:17
+   │
+12 │         return (my_num, my_bool, my_address)
+   │                 ^^^^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:12:25
+   │
+12 │         return (my_num, my_bool, my_address)
+   │                         ^^^^^^^ attributes hash: 10866140763116710699
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:12:25
+   │
+12 │         return (my_num, my_bool, my_address)
+   │                         ^^^^^^^ attributes hash: 10866140763116710699
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:12:34
+   │
+12 │         return (my_num, my_bool, my_address)
+   │                                  ^^^^^^^^^^ attributes hash: 513065555763557710
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Address,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:12:34
+   │
+12 │         return (my_num, my_bool, my_address)
+   │                                  ^^^^^^^^^^ attributes hash: 513065555763557710
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Address,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:12:16
+   │
+12 │         return (my_num, my_bool, my_address)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14640869125644683951
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Bool,
+                     ),
+                     Base(
+                         Address,
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:12:16
+   │
+12 │         return (my_num, my_bool, my_address)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14640869125644683951
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Bool,
+                     ),
+                     Base(
+                         Address,
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:15:16
+   │
+15 │         return my_tuple.item0
+   │                ^^^^^^^^ attributes hash: 14640869125644683951
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Bool,
+                     ),
+                     Base(
+                         Address,
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:15:16
+   │
+15 │         return my_tuple.item0
+   │                ^^^^^^^^^^^^^^ attributes hash: 11934894478308934606
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Memory,
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:15:16
+   │
+15 │         return my_tuple.item0
+   │                ^^^^^^^^^^^^^^ attributes hash: 11934894478308934606
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Memory,
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:18:16
+   │
+18 │         return my_tuple.item1
+   │                ^^^^^^^^ attributes hash: 14640869125644683951
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Bool,
+                     ),
+                     Base(
+                         Address,
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:18:16
+   │
+18 │         return my_tuple.item1
+   │                ^^^^^^^^^^^^^^ attributes hash: 16124721822221882146
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Memory,
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:18:16
+   │
+18 │         return my_tuple.item1
+   │                ^^^^^^^^^^^^^^ attributes hash: 16124721822221882146
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Memory,
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:21:16
+   │
+21 │         return my_tuple.item2
+   │                ^^^^^^^^ attributes hash: 14640869125644683951
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Bool,
+                     ),
+                     Base(
+                         Address,
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:21:16
+   │
+21 │         return my_tuple.item2
+   │                ^^^^^^^^^^^^^^ attributes hash: 4842680713810666204
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Address,
+         ),
+         location: Memory,
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:21:16
+   │
+21 │         return my_tuple.item2
+   │                ^^^^^^^^^^^^^^ attributes hash: 4842680713810666204
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Address,
+         ),
+         location: Memory,
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:24:22
+   │
+24 │         emit MyEvent(my_tuple)
+   │                      ^^^^^^^^ attributes hash: 14640869125644683951
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Bool,
+                     ),
+                     Base(
+                         Address,
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:24:22
+   │
+24 │         emit MyEvent(my_tuple)
+   │                      ^^^^^^^^ attributes hash: 14640869125644683951
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Bool,
+                     ),
+                     Base(
+                         Address,
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:27:16
+   │
+27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                ^^^^^^^^^^^^^^^^^ attributes hash: 5427295442955120331
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Numeric(
+                             I32,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:27:16
+   │
+27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:27:16
+   │
+27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:27:48
+   │
+27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                                                ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:27:48
+   │
+27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                                                ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:27:43
+   │
+27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                                           ^^^^^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:27:43
+   │
+27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                                           ^^^^^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:27:16
+   │
+27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:27:16
+   │
+27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:27:55
+   │
+27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                                                       ^^^^^^^^^^^^^^^^^ attributes hash: 5427295442955120331
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Numeric(
+                             I32,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:27:55
+   │
+27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                                                       ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17262025105149179489
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 I32,
+             ),
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:27:55
+   │
+27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                                                       ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17262025105149179489
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 I32,
+             ),
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:27:86
+   │
+27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                                                                                      ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:27:86
+   │
+27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                                                                                      ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:27:82
+   │
+27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                                                                                  ^^^^^^ attributes hash: 13972995067286817043
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 I32,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:27:82
+   │
+27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                                                                                  ^^^^^^ attributes hash: 13972995067286817043
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 I32,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:27:55
+   │
+27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:27:55
+   │
+27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:27:16
+   │
+27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:28:9
+   │
+28 │         self.my_sto_tuple = (my_u256, my_i32)
+   │         ^^^^^^^^^^^^^^^^^ attributes hash: 5427295442955120331
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Numeric(
+                             I32,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:28:30
+   │
+28 │         self.my_sto_tuple = (my_u256, my_i32)
+   │                              ^^^^^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:28:30
+   │
+28 │         self.my_sto_tuple = (my_u256, my_i32)
+   │                              ^^^^^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:28:39
+   │
+28 │         self.my_sto_tuple = (my_u256, my_i32)
+   │                                       ^^^^^^ attributes hash: 13972995067286817043
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 I32,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:28:39
+   │
+28 │         self.my_sto_tuple = (my_u256, my_i32)
+   │                                       ^^^^^^ attributes hash: 13972995067286817043
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 I32,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:28:29
+   │
+28 │         self.my_sto_tuple = (my_u256, my_i32)
+   │                             ^^^^^^^^^^^^^^^^^ attributes hash: 14418534641112677012
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Numeric(
+                             I32,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:31:16
+   │
+31 │         return self.my_sto_tuple.to_mem()
+   │                ^^^^^^^^^^^^^^^^^ attributes hash: 5427295442955120331
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Numeric(
+                             I32,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:31:16
+   │
+31 │         return self.my_sto_tuple.to_mem()
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7737538719066505855
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Numeric(
+                             I32,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: Some(
+             Memory,
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:31:16
+   │
+31 │         return self.my_sto_tuple.to_mem()
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7737538719066505855
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Numeric(
+                             I32,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: Some(
+             Memory,
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:34:24
+   │
+34 │         my_num: u256 = self.my_sto_tuple.item0
+   │                        ^^^^^^^^^^^^^^^^^ attributes hash: 5427295442955120331
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Numeric(
+                             I32,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:34:24
+   │
+34 │         my_num: u256 = self.my_sto_tuple.item0
+   │                        ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:34:24
+   │
+34 │         my_num: u256 = self.my_sto_tuple.item0
+   │                        ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:36:13
+   │
+36 │             self.my_sto_tuple.item0,
+   │             ^^^^^^^^^^^^^^^^^ attributes hash: 5427295442955120331
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Numeric(
+                             I32,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:36:13
+   │
+36 │             self.my_sto_tuple.item0,
+   │             ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:36:13
+   │
+36 │             self.my_sto_tuple.item0,
+   │             ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:37:13
+   │
+37 │             true and false,
+   │             ^^^^ attributes hash: 10866140763116710699
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:37:13
+   │
+37 │             true and false,
+   │             ^^^^ attributes hash: 10866140763116710699
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:37:22
+   │
+37 │             true and false,
+   │                      ^^^^^ attributes hash: 10866140763116710699
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:37:22
+   │
+37 │             true and false,
+   │                      ^^^^^ attributes hash: 10866140763116710699
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:37:13
+   │
+37 │             true and false,
+   │             ^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:37:13
+   │
+37 │             true and false,
+   │             ^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:38:21
+   │
+38 │             address(26)
+   │                     ^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:38:21
+   │
+38 │             address(26)
+   │                     ^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:38:13
+   │
+38 │             address(26)
+   │             ^^^^^^^^^^^ attributes hash: 513065555763557710
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Address,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:38:13
+   │
+38 │             address(26)
+   │             ^^^^^^^^^^^ attributes hash: 513065555763557710
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Address,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:35:43
+   │  
+35 │           my_tuple: (u256, bool, address) = (
+   │ ╭───────────────────────────────────────────^
+36 │ │             self.my_sto_tuple.item0,
+37 │ │             true and false,
+38 │ │             address(26)
+39 │ │         )
+   │ ╰─────────^ attributes hash: 14640869125644683951
+   │  
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Bool,
+                     ),
+                     Base(
+                         Address,
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:35:43
+   │  
+35 │           my_tuple: (u256, bool, address) = (
+   │ ╭───────────────────────────────────────────^
+36 │ │             self.my_sto_tuple.item0,
+37 │ │             true and false,
+38 │ │             address(26)
+39 │ │         )
+   │ ╰─────────^ attributes hash: 14640869125644683951
+   │  
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Bool,
+                     ),
+                     Base(
+                         Address,
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:40:28
+   │
+40 │         self.emit_my_event(my_tuple)
+   │                            ^^^^^^^^ attributes hash: 14640869125644683951
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Bool,
+                     ),
+                     Base(
+                         Address,
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:40:28
+   │
+40 │         self.emit_my_event(my_tuple)
+   │                            ^^^^^^^^ attributes hash: 14640869125644683951
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Bool,
+                     ),
+                     Base(
+                         Address,
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:40:9
+   │
+40 │         self.emit_my_event(my_tuple)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:43:16
+   │
+43 │         return my_tuple.abi_encode()
+   │                ^^^^^^^^ attributes hash: 14640869125644683951
+   │
+   = ExpressionAttributes {
+         typ: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Bool,
+                     ),
+                     Base(
+                         Address,
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:43:16
+   │
+43 │         return my_tuple.abi_encode()
+   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5235017701104600297
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 96,
+                 inner: Byte,
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:43:16
+   │
+43 │         return my_tuple.abi_encode()
+   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5235017701104600297
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 96,
+                 inner: Byte,
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:24:9
+   │
+24 │         emit MyEvent(my_tuple)
+   │         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7180845855031653163
+   │
+   = EventDef {
+         name: "MyEvent",
+         topic: "0x61f3dbecaa72e626e43d4d3e9617d7c4f3c6cba20efd487973b991c1d46f3627",
+         fields: [
+             (
+                 "my_tuple",
+                 Tuple(
+                     Tuple {
+                         items: [
+                             Base(
+                                 Numeric(
+                                     U256,
+                                 ),
+                             ),
+                             Base(
+                                 Bool,
+                             ),
+                             Base(
+                                 Address,
+                             ),
+                         ],
+                     },
+                 ),
+             ),
+         ],
+         indexed_fields: [],
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:7:5
+   │  
+ 7 │ ╭     pub def build_my_tuple(
+ 8 │ │         my_num: u256,
+ 9 │ │         my_bool: bool,
+10 │ │         my_address: address
+11 │ │     ) -> (u256, bool, address):
+12 │ │         return (my_num, my_bool, my_address)
+   │ ╰────────────────────────────────────────────^ attributes hash: 9415884201190221320
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "build_my_tuple",
+         params: [
+             (
+                 "my_num",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+             (
+                 "my_bool",
+                 Base(
+                     Bool,
+                 ),
+             ),
+             (
+                 "my_address",
+                 Base(
+                     Address,
+                 ),
+             ),
+         ],
+         return_type: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Bool,
+                     ),
+                     Base(
+                         Address,
+                     ),
+                 ],
+             },
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:14:5
+   │  
+14 │ ╭     pub def read_my_tuple_item0(my_tuple: (u256, bool, address)) -> u256:
+15 │ │         return my_tuple.item0
+   │ ╰─────────────────────────────^ attributes hash: 9091169294864108441
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "read_my_tuple_item0",
+         params: [
+             (
+                 "my_tuple",
+                 Tuple(
+                     Tuple {
+                         items: [
+                             Base(
+                                 Numeric(
+                                     U256,
+                                 ),
+                             ),
+                             Base(
+                                 Bool,
+                             ),
+                             Base(
+                                 Address,
+                             ),
+                         ],
+                     },
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:17:5
+   │  
+17 │ ╭     pub def read_my_tuple_item1(my_tuple: (u256, bool, address)) -> bool:
+18 │ │         return my_tuple.item1
+   │ ╰─────────────────────────────^ attributes hash: 3826824339952842433
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "read_my_tuple_item1",
+         params: [
+             (
+                 "my_tuple",
+                 Tuple(
+                     Tuple {
+                         items: [
+                             Base(
+                                 Numeric(
+                                     U256,
+                                 ),
+                             ),
+                             Base(
+                                 Bool,
+                             ),
+                             Base(
+                                 Address,
+                             ),
+                         ],
+                     },
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Bool,
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:20:5
+   │  
+20 │ ╭     pub def read_my_tuple_item2(my_tuple: (u256, bool, address)) -> address:
+21 │ │         return my_tuple.item2
+   │ ╰─────────────────────────────^ attributes hash: 267241487307632182
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "read_my_tuple_item2",
+         params: [
+             (
+                 "my_tuple",
+                 Tuple(
+                     Tuple {
+                         items: [
+                             Base(
+                                 Numeric(
+                                     U256,
+                                 ),
+                             ),
+                             Base(
+                                 Bool,
+                             ),
+                             Base(
+                                 Address,
+                             ),
+                         ],
+                     },
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Address,
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:23:5
+   │  
+23 │ ╭     pub def emit_my_event(my_tuple: (u256, bool, address)):
+24 │ │         emit MyEvent(my_tuple)
+   │ ╰──────────────────────────────^ attributes hash: 8416201692856968704
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "emit_my_event",
+         params: [
+             (
+                 "my_tuple",
+                 Tuple(
+                     Tuple {
+                         items: [
+                             Base(
+                                 Numeric(
+                                     U256,
+                                 ),
+                             ),
+                             Base(
+                                 Bool,
+                             ),
+                             Base(
+                                 Address,
+                             ),
+                         ],
+                     },
+                 ),
+             ),
+         ],
+         return_type: Tuple(
+             Tuple {
+                 items: [],
+             },
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:26:5
+   │  
+26 │ ╭     pub def set_my_sto_tuple(my_u256: u256, my_i32: i32):
+27 │ │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+28 │ │         self.my_sto_tuple = (my_u256, my_i32)
+   │ ╰─────────────────────────────────────────────^ attributes hash: 15145010389276362855
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "set_my_sto_tuple",
+         params: [
+             (
+                 "my_u256",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+             (
+                 "my_i32",
+                 Base(
+                     Numeric(
+                         I32,
+                     ),
+                 ),
+             ),
+         ],
+         return_type: Tuple(
+             Tuple {
+                 items: [],
+             },
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:30:5
+   │  
+30 │ ╭     pub def get_my_sto_tuple() -> (u256, i32):
+31 │ │         return self.my_sto_tuple.to_mem()
+   │ ╰─────────────────────────────────────────^ attributes hash: 1032038852726894670
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "get_my_sto_tuple",
+         params: [],
+         return_type: Tuple(
+             Tuple {
+                 items: [
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                     Base(
+                         Numeric(
+                             I32,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:33:5
+   │  
+33 │ ╭     pub def build_tuple_and_emit():
+34 │ │         my_num: u256 = self.my_sto_tuple.item0
+35 │ │         my_tuple: (u256, bool, address) = (
+36 │ │             self.my_sto_tuple.item0,
+   · │
+39 │ │         )
+40 │ │         self.emit_my_event(my_tuple)
+   │ ╰────────────────────────────────────^ attributes hash: 13549455973056776159
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "build_tuple_and_emit",
+         params: [],
+         return_type: Tuple(
+             Tuple {
+                 items: [],
+             },
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:42:5
+   │  
+42 │ ╭     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> bytes[96]:
+43 │ │         return my_tuple.abi_encode()
+   │ ╰────────────────────────────────────^ attributes hash: 15781795395741685743
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "encode_my_tuple",
+         params: [
+             (
+                 "my_tuple",
+                 Tuple(
+                     Tuple {
+                         items: [
+                             Base(
+                                 Numeric(
+                                     U256,
+                                 ),
+                             ),
+                             Base(
+                                 Bool,
+                             ),
+                             Base(
+                                 Address,
+                             ),
+                         ],
+                     },
+                 ),
+             ),
+         ],
+         return_type: Array(
+             Array {
+                 size: 96,
+                 inner: Byte,
+             },
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:34:9
+   │
+34 │         my_num: u256 = self.my_sto_tuple.item0
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:35:9
+   │  
+35 │ ╭         my_tuple: (u256, bool, address) = (
+36 │ │             self.my_sto_tuple.item0,
+37 │ │             true and false,
+38 │ │             address(26)
+39 │ │         )
+   │ ╰─────────^ attributes hash: 7508447797123000311
+   │  
+   = Tuple(
+         Tuple {
+             items: [
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+                 Base(
+                     Bool,
+                 ),
+                 Base(
+                     Address,
+                 ),
+             ],
+         },
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:1:1
+   │  
+ 1 │ ╭ contract Foo:
+ 2 │ │     my_sto_tuple: (u256, i32)
+ 3 │ │ 
+ 4 │ │     event MyEvent:
+   · │
+42 │ │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> bytes[96]:
+43 │ │         return my_tuple.abi_encode()
+   │ ╰────────────────────────────────────^ attributes hash: 13334559621493045012
+   │  
+   = ContractAttributes {
+         public_functions: [
+             FunctionAttributes {
+                 is_public: true,
+                 name: "build_my_tuple",
+                 params: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_address",
+                         Base(
+                             Address,
+                         ),
+                     ),
+                 ],
+                 return_type: Tuple(
+                     Tuple {
+                         items: [
+                             Base(
+                                 Numeric(
+                                     U256,
+                                 ),
+                             ),
+                             Base(
+                                 Bool,
+                             ),
+                             Base(
+                                 Address,
+                             ),
+                         ],
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "build_tuple_and_emit",
+                 params: [],
+                 return_type: Tuple(
+                     Tuple {
+                         items: [],
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "emit_my_event",
+                 params: [
+                     (
+                         "my_tuple",
+                         Tuple(
+                             Tuple {
+                                 items: [
+                                     Base(
+                                         Numeric(
+                                             U256,
+                                         ),
+                                     ),
+                                     Base(
+                                         Bool,
+                                     ),
+                                     Base(
+                                         Address,
+                                     ),
+                                 ],
+                             },
+                         ),
+                     ),
+                 ],
+                 return_type: Tuple(
+                     Tuple {
+                         items: [],
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "encode_my_tuple",
+                 params: [
+                     (
+                         "my_tuple",
+                         Tuple(
+                             Tuple {
+                                 items: [
+                                     Base(
+                                         Numeric(
+                                             U256,
+                                         ),
+                                     ),
+                                     Base(
+                                         Bool,
+                                     ),
+                                     Base(
+                                         Address,
+                                     ),
+                                 ],
+                             },
+                         ),
+                     ),
+                 ],
+                 return_type: Array(
+                     Array {
+                         size: 96,
+                         inner: Byte,
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "get_my_sto_tuple",
+                 params: [],
+                 return_type: Tuple(
+                     Tuple {
+                         items: [
+                             Base(
+                                 Numeric(
+                                     U256,
+                                 ),
+                             ),
+                             Base(
+                                 Numeric(
+                                     I32,
+                                 ),
+                             ),
+                         ],
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "read_my_tuple_item0",
+                 params: [
+                     (
+                         "my_tuple",
+                         Tuple(
+                             Tuple {
+                                 items: [
+                                     Base(
+                                         Numeric(
+                                             U256,
+                                         ),
+                                     ),
+                                     Base(
+                                         Bool,
+                                     ),
+                                     Base(
+                                         Address,
+                                     ),
+                                 ],
+                             },
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "read_my_tuple_item1",
+                 params: [
+                     (
+                         "my_tuple",
+                         Tuple(
+                             Tuple {
+                                 items: [
+                                     Base(
+                                         Numeric(
+                                             U256,
+                                         ),
+                                     ),
+                                     Base(
+                                         Bool,
+                                     ),
+                                     Base(
+                                         Address,
+                                     ),
+                                 ],
+                             },
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Bool,
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "read_my_tuple_item2",
+                 params: [
+                     (
+                         "my_tuple",
+                         Tuple(
+                             Tuple {
+                                 items: [
+                                     Base(
+                                         Numeric(
+                                             U256,
+                                         ),
+                                     ),
+                                     Base(
+                                         Bool,
+                                     ),
+                                     Base(
+                                         Address,
+                                     ),
+                                 ],
+                             },
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Address,
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "set_my_sto_tuple",
+                 params: [
+                     (
+                         "my_u256",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_i32",
+                         Base(
+                             Numeric(
+                                 I32,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Tuple(
+                     Tuple {
+                         items: [],
+                     },
+                 ),
+             },
+         ],
+         init_function: None,
+         events: [
+             EventDef {
+                 name: "MyEvent",
+                 topic: "0x61f3dbecaa72e626e43d4d3e9617d7c4f3c6cba20efd487973b991c1d46f3627",
+                 fields: [
+                     (
+                         "my_tuple",
+                         Tuple(
+                             Tuple {
+                                 items: [
+                                     Base(
+                                         Numeric(
+                                             U256,
+                                         ),
+                                     ),
+                                     Base(
+                                         Bool,
+                                     ),
+                                     Base(
+                                         Address,
+                                     ),
+                                 ],
+                             },
+                         ),
+                     ),
+                 ],
+                 indexed_fields: [],
+             },
+         ],
+         string_literals: {},
+         structs: [],
+         external_contracts: [],
+         created_contracts: {},
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:27:43
+   │
+27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                                           ^^^^ attributes hash: 11360107092273899494
+   │
+   = TypeConstructor {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:27:82
+   │
+27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                                                                                  ^^^ attributes hash: 3683192896626140415
+   │
+   = TypeConstructor {
+         typ: Base(
+             Numeric(
+                 I32,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:31:16
+   │
+31 │         return self.my_sto_tuple.to_mem()
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │
+   = ValueAttribute
+
+note: 
+   ┌─ stress/tuple_stress.fe:38:13
+   │
+38 │             address(26)
+   │             ^^^^^^^ attributes hash: 6114858510168753394
+   │
+   = TypeConstructor {
+         typ: Base(
+             Address,
+         ),
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:40:9
+   │
+40 │         self.emit_my_event(my_tuple)
+   │         ^^^^^^^^^^^^^^^^^^ attributes hash: 8313116799945270674
+   │
+   = SelfAttribute {
+         func_name: "emit_my_event",
+     }
+
+note: 
+   ┌─ stress/tuple_stress.fe:43:16
+   │
+43 │         return my_tuple.abi_encode()
+   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │
+   = ValueAttribute
+
+note: 
+  ┌─ stress/tuple_stress.fe:4:5
+  │  
+4 │ ╭     event MyEvent:
+5 │ │         my_tuple: (u256, bool, address)
+  │ ╰───────────────────────────────────────^ attributes hash: 7180845855031653163
+  │  
+  = EventDef {
+        name: "MyEvent",
+        topic: "0x61f3dbecaa72e626e43d4d3e9617d7c4f3c6cba20efd487973b991c1d46f3627",
+        fields: [
+            (
+                "my_tuple",
+                Tuple(
+                    Tuple {
+                        items: [
+                            Base(
+                                Numeric(
+                                    U256,
+                                ),
+                            ),
+                            Base(
+                                Bool,
+                            ),
+                            Base(
+                                Address,
+                            ),
+                        ],
+                    },
+                ),
+            ),
+        ],
+        indexed_fields: [],
+    }
+
+note: 
+  ┌─ stress/tuple_stress.fe:5:19
+  │
+5 │         my_tuple: (u256, bool, address)
+  │                   ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2987591369032148946
+  │
+  = Tuple(
+        Tuple {
+            items: [
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+                Base(
+                    Bool,
+                ),
+                Base(
+                    Address,
+                ),
+            ],
+        },
+    )
+
+note: 
+  ┌─ stress/tuple_stress.fe:8:17
+  │
+8 │         my_num: u256,
+  │                 ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ stress/tuple_stress.fe:9:18
+  │
+9 │         my_bool: bool,
+  │                  ^^^^ attributes hash: 8311861578736502650
+  │
+  = Base(
+        Bool,
+    )
+
+note: 
+   ┌─ stress/tuple_stress.fe:10:21
+   │
+10 │         my_address: address
+   │                     ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:11:10
+   │
+11 │     ) -> (u256, bool, address):
+   │          ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2987591369032148946
+   │
+   = Tuple(
+         Tuple {
+             items: [
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+                 Base(
+                     Bool,
+                 ),
+                 Base(
+                     Address,
+                 ),
+             ],
+         },
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:14:43
+   │
+14 │     pub def read_my_tuple_item0(my_tuple: (u256, bool, address)) -> u256:
+   │                                           ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2987591369032148946
+   │
+   = Tuple(
+         Tuple {
+             items: [
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+                 Base(
+                     Bool,
+                 ),
+                 Base(
+                     Address,
+                 ),
+             ],
+         },
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:14:69
+   │
+14 │     pub def read_my_tuple_item0(my_tuple: (u256, bool, address)) -> u256:
+   │                                                                     ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:17:43
+   │
+17 │     pub def read_my_tuple_item1(my_tuple: (u256, bool, address)) -> bool:
+   │                                           ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2987591369032148946
+   │
+   = Tuple(
+         Tuple {
+             items: [
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+                 Base(
+                     Bool,
+                 ),
+                 Base(
+                     Address,
+                 ),
+             ],
+         },
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:17:69
+   │
+17 │     pub def read_my_tuple_item1(my_tuple: (u256, bool, address)) -> bool:
+   │                                                                     ^^^^ attributes hash: 8311861578736502650
+   │
+   = Base(
+         Bool,
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:20:43
+   │
+20 │     pub def read_my_tuple_item2(my_tuple: (u256, bool, address)) -> address:
+   │                                           ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2987591369032148946
+   │
+   = Tuple(
+         Tuple {
+             items: [
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+                 Base(
+                     Bool,
+                 ),
+                 Base(
+                     Address,
+                 ),
+             ],
+         },
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:20:69
+   │
+20 │     pub def read_my_tuple_item2(my_tuple: (u256, bool, address)) -> address:
+   │                                                                     ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:23:37
+   │
+23 │     pub def emit_my_event(my_tuple: (u256, bool, address)):
+   │                                     ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2987591369032148946
+   │
+   = Tuple(
+         Tuple {
+             items: [
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+                 Base(
+                     Bool,
+                 ),
+                 Base(
+                     Address,
+                 ),
+             ],
+         },
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:26:39
+   │
+26 │     pub def set_my_sto_tuple(my_u256: u256, my_i32: i32):
+   │                                       ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:26:53
+   │
+26 │     pub def set_my_sto_tuple(my_u256: u256, my_i32: i32):
+   │                                                     ^^^ attributes hash: 3647277037255055228
+   │
+   = Base(
+         Numeric(
+             I32,
+         ),
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:30:35
+   │
+30 │     pub def get_my_sto_tuple() -> (u256, i32):
+   │                                   ^^^^^^^^^^^ attributes hash: 12005982691272588974
+   │
+   = Tuple(
+         Tuple {
+             items: [
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+                 Base(
+                     Numeric(
+                         I32,
+                     ),
+                 ),
+             ],
+         },
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:42:39
+   │
+42 │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> bytes[96]:
+   │                                       ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2987591369032148946
+   │
+   = Tuple(
+         Tuple {
+             items: [
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+                 Base(
+                     Bool,
+                 ),
+                 Base(
+                     Address,
+                 ),
+             ],
+         },
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:42:65
+   │
+42 │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> bytes[96]:
+   │                                                                 ^^^^^^^^^ attributes hash: 8593777673114136086
+   │
+   = Array(
+         Array {
+             size: 96,
+             inner: Byte,
+         },
+     )
+
+note: 
+  ┌─ stress/tuple_stress.fe:2:19
+  │
+2 │     my_sto_tuple: (u256, i32)
+  │                   ^^^^^^^^^^^ attributes hash: 12005982691272588974
+  │
+  = Tuple(
+        Tuple {
+            items: [
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+                Base(
+                    Numeric(
+                        I32,
+                    ),
+                ),
+            ],
+        },
+    )
+
+note: 
+   ┌─ stress/tuple_stress.fe:34:17
+   │
+34 │         my_num: u256 = self.my_sto_tuple.item0
+   │                 ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:35:19
+   │
+35 │         my_tuple: (u256, bool, address) = (
+   │                   ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2987591369032148946
+   │
+   = Tuple(
+         Tuple {
+             items: [
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+                 Base(
+                     Bool,
+                 ),
+                 Base(
+                     Address,
+                 ),
+             ],
+         },
+     )
+
+

@@ -626,6 +626,7 @@ dependencies = [
  "fe-common",
  "fe-parser",
  "hex",
+ "insta",
  "lexical-core",
  "num-bigint",
  "rstest",

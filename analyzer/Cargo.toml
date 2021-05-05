@@ -16,4 +16,5 @@ strum = { version = "0.20.0", features = ["derive"] }
 lexical-core = "0.7.6"
 
 [dev-dependencies]
+insta = "1.7.1"
 rstest = "0.6.4"

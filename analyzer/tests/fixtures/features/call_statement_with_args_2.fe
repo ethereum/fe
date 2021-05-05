@@ -1,0 +1,10 @@
+contract Foo:
+    baz: map<u256, u256>
+
+    def assign(val: u256) -> u256:
+        self.baz[0] = val
+        return val
+
+    pub def bar() -> u256:
+        self.assign(100)
+        return self.baz[0]
