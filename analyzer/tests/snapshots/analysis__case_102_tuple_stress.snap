@@ -316,36 +316,6 @@ note:
      }
 
 note: 
-   ┌─ stress/tuple_stress.fe:12:17
-   │
-12 │         return (my_num, my_bool, my_address)
-   │                 ^^^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:12:25
-   │
-12 │         return (my_num, my_bool, my_address)
-   │                         ^^^^^^^ attributes hash: 10866140763116710699
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/tuple_stress.fe:12:25
    │
 12 │         return (my_num, my_bool, my_address)
@@ -370,48 +340,6 @@ note:
              Address,
          ),
          location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:12:34
-   │
-12 │         return (my_num, my_bool, my_address)
-   │                                  ^^^^^^^^^^ attributes hash: 513065555763557710
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:12:16
-   │
-12 │         return (my_num, my_bool, my_address)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14640869125644683951
-   │
-   = ExpressionAttributes {
-         typ: Tuple(
-             Tuple {
-                 items: [
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                     Base(
-                         Bool,
-                     ),
-                     Base(
-                         Address,
-                     ),
-                 ],
-             },
-         ),
-         location: Memory,
          move_location: None,
      }
 
@@ -490,24 +418,6 @@ note:
      }
 
 note: 
-   ┌─ stress/tuple_stress.fe:15:16
-   │
-15 │         return my_tuple.item0
-   │                ^^^^^^^^^^^^^^ attributes hash: 11934894478308934606
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Memory,
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
    ┌─ stress/tuple_stress.fe:18:16
    │
 18 │         return my_tuple.item1
@@ -533,22 +443,6 @@ note:
          ),
          location: Memory,
          move_location: None,
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:18:16
-   │
-18 │         return my_tuple.item1
-   │                ^^^^^^^^^^^^^^ attributes hash: 16124721822221882146
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Memory,
-         move_location: Some(
-             Value,
-         ),
      }
 
 note: 
@@ -609,50 +503,6 @@ note:
          move_location: Some(
              Value,
          ),
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:21:16
-   │
-21 │         return my_tuple.item2
-   │                ^^^^^^^^^^^^^^ attributes hash: 4842680713810666204
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Memory,
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:24:22
-   │
-24 │         emit MyEvent(my_tuple)
-   │                      ^^^^^^^^ attributes hash: 14640869125644683951
-   │
-   = ExpressionAttributes {
-         typ: Tuple(
-             Tuple {
-                 items: [
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                     Base(
-                         Bool,
-                     ),
-                     Base(
-                         Address,
-                     ),
-                 ],
-             },
-         ),
-         location: Memory,
-         move_location: None,
      }
 
 note: 
@@ -737,44 +587,6 @@ note:
      }
 
 note: 
-   ┌─ stress/tuple_stress.fe:27:16
-   │
-27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:27:48
-   │
-27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
-   │                                                ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/tuple_stress.fe:27:48
    │
 27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
@@ -801,36 +613,6 @@ note:
              Numeric(
                  U256,
              ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:27:43
-   │
-27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
-   │                                           ^^^^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:27:16
-   │
-27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
          ),
          location: Value,
          move_location: None,
@@ -904,44 +686,6 @@ note:
      }
 
 note: 
-   ┌─ stress/tuple_stress.fe:27:55
-   │
-27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
-   │                                                       ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17262025105149179489
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I32,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:27:86
-   │
-27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
-   │                                                                                      ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/tuple_stress.fe:27:86
    │
 27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
@@ -968,36 +712,6 @@ note:
              Numeric(
                  I32,
              ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:27:82
-   │
-27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
-   │                                                                                  ^^^^^^ attributes hash: 13972995067286817043
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:27:55
-   │
-27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
-   │                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
          ),
          location: Value,
          move_location: None,
@@ -1072,38 +786,6 @@ note:
          typ: Base(
              Numeric(
                  U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:28:30
-   │
-28 │         self.my_sto_tuple = (my_u256, my_i32)
-   │                              ^^^^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:28:39
-   │
-28 │         self.my_sto_tuple = (my_u256, my_i32)
-   │                                       ^^^^^^ attributes hash: 13972995067286817043
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I32,
              ),
          ),
          location: Value,
@@ -1218,39 +900,6 @@ note:
      }
 
 note: 
-   ┌─ stress/tuple_stress.fe:31:16
-   │
-31 │         return self.my_sto_tuple.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7737538719066505855
-   │
-   = ExpressionAttributes {
-         typ: Tuple(
-             Tuple {
-                 items: [
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                     Base(
-                         Numeric(
-                             I32,
-                         ),
-                     ),
-                 ],
-             },
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Memory,
-         ),
-     }
-
-note: 
    ┌─ stress/tuple_stress.fe:34:24
    │
 34 │         my_num: u256 = self.my_sto_tuple.item0
@@ -1279,28 +928,6 @@ note:
              ),
          },
          move_location: None,
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:34:24
-   │
-34 │         my_num: u256 = self.my_sto_tuple.item0
-   │                        ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
      }
 
 note: 
@@ -1379,42 +1006,6 @@ note:
      }
 
 note: 
-   ┌─ stress/tuple_stress.fe:36:13
-   │
-36 │             self.my_sto_tuple.item0,
-   │             ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:37:13
-   │
-37 │             true and false,
-   │             ^^^^ attributes hash: 10866140763116710699
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/tuple_stress.fe:37:13
    │
 37 │             true and false,
@@ -1433,34 +1024,6 @@ note:
    │
 37 │             true and false,
    │                      ^^^^^ attributes hash: 10866140763116710699
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:37:22
-   │
-37 │             true and false,
-   │                      ^^^^^ attributes hash: 10866140763116710699
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:37:13
-   │
-37 │             true and false,
-   │             ^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1501,36 +1064,6 @@ note:
      }
 
 note: 
-   ┌─ stress/tuple_stress.fe:38:21
-   │
-38 │             address(26)
-   │                     ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:38:13
-   │
-38 │             address(26)
-   │             ^^^^^^^^^^^ attributes hash: 513065555763557710
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/tuple_stress.fe:38:13
    │
 38 │             address(26)
@@ -1555,67 +1088,6 @@ note:
 39 │ │         )
    │ ╰─────────^ attributes hash: 14640869125644683951
    │  
-   = ExpressionAttributes {
-         typ: Tuple(
-             Tuple {
-                 items: [
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                     Base(
-                         Bool,
-                     ),
-                     Base(
-                         Address,
-                     ),
-                 ],
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:35:43
-   │  
-35 │           my_tuple: (u256, bool, address) = (
-   │ ╭───────────────────────────────────────────^
-36 │ │             self.my_sto_tuple.item0,
-37 │ │             true and false,
-38 │ │             address(26)
-39 │ │         )
-   │ ╰─────────^ attributes hash: 14640869125644683951
-   │  
-   = ExpressionAttributes {
-         typ: Tuple(
-             Tuple {
-                 items: [
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                     Base(
-                         Bool,
-                     ),
-                     Base(
-                         Address,
-                     ),
-                 ],
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:40:28
-   │
-40 │         self.emit_my_event(my_tuple)
-   │                            ^^^^^^^^ attributes hash: 14640869125644683951
-   │
    = ExpressionAttributes {
          typ: Tuple(
              Tuple {
@@ -1704,23 +1176,6 @@ note:
                          Address,
                      ),
                  ],
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:43:16
-   │
-43 │         return my_tuple.abi_encode()
-   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5235017701104600297
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 96,
-                 inner: Byte,
              },
          ),
          location: Memory,

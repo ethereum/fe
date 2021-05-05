@@ -43,38 +43,6 @@ note:
     }
 
 note: 
-  ┌─ features/return_i256.fe:3:17
-  │
-3 │         return -3
-  │                 ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_i256.fe:3:16
-  │
-3 │         return -3
-  │                ^^ attributes hash: 17351186385905986417
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                I256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/return_i256.fe:3:16
   │
 3 │         return -3

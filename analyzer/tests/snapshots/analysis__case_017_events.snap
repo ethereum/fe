@@ -109,58 +109,10 @@ note:
      }
 
 note: 
-   ┌─ features/events.fe:20:19
-   │
-20 │         emit Nums(26, 42)
-   │                   ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/events.fe:20:23
    │
 20 │         emit Nums(26, 42)
    │                       ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/events.fe:20:23
-   │
-20 │         emit Nums(26, 42)
-   │                       ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/events.fe:23:20
-   │
-23 │         emit Bases(26, addr)
-   │                    ^^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -203,20 +155,6 @@ note:
      }
 
 note: 
-   ┌─ features/events.fe:23:24
-   │
-23 │         emit Bases(26, addr)
-   │                        ^^^^ attributes hash: 513065555763557710
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/events.fe:26:18
    │
 26 │         emit Mix(26, addr, 42, my_bytes)
@@ -227,36 +165,6 @@ note:
              Numeric(
                  U256,
              ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/events.fe:26:18
-   │
-26 │         emit Mix(26, addr, 42, my_bytes)
-   │                  ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/events.fe:26:22
-   │
-26 │         emit Mix(26, addr, 42, my_bytes)
-   │                      ^^^^ attributes hash: 513065555763557710
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
          ),
          location: Value,
          move_location: None,
@@ -289,39 +197,6 @@ note:
              ),
          ),
          location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/events.fe:26:28
-   │
-26 │         emit Mix(26, addr, 42, my_bytes)
-   │                            ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/events.fe:26:32
-   │
-26 │         emit Mix(26, addr, 42, my_bytes)
-   │                                ^^^^^^^^ attributes hash: 6578844474441717363
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 100,
-                 inner: Byte,
-             },
-         ),
-         location: Memory,
          move_location: None,
      }
 
@@ -356,22 +231,6 @@ note:
              },
          ),
          location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/events.fe:30:15
-   │
-30 │         addrs[0] = addr1
-   │               ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
          move_location: None,
      }
 
@@ -453,22 +312,6 @@ note:
      }
 
 note: 
-   ┌─ features/events.fe:31:15
-   │
-31 │         addrs[1] = addr2
-   │               ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/events.fe:31:9
    │
 31 │         addrs[1] = addr2
@@ -493,23 +336,6 @@ note:
              Address,
          ),
          location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/events.fe:32:24
-   │
-32 │         emit Addresses(addrs)
-   │                        ^^^^^ attributes hash: 7002368435280568865
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 2,
-                 inner: Address,
-             },
-         ),
-         location: Memory,
          move_location: None,
      }
 

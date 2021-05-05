@@ -184,22 +184,6 @@ note:
     }
 
 note: 
-  ┌─ features/external_contract.fe:8:22
-  │
-8 │         emit MyEvent(my_num, my_addrs, my_string)
-  │                      ^^^^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/external_contract.fe:8:30
   │
 8 │         emit MyEvent(my_num, my_addrs, my_string)
@@ -210,39 +194,6 @@ note:
             Array {
                 size: 5,
                 inner: Address,
-            },
-        ),
-        location: Memory,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/external_contract.fe:8:30
-  │
-8 │         emit MyEvent(my_num, my_addrs, my_string)
-  │                              ^^^^^^^^ attributes hash: 9740078941645877256
-  │
-  = ExpressionAttributes {
-        typ: Array(
-            Array {
-                size: 5,
-                inner: Address,
-            },
-        ),
-        location: Memory,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/external_contract.fe:8:40
-  │
-8 │         emit MyEvent(my_num, my_addrs, my_string)
-  │                                        ^^^^^^^^^ attributes hash: 6861635195207119580
-  │
-  = ExpressionAttributes {
-        typ: String(
-            FeString {
-                max_size: 11,
             },
         ),
         location: Memory,
@@ -281,22 +232,6 @@ note:
              },
          ),
          location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/external_contract.fe:12:18
-   │
-12 │         my_array[0] = a
-   │                  ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
          move_location: None,
      }
 
@@ -384,22 +319,6 @@ note:
      }
 
 note: 
-   ┌─ features/external_contract.fe:13:18
-   │
-13 │         my_array[1] = a * b
-   │                  ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/external_contract.fe:13:9
    │
 13 │         my_array[1] = a * b
@@ -420,38 +339,6 @@ note:
    │
 13 │         my_array[1] = a * b
    │                       ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/external_contract.fe:13:23
-   │
-13 │         my_array[1] = a * b
-   │                       ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/external_contract.fe:13:27
-   │
-13 │         my_array[1] = a * b
-   │                           ^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -531,22 +418,6 @@ note:
      }
 
 note: 
-   ┌─ features/external_contract.fe:14:18
-   │
-14 │         my_array[2] = b
-   │                  ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/external_contract.fe:14:9
    │
 14 │         my_array[2] = b
@@ -598,25 +469,6 @@ note:
      }
 
 note: 
-   ┌─ features/external_contract.fe:15:16
-   │
-15 │         return my_array
-   │                ^^^^^^^^ attributes hash: 4935018943425161537
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 3,
-                 inner: Numeric(
-                     U256,
-                 ),
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/external_contract.fe:24:24
    │
 24 │         foo: Foo = Foo(foo_address)
@@ -625,104 +477,6 @@ note:
    = ExpressionAttributes {
          typ: Base(
              Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/external_contract.fe:24:24
-   │
-24 │         foo: Foo = Foo(foo_address)
-   │                        ^^^^^^^^^^^ attributes hash: 513065555763557710
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/external_contract.fe:24:20
-   │
-24 │         foo: Foo = Foo(foo_address)
-   │                    ^^^^^^^^^^^^^^^^ attributes hash: 15112974837598546431
-   │
-   = ExpressionAttributes {
-         typ: Contract(
-             Contract {
-                 name: "Foo",
-                 functions: [
-                     FunctionAttributes {
-                         is_public: true,
-                         name: "build_array",
-                         params: [
-                             (
-                                 "a",
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                             ),
-                             (
-                                 "b",
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                             ),
-                         ],
-                         return_type: Array(
-                             Array {
-                                 size: 3,
-                                 inner: Numeric(
-                                     U256,
-                                 ),
-                             },
-                         ),
-                     },
-                     FunctionAttributes {
-                         is_public: true,
-                         name: "emit_event",
-                         params: [
-                             (
-                                 "my_num",
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                             ),
-                             (
-                                 "my_addrs",
-                                 Array(
-                                     Array {
-                                         size: 5,
-                                         inner: Address,
-                                     },
-                                 ),
-                             ),
-                             (
-                                 "my_string",
-                                 String(
-                                     FeString {
-                                         max_size: 11,
-                                     },
-                                 ),
-                             ),
-                         ],
-                         return_type: Tuple(
-                             Tuple {
-                                 items: [],
-                             },
-                         ),
-                     },
-                 ],
-             },
          ),
          location: Value,
          move_location: None,
@@ -913,22 +667,6 @@ note:
      }
 
 note: 
-   ┌─ features/external_contract.fe:25:24
-   │
-25 │         foo.emit_event(my_num, my_addrs, my_string)
-   │                        ^^^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/external_contract.fe:25:32
    │
 25 │         foo.emit_event(my_num, my_addrs, my_string)
@@ -939,39 +677,6 @@ note:
              Array {
                  size: 5,
                  inner: Address,
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/external_contract.fe:25:32
-   │
-25 │         foo.emit_event(my_num, my_addrs, my_string)
-   │                                ^^^^^^^^ attributes hash: 9740078941645877256
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 5,
-                 inner: Address,
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/external_contract.fe:25:42
-   │
-25 │         foo.emit_event(my_num, my_addrs, my_string)
-   │                                          ^^^^^^^^^ attributes hash: 6861635195207119580
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 11,
              },
          ),
          location: Memory,
@@ -1019,104 +724,6 @@ note:
    = ExpressionAttributes {
          typ: Base(
              Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/external_contract.fe:32:24
-   │
-32 │         foo: Foo = Foo(foo_address)
-   │                        ^^^^^^^^^^^ attributes hash: 513065555763557710
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/external_contract.fe:32:20
-   │
-32 │         foo: Foo = Foo(foo_address)
-   │                    ^^^^^^^^^^^^^^^^ attributes hash: 15112974837598546431
-   │
-   = ExpressionAttributes {
-         typ: Contract(
-             Contract {
-                 name: "Foo",
-                 functions: [
-                     FunctionAttributes {
-                         is_public: true,
-                         name: "build_array",
-                         params: [
-                             (
-                                 "a",
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                             ),
-                             (
-                                 "b",
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                             ),
-                         ],
-                         return_type: Array(
-                             Array {
-                                 size: 3,
-                                 inner: Numeric(
-                                     U256,
-                                 ),
-                             },
-                         ),
-                     },
-                     FunctionAttributes {
-                         is_public: true,
-                         name: "emit_event",
-                         params: [
-                             (
-                                 "my_num",
-                                 Base(
-                                     Numeric(
-                                         U256,
-                                     ),
-                                 ),
-                             ),
-                             (
-                                 "my_addrs",
-                                 Array(
-                                     Array {
-                                         size: 5,
-                                         inner: Address,
-                                     },
-                                 ),
-                             ),
-                             (
-                                 "my_string",
-                                 String(
-                                     FeString {
-                                         max_size: 11,
-                                     },
-                                 ),
-                             ),
-                         ],
-                         return_type: Tuple(
-                             Tuple {
-                                 items: [],
-                             },
-                         ),
-                     },
-                 ],
-             },
          ),
          location: Value,
          move_location: None,
@@ -1307,22 +914,6 @@ note:
      }
 
 note: 
-   ┌─ features/external_contract.fe:33:32
-   │
-33 │         return foo.build_array(a, b)
-   │                                ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/external_contract.fe:33:35
    │
 33 │         return foo.build_array(a, b)
@@ -1335,41 +926,6 @@ note:
              ),
          ),
          location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/external_contract.fe:33:35
-   │
-33 │         return foo.build_array(a, b)
-   │                                   ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/external_contract.fe:33:16
-   │
-33 │         return foo.build_array(a, b)
-   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4935018943425161537
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 3,
-                 inner: Numeric(
-                     U256,
-                 ),
-             },
-         ),
-         location: Memory,
          move_location: None,
      }
 

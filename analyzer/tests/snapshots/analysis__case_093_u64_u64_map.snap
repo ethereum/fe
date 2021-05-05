@@ -106,42 +106,6 @@ note:
     }
 
 note: 
-  ┌─ features/u64_u64_map.fe:5:25
-  │
-5 │         return self.bar[key]
-  │                         ^^^ attributes hash: 3044889006329355385
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U64,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/u64_u64_map.fe:5:16
-  │
-5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ attributes hash: 15688310892038921170
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U64,
-            ),
-        ),
-        location: Storage {
-            nonce: None,
-        },
-        move_location: Some(
-            Value,
-        ),
-    }
-
-note: 
   ┌─ features/u64_u64_map.fe:5:16
   │
 5 │         return self.bar[key]
@@ -185,22 +149,6 @@ note:
                 0,
             ),
         },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/u64_u64_map.fe:8:18
-  │
-8 │         self.bar[key] = value
-  │                  ^^^ attributes hash: 3044889006329355385
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U64,
-            ),
-        ),
-        location: Value,
         move_location: None,
     }
 

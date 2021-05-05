@@ -62,22 +62,6 @@ note:
     }
 
 note: 
-  ┌─ features/for_loop_with_continue.fe:5:18
-  │
-5 │         my_array[0] = 2
-  │                  ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/for_loop_with_continue.fe:5:9
   │
 5 │         my_array[0] = 2
@@ -125,22 +109,6 @@ note:
             },
         ),
         location: Memory,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:6:18
-  │
-6 │         my_array[1] = 3
-  │                  ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
         move_location: None,
     }
 
@@ -228,22 +196,6 @@ note:
     }
 
 note: 
-  ┌─ features/for_loop_with_continue.fe:7:18
-  │
-7 │         my_array[2] = 5
-  │                  ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/for_loop_with_continue.fe:7:9
   │
 7 │         my_array[2] = 5
@@ -291,22 +243,6 @@ note:
             },
         ),
         location: Memory,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:8:18
-  │
-8 │         my_array[3] = 6
-  │                  ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
         move_location: None,
     }
 
@@ -394,22 +330,6 @@ note:
     }
 
 note: 
-  ┌─ features/for_loop_with_continue.fe:9:18
-  │
-9 │         my_array[4] = 9
-  │                  ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/for_loop_with_continue.fe:9:9
   │
 9 │         my_array[4] = 9
@@ -440,22 +360,6 @@ note:
         location: Value,
         move_location: None,
     }
-
-note: 
-   ┌─ features/for_loop_with_continue.fe:10:21
-   │
-10 │         sum: u256 = 0
-   │                     ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
 
 note: 
    ┌─ features/for_loop_with_continue.fe:10:21
@@ -509,38 +413,6 @@ note:
      }
 
 note: 
-   ┌─ features/for_loop_with_continue.fe:12:16
-   │
-12 │             if i % 2 == 0:
-   │                ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/for_loop_with_continue.fe:12:20
-   │
-12 │             if i % 2 == 0:
-   │                    ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/for_loop_with_continue.fe:12:20
    │
 12 │             if i % 2 == 0:
@@ -561,38 +433,6 @@ note:
    │
 12 │             if i % 2 == 0:
    │                ^^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/for_loop_with_continue.fe:12:16
-   │
-12 │             if i % 2 == 0:
-   │                ^^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/for_loop_with_continue.fe:12:25
-   │
-12 │             if i % 2 == 0:
-   │                         ^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -667,38 +507,6 @@ note:
      }
 
 note: 
-   ┌─ features/for_loop_with_continue.fe:14:19
-   │
-14 │             sum = sum + i
-   │                   ^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/for_loop_with_continue.fe:14:25
-   │
-14 │             sum = sum + i
-   │                         ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/for_loop_with_continue.fe:14:25
    │
 14 │             sum = sum + i
@@ -719,22 +527,6 @@ note:
    │
 14 │             sum = sum + i
    │                   ^^^^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/for_loop_with_continue.fe:15:16
-   │
-15 │         return sum
-   │                ^^^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(

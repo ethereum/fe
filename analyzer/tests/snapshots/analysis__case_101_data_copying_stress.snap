@@ -461,44 +461,6 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:32:34
-   │
-32 │         my_2nd_array: u256[10] = my_array
-   │                                  ^^^^^^^^ attributes hash: 12880944358712268851
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 10,
-                 inner: Numeric(
-                     U256,
-                 ),
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:33:34
-   │
-33 │         my_3rd_array: u256[10] = my_2nd_array
-   │                                  ^^^^^^^^^^^^ attributes hash: 12880944358712268851
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 10,
-                 inner: Numeric(
-                     U256,
-                 ),
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/data_copying_stress.fe:33:34
    │
 33 │         my_3rd_array: u256[10] = my_2nd_array
@@ -553,22 +515,6 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:35:25
-   │
-35 │         assert my_array[3] != 5
-   │                         ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/data_copying_stress.fe:35:16
    │
 35 │         assert my_array[3] != 5
@@ -584,40 +530,6 @@ note:
          move_location: Some(
              Value,
          ),
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:35:16
-   │
-35 │         assert my_array[3] != 5
-   │                ^^^^^^^^^^^ attributes hash: 11934894478308934606
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Memory,
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:35:31
-   │
-35 │         assert my_array[3] != 5
-   │                               ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
      }
 
 note: 
@@ -666,22 +578,6 @@ note:
              },
          ),
          location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:36:18
-   │
-36 │         my_array[3] = 5
-   │                  ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
          move_location: None,
      }
 
@@ -769,22 +665,6 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:37:25
-   │
-37 │         assert my_array[3] == 5
-   │                         ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/data_copying_stress.fe:37:16
    │
 37 │         assert my_array[3] == 5
@@ -800,40 +680,6 @@ note:
          move_location: Some(
              Value,
          ),
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:37:16
-   │
-37 │         assert my_array[3] == 5
-   │                ^^^^^^^^^^^ attributes hash: 11934894478308934606
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Memory,
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:37:31
-   │
-37 │         assert my_array[3] == 5
-   │                               ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
      }
 
 note: 
@@ -902,22 +748,6 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:38:29
-   │
-38 │         assert my_2nd_array[3] == 5
-   │                             ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/data_copying_stress.fe:38:16
    │
 38 │         assert my_2nd_array[3] == 5
@@ -933,40 +763,6 @@ note:
          move_location: Some(
              Value,
          ),
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:38:16
-   │
-38 │         assert my_2nd_array[3] == 5
-   │                ^^^^^^^^^^^^^^^ attributes hash: 11934894478308934606
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Memory,
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:38:35
-   │
-38 │         assert my_2nd_array[3] == 5
-   │                                   ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
      }
 
 note: 
@@ -1035,22 +831,6 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:39:29
-   │
-39 │         assert my_3rd_array[3] == 5
-   │                             ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/data_copying_stress.fe:39:16
    │
 39 │         assert my_3rd_array[3] == 5
@@ -1066,40 +846,6 @@ note:
          move_location: Some(
              Value,
          ),
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:39:16
-   │
-39 │         assert my_3rd_array[3] == 5
-   │                ^^^^^^^^^^^^^^^ attributes hash: 11934894478308934606
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Memory,
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:39:35
-   │
-39 │         assert my_3rd_array[3] == 5
-   │                                   ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
      }
 
 note: 
@@ -1148,22 +894,6 @@ note:
              },
          ),
          location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:41:22
-   │
-41 │         my_3rd_array[3] = 50
-   │                      ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
          move_location: None,
      }
 
@@ -1251,22 +981,6 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:42:25
-   │
-42 │         assert my_array[3] == 50
-   │                         ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/data_copying_stress.fe:42:16
    │
 42 │         assert my_array[3] == 50
@@ -1282,40 +996,6 @@ note:
          move_location: Some(
              Value,
          ),
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:42:16
-   │
-42 │         assert my_array[3] == 50
-   │                ^^^^^^^^^^^ attributes hash: 11934894478308934606
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Memory,
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:42:31
-   │
-42 │         assert my_array[3] == 50
-   │                               ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
      }
 
 note: 
@@ -1384,22 +1064,6 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:43:29
-   │
-43 │         assert my_2nd_array[3] == 50
-   │                             ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/data_copying_stress.fe:43:16
    │
 43 │         assert my_2nd_array[3] == 50
@@ -1415,40 +1079,6 @@ note:
          move_location: Some(
              Value,
          ),
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:43:16
-   │
-43 │         assert my_2nd_array[3] == 50
-   │                ^^^^^^^^^^^^^^^ attributes hash: 11934894478308934606
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Memory,
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:43:35
-   │
-43 │         assert my_2nd_array[3] == 50
-   │                                   ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
      }
 
 note: 
@@ -1517,22 +1147,6 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:44:29
-   │
-44 │         assert my_3rd_array[3] == 50
-   │                             ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/data_copying_stress.fe:44:16
    │
 44 │         assert my_3rd_array[3] == 50
@@ -1548,40 +1162,6 @@ note:
          move_location: Some(
              Value,
          ),
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:44:16
-   │
-44 │         assert my_3rd_array[3] == 50
-   │                ^^^^^^^^^^^^^^^ attributes hash: 11934894478308934606
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Memory,
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:44:35
-   │
-44 │         assert my_3rd_array[3] == 50
-   │                                   ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
      }
 
 note: 
@@ -1630,22 +1210,6 @@ note:
              },
          ),
          location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:47:18
-   │
-47 │         my_array[3] = 5
-   │                  ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
          move_location: None,
      }
 
@@ -1717,25 +1281,6 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:48:16
-   │
-48 │         return my_array
-   │                ^^^^^^^^ attributes hash: 12880944358712268851
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 10,
-                 inner: Numeric(
-                     U256,
-                 ),
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/data_copying_stress.fe:51:16
    │
 51 │         return my_array.clone()
@@ -1752,27 +1297,6 @@ note:
          ),
          location: Memory,
          move_location: None,
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:51:16
-   │
-51 │         return my_array.clone()
-   │                ^^^^^^^^^^^^^^^^ attributes hash: 10862398269442980722
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 10,
-                 inner: Numeric(
-                     U256,
-                 ),
-             },
-         ),
-         location: Memory,
-         move_location: Some(
-             Memory,
-         ),
      }
 
 note: 
@@ -1853,22 +1377,6 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:54:26
-   │
-54 │         my_array.clone()[3] = 5
-   │                          ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/data_copying_stress.fe:54:9
    │
 54 │         my_array.clone()[3] = 5
@@ -1920,25 +1428,6 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:55:16
-   │
-55 │         return my_array
-   │                ^^^^^^^^ attributes hash: 12880944358712268851
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 10,
-                 inner: Numeric(
-                     U256,
-                 ),
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/data_copying_stress.fe:59:9
    │
 59 │         self.my_nums[0] = 42
@@ -1958,22 +1447,6 @@ note:
                  4,
              ),
          },
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:59:22
-   │
-59 │         self.my_nums[0] = 42
-   │                      ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
          move_location: None,
      }
 
@@ -2067,22 +1540,6 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:60:22
-   │
-60 │         self.my_nums[1] = 26
-   │                      ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/data_copying_stress.fe:60:9
    │
 60 │         self.my_nums[1] = 26
@@ -2136,22 +1593,6 @@ note:
                  4,
              ),
          },
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:61:22
-   │
-61 │         self.my_nums[2] = 0
-   │                      ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
          move_location: None,
      }
 
@@ -2245,22 +1686,6 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:62:22
-   │
-62 │         self.my_nums[3] = 1
-   │                      ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/data_copying_stress.fe:62:9
    │
 62 │         self.my_nums[3] = 1
@@ -2314,22 +1739,6 @@ note:
                  4,
              ),
          },
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:63:22
-   │
-63 │         self.my_nums[4] = 255
-   │                      ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
          move_location: None,
      }
 
@@ -2470,25 +1879,6 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:65:16
-   │
-65 │         return my_nums_mem
-   │                ^^^^^^^^^^^ attributes hash: 9322500749845443226
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 5,
-                 inner: Numeric(
-                     U256,
-                 ),
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/data_copying_stress.fe:69:13
    │
 69 │             self.my_string.to_mem(),
@@ -2506,28 +1896,6 @@ note:
              ),
          },
          move_location: None,
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:69:13
-   │
-69 │             self.my_string.to_mem(),
-   │             ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14071116891056185972
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 42,
-             },
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Memory,
-         ),
      }
 
 note: 
@@ -2595,28 +1963,6 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:70:13
-   │
-70 │             self.my_u256.to_mem()
-   │             ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5126058488677760853
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 2,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
    ┌─ stress/data_copying_stress.fe:68:9
    │  
 68 │ ╭         self.emit_my_event_internal(
@@ -2648,38 +1994,6 @@ note:
              },
          ),
          location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:74:22
-   │
-74 │         emit MyEvent(some_string, some_u256)
-   │                      ^^^^^^^^^^^ attributes hash: 9569027785754553796
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 42,
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:74:35
-   │
-74 │         emit MyEvent(some_string, some_u256)
-   │                                   ^^^^^^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
          move_location: None,
      }
 
@@ -2772,40 +2086,6 @@ note:
          ),
          location: Value,
          move_location: None,
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:80:30
-   │
-80 │         return self.my_addrs[1]
-   │                              ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/data_copying_stress.fe:80:16
-   │
-80 │         return self.my_addrs[1]
-   │                ^^^^^^^^^^^^^^^^ attributes hash: 15587646813440843004
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Storage {
-             nonce: None,
-         },
-         move_location: Some(
-             Value,
-         ),
      }
 
 note: 

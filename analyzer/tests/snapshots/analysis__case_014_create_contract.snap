@@ -58,22 +58,6 @@ note:
     }
 
 note: 
-  ┌─ features/create_contract.fe:3:16
-  │
-3 │         return 42
-  │                ^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/create_contract.fe:7:31
   │
 7 │         foo: Foo = Foo.create(0)
@@ -84,50 +68,6 @@ note:
             Numeric(
                 U256,
             ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/create_contract.fe:7:31
-  │
-7 │         foo: Foo = Foo.create(0)
-  │                               ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/create_contract.fe:7:20
-  │
-7 │         foo: Foo = Foo.create(0)
-  │                    ^^^^^^^^^^^^^ attributes hash: 8552961459538575979
-  │
-  = ExpressionAttributes {
-        typ: Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_my_num",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ],
-            },
         ),
         location: Value,
         move_location: None,
@@ -184,48 +124,6 @@ note:
                     },
                 ],
             },
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/create_contract.fe:8:24
-  │
-8 │         return address(foo)
-  │                        ^^^ attributes hash: 8552961459538575979
-  │
-  = ExpressionAttributes {
-        typ: Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_my_num",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/create_contract.fe:8:16
-  │
-8 │         return address(foo)
-  │                ^^^^^^^^^^^^ attributes hash: 513065555763557710
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Address,
         ),
         location: Value,
         move_location: None,

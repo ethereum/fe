@@ -60,58 +60,10 @@ note:
     }
 
 note: 
-  ┌─ features/return_addition_u128.fe:3:16
-  │
-3 │         return x + y
-  │                ^ attributes hash: 9341420026351674595
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U128,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/return_addition_u128.fe:3:20
   │
 3 │         return x + y
   │                    ^ attributes hash: 9341420026351674595
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U128,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_addition_u128.fe:3:20
-  │
-3 │         return x + y
-  │                    ^ attributes hash: 9341420026351674595
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U128,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_addition_u128.fe:3:16
-  │
-3 │         return x + y
-  │                ^^^^^ attributes hash: 9341420026351674595
   │
   = ExpressionAttributes {
         typ: Base(

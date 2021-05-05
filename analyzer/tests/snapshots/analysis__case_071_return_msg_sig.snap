@@ -79,23 +79,6 @@ note:
     }
 
 note: 
-  ┌─ features/return_msg_sig.fe:5:16
-  │
-5 │         return msg_sig
-  │                ^^^^^^^ attributes hash: 10306023770505947435
-  │
-  = ExpressionAttributes {
-        typ: Array(
-            Array {
-                size: 32,
-                inner: Byte,
-            },
-        ),
-        location: Memory,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/return_msg_sig.fe:2:5
   │  
 2 │ ╭     pub def bar() -> bytes[32]:

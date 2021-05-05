@@ -58,22 +58,6 @@ note:
     }
 
 note: 
-  ┌─ features/return_lte_i256.fe:3:16
-  │
-3 │         return x <= y
-  │                ^ attributes hash: 17351186385905986417
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                I256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/return_lte_i256.fe:3:21
   │
 3 │         return x <= y
@@ -84,36 +68,6 @@ note:
             Numeric(
                 I256,
             ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_lte_i256.fe:3:21
-  │
-3 │         return x <= y
-  │                     ^ attributes hash: 17351186385905986417
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                I256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_lte_i256.fe:3:16
-  │
-3 │         return x <= y
-  │                ^^^^^^ attributes hash: 10866140763116710699
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
         ),
         location: Value,
         move_location: None,

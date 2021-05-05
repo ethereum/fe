@@ -104,58 +104,10 @@ note:
     }
 
 note: 
-  ┌─ features/return_u256_from_called_fn_with_args.fe:4:16
-  │
-4 │         return val1 + val2 + val3 + val4 + val5
-  │                ^^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/return_u256_from_called_fn_with_args.fe:4:23
   │
 4 │         return val1 + val2 + val3 + val4 + val5
   │                       ^^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_u256_from_called_fn_with_args.fe:4:23
-  │
-4 │         return val1 + val2 + val3 + val4 + val5
-  │                       ^^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_u256_from_called_fn_with_args.fe:4:16
-  │
-4 │         return val1 + val2 + val3 + val4 + val5
-  │                ^^^^^^^^^^^ attributes hash: 16797824492585953824
   │
   = ExpressionAttributes {
         typ: Base(
@@ -200,58 +152,10 @@ note:
     }
 
 note: 
-  ┌─ features/return_u256_from_called_fn_with_args.fe:4:30
-  │
-4 │         return val1 + val2 + val3 + val4 + val5
-  │                              ^^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/return_u256_from_called_fn_with_args.fe:4:16
   │
 4 │         return val1 + val2 + val3 + val4 + val5
   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_u256_from_called_fn_with_args.fe:4:16
-  │
-4 │         return val1 + val2 + val3 + val4 + val5
-  │                ^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_u256_from_called_fn_with_args.fe:4:37
-  │
-4 │         return val1 + val2 + val3 + val4 + val5
-  │                                     ^^^^ attributes hash: 16797824492585953824
   │
   = ExpressionAttributes {
         typ: Base(
@@ -296,38 +200,6 @@ note:
     }
 
 note: 
-  ┌─ features/return_u256_from_called_fn_with_args.fe:4:16
-  │
-4 │         return val1 + val2 + val3 + val4 + val5
-  │                ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_u256_from_called_fn_with_args.fe:4:44
-  │
-4 │         return val1 + val2 + val3 + val4 + val5
-  │                                            ^^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/return_u256_from_called_fn_with_args.fe:4:44
   │
 4 │         return val1 + val2 + val3 + val4 + val5
@@ -348,38 +220,6 @@ note:
   │
 4 │         return val1 + val2 + val3 + val4 + val5
   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_u256_from_called_fn_with_args.fe:4:16
-  │
-4 │         return val1 + val2 + val3 + val4 + val5
-  │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_u256_from_called_fn_with_args.fe:7:16
-  │
-7 │         return 100
-  │                ^^^ attributes hash: 16797824492585953824
   │
   = ExpressionAttributes {
         typ: Base(
@@ -451,22 +291,6 @@ note:
      }
 
 note: 
-   ┌─ features/return_u256_from_called_fn_with_args.fe:10:18
-   │
-10 │         self.baz[0] = 43
-   │                  ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/return_u256_from_called_fn_with_args.fe:10:9
    │
 10 │         self.baz[0] = 43
@@ -517,58 +341,10 @@ note:
      }
 
 note: 
-   ┌─ features/return_u256_from_called_fn_with_args.fe:11:25
-   │
-11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │                         ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/return_u256_from_called_fn_with_args.fe:11:28
    │
 11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
    │                            ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/return_u256_from_called_fn_with_args.fe:11:28
-   │
-11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │                            ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/return_u256_from_called_fn_with_args.fe:11:31
-   │
-11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │                               ^^^^^^^^^^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -613,58 +389,10 @@ note:
      }
 
 note: 
-   ┌─ features/return_u256_from_called_fn_with_args.fe:11:43
-   │
-11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │                                           ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/return_u256_from_called_fn_with_args.fe:11:48
    │
 11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
    │                                                ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/return_u256_from_called_fn_with_args.fe:11:48
-   │
-11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │                                                ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/return_u256_from_called_fn_with_args.fe:11:43
-   │
-11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │                                           ^^^^^^^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -736,22 +464,6 @@ note:
      }
 
 note: 
-   ┌─ features/return_u256_from_called_fn_with_args.fe:11:61
-   │
-11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │                                                             ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/return_u256_from_called_fn_with_args.fe:11:52
    │
 11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
@@ -769,42 +481,6 @@ note:
          move_location: Some(
              Value,
          ),
-     }
-
-note: 
-   ┌─ features/return_u256_from_called_fn_with_args.fe:11:52
-   │
-11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │                                                    ^^^^^^^^^^^ attributes hash: 9781479072077703403
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Storage {
-             nonce: None,
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ features/return_u256_from_called_fn_with_args.fe:11:16
-   │
-11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
      }
 
 note: 

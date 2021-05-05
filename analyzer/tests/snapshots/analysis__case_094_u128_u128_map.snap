@@ -106,42 +106,6 @@ note:
     }
 
 note: 
-  ┌─ features/u128_u128_map.fe:5:25
-  │
-5 │         return self.bar[key]
-  │                         ^^^ attributes hash: 9341420026351674595
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U128,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/u128_u128_map.fe:5:16
-  │
-5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ attributes hash: 18138722145076203151
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U128,
-            ),
-        ),
-        location: Storage {
-            nonce: None,
-        },
-        move_location: Some(
-            Value,
-        ),
-    }
-
-note: 
   ┌─ features/u128_u128_map.fe:5:16
   │
 5 │         return self.bar[key]
@@ -185,22 +149,6 @@ note:
                 0,
             ),
         },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/u128_u128_map.fe:8:18
-  │
-8 │         self.bar[key] = value
-  │                  ^^^ attributes hash: 9341420026351674595
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U128,
-            ),
-        ),
-        location: Value,
         move_location: None,
     }
 

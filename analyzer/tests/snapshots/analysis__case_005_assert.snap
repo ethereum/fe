@@ -98,38 +98,6 @@ note:
     }
 
 note: 
-  ┌─ features/assert.fe:3:16
-  │
-3 │         assert baz > 5
-  │                ^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/assert.fe:3:22
-  │
-3 │         assert baz > 5
-  │                      ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/assert.fe:3:22
   │
 3 │         assert baz > 5
@@ -164,38 +132,6 @@ note:
   │
 6 │         assert baz > 5, "Must be greater than five"
   │                ^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/assert.fe:6:16
-  │
-6 │         assert baz > 5, "Must be greater than five"
-  │                ^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/assert.fe:6:22
-  │
-6 │         assert baz > 5, "Must be greater than five"
-  │                      ^ attributes hash: 16797824492585953824
   │
   = ExpressionAttributes {
         typ: Base(
@@ -258,38 +194,6 @@ note:
   │
 9 │         assert baz > 5, reason
   │                ^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/assert.fe:9:16
-  │
-9 │         assert baz > 5, reason
-  │                ^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/assert.fe:9:22
-  │
-9 │         assert baz > 5, reason
-  │                      ^ attributes hash: 16797824492585953824
   │
   = ExpressionAttributes {
         typ: Base(

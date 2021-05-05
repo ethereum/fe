@@ -39,20 +39,6 @@ note:
     }
 
 note: 
-  ┌─ features/return_bool_false.fe:3:16
-  │
-3 │         return false
-  │                ^^^^^ attributes hash: 10866140763116710699
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/return_bool_false.fe:2:5
   │  
 2 │ ╭     pub def bar() -> bool:

@@ -1977,58 +1977,10 @@ note:
     }
 
 note: 
-  ┌─ features/checked_arithmetic.fe:4:16
-  │
-4 │         return left + right
-  │                ^^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/checked_arithmetic.fe:4:23
   │
 4 │         return left + right
   │                       ^^^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/checked_arithmetic.fe:4:23
-  │
-4 │         return left + right
-  │                       ^^^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/checked_arithmetic.fe:4:16
-  │
-4 │         return left + right
-  │                ^^^^^^^^^^^^ attributes hash: 16797824492585953824
   │
   = ExpressionAttributes {
         typ: Base(
@@ -2073,38 +2025,6 @@ note:
     }
 
 note: 
-  ┌─ features/checked_arithmetic.fe:7:16
-  │
-7 │         return left + right
-  │                ^^^^ attributes hash: 9341420026351674595
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U128,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/checked_arithmetic.fe:7:23
-  │
-7 │         return left + right
-  │                       ^^^^^ attributes hash: 9341420026351674595
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U128,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/checked_arithmetic.fe:7:23
   │
 7 │         return left + right
@@ -2137,58 +2057,10 @@ note:
     }
 
 note: 
-  ┌─ features/checked_arithmetic.fe:7:16
-  │
-7 │         return left + right
-  │                ^^^^^^^^^^^^ attributes hash: 9341420026351674595
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U128,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
    ┌─ features/checked_arithmetic.fe:10:16
    │
 10 │         return left + right
    │                ^^^^ attributes hash: 3044889006329355385
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:10:16
-   │
-10 │         return left + right
-   │                ^^^^ attributes hash: 3044889006329355385
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:10:23
-   │
-10 │         return left + right
-   │                       ^^^^^ attributes hash: 3044889006329355385
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2233,58 +2105,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:10:16
-   │
-10 │         return left + right
-   │                ^^^^^^^^^^^^ attributes hash: 3044889006329355385
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:13:16
    │
 13 │         return left + right
    │                ^^^^ attributes hash: 5442387896079309831
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:13:16
-   │
-13 │         return left + right
-   │                ^^^^ attributes hash: 5442387896079309831
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:13:23
-   │
-13 │         return left + right
-   │                       ^^^^^ attributes hash: 5442387896079309831
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2329,58 +2153,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:13:16
-   │
-13 │         return left + right
-   │                ^^^^^^^^^^^^ attributes hash: 5442387896079309831
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:16:16
    │
 16 │         return left + right
    │                ^^^^ attributes hash: 17931047209024117248
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U16,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:16:16
-   │
-16 │         return left + right
-   │                ^^^^ attributes hash: 17931047209024117248
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U16,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:16:23
-   │
-16 │         return left + right
-   │                       ^^^^^ attributes hash: 17931047209024117248
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2425,58 +2201,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:16:16
-   │
-16 │         return left + right
-   │                ^^^^^^^^^^^^ attributes hash: 17931047209024117248
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U16,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:19:16
    │
 19 │         return left + right
    │                ^^^^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:19:16
-   │
-19 │         return left + right
-   │                ^^^^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:19:23
-   │
-19 │         return left + right
-   │                       ^^^^^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2521,58 +2249,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:19:16
-   │
-19 │         return left + right
-   │                ^^^^^^^^^^^^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:22:16
    │
 22 │         return left + right
    │                ^^^^ attributes hash: 17351186385905986417
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:22:16
-   │
-22 │         return left + right
-   │                ^^^^ attributes hash: 17351186385905986417
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:22:23
-   │
-22 │         return left + right
-   │                       ^^^^^ attributes hash: 17351186385905986417
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2617,58 +2297,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:22:16
-   │
-22 │         return left + right
-   │                ^^^^^^^^^^^^ attributes hash: 17351186385905986417
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:25:16
    │
 25 │         return left + right
    │                ^^^^ attributes hash: 5494075259962106032
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:25:16
-   │
-25 │         return left + right
-   │                ^^^^ attributes hash: 5494075259962106032
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:25:23
-   │
-25 │         return left + right
-   │                       ^^^^^ attributes hash: 5494075259962106032
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2713,58 +2345,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:25:16
-   │
-25 │         return left + right
-   │                ^^^^^^^^^^^^ attributes hash: 5494075259962106032
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:28:16
    │
 28 │         return left + right
    │                ^^^^ attributes hash: 16198180549924123587
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:28:16
-   │
-28 │         return left + right
-   │                ^^^^ attributes hash: 16198180549924123587
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:28:23
-   │
-28 │         return left + right
-   │                       ^^^^^ attributes hash: 16198180549924123587
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2809,58 +2393,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:28:16
-   │
-28 │         return left + right
-   │                ^^^^^^^^^^^^ attributes hash: 16198180549924123587
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:31:16
    │
 31 │         return left + right
    │                ^^^^ attributes hash: 13972995067286817043
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:31:16
-   │
-31 │         return left + right
-   │                ^^^^ attributes hash: 13972995067286817043
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:31:23
-   │
-31 │         return left + right
-   │                       ^^^^^ attributes hash: 13972995067286817043
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2905,58 +2441,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:31:16
-   │
-31 │         return left + right
-   │                ^^^^^^^^^^^^ attributes hash: 13972995067286817043
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:34:16
    │
 34 │         return left + right
    │                ^^^^ attributes hash: 13584665093848691268
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I16,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:34:16
-   │
-34 │         return left + right
-   │                ^^^^ attributes hash: 13584665093848691268
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I16,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:34:23
-   │
-34 │         return left + right
-   │                       ^^^^^ attributes hash: 13584665093848691268
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3001,58 +2489,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:34:16
-   │
-34 │         return left + right
-   │                ^^^^^^^^^^^^ attributes hash: 13584665093848691268
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I16,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:37:16
    │
 37 │         return left + right
    │                ^^^^ attributes hash: 9715536092457030614
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:37:16
-   │
-37 │         return left + right
-   │                ^^^^ attributes hash: 9715536092457030614
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:37:23
-   │
-37 │         return left + right
-   │                       ^^^^^ attributes hash: 9715536092457030614
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3097,58 +2537,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:37:16
-   │
-37 │         return left + right
-   │                ^^^^^^^^^^^^ attributes hash: 9715536092457030614
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:40:16
    │
 40 │         return left - right
    │                ^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:40:16
-   │
-40 │         return left - right
-   │                ^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:40:23
-   │
-40 │         return left - right
-   │                       ^^^^^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3193,58 +2585,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:40:16
-   │
-40 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:43:16
    │
 43 │         return left - right
    │                ^^^^ attributes hash: 9341420026351674595
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:43:16
-   │
-43 │         return left - right
-   │                ^^^^ attributes hash: 9341420026351674595
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:43:23
-   │
-43 │         return left - right
-   │                       ^^^^^ attributes hash: 9341420026351674595
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3289,58 +2633,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:43:16
-   │
-43 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 9341420026351674595
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:46:16
    │
 46 │         return left - right
    │                ^^^^ attributes hash: 3044889006329355385
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:46:16
-   │
-46 │         return left - right
-   │                ^^^^ attributes hash: 3044889006329355385
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:46:23
-   │
-46 │         return left - right
-   │                       ^^^^^ attributes hash: 3044889006329355385
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3385,58 +2681,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:46:16
-   │
-46 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 3044889006329355385
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:49:16
    │
 49 │         return left - right
    │                ^^^^ attributes hash: 5442387896079309831
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:49:16
-   │
-49 │         return left - right
-   │                ^^^^ attributes hash: 5442387896079309831
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:49:23
-   │
-49 │         return left - right
-   │                       ^^^^^ attributes hash: 5442387896079309831
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3481,58 +2729,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:49:16
-   │
-49 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 5442387896079309831
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:52:16
    │
 52 │         return left - right
    │                ^^^^ attributes hash: 17931047209024117248
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U16,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:52:16
-   │
-52 │         return left - right
-   │                ^^^^ attributes hash: 17931047209024117248
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U16,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:52:23
-   │
-52 │         return left - right
-   │                       ^^^^^ attributes hash: 17931047209024117248
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3577,58 +2777,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:52:16
-   │
-52 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 17931047209024117248
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U16,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:55:16
    │
 55 │         return left - right
    │                ^^^^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:55:16
-   │
-55 │         return left - right
-   │                ^^^^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:55:23
-   │
-55 │         return left - right
-   │                       ^^^^^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3673,58 +2825,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:55:16
-   │
-55 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:58:16
    │
 58 │         return left - right
    │                ^^^^ attributes hash: 17351186385905986417
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:58:16
-   │
-58 │         return left - right
-   │                ^^^^ attributes hash: 17351186385905986417
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:58:23
-   │
-58 │         return left - right
-   │                       ^^^^^ attributes hash: 17351186385905986417
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3769,38 +2873,6 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:58:16
-   │
-58 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 17351186385905986417
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:61:16
-   │
-61 │         return left - right
-   │                ^^^^ attributes hash: 5494075259962106032
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:61:16
    │
 61 │         return left - right
@@ -3821,38 +2893,6 @@ note:
    │
 61 │         return left - right
    │                       ^^^^^ attributes hash: 5494075259962106032
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:61:23
-   │
-61 │         return left - right
-   │                       ^^^^^ attributes hash: 5494075259962106032
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:61:16
-   │
-61 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 5494075259962106032
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3897,58 +2937,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:64:16
-   │
-64 │         return left - right
-   │                ^^^^ attributes hash: 16198180549924123587
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:64:23
    │
 64 │         return left - right
    │                       ^^^^^ attributes hash: 16198180549924123587
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:64:23
-   │
-64 │         return left - right
-   │                       ^^^^^ attributes hash: 16198180549924123587
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:64:16
-   │
-64 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 16198180549924123587
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3993,58 +2985,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:67:16
-   │
-67 │         return left - right
-   │                ^^^^ attributes hash: 13972995067286817043
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:67:23
    │
 67 │         return left - right
    │                       ^^^^^ attributes hash: 13972995067286817043
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:67:23
-   │
-67 │         return left - right
-   │                       ^^^^^ attributes hash: 13972995067286817043
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:67:16
-   │
-67 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 13972995067286817043
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4089,58 +3033,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:70:16
-   │
-70 │         return left - right
-   │                ^^^^ attributes hash: 13584665093848691268
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I16,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:70:23
    │
 70 │         return left - right
    │                       ^^^^^ attributes hash: 13584665093848691268
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I16,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:70:23
-   │
-70 │         return left - right
-   │                       ^^^^^ attributes hash: 13584665093848691268
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I16,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:70:16
-   │
-70 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 13584665093848691268
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4185,58 +3081,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:73:16
-   │
-73 │         return left - right
-   │                ^^^^ attributes hash: 9715536092457030614
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:73:23
    │
 73 │         return left - right
    │                       ^^^^^ attributes hash: 9715536092457030614
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:73:23
-   │
-73 │         return left - right
-   │                       ^^^^^ attributes hash: 9715536092457030614
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:73:16
-   │
-73 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 9715536092457030614
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4281,58 +3129,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:76:16
-   │
-76 │         return left / right
-   │                ^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:76:23
    │
 76 │         return left / right
    │                       ^^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:76:23
-   │
-76 │         return left / right
-   │                       ^^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:76:16
-   │
-76 │         return left / right
-   │                ^^^^^^^^^^^^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4377,58 +3177,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:79:16
-   │
-79 │         return left / right
-   │                ^^^^ attributes hash: 9341420026351674595
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:79:23
    │
 79 │         return left / right
    │                       ^^^^^ attributes hash: 9341420026351674595
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:79:23
-   │
-79 │         return left / right
-   │                       ^^^^^ attributes hash: 9341420026351674595
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:79:16
-   │
-79 │         return left / right
-   │                ^^^^^^^^^^^^ attributes hash: 9341420026351674595
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4473,58 +3225,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:82:16
-   │
-82 │         return left / right
-   │                ^^^^ attributes hash: 3044889006329355385
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:82:23
    │
 82 │         return left / right
    │                       ^^^^^ attributes hash: 3044889006329355385
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:82:23
-   │
-82 │         return left / right
-   │                       ^^^^^ attributes hash: 3044889006329355385
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:82:16
-   │
-82 │         return left / right
-   │                ^^^^^^^^^^^^ attributes hash: 3044889006329355385
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4569,58 +3273,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:85:16
-   │
-85 │         return left / right
-   │                ^^^^ attributes hash: 5442387896079309831
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:85:23
    │
 85 │         return left / right
    │                       ^^^^^ attributes hash: 5442387896079309831
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:85:23
-   │
-85 │         return left / right
-   │                       ^^^^^ attributes hash: 5442387896079309831
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:85:16
-   │
-85 │         return left / right
-   │                ^^^^^^^^^^^^ attributes hash: 5442387896079309831
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4665,58 +3321,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:88:16
-   │
-88 │         return left / right
-   │                ^^^^ attributes hash: 17931047209024117248
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U16,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:88:23
    │
 88 │         return left / right
    │                       ^^^^^ attributes hash: 17931047209024117248
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U16,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:88:23
-   │
-88 │         return left / right
-   │                       ^^^^^ attributes hash: 17931047209024117248
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U16,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:88:16
-   │
-88 │         return left / right
-   │                ^^^^^^^^^^^^ attributes hash: 17931047209024117248
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4761,58 +3369,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:91:16
-   │
-91 │         return left / right
-   │                ^^^^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:91:23
    │
 91 │         return left / right
    │                       ^^^^^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:91:23
-   │
-91 │         return left / right
-   │                       ^^^^^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:91:16
-   │
-91 │         return left / right
-   │                ^^^^^^^^^^^^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4857,58 +3417,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:94:16
-   │
-94 │         return left / right
-   │                ^^^^ attributes hash: 17351186385905986417
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:94:23
    │
 94 │         return left / right
    │                       ^^^^^ attributes hash: 17351186385905986417
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:94:23
-   │
-94 │         return left / right
-   │                       ^^^^^ attributes hash: 17351186385905986417
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:94:16
-   │
-94 │         return left / right
-   │                ^^^^^^^^^^^^ attributes hash: 17351186385905986417
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4953,38 +3465,6 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:97:16
-   │
-97 │         return left / right
-   │                ^^^^ attributes hash: 5494075259962106032
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/checked_arithmetic.fe:97:23
-   │
-97 │         return left / right
-   │                       ^^^^^ attributes hash: 5494075259962106032
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/checked_arithmetic.fe:97:23
    │
 97 │         return left / right
@@ -5017,58 +3497,10 @@ note:
      }
 
 note: 
-   ┌─ features/checked_arithmetic.fe:97:16
-   │
-97 │         return left / right
-   │                ^^^^^^^^^^^^ attributes hash: 5494075259962106032
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
     ┌─ features/checked_arithmetic.fe:100:16
     │
 100 │         return left / right
     │                ^^^^ attributes hash: 16198180549924123587
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I64,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:100:16
-    │
-100 │         return left / right
-    │                ^^^^ attributes hash: 16198180549924123587
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I64,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:100:23
-    │
-100 │         return left / right
-    │                       ^^^^^ attributes hash: 16198180549924123587
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5113,58 +3545,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:100:16
-    │
-100 │         return left / right
-    │                ^^^^^^^^^^^^ attributes hash: 16198180549924123587
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I64,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:103:16
     │
 103 │         return left / right
     │                ^^^^ attributes hash: 13972995067286817043
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I32,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:103:16
-    │
-103 │         return left / right
-    │                ^^^^ attributes hash: 13972995067286817043
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I32,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:103:23
-    │
-103 │         return left / right
-    │                       ^^^^^ attributes hash: 13972995067286817043
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5209,58 +3593,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:103:16
-    │
-103 │         return left / right
-    │                ^^^^^^^^^^^^ attributes hash: 13972995067286817043
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I32,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:106:16
     │
 106 │         return left / right
     │                ^^^^ attributes hash: 13584665093848691268
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I16,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:106:16
-    │
-106 │         return left / right
-    │                ^^^^ attributes hash: 13584665093848691268
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I16,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:106:23
-    │
-106 │         return left / right
-    │                       ^^^^^ attributes hash: 13584665093848691268
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5305,58 +3641,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:106:16
-    │
-106 │         return left / right
-    │                ^^^^^^^^^^^^ attributes hash: 13584665093848691268
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I16,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:109:16
     │
 109 │         return left / right
     │                ^^^^ attributes hash: 9715536092457030614
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I8,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:109:16
-    │
-109 │         return left / right
-    │                ^^^^ attributes hash: 9715536092457030614
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I8,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:109:23
-    │
-109 │         return left / right
-    │                       ^^^^^ attributes hash: 9715536092457030614
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5401,58 +3689,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:109:16
-    │
-109 │         return left / right
-    │                ^^^^^^^^^^^^ attributes hash: 9715536092457030614
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I8,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:112:16
     │
 112 │         return left * right
     │                ^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:112:16
-    │
-112 │         return left * right
-    │                ^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:112:23
-    │
-112 │         return left * right
-    │                       ^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5497,58 +3737,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:112:16
-    │
-112 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:115:16
     │
 115 │         return left * right
     │                ^^^^ attributes hash: 9341420026351674595
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U128,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:115:16
-    │
-115 │         return left * right
-    │                ^^^^ attributes hash: 9341420026351674595
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U128,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:115:23
-    │
-115 │         return left * right
-    │                       ^^^^^ attributes hash: 9341420026351674595
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5593,58 +3785,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:115:16
-    │
-115 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 9341420026351674595
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U128,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:118:16
     │
 118 │         return left * right
     │                ^^^^ attributes hash: 3044889006329355385
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U64,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:118:16
-    │
-118 │         return left * right
-    │                ^^^^ attributes hash: 3044889006329355385
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U64,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:118:23
-    │
-118 │         return left * right
-    │                       ^^^^^ attributes hash: 3044889006329355385
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5689,58 +3833,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:118:16
-    │
-118 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 3044889006329355385
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U64,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:121:16
     │
 121 │         return left * right
     │                ^^^^ attributes hash: 5442387896079309831
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U32,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:121:16
-    │
-121 │         return left * right
-    │                ^^^^ attributes hash: 5442387896079309831
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U32,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:121:23
-    │
-121 │         return left * right
-    │                       ^^^^^ attributes hash: 5442387896079309831
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5785,58 +3881,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:121:16
-    │
-121 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 5442387896079309831
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U32,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:124:16
     │
 124 │         return left * right
     │                ^^^^ attributes hash: 17931047209024117248
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U16,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:124:16
-    │
-124 │         return left * right
-    │                ^^^^ attributes hash: 17931047209024117248
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U16,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:124:23
-    │
-124 │         return left * right
-    │                       ^^^^^ attributes hash: 17931047209024117248
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5881,58 +3929,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:124:16
-    │
-124 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 17931047209024117248
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U16,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:127:16
     │
 127 │         return left * right
     │                ^^^^ attributes hash: 6817314866882205962
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U8,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:127:16
-    │
-127 │         return left * right
-    │                ^^^^ attributes hash: 6817314866882205962
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U8,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:127:23
-    │
-127 │         return left * right
-    │                       ^^^^^ attributes hash: 6817314866882205962
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5977,58 +3977,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:127:16
-    │
-127 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 6817314866882205962
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U8,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:130:16
     │
 130 │         return left * right
     │                ^^^^ attributes hash: 17351186385905986417
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:130:16
-    │
-130 │         return left * right
-    │                ^^^^ attributes hash: 17351186385905986417
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:130:23
-    │
-130 │         return left * right
-    │                       ^^^^^ attributes hash: 17351186385905986417
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6073,58 +4025,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:130:16
-    │
-130 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 17351186385905986417
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:133:16
     │
 133 │         return left * right
     │                ^^^^ attributes hash: 5494075259962106032
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I128,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:133:16
-    │
-133 │         return left * right
-    │                ^^^^ attributes hash: 5494075259962106032
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I128,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:133:23
-    │
-133 │         return left * right
-    │                       ^^^^^ attributes hash: 5494075259962106032
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6169,58 +4073,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:133:16
-    │
-133 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 5494075259962106032
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I128,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:136:16
     │
 136 │         return left * right
     │                ^^^^ attributes hash: 16198180549924123587
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I64,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:136:16
-    │
-136 │         return left * right
-    │                ^^^^ attributes hash: 16198180549924123587
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I64,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:136:23
-    │
-136 │         return left * right
-    │                       ^^^^^ attributes hash: 16198180549924123587
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6265,58 +4121,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:136:16
-    │
-136 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 16198180549924123587
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I64,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:139:16
     │
 139 │         return left * right
     │                ^^^^ attributes hash: 13972995067286817043
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I32,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:139:16
-    │
-139 │         return left * right
-    │                ^^^^ attributes hash: 13972995067286817043
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I32,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:139:23
-    │
-139 │         return left * right
-    │                       ^^^^^ attributes hash: 13972995067286817043
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6361,58 +4169,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:139:16
-    │
-139 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 13972995067286817043
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I32,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:142:16
     │
 142 │         return left * right
     │                ^^^^ attributes hash: 13584665093848691268
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I16,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:142:16
-    │
-142 │         return left * right
-    │                ^^^^ attributes hash: 13584665093848691268
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I16,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:142:23
-    │
-142 │         return left * right
-    │                       ^^^^^ attributes hash: 13584665093848691268
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6457,58 +4217,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:142:16
-    │
-142 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 13584665093848691268
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I16,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:145:16
     │
 145 │         return left * right
     │                ^^^^ attributes hash: 9715536092457030614
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I8,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:145:16
-    │
-145 │         return left * right
-    │                ^^^^ attributes hash: 9715536092457030614
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I8,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:145:23
-    │
-145 │         return left * right
-    │                       ^^^^^ attributes hash: 9715536092457030614
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6553,58 +4265,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:145:16
-    │
-145 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 9715536092457030614
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I8,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:148:16
     │
 148 │         return left % right
     │                ^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:148:16
-    │
-148 │         return left % right
-    │                ^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:148:23
-    │
-148 │         return left % right
-    │                       ^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6649,58 +4313,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:148:16
-    │
-148 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:151:16
     │
 151 │         return left % right
     │                ^^^^ attributes hash: 9341420026351674595
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U128,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:151:16
-    │
-151 │         return left % right
-    │                ^^^^ attributes hash: 9341420026351674595
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U128,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:151:23
-    │
-151 │         return left % right
-    │                       ^^^^^ attributes hash: 9341420026351674595
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6745,58 +4361,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:151:16
-    │
-151 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 9341420026351674595
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U128,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:154:16
     │
 154 │         return left % right
     │                ^^^^ attributes hash: 3044889006329355385
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U64,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:154:16
-    │
-154 │         return left % right
-    │                ^^^^ attributes hash: 3044889006329355385
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U64,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:154:23
-    │
-154 │         return left % right
-    │                       ^^^^^ attributes hash: 3044889006329355385
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6841,58 +4409,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:154:16
-    │
-154 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 3044889006329355385
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U64,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:157:16
     │
 157 │         return left % right
     │                ^^^^ attributes hash: 5442387896079309831
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U32,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:157:16
-    │
-157 │         return left % right
-    │                ^^^^ attributes hash: 5442387896079309831
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U32,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:157:23
-    │
-157 │         return left % right
-    │                       ^^^^^ attributes hash: 5442387896079309831
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6937,58 +4457,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:157:16
-    │
-157 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 5442387896079309831
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U32,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:160:16
     │
 160 │         return left % right
     │                ^^^^ attributes hash: 17931047209024117248
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U16,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:160:16
-    │
-160 │         return left % right
-    │                ^^^^ attributes hash: 17931047209024117248
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U16,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:160:23
-    │
-160 │         return left % right
-    │                       ^^^^^ attributes hash: 17931047209024117248
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7033,58 +4505,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:160:16
-    │
-160 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 17931047209024117248
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U16,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:163:16
     │
 163 │         return left % right
     │                ^^^^ attributes hash: 6817314866882205962
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U8,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:163:16
-    │
-163 │         return left % right
-    │                ^^^^ attributes hash: 6817314866882205962
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U8,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:163:23
-    │
-163 │         return left % right
-    │                       ^^^^^ attributes hash: 6817314866882205962
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7129,58 +4553,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:163:16
-    │
-163 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 6817314866882205962
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U8,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:166:16
     │
 166 │         return left % right
     │                ^^^^ attributes hash: 17351186385905986417
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:166:16
-    │
-166 │         return left % right
-    │                ^^^^ attributes hash: 17351186385905986417
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:166:23
-    │
-166 │         return left % right
-    │                       ^^^^^ attributes hash: 17351186385905986417
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7225,58 +4601,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:166:16
-    │
-166 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 17351186385905986417
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:169:16
     │
 169 │         return left % right
     │                ^^^^ attributes hash: 5494075259962106032
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I128,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:169:16
-    │
-169 │         return left % right
-    │                ^^^^ attributes hash: 5494075259962106032
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I128,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:169:23
-    │
-169 │         return left % right
-    │                       ^^^^^ attributes hash: 5494075259962106032
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7321,58 +4649,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:169:16
-    │
-169 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 5494075259962106032
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I128,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:172:16
     │
 172 │         return left % right
     │                ^^^^ attributes hash: 16198180549924123587
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I64,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:172:16
-    │
-172 │         return left % right
-    │                ^^^^ attributes hash: 16198180549924123587
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I64,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:172:23
-    │
-172 │         return left % right
-    │                       ^^^^^ attributes hash: 16198180549924123587
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7417,58 +4697,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:172:16
-    │
-172 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 16198180549924123587
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I64,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:175:16
     │
 175 │         return left % right
     │                ^^^^ attributes hash: 13972995067286817043
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I32,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:175:16
-    │
-175 │         return left % right
-    │                ^^^^ attributes hash: 13972995067286817043
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I32,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:175:23
-    │
-175 │         return left % right
-    │                       ^^^^^ attributes hash: 13972995067286817043
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7513,58 +4745,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:175:16
-    │
-175 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 13972995067286817043
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I32,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:178:16
     │
 178 │         return left % right
     │                ^^^^ attributes hash: 13584665093848691268
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I16,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:178:16
-    │
-178 │         return left % right
-    │                ^^^^ attributes hash: 13584665093848691268
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I16,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:178:23
-    │
-178 │         return left % right
-    │                       ^^^^^ attributes hash: 13584665093848691268
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7609,58 +4793,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:178:16
-    │
-178 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 13584665093848691268
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I16,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:181:16
     │
 181 │         return left % right
     │                ^^^^ attributes hash: 9715536092457030614
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I8,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:181:16
-    │
-181 │         return left % right
-    │                ^^^^ attributes hash: 9715536092457030614
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I8,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:181:23
-    │
-181 │         return left % right
-    │                       ^^^^^ attributes hash: 9715536092457030614
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7705,58 +4841,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:181:16
-    │
-181 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 9715536092457030614
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I8,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:184:16
     │
 184 │         return left ** right
     │                ^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:184:16
-    │
-184 │         return left ** right
-    │                ^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:184:24
-    │
-184 │         return left ** right
-    │                        ^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7801,58 +4889,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:184:16
-    │
-184 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:187:16
     │
 187 │         return left ** right
     │                ^^^^ attributes hash: 9341420026351674595
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U128,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:187:16
-    │
-187 │         return left ** right
-    │                ^^^^ attributes hash: 9341420026351674595
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U128,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:187:24
-    │
-187 │         return left ** right
-    │                        ^^^^^ attributes hash: 9341420026351674595
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7897,58 +4937,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:187:16
-    │
-187 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 9341420026351674595
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U128,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:190:16
     │
 190 │         return left ** right
     │                ^^^^ attributes hash: 3044889006329355385
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U64,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:190:16
-    │
-190 │         return left ** right
-    │                ^^^^ attributes hash: 3044889006329355385
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U64,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:190:24
-    │
-190 │         return left ** right
-    │                        ^^^^^ attributes hash: 3044889006329355385
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7993,58 +4985,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:190:16
-    │
-190 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 3044889006329355385
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U64,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:193:16
     │
 193 │         return left ** right
     │                ^^^^ attributes hash: 5442387896079309831
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U32,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:193:16
-    │
-193 │         return left ** right
-    │                ^^^^ attributes hash: 5442387896079309831
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U32,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:193:24
-    │
-193 │         return left ** right
-    │                        ^^^^^ attributes hash: 5442387896079309831
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8089,58 +5033,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:193:16
-    │
-193 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 5442387896079309831
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U32,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:196:16
     │
 196 │         return left ** right
     │                ^^^^ attributes hash: 17931047209024117248
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U16,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:196:16
-    │
-196 │         return left ** right
-    │                ^^^^ attributes hash: 17931047209024117248
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U16,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:196:24
-    │
-196 │         return left ** right
-    │                        ^^^^^ attributes hash: 17931047209024117248
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8185,58 +5081,10 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:196:16
-    │
-196 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 17931047209024117248
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U16,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:199:16
     │
 199 │         return left ** right
     │                ^^^^ attributes hash: 6817314866882205962
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U8,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:199:16
-    │
-199 │         return left ** right
-    │                ^^^^ attributes hash: 6817314866882205962
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U8,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:199:24
-    │
-199 │         return left ** right
-    │                        ^^^^^ attributes hash: 6817314866882205962
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8281,22 +5129,6 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:199:16
-    │
-199 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 6817314866882205962
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U8,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:202:16
     │
 202 │         return left ** right
@@ -8306,38 +5138,6 @@ note:
           typ: Base(
               Numeric(
                   I256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:202:16
-    │
-202 │         return left ** right
-    │                ^^^^ attributes hash: 17351186385905986417
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:202:24
-    │
-202 │         return left ** right
-    │                        ^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
               ),
           ),
           location: Value,
@@ -8377,22 +5177,6 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:202:16
-    │
-202 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 17351186385905986417
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:205:16
     │
 205 │         return left ** right
@@ -8402,38 +5186,6 @@ note:
           typ: Base(
               Numeric(
                   I128,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:205:16
-    │
-205 │         return left ** right
-    │                ^^^^ attributes hash: 5494075259962106032
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I128,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:205:24
-    │
-205 │         return left ** right
-    │                        ^^^^^ attributes hash: 9341420026351674595
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U128,
               ),
           ),
           location: Value,
@@ -8473,22 +5225,6 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:205:16
-    │
-205 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 5494075259962106032
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I128,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:208:16
     │
 208 │         return left ** right
@@ -8498,38 +5234,6 @@ note:
           typ: Base(
               Numeric(
                   I64,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:208:16
-    │
-208 │         return left ** right
-    │                ^^^^ attributes hash: 16198180549924123587
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I64,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:208:24
-    │
-208 │         return left ** right
-    │                        ^^^^^ attributes hash: 3044889006329355385
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U64,
               ),
           ),
           location: Value,
@@ -8569,22 +5273,6 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:208:16
-    │
-208 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 16198180549924123587
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I64,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:211:16
     │
 211 │         return left ** right
@@ -8594,38 +5282,6 @@ note:
           typ: Base(
               Numeric(
                   I32,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:211:16
-    │
-211 │         return left ** right
-    │                ^^^^ attributes hash: 13972995067286817043
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I32,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:211:24
-    │
-211 │         return left ** right
-    │                        ^^^^^ attributes hash: 5442387896079309831
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U32,
               ),
           ),
           location: Value,
@@ -8665,22 +5321,6 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:211:16
-    │
-211 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 13972995067286817043
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I32,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:214:16
     │
 214 │         return left ** right
@@ -8690,38 +5330,6 @@ note:
           typ: Base(
               Numeric(
                   I16,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:214:16
-    │
-214 │         return left ** right
-    │                ^^^^ attributes hash: 13584665093848691268
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I16,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:214:24
-    │
-214 │         return left ** right
-    │                        ^^^^^ attributes hash: 17931047209024117248
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U16,
               ),
           ),
           location: Value,
@@ -8761,38 +5369,6 @@ note:
       }
 
 note: 
-    ┌─ features/checked_arithmetic.fe:214:16
-    │
-214 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 13584665093848691268
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I16,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:217:16
-    │
-217 │         return left ** right
-    │                ^^^^ attributes hash: 9715536092457030614
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I8,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ features/checked_arithmetic.fe:217:16
     │
 217 │         return left ** right
@@ -8818,38 +5394,6 @@ note:
           typ: Base(
               Numeric(
                   U8,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:217:24
-    │
-217 │         return left ** right
-    │                        ^^^^^ attributes hash: 6817314866882205962
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U8,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ features/checked_arithmetic.fe:217:16
-    │
-217 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 9715536092457030614
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  I8,
               ),
           ),
           location: Value,

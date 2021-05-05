@@ -64,7 +64,7 @@ pub fn expr_list(
             // Rationale - A list contains only one type of element.
             // No need to iterate the whole list if the first attribute doesn't match next
             // one.
-            for elt in elts.iter() {
+            for elt in elts.iter().skip(1) {
                 let next_attribute = expr(Rc::clone(&scope), Rc::clone(&context), elt)?;
                 validate_types_equal(&next_attribute, &attribute_to_be_matched)?;
             }
@@ -105,7 +105,9 @@ pub fn value_expr(
 ) -> Result<ExpressionAttributes, SemanticError> {
     let attributes = expr(Rc::clone(&scope), Rc::clone(&context), exp)?.into_loaded()?;
 
-    context.borrow_mut().add_expression(exp, attributes.clone());
+    context
+        .borrow_mut()
+        .update_expression(exp, attributes.clone());
 
     Ok(attributes)
 }
@@ -120,7 +122,9 @@ pub fn assignable_expr(
 ) -> Result<ExpressionAttributes, SemanticError> {
     let attributes = expr(Rc::clone(&scope), Rc::clone(&context), exp)?.into_assignable()?;
 
-    context.borrow_mut().add_expression(exp, attributes.clone());
+    context
+        .borrow_mut()
+        .update_expression(exp, attributes.clone());
 
     Ok(attributes)
 }

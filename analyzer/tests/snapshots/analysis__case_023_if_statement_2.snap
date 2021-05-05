@@ -52,22 +52,6 @@ note:
     }
 
 note: 
-  ┌─ features/if_statement_2.fe:5:20
-  │
-5 │             return 1
-  │                    ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/if_statement_2.fe:7:20
   │
 7 │             assert true
@@ -86,38 +70,6 @@ note:
   │
 4 │         if val > 5:
   │            ^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/if_statement_2.fe:4:12
-  │
-4 │         if val > 5:
-  │            ^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/if_statement_2.fe:4:18
-  │
-4 │         if val > 5:
-  │                  ^ attributes hash: 16797824492585953824
   │
   = ExpressionAttributes {
         typ: Base(
@@ -154,22 +106,6 @@ note:
   = ExpressionAttributes {
         typ: Base(
             Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/if_statement_2.fe:9:16
-  │
-9 │         return 0
-  │                ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
         ),
         location: Value,
         move_location: None,

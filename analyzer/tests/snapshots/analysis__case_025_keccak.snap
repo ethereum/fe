@@ -94,23 +94,6 @@ note:
     }
 
 note: 
-  ┌─ features/keccak.fe:4:26
-  │
-4 │         return keccak256(val)
-  │                          ^^^ attributes hash: 8598609981099527373
-  │
-  = ExpressionAttributes {
-        typ: Array(
-            Array {
-                size: 1,
-                inner: Byte,
-            },
-        ),
-        location: Memory,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/keccak.fe:4:16
   │
 4 │         return keccak256(val)
@@ -123,39 +106,6 @@ note:
             ),
         ),
         location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/keccak.fe:4:16
-  │
-4 │         return keccak256(val)
-  │                ^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/keccak.fe:7:26
-  │
-7 │         return keccak256(val)
-  │                          ^^^ attributes hash: 2245312459861268279
-  │
-  = ExpressionAttributes {
-        typ: Array(
-            Array {
-                size: 3,
-                inner: Byte,
-            },
-        ),
-        location: Memory,
         move_location: None,
     }
 
@@ -193,22 +143,6 @@ note:
     }
 
 note: 
-  ┌─ features/keccak.fe:7:16
-  │
-7 │         return keccak256(val)
-  │                ^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
    ┌─ features/keccak.fe:10:26
    │
 10 │         return keccak256(val)
@@ -222,39 +156,6 @@ note:
              },
          ),
          location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/keccak.fe:10:26
-   │
-10 │         return keccak256(val)
-   │                          ^^^ attributes hash: 10306023770505947435
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 32,
-                 inner: Byte,
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/keccak.fe:10:16
-   │
-10 │         return keccak256(val)
-   │                ^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
          move_location: None,
      }
 
