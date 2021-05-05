@@ -2,14 +2,13 @@
 
 #![cfg(feature = "solc-backend")]
 use evm_runtime::Handler;
+use fe_common::utils::keccak;
+use fe_compiler_test_utils::*;
+use fe_compiler_test_utils::{self as test_utils};
 use primitive_types::{H160, U256};
 use rstest::rstest;
 use std::collections::BTreeMap;
 use std::iter;
-
-use fe_common::utils::keccak;
-use fe_compiler_test_utils::*;
-use fe_compiler_test_utils::{self as test_utils};
 
 pub fn deploy_contract(
     executor: &mut Executor,

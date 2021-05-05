@@ -11,7 +11,7 @@ repository = "https://github.com/ethereum/fe"
 version = "0.4.0-alpha"
 
 [workspace]
-members = [".", "parser", "compiler", "test-utils", "tests"]
+members = [".", "parser", "compiler"]
 
 [features]
 solc-backend = ["fe-compiler/solc-backend"]
@@ -20,8 +20,6 @@ solc-backend = ["fe-compiler/solc-backend"]
 clap = "2.33.3"
 fe-common = {path = "common", version = "^0.4.0-alpha"}
 fe-compiler = {path = "compiler", version = "^0.4.0-alpha"}
-fe-compiler-test-utils = {path = "test-utils", version = "0.4.0-alpha"}
-fe-compiler-tests = {path = "tests", version = "0.4.0-alpha"}
 fe-parser = {path = "parser", version = "^0.4.0-alpha"}
 
 [dev-dependencies]

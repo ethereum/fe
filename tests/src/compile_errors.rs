@@ -1,5 +1,6 @@
 //! Tests for contracts that should cause compile errors
 
+#![cfg(feature = "solc-backend")]
 use fe_analyzer::errors::{ErrorKind::*, SemanticError};
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::files::FileStore;
@@ -104,7 +105,10 @@ use rstest::rstest;
 fn test_compile_errors(fixture_file: &str, expected_error: fe_analyzer::errors::ErrorKind) {
     let mut files = FileStore::new();
     let (src, id) = files
-        .load_file(&format!("fixtures/compile_errors/{}", fixture_file))
+        .load_file(&format!(
+            "../tests/fixtures/compile_errors/{}",
+            fixture_file
+        ))
         .expect("unable to read fixture file");
 
     match fe_compiler::compile(&src, id, true, false) {

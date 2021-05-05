@@ -5,7 +5,6 @@ use fe_compiler_test_utils::*;
 fn uniswap_contracts() {
     with_executor(&|mut executor| {
         /* SETUP */
-
         // Create the actors Alice and Bob.
         // Alice starts with all of the token supply (1m each).
         let alice = address_token(DEFAULT_CALLER);
@@ -77,7 +76,6 @@ fn uniswap_contracts() {
         );
 
         /* VALIDATE SETUP */
-
         // Check that the factory address is set correctly
         pair_harness.test_function(&mut executor, "factory", &[], Some(&factory_address));
 
@@ -88,7 +86,6 @@ fn uniswap_contracts() {
         pair_harness.test_function(&mut executor, "token1", &[], Some(&token1_address));
 
         /* ALICE ADDS LIQUIDITY */
-
         // Alice sends 200 full token0 tokens to the pair for liquidity
         token0_harness.test_function(
             &mut executor,
@@ -121,7 +118,6 @@ fn uniswap_contracts() {
             .expect("no return from mint");
 
         /* VALIDATE LIQUIDITY */
-
         // Validate that Alice's liquidity token balance is equal to what was returned
         // by `mint`.
         //
@@ -155,7 +151,6 @@ fn uniswap_contracts() {
         );
 
         /* BOB PERFORMS A SWAP */
-
         // Set Bob as the token1 caller, this is so Bob can perform a swap.
         token1_harness.set_caller(bob.clone().to_address().unwrap());
 
@@ -179,7 +174,6 @@ fn uniswap_contracts() {
         );
 
         /* VALIDATE SWAP */
-
         // Check that Bob's token0 balance has increased from 0 to 1993 smallest units.
         token0_harness.test_function(
             &mut executor,
@@ -201,7 +195,6 @@ fn uniswap_contracts() {
         );
 
         /* ALICE REMOVES LIQUIDITY */
-
         // Alice sends liquidity back to pair contract.
         pair_harness.test_function(
             &mut executor,
@@ -222,7 +215,6 @@ fn uniswap_contracts() {
         );
 
         /* VALIDATE LIQUIDITY REMOVAL */
-
         // Validate reserves.
         pair_harness.test_function(
             &mut executor,
@@ -236,7 +228,6 @@ fn uniswap_contracts() {
         );
 
         /* SANITY CHECK TOKEN BALANCES */
-
         // Validate that all of the token0 tokens are held between the pair contract and
         // actors.
         //
