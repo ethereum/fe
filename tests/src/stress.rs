@@ -21,7 +21,11 @@ pub fn deploy_contract(
 }
 
 pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
-    fe_compiler_test_utils::load_contract(address, &format!("tests/fixtures/stress/{}", fixture), contract_name)
+    fe_compiler_test_utils::load_contract(
+        address,
+        &format!("tests/fixtures/stress/{}", fixture),
+        contract_name,
+    )
 }
 
 #[test]
