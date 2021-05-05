@@ -641,15 +641,17 @@ fn expr_call_self_attribute(
     func_name: &str,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, SemanticError> {
+    let called_func = scope
+        .borrow()
+        .contract_scope()
+        .borrow()
+        .function_def(func_name);
+
     if let Some(ContractFunctionDef {
         params,
         return_type,
         ..
-    }) = scope
-        .borrow()
-        .contract_scope()
-        .borrow()
-        .function_def(func_name)
+    }) = called_func
     {
         let argument_attributes = expr_call_args(Rc::clone(&scope), Rc::clone(&context), args)?;
 
