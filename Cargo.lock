@@ -615,6 +615,7 @@ dependencies = [
  "clap",
  "fe-common",
  "fe-compiler",
+ "fe-compiler-tests",
  "fe-parser",
 ]
 
@@ -669,6 +670,43 @@ dependencies = [
  "serde_json",
  "solc",
  "vec1",
+ "yultsur",
+]
+
+[[package]]
+name = "fe-compiler-test-utils"
+version = "0.4.0-alpha"
+dependencies = [
+ "ethabi",
+ "evm",
+ "evm-runtime",
+ "fe-common",
+ "fe-compiler",
+ "hex",
+ "primitive-types",
+ "serde_json",
+ "solc",
+ "stringreader",
+ "yultsur",
+]
+
+[[package]]
+name = "fe-compiler-tests"
+version = "0.4.0-alpha"
+dependencies = [
+ "ethabi",
+ "evm",
+ "evm-runtime",
+ "fe-analyzer",
+ "fe-common",
+ "fe-compiler",
+ "fe-compiler-test-utils",
+ "hex",
+ "primitive-types",
+ "rand",
+ "regex",
+ "rstest",
+ "stringreader",
  "yultsur",
 ]
 
@@ -1622,6 +1660,12 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
+name = "stringreader"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "913e7b03d63752f6cdd2df77da36749d82669904798fe8944b9ec3d23f159905"
 
 [[package]]
 name = "strsim"
