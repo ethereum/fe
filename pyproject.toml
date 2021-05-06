@@ -1,7 +1,7 @@
 [tool.towncrier]
 # Read https://github.com/ethereum/fe/newsfragments/README.md for instructions
 # package = "fe"
-filename = "docs/release_notes.md"
+filename = "docs/src/release_notes.md"
 directory = "newsfragments"
 underlines = ["", ""]
 issue_format = "[#{issue}](https://github.com/ethereum/fe/issues/{issue})"

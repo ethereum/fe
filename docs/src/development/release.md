@@ -1,12 +1,12 @@
-# Release
+## Release
 
-## Versioning
+### Versioning
 
 Make sure that version follows [semver](https://semver.org/) rules e.g (`0.2.0-alpha`).
 
 **For the time being, ALWAYS specify the `-alpha` suffix.**
 
-## Generate Release Notes
+### Generate Release Notes
 
 **Prerequisite**: Release notes are generated with [towncrier](https://pypi.org/project/towncrier/).Ensure to have `towncrier` installed and the command is available.
 
@@ -20,7 +20,7 @@ make notes version=0.2.0-alpha
 
 Examine the generated release notes and if needed perform and commit any manual changes.
 
-## Generate the release
+### Generate the release
 
 **Prerequisite**: Make sure the central repository is configured as `upstream`, **not** `origin`.
 
@@ -32,6 +32,6 @@ Example:
 make release version=0.2.0-alpha
 ```
 
-## Manually edit the release on GitHub
+### Manually edit the release on GitHub
 
 Running the previous command will push a new tag to Github and cause CI to create a [release](https://github.com/ethereum/fe/releases) with the Fe binaries attached. We may want to edit the release afterwards to put in some verbiage about the release.

@@ -1,4 +1,4 @@
-# Build and test
+## Build and test
 
 Please make sure Rust is [installed](https://www.rust-lang.org/learn/get-started).
 
@@ -11,7 +11,7 @@ The following commands only build the Fe -> Yul compiler components.
 
 **Full**
 
-The Fe compiler depends on the Solidity compiler for transforming Yul IR to EVM bytecode. We currently use [solc-rust](https://github.com/axic/solc-rust) to perform this. In order to compile solc-rust, the following must be installed on your system:
+The Fe compiler depends on the Solidity compiler for transforming Yul IR to EVM bytecode. We currently use [solc-rust](https://github.com/g-r-a-n-t/solc-rust) to perform this. In order to compile solc-rust, the following must be installed on your system:
 
 - cmake
 - libboost
