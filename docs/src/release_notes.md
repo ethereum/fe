@@ -5,13 +5,14 @@
 [📄 Draft Spec](https://github.com/ethereum/fe/tree/master/spec)
 [ℹ️ Getting Started](https://github.com/ethereum/fe#getting-started)
 
+<!-- toc -->
 
 Fe is moving fast. Read up on all the latest improvements.
 
 **WARNING: All Fe releases are alpha releases and only meant to share the development progress with developers and enthusiasts. It is NOT yet ready for production usage.**
 
 [//]: # (towncrier release notes start)
-## 0.4.0-alpha (2021-04-28)## 0.4.0-alpha (2021-04-28)
+## 0.4.0-alpha (2021-04-28)
 
 
 ### Features
