@@ -1,7 +1,6 @@
 //! Stress tests that test broad behavior
 
 #![cfg(feature = "solc-backend")]
-use primitive_types::H160;
 use std::iter;
 
 use fe_compiler_test_utils::*;
@@ -14,17 +13,9 @@ pub fn deploy_contract(
 ) -> ContractHarness {
     fe_compiler_test_utils::deploy_contract(
         executor,
-        &format!("tests/fixtures/stress/{}", fixture),
+        &format!("../tests/fixtures/stress/{}", fixture),
         contract_name,
         init_params,
-    )
-}
-
-pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
-    fe_compiler_test_utils::load_contract(
-        address,
-        &format!("tests/fixtures/stress/{}", fixture),
-        contract_name,
     )
 }
 

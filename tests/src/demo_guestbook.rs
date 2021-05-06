@@ -8,7 +8,7 @@ fn guest_book() {
     with_executor(&|mut executor| {
         let mut harness = deploy_contract(
             &mut executor,
-            "tests/fixtures/demos/guest_book.fe",
+            "../tests/fixtures/demos/guest_book.fe",
             "GuestBook",
             &[],
         );

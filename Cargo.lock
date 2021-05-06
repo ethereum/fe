@@ -651,6 +651,7 @@ dependencies = [
  "clap",
  "fe-common",
  "fe-compiler",
+ "fe-compiler-tests",
  "fe-parser",
 ]
 
@@ -701,6 +702,43 @@ dependencies = [
  "serde",
  "serde_json",
  "solc",
+ "stringreader",
+ "yultsur",
+]
+
+[[package]]
+name = "fe-compiler-test-utils"
+version = "0.4.0-alpha"
+dependencies = [
+ "ethabi",
+ "evm",
+ "evm-runtime",
+ "fe-common",
+ "fe-compiler",
+ "hex",
+ "primitive-types",
+ "serde_json",
+ "solc",
+ "stringreader",
+ "yultsur",
+]
+
+[[package]]
+name = "fe-compiler-tests"
+version = "0.4.0-alpha"
+dependencies = [
+ "ethabi",
+ "evm",
+ "evm-runtime",
+ "fe-analyzer",
+ "fe-common",
+ "fe-compiler",
+ "fe-compiler-test-utils",
+ "hex",
+ "primitive-types",
+ "rand",
+ "regex",
+ "rstest",
  "stringreader",
  "yultsur",
 ]
