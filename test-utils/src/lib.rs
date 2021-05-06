@@ -338,7 +338,7 @@ pub fn compile_solidity_contract(name: &str, solidity_src: &str) -> Result<(Stri
 
 #[allow(dead_code)]
 pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
-    let (src, id) = read_fixture(&(format!("../{}", &fixture)));
+    let (src, id) = read_fixture(&fixture);
     let compiled_module =
         compiler::compile(&src, id, true, true).expect("failed to compile module");
     let compiled_contract = compiled_module
