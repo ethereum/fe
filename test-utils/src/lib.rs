@@ -216,7 +216,7 @@ pub fn deploy_contract(
 ) -> ContractHarness {
     let mut files = FileStore::new();
     let (src, id) = files
-        .load_file(&(format!("../{}", &fixture)))
+        .load_file(&fixture)
         .expect("unable to read fixture file");
 
     let compiled_module = match compiler::compile(&src, id, true, true) {
@@ -247,7 +247,7 @@ pub fn deploy_solidity_contract(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    let src = fs::read_to_string(&(format!("../{}", &fixture)))
+    let src = fs::read_to_string(&fixture)
         .expect("unable to read fixture file")
         .replace("\n", "")
         .replace("\"", "\\\"");
@@ -341,7 +341,7 @@ pub fn compile_solidity_contract(name: &str, solidity_src: &str) -> Result<(Stri
 
 #[allow(dead_code)]
 pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
-    let (src, id) = read_fixture(&(format!("../{}", &fixture)));
+    let (src, id) = read_fixture(&fixture);
     let compiled_module =
         compiler::compile(&src, id, true, true).expect("failed to compile module");
     let compiled_contract = compiled_module
