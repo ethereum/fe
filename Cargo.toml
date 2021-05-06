@@ -20,7 +20,7 @@ solc-backend = ["fe-compiler/solc-backend", "fe-compiler-tests/solc-backend"]
 clap = "2.33.3"
 fe-common = {path = "common", version = "^0.4.0-alpha"}
 fe-compiler = {path = "compiler", version = "^0.4.0-alpha"}
-fe-compiler-tests = {path = "tests", version = "^0.4.0-alpha"}
+fe-compiler-tests = {path = "tests", features = ["solc-backend"], version = "^0.4.0-alpha"}
 fe-parser = {path = "parser", version = "^0.4.0-alpha"}
 
 [dev-dependencies]
