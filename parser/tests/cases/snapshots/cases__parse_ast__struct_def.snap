@@ -15,8 +15,8 @@ Node(
     fields: [
       Node(
         kind: Field(
-          pub_qual: None,
-          const_qual: None,
+          is_pub: false,
+          is_const: false,
           name: Node(
             kind: "x",
             span: Span(
@@ -42,14 +42,8 @@ Node(
       ),
       Node(
         kind: Field(
-          pub_qual: Some(Node(
-            kind: PubQualifier(),
-            span: Span(
-              start: 25,
-              end: 28,
-            ),
-          )),
-          const_qual: None,
+          is_pub: true,
+          is_const: false,
           name: Node(
             kind: "y",
             span: Span(
@@ -75,14 +69,8 @@ Node(
       ),
       Node(
         kind: Field(
-          pub_qual: None,
-          const_qual: Some(Node(
-            kind: ConstQualifier(),
-            span: Span(
-              start: 37,
-              end: 42,
-            ),
-          )),
+          is_pub: false,
+          is_const: true,
           name: Node(
             kind: "z",
             span: Span(
@@ -108,20 +96,8 @@ Node(
       ),
       Node(
         kind: Field(
-          pub_qual: Some(Node(
-            kind: PubQualifier(),
-            span: Span(
-              start: 51,
-              end: 54,
-            ),
-          )),
-          const_qual: Some(Node(
-            kind: ConstQualifier(),
-            span: Span(
-              start: 55,
-              end: 60,
-            ),
-          )),
+          is_pub: true,
+          is_const: true,
           name: Node(
             kind: "a",
             span: Span(

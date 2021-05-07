@@ -87,19 +87,12 @@ pub struct FromImportName {
 /// struct or contract field, with optional 'pub' and 'const' qualifiers
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Field {
-    pub pub_qual: Option<Node<PubQualifier>>,
-    pub const_qual: Option<Node<ConstQualifier>>,
+    pub is_pub: bool,
+    pub is_const: bool,
     pub name: Node<String>,
     pub typ: Node<TypeDesc>,
     pub value: Option<Node<Expr>>,
 }
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct PubQualifier {}
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct ConstQualifier {}
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct IdxQualifier {}
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ContractStmt {
@@ -108,7 +101,7 @@ pub enum ContractStmt {
         fields: Vec<Node<EventField>>,
     },
     FuncDef {
-        pub_qual: Option<Node<PubQualifier>>,
+        is_pub: bool,
         name: Node<String>,
         args: Vec<Node<FuncDefArg>>,
         return_type: Option<Node<TypeDesc>>,
@@ -118,7 +111,7 @@ pub enum ContractStmt {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct EventField {
-    pub idx_qual: Option<Node<IdxQualifier>>,
+    pub is_idx: bool,
     pub name: Node<String>,
     pub typ: Node<TypeDesc>,
 }

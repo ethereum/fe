@@ -15,8 +15,8 @@ Node(
     fields: [
       Node(
         kind: Field(
-          pub_qual: None,
-          const_qual: None,
+          is_pub: false,
+          is_const: false,
           name: Node(
             kind: "x",
             span: Span(
@@ -42,14 +42,8 @@ Node(
       ),
       Node(
         kind: Field(
-          pub_qual: Some(Node(
-            kind: PubQualifier(),
-            span: Span(
-              start: 29,
-              end: 32,
-            ),
-          )),
-          const_qual: None,
+          is_pub: true,
+          is_const: false,
           name: Node(
             kind: "y",
             span: Span(
@@ -75,20 +69,8 @@ Node(
       ),
       Node(
         kind: Field(
-          pub_qual: Some(Node(
-            kind: PubQualifier(),
-            span: Span(
-              start: 41,
-              end: 44,
-            ),
-          )),
-          const_qual: Some(Node(
-            kind: ConstQualifier(),
-            span: Span(
-              start: 45,
-              end: 50,
-            ),
-          )),
+          is_pub: true,
+          is_const: true,
           name: Node(
             kind: "z",
             span: Span(
@@ -142,13 +124,7 @@ Node(
     body: [
       Node(
         kind: FuncDef(
-          pub_qual: Some(Node(
-            kind: PubQualifier(),
-            span: Span(
-              start: 73,
-              end: 76,
-            ),
-          )),
+          is_pub: true,
           name: Node(
             kind: "foo",
             span: Span(
@@ -201,13 +177,7 @@ Node(
           fields: [
             Node(
               kind: EventField(
-                idx_qual: Some(Node(
-                  kind: IdxQualifier(),
-                  span: Span(
-                    start: 125,
-                    end: 128,
-                  ),
-                )),
+                is_idx: true,
                 name: Node(
                   kind: "from",
                   span: Span(

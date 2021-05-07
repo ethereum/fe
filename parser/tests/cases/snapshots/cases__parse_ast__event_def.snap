@@ -15,7 +15,7 @@ Node(
     fields: [
       Node(
         kind: EventField(
-          idx_qual: None,
+          is_idx: false,
           name: Node(
             kind: "x",
             span: Span(
@@ -40,13 +40,7 @@ Node(
       ),
       Node(
         kind: EventField(
-          idx_qual: Some(Node(
-            kind: IdxQualifier(),
-            span: Span(
-              start: 26,
-              end: 29,
-            ),
-          )),
+          is_idx: true,
           name: Node(
             kind: "y",
             span: Span(

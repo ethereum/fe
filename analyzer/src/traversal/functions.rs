@@ -16,7 +16,7 @@ pub fn func_def(
     def: &Node<fe::ContractStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::ContractStmt::FuncDef {
-        pub_qual,
+        is_pub,
         name,
         args,
         return_type,
@@ -25,8 +25,6 @@ pub fn func_def(
     {
         let name = &name.kind;
         let function_scope = BlockScope::from_contract_scope(name, Rc::clone(&contract_scope));
-
-        let is_public = pub_qual.is_some();
 
         let params = args
             .iter()
@@ -54,7 +52,7 @@ pub fn func_def(
             .borrow_mut()
             .add_function(
                 name,
-                is_public,
+                *is_pub,
                 params,
                 return_type,
                 Rc::clone(&function_scope),

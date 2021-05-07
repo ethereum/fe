@@ -126,20 +126,8 @@ Node(
           fields: [
             Node(
               kind: Field(
-                pub_qual: Some(Node(
-                  kind: PubQualifier(),
-                  span: Span(
-                    start: 71,
-                    end: 74,
-                  ),
-                )),
-                const_qual: Some(Node(
-                  kind: ConstQualifier(),
-                  span: Span(
-                    start: 75,
-                    end: 80,
-                  ),
-                )),
+                is_pub: true,
+                is_const: true,
                 name: Node(
                   kind: "x",
                   span: Span(
@@ -189,14 +177,8 @@ Node(
           fields: [
             Node(
               kind: Field(
-                pub_qual: Some(Node(
-                  kind: PubQualifier(),
-                  span: Span(
-                    start: 111,
-                    end: 114,
-                  ),
-                )),
-                const_qual: None,
+                is_pub: true,
+                is_const: false,
                 name: Node(
                   kind: "x",
                   span: Span(
