@@ -181,24 +181,14 @@ fn for_loop(
     stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     match &stmt.kind {
-        fe::FuncStmt::For {
-            target,
-            iter,
-            body,
-            or_else,
-        } => {
-            // Step 1: Make sure it is empty.
-            // TODO: (SA) needs to add support for it.
-            if !or_else.is_empty() {
-                unimplemented!();
-            }
-            // Step 2: Create the for loop body scope.
+        fe::FuncStmt::For { target, iter, body } => {
+            // Create the for loop body scope.
             let body_scope = BlockScope::from_block_scope(BlockScopeType::Loop, Rc::clone(&scope));
-            // Step 3: Make sure iter is in the function scope & it should be an array.
+            // Make sure iter is in the function scope & it should be an array.
             let target_type = verify_is_array(scope, Rc::clone(&context), iter)?;
             let target_name = expressions::expr_name_string(target)?;
             body_scope.borrow_mut().add_var(&target_name, target_type)?;
-            // Step 4: Traverse the statements within the `for loop` body scope.
+            // Traverse the statements within the `for loop` body scope.
             traverse_statements(body_scope, context, body)
         }
         _ => unreachable!(),
@@ -293,14 +283,7 @@ fn while_loop(
     stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     match &stmt.kind {
-        fe::FuncStmt::While {
-            test,
-            body,
-            or_else,
-        } => {
-            if !or_else.is_empty() {
-                unimplemented!();
-            }
+        fe::FuncStmt::While { test, body } => {
             let body_scope = BlockScope::from_block_scope(BlockScopeType::Loop, Rc::clone(&scope));
             traverse_statements(body_scope, Rc::clone(&context), body)?;
             verify_is_boolean(scope, context, test)

@@ -65,7 +65,6 @@ Node(
         ),
       ),
     ],
-    or_else: [],
   ),
   span: Span(
     start: 0,

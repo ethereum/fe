@@ -78,13 +78,7 @@ fn func_stmt(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
 }
 
 fn for_loop(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
-    if let fe::FuncStmt::For {
-        target,
-        iter,
-        body,
-        or_else: _,
-    } = &stmt.kind
-    {
+    if let fe::FuncStmt::For { target, iter, body } = &stmt.kind {
         let iterator = expressions::expr(context, iter);
         let target_var = names::var_name(&expressions::expr_name_string(target));
         let yul_body = multiple_func_stmt(context, body);
@@ -228,12 +222,7 @@ fn func_return(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
 }
 
 fn while_loop(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
-    if let fe::FuncStmt::While {
-        test,
-        body,
-        or_else: _,
-    } = &stmt.kind
-    {
+    if let fe::FuncStmt::While { test, body } = &stmt.kind {
         let test = expressions::expr(context, test);
         let yul_body = multiple_func_stmt(context, body);
 
