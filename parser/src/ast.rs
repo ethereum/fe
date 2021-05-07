@@ -149,7 +149,7 @@ pub enum FuncStmt {
         value: Node<Expr>,
     },
     For {
-        target: Node<Expr>, // TODO: change to Vec<Node<String>>
+        target: Node<String>,
         iter: Node<Expr>,
         body: Vec<Node<FuncStmt>>,
     },

@@ -125,15 +125,6 @@ pub fn assignable_expr(
     Ok(attributes)
 }
 
-/// Retrieves the String value of a name expression.
-pub fn expr_name_string(exp: &Node<fe::Expr>) -> Result<String, SemanticError> {
-    if let fe::Expr::Name(name) = &exp.kind {
-        return Ok(name.to_owned());
-    }
-
-    unreachable!()
-}
-
 fn expr_tuple(
     scope: Shared<BlockScope>,
     context: Shared<Context>,

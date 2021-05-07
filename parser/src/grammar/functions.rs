@@ -360,7 +360,9 @@ pub fn parse_while_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
 pub fn parse_for_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let for_tok = par.assert(TokenKind::For);
 
-    let target = parse_expr(par)?;
+    let target = par
+        .expect(TokenKind::Name, "failed to parse `for` statement")?
+        .into();
     par.expect(TokenKind::In, "failed to parse `for` statement")?;
     let iter = parse_expr(par)?;
     par.enter_block(for_tok.span + iter.span, "`for` statement")?;

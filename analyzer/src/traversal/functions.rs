@@ -186,8 +186,7 @@ fn for_loop(
             let body_scope = BlockScope::from_block_scope(BlockScopeType::Loop, Rc::clone(&scope));
             // Make sure iter is in the function scope & it should be an array.
             let target_type = verify_is_array(scope, Rc::clone(&context), iter)?;
-            let target_name = expressions::expr_name_string(target)?;
-            body_scope.borrow_mut().add_var(&target_name, target_type)?;
+            body_scope.borrow_mut().add_var(&target.kind, target_type)?;
             // Traverse the statements within the `for loop` body scope.
             traverse_statements(body_scope, context, body)
         }
