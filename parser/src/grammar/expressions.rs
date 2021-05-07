@@ -1,4 +1,4 @@
-use crate::ast::{self, CallArg, Expr, Kwarg, Slice};
+use crate::ast::{self, CallArg, Expr, Kwarg};
 use crate::node::Node;
 use crate::{Label, ParseFailed, ParseResult, Parser, Token, TokenKind};
 
@@ -35,12 +35,17 @@ pub fn parse_expr_with_min_bp(par: &mut Parser, min_bp: u8) -> ParseResult<Node<
                     )
                 }
                 TokenKind::BracketOpen => {
-                    let slices = parse_subscript(par)?;
-                    let span = expr_head.span + slices.span;
+                    par.next()?;
+                    let index = parse_expr(par)?;
+                    let rbracket = par.expect(
+                        TokenKind::BracketClose,
+                        "failed to parse subscript expression",
+                    )?;
+                    let span = expr_head.span + rbracket.span;
                     Node::new(
                         Expr::Subscript {
                             value: Box::new(expr_head),
-                            slices,
+                            index: Box::new(index),
                         },
                         span,
                     )
@@ -226,22 +231,6 @@ fn postfix_binding_power(op: TokenKind) -> Option<u8> {
         ParenOpen => Some(150),
         _ => None,
     }
-}
-
-/// Parse a trailing square-bracket-enclosed subscript operation.
-/// This currently only supports `Slice::Index`, not `Slice::Slice`.
-fn parse_subscript(par: &mut Parser) -> ParseResult<Node<Vec<Node<Slice>>>> {
-    use TokenKind::*;
-
-    // TODO: slices
-    let lbracket = par.assert(BracketOpen);
-    let idx = parse_expr(par)?;
-    let rbracket = par.expect(BracketClose, "failed to parse subscript expression")?;
-    let idx_span = idx.span;
-    Ok(Node::new(
-        vec![Node::new(Slice::Index(Box::new(idx)), idx_span)],
-        lbracket.span + rbracket.span,
-    ))
 }
 
 /// Parse a square-bracket list expression, eg. `[1, 2, x]`

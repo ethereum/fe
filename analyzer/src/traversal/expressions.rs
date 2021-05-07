@@ -134,34 +134,6 @@ pub fn expr_name_string(exp: &Node<fe::Expr>) -> Result<String, SemanticError> {
     unreachable!()
 }
 
-/// Gather context information for an index and check for type errors.
-pub fn slices_index(
-    scope: Shared<BlockScope>,
-    context: Shared<Context>,
-    slices: &Node<Vec<Node<fe::Slice>>>,
-) -> Result<ExpressionAttributes, SemanticError> {
-    if let Some(first_slice) = slices.kind.first() {
-        return slice_index(scope, context, first_slice);
-    }
-
-    unreachable!()
-}
-
-/// Gather context information for an index and check for type errors.
-pub fn slice_index(
-    scope: Shared<BlockScope>,
-    context: Shared<Context>,
-    slice: &Node<fe::Slice>,
-) -> Result<ExpressionAttributes, SemanticError> {
-    if let fe::Slice::Index(index) = &slice.kind {
-        let attributes = value_expr(scope, Rc::clone(&context), index)?;
-
-        return Ok(attributes);
-    }
-
-    unreachable!()
-}
-
 fn expr_tuple(
     scope: Shared<BlockScope>,
     context: Shared<Context>,
@@ -289,9 +261,9 @@ fn expr_subscript(
     context: Shared<Context>,
     exp: &Node<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
-    if let fe::Expr::Subscript { value, slices } = &exp.kind {
+    if let fe::Expr::Subscript { value, index } = &exp.kind {
         let value_attributes = expr(Rc::clone(&scope), Rc::clone(&context), value)?;
-        let index_attributes = slices_index(scope, context, slices)?;
+        let index_attributes = value_expr(scope, context, index)?;
 
         // performs type checking
         let typ = operations::index(value_attributes.typ.clone(), index_attributes.typ)?;

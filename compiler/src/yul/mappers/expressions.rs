@@ -289,23 +289,6 @@ pub fn expr_name_string(exp: &Node<fe::Expr>) -> String {
     unreachable!()
 }
 
-/// Builds a Yul expression from the first slice, if it is an index.
-pub fn slices_index(context: &Context, slices: &Node<Vec<Node<fe::Slice>>>) -> yul::Expression {
-    if let Some(first_slice) = slices.kind.first() {
-        return slice_index(context, first_slice);
-    }
-
-    unreachable!()
-}
-
-pub fn slice_index(context: &Context, slice: &Node<fe::Slice>) -> yul::Expression {
-    if let fe::Slice::Index(index) = &slice.kind {
-        return expr(context, index);
-    }
-
-    unreachable!()
-}
-
 fn expr_tuple(exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Tuple { elts } = &exp.kind {
         if elts.is_empty() {
@@ -355,10 +338,10 @@ fn expr_str(exp: &Node<fe::Expr>) -> yul::Expression {
 }
 
 fn expr_subscript(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
-    if let fe::Expr::Subscript { value, slices } = &exp.kind {
+    if let fe::Expr::Subscript { value, index } = &exp.kind {
         if let Some(value_attributes) = context.get_expression(value) {
             let value = expr(context, value);
-            let index = slices_index(context, slices);
+            let index = expr(context, index);
 
             return match value_attributes.typ.to_owned() {
                 Type::Map(_) => data_operations::keyed_map(value, index),
