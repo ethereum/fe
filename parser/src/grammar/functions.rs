@@ -348,25 +348,9 @@ pub fn parse_while_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let test = parse_expr(par)?;
     par.enter_block(while_tok.span + test.span, "`while` statement")?;
     let body = parse_block_stmts(par)?;
+    let span = while_tok.span + test.span + body.last();
 
-    let else_block = match par.peek() {
-        Some(TokenKind::Else) => {
-            let else_tok = par.next()?;
-            par.enter_block(else_tok.span, "`while` statement `else` block")?;
-            parse_block_stmts(par)?
-        }
-        _ => vec![],
-    };
-    let span = while_tok.span + test.span + body.last() + else_block.last();
-
-    Ok(Node::new(
-        FuncStmt::While {
-            test,
-            body,
-            or_else: else_block,
-        },
-        span,
-    ))
+    Ok(Node::new(FuncStmt::While { test, body }, span))
 }
 
 /// Parse a `for` statement.
@@ -381,26 +365,9 @@ pub fn parse_for_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let iter = parse_expr(par)?;
     par.enter_block(for_tok.span + iter.span, "`for` statement")?;
     let body = parse_block_stmts(par)?;
+    let span = for_tok.span + iter.span + body.last();
 
-    let else_block = match par.peek() {
-        Some(TokenKind::Else) => {
-            let else_tok = par.next()?;
-            par.enter_block(else_tok.span, "`for` statement `else` block")?;
-            parse_block_stmts(par)?
-        }
-        _ => vec![],
-    };
-    let span = for_tok.span + iter.span + body.last() + else_block.last();
-
-    Ok(Node::new(
-        FuncStmt::For {
-            target,
-            iter,
-            body,
-            or_else: else_block,
-        },
-        span,
-    ))
+    Ok(Node::new(FuncStmt::For { target, iter, body }, span))
 }
 
 /// Parse a `return` statement.

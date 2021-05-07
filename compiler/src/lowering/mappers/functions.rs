@@ -66,25 +66,14 @@ fn func_stmt(context: &Context, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::FuncSt
             args: expressions::call_args(context, args),
         }],
         fe::FuncStmt::AugAssign { target, op, value } => aug_assign(context, target, op, value),
-        fe::FuncStmt::For {
-            target,
-            iter,
-            body,
-            or_else,
-        } => vec![fe::FuncStmt::For {
+        fe::FuncStmt::For { target, iter, body } => vec![fe::FuncStmt::For {
             target: expressions::expr(context, target),
             iter: expressions::expr(context, iter),
             body: multiple_stmts(context, body),
-            or_else: multiple_stmts(context, or_else),
         }],
-        fe::FuncStmt::While {
-            test,
-            body,
-            or_else,
-        } => vec![fe::FuncStmt::While {
+        fe::FuncStmt::While { test, body } => vec![fe::FuncStmt::While {
             test: expressions::expr(context, test),
             body: multiple_stmts(context, body),
-            or_else: multiple_stmts(context, or_else),
         }],
         fe::FuncStmt::If {
             test,

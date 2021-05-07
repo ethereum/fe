@@ -152,12 +152,10 @@ pub enum FuncStmt {
         target: Node<Expr>, // TODO: change to Vec<Node<String>>
         iter: Node<Expr>,
         body: Vec<Node<FuncStmt>>,
-        or_else: Vec<Node<FuncStmt>>,
     },
     While {
         test: Node<Expr>,
         body: Vec<Node<FuncStmt>>,
-        or_else: Vec<Node<FuncStmt>>,
     },
     If {
         test: Node<Expr>,

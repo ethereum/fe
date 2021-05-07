@@ -101,7 +101,6 @@ test_parse! { stmt_if, functions::parse_stmt, "if a:\n b" }
 test_parse! { stmt_if2, functions::parse_stmt, "if a:\n b \nelif c:\n d \nelif e: \n f \nelse:\n g" }
 test_parse! { stmt_while, functions::parse_stmt, "while a > 5:\n a -= 1" }
 test_parse! { stmt_for, functions::parse_stmt, "for a in b[0]:\n pass" }
-test_parse! { stmt_for_else, functions::parse_stmt, "for a in b:\n c\nelse:\n d" }
 test_parse! { stmt_var_decl_name, functions::parse_stmt, "foo: u256" }
 test_parse! { stmt_var_decl_tuple, functions::parse_stmt, "(foo, bar): (u256, u256) = (10, 10)" }
 test_parse! { stmt_var_decl_tuples, functions::parse_stmt, "(a, (b, (c, d))): x" }
