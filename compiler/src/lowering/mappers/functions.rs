@@ -67,7 +67,7 @@ fn func_stmt(context: &Context, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::FuncSt
         }],
         fe::FuncStmt::AugAssign { target, op, value } => aug_assign(context, target, op, value),
         fe::FuncStmt::For { target, iter, body } => vec![fe::FuncStmt::For {
-            target: expressions::expr(context, target),
+            target,
             iter: expressions::expr(context, iter),
             body: multiple_stmts(context, body),
         }],

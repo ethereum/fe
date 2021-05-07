@@ -6,7 +6,7 @@ expression: "ast_string(stringify!(stmt_for), functions::parse_stmt,\n          
 Node(
   kind: For(
     target: Node(
-      kind: Name("a"),
+      kind: "a",
       span: Span(
         start: 4,
         end: 5,
