@@ -232,7 +232,7 @@ pub enum Expr {
     Bool(bool),
     Name(String),
     Num(String),
-    Str(Vec<String>),
+    Str(String),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]

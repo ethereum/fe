@@ -330,10 +330,10 @@ fn atom(par: &mut Parser, tok: &Token) -> Node<Expr> {
         True | False => Expr::Bool(tok.kind == True),
         Text => {
             if let Some(string) = unescape_string(tok.text) {
-                Expr::Str(vec![string])
+                Expr::Str(string)
             } else {
                 par.error(tok.span, "String contains an invalid escape sequence");
-                Expr::Str(vec![tok.text.into()])
+                Expr::Str(tok.text.into())
             }
         }
         _ => panic!("Unexpected atom token: {:?}", tok),
