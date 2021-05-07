@@ -215,19 +215,16 @@ fn expr_str(
     scope: Shared<BlockScope>,
     exp: &Node<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
-    if let fe::Expr::Str(lines) = &exp.kind {
-        let string_val = lines.join("");
-        let string_length = string_val.len();
-
+    if let fe::Expr::Str(string) = &exp.kind {
         scope
             .borrow()
             .contract_scope()
             .borrow_mut()
-            .add_string(&string_val)?;
+            .add_string(&string)?;
 
         return Ok(ExpressionAttributes::new(
             Type::String(FeString {
-                max_size: string_length,
+                max_size: string.len(),
             }),
             Location::Memory,
         ));
@@ -979,9 +976,8 @@ fn validate_str_literal_fits_type(
     call_arg: &fe::CallArg,
     typ: &FeString,
 ) -> Result<(), SemanticError> {
-    if let fe::Expr::Str(lines) = &call_arg_value(call_arg).kind {
-        let string_length: usize = lines.join("").len();
-        return if string_length > typ.max_size {
+    if let fe::Expr::Str(string) = &call_arg_value(call_arg).kind {
+        return if string.len() > typ.max_size {
             Err(SemanticError::string_capacity_mismatch())
         } else {
             Ok(())

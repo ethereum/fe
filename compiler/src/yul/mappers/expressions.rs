@@ -324,8 +324,7 @@ fn expr_bool(exp: &Node<fe::Expr>) -> yul::Expression {
 }
 
 fn expr_str(exp: &Node<fe::Expr>) -> yul::Expression {
-    if let fe::Expr::Str(lines) = &exp.kind {
-        let content = lines.join("");
+    if let fe::Expr::Str(content) = &exp.kind {
         let string_identifier = format!(r#""{}""#, keccak::full(content.as_bytes()));
 
         let offset = expression! { dataoffset([literal_expression! { (string_identifier) }]) };
