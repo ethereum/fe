@@ -149,7 +149,7 @@ fn event_field(
     field: &Node<fe::EventField>,
 ) -> Result<(bool, (String, FixedSize)), SemanticError> {
     Ok((
-        field.kind.idx_qual.is_some(),
+        field.kind.is_idx,
         (
             field.kind.name.kind.to_string(),
             types::type_desc_fixed_size(Scope::Contract(scope), context, &field.kind.typ)?,

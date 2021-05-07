@@ -1,11 +1,9 @@
 use super::expressions::{parse_call_args, parse_expr};
 use super::types::parse_type_desc;
 
-use crate::ast::{
-    BinOperator, ContractStmt, Expr, FuncDefArg, FuncStmt, PubQualifier, VarDeclTarget,
-};
+use crate::ast::{BinOperator, ContractStmt, Expr, FuncDefArg, FuncStmt, VarDeclTarget};
 use crate::lexer::TokenKind;
-use crate::node::Node;
+use crate::node::{Node, Span};
 use crate::{Label, ParseFailed, ParseResult, Parser};
 
 /// Parse a function definition. The optional `pub` qualifier must be parsed by
@@ -13,13 +11,10 @@ use crate::{Label, ParseFailed, ParseResult, Parser};
 ///
 /// # Panics
 /// Panics if the next token isn't `def`.
-pub fn parse_fn_def(
-    par: &mut Parser,
-    pub_qual: Option<Node<PubQualifier>>,
-) -> ParseResult<Node<ContractStmt>> {
+pub fn parse_fn_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Node<ContractStmt>> {
     let def_tok = par.assert(TokenKind::Def);
     let name = par.expect(TokenKind::Name, "failed to parse function definition")?;
-    let mut span = def_tok.span + pub_qual.as_ref() + name.span;
+    let mut span = def_tok.span + pub_qual + name.span;
 
     let args = match par.peek_or_err()? {
         TokenKind::ParenOpen => {
@@ -74,7 +69,7 @@ pub fn parse_fn_def(
     span += body.last();
     Ok(Node::new(
         ContractStmt::FuncDef {
-            pub_qual,
+            is_pub: pub_qual.is_some(),
             name: name.into(),
             args,
             return_type,

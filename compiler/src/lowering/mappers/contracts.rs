@@ -49,8 +49,8 @@ pub fn contract_def(context: &Context, stmt: Node<fe::ModuleStmt>) -> Node<fe::M
 fn contract_field(context: &Context, field: Node<fe::Field>) -> Node<fe::Field> {
     Node::new(
         fe::Field {
-            pub_qual: field.kind.pub_qual,
-            const_qual: field.kind.const_qual,
+            is_pub: field.kind.is_pub,
+            is_const: field.kind.is_const,
             name: field.kind.name,
             typ: types::type_desc(context, field.kind.typ),
             value: field.kind.value,
@@ -66,7 +66,7 @@ fn event_def(context: &Context, stmt: Node<fe::ContractStmt>) -> Node<fe::Contra
             .map(|field| {
                 Node::new(
                     fe::EventField {
-                        idx_qual: field.kind.idx_qual,
+                        is_idx: field.kind.is_idx,
                         name: field.kind.name,
                         typ: types::type_desc(context, field.kind.typ),
                     },
@@ -134,7 +134,7 @@ fn list_expr_to_fn_def(array: &Array) -> fe::ContractStmt {
 
     // Put it all together in one AST node that holds the entire function definition
     fe::ContractStmt::FuncDef {
-        pub_qual: None,
+        is_pub: false,
         name: names::list_expr_generator_fn_name(array).into_node(),
         args,
         return_type,

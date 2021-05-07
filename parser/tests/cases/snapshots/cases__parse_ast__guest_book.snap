@@ -51,14 +51,8 @@ Node(
           fields: [
             Node(
               kind: Field(
-                pub_qual: Some(Node(
-                  kind: PubQualifier(),
-                  span: Span(
-                    start: 52,
-                    end: 55,
-                  ),
-                )),
-                const_qual: None,
+                is_pub: true,
+                is_const: false,
                 name: Node(
                   kind: "guest_book",
                   span: Span(
@@ -122,13 +116,7 @@ Node(
                 fields: [
                   Node(
                     kind: EventField(
-                      idx_qual: Some(Node(
-                        kind: IdxQualifier(),
-                        span: Span(
-                          start: 117,
-                          end: 120,
-                        ),
-                      )),
+                      is_idx: true,
                       name: Node(
                         kind: "book_msg",
                         span: Span(
@@ -160,13 +148,7 @@ Node(
             ),
             Node(
               kind: FuncDef(
-                pub_qual: Some(Node(
-                  kind: PubQualifier(),
-                  span: Span(
-                    start: 144,
-                    end: 147,
-                  ),
-                )),
+                is_pub: true,
                 name: Node(
                   kind: "sign",
                   span: Span(
@@ -323,13 +305,7 @@ Node(
             ),
             Node(
               kind: FuncDef(
-                pub_qual: Some(Node(
-                  kind: PubQualifier(),
-                  span: Span(
-                    start: 269,
-                    end: 272,
-                  ),
-                )),
+                is_pub: true,
                 name: Node(
                   kind: "get_msg",
                   span: Span(

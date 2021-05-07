@@ -5,7 +5,7 @@ expression: "ast_string(stringify!(fn_def), |par| functions::parse_fn_def(par, N
 ---
 Node(
   kind: FuncDef(
-    pub_qual: None,
+    is_pub: false,
     name: Node(
       kind: "foo21",
       span: Span(

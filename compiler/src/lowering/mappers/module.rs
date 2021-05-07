@@ -54,8 +54,8 @@ fn tuple_to_struct_def(tuple: &Tuple) -> fe::ModuleStmt {
 
 fn build_struct_field(name: String, type_desc: fe::TypeDesc) -> fe::Field {
     fe::Field {
-        pub_qual: None,
-        const_qual: None,
+        is_pub: false,
+        is_const: false,
         name: Node::new(name, Span::zero()),
         typ: Node::new(type_desc, Span::zero()),
         value: None,
