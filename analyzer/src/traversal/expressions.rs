@@ -39,7 +39,6 @@ pub fn expr(
         fe::Expr::CompOperation { .. } => expr_comp_operation(scope, Rc::clone(&context), exp),
         fe::Expr::Call { .. } => expr_call(scope, Rc::clone(&context), exp),
         fe::Expr::List { .. } => expr_list(scope, Rc::clone(&context), exp),
-        fe::Expr::ListComp { .. } => unimplemented!(),
         fe::Expr::Tuple { .. } => expr_tuple(scope, Rc::clone(&context), exp),
         fe::Expr::Str(_) => expr_str(scope, exp),
     }

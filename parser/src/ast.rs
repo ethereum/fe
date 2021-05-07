@@ -228,10 +228,6 @@ pub enum Expr {
     List {
         elts: Vec<Node<Expr>>,
     },
-    ListComp {
-        elt: Box<Node<Expr>>,
-        comps: Vec<Node<Comprehension>>,
-    },
     Tuple {
         elts: Vec<Node<Expr>>,
     },
@@ -261,13 +257,6 @@ pub enum CallArg {
 pub struct Kwarg {
     pub name: Node<String>,
     pub value: Box<Node<Expr>>,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct Comprehension {
-    pub target: Box<Node<Expr>>,
-    pub iter: Box<Node<Expr>>,
-    pub ifs: Vec<Node<Expr>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
