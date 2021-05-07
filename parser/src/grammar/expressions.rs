@@ -199,9 +199,6 @@ fn infix_binding_power(op: TokenKind) -> Option<(u8, u8)> {
         // prefix Not => 65
 
         // all comparisons are the same
-        // In | NotIn => todo!("in, not in"), // conflicts with current `for` parsing impl
-        // TODO: `is not`
-        Is => (70, 71),
         Lt | LtEq | Gt | GtEq | NotEq | EqEq => (70, 71),
 
         Pipe => (80, 81),
@@ -356,8 +353,7 @@ fn infix_op(left: Node<Expr>, op: &Token, right: Node<Expr>) -> Node<Expr> {
             bin_op(left, op, right)
         }
 
-        In => todo!("in, not in"),
-        Is | Lt | LtEq | Gt | GtEq | NotEq | EqEq => comp_op(left, op, right),
+        Lt | LtEq | Gt | GtEq | NotEq | EqEq => comp_op(left, op, right),
 
         Dot => {
             let span = left.span + right.span;
@@ -458,7 +454,6 @@ fn comp_op(left: Node<Expr>, op: &Token, right: Node<Expr>) -> Node<Expr> {
     use TokenKind::*;
     let astop = match op.kind {
         In => todo!("in"), // CompOperator::In,
-        Is => CompOperator::Is,
         Lt => CompOperator::Lt,
         LtEq => CompOperator::LtE,
         Gt => CompOperator::Gt,

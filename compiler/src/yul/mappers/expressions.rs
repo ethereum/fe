@@ -194,7 +194,6 @@ pub fn expr_comp_operation(context: &Context, exp: &Node<fe::Expr>) -> yul::Expr
                 true => expression! { iszero((slt([yul_left], [yul_right]))) },
                 false => expression! { iszero((lt([yul_left], [yul_right]))) },
             },
-            _ => unimplemented!(),
         };
     }
 
