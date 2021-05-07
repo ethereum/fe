@@ -278,8 +278,4 @@ pub enum CompOperator {
     LtE,
     Gt,
     GtE,
-    Is,
-    IsNot,
-    In,
-    NotIn,
 }
