@@ -57,8 +57,8 @@ fn func_stmt(context: &Context, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::FuncSt
             }],
             fe::VarDeclTarget::Tuple(_) => todo!("tuple var decl lowering"),
         },
-        fe::FuncStmt::Assign { targets, value } => vec![fe::FuncStmt::Assign {
-            targets: expressions::multiple_exprs(context, targets),
+        fe::FuncStmt::Assign { target, value } => vec![fe::FuncStmt::Assign {
+            target: expressions::expr(context, target),
             value: expressions::expr(context, value),
         }],
         fe::FuncStmt::Emit { name, args } => vec![fe::FuncStmt::Emit {
@@ -132,7 +132,7 @@ fn aug_assign(
 
     // the new statement is: `target = target <op> value`.
     vec![fe::FuncStmt::Assign {
-        targets: vec![lowered_target],
+        target: lowered_target,
         value: new_value,
     }]
 }

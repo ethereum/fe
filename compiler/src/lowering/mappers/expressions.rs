@@ -74,11 +74,6 @@ pub fn boxed_expr(context: &Context, exp: Box<Node<fe::Expr>>) -> Box<Node<fe::E
     Box::new(expr(context, *exp))
 }
 
-/// Lowers a list of expression.
-pub fn multiple_exprs(context: &Context, exp: Vec<Node<fe::Expr>>) -> Vec<Node<fe::Expr>> {
-    exp.into_iter().map(|exp| expr(context, exp)).collect()
-}
-
 /// Lowers call arguments
 pub fn call_args(
     context: &Context,

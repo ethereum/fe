@@ -204,60 +204,58 @@ Node(
                 body: [
                   Node(
                     kind: Assign(
-                      targets: [
-                        Node(
-                          kind: Subscript(
-                            value: Node(
-                              kind: Attribute(
-                                value: Node(
-                                  kind: Name("self"),
-                                  span: Span(
-                                    start: 185,
-                                    end: 189,
-                                  ),
-                                ),
-                                attr: Node(
-                                  kind: "guest_book",
-                                  span: Span(
-                                    start: 190,
-                                    end: 200,
-                                  ),
+                      target: Node(
+                        kind: Subscript(
+                          value: Node(
+                            kind: Attribute(
+                              value: Node(
+                                kind: Name("self"),
+                                span: Span(
+                                  start: 185,
+                                  end: 189,
                                 ),
                               ),
-                              span: Span(
-                                start: 185,
-                                end: 200,
+                              attr: Node(
+                                kind: "guest_book",
+                                span: Span(
+                                  start: 190,
+                                  end: 200,
+                                ),
                               ),
                             ),
-                            index: Node(
-                              kind: Attribute(
-                                value: Node(
-                                  kind: Name("msg"),
-                                  span: Span(
-                                    start: 201,
-                                    end: 204,
-                                  ),
-                                ),
-                                attr: Node(
-                                  kind: "sender",
-                                  span: Span(
-                                    start: 205,
-                                    end: 211,
-                                  ),
-                                ),
-                              ),
-                              span: Span(
-                                start: 201,
-                                end: 211,
-                              ),
+                            span: Span(
+                              start: 185,
+                              end: 200,
                             ),
                           ),
-                          span: Span(
-                            start: 185,
-                            end: 212,
+                          index: Node(
+                            kind: Attribute(
+                              value: Node(
+                                kind: Name("msg"),
+                                span: Span(
+                                  start: 201,
+                                  end: 204,
+                                ),
+                              ),
+                              attr: Node(
+                                kind: "sender",
+                                span: Span(
+                                  start: 205,
+                                  end: 211,
+                                ),
+                              ),
+                            ),
+                            span: Span(
+                              start: 201,
+                              end: 211,
+                            ),
                           ),
                         ),
-                      ],
+                        span: Span(
+                          start: 185,
+                          end: 212,
+                        ),
+                      ),
                       value: Node(
                         kind: Name("book_msg"),
                         span: Span(

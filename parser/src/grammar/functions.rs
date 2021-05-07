@@ -245,7 +245,7 @@ fn parse_expr_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
             // TODO: should `x = y = z` be allowed?
             Node::new(
                 FuncStmt::Assign {
-                    targets: vec![expr],
+                    target: expr,
                     value,
                 },
                 span,
