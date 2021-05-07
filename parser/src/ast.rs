@@ -217,7 +217,7 @@ pub enum Expr {
     },
     Subscript {
         value: Box<Node<Expr>>,
-        slices: Node<Vec<Node<Slice>>>,
+        index: Box<Node<Expr>>,
     },
     Call {
         func: Box<Node<Expr>>,
@@ -233,16 +233,6 @@ pub enum Expr {
     Name(String),
     Num(String),
     Str(Vec<String>),
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum Slice {
-    Slice {
-        lower: Option<Box<Node<Expr>>>,
-        upper: Option<Box<Node<Expr>>>,
-        step: Option<Box<Node<Expr>>>,
-    },
-    Index(Box<Node<Expr>>),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]

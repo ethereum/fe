@@ -229,40 +229,26 @@ Node(
                                 end: 200,
                               ),
                             ),
-                            slices: Node(
-                              kind: [
-                                Node(
-                                  kind: Index(Node(
-                                    kind: Attribute(
-                                      value: Node(
-                                        kind: Name("msg"),
-                                        span: Span(
-                                          start: 201,
-                                          end: 204,
-                                        ),
-                                      ),
-                                      attr: Node(
-                                        kind: "sender",
-                                        span: Span(
-                                          start: 205,
-                                          end: 211,
-                                        ),
-                                      ),
-                                    ),
-                                    span: Span(
-                                      start: 201,
-                                      end: 211,
-                                    ),
-                                  )),
+                            index: Node(
+                              kind: Attribute(
+                                value: Node(
+                                  kind: Name("msg"),
                                   span: Span(
                                     start: 201,
+                                    end: 204,
+                                  ),
+                                ),
+                                attr: Node(
+                                  kind: "sender",
+                                  span: Span(
+                                    start: 205,
                                     end: 211,
                                   ),
                                 ),
-                              ],
+                              ),
                               span: Span(
-                                start: 200,
-                                end: 212,
+                                start: 201,
+                                end: 211,
                               ),
                             ),
                           ),
@@ -415,25 +401,11 @@ Node(
                               end: 342,
                             ),
                           ),
-                          slices: Node(
-                            kind: [
-                              Node(
-                                kind: Index(Node(
-                                  kind: Name("addr"),
-                                  span: Span(
-                                    start: 343,
-                                    end: 347,
-                                  ),
-                                )),
-                                span: Span(
-                                  start: 343,
-                                  end: 347,
-                                ),
-                              ),
-                            ],
+                          index: Node(
+                            kind: Name("addr"),
                             span: Span(
-                              start: 342,
-                              end: 348,
+                              start: 343,
+                              end: 347,
                             ),
                           ),
                         ),

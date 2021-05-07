@@ -18,25 +18,11 @@ Node(
                     end: 1,
                   ),
                 ),
-                slices: Node(
-                  kind: [
-                    Node(
-                      kind: Index(Node(
-                        kind: Name("x"),
-                        span: Span(
-                          start: 2,
-                          end: 3,
-                        ),
-                      )),
-                      span: Span(
-                        start: 2,
-                        end: 3,
-                      ),
-                    ),
-                  ],
+                index: Node(
+                  kind: Name("x"),
                   span: Span(
-                    start: 1,
-                    end: 4,
+                    start: 2,
+                    end: 3,
                   ),
                 ),
               ),
@@ -58,25 +44,11 @@ Node(
             end: 6,
           ),
         ),
-        slices: Node(
-          kind: [
-            Node(
-              kind: Index(Node(
-                kind: Name("y"),
-                span: Span(
-                  start: 7,
-                  end: 8,
-                ),
-              )),
-              span: Span(
-                start: 7,
-                end: 8,
-              ),
-            ),
-          ],
+        index: Node(
+          kind: Name("y"),
           span: Span(
-            start: 6,
-            end: 9,
+            start: 7,
+            end: 8,
           ),
         ),
       ),

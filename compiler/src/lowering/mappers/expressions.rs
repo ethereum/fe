@@ -15,9 +15,9 @@ pub fn expr(context: &Context, exp: Node<fe::Expr>) -> Node<fe::Expr> {
         fe::Expr::Name(_) => exp.kind,
         fe::Expr::Num(_) => exp.kind,
         fe::Expr::Bool(_) => exp.kind,
-        fe::Expr::Subscript { value, slices } => fe::Expr::Subscript {
+        fe::Expr::Subscript { value, index } => fe::Expr::Subscript {
             value: boxed_expr(context, value),
-            slices: slices_index_expr(context, slices),
+            index: boxed_expr(context, index),
         },
         fe::Expr::Attribute { value, attr } => fe::Expr::Attribute {
             value: boxed_expr(context, value),
@@ -61,25 +61,6 @@ pub fn expr(context: &Context, exp: Node<fe::Expr>) -> Node<fe::Expr> {
     };
 
     Node::new(lowered_kind, span)
-}
-
-fn slices_index_expr(
-    context: &Context,
-    slices: Node<Vec<Node<fe::Slice>>>,
-) -> Node<Vec<Node<fe::Slice>>> {
-    let first_slice = &slices.kind[0];
-
-    if let fe::Slice::Index(exp) = &first_slice.kind {
-        return Node::new(
-            vec![Node::new(
-                fe::Slice::Index(Box::new(expr(context, *exp.to_owned()))),
-                first_slice.span,
-            )],
-            slices.span,
-        );
-    }
-
-    unreachable!()
 }
 
 /// Lowers and optional expression.
