@@ -31,8 +31,7 @@ pub fn expr(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
             fe::Expr::UnaryOperation { .. } => expr_unary_operation(context, exp),
             fe::Expr::CompOperation { .. } => expr_comp_operation(context, exp),
             fe::Expr::Call { .. } => expr_call(context, exp),
-            fe::Expr::List { .. } => unimplemented!(),
-            fe::Expr::ListComp { .. } => unimplemented!(),
+            fe::Expr::List { .. } => panic!("list expressions should be lowered"),
             fe::Expr::Tuple { .. } => expr_tuple(exp),
             fe::Expr::Str(_) => expr_str(exp),
         };

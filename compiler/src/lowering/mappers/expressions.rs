@@ -56,7 +56,6 @@ pub fn expr(context: &Context, exp: Node<fe::Expr>) -> Node<fe::Expr> {
             args: call_args(context, args),
         },
         fe::Expr::List { .. } => expr_list(context, exp),
-        fe::Expr::ListComp { .. } => unimplemented!(),
         fe::Expr::Tuple { .. } => expr_tuple(context, exp),
         fe::Expr::Str(_) => exp.kind,
     };
