@@ -140,7 +140,7 @@ pub enum FuncStmt {
         value: Option<Node<Expr>>,
     },
     Assign {
-        targets: Vec<Node<Expr>>,
+        target: Node<Expr>,
         value: Node<Expr>,
     },
     AugAssign {

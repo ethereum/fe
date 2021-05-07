@@ -112,11 +112,11 @@ fn list_expr_to_fn_def(array: &Array) -> fe::ContractStmt {
     let assignments = (0..array.size)
         .map(|index| {
             fe::FuncStmt::Assign {
-                targets: vec![fe::Expr::Subscript {
+                target: fe::Expr::Subscript {
                     value: fe::Expr::Name(var_decl_name.to_string()).into_boxed_node(),
                     index: fe::Expr::Num(index.to_string()).into_boxed_node(),
                 }
-                .into_node()],
+                .into_node(),
                 value: fe::Expr::Name(format!("val{}", index)).into_node(),
             }
             .into_node()

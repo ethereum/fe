@@ -15,33 +15,25 @@ pub fn assign(
     context: Shared<Context>,
     stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
-    if let fe::FuncStmt::Assign { targets, value } = &stmt.kind {
-        if targets.len() > 1 {
-            unimplemented!()
+    if let fe::FuncStmt::Assign { target, value } = &stmt.kind {
+        let target_attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), target)?;
+        let value_attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), value)?;
+
+        if target_attributes.typ != value_attributes.typ {
+            return Err(SemanticError::type_error());
         }
 
-        if let Some(target) = targets.first() {
-            let target_attributes =
-                expressions::expr(Rc::clone(&scope), Rc::clone(&context), target)?;
-            let value_attributes =
-                expressions::expr(Rc::clone(&scope), Rc::clone(&context), value)?;
-
-            if target_attributes.typ != value_attributes.typ {
-                return Err(SemanticError::type_error());
-            }
-
-            if matches!(
-                (
-                    value_attributes.final_location(),
-                    target_attributes.location
-                ),
-                (Location::Storage { .. }, Location::Memory)
-            ) {
-                return Err(SemanticError::cannot_move());
-            }
-
-            return Ok(());
+        if matches!(
+            (
+                value_attributes.final_location(),
+                target_attributes.location
+            ),
+            (Location::Storage { .. }, Location::Memory)
+        ) {
+            return Err(SemanticError::cannot_move());
         }
+
+        return Ok(());
     }
 
     unreachable!()
