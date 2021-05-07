@@ -259,7 +259,6 @@ pub enum BinOperator {
     BitOr,
     BitXor,
     BitAnd,
-    FloorDiv,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
