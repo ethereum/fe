@@ -47,7 +47,6 @@ pub fn bin(left: &Type, op: &fe::BinOperator, right: &Type) -> Result<Type, Sema
         fe::BinOperator::BitOr | fe::BinOperator::BitXor | fe::BinOperator::BitAnd => {
             bin_bit(left, right)
         }
-        fe::BinOperator::FloorDiv => unimplemented!(),
     }
 }
 
