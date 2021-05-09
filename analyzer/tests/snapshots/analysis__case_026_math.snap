@@ -1,6 +1,6 @@
 ---
 source: analyzer/tests/analysis.rs
-expression: "build_snapshot(fixture, src, &context)"
+expression: "build_snapshot(fixture, &src, &context)"
 
 ---
 ModuleAttributes {
@@ -61,6 +61,52 @@ ModuleAttributes {
     },
     tuples_used: {},
 }
+
+note: 
+  ┌─ features/math.fe:6:13
+  │
+6 │         if (val > 3):
+  │             ^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/math.fe:6:19
+  │
+6 │         if (val > 3):
+  │                   ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/math.fe:6:12
+  │
+6 │         if (val > 3):
+  │            ^^^^^^^^^ attributes hash: 10866140763116710699
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Bool,
+        ),
+        location: Value,
+        move_location: None,
+    }
 
 note: 
   ┌─ features/math.fe:7:13
@@ -169,6 +215,52 @@ note:
             Numeric(
                 U256,
             ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/math.fe:9:20
+  │
+9 │             while (x < z):
+  │                    ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/math.fe:9:24
+  │
+9 │             while (x < z):
+  │                        ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/math.fe:9:19
+  │
+9 │             while (x < z):
+  │                   ^^^^^^^ attributes hash: 10866140763116710699
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Bool,
         ),
         location: Value,
         move_location: None,
@@ -335,84 +427,6 @@ note:
      }
 
 note: 
-  ┌─ features/math.fe:9:20
-  │
-9 │             while (x < z):
-  │                    ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/math.fe:9:24
-  │
-9 │             while (x < z):
-  │                        ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/math.fe:9:19
-  │
-9 │             while (x < z):
-  │                   ^^^^^^^ attributes hash: 10866140763116710699
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-   ┌─ features/math.fe:13:13
-   │
-13 │             z = 1
-   │             ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:13:17
-   │
-13 │             z = 1
-   │                 ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/math.fe:12:15
    │
 12 │         elif (val != 0):
@@ -459,50 +473,36 @@ note:
      }
 
 note: 
-  ┌─ features/math.fe:6:13
-  │
-6 │         if (val > 3):
-  │             ^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
+   ┌─ features/math.fe:13:13
+   │
+13 │             z = 1
+   │             ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
 
 note: 
-  ┌─ features/math.fe:6:19
-  │
-6 │         if (val > 3):
-  │                   ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/math.fe:6:12
-  │
-6 │         if (val > 3):
-  │            ^^^^^^^^^ attributes hash: 10866140763116710699
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
+   ┌─ features/math.fe:13:17
+   │
+13 │             z = 1
+   │                 ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
 
 note: 
    ┌─ features/math.fe:14:16

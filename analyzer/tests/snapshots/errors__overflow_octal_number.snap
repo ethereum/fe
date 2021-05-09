@@ -1,0 +1,18 @@
+---
+source: analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src_str)"
+
+---
+error: literal out of range for `u256`
+  ┌─ [snippet]:3:6
+  │
+3 │   u8(001)
+  │      ^^^ does not fit into type `u256`
+
+error: literal out of range for `u8`
+  ┌─ [snippet]:3:6
+  │
+3 │   u8(001)
+  │      ^^^ does not fit into type `u8`
+
+

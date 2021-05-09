@@ -1,0 +1,12 @@
+---
+source: analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: `continue` outside of a loop
+  ┌─ [snippet]:3:3
+  │
+3 │   continue
+  │   ^^^^^^^^ cannot `continue` outside of a `for` or `while` loop
+
+

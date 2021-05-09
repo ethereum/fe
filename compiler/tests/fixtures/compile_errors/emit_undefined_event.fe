@@ -1,4 +1,0 @@
-contract Bar:
-
-  pub def test():
-    emit DoesNotExist()

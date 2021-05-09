@@ -1,6 +1,6 @@
 ---
 source: analyzer/tests/analysis.rs
-expression: "build_snapshot(fixture, src, &context)"
+expression: "build_snapshot(fixture, &src, &context)"
 
 ---
 ModuleAttributes {
@@ -330,10 +330,10 @@ note:
      }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:31:13
+   ┌─ features/sized_vals_in_sto.fe:31:17
    │
-31 │             self.num,
-   │             ^^^^^^^^ attributes hash: 4679040613115932727
+31 │             num=self.num,
+   │                 ^^^^^^^^ attributes hash: 4679040613115932727
    │
    = ExpressionAttributes {
          typ: Base(
@@ -352,10 +352,10 @@ note:
      }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:32:13
+   ┌─ features/sized_vals_in_sto.fe:32:18
    │
-32 │             self.nums.to_mem(),
-   │             ^^^^^^^^^ attributes hash: 12193891266906267938
+32 │             nums=self.nums.to_mem(),
+   │                  ^^^^^^^^^ attributes hash: 12193891266906267938
    │
    = ExpressionAttributes {
          typ: Array(
@@ -375,10 +375,10 @@ note:
      }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:32:13
+   ┌─ features/sized_vals_in_sto.fe:32:18
    │
-32 │             self.nums.to_mem(),
-   │             ^^^^^^^^^^^^^^^^^^ attributes hash: 2528791973804439794
+32 │             nums=self.nums.to_mem(),
+   │                  ^^^^^^^^^^^^^^^^^^ attributes hash: 2528791973804439794
    │
    = ExpressionAttributes {
          typ: Array(
@@ -400,10 +400,10 @@ note:
      }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:33:13
+   ┌─ features/sized_vals_in_sto.fe:33:17
    │
-33 │             self.str.to_mem()
-   │             ^^^^^^^^ attributes hash: 10752831359363589163
+33 │             str=self.str.to_mem()
+   │                 ^^^^^^^^ attributes hash: 10752831359363589163
    │
    = ExpressionAttributes {
          typ: String(
@@ -420,10 +420,10 @@ note:
      }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:33:13
+   ┌─ features/sized_vals_in_sto.fe:33:17
    │
-33 │             self.str.to_mem()
-   │             ^^^^^^^^^^^^^^^^^ attributes hash: 8485417019611755295
+33 │             str=self.str.to_mem()
+   │                 ^^^^^^^^^^^^^^^^^ attributes hash: 8485417019611755295
    │
    = ExpressionAttributes {
          typ: String(
@@ -445,9 +445,9 @@ note:
    ┌─ features/sized_vals_in_sto.fe:30:9
    │  
 30 │ ╭         emit MyEvent(
-31 │ │             self.num,
-32 │ │             self.nums.to_mem(),
-33 │ │             self.str.to_mem()
+31 │ │             num=self.num,
+32 │ │             nums=self.nums.to_mem(),
+33 │ │             str=self.str.to_mem()
 34 │ │         )
    │ ╰─────────^ attributes hash: 17206441778791770980
    │  
@@ -620,9 +620,9 @@ note:
    │  
 29 │ ╭     pub def emit_event():
 30 │ │         emit MyEvent(
-31 │ │             self.num,
-32 │ │             self.nums.to_mem(),
-33 │ │             self.str.to_mem()
+31 │ │             num=self.num,
+32 │ │             nums=self.nums.to_mem(),
+33 │ │             str=self.str.to_mem()
 34 │ │         )
    │ ╰─────────^ attributes hash: 3495533453674637575
    │  
@@ -641,7 +641,7 @@ note:
  3 │ │     nums: u256[42]
  4 │ │     str: string26
    · │
-33 │ │             self.str.to_mem()
+33 │ │             str=self.str.to_mem()
 34 │ │         )
    │ ╰─────────^ attributes hash: 6287727376829083665
    │  
@@ -796,18 +796,18 @@ note:
    = ValueAttribute
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:32:13
+   ┌─ features/sized_vals_in_sto.fe:32:18
    │
-32 │             self.nums.to_mem(),
-   │             ^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+32 │             nums=self.nums.to_mem(),
+   │                  ^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
    │
    = ValueAttribute
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:33:13
+   ┌─ features/sized_vals_in_sto.fe:33:17
    │
-33 │             self.str.to_mem()
-   │             ^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+33 │             str=self.str.to_mem()
+   │                 ^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
    │
    = ValueAttribute
 
@@ -871,6 +871,18 @@ note:
   ┌─ features/sized_vals_in_sto.fe:8:15
   │
 8 │         nums: u256[42]
+  │               ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/sized_vals_in_sto.fe:8:15
+  │
+8 │         nums: u256[42]
   │               ^^^^^^^^ attributes hash: 239151071937436552
   │
   = Array(
@@ -922,6 +934,18 @@ note:
    ┌─ features/sized_vals_in_sto.fe:17:27
    │
 17 │     pub def write_nums(x: u256[42]):
+   │                           ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:17:27
+   │
+17 │     pub def write_nums(x: u256[42]):
    │                           ^^^^^^^^ attributes hash: 239151071937436552
    │
    = Array(
@@ -931,6 +955,18 @@ note:
                  U256,
              ),
          },
+     )
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:20:28
+   │
+20 │     pub def read_nums() -> u256[42]:
+   │                            ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
      )
 
 note: 
@@ -977,6 +1013,18 @@ note:
   │
 2 │     num: u256
   │          ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/sized_vals_in_sto.fe:3:11
+  │
+3 │     nums: u256[42]
+  │           ^^^^ attributes hash: 17942395924573474124
   │
   = Base(
         Numeric(

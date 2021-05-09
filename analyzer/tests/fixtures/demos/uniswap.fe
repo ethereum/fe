@@ -75,12 +75,12 @@ contract UniswapV2Pair:
     def _mint(to: address, value: u256):
         self.total_supply = self.total_supply + value
         self.balances[to] = self.balances[to] + value
-        emit Transfer(address(0), to, value)
+        emit Transfer(from=address(0), to, value)
 
     def _burn(from: address, value: u256):
         self.balances[from] = self.balances[from] - value
         self.total_supply = self.total_supply - value
-        emit Transfer(from, address(0), value)
+        emit Transfer(from, to=address(0), value)
 
     def _approve(owner: address, spender: address, value: u256):
         self.allowances[owner][spender] = value
@@ -133,7 +133,7 @@ contract UniswapV2Pair:
         self.reserve0 = balance0
         self.reserve1 = balance1
         self.block_timestamp_last = block_timestamp
-        emit Sync(self.reserve0, self.reserve1)
+        emit Sync(reserve0=self.reserve0, reserve1=self.reserve1)
 
     # if fee is on, mint liquidity equivalent to 1/6th of the growth in sqrt(k)
     def _mint_fee(reserve0: u256, reserve1: u256) -> bool:
@@ -182,7 +182,7 @@ contract UniswapV2Pair:
         if fee_on:
             self.k_last = reserve0 * reserve1 # reserve0 and reserve1 are up-to-date
 
-        emit Mint(msg.sender, amount0, amount1)
+        emit Mint(sender=msg.sender, amount0, amount1)
         return liquidity
 
     # this low-level function should be called from a contract which performs important safety checks
@@ -211,7 +211,7 @@ contract UniswapV2Pair:
         if fee_on:
             self.k_last = reserve0 * reserve1 # reserve0 and reserve1 are up-to-date
 
-        emit Burn(msg.sender, amount0, amount1, to)
+        emit Burn(sender=msg.sender, amount0, amount1, to)
         return (amount0, amount1)
 
     # this low-level function should be called from a contract which performs important safety checks
@@ -251,7 +251,7 @@ contract UniswapV2Pair:
         assert balance0_adjusted * balance1_adjusted >= reserve0 * reserve1 * 1000000, "UniswapV2: K"
 
         self._update(balance0, balance1, reserve0, reserve1)
-        emit Swap(msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
+        emit Swap(sender=msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
 
     # force balances to match reserves
     pub def skim(to: address):
@@ -326,7 +326,7 @@ contract UniswapV2Factory:
         self.all_pairs[self.pair_counter] = address(pair)
         self.pair_counter = self.pair_counter + 1
 
-        emit PairCreated(token0, token1, address(pair), self.pair_counter)
+        emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
         return address(pair)
 
     pub def set_fee_to(fee_to: address):

@@ -9,7 +9,7 @@ contract Foo:
         s5: string100
 
     pub def __init__(s1: string42, a: address, s2: string26, u: u256, s3: string100):
-        emit MyEvent(s2, u, s1, s3, a, "static string", string100("foo"))
+        emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=string100("foo"))
 
     pub def bar(s1: string100, s2: string100) -> string100:
         return s2

@@ -73,10 +73,10 @@ contract Foo:
 
     pub def emit_my_event():
         emit MyEvent(
-            self.my_addrs.to_mem(),
-            self.my_u128,
-            self.my_string.to_mem(),
-            self.my_u8s.to_mem(),
-            self.my_bool,
-            self.my_bytes.to_mem()
+            my_addrs=self.my_addrs.to_mem(),
+            my_u128=self.my_u128,
+            my_string=self.my_string.to_mem(),
+            my_u8s=self.my_u8s.to_mem(),
+            my_bool=self.my_bool,
+            my_bytes=self.my_bytes.to_mem()
         )

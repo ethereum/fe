@@ -1,6 +1,6 @@
 ---
 source: analyzer/tests/analysis.rs
-expression: "build_snapshot(fixture, src, &context)"
+expression: "build_snapshot(fixture, &src, &context)"
 
 ---
 ModuleAttributes {
@@ -62,29 +62,35 @@ ModuleAttributes {
                         return_type: Struct(
                             Struct {
                                 name: "MyStruct",
-                                fields: {
-                                    "my_addr": Base(
-                                        Address,
-                                    ),
-                                    "my_bool": Base(
-                                        Bool,
-                                    ),
-                                    "my_num": Base(
-                                        Numeric(
-                                            U256,
+                                fields: [
+                                    (
+                                        "my_num",
+                                        Base(
+                                            Numeric(
+                                                U256,
+                                            ),
                                         ),
                                     ),
-                                    "my_num2": Base(
-                                        Numeric(
-                                            U8,
+                                    (
+                                        "my_num2",
+                                        Base(
+                                            Numeric(
+                                                U8,
+                                            ),
                                         ),
                                     ),
-                                },
-                                order: [
-                                    "my_num",
-                                    "my_num2",
-                                    "my_bool",
-                                    "my_addr",
+                                    (
+                                        "my_bool",
+                                        Base(
+                                            Bool,
+                                        ),
+                                    ),
+                                    (
+                                        "my_addr",
+                                        Base(
+                                            Address,
+                                        ),
+                                    ),
                                 ],
                             },
                         ),
@@ -121,29 +127,35 @@ ModuleAttributes {
                                 Struct(
                                     Struct {
                                         name: "MyStruct",
-                                        fields: {
-                                            "my_addr": Base(
-                                                Address,
-                                            ),
-                                            "my_bool": Base(
-                                                Bool,
-                                            ),
-                                            "my_num": Base(
-                                                Numeric(
-                                                    U256,
+                                        fields: [
+                                            (
+                                                "my_num",
+                                                Base(
+                                                    Numeric(
+                                                        U256,
+                                                    ),
                                                 ),
                                             ),
-                                            "my_num2": Base(
-                                                Numeric(
-                                                    U8,
+                                            (
+                                                "my_num2",
+                                                Base(
+                                                    Numeric(
+                                                        U8,
+                                                    ),
                                                 ),
                                             ),
-                                        },
-                                        order: [
-                                            "my_num",
-                                            "my_num2",
-                                            "my_bool",
-                                            "my_addr",
+                                            (
+                                                "my_bool",
+                                                Base(
+                                                    Bool,
+                                                ),
+                                            ),
+                                            (
+                                                "my_addr",
+                                                Base(
+                                                    Address,
+                                                ),
+                                            ),
                                         ],
                                     },
                                 ),
@@ -152,29 +164,35 @@ ModuleAttributes {
                         return_type: Struct(
                             Struct {
                                 name: "MyStruct",
-                                fields: {
-                                    "my_addr": Base(
-                                        Address,
-                                    ),
-                                    "my_bool": Base(
-                                        Bool,
-                                    ),
-                                    "my_num": Base(
-                                        Numeric(
-                                            U256,
+                                fields: [
+                                    (
+                                        "my_num",
+                                        Base(
+                                            Numeric(
+                                                U256,
+                                            ),
                                         ),
                                     ),
-                                    "my_num2": Base(
-                                        Numeric(
-                                            U8,
+                                    (
+                                        "my_num2",
+                                        Base(
+                                            Numeric(
+                                                U8,
+                                            ),
                                         ),
                                     ),
-                                },
-                                order: [
-                                    "my_num",
-                                    "my_num2",
-                                    "my_bool",
-                                    "my_addr",
+                                    (
+                                        "my_bool",
+                                        Base(
+                                            Bool,
+                                        ),
+                                    ),
+                                    (
+                                        "my_addr",
+                                        Base(
+                                            Address,
+                                        ),
+                                    ),
                                 ],
                             },
                         ),
@@ -278,29 +296,35 @@ ModuleAttributes {
         "MyStruct": Struct(
             Struct {
                 name: "MyStruct",
-                fields: {
-                    "my_addr": Base(
-                        Address,
-                    ),
-                    "my_bool": Base(
-                        Bool,
-                    ),
-                    "my_num": Base(
-                        Numeric(
-                            U256,
+                fields: [
+                    (
+                        "my_num",
+                        Base(
+                            Numeric(
+                                U256,
+                            ),
                         ),
                     ),
-                    "my_num2": Base(
-                        Numeric(
-                            U8,
+                    (
+                        "my_num2",
+                        Base(
+                            Numeric(
+                                U8,
+                            ),
                         ),
                     ),
-                },
-                order: [
-                    "my_num",
-                    "my_num2",
-                    "my_bool",
-                    "my_addr",
+                    (
+                        "my_bool",
+                        Base(
+                            Bool,
+                        ),
+                    ),
+                    (
+                        "my_addr",
+                        Base(
+                            Address,
+                        ),
+                    ),
                 ],
             },
         ),
@@ -852,35 +876,41 @@ note:
 63 │ │             my_bool=true,
 64 │ │             my_addr=address(123456)
 65 │ │         )
-   │ ╰─────────^ attributes hash: 4224724267794589733
+   │ ╰─────────^ attributes hash: 14310246943193162873
    │  
    = ExpressionAttributes {
          typ: Struct(
              Struct {
                  name: "MyStruct",
-                 fields: {
-                     "my_addr": Base(
-                         Address,
-                     ),
-                     "my_bool": Base(
-                         Bool,
-                     ),
-                     "my_num": Base(
-                         Numeric(
-                             U256,
+                 fields: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
                          ),
                      ),
-                     "my_num2": Base(
-                         Numeric(
-                             U8,
+                     (
+                         "my_num2",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
                          ),
                      ),
-                 },
-                 order: [
-                     "my_num",
-                     "my_num2",
-                     "my_bool",
-                     "my_addr",
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_addr",
+                         Base(
+                             Address,
+                         ),
+                     ),
                  ],
              },
          ),
@@ -892,35 +922,41 @@ note:
    ┌─ stress/abi_encoding_stress.fe:68:9
    │
 68 │         my_struct.my_num = 12341234
-   │         ^^^^^^^^^ attributes hash: 4224724267794589733
+   │         ^^^^^^^^^ attributes hash: 14310246943193162873
    │
    = ExpressionAttributes {
          typ: Struct(
              Struct {
                  name: "MyStruct",
-                 fields: {
-                     "my_addr": Base(
-                         Address,
-                     ),
-                     "my_bool": Base(
-                         Bool,
-                     ),
-                     "my_num": Base(
-                         Numeric(
-                             U256,
+                 fields: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
                          ),
                      ),
-                     "my_num2": Base(
-                         Numeric(
-                             U8,
+                     (
+                         "my_num2",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
                          ),
                      ),
-                 },
-                 order: [
-                     "my_num",
-                     "my_num2",
-                     "my_bool",
-                     "my_addr",
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_addr",
+                         Base(
+                             Address,
+                         ),
+                     ),
                  ],
              },
          ),
@@ -964,35 +1000,41 @@ note:
    ┌─ stress/abi_encoding_stress.fe:69:9
    │
 69 │         my_struct.my_num2 = u8(42)
-   │         ^^^^^^^^^ attributes hash: 4224724267794589733
+   │         ^^^^^^^^^ attributes hash: 14310246943193162873
    │
    = ExpressionAttributes {
          typ: Struct(
              Struct {
                  name: "MyStruct",
-                 fields: {
-                     "my_addr": Base(
-                         Address,
-                     ),
-                     "my_bool": Base(
-                         Bool,
-                     ),
-                     "my_num": Base(
-                         Numeric(
-                             U256,
+                 fields: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
                          ),
                      ),
-                     "my_num2": Base(
-                         Numeric(
-                             U8,
+                     (
+                         "my_num2",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
                          ),
                      ),
-                 },
-                 order: [
-                     "my_num",
-                     "my_num2",
-                     "my_bool",
-                     "my_addr",
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_addr",
+                         Base(
+                             Address,
+                         ),
+                     ),
                  ],
              },
          ),
@@ -1052,35 +1094,41 @@ note:
    ┌─ stress/abi_encoding_stress.fe:70:9
    │
 70 │         my_struct.my_bool = false
-   │         ^^^^^^^^^ attributes hash: 4224724267794589733
+   │         ^^^^^^^^^ attributes hash: 14310246943193162873
    │
    = ExpressionAttributes {
          typ: Struct(
              Struct {
                  name: "MyStruct",
-                 fields: {
-                     "my_addr": Base(
-                         Address,
-                     ),
-                     "my_bool": Base(
-                         Bool,
-                     ),
-                     "my_num": Base(
-                         Numeric(
-                             U256,
+                 fields: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
                          ),
                      ),
-                     "my_num2": Base(
-                         Numeric(
-                             U8,
+                     (
+                         "my_num2",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
                          ),
                      ),
-                 },
-                 order: [
-                     "my_num",
-                     "my_num2",
-                     "my_bool",
-                     "my_addr",
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_addr",
+                         Base(
+                             Address,
+                         ),
+                     ),
                  ],
              },
          ),
@@ -1120,35 +1168,41 @@ note:
    ┌─ stress/abi_encoding_stress.fe:71:9
    │
 71 │         my_struct.my_addr = address(9999)
-   │         ^^^^^^^^^ attributes hash: 4224724267794589733
+   │         ^^^^^^^^^ attributes hash: 14310246943193162873
    │
    = ExpressionAttributes {
          typ: Struct(
              Struct {
                  name: "MyStruct",
-                 fields: {
-                     "my_addr": Base(
-                         Address,
-                     ),
-                     "my_bool": Base(
-                         Bool,
-                     ),
-                     "my_num": Base(
-                         Numeric(
-                             U256,
+                 fields: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
                          ),
                      ),
-                     "my_num2": Base(
-                         Numeric(
-                             U8,
+                     (
+                         "my_num2",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
                          ),
                      ),
-                 },
-                 order: [
-                     "my_num",
-                     "my_num2",
-                     "my_bool",
-                     "my_addr",
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_addr",
+                         Base(
+                             Address,
+                         ),
+                     ),
                  ],
              },
          ),
@@ -1204,35 +1258,41 @@ note:
    ┌─ stress/abi_encoding_stress.fe:72:16
    │
 72 │         return my_struct
-   │                ^^^^^^^^^ attributes hash: 4224724267794589733
+   │                ^^^^^^^^^ attributes hash: 14310246943193162873
    │
    = ExpressionAttributes {
          typ: Struct(
              Struct {
                  name: "MyStruct",
-                 fields: {
-                     "my_addr": Base(
-                         Address,
-                     ),
-                     "my_bool": Base(
-                         Bool,
-                     ),
-                     "my_num": Base(
-                         Numeric(
-                             U256,
+                 fields: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
                          ),
                      ),
-                     "my_num2": Base(
-                         Numeric(
-                             U8,
+                     (
+                         "my_num2",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
                          ),
                      ),
-                 },
-                 order: [
-                     "my_num",
-                     "my_num2",
-                     "my_bool",
-                     "my_addr",
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_addr",
+                         Base(
+                             Address,
+                         ),
+                     ),
                  ],
              },
          ),
@@ -1241,10 +1301,10 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:76:13
+   ┌─ stress/abi_encoding_stress.fe:76:22
    │
-76 │             self.my_addrs.to_mem(),
-   │             ^^^^^^^^^^^^^ attributes hash: 9556682290913303484
+76 │             my_addrs=self.my_addrs.to_mem(),
+   │                      ^^^^^^^^^^^^^ attributes hash: 9556682290913303484
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1262,10 +1322,10 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:76:13
+   ┌─ stress/abi_encoding_stress.fe:76:22
    │
-76 │             self.my_addrs.to_mem(),
-   │             ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14222027602690501828
+76 │             my_addrs=self.my_addrs.to_mem(),
+   │                      ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14222027602690501828
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1285,10 +1345,10 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:77:13
+   ┌─ stress/abi_encoding_stress.fe:77:21
    │
-77 │             self.my_u128,
-   │             ^^^^^^^^^^^^ attributes hash: 10067809958524075301
+77 │             my_u128=self.my_u128,
+   │                     ^^^^^^^^^^^^ attributes hash: 10067809958524075301
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1307,10 +1367,10 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:78:13
+   ┌─ stress/abi_encoding_stress.fe:78:23
    │
-78 │             self.my_string.to_mem(),
-   │             ^^^^^^^^^^^^^^ attributes hash: 9071218329936731305
+78 │             my_string=self.my_string.to_mem(),
+   │                       ^^^^^^^^^^^^^^ attributes hash: 9071218329936731305
    │
    = ExpressionAttributes {
          typ: String(
@@ -1327,10 +1387,10 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:78:13
+   ┌─ stress/abi_encoding_stress.fe:78:23
    │
-78 │             self.my_string.to_mem(),
-   │             ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 980173007631351881
+78 │             my_string=self.my_string.to_mem(),
+   │                       ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 980173007631351881
    │
    = ExpressionAttributes {
          typ: String(
@@ -1349,10 +1409,10 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:79:13
+   ┌─ stress/abi_encoding_stress.fe:79:20
    │
-79 │             self.my_u8s.to_mem(),
-   │             ^^^^^^^^^^^ attributes hash: 14452085088266868200
+79 │             my_u8s=self.my_u8s.to_mem(),
+   │                    ^^^^^^^^^^^ attributes hash: 14452085088266868200
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1372,10 +1432,10 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:79:13
+   ┌─ stress/abi_encoding_stress.fe:79:20
    │
-79 │             self.my_u8s.to_mem(),
-   │             ^^^^^^^^^^^^^^^^^^^^ attributes hash: 3855584261660153860
+79 │             my_u8s=self.my_u8s.to_mem(),
+   │                    ^^^^^^^^^^^^^^^^^^^^ attributes hash: 3855584261660153860
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1397,10 +1457,10 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:80:13
+   ┌─ stress/abi_encoding_stress.fe:80:21
    │
-80 │             self.my_bool,
-   │             ^^^^^^^^^^^^ attributes hash: 11793743503936840609
+80 │             my_bool=self.my_bool,
+   │                     ^^^^^^^^^^^^ attributes hash: 11793743503936840609
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1417,10 +1477,10 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:81:13
+   ┌─ stress/abi_encoding_stress.fe:81:22
    │
-81 │             self.my_bytes.to_mem()
-   │             ^^^^^^^^^^^^^ attributes hash: 7833827351076939737
+81 │             my_bytes=self.my_bytes.to_mem()
+   │                      ^^^^^^^^^^^^^ attributes hash: 7833827351076939737
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1438,10 +1498,10 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:81:13
+   ┌─ stress/abi_encoding_stress.fe:81:22
    │
-81 │             self.my_bytes.to_mem()
-   │             ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12051565540558389281
+81 │             my_bytes=self.my_bytes.to_mem()
+   │                      ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12051565540558389281
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1464,11 +1524,11 @@ note:
    ┌─ stress/abi_encoding_stress.fe:75:9
    │  
 75 │ ╭         emit MyEvent(
-76 │ │             self.my_addrs.to_mem(),
-77 │ │             self.my_u128,
-78 │ │             self.my_string.to_mem(),
+76 │ │             my_addrs=self.my_addrs.to_mem(),
+77 │ │             my_u128=self.my_u128,
+78 │ │             my_string=self.my_string.to_mem(),
    · │
-81 │ │             self.my_bytes.to_mem()
+81 │ │             my_bytes=self.my_bytes.to_mem()
 82 │ │         )
    │ ╰─────────^ attributes hash: 229795011819765305
    │  
@@ -1793,7 +1853,7 @@ note:
 63 │ │             my_bool=true,
 64 │ │             my_addr=address(123456)
 65 │ │         )
-   │ ╰─────────^ attributes hash: 5474806495333547583
+   │ ╰─────────^ attributes hash: 16782190728805286135
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1802,29 +1862,35 @@ note:
          return_type: Struct(
              Struct {
                  name: "MyStruct",
-                 fields: {
-                     "my_addr": Base(
-                         Address,
-                     ),
-                     "my_bool": Base(
-                         Bool,
-                     ),
-                     "my_num": Base(
-                         Numeric(
-                             U256,
+                 fields: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
                          ),
                      ),
-                     "my_num2": Base(
-                         Numeric(
-                             U8,
+                     (
+                         "my_num2",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
                          ),
                      ),
-                 },
-                 order: [
-                     "my_num",
-                     "my_num2",
-                     "my_bool",
-                     "my_addr",
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_addr",
+                         Base(
+                             Address,
+                         ),
+                     ),
                  ],
              },
          ),
@@ -1839,7 +1905,7 @@ note:
 70 │ │         my_struct.my_bool = false
 71 │ │         my_struct.my_addr = address(9999)
 72 │ │         return my_struct
-   │ ╰────────────────────────^ attributes hash: 1662890258725533642
+   │ ╰────────────────────────^ attributes hash: 3294894870123873559
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1850,29 +1916,35 @@ note:
                  Struct(
                      Struct {
                          name: "MyStruct",
-                         fields: {
-                             "my_addr": Base(
-                                 Address,
-                             ),
-                             "my_bool": Base(
-                                 Bool,
-                             ),
-                             "my_num": Base(
-                                 Numeric(
-                                     U256,
+                         fields: [
+                             (
+                                 "my_num",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
                                  ),
                              ),
-                             "my_num2": Base(
-                                 Numeric(
-                                     U8,
+                             (
+                                 "my_num2",
+                                 Base(
+                                     Numeric(
+                                         U8,
+                                     ),
                                  ),
                              ),
-                         },
-                         order: [
-                             "my_num",
-                             "my_num2",
-                             "my_bool",
-                             "my_addr",
+                             (
+                                 "my_bool",
+                                 Base(
+                                     Bool,
+                                 ),
+                             ),
+                             (
+                                 "my_addr",
+                                 Base(
+                                     Address,
+                                 ),
+                             ),
                          ],
                      },
                  ),
@@ -1881,29 +1953,35 @@ note:
          return_type: Struct(
              Struct {
                  name: "MyStruct",
-                 fields: {
-                     "my_addr": Base(
-                         Address,
-                     ),
-                     "my_bool": Base(
-                         Bool,
-                     ),
-                     "my_num": Base(
-                         Numeric(
-                             U256,
+                 fields: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
                          ),
                      ),
-                     "my_num2": Base(
-                         Numeric(
-                             U8,
+                     (
+                         "my_num2",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
                          ),
                      ),
-                 },
-                 order: [
-                     "my_num",
-                     "my_num2",
-                     "my_bool",
-                     "my_addr",
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_addr",
+                         Base(
+                             Address,
+                         ),
+                     ),
                  ],
              },
          ),
@@ -1914,10 +1992,10 @@ note:
    │  
 74 │ ╭     pub def emit_my_event():
 75 │ │         emit MyEvent(
-76 │ │             self.my_addrs.to_mem(),
-77 │ │             self.my_u128,
+76 │ │             my_addrs=self.my_addrs.to_mem(),
+77 │ │             my_u128=self.my_u128,
    · │
-81 │ │             self.my_bytes.to_mem()
+81 │ │             my_bytes=self.my_bytes.to_mem()
 82 │ │         )
    │ ╰─────────^ attributes hash: 9089586501468789190
    │  
@@ -1936,9 +2014,9 @@ note:
  9 │ │     my_u128: u128
 10 │ │     my_string: string10
    · │
-81 │ │             self.my_bytes.to_mem()
+81 │ │             my_bytes=self.my_bytes.to_mem()
 82 │ │         )
-   │ ╰─────────^ attributes hash: 11850337474676938507
+   │ ╰─────────^ attributes hash: 3267493635957601068
    │  
    = ContractAttributes {
          public_functions: [
@@ -1995,29 +2073,35 @@ note:
                  return_type: Struct(
                      Struct {
                          name: "MyStruct",
-                         fields: {
-                             "my_addr": Base(
-                                 Address,
-                             ),
-                             "my_bool": Base(
-                                 Bool,
-                             ),
-                             "my_num": Base(
-                                 Numeric(
-                                     U256,
+                         fields: [
+                             (
+                                 "my_num",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
                                  ),
                              ),
-                             "my_num2": Base(
-                                 Numeric(
-                                     U8,
+                             (
+                                 "my_num2",
+                                 Base(
+                                     Numeric(
+                                         U8,
+                                     ),
                                  ),
                              ),
-                         },
-                         order: [
-                             "my_num",
-                             "my_num2",
-                             "my_bool",
-                             "my_addr",
+                             (
+                                 "my_bool",
+                                 Base(
+                                     Bool,
+                                 ),
+                             ),
+                             (
+                                 "my_addr",
+                                 Base(
+                                     Address,
+                                 ),
+                             ),
                          ],
                      },
                  ),
@@ -2054,29 +2138,35 @@ note:
                          Struct(
                              Struct {
                                  name: "MyStruct",
-                                 fields: {
-                                     "my_addr": Base(
-                                         Address,
-                                     ),
-                                     "my_bool": Base(
-                                         Bool,
-                                     ),
-                                     "my_num": Base(
-                                         Numeric(
-                                             U256,
+                                 fields: [
+                                     (
+                                         "my_num",
+                                         Base(
+                                             Numeric(
+                                                 U256,
+                                             ),
                                          ),
                                      ),
-                                     "my_num2": Base(
-                                         Numeric(
-                                             U8,
+                                     (
+                                         "my_num2",
+                                         Base(
+                                             Numeric(
+                                                 U8,
+                                             ),
                                          ),
                                      ),
-                                 },
-                                 order: [
-                                     "my_num",
-                                     "my_num2",
-                                     "my_bool",
-                                     "my_addr",
+                                     (
+                                         "my_bool",
+                                         Base(
+                                             Bool,
+                                         ),
+                                     ),
+                                     (
+                                         "my_addr",
+                                         Base(
+                                             Address,
+                                         ),
+                                     ),
                                  ],
                              },
                          ),
@@ -2085,29 +2175,35 @@ note:
                  return_type: Struct(
                      Struct {
                          name: "MyStruct",
-                         fields: {
-                             "my_addr": Base(
-                                 Address,
-                             ),
-                             "my_bool": Base(
-                                 Bool,
-                             ),
-                             "my_num": Base(
-                                 Numeric(
-                                     U256,
+                         fields: [
+                             (
+                                 "my_num",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
                                  ),
                              ),
-                             "my_num2": Base(
-                                 Numeric(
-                                     U8,
+                             (
+                                 "my_num2",
+                                 Base(
+                                     Numeric(
+                                         U8,
+                                     ),
                                  ),
                              ),
-                         },
-                         order: [
-                             "my_num",
-                             "my_num2",
-                             "my_bool",
-                             "my_addr",
+                             (
+                                 "my_bool",
+                                 Base(
+                                     Bool,
+                                 ),
+                             ),
+                             (
+                                 "my_addr",
+                                 Base(
+                                     Address,
+                                 ),
+                             ),
                          ],
                      },
                  ),
@@ -2272,29 +2368,35 @@ note:
          structs: [
              Struct {
                  name: "MyStruct",
-                 fields: {
-                     "my_addr": Base(
-                         Address,
-                     ),
-                     "my_bool": Base(
-                         Bool,
-                     ),
-                     "my_num": Base(
-                         Numeric(
-                             U256,
+                 fields: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
                          ),
                      ),
-                     "my_num2": Base(
-                         Numeric(
-                             U8,
+                     (
+                         "my_num2",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
                          ),
                      ),
-                 },
-                 order: [
-                     "my_num",
-                     "my_num2",
-                     "my_bool",
-                     "my_addr",
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_addr",
+                         Base(
+                             Address,
+                         ),
+                     ),
                  ],
              },
          ],
@@ -2338,35 +2440,41 @@ note:
    ┌─ stress/abi_encoding_stress.fe:60:16
    │
 60 │         return MyStruct(
-   │                ^^^^^^^^ attributes hash: 15456046329996062615
+   │                ^^^^^^^^ attributes hash: 1887544806731584819
    │
    = TypeConstructor {
          typ: Struct(
              Struct {
                  name: "MyStruct",
-                 fields: {
-                     "my_addr": Base(
-                         Address,
-                     ),
-                     "my_bool": Base(
-                         Bool,
-                     ),
-                     "my_num": Base(
-                         Numeric(
-                             U256,
+                 fields: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
                          ),
                      ),
-                     "my_num2": Base(
-                         Numeric(
-                             U8,
+                     (
+                         "my_num2",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
                          ),
                      ),
-                 },
-                 order: [
-                     "my_num",
-                     "my_num2",
-                     "my_bool",
-                     "my_addr",
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_addr",
+                         Base(
+                             Address,
+                         ),
+                     ),
                  ],
              },
          ),
@@ -2425,34 +2533,34 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:76:13
+   ┌─ stress/abi_encoding_stress.fe:76:22
    │
-76 │             self.my_addrs.to_mem(),
-   │             ^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
-   │
-   = ValueAttribute
-
-note: 
-   ┌─ stress/abi_encoding_stress.fe:78:13
-   │
-78 │             self.my_string.to_mem(),
-   │             ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+76 │             my_addrs=self.my_addrs.to_mem(),
+   │                      ^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
    │
    = ValueAttribute
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:79:13
+   ┌─ stress/abi_encoding_stress.fe:78:23
    │
-79 │             self.my_u8s.to_mem(),
-   │             ^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+78 │             my_string=self.my_string.to_mem(),
+   │                       ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
    │
    = ValueAttribute
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:81:13
+   ┌─ stress/abi_encoding_stress.fe:79:20
    │
-81 │             self.my_bytes.to_mem()
-   │             ^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+79 │             my_u8s=self.my_u8s.to_mem(),
+   │                    ^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │
+   = ValueAttribute
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:81:22
+   │
+81 │             my_bytes=self.my_bytes.to_mem()
+   │                      ^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
    │
    = ValueAttribute
 
@@ -2528,6 +2636,60 @@ note:
      }
 
 note: 
+  ┌─ stress/abi_encoding_stress.fe:2:13
+  │
+2 │     my_num: u256
+  │             ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ stress/abi_encoding_stress.fe:3:14
+  │
+3 │     my_num2: u8
+  │              ^^ attributes hash: 1872326638020472004
+  │
+  = Base(
+        Numeric(
+            U8,
+        ),
+    )
+
+note: 
+  ┌─ stress/abi_encoding_stress.fe:4:14
+  │
+4 │     my_bool: bool
+  │              ^^^^ attributes hash: 8311861578736502650
+  │
+  = Base(
+        Bool,
+    )
+
+note: 
+  ┌─ stress/abi_encoding_stress.fe:5:14
+  │
+5 │     my_addr: address
+  │              ^^^^^^^ attributes hash: 574436082528610497
+  │
+  = Base(
+        Address,
+    )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:16:19
+   │
+16 │         my_addrs: address[5]
+   │                   ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
+     )
+
+note: 
    ┌─ stress/abi_encoding_stress.fe:16:19
    │
 16 │         my_addrs: address[5]
@@ -2568,6 +2730,18 @@ note:
    ┌─ stress/abi_encoding_stress.fe:19:17
    │
 19 │         my_u8s: u8[255]
+   │                 ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:19:17
+   │
+19 │         my_u8s: u8[255]
    │                 ^^^^^^^ attributes hash: 539441492437887696
    │
    = Array(
@@ -2593,6 +2767,16 @@ note:
    ┌─ stress/abi_encoding_stress.fe:21:19
    │
 21 │         my_bytes: bytes[100]
+   │                   ^^^^^ attributes hash: 16931239362436195516
+   │
+   = Base(
+         Byte,
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:21:19
+   │
+21 │         my_bytes: bytes[100]
    │                   ^^^^^^^^^^ attributes hash: 5134157185158150929
    │
    = Array(
@@ -2606,6 +2790,16 @@ note:
    ┌─ stress/abi_encoding_stress.fe:23:36
    │
 23 │     pub def set_my_addrs(my_addrs: address[5]):
+   │                                    ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:23:36
+   │
+23 │     pub def set_my_addrs(my_addrs: address[5]):
    │                                    ^^^^^^^^^^ attributes hash: 14952089586677068254
    │
    = Array(
@@ -2613,6 +2807,16 @@ note:
              size: 5,
              inner: Address,
          },
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:26:31
+   │
+26 │     pub def get_my_addrs() -> address[5]:
+   │                               ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
      )
 
 note: 
@@ -2680,6 +2884,18 @@ note:
    ┌─ stress/abi_encoding_stress.fe:41:32
    │
 41 │     pub def set_my_u8s(my_u8s: u8[255]):
+   │                                ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:41:32
+   │
+41 │     pub def set_my_u8s(my_u8s: u8[255]):
    │                                ^^^^^^^ attributes hash: 539441492437887696
    │
    = Array(
@@ -2689,6 +2905,18 @@ note:
                  U8,
              ),
          },
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:44:29
+   │
+44 │     pub def get_my_u8s() -> u8[255]:
+   │                             ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
      )
 
 note: 
@@ -2730,6 +2958,16 @@ note:
    ┌─ stress/abi_encoding_stress.fe:53:36
    │
 53 │     pub def set_my_bytes(my_bytes: bytes[100]):
+   │                                    ^^^^^ attributes hash: 16931239362436195516
+   │
+   = Base(
+         Byte,
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:53:36
+   │
+53 │     pub def set_my_bytes(my_bytes: bytes[100]):
    │                                    ^^^^^^^^^^ attributes hash: 5134157185158150929
    │
    = Array(
@@ -2737,6 +2975,16 @@ note:
              size: 100,
              inner: Byte,
          },
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:56:31
+   │
+56 │     pub def get_my_bytes() -> bytes[100]:
+   │                               ^^^^^ attributes hash: 16931239362436195516
+   │
+   = Base(
+         Byte,
      )
 
 note: 
@@ -2756,34 +3004,40 @@ note:
    ┌─ stress/abi_encoding_stress.fe:59:32
    │
 59 │     pub def get_my_struct() -> MyStruct:
-   │                                ^^^^^^^^ attributes hash: 12281301714552285785
+   │                                ^^^^^^^^ attributes hash: 16989165584754515703
    │
    = Struct(
          Struct {
              name: "MyStruct",
-             fields: {
-                 "my_addr": Base(
-                     Address,
-                 ),
-                 "my_bool": Base(
-                     Bool,
-                 ),
-                 "my_num": Base(
-                     Numeric(
-                         U256,
+             fields: [
+                 (
+                     "my_num",
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
                      ),
                  ),
-                 "my_num2": Base(
-                     Numeric(
-                         U8,
+                 (
+                     "my_num2",
+                     Base(
+                         Numeric(
+                             U8,
+                         ),
                      ),
                  ),
-             },
-             order: [
-                 "my_num",
-                 "my_num2",
-                 "my_bool",
-                 "my_addr",
+                 (
+                     "my_bool",
+                     Base(
+                         Bool,
+                     ),
+                 ),
+                 (
+                     "my_addr",
+                     Base(
+                         Address,
+                     ),
+                 ),
              ],
          },
      )
@@ -2792,34 +3046,40 @@ note:
    ┌─ stress/abi_encoding_stress.fe:67:38
    │
 67 │     pub def mod_my_struct(my_struct: MyStruct) -> MyStruct:
-   │                                      ^^^^^^^^ attributes hash: 12281301714552285785
+   │                                      ^^^^^^^^ attributes hash: 16989165584754515703
    │
    = Struct(
          Struct {
              name: "MyStruct",
-             fields: {
-                 "my_addr": Base(
-                     Address,
-                 ),
-                 "my_bool": Base(
-                     Bool,
-                 ),
-                 "my_num": Base(
-                     Numeric(
-                         U256,
+             fields: [
+                 (
+                     "my_num",
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
                      ),
                  ),
-                 "my_num2": Base(
-                     Numeric(
-                         U8,
+                 (
+                     "my_num2",
+                     Base(
+                         Numeric(
+                             U8,
+                         ),
                      ),
                  ),
-             },
-             order: [
-                 "my_num",
-                 "my_num2",
-                 "my_bool",
-                 "my_addr",
+                 (
+                     "my_bool",
+                     Base(
+                         Bool,
+                     ),
+                 ),
+                 (
+                     "my_addr",
+                     Base(
+                         Address,
+                     ),
+                 ),
              ],
          },
      )
@@ -2828,37 +3088,53 @@ note:
    ┌─ stress/abi_encoding_stress.fe:67:51
    │
 67 │     pub def mod_my_struct(my_struct: MyStruct) -> MyStruct:
-   │                                                   ^^^^^^^^ attributes hash: 12281301714552285785
+   │                                                   ^^^^^^^^ attributes hash: 16989165584754515703
    │
    = Struct(
          Struct {
              name: "MyStruct",
-             fields: {
-                 "my_addr": Base(
-                     Address,
-                 ),
-                 "my_bool": Base(
-                     Bool,
-                 ),
-                 "my_num": Base(
-                     Numeric(
-                         U256,
+             fields: [
+                 (
+                     "my_num",
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
                      ),
                  ),
-                 "my_num2": Base(
-                     Numeric(
-                         U8,
+                 (
+                     "my_num2",
+                     Base(
+                         Numeric(
+                             U8,
+                         ),
                      ),
                  ),
-             },
-             order: [
-                 "my_num",
-                 "my_num2",
-                 "my_bool",
-                 "my_addr",
+                 (
+                     "my_bool",
+                     Base(
+                         Bool,
+                     ),
+                 ),
+                 (
+                     "my_addr",
+                     Base(
+                         Address,
+                     ),
+                 ),
              ],
          },
      )
+
+note: 
+  ┌─ stress/abi_encoding_stress.fe:8:15
+  │
+8 │     my_addrs: address[5]
+  │               ^^^^^^^ attributes hash: 574436082528610497
+  │
+  = Base(
+        Address,
+    )
 
 note: 
   ┌─ stress/abi_encoding_stress.fe:8:15
@@ -2901,6 +3177,18 @@ note:
    ┌─ stress/abi_encoding_stress.fe:11:13
    │
 11 │     my_u8s: u8[255]
+   │             ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:11:13
+   │
+11 │     my_u8s: u8[255]
    │             ^^^^^^^ attributes hash: 539441492437887696
    │
    = Array(
@@ -2920,6 +3208,16 @@ note:
    │
    = Base(
          Bool,
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:13:15
+   │
+13 │     my_bytes: bytes[100]
+   │               ^^^^^ attributes hash: 16931239362436195516
+   │
+   = Base(
+         Byte,
      )
 
 note: 

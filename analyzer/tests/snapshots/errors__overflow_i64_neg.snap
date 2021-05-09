@@ -1,0 +1,12 @@
+---
+source: analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src_str)"
+
+---
+error: literal out of range for `i64`
+  ┌─ [snippet]:3:7
+  │
+3 │   i64(-9223372036854775809)
+  │       ^^^^^^^^^^^^^^^^^^^^ does not fit into type `i64`
+
+

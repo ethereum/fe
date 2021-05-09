@@ -1,5 +1,0 @@
-contract Foo:
-
-    pub def bar() -> u256:
-        wrong: u256[1]
-        return keccak256(wrong)

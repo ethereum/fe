@@ -1,6 +1,6 @@
 ---
 source: analyzer/tests/analysis.rs
-expression: "build_snapshot(fixture, src, &context)"
+expression: "build_snapshot(fixture, &src, &context)"
 
 ---
 ModuleAttributes {
@@ -1958,10 +1958,10 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:74:22
+   ┌─ stress/data_copying_stress.fe:74:32
    │
-74 │         emit MyEvent(some_string, some_u256)
-   │                      ^^^^^^^^^^^ attributes hash: 9569027785754553796
+74 │         emit MyEvent(my_string=some_string, my_u256=some_u256)
+   │                                ^^^^^^^^^^^ attributes hash: 9569027785754553796
    │
    = ExpressionAttributes {
          typ: String(
@@ -1974,10 +1974,10 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:74:35
+   ┌─ stress/data_copying_stress.fe:74:53
    │
-74 │         emit MyEvent(some_string, some_u256)
-   │                                   ^^^^^^^^^ attributes hash: 16797824492585953824
+74 │         emit MyEvent(my_string=some_string, my_u256=some_u256)
+   │                                                     ^^^^^^^^^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2085,8 +2085,8 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:74:9
    │
-74 │         emit MyEvent(some_string, some_u256)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9960040166005382103
+74 │         emit MyEvent(my_string=some_string, my_u256=some_u256)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9960040166005382103
    │
    = EventDef {
          name: "MyEvent",
@@ -2358,8 +2358,8 @@ note:
    ┌─ stress/data_copying_stress.fe:73:5
    │  
 73 │ ╭     def emit_my_event_internal(some_string: string42, some_u256: u256):
-74 │ │         emit MyEvent(some_string, some_u256)
-   │ ╰────────────────────────────────────────────^ attributes hash: 11329158825917724746
+74 │ │         emit MyEvent(my_string=some_string, my_u256=some_u256)
+   │ ╰──────────────────────────────────────────────────────────────^ attributes hash: 11329158825917724746
    │  
    = FunctionAttributes {
          is_public: false,
@@ -2857,6 +2857,18 @@ note:
    ┌─ stress/data_copying_stress.fe:31:57
    │
 31 │     pub def multiple_references_shared_memory(my_array: u256[10]):
+   │                                                         ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ stress/data_copying_stress.fe:31:57
+   │
+31 │     pub def multiple_references_shared_memory(my_array: u256[10]):
    │                                                         ^^^^^^^^ attributes hash: 17323625354857110317
    │
    = Array(
@@ -2866,6 +2878,18 @@ note:
                  U256,
              ),
          },
+     )
+
+note: 
+   ┌─ stress/data_copying_stress.fe:46:41
+   │
+46 │     pub def mutate_and_return(my_array: u256[10]) -> u256[10]:
+   │                                         ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
      )
 
 note: 
@@ -2887,6 +2911,18 @@ note:
    ┌─ stress/data_copying_stress.fe:46:54
    │
 46 │     pub def mutate_and_return(my_array: u256[10]) -> u256[10]:
+   │                                                      ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ stress/data_copying_stress.fe:46:54
+   │
+46 │     pub def mutate_and_return(my_array: u256[10]) -> u256[10]:
    │                                                      ^^^^^^^^ attributes hash: 17323625354857110317
    │
    = Array(
@@ -2896,6 +2932,18 @@ note:
                  U256,
              ),
          },
+     )
+
+note: 
+   ┌─ stress/data_copying_stress.fe:50:40
+   │
+50 │     pub def clone_and_return(my_array: u256[10]) -> u256[10]:
+   │                                        ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
      )
 
 note: 
@@ -2917,6 +2965,18 @@ note:
    ┌─ stress/data_copying_stress.fe:50:53
    │
 50 │     pub def clone_and_return(my_array: u256[10]) -> u256[10]:
+   │                                                     ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ stress/data_copying_stress.fe:50:53
+   │
+50 │     pub def clone_and_return(my_array: u256[10]) -> u256[10]:
    │                                                     ^^^^^^^^ attributes hash: 17323625354857110317
    │
    = Array(
@@ -2926,6 +2986,18 @@ note:
                  U256,
              ),
          },
+     )
+
+note: 
+   ┌─ stress/data_copying_stress.fe:53:47
+   │
+53 │     pub def clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
+   │                                               ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
      )
 
 note: 
@@ -2947,6 +3019,18 @@ note:
    ┌─ stress/data_copying_stress.fe:53:60
    │
 53 │     pub def clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
+   │                                                            ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ stress/data_copying_stress.fe:53:60
+   │
+53 │     pub def clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
    │                                                            ^^^^^^^^ attributes hash: 17323625354857110317
    │
    = Array(
@@ -2956,6 +3040,18 @@ note:
                  U256,
              ),
          },
+     )
+
+note: 
+   ┌─ stress/data_copying_stress.fe:57:44
+   │
+57 │     pub def assign_my_nums_and_return() -> u256[5]:
+   │                                            ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
      )
 
 note: 
@@ -2995,6 +3091,16 @@ note:
          Numeric(
              U256,
          ),
+     )
+
+note: 
+   ┌─ stress/data_copying_stress.fe:76:36
+   │
+76 │     pub def set_my_addrs(my_addrs: address[3]):
+   │                                    ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
      )
 
 note: 
@@ -3072,6 +3178,18 @@ note:
   ┌─ stress/data_copying_stress.fe:8:14
   │
 8 │     my_nums: u256[5]
+  │              ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ stress/data_copying_stress.fe:8:14
+  │
+8 │     my_nums: u256[5]
   │              ^^^^^^^ attributes hash: 12285037458725956106
   │
   = Array(
@@ -3087,6 +3205,16 @@ note:
    ┌─ stress/data_copying_stress.fe:10:15
    │
 10 │     my_addrs: address[3]
+   │               ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ stress/data_copying_stress.fe:10:15
+   │
+10 │     my_addrs: address[3]
    │               ^^^^^^^^^^ attributes hash: 15168711049449449818
    │
    = Array(
@@ -3094,6 +3222,18 @@ note:
              size: 3,
              inner: Address,
          },
+     )
+
+note: 
+   ┌─ stress/data_copying_stress.fe:32:23
+   │
+32 │         my_2nd_array: u256[10] = my_array
+   │                       ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
      )
 
 note: 
@@ -3115,6 +3255,18 @@ note:
    ┌─ stress/data_copying_stress.fe:33:23
    │
 33 │         my_3rd_array: u256[10] = my_2nd_array
+   │                       ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ stress/data_copying_stress.fe:33:23
+   │
+33 │         my_3rd_array: u256[10] = my_2nd_array
    │                       ^^^^^^^^ attributes hash: 17323625354857110317
    │
    = Array(
@@ -3124,6 +3276,18 @@ note:
                  U256,
              ),
          },
+     )
+
+note: 
+   ┌─ stress/data_copying_stress.fe:58:22
+   │
+58 │         my_nums_mem: u256[5]
+   │                      ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
      )
 
 note: 

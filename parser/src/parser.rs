@@ -1,6 +1,7 @@
 #![allow(unused_variables, dead_code, unused_imports)]
 
-use fe_common::diagnostics::{Diagnostic, Label as CsLabel, LabelStyle, Severity};
+pub use fe_common::diagnostics::Label;
+use fe_common::diagnostics::{Diagnostic, Severity};
 use fe_common::files::SourceFileId;
 
 use crate::ast::Module;
@@ -270,7 +271,7 @@ impl<'a> Parser<'a> {
                 format!("missing colon in {}", context_name),
                 vec![Label::primary(
                     Span::new(context_span.end, context_span.end),
-                    "expected `:` here".into(),
+                    "expected `:` here",
                 )],
                 vec![],
             );
@@ -319,7 +320,7 @@ impl<'a> Parser<'a> {
                 "unexpected indentation",
                 vec![Label::primary(
                     indent.span,
-                    "this line indented further than other lines in the current block".into(),
+                    "this line indented further than other lines in the current block",
                 )],
                 vec![],
             );
@@ -392,12 +393,7 @@ impl<'a> Parser<'a> {
             severity: Severity::Error,
             code: None,
             message: message.into(),
-            labels: vec![CsLabel {
-                style: LabelStyle::Primary,
-                file_id: self.file_id,
-                range: span.into(),
-                message: String::new(),
-            }],
+            labels: vec![Label::primary(span, "").into_cs_label(self.file_id)],
             notes: vec![],
         })
     }
@@ -412,12 +408,7 @@ impl<'a> Parser<'a> {
     ) {
         let labels = labels
             .into_iter()
-            .map(|lbl| CsLabel {
-                style: lbl.style,
-                file_id: self.file_id,
-                range: lbl.span.into(),
-                message: lbl.message,
-            })
+            .map(|lbl| lbl.into_cs_label(self.file_id))
             .collect();
 
         self.diagnostics.push(Diagnostic {
@@ -475,33 +466,6 @@ fn indent_str<'a>(tok: &Token<'a>) -> (&'a str, Span) {
     let text = tok.text.trim_start_matches(&['\r', '\n'][..]);
     let span = Span::new(tok.span.start + (tok.text.len() - text.len()), tok.span.end);
     (text, span)
-}
-
-pub struct Label {
-    style: LabelStyle,
-    span: Span,
-    message: String,
-}
-impl Label {
-    /// Create a primary label with the given message. This will underline the
-    /// given span with carets (`^^^^`).
-    pub fn primary(span: Span, message: String) -> Self {
-        Label {
-            style: LabelStyle::Primary,
-            span,
-            message,
-        }
-    }
-
-    /// Create a secondary label with the given message. This will underline the
-    /// given span with hyphens (`----`).
-    pub fn secondary(span: Span, message: String) -> Self {
-        Label {
-            style: LabelStyle::Secondary,
-            span,
-            message,
-        }
-    }
 }
 
 struct BlockIndent<'a> {

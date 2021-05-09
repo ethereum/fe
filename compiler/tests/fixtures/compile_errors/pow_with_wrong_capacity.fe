@@ -1,5 +1,0 @@
-contract Foo:
-
-    pub def bar(base: i128, exponent: u256) -> i128:
-        # Exponent can be unsigned but needs to be same size or smaller
-        return base ** exponent

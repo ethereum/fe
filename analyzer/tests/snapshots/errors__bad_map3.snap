@@ -1,0 +1,14 @@
+---
+source: analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: `map` expects 2 arguments, but 0 were provided
+  ┌─ [snippet]:3:6
+  │
+3 │   x: map<>
+  │      ^^^-- supplied 0 arguments
+  │      │   
+  │      expects 2 arguments
+
+

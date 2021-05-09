@@ -1,0 +1,14 @@
+---
+source: analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: `<` operands must have the same type
+  ┌─ tests/fixtures/errors/return_lt_mixed_types.fe:3:16
+  │
+3 │         return x < y
+  │                ^   - this has incompatible type `u256`
+  │                │    
+  │                this has type `u128`
+
+

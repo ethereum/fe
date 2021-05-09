@@ -1,6 +1,6 @@
 ---
 source: analyzer/tests/analysis.rs
-expression: "build_snapshot(fixture, src, &context)"
+expression: "build_snapshot(fixture, &src, &context)"
 
 ---
 ModuleAttributes {
@@ -37,6 +37,52 @@ note:
             Numeric(
                 U256,
             ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/while_loop_with_break_2.fe:4:15
+  │
+4 │         while val < 2:
+  │               ^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/while_loop_with_break_2.fe:4:21
+  │
+4 │         while val < 2:
+  │                     ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/while_loop_with_break_2.fe:4:15
+  │
+4 │         while val < 2:
+  │               ^^^^^^^ attributes hash: 10866140763116710699
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Bool,
         ),
         location: Value,
         move_location: None,
@@ -143,52 +189,6 @@ note:
   │
 6 │             if val == 1:
   │                ^^^^^^^^ attributes hash: 10866140763116710699
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_break_2.fe:4:15
-  │
-4 │         while val < 2:
-  │               ^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_break_2.fe:4:21
-  │
-4 │         while val < 2:
-  │                     ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_break_2.fe:4:15
-  │
-4 │         while val < 2:
-  │               ^^^^^^^ attributes hash: 10866140763116710699
   │
   = ExpressionAttributes {
         typ: Base(

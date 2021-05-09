@@ -112,6 +112,7 @@ test_parse! { type_array, types::parse_type_desc, "address[25]" }
 test_parse! { type_3d, types::parse_type_desc, "u256[4][4][4]" }
 test_parse! { type_string, types::parse_type_desc, "string<100>" }
 test_parse! { type_generic, types::parse_type_desc, "foo<a, b<c>, d[10]>" }
+test_parse! { type_generic_int, types::parse_type_desc, "foo<1, 2>" }
 test_parse! { type_map1, types::parse_type_desc, "map<address, u256>" }
 test_parse! { type_map2, types::parse_type_desc, "map<address, map<u8, u256>>" }
 test_parse! { type_map3, types::parse_type_desc, "map<address, map<u8, map<u8, u8>>>" }

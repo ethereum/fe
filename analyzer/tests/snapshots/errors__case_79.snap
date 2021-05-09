@@ -1,0 +1,10 @@
+---
+source: analyzer/tests/errors.rs
+expression: errstr
+
+---
+
+
+TypeError on line 5
+pub def bar():
+        [31mreturn 1[0m

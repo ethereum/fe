@@ -1,6 +1,6 @@
 ---
 source: analyzer/tests/analysis.rs
-expression: "build_snapshot(fixture, src, &context)"
+expression: "build_snapshot(fixture, &src, &context)"
 
 ---
 ModuleAttributes {
@@ -1903,6 +1903,16 @@ note:
   ┌─ features/external_contract.fe:4:19
   │
 4 │         my_addrs: address[5]
+  │                   ^^^^^^^ attributes hash: 574436082528610497
+  │
+  = Base(
+        Address,
+    )
+
+note: 
+  ┌─ features/external_contract.fe:4:19
+  │
+4 │         my_addrs: address[5]
   │                   ^^^^^^^^^^ attributes hash: 14952089586677068254
   │
   = Array(
@@ -1934,6 +1944,16 @@ note:
         Numeric(
             U256,
         ),
+    )
+
+note: 
+  ┌─ features/external_contract.fe:7:48
+  │
+7 │     pub def emit_event(my_num: u256, my_addrs: address[5], my_string: string11):
+  │                                                ^^^^^^^ attributes hash: 574436082528610497
+  │
+  = Base(
+        Address,
     )
 
 note: 
@@ -1989,6 +2009,18 @@ note:
    ┌─ features/external_contract.fe:10:46
    │
 10 │     pub def build_array(a: u256, b: u256) -> u256[3]:
+   │                                              ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/external_contract.fe:10:46
+   │
+10 │     pub def build_array(a: u256, b: u256) -> u256[3]:
    │                                              ^^^^^^^ attributes hash: 5963828201795370982
    │
    = Array(
@@ -2020,6 +2052,16 @@ note:
          Numeric(
              U256,
          ),
+     )
+
+note: 
+   ┌─ features/external_contract.fe:21:19
+   │
+21 │         my_addrs: address[5],
+   │                   ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
      )
 
 note: 
@@ -2085,6 +2127,18 @@ note:
    ┌─ features/external_contract.fe:31:10
    │
 31 │     ) -> u256[3]:
+   │          ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/external_contract.fe:31:10
+   │
+31 │     ) -> u256[3]:
    │          ^^^^^^^ attributes hash: 5963828201795370982
    │
    = Array(
@@ -2094,6 +2148,18 @@ note:
                  U256,
              ),
          },
+     )
+
+note: 
+   ┌─ features/external_contract.fe:11:19
+   │
+11 │         my_array: u256[3]
+   │                   ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
      )
 
 note: 

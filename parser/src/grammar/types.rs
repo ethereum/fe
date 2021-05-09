@@ -199,11 +199,28 @@ pub fn parse_opt_qualifier(par: &mut Parser, tk: TokenKind) -> Option<Span> {
 /// of `map<address, u256>`).
 /// # Panics
 /// Panics if the first token isn't `<`.
-fn parse_generic_args(par: &mut Parser) -> ParseResult<(Vec<Node<GenericArg>>, Span)> {
+fn parse_generic_args(par: &mut Parser) -> ParseResult<Node<Vec<GenericArg>>> {
     use TokenKind::*;
     let mut span = par.assert(Lt).span;
 
     let mut args = vec![];
+
+    let expect_end = |par: &mut Parser| {
+        // If there's no comma, the next token must be `>`
+        match par.peek_or_err()? {
+            Gt => Ok(par.next()?.span),
+            GtGt => Ok(par.split_next()?.span),
+            _ => {
+                let tok = par.next()?;
+                par.unexpected_token_error(
+                    tok.span,
+                    "Unexpected token while parsing generic arg list",
+                    vec![],
+                );
+                Err(ParseFailed)
+            }
+        }
+    };
 
     loop {
         match par.peek_or_err()? {
@@ -218,7 +235,13 @@ fn parse_generic_args(par: &mut Parser) -> ParseResult<(Vec<Node<GenericArg>>, S
             Int => {
                 let tok = par.next()?;
                 if let Ok(num) = tok.text.parse() {
-                    args.push(Node::new(GenericArg::Int(num), tok.span));
+                    args.push(GenericArg::Int(Node::new(num, tok.span)));
+                    if par.peek() == Some(Comma) {
+                        par.next()?;
+                    } else {
+                        span += expect_end(par)?;
+                        break;
+                    }
                 } else {
                     par.error(tok.span, "failed to parse integer literal");
                     return Err(ParseFailed);
@@ -226,30 +249,12 @@ fn parse_generic_args(par: &mut Parser) -> ParseResult<(Vec<Node<GenericArg>>, S
             }
             Name | ParenOpen => {
                 let typ = parse_type_desc(par)?;
-                args.push(Node::new(GenericArg::TypeDesc(typ.kind), typ.span));
+                args.push(GenericArg::TypeDesc(Node::new(typ.kind, typ.span)));
                 if par.peek() == Some(Comma) {
                     par.next()?;
                 } else {
-                    // If there's no comma, the next token must be `>`
-                    match par.peek_or_err()? {
-                        Gt => {
-                            span += par.next()?.span;
-                            break;
-                        }
-                        GtGt => {
-                            span += par.split_next()?.span;
-                            break;
-                        }
-                        _ => {
-                            let tok = par.next()?;
-                            par.unexpected_token_error(
-                                tok.span,
-                                "Unexpected token while parsing generic arg list",
-                                vec![],
-                            );
-                            return Err(ParseFailed);
-                        }
-                    }
+                    span += expect_end(par)?;
+                    break;
                 }
             }
             _ => {
@@ -263,7 +268,7 @@ fn parse_generic_args(par: &mut Parser) -> ParseResult<(Vec<Node<GenericArg>>, S
             }
         }
     }
-    Ok((args, span))
+    Ok(Node::new(args, span))
 }
 
 /// Parse a type description, e.g. `u8` or `map<address, u256>`.
@@ -275,8 +280,8 @@ pub fn parse_type_desc(par: &mut Parser) -> ParseResult<Node<TypeDesc>> {
             let name = par.next()?;
             match par.peek() {
                 Some(Lt) => {
-                    let (args, argspan) = parse_generic_args(par)?;
-                    let span = name.span + argspan;
+                    let args = parse_generic_args(par)?;
+                    let span = name.span + args.span;
                     Node::new(
                         TypeDesc::Generic {
                             base: name.into(),

@@ -1,6 +1,6 @@
 ---
 source: analyzer/tests/analysis.rs
-expression: "build_snapshot(fixture, src, &context)"
+expression: "build_snapshot(fixture, &src, &context)"
 
 ---
 ModuleAttributes {
@@ -931,6 +931,55 @@ note:
      )
 
 note: 
+  ┌─ features/nested_map.fe:2:14
+  │
+2 │     bar: map<address, map<address, u256>>
+  │              ^^^^^^^ attributes hash: 574436082528610497
+  │
+  = Base(
+        Address,
+    )
+
+note: 
+  ┌─ features/nested_map.fe:2:27
+  │
+2 │     bar: map<address, map<address, u256>>
+  │                           ^^^^^^^ attributes hash: 574436082528610497
+  │
+  = Base(
+        Address,
+    )
+
+note: 
+  ┌─ features/nested_map.fe:2:36
+  │
+2 │     bar: map<address, map<address, u256>>
+  │                                    ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/nested_map.fe:2:23
+  │
+2 │     bar: map<address, map<address, u256>>
+  │                       ^^^^^^^^^^^^^^^^^^ attributes hash: 6830914040603267556
+  │
+  = Map(
+        Map {
+            key: Address,
+            value: Base(
+                Numeric(
+                    U256,
+                ),
+            ),
+        },
+    )
+
+note: 
   ┌─ features/nested_map.fe:2:10
   │
 2 │     bar: map<address, map<address, u256>>
@@ -948,6 +997,55 @@ note:
                         ),
                     ),
                 },
+            ),
+        },
+    )
+
+note: 
+  ┌─ features/nested_map.fe:3:14
+  │
+3 │     baz: map<address, map<u256, bool>>
+  │              ^^^^^^^ attributes hash: 574436082528610497
+  │
+  = Base(
+        Address,
+    )
+
+note: 
+  ┌─ features/nested_map.fe:3:27
+  │
+3 │     baz: map<address, map<u256, bool>>
+  │                           ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/nested_map.fe:3:33
+  │
+3 │     baz: map<address, map<u256, bool>>
+  │                                 ^^^^ attributes hash: 8311861578736502650
+  │
+  = Base(
+        Bool,
+    )
+
+note: 
+  ┌─ features/nested_map.fe:3:23
+  │
+3 │     baz: map<address, map<u256, bool>>
+  │                       ^^^^^^^^^^^^^^^ attributes hash: 8612757038189634989
+  │
+  = Map(
+        Map {
+            key: Numeric(
+                U256,
+            ),
+            value: Base(
+                Bool,
             ),
         },
     )

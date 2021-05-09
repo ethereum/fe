@@ -1,0 +1,9 @@
+---
+source: analyzer/tests/errors.rs
+expression: errstr
+
+---
+
+
+NumericLiteralExpected on line 4
+return [31mu16(val)[0m

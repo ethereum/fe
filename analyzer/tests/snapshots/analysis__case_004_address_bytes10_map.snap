@@ -1,6 +1,6 @@
 ---
 source: analyzer/tests/analysis.rs
-expression: "build_snapshot(fixture, src, &context)"
+expression: "build_snapshot(fixture, &src, &context)"
 
 ---
 ModuleAttributes {
@@ -354,6 +354,16 @@ note:
   ┌─ features/address_bytes10_map.fe:4:39
   │
 4 │     pub def read_bar(key: address) -> bytes[10]:
+  │                                       ^^^^^ attributes hash: 16931239362436195516
+  │
+  = Base(
+        Byte,
+    )
+
+note: 
+  ┌─ features/address_bytes10_map.fe:4:39
+  │
+4 │     pub def read_bar(key: address) -> bytes[10]:
   │                                       ^^^^^^^^^ attributes hash: 3890203001217727260
   │
   = Array(
@@ -377,7 +387,50 @@ note:
   ┌─ features/address_bytes10_map.fe:7:44
   │
 7 │     pub def write_bar(key: address, value: bytes[10]):
+  │                                            ^^^^^ attributes hash: 16931239362436195516
+  │
+  = Base(
+        Byte,
+    )
+
+note: 
+  ┌─ features/address_bytes10_map.fe:7:44
+  │
+7 │     pub def write_bar(key: address, value: bytes[10]):
   │                                            ^^^^^^^^^ attributes hash: 3890203001217727260
+  │
+  = Array(
+        Array {
+            size: 10,
+            inner: Byte,
+        },
+    )
+
+note: 
+  ┌─ features/address_bytes10_map.fe:2:18
+  │
+2 │     pub bar: map<address, bytes[10]>
+  │                  ^^^^^^^ attributes hash: 574436082528610497
+  │
+  = Base(
+        Address,
+    )
+
+note: 
+  ┌─ features/address_bytes10_map.fe:2:27
+  │
+2 │     pub bar: map<address, bytes[10]>
+  │                           ^^^^^ attributes hash: 16931239362436195516
+  │
+  = Base(
+        Byte,
+    )
+
+note: 
+  ┌─ features/address_bytes10_map.fe:2:27
+  │
+2 │     pub bar: map<address, bytes[10]>
+  │                           ^^^^^^^^^ attributes hash: 3890203001217727260
   │
   = Array(
         Array {

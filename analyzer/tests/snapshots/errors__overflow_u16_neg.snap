@@ -1,0 +1,12 @@
+---
+source: analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src_str)"
+
+---
+error: literal out of range for `u16`
+  ┌─ [snippet]:3:7
+  │
+3 │   u16(-1)
+  │       ^^ does not fit into type `u16`
+
+

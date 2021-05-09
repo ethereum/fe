@@ -35,7 +35,7 @@ pub fn compile(
     }
 
     // analyze source code
-    let context = match fe_analyzer::analyze(&fe_module) {
+    let context = match fe_analyzer::analyze(&fe_module, file_id) {
         Ok(_) if !errors.is_empty() => return Err(CompileError { errors }),
         Ok(context) => context,
         Err(err) => {
@@ -51,7 +51,8 @@ pub fn compile(
     let lowered_fe_module = lowering::lower(&context, fe_module.clone());
 
     // analyze the lowered AST
-    let context = fe_analyzer::analyze(&lowered_fe_module).expect("failed to analyze lowered AST");
+    let context =
+        fe_analyzer::analyze(&lowered_fe_module, file_id).expect("failed to analyze lowered AST");
 
     // compile to yul
     let yul_contracts = yul::compile(&context, &lowered_fe_module);

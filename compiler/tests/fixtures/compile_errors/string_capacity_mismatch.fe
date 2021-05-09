@@ -1,3 +1,0 @@
-contract Foo:
-    pub def bar() -> string3:
-        return string3("too long")

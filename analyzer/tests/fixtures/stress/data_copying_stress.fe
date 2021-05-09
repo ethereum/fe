@@ -71,7 +71,7 @@ contract Foo:
         )
 
     def emit_my_event_internal(some_string: string42, some_u256: u256):
-        emit MyEvent(some_string, some_u256)
+        emit MyEvent(my_string=some_string, my_u256=some_u256)
 
     pub def set_my_addrs(my_addrs: address[3]):
         self.my_addrs = my_addrs

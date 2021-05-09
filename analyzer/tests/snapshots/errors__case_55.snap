@@ -1,0 +1,12 @@
+---
+source: analyzer/tests/errors.rs
+expression: errstr
+
+---
+error: literal out of range for `u128`
+  ┌─ tests/fixtures/errors/numeric_capacity_mismatch/u128_neg.fe:3:21
+  │
+3 │         return u128(-1)
+  │                     ^^ does not fit into type `u128`
+
+

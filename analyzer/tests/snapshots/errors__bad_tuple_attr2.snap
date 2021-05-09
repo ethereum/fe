@@ -1,0 +1,9 @@
+---
+source: analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+
+
+UndefinedValue on line 6
+[31mself.my_sto_tuple.m[0m

@@ -1,0 +1,9 @@
+---
+source: analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+
+
+CircularDependency on line 3
+foo: Foo = [31mFoo.create2(2, 0)[0m

@@ -1,4 +1,0 @@
-contract Foo:
-
-    pub def bar():
-        break

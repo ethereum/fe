@@ -1,0 +1,13 @@
+---
+source: analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+
+
+MoreThanThreeIndexedParams on line 2
+event MyEvent:
+        idx addr1: address
+        idx addr2: address
+        idx addr3: address
+        idx addr4: address

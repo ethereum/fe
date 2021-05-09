@@ -1,0 +1,18 @@
+---
+source: analyzer/tests/errors.rs
+expression: errstr
+
+---
+error: literal out of range for `u256`
+  ┌─ tests/fixtures/errors/numeric_capacity_mismatch/u256_pos.fe:3:21
+  │
+3 │         return u256(115792089237316195423570985008687907853269984665640564039457584007913129639936)
+  │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ does not fit into type `u256`
+
+error: literal out of range for `u256`
+  ┌─ tests/fixtures/errors/numeric_capacity_mismatch/u256_pos.fe:3:21
+  │
+3 │         return u256(115792089237316195423570985008687907853269984665640564039457584007913129639936)
+  │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ does not fit into type `u256`
+
+

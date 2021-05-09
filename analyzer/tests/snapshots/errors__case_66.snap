@@ -1,0 +1,12 @@
+---
+source: analyzer/tests/errors.rs
+expression: errstr
+
+---
+error: literal out of range for `u8`
+  ┌─ tests/fixtures/errors/numeric_capacity_mismatch/u8_pos.fe:3:19
+  │
+3 │         return u8(256)
+  │                   ^^^ does not fit into type `u8`
+
+

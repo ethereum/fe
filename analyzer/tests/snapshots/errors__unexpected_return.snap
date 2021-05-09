@@ -1,0 +1,10 @@
+---
+source: analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+
+
+TypeError on line 3
+pub def f():
+  [31mreturn 1[0m

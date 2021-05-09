@@ -1,3 +1,0 @@
-contract Bar:
-  pub def test():
-    self.doesnt_exist()

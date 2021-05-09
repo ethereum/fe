@@ -1,0 +1,10 @@
+---
+source: analyzer/tests/errors.rs
+expression: errstr
+
+---
+
+
+TypeError on line 3
+pub def bar(a: u256, b: bool):
+        [31ma += b[0m

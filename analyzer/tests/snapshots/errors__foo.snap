@@ -1,0 +1,9 @@
+---
+source: analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+
+
+UndefinedValue on line 3
+[31mx[0m

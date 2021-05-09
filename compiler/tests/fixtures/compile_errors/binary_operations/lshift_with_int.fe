@@ -1,3 +1,0 @@
-contract Foo:
-    pub def foo(a: u256, b: i256):
-        a << b

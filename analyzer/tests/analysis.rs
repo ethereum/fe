@@ -1,12 +1,12 @@
 use fe_analyzer::context::Context;
-use fe_common::diagnostics::{diagnostics_string, Diagnostic, Label};
+use fe_analyzer::errors::AnalyzerError;
+use fe_common::diagnostics::{diagnostics_string, print_diagnostics, CsLabel, Diagnostic};
 use fe_common::files::{FileStore, SourceFileId};
 use fe_parser::node::Span;
 use insta::assert_snapshot;
 use rstest::rstest;
 use std::collections::hash_map::DefaultHasher;
 use std::fmt::Debug;
-use std::fs;
 use std::hash::{Hash, Hasher};
 
 #[rstest(
@@ -115,12 +115,30 @@ use std::hash::{Hash, Hasher};
     case::tuple_stress("stress/tuple_stress.fe")
 )]
 fn analysis(fixture: &str) {
-    let src = &fs::read_to_string(format!("tests/fixtures/{}", fixture)).expect("");
-    let fe_module = fe_parser::parse_file(src, SourceFileId(0)).expect("").0;
-
-    let context = fe_analyzer::analyze(&fe_module).expect("");
-
-    assert_snapshot!(build_snapshot(fixture, src, &context))
+    let mut files = FileStore::new();
+    let (src, id) = files
+        .load_file(&format!("tests/fixtures/{}", fixture))
+        .unwrap();
+    let fe_module = match fe_parser::parse_file(&src, id) {
+        Ok((module, _)) => module,
+        Err(diags) => {
+            print_diagnostics(&diags, &files);
+            panic!("parsing failed");
+        }
+    };
+    match fe_analyzer::analyze(&fe_module, id) {
+        Ok(context) => assert_snapshot!(build_snapshot(fixture, &src, &context)),
+        Err(AnalyzerError {
+            diagnostics,
+            classic,
+        }) => {
+            print_diagnostics(&diagnostics, &files);
+            if let Some(err) = classic {
+                eprintln!("Analyzer error: {}", err.format_user(&src));
+            }
+            panic!("analysis failed");
+        }
+    }
 }
 
 fn build_snapshot(path: &str, src: &str, context: &Context) -> String {
@@ -164,7 +182,7 @@ fn build_attributes_diagnostic<T: Hash + Debug>(
     attributes: &T,
 ) -> Diagnostic {
     // Hash the attributes and label the span with it.
-    let label = Label::primary(file_id, span.start..span.end)
+    let label = CsLabel::primary(file_id, span.start..span.end)
         .with_message(format!("attributes hash: {}", hash(attributes)));
     Diagnostic::note()
         .with_labels(vec![label])

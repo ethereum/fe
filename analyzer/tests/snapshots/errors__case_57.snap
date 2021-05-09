@@ -1,0 +1,12 @@
+---
+source: analyzer/tests/errors.rs
+expression: errstr
+
+---
+error: literal out of range for `u16`
+  ┌─ tests/fixtures/errors/numeric_capacity_mismatch/u16_neg.fe:3:20
+  │
+3 │         return u16(-1)
+  │                    ^^ does not fit into type `u16`
+
+

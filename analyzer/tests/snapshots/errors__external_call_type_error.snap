@@ -1,0 +1,12 @@
+---
+source: analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: incorrect type for `bar` argument `a`
+  ┌─ tests/fixtures/errors/external_call_type_error.fe:7:29
+  │
+7 │         Foo(address(0)).bar("hello world")
+  │                             ^^^^^^^^^^^^^ this has type `string<11>`; expected type `u256`
+
+

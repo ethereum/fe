@@ -1,6 +1,6 @@
 ---
 source: analyzer/tests/analysis.rs
-expression: "build_snapshot(fixture, src, &context)"
+expression: "build_snapshot(fixture, &src, &context)"
 
 ---
 ModuleAttributes {
@@ -77,26 +77,10 @@ ModuleAttributes {
 }
 
 note: 
-   ┌─ features/events.fe:20:19
+   ┌─ features/events.fe:20:24
    │
-20 │         emit Nums(26, 42)
-   │                   ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/events.fe:20:23
-   │
-20 │         emit Nums(26, 42)
-   │                       ^^ attributes hash: 16797824492585953824
+20 │         emit Nums(num1=26, num2=42)
+   │                        ^^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -109,10 +93,10 @@ note:
      }
 
 note: 
-   ┌─ features/events.fe:23:20
+   ┌─ features/events.fe:20:33
    │
-23 │         emit Bases(26, addr)
-   │                    ^^ attributes hash: 16797824492585953824
+20 │         emit Nums(num1=26, num2=42)
+   │                                 ^^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -127,22 +111,8 @@ note:
 note: 
    ┌─ features/events.fe:23:24
    │
-23 │         emit Bases(26, addr)
-   │                        ^^^^ attributes hash: 513065555763557710
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/events.fe:26:18
-   │
-26 │         emit Mix(26, addr, 42, my_bytes)
-   │                  ^^ attributes hash: 16797824492585953824
+23 │         emit Bases(num=26, addr)
+   │                        ^^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -155,10 +125,10 @@ note:
      }
 
 note: 
-   ┌─ features/events.fe:26:22
+   ┌─ features/events.fe:23:28
    │
-26 │         emit Mix(26, addr, 42, my_bytes)
-   │                      ^^^^ attributes hash: 513065555763557710
+23 │         emit Bases(num=26, addr)
+   │                            ^^^^ attributes hash: 513065555763557710
    │
    = ExpressionAttributes {
          typ: Base(
@@ -169,10 +139,10 @@ note:
      }
 
 note: 
-   ┌─ features/events.fe:26:28
+   ┌─ features/events.fe:26:23
    │
-26 │         emit Mix(26, addr, 42, my_bytes)
-   │                            ^^ attributes hash: 16797824492585953824
+26 │         emit Mix(num1=26, addr, num2=42, my_bytes)
+   │                       ^^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -185,10 +155,40 @@ note:
      }
 
 note: 
-   ┌─ features/events.fe:26:32
+   ┌─ features/events.fe:26:27
    │
-26 │         emit Mix(26, addr, 42, my_bytes)
-   │                                ^^^^^^^^ attributes hash: 6578844474441717363
+26 │         emit Mix(num1=26, addr, num2=42, my_bytes)
+   │                           ^^^^ attributes hash: 513065555763557710
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Address,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/events.fe:26:38
+   │
+26 │         emit Mix(num1=26, addr, num2=42, my_bytes)
+   │                                      ^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/events.fe:26:42
+   │
+26 │         emit Mix(num1=26, addr, num2=42, my_bytes)
+   │                                          ^^^^^^^^ attributes hash: 6578844474441717363
    │
    = ExpressionAttributes {
          typ: Array(
@@ -343,8 +343,8 @@ note:
 note: 
    ┌─ features/events.fe:20:9
    │
-20 │         emit Nums(26, 42)
-   │         ^^^^^^^^^^^^^^^^^ attributes hash: 8999358109956579907
+20 │         emit Nums(num1=26, num2=42)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8999358109956579907
    │
    = EventDef {
          name: "Nums",
@@ -375,8 +375,8 @@ note:
 note: 
    ┌─ features/events.fe:23:9
    │
-23 │         emit Bases(26, addr)
-   │         ^^^^^^^^^^^^^^^^^^^^ attributes hash: 5699817361126738246
+23 │         emit Bases(num=26, addr)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5699817361126738246
    │
    = EventDef {
          name: "Bases",
@@ -403,8 +403,8 @@ note:
 note: 
    ┌─ features/events.fe:26:9
    │
-26 │         emit Mix(26, addr, 42, my_bytes)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11314162245279394306
+26 │         emit Mix(num1=26, addr, num2=42, my_bytes)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11314162245279394306
    │
    = EventDef {
          name: "Mix",
@@ -474,8 +474,8 @@ note:
    ┌─ features/events.fe:19:5
    │  
 19 │ ╭     pub def emit_nums():
-20 │ │         emit Nums(26, 42)
-   │ ╰─────────────────────────^ attributes hash: 5142136245848237202
+20 │ │         emit Nums(num1=26, num2=42)
+   │ ╰───────────────────────────────────^ attributes hash: 5142136245848237202
    │  
    = FunctionAttributes {
          is_public: true,
@@ -488,8 +488,8 @@ note:
    ┌─ features/events.fe:22:5
    │  
 22 │ ╭     pub def emit_bases(addr: address):
-23 │ │         emit Bases(26, addr)
-   │ ╰────────────────────────────^ attributes hash: 4675655585256261045
+23 │ │         emit Bases(num=26, addr)
+   │ ╰────────────────────────────────^ attributes hash: 4675655585256261045
    │  
    = FunctionAttributes {
          is_public: true,
@@ -509,8 +509,8 @@ note:
    ┌─ features/events.fe:25:5
    │  
 25 │ ╭     pub def emit_mix(addr: address, my_bytes: bytes[100]):
-26 │ │         emit Mix(26, addr, 42, my_bytes)
-   │ ╰────────────────────────────────────────^ attributes hash: 3521292099077188868
+26 │ │         emit Mix(num1=26, addr, num2=42, my_bytes)
+   │ ╰──────────────────────────────────────────────────^ attributes hash: 3521292099077188868
    │  
    = FunctionAttributes {
          is_public: true,
@@ -988,6 +988,16 @@ note:
    ┌─ features/events.fe:14:19
    │
 14 │         my_bytes: bytes[100]
+   │                   ^^^^^ attributes hash: 16931239362436195516
+   │
+   = Base(
+         Byte,
+     )
+
+note: 
+   ┌─ features/events.fe:14:19
+   │
+14 │         my_bytes: bytes[100]
    │                   ^^^^^^^^^^ attributes hash: 5134157185158150929
    │
    = Array(
@@ -995,6 +1005,16 @@ note:
              size: 100,
              inner: Byte,
          },
+     )
+
+note: 
+   ┌─ features/events.fe:17:16
+   │
+17 │         addrs: address[2]
+   │                ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
      )
 
 note: 
@@ -1034,6 +1054,16 @@ note:
    ┌─ features/events.fe:25:47
    │
 25 │     pub def emit_mix(addr: address, my_bytes: bytes[100]):
+   │                                               ^^^^^ attributes hash: 16931239362436195516
+   │
+   = Base(
+         Byte,
+     )
+
+note: 
+   ┌─ features/events.fe:25:47
+   │
+25 │     pub def emit_mix(addr: address, my_bytes: bytes[100]):
    │                                               ^^^^^^^^^^ attributes hash: 5134157185158150929
    │
    = Array(
@@ -1058,6 +1088,16 @@ note:
    │
 28 │     pub def emit_addresses(addr1: address, addr2: address):
    │                                                   ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ features/events.fe:29:16
+   │
+29 │         addrs: address[2]
+   │                ^^^^^^^ attributes hash: 574436082528610497
    │
    = Base(
          Address,

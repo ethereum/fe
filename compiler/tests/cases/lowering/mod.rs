@@ -1,24 +1,43 @@
+use fe_analyzer::context::Context;
+use fe_analyzer::errors::AnalyzerError;
 use fe_compiler::lowering;
 use fe_parser::ast as fe;
 use regex::Regex;
-use std::fs;
 
-use fe_common::files::SourceFileId;
 use rstest::rstest;
 
 use fe_common::assert_strings_eq;
+use fe_common::diagnostics::print_diagnostics;
+use fe_common::files::{FileStore, SourceFileId};
 use fe_common::utils::ron::{to_ron_string_pretty, Diff};
 
-fn lower_file(src: &str) -> fe::Module {
-    let fe_module = parse_file(src);
-    let context = fe_analyzer::analyze(&fe_module).expect("failed to get context");
+fn lower_file(src: &str, id: SourceFileId, files: &FileStore) -> fe::Module {
+    let fe_module = parse_file(src, id, files);
+    let context = analyze(&fe_module, id, files);
     lowering::lower(&context, fe_module)
 }
 
-fn parse_file(src: &str) -> fe::Module {
-    fe_parser::parse_file(src, SourceFileId(0))
-        .expect("failed to parse file")
-        .0
+fn analyze(module: &fe::Module, id: SourceFileId, files: &FileStore) -> Context {
+    match fe_analyzer::analyze(&module, id) {
+        Ok(context) => context,
+        Err(AnalyzerError {
+            classic,
+            diagnostics,
+        }) => {
+            print_diagnostics(&diagnostics, &files);
+            panic!("analyzer error {:?}", classic);
+        }
+    }
+}
+
+fn parse_file(src: &str, id: SourceFileId, files: &FileStore) -> fe::Module {
+    match fe_parser::parse_file(src, id) {
+        Ok((module, diags)) if diags.is_empty() => module,
+        Ok((_, diags)) | Err(diags) => {
+            print_diagnostics(&diags, files);
+            panic!("failed to parse file");
+        }
+    }
 }
 
 fn replace_spans(input: String) -> String {
@@ -37,21 +56,25 @@ fn replace_spans(input: String) -> String {
     case("custom_empty_type")
 )]
 fn test_lowering(fixture: &str) {
-    let src = fs::read_to_string(format!("tests/cases/lowering/fixtures/{}.fe", fixture))
+    let mut files = FileStore::new();
+    let (src, src_id) = files
+        .load_file(&format!("tests/cases/lowering/fixtures/{}.fe", fixture))
         .expect("unable to src read fixture file");
-    let expected_lowered = fs::read_to_string(format!(
-        "tests/cases/lowering/fixtures/{}_lowered.fe",
-        fixture
-    ))
-    .expect("unable to read lowered fixture file");
+    let (expected_lowered, el_id) = files
+        .load_file(&format!(
+            "tests/cases/lowering/fixtures/{}_lowered.fe",
+            fixture
+        ))
+        .expect("unable to read lowered fixture file");
 
-    let expected_lowered_ast = parse_file(&expected_lowered);
-    let actual_lowered_ast = lower_file(&src);
+    let expected_lowered_ast = parse_file(&expected_lowered, el_id, &files);
+    let actual_lowered_ast = lower_file(&src, src_id, &files);
 
     assert_strings_eq!(
         replace_spans(to_ron_string_pretty(&expected_lowered_ast).unwrap()),
         replace_spans(to_ron_string_pretty(&actual_lowered_ast).unwrap()),
     );
 
-    fe_analyzer::analyze(&actual_lowered_ast).expect("analysis of the lowered module failed");
+    fe_analyzer::analyze(&actual_lowered_ast, src_id)
+        .expect("analysis of the lowered module failed");
 }

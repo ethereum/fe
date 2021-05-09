@@ -1,0 +1,12 @@
+---
+source: analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: binary op `or` operands must have type `bool`
+  ┌─ [snippet]:3:12
+  │
+3 │   false or 1
+  │            ^ this has type `u256`; expected `bool`
+
+

@@ -3,7 +3,6 @@ use crate::yul::operations::{
     abi as abi_operations, contracts as contract_operations, data as data_operations,
     structs as struct_operations,
 };
-use crate::yul::utils::call_arg_value;
 use builtins::{BlockField, ChainField, MsgField, Object, TxField};
 use fe_analyzer::builtins;
 use fe_analyzer::builtins::{ContractTypeMethod, GlobalMethod};
@@ -59,7 +58,7 @@ fn move_expression(
 ) -> yul::Expression {
     let typ = FixedSize::try_from(typ).expect("Invalid type");
 
-    match (from.clone(), to.clone()) {
+    match (from, to) {
         (Location::Storage { .. }, Location::Value) => data_operations::sload(typ, val),
         (Location::Memory, Location::Value) => data_operations::mload(typ, val),
         (Location::Memory, Location::Memory) => data_operations::mcopym(typ, val),
@@ -68,24 +67,19 @@ fn move_expression(
     }
 }
 
-pub fn call_arg(context: &Context, arg: &Node<fe::CallArg>) -> yul::Expression {
-    match &arg.kind {
-        fe::CallArg::Arg(value) => expr(context, value),
-        fe::CallArg::Kwarg(fe::Kwarg { name: _, value }) => expr(context, value),
-    }
-}
-
 fn expr_call(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Call { args, func } = &exp.kind {
         if let Some(call_type) = context.get_call(func) {
-            let yul_args: Vec<yul::Expression> =
-                args.kind.iter().map(|val| call_arg(context, val)).collect();
+            let yul_args: Vec<yul::Expression> = args
+                .kind
+                .iter()
+                .map(|arg| expr(context, &arg.kind.value))
+                .collect();
 
             return match call_type {
                 CallType::BuiltinFunction { func } => match func {
                     GlobalMethod::Keccak256 => {
-                        let first_arg =
-                            call_arg_value(&args.kind.first().expect("Missing argument").kind);
+                        let first_arg = &args.kind.first().expect("Missing argument").kind.value;
                         let attributes = context
                             .get_expression(first_arg)
                             .expect("missing attributes");

@@ -19,18 +19,18 @@ pub fn generate_new_fn(struct_type: &Struct) -> yul::Statement {
     }
 
     let params = struct_type
-        .get_field_names()
+        .fields
         .iter()
-        .map(|key| {
-            identifier! {(key)}
+        .map(|(name, _)| {
+            identifier! {(name)}
         })
         .collect::<Vec<_>>();
 
     let body = struct_type
-        .get_field_names()
+        .fields
         .iter()
         .enumerate()
-        .map(|(index, key)| {
+        .map(|(index, (key, _))| {
             if index == 0 {
                 let param_identifier_exp = identifier_expression! {(key)};
                 statements! {
@@ -87,9 +87,9 @@ pub fn struct_apis(struct_type: Struct) -> Vec<yul::Statement> {
     [
         vec![generate_new_fn(&struct_type)],
         struct_type
-            .get_field_names()
+            .fields
             .iter()
-            .map(|field| generate_get_fn(&struct_type, &field))
+            .map(|(name, _)| generate_get_fn(&struct_type, &name))
             .collect(),
     ]
     .concat()
@@ -124,11 +124,11 @@ mod tests {
         val.add_field("bar", &FixedSize::bool()).unwrap();
         val.add_field("bar2", &FixedSize::bool()).unwrap();
         assert_eq!(
-            structs::generate_get_fn(&val, &val.get_field_names().get(0).unwrap()).to_string(),
+            structs::generate_get_fn(&val, &val.fields[0].0).to_string(),
             "function struct_Foo_get_bar_ptr(ptr) -> return_val { return_val := add(ptr, 31) }"
         );
         assert_eq!(
-            structs::generate_get_fn(&val, &val.get_field_names().get(1).unwrap()).to_string(),
+            structs::generate_get_fn(&val, &val.fields[1].0).to_string(),
             "function struct_Foo_get_bar2_ptr(ptr) -> return_val { return_val := add(ptr, 63) }"
         );
     }

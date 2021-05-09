@@ -1,0 +1,12 @@
+---
+source: analyzer/tests/errors.rs
+expression: errstr
+
+---
+error: literal out of range for `u64`
+  ┌─ tests/fixtures/errors/numeric_capacity_mismatch/u64_pos.fe:3:20
+  │
+3 │         return u64(18446744073709551616)
+  │                    ^^^^^^^^^^^^^^^^^^^^ does not fit into type `u64`
+
+

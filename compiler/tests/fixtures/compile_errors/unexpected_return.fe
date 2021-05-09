@@ -1,5 +1,0 @@
-contract Foo:
-    baz: map<u256, u256>
-
-    pub def bar():
-        return 1

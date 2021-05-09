@@ -1,0 +1,12 @@
+---
+source: analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: `break` outside of a loop
+  ┌─ [snippet]:4:5
+  │
+4 │     break
+  │     ^^^^^ cannot `break` outside of a `for` or `while` loop
+
+

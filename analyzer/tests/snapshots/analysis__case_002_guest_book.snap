@@ -1,6 +1,6 @@
 ---
 source: analyzer/tests/analysis.rs
-expression: "build_snapshot(fixture, src, &context)"
+expression: "build_snapshot(fixture, &src, &context)"
 
 ---
 ModuleAttributes {
@@ -412,6 +412,29 @@ note:
     }
 
 note: 
+  ┌─ demos/guest_book.fe:1:16
+  │
+1 │ type BookMsg = bytes[100]
+  │                ^^^^^ attributes hash: 16931239362436195516
+  │
+  = Base(
+        Byte,
+    )
+
+note: 
+  ┌─ demos/guest_book.fe:1:16
+  │
+1 │ type BookMsg = bytes[100]
+  │                ^^^^^^^^^^ attributes hash: 5134157185158150929
+  │
+  = Array(
+        Array {
+            size: 100,
+            inner: Byte,
+        },
+    )
+
+note: 
   ┌─ demos/guest_book.fe:7:19
   │
 7 │         book_msg: BookMsg
@@ -459,6 +482,29 @@ note:
              inner: Byte,
          },
      )
+
+note: 
+  ┌─ demos/guest_book.fe:4:19
+  │
+4 │     messages: map<address, BookMsg>
+  │                   ^^^^^^^ attributes hash: 574436082528610497
+  │
+  = Base(
+        Address,
+    )
+
+note: 
+  ┌─ demos/guest_book.fe:4:28
+  │
+4 │     messages: map<address, BookMsg>
+  │                            ^^^^^^^ attributes hash: 5134157185158150929
+  │
+  = Array(
+        Array {
+            size: 100,
+            inner: Byte,
+        },
+    )
 
 note: 
   ┌─ demos/guest_book.fe:4:15

@@ -1,3 +1,0 @@
-contract Foo:
-    pub def bar() -> i8:
-        return i8(128)

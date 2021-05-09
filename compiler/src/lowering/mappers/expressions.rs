@@ -4,7 +4,6 @@ use fe_analyzer::builtins::Object;
 use fe_analyzer::context::Context;
 use fe_analyzer::namespace::types::Type;
 use fe_parser::ast as fe;
-use fe_parser::ast::Kwarg;
 use fe_parser::node::Node;
 
 /// Lowers an expression and all sub expressions.
@@ -83,24 +82,18 @@ pub fn call_args(
     let lowered_args = args
         .kind
         .into_iter()
-        .map(|arg| match arg.kind {
-            fe::CallArg::Arg(inner_arg) => {
-                Node::new(fe::CallArg::Arg(expr(context, inner_arg)), arg.span)
-            }
-            fe::CallArg::Kwarg(inner_arg) => {
-                Node::new(fe::CallArg::Kwarg(kwarg(context, inner_arg)), arg.span)
-            }
+        .map(|arg| {
+            Node::new(
+                fe::CallArg {
+                    label: arg.kind.label,
+                    value: expr(context, arg.kind.value),
+                },
+                arg.span,
+            )
         })
         .collect();
 
     Node::new(lowered_args, args.span)
-}
-
-fn kwarg(context: &Context, kwarg: fe::Kwarg) -> fe::Kwarg {
-    fe::Kwarg {
-        name: kwarg.name,
-        value: boxed_expr(context, kwarg.value),
-    }
 }
 
 fn expr_tuple(context: &Context, exp: Node<fe::Expr>) -> fe::Expr {
@@ -110,16 +103,16 @@ fn expr_tuple(context: &Context, exp: Node<fe::Expr>) -> fe::Expr {
         let name = tuple_struct_name(tuple);
 
         if let fe::Expr::Tuple { elts } = exp.kind {
-            // map the tuple args to kwargs
+            // map the tuple args to named args
             let args = Node::new(
                 elts.into_iter()
                     .enumerate()
                     .map(|(index, elt)| {
                         Node::new(
-                            fe::CallArg::Kwarg(Kwarg {
-                                name: Node::new(format!("item{}", index), elt.span),
-                                value: Box::new(elt.clone()),
-                            }),
+                            fe::CallArg {
+                                label: Some(Node::new(format!("item{}", index), elt.span)),
+                                value: elt.clone(),
+                            },
                             elt.span,
                         )
                     })
@@ -147,7 +140,13 @@ fn expr_list(context: &Context, exp: Node<fe::Expr>) -> fe::Expr {
         if let fe::Expr::List { elts } = exp.kind {
             let args = elts
                 .into_iter()
-                .map(|list_val| fe::CallArg::Arg(list_val).into_node())
+                .map(|list_val| {
+                    fe::CallArg {
+                        label: None,
+                        value: list_val,
+                    }
+                    .into_node()
+                })
                 .collect::<Vec<_>>()
                 .into_node();
 

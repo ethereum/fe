@@ -1,6 +1,6 @@
 ---
 source: analyzer/tests/analysis.rs
-expression: "build_snapshot(fixture, src, &context)"
+expression: "build_snapshot(fixture, &src, &context)"
 
 ---
 ModuleAttributes {
@@ -1975,6 +1975,38 @@ note:
     }
 
 note: 
+  ┌─ stress/tuple_stress.fe:5:20
+  │
+5 │         my_tuple: (u256, bool, address)
+  │                    ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ stress/tuple_stress.fe:5:26
+  │
+5 │         my_tuple: (u256, bool, address)
+  │                          ^^^^ attributes hash: 8311861578736502650
+  │
+  = Base(
+        Bool,
+    )
+
+note: 
+  ┌─ stress/tuple_stress.fe:5:32
+  │
+5 │         my_tuple: (u256, bool, address)
+  │                                ^^^^^^^ attributes hash: 574436082528610497
+  │
+  = Base(
+        Address,
+    )
+
+note: 
   ┌─ stress/tuple_stress.fe:5:19
   │
 5 │         my_tuple: (u256, bool, address)
@@ -2031,6 +2063,38 @@ note:
      )
 
 note: 
+   ┌─ stress/tuple_stress.fe:11:11
+   │
+11 │     ) -> (u256, bool, address):
+   │           ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:11:17
+   │
+11 │     ) -> (u256, bool, address):
+   │                 ^^^^ attributes hash: 8311861578736502650
+   │
+   = Base(
+         Bool,
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:11:23
+   │
+11 │     ) -> (u256, bool, address):
+   │                       ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
+     )
+
+note: 
    ┌─ stress/tuple_stress.fe:11:10
    │
 11 │     ) -> (u256, bool, address):
@@ -2052,6 +2116,38 @@ note:
                  ),
              ],
          },
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:14:44
+   │
+14 │     pub def read_my_tuple_item0(my_tuple: (u256, bool, address)) -> u256:
+   │                                            ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:14:50
+   │
+14 │     pub def read_my_tuple_item0(my_tuple: (u256, bool, address)) -> u256:
+   │                                                  ^^^^ attributes hash: 8311861578736502650
+   │
+   = Base(
+         Bool,
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:14:56
+   │
+14 │     pub def read_my_tuple_item0(my_tuple: (u256, bool, address)) -> u256:
+   │                                                        ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
      )
 
 note: 
@@ -2091,6 +2187,38 @@ note:
      )
 
 note: 
+   ┌─ stress/tuple_stress.fe:17:44
+   │
+17 │     pub def read_my_tuple_item1(my_tuple: (u256, bool, address)) -> bool:
+   │                                            ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:17:50
+   │
+17 │     pub def read_my_tuple_item1(my_tuple: (u256, bool, address)) -> bool:
+   │                                                  ^^^^ attributes hash: 8311861578736502650
+   │
+   = Base(
+         Bool,
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:17:56
+   │
+17 │     pub def read_my_tuple_item1(my_tuple: (u256, bool, address)) -> bool:
+   │                                                        ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
+     )
+
+note: 
    ┌─ stress/tuple_stress.fe:17:43
    │
 17 │     pub def read_my_tuple_item1(my_tuple: (u256, bool, address)) -> bool:
@@ -2125,6 +2253,38 @@ note:
      )
 
 note: 
+   ┌─ stress/tuple_stress.fe:20:44
+   │
+20 │     pub def read_my_tuple_item2(my_tuple: (u256, bool, address)) -> address:
+   │                                            ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:20:50
+   │
+20 │     pub def read_my_tuple_item2(my_tuple: (u256, bool, address)) -> address:
+   │                                                  ^^^^ attributes hash: 8311861578736502650
+   │
+   = Base(
+         Bool,
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:20:56
+   │
+20 │     pub def read_my_tuple_item2(my_tuple: (u256, bool, address)) -> address:
+   │                                                        ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
+     )
+
+note: 
    ┌─ stress/tuple_stress.fe:20:43
    │
 20 │     pub def read_my_tuple_item2(my_tuple: (u256, bool, address)) -> address:
@@ -2153,6 +2313,38 @@ note:
    │
 20 │     pub def read_my_tuple_item2(my_tuple: (u256, bool, address)) -> address:
    │                                                                     ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:23:38
+   │
+23 │     pub def emit_my_event(my_tuple: (u256, bool, address)):
+   │                                      ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:23:44
+   │
+23 │     pub def emit_my_event(my_tuple: (u256, bool, address)):
+   │                                            ^^^^ attributes hash: 8311861578736502650
+   │
+   = Base(
+         Bool,
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:23:50
+   │
+23 │     pub def emit_my_event(my_tuple: (u256, bool, address)):
+   │                                                  ^^^^^^^ attributes hash: 574436082528610497
    │
    = Base(
          Address,
@@ -2207,6 +2399,30 @@ note:
      )
 
 note: 
+   ┌─ stress/tuple_stress.fe:30:36
+   │
+30 │     pub def get_my_sto_tuple() -> (u256, i32):
+   │                                    ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:30:42
+   │
+30 │     pub def get_my_sto_tuple() -> (u256, i32):
+   │                                          ^^^ attributes hash: 3647277037255055228
+   │
+   = Base(
+         Numeric(
+             I32,
+         ),
+     )
+
+note: 
    ┌─ stress/tuple_stress.fe:30:35
    │
 30 │     pub def get_my_sto_tuple() -> (u256, i32):
@@ -2227,6 +2443,38 @@ note:
                  ),
              ],
          },
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:42:40
+   │
+42 │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> bytes[96]:
+   │                                        ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:42:46
+   │
+42 │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> bytes[96]:
+   │                                              ^^^^ attributes hash: 8311861578736502650
+   │
+   = Base(
+         Bool,
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:42:52
+   │
+42 │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> bytes[96]:
+   │                                                    ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
      )
 
 note: 
@@ -2257,6 +2505,16 @@ note:
    ┌─ stress/tuple_stress.fe:42:65
    │
 42 │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> bytes[96]:
+   │                                                                 ^^^^^ attributes hash: 16931239362436195516
+   │
+   = Base(
+         Byte,
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:42:65
+   │
+42 │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> bytes[96]:
    │                                                                 ^^^^^^^^^ attributes hash: 8593777673114136086
    │
    = Array(
@@ -2265,6 +2523,30 @@ note:
              inner: Byte,
          },
      )
+
+note: 
+  ┌─ stress/tuple_stress.fe:2:20
+  │
+2 │     my_sto_tuple: (u256, i32)
+  │                    ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ stress/tuple_stress.fe:2:26
+  │
+2 │     my_sto_tuple: (u256, i32)
+  │                          ^^^ attributes hash: 3647277037255055228
+  │
+  = Base(
+        Numeric(
+            I32,
+        ),
+    )
 
 note: 
   ┌─ stress/tuple_stress.fe:2:19
@@ -2299,6 +2581,38 @@ note:
          Numeric(
              U256,
          ),
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:35:20
+   │
+35 │         my_tuple: (u256, bool, address) = (
+   │                    ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:35:26
+   │
+35 │         my_tuple: (u256, bool, address) = (
+   │                          ^^^^ attributes hash: 8311861578736502650
+   │
+   = Base(
+         Bool,
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:35:32
+   │
+35 │         my_tuple: (u256, bool, address) = (
+   │                                ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
      )
 
 note: 

@@ -58,8 +58,12 @@ impl EventDef {
     }
 
     /// The event's field types.
-    pub fn all_field_types(&self) -> Vec<FixedSize> {
-        self.fields.iter().map(|(_, typ)| typ.to_owned()).collect()
+    pub fn iter_field_types(&self) -> impl Iterator<Item = &FixedSize> + '_ {
+        self.fields.iter().map(|(_, typ)| typ)
+    }
+
+    pub fn has_field(&self, field_name: &str) -> bool {
+        self.fields.iter().any(|(name, _)| name == field_name)
     }
 }
 
@@ -86,11 +90,11 @@ mod tests {
         );
 
         assert_eq!(
-            event.all_field_types(),
+            event.iter_field_types().collect::<Vec<_>>(),
             vec![
-                FixedSize::Base(Base::Address),
-                FixedSize::Base(Base::Address),
-                FixedSize::bool(),
+                &FixedSize::Base(Base::Address),
+                &FixedSize::Base(Base::Address),
+                &FixedSize::bool(),
             ],
         );
 

@@ -1,6 +1,6 @@
 ---
 source: analyzer/tests/analysis.rs
-expression: "build_snapshot(fixture, src, &context)"
+expression: "build_snapshot(fixture, &src, &context)"
 
 ---
 ModuleAttributes {
@@ -363,6 +363,30 @@ note:
   │
 7 │     pub def write_bar(key: u16, value: u16):
   │                                        ^^^ attributes hash: 547894393873242964
+  │
+  = Base(
+        Numeric(
+            U16,
+        ),
+    )
+
+note: 
+  ┌─ features/u16_u16_map.fe:2:18
+  │
+2 │     pub bar: map<u16, u16>
+  │                  ^^^ attributes hash: 547894393873242964
+  │
+  = Base(
+        Numeric(
+            U16,
+        ),
+    )
+
+note: 
+  ┌─ features/u16_u16_map.fe:2:23
+  │
+2 │     pub bar: map<u16, u16>
+  │                       ^^^ attributes hash: 547894393873242964
   │
   = Base(
         Numeric(

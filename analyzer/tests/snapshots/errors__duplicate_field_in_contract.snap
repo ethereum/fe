@@ -1,0 +1,9 @@
+---
+source: analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+
+
+AlreadyDefined on line 0
+no error context available

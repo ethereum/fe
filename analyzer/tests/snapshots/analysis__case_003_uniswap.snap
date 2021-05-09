@@ -1,6 +1,6 @@
 ---
 source: analyzer/tests/analysis.rs
-expression: "build_snapshot(fixture, src, &context)"
+expression: "build_snapshot(fixture, &src, &context)"
 
 ---
 ModuleAttributes {
@@ -786,10 +786,10 @@ note:
      }
 
 note: 
-   ┌─ demos/uniswap.fe:78:31
+   ┌─ demos/uniswap.fe:78:36
    │
-78 │         emit Transfer(address(0), to, value)
-   │                               ^ attributes hash: 16797824492585953824
+78 │         emit Transfer(from=address(0), to, value)
+   │                                    ^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -802,24 +802,10 @@ note:
      }
 
 note: 
-   ┌─ demos/uniswap.fe:78:23
+   ┌─ demos/uniswap.fe:78:28
    │
-78 │         emit Transfer(address(0), to, value)
-   │                       ^^^^^^^^^^ attributes hash: 513065555763557710
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ demos/uniswap.fe:78:35
-   │
-78 │         emit Transfer(address(0), to, value)
-   │                                   ^^ attributes hash: 513065555763557710
+78 │         emit Transfer(from=address(0), to, value)
+   │                            ^^^^^^^^^^ attributes hash: 513065555763557710
    │
    = ExpressionAttributes {
          typ: Base(
@@ -830,10 +816,24 @@ note:
      }
 
 note: 
-   ┌─ demos/uniswap.fe:78:39
+   ┌─ demos/uniswap.fe:78:40
    │
-78 │         emit Transfer(address(0), to, value)
-   │                                       ^^^^^ attributes hash: 16797824492585953824
+78 │         emit Transfer(from=address(0), to, value)
+   │                                        ^^ attributes hash: 513065555763557710
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Address,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ demos/uniswap.fe:78:44
+   │
+78 │         emit Transfer(from=address(0), to, value)
+   │                                            ^^^^^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1070,7 +1070,7 @@ note:
 note: 
    ┌─ demos/uniswap.fe:83:23
    │
-83 │         emit Transfer(from, address(0), value)
+83 │         emit Transfer(from, to=address(0), value)
    │                       ^^^^ attributes hash: 513065555763557710
    │
    = ExpressionAttributes {
@@ -1082,10 +1082,10 @@ note:
      }
 
 note: 
-   ┌─ demos/uniswap.fe:83:37
+   ┌─ demos/uniswap.fe:83:40
    │
-83 │         emit Transfer(from, address(0), value)
-   │                                     ^ attributes hash: 16797824492585953824
+83 │         emit Transfer(from, to=address(0), value)
+   │                                        ^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1098,10 +1098,10 @@ note:
      }
 
 note: 
-   ┌─ demos/uniswap.fe:83:29
+   ┌─ demos/uniswap.fe:83:32
    │
-83 │         emit Transfer(from, address(0), value)
-   │                             ^^^^^^^^^^ attributes hash: 513065555763557710
+83 │         emit Transfer(from, to=address(0), value)
+   │                                ^^^^^^^^^^ attributes hash: 513065555763557710
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1112,10 +1112,10 @@ note:
      }
 
 note: 
-   ┌─ demos/uniswap.fe:83:41
+   ┌─ demos/uniswap.fe:83:44
    │
-83 │         emit Transfer(from, address(0), value)
-   │                                         ^^^^^ attributes hash: 16797824492585953824
+83 │         emit Transfer(from, to=address(0), value)
+   │                                            ^^^^^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2619,6 +2619,172 @@ note:
       }
 
 note: 
+    ┌─ demos/uniswap.fe:128:12
+    │
+128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
+    │            ^^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:128:27
+    │
+128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
+    │                           ^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:128:12
+    │
+128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
+    │            ^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Bool,
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:128:33
+    │
+128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
+    │                                 ^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:128:45
+    │
+128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
+    │                                             ^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:128:33
+    │
+128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
+    │                                 ^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Bool,
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:128:12
+    │
+128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
+    │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Bool,
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:128:51
+    │
+128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
+    │                                                   ^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:128:63
+    │
+128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
+    │                                                               ^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:128:51
+    │
+128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
+    │                                                   ^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Bool,
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:128:12
+    │
+128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
+    │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Bool,
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
     ┌─ demos/uniswap.fe:130:13
     │
 130 │             self.price0_cumulative_last = self.price0_cumulative_last + (reserve1 / reserve0) * time_elapsed
@@ -2895,172 +3061,6 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:128:12
-    │
-128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
-    │            ^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:128:27
-    │
-128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
-    │                           ^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:128:12
-    │
-128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
-    │            ^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Bool,
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:128:33
-    │
-128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
-    │                                 ^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:128:45
-    │
-128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
-    │                                             ^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:128:33
-    │
-128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
-    │                                 ^^^^^^^^^^^^^ attributes hash: 10866140763116710699
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Bool,
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:128:12
-    │
-128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
-    │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Bool,
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:128:51
-    │
-128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
-    │                                                   ^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:128:63
-    │
-128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
-    │                                                               ^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:128:51
-    │
-128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
-    │                                                   ^^^^^^^^^^^^^ attributes hash: 10866140763116710699
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Bool,
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:128:12
-    │
-128 │         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
-    │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Bool,
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ demos/uniswap.fe:133:9
     │
 133 │         self.reserve0 = balance0
@@ -3169,10 +3169,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:136:19
+    ┌─ demos/uniswap.fe:136:28
     │
-136 │         emit Sync(self.reserve0, self.reserve1)
-    │                   ^^^^^^^^^^^^^ attributes hash: 16880951683415213473
+136 │         emit Sync(reserve0=self.reserve0, reserve1=self.reserve1)
+    │                            ^^^^^^^^^^^^^ attributes hash: 16880951683415213473
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3191,10 +3191,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:136:34
+    ┌─ demos/uniswap.fe:136:52
     │
-136 │         emit Sync(self.reserve0, self.reserve1)
-    │                                  ^^^^^^^^^^^^^ attributes hash: 12418118303529001266
+136 │         emit Sync(reserve0=self.reserve0, reserve1=self.reserve1)
+    │                                                    ^^^^^^^^^^^^^ attributes hash: 12418118303529001266
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3418,6 +3418,66 @@ note:
       }
 
 note: 
+    ┌─ demos/uniswap.fe:143:12
+    │
+143 │         if fee_on:
+    │            ^^^^^^ attributes hash: 10866140763116710699
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Bool,
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:144:16
+    │
+144 │             if k_last != 0:
+    │                ^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:144:26
+    │
+144 │             if k_last != 0:
+    │                          ^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:144:16
+    │
+144 │             if k_last != 0:
+    │                ^^^^^^^^^^^ attributes hash: 10866140763116710699
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Bool,
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
     ┌─ demos/uniswap.fe:145:42
     │
 145 │                 root_k: u256 = self.sqrt(reserve0 * reserve1)
@@ -3508,6 +3568,52 @@ note:
               Numeric(
                   U256,
               ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:147:20
+    │
+147 │                 if root_k > root_k_last:
+    │                    ^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:147:29
+    │
+147 │                 if root_k > root_k_last:
+    │                             ^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:147:20
+    │
+147 │                 if root_k > root_k_last:
+    │                    ^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Bool,
           ),
           location: Value,
           move_location: None,
@@ -3728,48 +3834,6 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:152:36
-    │
-152 │                         self._mint(fee_to, liquidity)
-    │                                    ^^^^^^ attributes hash: 513065555763557710
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Address,
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:152:44
-    │
-152 │                         self._mint(fee_to, liquidity)
-    │                                            ^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:152:25
-    │
-152 │                         self._mint(fee_to, liquidity)
-    │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
-    │
-    = ExpressionAttributes {
-          typ: Unit,
-          location: Memory,
-          move_location: None,
-      }
-
-note: 
     ┌─ demos/uniswap.fe:151:24
     │
 151 │                     if liquidity > 0:
@@ -3816,10 +3880,24 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:147:20
+    ┌─ demos/uniswap.fe:152:36
     │
-147 │                 if root_k > root_k_last:
-    │                    ^^^^^^ attributes hash: 16797824492585953824
+152 │                         self._mint(fee_to, liquidity)
+    │                                    ^^^^^^ attributes hash: 513065555763557710
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Address,
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:152:44
+    │
+152 │                         self._mint(fee_to, liquidity)
+    │                                            ^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3832,114 +3910,14 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:147:29
+    ┌─ demos/uniswap.fe:152:25
     │
-147 │                 if root_k > root_k_last:
-    │                             ^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:147:20
-    │
-147 │                 if root_k > root_k_last:
-    │                    ^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+152 │                         self._mint(fee_to, liquidity)
+    │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
     │
     = ExpressionAttributes {
-          typ: Base(
-              Bool,
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:144:16
-    │
-144 │             if k_last != 0:
-    │                ^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:144:26
-    │
-144 │             if k_last != 0:
-    │                          ^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:144:16
-    │
-144 │             if k_last != 0:
-    │                ^^^^^^^^^^^ attributes hash: 10866140763116710699
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Bool,
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:154:13
-    │
-154 │             self.k_last = 0
-    │             ^^^^^^^^^^^ attributes hash: 11794136131870021811
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Storage {
-              nonce: Some(
-                  12,
-              ),
-          },
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:154:27
-    │
-154 │             self.k_last = 0
-    │                           ^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
+          typ: Unit,
+          location: Memory,
           move_location: None,
       }
 
@@ -3990,14 +3968,36 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:143:12
+    ┌─ demos/uniswap.fe:154:13
     │
-143 │         if fee_on:
-    │            ^^^^^^ attributes hash: 10866140763116710699
+154 │             self.k_last = 0
+    │             ^^^^^^^^^^^ attributes hash: 11794136131870021811
     │
     = ExpressionAttributes {
           typ: Base(
-              Bool,
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Storage {
+              nonce: Some(
+                  12,
+              ),
+          },
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:154:27
+    │
+154 │             self.k_last = 0
+    │                           ^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
           ),
           location: Value,
           move_location: None,
@@ -4486,6 +4486,52 @@ note:
       }
 
 note: 
+    ┌─ demos/uniswap.fe:171:12
+    │
+171 │         if total_supply == 0:
+    │            ^^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:171:28
+    │
+171 │         if total_supply == 0:
+    │                            ^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:171:12
+    │
+171 │         if total_supply == 0:
+    │            ^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Bool,
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
     ┌─ demos/uniswap.fe:172:13
     │
 172 │             liquidity = self.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
@@ -4848,52 +4894,6 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:171:12
-    │
-171 │         if total_supply == 0:
-    │            ^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:171:28
-    │
-171 │         if total_supply == 0:
-    │                            ^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:171:12
-    │
-171 │         if total_supply == 0:
-    │            ^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Bool,
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ demos/uniswap.fe:177:16
     │
 177 │         assert liquidity > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED"
@@ -5074,6 +5074,20 @@ note:
       }
 
 note: 
+    ┌─ demos/uniswap.fe:182:12
+    │
+182 │         if fee_on:
+    │            ^^^^^^ attributes hash: 10866140763116710699
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Bool,
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
     ┌─ demos/uniswap.fe:183:13
     │
 183 │             self.k_last = reserve0 * reserve1 # reserve0 and reserve1 are up-to-date
@@ -5142,24 +5156,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:182:12
+    ┌─ demos/uniswap.fe:185:26
     │
-182 │         if fee_on:
-    │            ^^^^^^ attributes hash: 10866140763116710699
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Bool,
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:185:19
-    │
-185 │         emit Mint(msg.sender, amount0, amount1)
-    │                   ^^^^^^^^^^ attributes hash: 513065555763557710
+185 │         emit Mint(sender=msg.sender, amount0, amount1)
+    │                          ^^^^^^^^^^ attributes hash: 513065555763557710
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5170,10 +5170,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:185:31
+    ┌─ demos/uniswap.fe:185:38
     │
-185 │         emit Mint(msg.sender, amount0, amount1)
-    │                               ^^^^^^^ attributes hash: 16797824492585953824
+185 │         emit Mint(sender=msg.sender, amount0, amount1)
+    │                                      ^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5186,10 +5186,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:185:40
+    ┌─ demos/uniswap.fe:185:47
     │
-185 │         emit Mint(msg.sender, amount0, amount1)
-    │                                        ^^^^^^^ attributes hash: 16797824492585953824
+185 │         emit Mint(sender=msg.sender, amount0, amount1)
+    │                                               ^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6533,6 +6533,20 @@ note:
       }
 
 note: 
+    ┌─ demos/uniswap.fe:211:12
+    │
+211 │         if fee_on:
+    │            ^^^^^^ attributes hash: 10866140763116710699
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Bool,
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
     ┌─ demos/uniswap.fe:212:13
     │
 212 │             self.k_last = reserve0 * reserve1 # reserve0 and reserve1 are up-to-date
@@ -6601,24 +6615,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:211:12
+    ┌─ demos/uniswap.fe:214:26
     │
-211 │         if fee_on:
-    │            ^^^^^^ attributes hash: 10866140763116710699
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Bool,
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:214:19
-    │
-214 │         emit Burn(msg.sender, amount0, amount1, to)
-    │                   ^^^^^^^^^^ attributes hash: 513065555763557710
+214 │         emit Burn(sender=msg.sender, amount0, amount1, to)
+    │                          ^^^^^^^^^^ attributes hash: 513065555763557710
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6629,26 +6629,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:214:31
+    ┌─ demos/uniswap.fe:214:38
     │
-214 │         emit Burn(msg.sender, amount0, amount1, to)
-    │                               ^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:214:40
-    │
-214 │         emit Burn(msg.sender, amount0, amount1, to)
-    │                                        ^^^^^^^ attributes hash: 16797824492585953824
+214 │         emit Burn(sender=msg.sender, amount0, amount1, to)
+    │                                      ^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6661,10 +6645,26 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:214:49
+    ┌─ demos/uniswap.fe:214:47
     │
-214 │         emit Burn(msg.sender, amount0, amount1, to)
-    │                                                 ^^ attributes hash: 513065555763557710
+214 │         emit Burn(sender=msg.sender, amount0, amount1, to)
+    │                                               ^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:214:56
+    │
+214 │         emit Burn(sender=msg.sender, amount0, amount1, to)
+    │                                                        ^^ attributes hash: 513065555763557710
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7408,6 +7408,52 @@ note:
       }
 
 note: 
+    ┌─ demos/uniswap.fe:232:12
+    │
+232 │         if amount0_out > 0:
+    │            ^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:232:26
+    │
+232 │         if amount0_out > 0:
+    │                          ^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:232:12
+    │
+232 │         if amount0_out > 0:
+    │            ^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Bool,
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
     ┌─ demos/uniswap.fe:233:13
     │
 233 │             token0.transfer(to, amount0_out) # optimistically transfer tokens
@@ -7510,9 +7556,9 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:232:12
+    ┌─ demos/uniswap.fe:234:12
     │
-232 │         if amount0_out > 0:
+234 │         if amount1_out > 0:
     │            ^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
@@ -7526,9 +7572,9 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:232:26
+    ┌─ demos/uniswap.fe:234:26
     │
-232 │         if amount0_out > 0:
+234 │         if amount1_out > 0:
     │                          ^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
@@ -7542,9 +7588,9 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:232:12
+    ┌─ demos/uniswap.fe:234:12
     │
-232 │         if amount0_out > 0:
+234 │         if amount1_out > 0:
     │            ^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
     │
     = ExpressionAttributes {
@@ -7648,52 +7694,6 @@ note:
     │
 235 │             token1.transfer(to, amount1_out) # optimistically transfer tokens
     │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Bool,
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:234:12
-    │
-234 │         if amount1_out > 0:
-    │            ^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:234:26
-    │
-234 │         if amount1_out > 0:
-    │                          ^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:234:12
-    │
-234 │         if amount1_out > 0:
-    │            ^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8840,10 +8840,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:254:19
+    ┌─ demos/uniswap.fe:254:26
     │
-254 │         emit Swap(msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
-    │                   ^^^^^^^^^^ attributes hash: 513065555763557710
+254 │         emit Swap(sender=msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
+    │                          ^^^^^^^^^^ attributes hash: 513065555763557710
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8854,26 +8854,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:254:31
+    ┌─ demos/uniswap.fe:254:38
     │
-254 │         emit Swap(msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
-    │                               ^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:254:43
-    │
-254 │         emit Swap(msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
-    │                                           ^^^^^^^^^^ attributes hash: 16797824492585953824
+254 │         emit Swap(sender=msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
+    │                                      ^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8886,26 +8870,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:254:55
+    ┌─ demos/uniswap.fe:254:50
     │
-254 │         emit Swap(msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
-    │                                                       ^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:254:68
-    │
-254 │         emit Swap(msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
-    │                                                                    ^^^^^^^^^^^ attributes hash: 16797824492585953824
+254 │         emit Swap(sender=msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
+    │                                                  ^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8918,10 +8886,42 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:254:81
+    ┌─ demos/uniswap.fe:254:62
     │
-254 │         emit Swap(msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
-    │                                                                                 ^^ attributes hash: 513065555763557710
+254 │         emit Swap(sender=msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
+    │                                                              ^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:254:75
+    │
+254 │         emit Swap(sender=msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
+    │                                                                           ^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:254:88
+    │
+254 │         emit Swap(sender=msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
+    │                                                                                        ^^ attributes hash: 513065555763557710
     │
     = ExpressionAttributes {
           typ: Base(
@@ -9900,6 +9900,52 @@ note:
       }
 
 note: 
+    ┌─ demos/uniswap.fe:272:13
+    │
+272 │         if (val > 3):
+    │             ^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:272:19
+    │
+272 │         if (val > 3):
+    │                   ^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:272:12
+    │
+272 │         if (val > 3):
+    │            ^^^^^^^^^ attributes hash: 10866140763116710699
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Bool,
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
     ┌─ demos/uniswap.fe:273:13
     │
 273 │             z = val
@@ -10006,6 +10052,52 @@ note:
               Numeric(
                   U256,
               ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:275:20
+    │
+275 │             while (x < z):
+    │                    ^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:275:24
+    │
+275 │             while (x < z):
+    │                        ^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:275:19
+    │
+275 │             while (x < z):
+    │                   ^^^^^^^ attributes hash: 10866140763116710699
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Bool,
           ),
           location: Value,
           move_location: None,
@@ -10172,84 +10264,6 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:275:20
-    │
-275 │             while (x < z):
-    │                    ^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:275:24
-    │
-275 │             while (x < z):
-    │                        ^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:275:19
-    │
-275 │             while (x < z):
-    │                   ^^^^^^^ attributes hash: 10866140763116710699
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Bool,
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:279:13
-    │
-279 │             z = 1
-    │             ^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:279:17
-    │
-279 │             z = 1
-    │                 ^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
     ┌─ demos/uniswap.fe:278:15
     │
 278 │         elif (val != 0):
@@ -10296,26 +10310,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:272:13
+    ┌─ demos/uniswap.fe:279:13
     │
-272 │         if (val > 3):
-    │             ^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:272:19
-    │
-272 │         if (val > 3):
-    │                   ^ attributes hash: 16797824492585953824
+279 │             z = 1
+    │             ^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10328,14 +10326,16 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:272:12
+    ┌─ demos/uniswap.fe:279:17
     │
-272 │         if (val > 3):
-    │            ^^^^^^^^^ attributes hash: 10866140763116710699
+279 │             z = 1
+    │                 ^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
-              Bool,
+              Numeric(
+                  U256,
+              ),
           ),
           location: Value,
           move_location: None,
@@ -12880,7 +12880,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:329:26
     │
-329 │         emit PairCreated(token0, token1, address(pair), self.pair_counter)
+329 │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
     │                          ^^^^^^ attributes hash: 513065555763557710
     │
     = ExpressionAttributes {
@@ -12894,7 +12894,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:329:34
     │
-329 │         emit PairCreated(token0, token1, address(pair), self.pair_counter)
+329 │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
     │                                  ^^^^^^ attributes hash: 513065555763557710
     │
     = ExpressionAttributes {
@@ -12906,10 +12906,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:329:50
+    ┌─ demos/uniswap.fe:329:55
     │
-329 │         emit PairCreated(token0, token1, address(pair), self.pair_counter)
-    │                                                  ^^^^ attributes hash: 749789108576145022
+329 │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
+    │                                                       ^^^^ attributes hash: 749789108576145022
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -13178,10 +13178,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:329:42
+    ┌─ demos/uniswap.fe:329:47
     │
-329 │         emit PairCreated(token0, token1, address(pair), self.pair_counter)
-    │                                          ^^^^^^^^^^^^^ attributes hash: 513065555763557710
+329 │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
+    │                                               ^^^^^^^^^^^^^ attributes hash: 513065555763557710
     │
     = ExpressionAttributes {
           typ: Base(
@@ -13192,10 +13192,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:329:57
+    ┌─ demos/uniswap.fe:329:68
     │
-329 │         emit PairCreated(token0, token1, address(pair), self.pair_counter)
-    │                                                         ^^^^^^^^^^^^^^^^^ attributes hash: 1282759725205707727
+329 │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
+    │                                                                    ^^^^^^^^^^^^^^^^^ attributes hash: 1282759725205707727
     │
     = ExpressionAttributes {
           typ: Base(
@@ -13688,8 +13688,8 @@ note:
 note: 
    ┌─ demos/uniswap.fe:78:9
    │
-78 │         emit Transfer(address(0), to, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15998888495671832844
+78 │         emit Transfer(from=address(0), to, value)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15998888495671832844
    │
    = EventDef {
          name: "Transfer",
@@ -13725,8 +13725,8 @@ note:
 note: 
    ┌─ demos/uniswap.fe:83:9
    │
-83 │         emit Transfer(from, address(0), value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15998888495671832844
+83 │         emit Transfer(from, to=address(0), value)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15998888495671832844
    │
    = EventDef {
          name: "Transfer",
@@ -13836,8 +13836,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:136:9
     │
-136 │         emit Sync(self.reserve0, self.reserve1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6095773162878845632
+136 │         emit Sync(reserve0=self.reserve0, reserve1=self.reserve1)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6095773162878845632
     │
     = EventDef {
           name: "Sync",
@@ -13866,8 +13866,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:185:9
     │
-185 │         emit Mint(msg.sender, amount0, amount1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1636288424141028296
+185 │         emit Mint(sender=msg.sender, amount0, amount1)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1636288424141028296
     │
     = EventDef {
           name: "Mint",
@@ -13904,8 +13904,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:214:9
     │
-214 │         emit Burn(msg.sender, amount0, amount1, to)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16979320078494421415
+214 │         emit Burn(sender=msg.sender, amount0, amount1, to)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16979320078494421415
     │
     = EventDef {
           name: "Burn",
@@ -13949,8 +13949,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:254:9
     │
-254 │         emit Swap(msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4739631867462849257
+254 │         emit Swap(sender=msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4739631867462849257
     │
     = EventDef {
           name: "Swap",
@@ -14010,8 +14010,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:329:9
     │
-329 │         emit PairCreated(token0, token1, address(pair), self.pair_counter)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11987103913122517646
+329 │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11987103913122517646
     │
     = EventDef {
           name: "PairCreated",
@@ -14174,8 +14174,8 @@ note:
 75 │ ╭     def _mint(to: address, value: u256):
 76 │ │         self.total_supply = self.total_supply + value
 77 │ │         self.balances[to] = self.balances[to] + value
-78 │ │         emit Transfer(address(0), to, value)
-   │ ╰────────────────────────────────────────────^ attributes hash: 11812640435561676428
+78 │ │         emit Transfer(from=address(0), to, value)
+   │ ╰─────────────────────────────────────────────────^ attributes hash: 11812640435561676428
    │  
    = FunctionAttributes {
          is_public: false,
@@ -14205,8 +14205,8 @@ note:
 80 │ ╭     def _burn(from: address, value: u256):
 81 │ │         self.balances[from] = self.balances[from] - value
 82 │ │         self.total_supply = self.total_supply - value
-83 │ │         emit Transfer(from, address(0), value)
-   │ ╰──────────────────────────────────────────────^ attributes hash: 5860083618676178729
+83 │ │         emit Transfer(from, to=address(0), value)
+   │ ╰─────────────────────────────────────────────────^ attributes hash: 5860083618676178729
    │  
    = FunctionAttributes {
          is_public: false,
@@ -14506,8 +14506,8 @@ note:
 126 │ │         # TODO: reproduce desired overflow (https://github.com/ethereum/fe/issues/286)
     · │
 135 │ │         self.block_timestamp_last = block_timestamp
-136 │ │         emit Sync(self.reserve0, self.reserve1)
-    │ ╰───────────────────────────────────────────────^ attributes hash: 16195792106909731120
+136 │ │         emit Sync(reserve0=self.reserve0, reserve1=self.reserve1)
+    │ ╰─────────────────────────────────────────────────────────────────^ attributes hash: 16195792106909731120
     │  
     = FunctionAttributes {
           is_public: false,
@@ -14595,7 +14595,7 @@ note:
 161 │ │         reserve0: u256 = self.reserve0
 162 │ │         reserve1: u256 = self.reserve1
     · │
-185 │ │         emit Mint(msg.sender, amount0, amount1)
+185 │ │         emit Mint(sender=msg.sender, amount0, amount1)
 186 │ │         return liquidity
     │ ╰────────────────────────^ attributes hash: 9020577417301809812
     │  
@@ -14625,7 +14625,7 @@ note:
 191 │ │         reserve1: u256 = self.reserve1
 192 │ │         token0: ERC20 = ERC20(self.token0)
     · │
-214 │ │         emit Burn(msg.sender, amount0, amount1, to)
+214 │ │         emit Burn(sender=msg.sender, amount0, amount1, to)
 215 │ │         return (amount0, amount1)
     │ ╰─────────────────────────────────^ attributes hash: 8651519123401558066
     │  
@@ -14667,8 +14667,8 @@ note:
 223 │ │         reserve1: u256 = self.reserve1
     · │
 253 │ │         self._update(balance0, balance1, reserve0, reserve1)
-254 │ │         emit Swap(msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
-    │ ╰───────────────────────────────────────────────────────────────────────────────────^ attributes hash: 13058644270313011387
+254 │ │         emit Swap(sender=msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
+    │ ╰──────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 13058644270313011387
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14887,7 +14887,7 @@ note:
 314 │ │ 
 315 │ │         token0: address = token_a if token_a < token_b else token_b
     · │
-329 │ │         emit PairCreated(token0, token1, address(pair), self.pair_counter)
+329 │ │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
 330 │ │         return address(pair)
     │ ╰────────────────────────────^ attributes hash: 10544195126543983127
     │  
@@ -17636,10 +17636,10 @@ note:
       }
 
 note: 
-   ┌─ demos/uniswap.fe:78:23
+   ┌─ demos/uniswap.fe:78:28
    │
-78 │         emit Transfer(address(0), to, value)
-   │                       ^^^^^^^ attributes hash: 6114858510168753394
+78 │         emit Transfer(from=address(0), to, value)
+   │                            ^^^^^^^ attributes hash: 6114858510168753394
    │
    = TypeConstructor {
          typ: Base(
@@ -17648,10 +17648,10 @@ note:
      }
 
 note: 
-   ┌─ demos/uniswap.fe:83:29
+   ┌─ demos/uniswap.fe:83:32
    │
-83 │         emit Transfer(from, address(0), value)
-   │                             ^^^^^^^ attributes hash: 6114858510168753394
+83 │         emit Transfer(from, to=address(0), value)
+   │                                ^^^^^^^ attributes hash: 6114858510168753394
    │
    = TypeConstructor {
          typ: Base(
@@ -19036,10 +19036,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:329:42
+    ┌─ demos/uniswap.fe:329:47
     │
-329 │         emit PairCreated(token0, token1, address(pair), self.pair_counter)
-    │                                          ^^^^^^^ attributes hash: 6114858510168753394
+329 │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
+    │                                               ^^^^^^^ attributes hash: 6114858510168753394
     │
     = TypeConstructor {
           typ: Base(
@@ -19930,6 +19930,42 @@ note:
       )
 
 note: 
+    ┌─ demos/uniswap.fe:112:32
+    │
+112 │     pub def get_reserves() -> (u256, u256, u256):
+    │                                ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:112:38
+    │
+112 │     pub def get_reserves() -> (u256, u256, u256):
+    │                                      ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:112:44
+    │
+112 │     pub def get_reserves() -> (u256, u256, u256):
+    │                                            ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
     ┌─ demos/uniswap.fe:112:31
     │
 112 │     pub def get_reserves() -> (u256, u256, u256):
@@ -20089,6 +20125,30 @@ note:
     │
     = Base(
           Address,
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:189:35
+    │
+189 │     pub def burn(to: address) -> (u256, u256):
+    │                                   ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:189:41
+    │
+189 │     pub def burn(to: address) -> (u256, u256):
+    │                                         ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
       )
 
 note: 
@@ -20353,10 +20413,81 @@ note:
       )
 
 note: 
+   ┌─ demos/uniswap.fe:12:19
+   │
+12 │     balances: map<address, u256>
+   │                   ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ demos/uniswap.fe:12:28
+   │
+12 │     balances: map<address, u256>
+   │                            ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
    ┌─ demos/uniswap.fe:12:15
    │
 12 │     balances: map<address, u256>
    │               ^^^^^^^^^^^^^^^^^^ attributes hash: 6830914040603267556
+   │
+   = Map(
+         Map {
+             key: Address,
+             value: Base(
+                 Numeric(
+                     U256,
+                 ),
+             ),
+         },
+     )
+
+note: 
+   ┌─ demos/uniswap.fe:13:21
+   │
+13 │     allowances: map<address, map<address, u256>>
+   │                     ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ demos/uniswap.fe:13:34
+   │
+13 │     allowances: map<address, map<address, u256>>
+   │                                  ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ demos/uniswap.fe:13:43
+   │
+13 │     allowances: map<address, map<address, u256>>
+   │                                           ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ demos/uniswap.fe:13:30
+   │
+13 │     allowances: map<address, map<address, u256>>
+   │                              ^^^^^^^^^^^^^^^^^^ attributes hash: 6830914040603267556
    │
    = Map(
          Map {
@@ -20396,6 +20527,28 @@ note:
    │
 14 │     total_supply: u256
    │                   ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ demos/uniswap.fe:16:17
+   │
+16 │     nonces: map<address, u256>
+   │                 ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ demos/uniswap.fe:16:26
+   │
+16 │     nonces: map<address, u256>
+   │                          ^^^^ attributes hash: 17942395924573474124
    │
    = Base(
          Numeric(
@@ -21435,6 +21588,51 @@ note:
       )
 
 note: 
+    ┌─ demos/uniswap.fe:289:16
+    │
+289 │     pairs: map<address, map<address, address>>
+    │                ^^^^^^^ attributes hash: 574436082528610497
+    │
+    = Base(
+          Address,
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:289:29
+    │
+289 │     pairs: map<address, map<address, address>>
+    │                             ^^^^^^^ attributes hash: 574436082528610497
+    │
+    = Base(
+          Address,
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:289:38
+    │
+289 │     pairs: map<address, map<address, address>>
+    │                                      ^^^^^^^ attributes hash: 574436082528610497
+    │
+    = Base(
+          Address,
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:289:25
+    │
+289 │     pairs: map<address, map<address, address>>
+    │                         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4628772786735305773
+    │
+    = Map(
+          Map {
+              key: Address,
+              value: Base(
+                  Address,
+              ),
+          },
+      )
+
+note: 
     ┌─ demos/uniswap.fe:289:12
     │
 289 │     pairs: map<address, map<address, address>>
@@ -21452,6 +21650,16 @@ note:
                   },
               ),
           },
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:291:16
+    │
+291 │     all_pairs: address[100]
+    │                ^^^^^^^ attributes hash: 574436082528610497
+    │
+    = Base(
+          Address,
       )
 
 note: 

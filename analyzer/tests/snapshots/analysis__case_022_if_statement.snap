@@ -1,6 +1,6 @@
 ---
 source: analyzer/tests/analysis.rs
-expression: "build_snapshot(fixture, src, &context)"
+expression: "build_snapshot(fixture, &src, &context)"
 
 ---
 ModuleAttributes {
@@ -34,38 +34,6 @@ ModuleAttributes {
     },
     tuples_used: {},
 }
-
-note: 
-  ┌─ features/if_statement.fe:5:20
-  │
-5 │             return 1
-  │                    ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/if_statement.fe:7:20
-  │
-7 │             return 0
-  │                    ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
 
 note: 
   ┌─ features/if_statement.fe:4:12
@@ -108,6 +76,38 @@ note:
   = ExpressionAttributes {
         typ: Base(
             Bool,
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/if_statement.fe:5:20
+  │
+5 │             return 1
+  │                    ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/if_statement.fe:7:20
+  │
+7 │             return 0
+  │                    ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
         ),
         location: Value,
         move_location: None,

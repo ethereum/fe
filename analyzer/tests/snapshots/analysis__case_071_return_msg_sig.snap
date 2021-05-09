@@ -1,6 +1,6 @@
 ---
 source: analyzer/tests/analysis.rs
-expression: "build_snapshot(fixture, src, &context)"
+expression: "build_snapshot(fixture, &src, &context)"
 
 ---
 ModuleAttributes {
@@ -149,6 +149,16 @@ note:
   ┌─ features/return_msg_sig.fe:2:22
   │
 2 │     pub def bar() -> bytes[32]:
+  │                      ^^^^^ attributes hash: 16931239362436195516
+  │
+  = Base(
+        Byte,
+    )
+
+note: 
+  ┌─ features/return_msg_sig.fe:2:22
+  │
+2 │     pub def bar() -> bytes[32]:
   │                      ^^^^^^^^^ attributes hash: 11241566943402129315
   │
   = Array(
@@ -156,6 +166,16 @@ note:
             size: 32,
             inner: Byte,
         },
+    )
+
+note: 
+  ┌─ features/return_msg_sig.fe:3:18
+  │
+3 │         msg_sig: bytes[32]
+  │                  ^^^^^ attributes hash: 16931239362436195516
+  │
+  = Base(
+        Byte,
     )
 
 note: 

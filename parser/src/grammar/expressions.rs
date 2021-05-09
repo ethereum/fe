@@ -1,4 +1,4 @@
-use crate::ast::{self, CallArg, Expr, Kwarg};
+use crate::ast::{self, CallArg, Expr};
 use crate::node::Node;
 use crate::{Label, ParseFailed, ParseResult, Parser, Token, TokenKind};
 
@@ -107,10 +107,10 @@ pub fn parse_call_args(par: &mut Parser) -> ParseResult<Node<Vec<Node<CallArg>>>
             if let Expr::Name(name) = arg.kind {
                 let span = arg.span + value.span;
                 args.push(Node::new(
-                    CallArg::Kwarg(Kwarg {
-                        name: Node::new(name, arg.span),
-                        value: Box::new(value),
-                    }),
+                    CallArg {
+                        label: Some(Node::new(name, arg.span)),
+                        value,
+                    },
                     span,
                 ));
             } else {
@@ -132,7 +132,13 @@ pub fn parse_call_args(par: &mut Parser) -> ParseResult<Node<Vec<Node<CallArg>>>
             }
         } else {
             let span = arg.span;
-            args.push(Node::new(CallArg::Arg(arg), span));
+            args.push(Node::new(
+                CallArg {
+                    label: None,
+                    value: arg,
+                },
+                span,
+            ));
         }
         if par.peek_or_err()? == Comma {
             par.next()?;

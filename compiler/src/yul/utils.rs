@@ -1,13 +1,4 @@
 use fe_analyzer::namespace::types::{AbiArraySize, AbiEncoding, AbiType, AbiUintSize};
-use fe_parser::ast as fe;
-use fe_parser::node::Node;
-
-pub fn call_arg_value(arg: &fe::CallArg) -> &Node<fe::Expr> {
-    match arg {
-        fe::CallArg::Arg(value) => value,
-        fe::CallArg::Kwarg(fe::Kwarg { value, .. }) => value,
-    }
-}
 
 /// Returns the offset at which each head is located in the static section
 /// of an encoding and the total size of the static section.

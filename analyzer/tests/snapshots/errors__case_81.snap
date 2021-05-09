@@ -1,0 +1,9 @@
+---
+source: analyzer/tests/errors.rs
+expression: errstr
+
+---
+
+
+TypeError on line 3
+[31ma + b[0m

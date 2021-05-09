@@ -1,6 +1,6 @@
 ---
 source: analyzer/tests/analysis.rs
-expression: "build_snapshot(fixture, src, &context)"
+expression: "build_snapshot(fixture, &src, &context)"
 
 ---
 ModuleAttributes {
@@ -377,6 +377,16 @@ note:
   ┌─ features/keccak.fe:3:38
   │
 3 │     pub def return_hash_from_u8(val: bytes[1]) -> u256:
+  │                                      ^^^^^ attributes hash: 16931239362436195516
+  │
+  = Base(
+        Byte,
+    )
+
+note: 
+  ┌─ features/keccak.fe:3:38
+  │
+3 │     pub def return_hash_from_u8(val: bytes[1]) -> u256:
   │                                      ^^^^^^^^ attributes hash: 4344437352449401303
   │
   = Array(
@@ -402,6 +412,16 @@ note:
   ┌─ features/keccak.fe:6:39
   │
 6 │     pub def return_hash_from_foo(val: bytes[3]) -> u256:
+  │                                       ^^^^^ attributes hash: 16931239362436195516
+  │
+  = Base(
+        Byte,
+    )
+
+note: 
+  ┌─ features/keccak.fe:6:39
+  │
+6 │     pub def return_hash_from_foo(val: bytes[3]) -> u256:
   │                                       ^^^^^^^^ attributes hash: 6535243094049238753
   │
   = Array(
@@ -421,6 +441,16 @@ note:
         Numeric(
             U256,
         ),
+    )
+
+note: 
+  ┌─ features/keccak.fe:9:40
+  │
+9 │     pub def return_hash_from_u256(val: bytes[32]) -> u256:
+  │                                        ^^^^^ attributes hash: 16931239362436195516
+  │
+  = Base(
+        Byte,
     )
 
 note: 

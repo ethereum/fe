@@ -1,0 +1,10 @@
+---
+source: analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+
+
+AlreadyDefined on line 6
+for i in my_array:
+            [31msum: u256 = 0[0m

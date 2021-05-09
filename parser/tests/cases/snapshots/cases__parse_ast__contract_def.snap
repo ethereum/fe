@@ -87,26 +87,32 @@ Node(
                   end: 57,
                 ),
               ),
-              args: [
-                Node(
-                  kind: TypeDesc(Base(
-                    base: "u8",
+              args: Node(
+                kind: [
+                  TypeDesc(Node(
+                    kind: Base(
+                      base: "u8",
+                    ),
+                    span: Span(
+                      start: 58,
+                      end: 60,
+                    ),
                   )),
-                  span: Span(
-                    start: 58,
-                    end: 60,
-                  ),
-                ),
-                Node(
-                  kind: TypeDesc(Base(
-                    base: "address",
+                  TypeDesc(Node(
+                    kind: Base(
+                      base: "address",
+                    ),
+                    span: Span(
+                      start: 62,
+                      end: 69,
+                    ),
                   )),
-                  span: Span(
-                    start: 62,
-                    end: 69,
-                  ),
+                ],
+                span: Span(
+                  start: 57,
+                  end: 70,
                 ),
-              ],
+              ),
             ),
             span: Span(
               start: 54,

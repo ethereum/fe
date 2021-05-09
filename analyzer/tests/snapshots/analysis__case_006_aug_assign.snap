@@ -1,6 +1,6 @@
 ---
 source: analyzer/tests/analysis.rs
-expression: "build_snapshot(fixture, src, &context)"
+expression: "build_snapshot(fixture, &src, &context)"
 
 ---
 ModuleAttributes {
@@ -2516,6 +2516,18 @@ note:
             U256,
         ),
     )
+
+note: 
+   ┌─ features/aug_assign.fe:54:19
+   │
+54 │         my_array: u256[10]
+   │                   ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
 
 note: 
    ┌─ features/aug_assign.fe:54:19

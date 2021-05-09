@@ -1,6 +1,7 @@
-use serde::{Deserialize, Serialize};
-
 use crate::node::Node;
+use fe_common::{Span, Spanned};
+use serde::{Deserialize, Serialize};
+use std::fmt;
 use vec1::Vec1;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -47,14 +48,22 @@ pub enum TypeDesc {
     },
     Generic {
         base: Node<String>,
-        args: Vec<Node<GenericArg>>,
+        args: Node<Vec<GenericArg>>,
     },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum GenericArg {
-    TypeDesc(TypeDesc),
-    Int(usize),
+    TypeDesc(Node<TypeDesc>),
+    Int(Node<usize>),
+}
+impl Spanned for GenericArg {
+    fn span(&self) -> Span {
+        match self {
+            GenericArg::TypeDesc(node) => node.span,
+            GenericArg::Int(node) => node.span,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -125,6 +134,7 @@ pub struct FuncDefArg {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum FuncStmt {
     Return {
         value: Option<Node<Expr>>,
@@ -232,15 +242,9 @@ pub enum Expr {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum CallArg {
-    Arg(Node<Expr>),
-    Kwarg(Kwarg), // TODO: inline Kwarg struct here
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct Kwarg {
-    pub name: Node<String>,
-    pub value: Box<Node<Expr>>,
+pub struct CallArg {
+    pub label: Option<Node<String>>,
+    pub value: Node<Expr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -280,4 +284,47 @@ pub enum CompOperator {
     LtE,
     Gt,
     GtE,
+}
+
+impl fmt::Display for BoolOperator {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use BoolOperator::*;
+        match self {
+            And => write!(f, "and"),
+            Or => write!(f, "or"),
+        }
+    }
+}
+
+impl fmt::Display for BinOperator {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use BinOperator::*;
+        match self {
+            Add => write!(f, "+"),
+            Sub => write!(f, "-"),
+            Mult => write!(f, "*"),
+            Div => write!(f, "/"),
+            Mod => write!(f, "%"),
+            Pow => write!(f, "**"),
+            LShift => write!(f, "<<"),
+            RShift => write!(f, ">>"),
+            BitOr => write!(f, "|"),
+            BitXor => write!(f, "^"),
+            BitAnd => write!(f, "&"),
+        }
+    }
+}
+
+impl fmt::Display for CompOperator {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use CompOperator::*;
+        match self {
+            Eq => write!(f, "=="),
+            NotEq => write!(f, "!="),
+            Lt => write!(f, "<"),
+            LtE => write!(f, "<="),
+            Gt => write!(f, ">"),
+            GtE => write!(f, ">="),
+        }
+    }
 }

@@ -1,20 +1,21 @@
 //! Semantic errors.
 
 use ansi_term::Color::Red;
+use fe_common::diagnostics::Diagnostic;
 use fe_parser::node::Span;
+
+#[derive(Debug)]
+pub struct AnalyzerError {
+    pub diagnostics: Vec<Diagnostic>,
+    pub classic: Option<SemanticError>,
+}
 
 /// Errors for things that may arise in a valid Fe AST.
 #[derive(Debug, PartialEq)]
 pub enum ErrorKind {
     AlreadyDefined,
-    BreakWithoutLoop,
     CannotMove,
     CircularDependency,
-    ContinueWithoutLoop,
-    MapTypeError,
-    KeyWordArgsRequired,
-    MissingEventDefinition,
-    MissingReturn,
     MoreThanThreeIndexedParams,
     NotCallable,
     NotSubscriptable,
@@ -24,8 +25,7 @@ pub enum ErrorKind {
     StringCapacityMismatch,
     TypeError,
     UndefinedValue,
-    UnexpectedReturn,
-    WrongNumberOfParams,
+    Fatal,
 }
 
 #[derive(Debug, PartialEq)]
@@ -37,10 +37,9 @@ pub struct SemanticError {
 }
 
 impl SemanticError {
-    /// Create a new error with kind `BreakWithoutLoop`
-    pub fn break_without_loop() -> Self {
+    pub fn fatal() -> Self {
         SemanticError {
-            kind: ErrorKind::BreakWithoutLoop,
+            kind: ErrorKind::Fatal,
             context: vec![],
         }
     }
@@ -49,38 +48,6 @@ impl SemanticError {
     pub fn circular_dependency() -> Self {
         SemanticError {
             kind: ErrorKind::CircularDependency,
-            context: vec![],
-        }
-    }
-
-    /// Create a new error with kind `ContinueWithoutLoop`
-    pub fn continue_without_loop() -> Self {
-        SemanticError {
-            kind: ErrorKind::ContinueWithoutLoop,
-            context: vec![],
-        }
-    }
-
-    /// Create a new error with kind `KeyWordArgsRequired`
-    pub fn kw_args_required() -> Self {
-        SemanticError {
-            kind: ErrorKind::KeyWordArgsRequired,
-            context: vec![],
-        }
-    }
-
-    /// Create a new error with kind `MissingEventDefinition`
-    pub fn missing_event_definition() -> Self {
-        SemanticError {
-            kind: ErrorKind::MissingEventDefinition,
-            context: vec![],
-        }
-    }
-
-    /// Create a new error with kind `MissingReturn`
-    pub fn missing_return() -> Self {
-        SemanticError {
-            kind: ErrorKind::MissingReturn,
             context: vec![],
         }
     }
@@ -121,14 +88,6 @@ impl SemanticError {
     pub fn undefined_value() -> Self {
         SemanticError {
             kind: ErrorKind::UndefinedValue,
-            context: vec![],
-        }
-    }
-
-    /// Create a new error with kind `UnexpectedReturn`
-    pub fn unexpected_return() -> Self {
-        SemanticError {
-            kind: ErrorKind::UnexpectedReturn,
             context: vec![],
         }
     }
@@ -177,14 +136,6 @@ impl SemanticError {
     pub fn more_than_three_indexed_params() -> Self {
         SemanticError {
             kind: ErrorKind::MoreThanThreeIndexedParams,
-            context: vec![],
-        }
-    }
-
-    /// Create a new error with kind `WrongNumberOfParams`
-    pub fn wrong_number_of_params() -> Self {
-        SemanticError {
-            kind: ErrorKind::WrongNumberOfParams,
             context: vec![],
         }
     }

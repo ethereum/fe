@@ -12,52 +12,64 @@ Node(
         end: 3,
       ),
     ),
-    args: [
-      Node(
-        kind: TypeDesc(Base(
-          base: "address",
+    args: Node(
+      kind: [
+        TypeDesc(Node(
+          kind: Base(
+            base: "address",
+          ),
+          span: Span(
+            start: 6,
+            end: 13,
+          ),
         )),
-        span: Span(
-          start: 6,
-          end: 13,
-        ),
-      ),
-      Node(
-        kind: TypeDesc(Generic(
-          base: Node(
-            kind: "map",
-            span: Span(
-              start: 16,
-              end: 19,
+        TypeDesc(Node(
+          kind: Generic(
+            base: Node(
+              kind: "map",
+              span: Span(
+                start: 16,
+                end: 19,
+              ),
+            ),
+            args: Node(
+              kind: [
+                TypeDesc(Node(
+                  kind: Base(
+                    base: "u8",
+                  ),
+                  span: Span(
+                    start: 22,
+                    end: 24,
+                  ),
+                )),
+                TypeDesc(Node(
+                  kind: Base(
+                    base: "u256",
+                  ),
+                  span: Span(
+                    start: 26,
+                    end: 30,
+                  ),
+                )),
+              ],
+              span: Span(
+                start: 20,
+                end: 32,
+              ),
             ),
           ),
-          args: [
-            Node(
-              kind: TypeDesc(Base(
-                base: "u8",
-              )),
-              span: Span(
-                start: 22,
-                end: 24,
-              ),
-            ),
-            Node(
-              kind: TypeDesc(Base(
-                base: "u256",
-              )),
-              span: Span(
-                start: 26,
-                end: 30,
-              ),
-            ),
-          ],
+          span: Span(
+            start: 16,
+            end: 32,
+          ),
         )),
-        span: Span(
-          start: 16,
-          end: 32,
-        ),
+      ],
+      span: Span(
+        start: 4,
+        end: 34,
       ),
-    ],
+    ),
   ),
   span: Span(
     start: 0,
