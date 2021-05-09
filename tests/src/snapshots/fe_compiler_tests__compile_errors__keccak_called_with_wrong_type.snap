@@ -1,0 +1,23 @@
+---
+source: tests/src/compile_errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: `keccak256` expects 1 argument, but 2 were provided
+  ┌─ [snippet]:4:3
+  │
+4 │   keccak256(foo=x, 10)
+  │   ^^^^^^^^^ -----  -- supplied 2 arguments
+  │   │                 
+  │   expects 1 argument
+
+error: argument should not be labeled
+  ┌─ [snippet]:4:13
+  │
+4 │   keccak256(foo=x, 10)
+  │             ^^^ remove this label
+
+
+
+TypeError on line 4
+[31mkeccak256(foo=x, 10)[0m

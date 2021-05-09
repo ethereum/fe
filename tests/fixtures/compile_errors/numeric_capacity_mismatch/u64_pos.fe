@@ -1,3 +1,0 @@
-contract Foo:
-    pub def bar() -> u64:
-        return u64(18446744073709551616)

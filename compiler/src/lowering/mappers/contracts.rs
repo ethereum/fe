@@ -93,7 +93,7 @@ fn list_expr_to_fn_def(array: &Array) -> fe::ContractStmt {
         .map(|index| {
             fe::FuncDefArg {
                 name: format!("val{}", index).into_node(),
-                typ: names::fixed_size_type_desc(&FixedSize::Base(array.inner.clone())).into_node(),
+                typ: names::fixed_size_type_desc(&FixedSize::Base(array.inner)).into_node(),
             }
             .into_node()
         })

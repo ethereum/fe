@@ -69,26 +69,32 @@ Node(
                         end: 71,
                       ),
                     ),
-                    args: [
-                      Node(
-                        kind: TypeDesc(Base(
-                          base: "address",
+                    args: Node(
+                      kind: [
+                        TypeDesc(Node(
+                          kind: Base(
+                            base: "address",
+                          ),
+                          span: Span(
+                            start: 72,
+                            end: 79,
+                          ),
                         )),
-                        span: Span(
-                          start: 72,
-                          end: 79,
-                        ),
-                      ),
-                      Node(
-                        kind: TypeDesc(Base(
-                          base: "BookMsg",
+                        TypeDesc(Node(
+                          kind: Base(
+                            base: "BookMsg",
+                          ),
+                          span: Span(
+                            start: 81,
+                            end: 88,
+                          ),
                         )),
-                        span: Span(
-                          start: 81,
-                          end: 88,
-                        ),
+                      ],
+                      span: Span(
+                        start: 71,
+                        end: 89,
                       ),
-                    ],
+                    ),
                   ),
                   span: Span(
                     start: 68,
@@ -263,14 +269,14 @@ Node(
                       args: Node(
                         kind: [
                           Node(
-                            kind: Kwarg(Kwarg(
-                              name: Node(
+                            kind: CallArg(
+                              label: Some(Node(
                                 kind: "book_msg",
                                 span: Span(
                                   start: 245,
                                   end: 253,
                                 ),
-                              ),
+                              )),
                               value: Node(
                                 kind: Name("book_msg"),
                                 span: Span(
@@ -278,7 +284,7 @@ Node(
                                   end: 262,
                                 ),
                               ),
-                            )),
+                            ),
                             span: Span(
                               start: 245,
                               end: 262,

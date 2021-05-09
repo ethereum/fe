@@ -76,6 +76,7 @@ fn contract_def(
 #[cfg(test)]
 mod tests {
     use crate::abi::builder;
+    use fe_common::files::SourceFileId;
     use fe_parser::{grammar::module::parse_module, parse_code_chunk};
 
     #[test]
@@ -94,7 +95,8 @@ mod tests {
         let module = parse_code_chunk(parse_module, contract)
             .expect("unable to build module AST")
             .kind;
-        let context = fe_analyzer::analyze(&module).expect("failed to analyze source");
+        let context =
+            fe_analyzer::analyze(&module, SourceFileId(0)).expect("failed to analyze source");
         let abis = builder::module(&context, &module).expect("unable to build ABI");
 
         if let Some(abi) = abis.get("Foo") {

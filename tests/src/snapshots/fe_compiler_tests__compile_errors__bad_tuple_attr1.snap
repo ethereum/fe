@@ -1,0 +1,9 @@
+---
+source: tests/src/compile_errors.rs
+expression: "error_string(&path, &src)"
+
+---
+
+
+UndefinedValue on line 6
+[31mself.my_sto_tuple.iteo0[0m

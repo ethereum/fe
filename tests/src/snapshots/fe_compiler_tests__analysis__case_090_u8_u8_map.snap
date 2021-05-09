@@ -1,0 +1,416 @@
+---
+source: tests/src/analysis.rs
+expression: "build_snapshot(fixture, &src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "read_bar",
+                        params: [
+                            (
+                                "key",
+                                Base(
+                                    Numeric(
+                                        U8,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U8,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "write_bar",
+                        params: [
+                            (
+                                "key",
+                                Base(
+                                    Numeric(
+                                        U8,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "value",
+                                Base(
+                                    Numeric(
+                                        U8,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Unit,
+                    },
+                ],
+            },
+        ),
+    },
+    tuples_used: {},
+}
+
+note: 
+  ┌─ features/u8_u8_map.fe:5:16
+  │
+5 │         return self.bar[key]
+  │                ^^^^^^^^ attributes hash: 9234909146222676732
+  │
+  = ExpressionAttributes {
+        typ: Map(
+            Map {
+                key: Numeric(
+                    U8,
+                ),
+                value: Base(
+                    Numeric(
+                        U8,
+                    ),
+                ),
+            },
+        ),
+        location: Storage {
+            nonce: Some(
+                0,
+            ),
+        },
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/u8_u8_map.fe:5:25
+  │
+5 │         return self.bar[key]
+  │                         ^^^ attributes hash: 6817314866882205962
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U8,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/u8_u8_map.fe:5:16
+  │
+5 │         return self.bar[key]
+  │                ^^^^^^^^^^^^^ attributes hash: 1740598829751249486
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U8,
+            ),
+        ),
+        location: Storage {
+            nonce: None,
+        },
+        move_location: Some(
+            Value,
+        ),
+    }
+
+note: 
+  ┌─ features/u8_u8_map.fe:8:9
+  │
+8 │         self.bar[key] = value
+  │         ^^^^^^^^ attributes hash: 9234909146222676732
+  │
+  = ExpressionAttributes {
+        typ: Map(
+            Map {
+                key: Numeric(
+                    U8,
+                ),
+                value: Base(
+                    Numeric(
+                        U8,
+                    ),
+                ),
+            },
+        ),
+        location: Storage {
+            nonce: Some(
+                0,
+            ),
+        },
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/u8_u8_map.fe:8:18
+  │
+8 │         self.bar[key] = value
+  │                  ^^^ attributes hash: 6817314866882205962
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U8,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/u8_u8_map.fe:8:9
+  │
+8 │         self.bar[key] = value
+  │         ^^^^^^^^^^^^^ attributes hash: 11720477144688003496
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U8,
+            ),
+        ),
+        location: Storage {
+            nonce: None,
+        },
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/u8_u8_map.fe:8:25
+  │
+8 │         self.bar[key] = value
+  │                         ^^^^^ attributes hash: 6817314866882205962
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U8,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/u8_u8_map.fe:4:5
+  │  
+4 │ ╭     pub def read_bar(key: u8) -> u8:
+5 │ │         return self.bar[key]
+  │ ╰────────────────────────────^ attributes hash: 8220196972298724241
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "read_bar",
+        params: [
+            (
+                "key",
+                Base(
+                    Numeric(
+                        U8,
+                    ),
+                ),
+            ),
+        ],
+        return_type: Base(
+            Numeric(
+                U8,
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/u8_u8_map.fe:7:5
+  │  
+7 │ ╭     pub def write_bar(key: u8, value: u8):
+8 │ │         self.bar[key] = value
+  │ ╰─────────────────────────────^ attributes hash: 2897055233776219835
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "write_bar",
+        params: [
+            (
+                "key",
+                Base(
+                    Numeric(
+                        U8,
+                    ),
+                ),
+            ),
+            (
+                "value",
+                Base(
+                    Numeric(
+                        U8,
+                    ),
+                ),
+            ),
+        ],
+        return_type: Unit,
+    }
+
+note: 
+  ┌─ features/u8_u8_map.fe:1:1
+  │  
+1 │ ╭ contract Foo:
+2 │ │     pub bar: map<u8, u8>
+3 │ │ 
+4 │ │     pub def read_bar(key: u8) -> u8:
+  · │
+7 │ │     pub def write_bar(key: u8, value: u8):
+8 │ │         self.bar[key] = value
+  │ ╰─────────────────────────────^ attributes hash: 9291818006446299071
+  │  
+  = ContractAttributes {
+        public_functions: [
+            FunctionAttributes {
+                is_public: true,
+                name: "read_bar",
+                params: [
+                    (
+                        "key",
+                        Base(
+                            Numeric(
+                                U8,
+                            ),
+                        ),
+                    ),
+                ],
+                return_type: Base(
+                    Numeric(
+                        U8,
+                    ),
+                ),
+            },
+            FunctionAttributes {
+                is_public: true,
+                name: "write_bar",
+                params: [
+                    (
+                        "key",
+                        Base(
+                            Numeric(
+                                U8,
+                            ),
+                        ),
+                    ),
+                    (
+                        "value",
+                        Base(
+                            Numeric(
+                                U8,
+                            ),
+                        ),
+                    ),
+                ],
+                return_type: Unit,
+            },
+        ],
+        init_function: None,
+        events: [],
+        list_expressions: {},
+        string_literals: {},
+        structs: [],
+        external_contracts: [],
+        created_contracts: {},
+    }
+
+note: 
+  ┌─ features/u8_u8_map.fe:4:27
+  │
+4 │     pub def read_bar(key: u8) -> u8:
+  │                           ^^ attributes hash: 1872326638020472004
+  │
+  = Base(
+        Numeric(
+            U8,
+        ),
+    )
+
+note: 
+  ┌─ features/u8_u8_map.fe:4:34
+  │
+4 │     pub def read_bar(key: u8) -> u8:
+  │                                  ^^ attributes hash: 1872326638020472004
+  │
+  = Base(
+        Numeric(
+            U8,
+        ),
+    )
+
+note: 
+  ┌─ features/u8_u8_map.fe:7:28
+  │
+7 │     pub def write_bar(key: u8, value: u8):
+  │                            ^^ attributes hash: 1872326638020472004
+  │
+  = Base(
+        Numeric(
+            U8,
+        ),
+    )
+
+note: 
+  ┌─ features/u8_u8_map.fe:7:39
+  │
+7 │     pub def write_bar(key: u8, value: u8):
+  │                                       ^^ attributes hash: 1872326638020472004
+  │
+  = Base(
+        Numeric(
+            U8,
+        ),
+    )
+
+note: 
+  ┌─ features/u8_u8_map.fe:2:18
+  │
+2 │     pub bar: map<u8, u8>
+  │                  ^^ attributes hash: 1872326638020472004
+  │
+  = Base(
+        Numeric(
+            U8,
+        ),
+    )
+
+note: 
+  ┌─ features/u8_u8_map.fe:2:22
+  │
+2 │     pub bar: map<u8, u8>
+  │                      ^^ attributes hash: 1872326638020472004
+  │
+  = Base(
+        Numeric(
+            U8,
+        ),
+    )
+
+note: 
+  ┌─ features/u8_u8_map.fe:2:14
+  │
+2 │     pub bar: map<u8, u8>
+  │              ^^^^^^^^^^^ attributes hash: 15893437220884405684
+  │
+  = Map(
+        Map {
+            key: Numeric(
+                U8,
+            ),
+            value: Base(
+                Numeric(
+                    U8,
+                ),
+            ),
+        },
+    )
+
+

@@ -17,13 +17,13 @@ contract Foo:
         addrs: address[2]
 
     pub def emit_nums():
-        emit Nums(26, 42)
+        emit Nums(num1=26, num2=42)
 
     pub def emit_bases(addr: address):
-        emit Bases(26, addr)
+        emit Bases(num=26, addr)
 
     pub def emit_mix(addr: address, my_bytes: bytes[100]):
-        emit Mix(26, addr, 42, my_bytes)
+        emit Mix(num1=26, addr, num2=42, my_bytes)
 
     pub def emit_addresses(addr1: address, addr2: address):
         addrs: address[2]

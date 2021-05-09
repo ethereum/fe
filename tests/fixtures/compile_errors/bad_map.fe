@@ -1,2 +1,0 @@
-contract Foo:
-    x: map<u8, u8, u8>

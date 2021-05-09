@@ -1,138 +1,155 @@
 //! Tests for contracts that should cause compile errors
 
-use fe_analyzer::errors::{ErrorKind::*, SemanticError};
-use fe_common::diagnostics::print_diagnostics;
+use fe_common::diagnostics::{diagnostics_string, print_diagnostics};
 use fe_common::files::FileStore;
-use fe_compiler::errors::ErrorKind;
-use rstest::rstest;
+use insta::assert_snapshot;
 
-#[rstest(
-    fixture_file,
-    expected_error,
-    case("assert_reason_not_string.fe", TypeError),
-    case("bad_map.fe", MapTypeError),
-    case("bad_map2.fe", MapTypeError),
-    case("bad_map3.fe", MapTypeError),
-    case("bad_map4.fe", MapTypeError),
-    case("bad_map5.fe", TypeError),
-    case("break_without_loop_2.fe", BreakWithoutLoop),
-    case("break_without_loop.fe", BreakWithoutLoop),
-    case("call_event_with_wrong_types.fe", TypeError),
-    case("call_undefined_function_on_contract.fe", UndefinedValue),
-    case("call_undefined_function_on_external_contract.fe", UndefinedValue),
-    case("call_undefined_function_on_memory_struct.fe", UndefinedValue),
-    case("call_undefined_function_on_storage_struct.fe", UndefinedValue),
-    case("circular_dependency_create.fe", CircularDependency),
-    case("circular_dependency_create2.fe", CircularDependency),
-    case("continue_without_loop_2.fe", ContinueWithoutLoop),
-    case("continue_without_loop.fe", ContinueWithoutLoop),
-    case("duplicate_contract_in_module.fe", AlreadyDefined),
-    case("duplicate_event_in_contract.fe", AlreadyDefined),
-    case("duplicate_field_in_contract.fe", AlreadyDefined),
-    case("duplicate_field_in_struct.fe", AlreadyDefined),
-    case("duplicate_method_in_contract.fe", AlreadyDefined),
-    case("duplicate_struct_in_module.fe", AlreadyDefined),
-    case("duplicate_typedef_in_module.fe", AlreadyDefined),
-    case("duplicate_var_in_child_scope.fe", AlreadyDefined),
-    case("duplicate_var_in_contract_method.fe", AlreadyDefined),
-    case("emit_undefined_event.fe", MissingEventDefinition),
-    case("external_call_type_error.fe", TypeError),
-    case("external_call_wrong_number_of_params.fe", WrongNumberOfParams),
-    case("indexed_event.fe", MoreThanThreeIndexedParams),
-    case("keccak_called_with_wrong_type.fe", TypeError),
-    case("mismatch_return_type.fe", TypeError),
-    case("missing_return_in_else.fe", MissingReturn),
-    case("missing_return.fe", MissingReturn),
-    case("needs_mem_copy.fe", CannotMove),
-    case("non_bool_and.fe", TypeError),
-    case("non_bool_or.fe", TypeError),
-    case("not_in_scope_2.fe", UndefinedValue),
-    case("not_in_scope.fe", UndefinedValue),
-    case("numeric_capacity_mismatch/i128_neg.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/i128_pos.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/i16_neg.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/i16_pos.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/i256_neg.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/i256_pos.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/i32_neg.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/i32_pos.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/i64_neg.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/i64_pos.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/i8_neg.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/i8_pos.fe", NumericCapacityMismatch),
-    case(
-        "numeric_capacity_mismatch/literal_too_big.fe",
-        NumericCapacityMismatch
-    ),
-    case(
-        "numeric_capacity_mismatch/literal_too_small.fe",
-        NumericCapacityMismatch
-    ),
-    case("numeric_capacity_mismatch/u128_neg.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/u128_pos.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/u16_neg.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/u16_pos.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/u256_neg.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/u256_pos.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/u32_neg.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/u32_pos.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/u64_neg.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/u64_pos.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/u8_neg.fe", NumericCapacityMismatch),
-    case("numeric_capacity_mismatch/u8_pos.fe", NumericCapacityMismatch),
-    case("pow_with_signed_exponent.fe", SignedExponentNotAllowed),
-    case("pow_with_wrong_capacity.fe", TypeError),
-    case("return_addition_with_mixed_types.fe", TypeError),
-    case("return_call_to_fn_with_param_type_mismatch.fe", TypeError),
-    case("return_call_to_fn_without_return.fe", TypeError),
-    case("return_from_init.fe", TypeError),
-    case("return_lt_mixed_types.fe", TypeError),
-    case("strict_boolean_if_else.fe", TypeError),
-    case("string_capacity_mismatch.fe", StringCapacityMismatch),
-    case("struct_call_without_kw_args.fe", KeyWordArgsRequired),
-    case("type_constructor_from_variable.fe", NumericLiteralExpected),
-    case("unary_minus_on_bool.fe", TypeError),
-    case("unexpected_return.fe", TypeError),
-    case("aug_assign_non_numeric.fe", TypeError),
-    case("binary_operations/add_uints.fe", TypeError),
-    case("binary_operations/lshift_bool.fe", TypeError),
-    case("binary_operations/lshift_with_int.fe", TypeError),
-    case("binary_operations/pow_int.fe", TypeError),
-    case("bad_tuple_attr1.fe", UndefinedValue),
-    case("bad_tuple_attr2.fe", UndefinedValue)
-)]
-fn test_compile_errors(fixture_file: &str, expected_error: fe_analyzer::errors::ErrorKind) {
+fn error_string(path: &str, src: &str) -> String {
     let mut files = FileStore::new();
-    let (src, id) = files
-        .load_file(&format!("fixtures/compile_errors/{}", fixture_file))
-        .expect("unable to read fixture file");
+    let id = files.add_file(path, src);
 
-    match fe_compiler::compile(&src, id, true, false) {
-        Err(error) => {
-            if error.errors.iter().any(|err| match err {
-                ErrorKind::Analyzer(SemanticError { kind, .. }) => *kind == expected_error,
-                _ => false,
-            }) {
-                return;
-            }
-
-            for err in error.errors {
-                match err {
-                    ErrorKind::Str(errstr) => eprintln!("Compiler error: {}", errstr),
-                    ErrorKind::Analyzer(err) => {
-                        eprintln!("Analyzer error: {}", err.format_user(&src))
-                    }
-                    ErrorKind::Parser(diags) => print_diagnostics(&diags, &files),
-                }
-            }
-            panic!(
-                "Expected error {:?} was not found. Unexpected error(s) were.",
-                expected_error
-            )
+    let fe_module = match fe_parser::parse_file(src, id) {
+        Ok((module, _)) => module,
+        Err(diags) => {
+            print_diagnostics(&diags, &files);
+            panic!("parsing failed");
         }
-        _ => panic!(
-            "Compiling succeeded when it was expected to fail with: {:?}",
-            expected_error
-        ),
+    };
+    let err = fe_analyzer::analyze(&fe_module, id).unwrap_err();
+
+    let mut errstr = diagnostics_string(&err.diagnostics, &files);
+    if let Some(classic) = err.classic {
+        errstr.push_str(&format!("\n\n{}", classic.format_user(&src)));
     }
+    errstr
 }
+
+macro_rules! test_file {
+    ($name:ident) => {
+        #[test]
+        fn $name() {
+            let path = format!("fixtures/compile_errors/{}.fe", stringify!($name));
+            dbg!(&path);
+            let src = std::fs::read_to_string(&path).unwrap();
+            assert_snapshot!(error_string(&path, &src));
+        }
+    };
+}
+
+macro_rules! test_stmt {
+    ($name:ident, $stmt:expr) => {
+        #[test]
+        fn $name() {
+            let src = format!(
+                "contract C:\n pub def f():\n  {}",
+                $stmt.replace('\n', "\n  ")
+            );
+            assert_snapshot!(error_string("[snippet]", &src));
+        }
+    };
+}
+
+test_stmt! { array_non_primitive, "x: (u8, u8)[10]" }
+test_stmt! { array_mixed_types, "x: u256[3] = [1, address(0), \"hi\"]" }
+test_stmt! { assert_reason_not_string, "assert true, 1" }
+test_stmt! { assign_int, "5 = 6" }
+test_stmt! { assign_call, "self.f() = 10" }
+test_stmt! { assign_type_mismatch, "x: u256 = 10\nx = address(0)" }
+test_stmt! { aug_assign_non_numeric, "a: u256 = 1\nb: bool = true\na += b" }
+test_stmt! { bad_map, "x: map<u8, u8, u8>" }
+test_stmt! { bad_map2, "x: map<address, 100>" }
+test_stmt! { bad_map3, "x: map<>" }
+test_stmt! { bad_map4, "x: map<y>" }
+test_stmt! { bad_map5, "x: map<map<u8, u8>, address>" }
+test_stmt! { bad_map6, "x: map<10, 20>" }
+test_stmt! { binary_op_add_uints, "a: u256 = 1\nb: u8 = 2\na + b" }
+test_stmt! { binary_op_lshift_bool, "a: bool = true\nb: i256\na << b" }
+test_stmt! { binary_op_lshift_with_int, "a: u256 = 1\nb: i256 = 2\na << b" }
+test_stmt! { binary_op_pow_int, "a: u256 = 1\nb: i256 = 2\na ** b" }
+test_stmt! { binary_op_boolean_mismatch1, "10 and true" }
+test_stmt! { binary_op_boolean_mismatch2, "false or 1" }
+test_stmt! { binary_op_boolean_mismatch3, "1 or 2" }
+test_stmt! { break_without_loop, "break" }
+test_stmt! { break_without_loop_2, "if true:\n  break" }
+test_stmt! { call_undefined_function_on_contract, "self.doesnt_exist()" }
+test_stmt! { clone_arg_count, "x: u256[2] = [5, 6]\ny: u256[2] = x.clone(y)" }
+test_stmt! { continue_without_loop, "continue" }
+test_stmt! { continue_without_loop_2, "if true:\n  continue" }
+test_stmt! { emit_undefined_event, "emit MyEvent()" }
+test_stmt! { keccak_called_with_wrong_type, "x: u256[1]\nkeccak256(foo=x, 10)" }
+test_stmt! { non_bool_and, "x: bool = true\ny: u256 = 1\nx = x and y" }
+test_stmt! { non_bool_or, "x: bool = true\ny: u256 = 1\nx = x or y" }
+test_stmt! { overflow_i128_neg, "i128(-170141183460469231731687303715884105729)" }
+test_stmt! { overflow_i128_pos, "i128(170141183460469231731687303715884105728)" }
+test_stmt! { overflow_i16_neg, "i16(-32769)" }
+test_stmt! { overflow_i16_pos, "i16(32768)" }
+test_stmt! { overflow_i256_neg, "i256(-57896044618658097711785492504343953926634992332820282019728792003956564819969)" }
+test_stmt! { overflow_i256_pos, "i256(57896044618658097711785492504343953926634992332820282019728792003956564819968)" }
+test_stmt! { overflow_i32_neg, "i32(-2147483649)" }
+test_stmt! { overflow_i32_pos, "i32(2147483648)" }
+test_stmt! { overflow_i64_neg, "i64(-9223372036854775809)" }
+test_stmt! { overflow_i64_pos, "i64(9223372036854775808)" }
+test_stmt! { overflow_i8_neg, "i8(-129)" }
+test_stmt! { overflow_i8_pos, "i8(128)" }
+test_stmt! { overflow_literal_too_big, "115792089237316195423570985008687907853269984665640564039457584007913129639936" }
+test_stmt! { overflow_literal_too_small, "-115792089237316195423570985008687907853269984665640564039457584007913129639936" }
+test_stmt! { overflow_u128_neg, "u128(-1)" }
+test_stmt! { overflow_u128_pos, "u128(340282366920938463463374607431768211456)" }
+test_stmt! { overflow_u16_neg, "u16(-1)" }
+test_stmt! { overflow_u16_pos, "u16(65536)" }
+test_stmt! { overflow_u256_neg, "u256(-1)" }
+test_stmt! { overflow_u256_pos, "u256(115792089237316195423570985008687907853269984665640564039457584007913129639936)" }
+test_stmt! { overflow_u32_neg, "u32(-1)" }
+test_stmt! { overflow_u32_pos, "u32(4294967296)" }
+test_stmt! { overflow_u64_neg, "u64(-1)" }
+test_stmt! { overflow_u64_pos, "u64(18446744073709551616)" }
+test_stmt! { overflow_u8_neg, "u8(-1)" }
+test_stmt! { overflow_u8_pos, "u8(256)" }
+test_stmt! { pow_with_signed_exponent, "base: i128\nexp: i128\nbase ** exp" }
+// Exponent can be unsigned but needs to be same size or smaller
+test_stmt! { pow_with_wrong_capacity, "base: i128\nexp: u256\nbase ** exp" }
+test_stmt! { string_capacity_mismatch, "String<3>(\"too long\")" }
+test_stmt! { ternary_type_mismatch, "10 if 100 else true" }
+test_stmt! { type_constructor_from_variable, "x: u8\ny: u16 = u16(x)" }
+test_stmt! { type_constructor_arg_count, "x: u8 = u8(1, 10)" }
+test_stmt! { unary_minus_on_bool, "x: bool = true\n-x" }
+test_stmt! { unary_not_on_int, "x: u256 = 10\nnot x" }
+test_stmt! { undefined_type, "x: foobar = 10" }
+test_stmt! { undefined_generic_type, "x: foobar<u256> = 10" }
+test_stmt! { unexpected_return, "return 1" }
+
+test_file! { bad_tuple_attr1 }
+test_file! { bad_tuple_attr2 }
+test_file! { call_event_with_wrong_types }
+test_file! { call_undefined_function_on_external_contract }
+test_file! { call_undefined_function_on_memory_struct }
+test_file! { call_undefined_function_on_storage_struct }
+test_file! { circular_dependency_create }
+test_file! { circular_dependency_create2 }
+test_file! { duplicate_contract_in_module }
+test_file! { duplicate_event_in_contract }
+test_file! { duplicate_field_in_contract }
+test_file! { duplicate_field_in_struct }
+test_file! { duplicate_method_in_contract }
+test_file! { duplicate_struct_in_module }
+test_file! { duplicate_typedef_in_module }
+test_file! { duplicate_var_in_child_scope }
+test_file! { duplicate_var_in_contract_method }
+test_file! { emit_bad_args }
+test_file! { external_call_type_error }
+test_file! { external_call_wrong_number_of_params }
+test_file! { indexed_event }
+test_file! { mismatch_return_type }
+test_file! { missing_return }
+test_file! { missing_return_in_else }
+test_file! { needs_mem_copy }
+test_file! { not_in_scope }
+test_file! { not_in_scope_2 }
+test_file! { return_addition_with_mixed_types }
+test_file! { return_call_to_fn_with_param_type_mismatch }
+test_file! { return_call_to_fn_without_return }
+test_file! { return_from_init }
+test_file! { return_lt_mixed_types }
+test_file! { strict_boolean_if_else }
+test_file! { struct_call_bad_args }
+test_file! { struct_call_without_kw_args }

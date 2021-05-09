@@ -1,8 +1,7 @@
-use crate::context::{Context, ExpressionAttributes, FunctionAttributes, Location};
+use crate::context::{Context, ExpressionAttributes, FunctionAttributes, Label, Location};
 use crate::errors::SemanticError;
 use crate::namespace::scopes::{BlockScope, BlockScopeType, ContractScope, Scope, Shared};
 use crate::namespace::types::{Base, FixedSize, Type};
-use crate::traversal::utils::{expression_attributes_to_types, fixed_sizes_to_types};
 use crate::traversal::{assignments, declarations, expressions, types};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
@@ -19,7 +18,7 @@ pub fn func_def(
         is_pub,
         name,
         args,
-        return_type,
+        return_type: return_type_node,
         ..
     } = &def.kind
     {
@@ -31,11 +30,11 @@ pub fn func_def(
             .map(|arg| func_def_arg(Rc::clone(&function_scope), Rc::clone(&context), arg))
             .collect::<Result<Vec<_>, _>>()?;
 
-        let return_type = return_type
+        let mut return_type = return_type_node
             .as_ref()
             .map(|typ| {
                 types::type_desc_fixed_size(
-                    Scope::Block(Rc::clone(&function_scope)),
+                    &Scope::Block(Rc::clone(&function_scope)),
                     Rc::clone(&context),
                     &typ,
                 )
@@ -45,7 +44,21 @@ pub fn func_def(
 
         // `__init__` must not return any type other than `()`.
         if name == "__init__" && !return_type.is_unit() {
-            return Err(SemanticError::type_error());
+            context.borrow_mut().fancy_error(
+                "`__init__` function has incorrect return type",
+                vec![Label::primary(
+                    return_type_node.as_ref().unwrap().span,
+                    "return type should be `()`",
+                )],
+                vec![
+                    "Hint: Remove the return type specification.".to_string(),
+                    format!(
+                        "Example: `{}def __init__():`",
+                        if *is_pub { "pub " } else { "" }
+                    ),
+                ],
+            );
+            return_type = FixedSize::Unit;
         }
 
         let attributes: FunctionAttributes = contract_scope
@@ -74,17 +87,41 @@ pub fn func_body(
     context: Shared<Context>,
     def: &Node<fe::ContractStmt>,
 ) -> Result<(), SemanticError> {
-    if let fe::ContractStmt::FuncDef { name, body, .. } = &def.kind {
+    if let fe::ContractStmt::FuncDef {
+        is_pub: _,
+        name,
+        body,
+        return_type,
+        args: _,
+    } = &def.kind
+    {
         let host_func_def = contract_scope
             .borrow()
             .function_def(&name.kind)
             .unwrap_or_else(|| panic!("Failed to lookup function definition for {}", &name.kind));
 
-        // If the return type is unit we do not have to validate any further at this point because both returning (explicit) or not returning (implicit return) are valid syntax.
+        // If the return type is unit we do not have to validate any further at this point because
+        // both returning (explicit) or not returning (implicit return) are valid syntax.
         // If the return type is anything else, we do need to ensure that all code paths
         // return or revert.
-        if !host_func_def.return_type.is_unit() {
-            validate_all_paths_return_or_revert(&body)?
+        if !host_func_def.return_type.is_unit() && !all_paths_return_or_revert(&body) {
+            context.borrow_mut().fancy_error(
+                "function body is missing a return or revert statement",
+                vec![
+                    Label::primary(
+                        name.span,
+                        "all paths of this function must `return` or `revert`",
+                    ),
+                    Label::secondary(
+                        return_type.as_ref().unwrap().span,
+                        format!(
+                            "expected function to return `{}`",
+                            host_func_def.return_type
+                        ),
+                    ),
+                ],
+                vec![],
+            );
         }
 
         traverse_statements(Rc::clone(&host_func_def.scope), Rc::clone(&context), body)?;
@@ -106,32 +143,27 @@ fn traverse_statements(
     Ok(())
 }
 
-fn validate_all_paths_return_or_revert(block: &[Node<fe::FuncStmt>]) -> Result<(), SemanticError> {
+fn all_paths_return_or_revert(block: &[Node<fe::FuncStmt>]) -> bool {
     for statement in block.iter().rev() {
-        if let fe::FuncStmt::Return { .. } = &statement.kind {
-            return Ok(());
-        }
-
-        if let fe::FuncStmt::Revert { .. } = &statement.kind {
-            return Ok(());
-        }
-
-        if let fe::FuncStmt::If {
-            test: _,
-            body,
-            or_else,
-        } = &statement.kind
-        {
-            let body_returns = validate_all_paths_return_or_revert(body).is_ok();
-            let or_else_returns =
-                or_else.is_empty() || validate_all_paths_return_or_revert(or_else).is_ok();
-            if body_returns && or_else_returns {
-                return Ok(());
+        match &statement.kind {
+            fe::FuncStmt::Return { .. } => return true,
+            fe::FuncStmt::Revert { .. } => return true,
+            fe::FuncStmt::If {
+                test: _,
+                body,
+                or_else,
+            } => {
+                let body_returns = all_paths_return_or_revert(&body);
+                let or_else_returns = or_else.is_empty() || all_paths_return_or_revert(&or_else);
+                if body_returns && or_else_returns {
+                    return true;
+                }
             }
+            _ => {}
         }
     }
 
-    Err(SemanticError::missing_return())
+    false
 }
 
 fn func_def_arg(
@@ -139,12 +171,10 @@ fn func_def_arg(
     context: Shared<Context>,
     arg: &Node<fe::FuncDefArg>,
 ) -> Result<(String, FixedSize), SemanticError> {
-    let name = &arg.kind.name.kind;
-    let typ = types::type_desc_fixed_size(Scope::Block(Rc::clone(&scope)), context, &arg.kind.typ)?;
-
-    scope.borrow_mut().add_var(name, typ.clone())?;
-
-    Ok((name.to_string(), typ))
+    let fe::FuncDefArg { name, typ } = &arg.kind;
+    let typ = types::type_desc_fixed_size(&Scope::Block(Rc::clone(&scope)), context, &typ)?;
+    scope.borrow_mut().add_var(&name.kind, typ.clone())?;
+    Ok((name.kind.to_string(), typ))
 }
 
 fn func_stmt(
@@ -152,21 +182,24 @@ fn func_stmt(
     context: Shared<Context>,
     stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
+    use fe::FuncStmt::*;
     match &stmt.kind {
-        fe::FuncStmt::Return { .. } => func_return(scope, context, stmt),
-        fe::FuncStmt::VarDecl { .. } => declarations::var_decl(scope, context, stmt),
-        fe::FuncStmt::Assign { .. } => assignments::assign(scope, context, stmt),
-        fe::FuncStmt::Emit { .. } => emit(scope, context, stmt),
-        fe::FuncStmt::AugAssign { .. } => assignments::aug_assign(scope, context, stmt),
-        fe::FuncStmt::For { .. } => for_loop(scope, context, stmt),
-        fe::FuncStmt::While { .. } => while_loop(scope, context, stmt),
-        fe::FuncStmt::If { .. } => if_statement(scope, context, stmt),
-        fe::FuncStmt::Assert { .. } => assert(scope, context, stmt),
-        fe::FuncStmt::Expr { .. } => expr(scope, context, stmt),
-        fe::FuncStmt::Pass => Ok(()),
-        fe::FuncStmt::Break => break_statement(scope, context, stmt),
-        fe::FuncStmt::Continue => continue_statement(scope, context, stmt),
-        fe::FuncStmt::Revert => Ok(()),
+        Return { .. } => func_return(scope, context, stmt),
+        VarDecl { .. } => declarations::var_decl(scope, context, stmt),
+        Assign { .. } => assignments::assign(scope, context, stmt),
+        Emit { .. } => emit(scope, context, stmt),
+        AugAssign { .. } => assignments::aug_assign(scope, context, stmt),
+        For { .. } => for_loop(scope, context, stmt),
+        While { .. } => while_loop(scope, context, stmt),
+        If { .. } => if_statement(scope, context, stmt),
+        Assert { .. } => assert(scope, context, stmt),
+        Expr { .. } => expr(scope, context, stmt),
+        Pass => Ok(()),
+        Revert => Ok(()),
+        Break | Continue => {
+            loop_flow_statement(scope, context, stmt);
+            Ok(())
+        }
     }
     .map_err(|error| error.with_context(stmt.span))
 }
@@ -181,7 +214,19 @@ fn for_loop(
             // Create the for loop body scope.
             let body_scope = BlockScope::from_block_scope(BlockScopeType::Loop, Rc::clone(&scope));
             // Make sure iter is in the function scope & it should be an array.
-            let target_type = verify_is_array(scope, Rc::clone(&context), iter)?;
+
+            let iter_type = expressions::expr(Rc::clone(&scope), Rc::clone(&context), &iter)?.typ;
+            let target_type = if let Type::Array(array) = iter_type {
+                FixedSize::Base(array.inner)
+            } else {
+                context.borrow_mut().type_error(
+                    "invalid `for` loop iterator type",
+                    iter.span,
+                    "array",
+                    iter_type,
+                );
+                return Err(SemanticError::fatal());
+            };
             body_scope.borrow_mut().add_var(&target.kind, target_type)?;
             // Traverse the statements within the `for loop` body scope.
             traverse_statements(body_scope, context, body)
@@ -190,62 +235,22 @@ fn for_loop(
     }
 }
 
-fn verify_is_array(
+fn loop_flow_statement(
     scope: Shared<BlockScope>,
     context: Shared<Context>,
-    expr: &Node<fe::Expr>,
-) -> Result<FixedSize, SemanticError> {
-    let attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), &expr)?;
-    if let Type::Array(array) = attributes.typ {
-        // TODO: (SA) Could add a support for tuple
-        return Ok(FixedSize::Base(array.inner));
-    }
-    Err(SemanticError::type_error())
-}
-
-fn verify_is_boolean(
-    scope: Shared<BlockScope>,
-    context: Shared<Context>,
-    expr: &Node<fe::Expr>,
-) -> Result<(), SemanticError> {
-    let attributes = expressions::expr(scope, context, expr)?;
-    if let Type::Base(Base::Bool) = attributes.typ {
-        return Ok(());
-    }
-
-    Err(SemanticError::type_error())
-}
-
-fn break_statement(
-    scope: Shared<BlockScope>,
-    _context: Shared<Context>,
     stmt: &Node<fe::FuncStmt>,
-) -> Result<(), SemanticError> {
-    if let fe::FuncStmt::Break {} = &stmt.kind {
-        return verify_loop_in_scope(scope, SemanticError::break_without_loop());
-    }
-    unreachable!()
-}
-
-fn continue_statement(
-    scope: Shared<BlockScope>,
-    _context: Shared<Context>,
-    stmt: &Node<fe::FuncStmt>,
-) -> Result<(), SemanticError> {
-    if let fe::FuncStmt::Continue {} = &stmt.kind {
-        return verify_loop_in_scope(scope, SemanticError::continue_without_loop());
-    }
-    unreachable!()
-}
-
-fn verify_loop_in_scope(
-    scope: Shared<BlockScope>,
-    error: SemanticError,
-) -> Result<(), SemanticError> {
-    if scope.borrow().inherits_type(BlockScopeType::Loop) {
-        Ok(())
-    } else {
-        Err(error)
+) {
+    if !scope.borrow().inherits_type(BlockScopeType::Loop) {
+        let stmt_name = match stmt.kind {
+            fe::FuncStmt::Continue => "continue",
+            fe::FuncStmt::Break => "break",
+            _ => panic!(),
+        };
+        context.borrow_mut().error(
+            format!("`{}` outside of a loop", stmt_name),
+            stmt.span,
+            format!("cannot `{}` outside of a `for` or `while` loop", stmt_name),
+        );
     }
 }
 
@@ -260,13 +265,23 @@ fn if_statement(
             body,
             or_else,
         } => {
+            let test_type = expressions::expr(Rc::clone(&scope), Rc::clone(&context), test)?.typ;
+            if test_type != Type::Base(Base::Bool) {
+                context.borrow_mut().type_error(
+                    "`if` statement condition is not bool",
+                    test.span,
+                    Base::Bool,
+                    test_type,
+                );
+            }
+
             let body_scope =
                 BlockScope::from_block_scope(BlockScopeType::IfElse, Rc::clone(&scope));
             traverse_statements(body_scope, Rc::clone(&context), body)?;
             let or_else_scope =
                 BlockScope::from_block_scope(BlockScopeType::IfElse, Rc::clone(&scope));
             traverse_statements(or_else_scope, Rc::clone(&context), or_else)?;
-            verify_is_boolean(scope, context, test)
+            Ok(())
         }
         _ => unreachable!(),
     }
@@ -279,9 +294,19 @@ fn while_loop(
 ) -> Result<(), SemanticError> {
     match &stmt.kind {
         fe::FuncStmt::While { test, body } => {
+            let test_type = expressions::expr(Rc::clone(&scope), Rc::clone(&context), &test)?.typ;
+            if test_type != Type::Base(Base::Bool) {
+                context.borrow_mut().type_error(
+                    "`while` loop condition is not bool",
+                    test.span,
+                    Base::Bool,
+                    test_type,
+                );
+            }
+
             let body_scope = BlockScope::from_block_scope(BlockScopeType::Loop, Rc::clone(&scope));
             traverse_statements(body_scope, Rc::clone(&context), body)?;
-            verify_is_boolean(scope, context, test)
+            Ok(())
         }
         _ => unreachable!(),
     }
@@ -305,24 +330,25 @@ fn emit(
     stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::Emit { name, args } = &stmt.kind {
-        return if let Some(event) = scope.borrow().contract_event_def(&name.kind) {
+        if let Some(event) = scope.borrow().contract_event_def(&name.kind) {
             context.borrow_mut().add_emit(stmt, event.clone());
-            let argument_attributes = args
-                .kind
-                .iter()
-                .map(|arg| expressions::call_arg(Rc::clone(&scope), Rc::clone(&context), arg))
-                .collect::<Result<Vec<_>, _>>()?;
-
-            if fixed_sizes_to_types(event.all_field_types())
-                != expression_attributes_to_types(argument_attributes)
-            {
-                Err(SemanticError::type_error())
-            } else {
-                Ok(())
-            }
+            expressions::validate_named_args(
+                Rc::clone(&scope),
+                Rc::clone(&context),
+                &name.kind,
+                name.span,
+                args,
+                &event.fields,
+            )?;
         } else {
-            Err(SemanticError::missing_event_definition())
-        };
+            context.borrow_mut().error(
+                format!("undefined event: `{}`", name.kind),
+                name.span,
+                "undefined event",
+            );
+        }
+
+        return Ok(());
     }
 
     unreachable!()
@@ -334,11 +360,24 @@ fn assert(
     stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::Assert { test, msg } = &stmt.kind {
-        verify_is_boolean(Rc::clone(&scope), Rc::clone(&context), test)?;
+        let test_type = expressions::expr(Rc::clone(&scope), Rc::clone(&context), &test)?.typ;
+        if test_type != Type::Base(Base::Bool) {
+            context.borrow_mut().type_error(
+                "`assert` condition is not bool",
+                test.span,
+                Base::Bool,
+                test_type,
+            );
+        }
+
         if let Some(msg) = msg {
-            let msg_attributes = expressions::expr(scope, context, msg)?;
+            let msg_attributes = expressions::expr(scope, Rc::clone(&context), msg)?;
             if !matches!(msg_attributes.typ, Type::String(_)) {
-                return Err(SemanticError::type_error());
+                context.borrow_mut().error(
+                    "`assert` reason must be a string",
+                    msg.span,
+                    format!("this has type `{}`; expected a string", msg_attributes.typ),
+                );
             }
         }
 

@@ -1,8 +1,6 @@
-use crate::errors::{ErrorKind, SemanticError};
-use fe_parser::ast as fe;
-use fe_parser::node::Node;
-use std::collections::{btree_map::Entry, BTreeMap};
+use crate::errors::SemanticError;
 use std::convert::TryFrom;
+use std::fmt;
 
 use crate::context::FunctionAttributes;
 use num_bigint::BigInt;
@@ -132,7 +130,7 @@ pub enum FixedSize {
     Unit,
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub enum Base {
     Numeric(Integer),
     Bool,
@@ -140,7 +138,7 @@ pub enum Base {
     Address,
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, PartialOrd, Ord, Eq, IntoStaticStr)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, PartialOrd, Ord, Eq, IntoStaticStr)]
 pub enum Integer {
     U256,
     U128,
@@ -178,8 +176,7 @@ pub struct Tuple {
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct Struct {
     pub name: String,
-    fields: BTreeMap<String, FixedSize>,
-    order: Vec<String>,
+    pub fields: Vec<(String, FixedSize)>,
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
@@ -197,8 +194,7 @@ impl Struct {
     pub fn new(name: &str) -> Struct {
         Struct {
             name: name.to_string(),
-            fields: BTreeMap::new(),
-            order: vec![],
+            fields: vec![],
         }
     }
 
@@ -209,45 +205,25 @@ impl Struct {
 
     /// Add a field to the struct
     pub fn add_field(&mut self, name: &str, value: &FixedSize) -> Result<(), SemanticError> {
-        match self.fields.entry(name.to_owned()) {
-            Entry::Occupied(_) => Err(SemanticError::already_defined()),
-            Entry::Vacant(entry) => {
-                entry.insert(value.clone());
-                self.order.push(name.to_string());
-                Ok(())
-            }
+        if self.fields.iter().any(|(fname, _)| fname == name) {
+            Err(SemanticError::already_defined())
+        } else {
+            self.fields.push((name.to_string(), value.clone()));
+            Ok(())
         }
     }
 
     /// Return the type of the given field name
     pub fn get_field_type(&self, name: &str) -> Option<&FixedSize> {
-        self.fields.get(name)
+        self.fields
+            .iter()
+            .find(|(nm, _)| nm == name)
+            .map(|(_, typ)| typ)
     }
 
     /// Return the index of the given field name
     pub fn get_field_index(&self, name: &str) -> Option<usize> {
-        self.order.iter().position(|field| field == name)
-    }
-
-    /// Return a vector of field types
-    pub fn get_field_types(&self) -> Vec<FixedSize> {
-        self.order
-            .iter()
-            .map(|name| {
-                self.get_field_type(name)
-                    .expect("no entry for field name")
-                    .to_owned()
-            })
-            .collect()
-    }
-
-    /// Return a vector of field names
-    pub fn get_field_names(&self) -> Vec<String> {
-        self.order.clone()
-    }
-
-    pub fn get_num_fields(&self) -> usize {
-        self.order.len()
+        self.fields.iter().position(|(field, _)| field == name)
     }
 }
 
@@ -319,12 +295,6 @@ impl From<Base> for Type {
     }
 }
 
-impl From<Base> for FixedSize {
-    fn from(value: Base) -> Self {
-        FixedSize::Base(value)
-    }
-}
-
 impl FixedSize {
     /// Returns true if the type is `()`.
     pub fn is_unit(&self) -> bool {
@@ -334,6 +304,26 @@ impl FixedSize {
     /// Creates an instance of bool.
     pub fn bool() -> Self {
         FixedSize::Base(Base::Bool)
+    }
+}
+
+impl PartialEq<Type> for FixedSize {
+    fn eq(&self, other: &Type) -> bool {
+        match (self, other) {
+            (FixedSize::Array(in1), Type::Array(in2)) => in1 == in2,
+            (FixedSize::Base(in1), Type::Base(in2)) => in1 == in2,
+            (FixedSize::Tuple(in1), Type::Tuple(in2)) => in1 == in2,
+            (FixedSize::String(in1), Type::String(in2)) => in1 == in2,
+            (FixedSize::Contract(in1), Type::Contract(in2)) => in1 == in2,
+            (FixedSize::Struct(in1), Type::Struct(in2)) => in1 == in2,
+            _ => false,
+        }
+    }
+}
+
+impl From<Base> for FixedSize {
+    fn from(value: Base) -> Self {
+        FixedSize::Base(value)
     }
 }
 
@@ -643,20 +633,20 @@ impl AbiEncoding for Struct {
 
     fn abi_selector_name(&self) -> String {
         let field_names = self
-            .get_field_types()
+            .fields
             .iter()
-            .map(|typ| typ.abi_json_name())
+            .map(|(_, typ)| typ.abi_json_name())
             .collect::<Vec<String>>();
         let joined_names = field_names.join(",");
         format!("({})", joined_names)
     }
 
     fn abi_components(&self) -> Vec<AbiComponent> {
-        self.order
+        self.fields
             .iter()
-            .map(|name| AbiComponent {
+            .map(|(name, typ)| AbiComponent {
                 name: name.to_owned(),
-                typ: self.fields[name].abi_json_name(),
+                typ: typ.abi_json_name(),
                 components: vec![],
             })
             .collect()
@@ -664,11 +654,7 @@ impl AbiEncoding for Struct {
 
     fn abi_type(&self) -> AbiType {
         AbiType::Tuple {
-            elems: self
-                .get_field_types()
-                .iter()
-                .map(|typ| typ.abi_type())
-                .collect(),
+            elems: self.fields.iter().map(|(_, typ)| typ.abi_type()).collect(),
         }
     }
 }
@@ -824,92 +810,105 @@ impl SafeNames for FeString {
     }
 }
 
-pub fn type_desc_fixed_size(
-    defs: &BTreeMap<String, Type>,
-    typ: &fe::TypeDesc,
-) -> Result<FixedSize, SemanticError> {
-    FixedSize::try_from(type_desc(defs, typ)?)
-}
-
-pub fn type_desc_base(
-    defs: &BTreeMap<String, Type>,
-    typ: &fe::TypeDesc,
-) -> Result<Base, SemanticError> {
-    match type_desc(defs, typ)? {
-        Type::Base(base) => Ok(base),
-        _ => Err(SemanticError::type_error()),
+impl fmt::Display for Type {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Type::Base(inner) => inner.fmt(f),
+            Type::Array(inner) => inner.fmt(f),
+            Type::Map(inner) => inner.fmt(f),
+            Type::Tuple(inner) => inner.fmt(f),
+            Type::String(inner) => inner.fmt(f),
+            Type::Contract(inner) => inner.fmt(f),
+            Type::Struct(inner) => inner.fmt(f),
+            Type::Unit => write!(f, "()"),
+        }
     }
 }
 
-pub fn type_desc(defs: &BTreeMap<String, Type>, typ: &fe::TypeDesc) -> Result<Type, SemanticError> {
-    match typ {
-        fe::TypeDesc::Base { base } => match base.as_str() {
-            "u256" => Ok(Type::Base(U256)),
-            "u128" => Ok(Type::Base(Base::Numeric(Integer::U128))),
-            "u64" => Ok(Type::Base(Base::Numeric(Integer::U64))),
-            "u32" => Ok(Type::Base(Base::Numeric(Integer::U32))),
-            "u16" => Ok(Type::Base(Base::Numeric(Integer::U16))),
-            "u8" => Ok(Type::Base(Base::Numeric(Integer::U8))),
-            "i256" => Ok(Type::Base(Base::Numeric(Integer::I256))),
-            "i128" => Ok(Type::Base(Base::Numeric(Integer::I128))),
-            "i64" => Ok(Type::Base(Base::Numeric(Integer::I64))),
-            "i32" => Ok(Type::Base(Base::Numeric(Integer::I32))),
-            "i16" => Ok(Type::Base(Base::Numeric(Integer::I16))),
-            "i8" => Ok(Type::Base(Base::Numeric(Integer::I8))),
-            "bool" => Ok(Type::Base(Base::Bool)),
-            "bytes" => Ok(Type::Base(Base::Byte)),
-            "address" => Ok(Type::Base(Base::Address)),
-            base => {
-                if let Some(typ) = defs.get(base) {
-                    Ok(typ.clone())
-                } else {
-                    Err(SemanticError::undefined_value())
-                }
-            }
-        },
-        fe::TypeDesc::Array { typ, dimension } => Ok(Type::Array(Array {
-            inner: type_desc_base(defs, &typ.kind)?,
-            size: *dimension,
-        })),
-        fe::TypeDesc::Generic { base, args } => {
-            if base.kind == "map" {
-                match &args[..] {
-                    [Node {
-                        kind: fe::GenericArg::TypeDesc(from),
-                        ..
-                    }, Node {
-                        kind: fe::GenericArg::TypeDesc(to),
-                        ..
-                    }] => Ok(Type::Map(Map {
-                        key: type_desc_base(defs, &from)?,
-                        value: Box::new(type_desc(defs, &to)?),
-                    })),
-                    _ => Err(SemanticError {
-                        kind: ErrorKind::MapTypeError,
-                        context: vec![],
-                    }),
-                }
-            } else if base.kind == "String" {
-                match &args[..] {
-                    [Node {
-                        kind: fe::GenericArg::Int(len),
-                        ..
-                    }] => Ok(Type::String(FeString { max_size: *len })),
-                    _ => Err(SemanticError::type_error()),
-                }
-            } else {
-                Err(SemanticError::undefined_value())
-            }
+impl fmt::Display for FixedSize {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FixedSize::Base(inner) => inner.fmt(f),
+            FixedSize::Array(inner) => inner.fmt(f),
+            FixedSize::Tuple(inner) => inner.fmt(f),
+            FixedSize::String(inner) => inner.fmt(f),
+            FixedSize::Contract(inner) => inner.fmt(f),
+            FixedSize::Struct(inner) => inner.fmt(f),
+            FixedSize::Unit => write!(f, "()"),
         }
-        fe::TypeDesc::Tuple { items } => Ok(Type::Tuple(Tuple {
-            items: Vec1::try_from_vec(
-                items
-                    .iter()
-                    .map(|typ| type_desc_fixed_size(defs, &typ.kind))
-                    .collect::<Result<_, _>>()?,
-            )
-            .expect("tuple is empty"),
-        })),
-        fe::TypeDesc::Unit => Ok(Type::Unit),
+    }
+}
+
+impl fmt::Display for Base {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = match self {
+            Base::Numeric(int) => return int.fmt(f),
+            Base::Bool => "bool",
+            Base::Byte => "byte",
+            Base::Address => "address",
+        };
+        write!(f, "{}", name)
+    }
+}
+
+impl fmt::Display for Integer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = match self {
+            Integer::U256 => "u256",
+            Integer::U128 => "u128",
+            Integer::U64 => "u64",
+            Integer::U32 => "u32",
+            Integer::U16 => "u16",
+            Integer::U8 => "u8",
+            Integer::I256 => "i256",
+            Integer::I128 => "i128",
+            Integer::I64 => "i64",
+            Integer::I32 => "i32",
+            Integer::I16 => "i16",
+            Integer::I8 => "i8",
+        };
+        write!(f, "{}", name)
+    }
+}
+
+impl fmt::Display for Array {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}[{}]", self.inner, self.size)
+    }
+}
+
+impl fmt::Display for Map {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "map<{}, {}>", self.key, self.value)
+    }
+}
+
+impl fmt::Display for Tuple {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "(")?;
+        let mut delim = "";
+        for item in &self.items {
+            write!(f, "{}{}", delim, item)?;
+            delim = ", ";
+        }
+        write!(f, ")")
+    }
+}
+
+impl fmt::Display for FeString {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "string<{}>", self.max_size)
+    }
+}
+
+impl fmt::Display for Contract {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
+
+impl fmt::Display for Struct {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name)
     }
 }

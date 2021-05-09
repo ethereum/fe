@@ -1,4 +1,4 @@
-use crate::ast::{self, CallArg, Expr, Kwarg};
+use crate::ast::{self, CallArg, Expr};
 use crate::node::Node;
 use crate::{Label, ParseFailed, ParseResult, Parser, Token, TokenKind};
 
@@ -33,7 +33,7 @@ pub fn parse_expr_with_min_bp(par: &mut Parser, min_bp: u8) -> ParseResult<Node<
                     Node::new(
                         Expr::Call {
                             func: Box::new(expr_head),
-                            generic_args: vec![],
+                            generic_args: None,
                             args,
                         },
                         span,
@@ -81,7 +81,7 @@ pub fn parse_expr_with_min_bp(par: &mut Parser, min_bp: u8) -> ParseResult<Node<
         if matches!(op, TokenKind::Lt) {
             let mut bt_par = par.as_bt_parser();
             if_chain! {
-                if let Ok((generic_args, _)) = parse_generic_args(&mut bt_par);
+                if let Ok(generic_args) = parse_generic_args(&mut bt_par);
                 if matches!(bt_par.peek(), Some(TokenKind::ParenOpen));
                 if let Ok(args) = parse_call_args(&mut bt_par);
                 then {
@@ -89,7 +89,7 @@ pub fn parse_expr_with_min_bp(par: &mut Parser, min_bp: u8) -> ParseResult<Node<
                     expr_head = Node::new(
                         Expr::Call {
                             func: Box::new(expr_head),
-                            generic_args,
+                            generic_args: Some(generic_args),
                             args,
                         },
                         span,
@@ -134,10 +134,10 @@ pub fn parse_call_args(par: &mut Parser) -> ParseResult<Node<Vec<Node<CallArg>>>
             if let Expr::Name(name) = arg.kind {
                 let span = arg.span + value.span;
                 args.push(Node::new(
-                    CallArg::Kwarg(Kwarg {
-                        name: Node::new(name, arg.span),
-                        value: Box::new(value),
-                    }),
+                    CallArg {
+                        label: Some(Node::new(name, arg.span)),
+                        value,
+                    },
                     span,
                 ));
             } else {
@@ -159,7 +159,13 @@ pub fn parse_call_args(par: &mut Parser) -> ParseResult<Node<Vec<Node<CallArg>>>
             }
         } else {
             let span = arg.span;
-            args.push(Node::new(CallArg::Arg(arg), span));
+            args.push(Node::new(
+                CallArg {
+                    label: None,
+                    value: arg,
+                },
+                span,
+            ));
         }
         if par.peek_or_err()? == Comma {
             par.next()?;

@@ -18,8 +18,11 @@ pub fn var_decl(
             fe::VarDeclTarget::Name(name) => name,
             fe::VarDeclTarget::Tuple(_) => todo!("tuple destructuring variable declaration"),
         };
-        let declared_type =
-            types::type_desc_fixed_size(Scope::Block(Rc::clone(&scope)), Rc::clone(&context), typ)?;
+        let declared_type = types::type_desc_fixed_size(
+            &Scope::Block(Rc::clone(&scope)),
+            Rc::clone(&context),
+            &typ,
+        )?;
         if let Some(value) = value {
             let value_attributes =
                 expressions::assignable_expr(Rc::clone(&scope), Rc::clone(&context), value)?;

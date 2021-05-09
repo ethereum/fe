@@ -243,6 +243,7 @@ fn test_assert() {
     case("radix_hex.fe", &[], uint_token(0xfe)),
     case("radix_octal.fe", &[], uint_token(0o70)),
     case("radix_binary.fe", &[], uint_token(0b10)),
+    case::map_tuple("map_tuple.fe", &[uint_token(1234)], uint_token(1234)),
 )]
 fn test_method_return(fixture_file: &str, input: &[ethabi::Token], expected: ethabi::Token) {
     with_executor(&|mut executor| {

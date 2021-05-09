@@ -3,17 +3,21 @@ use crate::errors::SemanticError;
 use crate::namespace::events::EventDef;
 use crate::namespace::scopes::{ContractFunctionDef, ContractScope, ModuleScope, Shared};
 use crate::namespace::types::{Array, Contract, FixedSize, Struct, Tuple, Type};
+pub use fe_common::diagnostics::Label;
+use fe_common::diagnostics::{Diagnostic, Severity};
+use fe_common::files::SourceFileId;
 use fe_common::Span;
 use fe_parser::ast as fe;
 use fe_parser::node::{Node, NodeId};
+
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::hash::Hash;
 use std::rc::Rc;
 
 /// Indicates where an expression is stored.
-#[derive(Clone, Debug, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Hash)]
 pub enum Location {
     /// A storage value may not have a nonce known at compile time, so it is
     /// optional.
@@ -145,24 +149,10 @@ impl ExpressionAttributes {
         }
     }
 
-    /// Adds a move to memory, if it is already in memory.
-    pub fn into_cloned(mut self) -> Result<Self, SemanticError> {
-        if self.location != Location::Memory {
-            Err(SemanticError::cannot_move())
-        } else {
-            self.move_location = Some(Location::Memory);
-            Ok(self)
-        }
-    }
-
-    /// Adds a move to memory, if it is in storage.
-    pub fn into_cloned_from_sto(mut self) -> Result<Self, SemanticError> {
-        if !matches!(self.location, Location::Storage { .. }) {
-            Err(SemanticError::cannot_move())
-        } else {
-            self.move_location = Some(Location::Memory);
-            Ok(self)
-        }
+    /// Adds a move to memory.
+    pub fn into_cloned(mut self) -> Self {
+        self.move_location = Some(Location::Memory);
+        self
     }
 
     /// Adds a move to value, if it is in storage or memory.
@@ -181,31 +171,12 @@ impl ExpressionAttributes {
         Ok(self)
     }
 
-    /// Adds a move (if necessary) to value if it is a base type and ensures
-    /// reference types are in memory.
-    pub fn into_assignable(self) -> Result<Self, SemanticError> {
-        let assign_location = Location::assign_location(self.typ.to_owned())?;
-
-        match assign_location {
-            Location::Value => self.into_loaded(),
-            Location::Memory => {
-                if self.final_location() == Location::Memory {
-                    Ok(self)
-                } else {
-                    Err(SemanticError::cannot_move())
-                }
-            }
-            Location::Storage { .. } => unreachable!(),
-        }
-    }
-
     /// The final location of an expression after a possible move.
     pub fn final_location(&self) -> Location {
-        if let Some(location) = self.move_location.clone() {
+        if let Some(location) = self.move_location {
             return location;
         }
-
-        self.location.clone()
+        self.location
     }
 }
 
@@ -273,7 +244,7 @@ impl From<Shared<ModuleScope>> for ModuleAttributes {
 
 /// Contains contextual information about a Fe module and can be queried using
 /// `Spanned` AST nodes.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Context {
     /// Node ids in the order they were visited.
     pub node_ids: Vec<NodeId>,
@@ -288,16 +259,30 @@ pub struct Context {
     pub events: BTreeMap<NodeId, EventDef>,
     pub type_descs: BTreeMap<NodeId, Type>,
     pub module: Option<ModuleAttributes>,
+    pub file_id: SourceFileId,
+    pub diagnostics: Vec<Diagnostic>,
 }
 
 impl Context {
-    pub fn new_shared() -> Shared<Self> {
-        Rc::new(RefCell::new(Self::new()))
+    pub fn new_shared(file_id: SourceFileId) -> Shared<Self> {
+        Rc::new(RefCell::new(Self::new(file_id)))
     }
 
-    pub fn new() -> Self {
+    pub fn new(file_id: SourceFileId) -> Self {
         Context {
-            ..Default::default()
+            node_ids: Vec::new(),
+            spans: BTreeMap::new(),
+            expressions: BTreeMap::new(),
+            emits: BTreeMap::new(),
+            functions: BTreeMap::new(),
+            declarations: BTreeMap::new(),
+            contracts: BTreeMap::new(),
+            calls: BTreeMap::new(),
+            events: BTreeMap::new(),
+            type_descs: BTreeMap::new(),
+            module: None,
+            file_id,
+            diagnostics: Vec::new(),
         }
     }
 
@@ -557,6 +542,47 @@ impl Context {
                     .map(|attributes| (self.spans[node_id], attributes.to_owned()))
             })
             .collect::<Vec<_>>()
+    }
+
+    pub fn error(
+        &mut self,
+        message: impl Into<String>,
+        label_span: Span,
+        label: impl Into<String>,
+    ) {
+        self.fancy_error(message, vec![Label::primary(label_span, label)], vec![]);
+    }
+
+    pub fn type_error(
+        &mut self,
+        message: impl Into<String>,
+        span: Span,
+        expected: impl Display,
+        actual: impl Display,
+    ) {
+        self.error(
+            message,
+            span,
+            format!("this has type `{}`; expected type `{}`", actual, expected),
+        )
+    }
+
+    pub fn fancy_error(
+        &mut self,
+        message: impl Into<String>,
+        labels: Vec<Label>,
+        notes: Vec<String>,
+    ) {
+        self.diagnostics.push(Diagnostic {
+            severity: Severity::Error,
+            code: None,
+            message: message.into(),
+            labels: labels
+                .into_iter()
+                .map(|lbl| lbl.into_cs_label(self.file_id))
+                .collect(),
+            notes,
+        });
     }
 }
 

@@ -3,3 +3,6 @@ contract Foo:
 
     pub def bar(my_array: u256[10]):
         my_array = self.my_sto_array
+
+    pub def foo() -> u256[10]:
+        return self.my_sto_array

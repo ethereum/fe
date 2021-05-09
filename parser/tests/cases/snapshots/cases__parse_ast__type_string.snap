@@ -12,15 +12,21 @@ Node(
         end: 6,
       ),
     ),
-    args: [
-      Node(
-        kind: Int(100),
-        span: Span(
-          start: 7,
-          end: 10,
-        ),
+    args: Node(
+      kind: [
+        Int(Node(
+          kind: 100,
+          span: Span(
+            start: 7,
+            end: 10,
+          ),
+        )),
+      ],
+      span: Span(
+        start: 6,
+        end: 11,
       ),
-    ],
+    ),
   ),
   span: Span(
     start: 0,

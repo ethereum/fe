@@ -1,0 +1,9 @@
+---
+source: tests/src/compile_errors.rs
+expression: "error_string(&path, &src)"
+
+---
+
+
+UndefinedValue on line 8
+[31mself.thingy.doesnt_exist()[0m

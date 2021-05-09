@@ -1,0 +1,12 @@
+---
+source: tests/src/compile_errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: literal out of range for `i8`
+  ┌─ [snippet]:3:6
+  │
+3 │   i8(-129)
+  │      ^^^^ does not fit into type `i8`
+
+

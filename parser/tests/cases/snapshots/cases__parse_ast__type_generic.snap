@@ -12,61 +12,73 @@ Node(
         end: 3,
       ),
     ),
-    args: [
-      Node(
-        kind: TypeDesc(Base(
-          base: "a",
-        )),
-        span: Span(
-          start: 4,
-          end: 5,
-        ),
-      ),
-      Node(
-        kind: TypeDesc(Generic(
-          base: Node(
-            kind: "b",
-            span: Span(
-              start: 7,
-              end: 8,
-            ),
+    args: Node(
+      kind: [
+        TypeDesc(Node(
+          kind: Base(
+            base: "a",
           ),
-          args: [
-            Node(
-              kind: TypeDesc(Base(
-                base: "c",
-              )),
+          span: Span(
+            start: 4,
+            end: 5,
+          ),
+        )),
+        TypeDesc(Node(
+          kind: Generic(
+            base: Node(
+              kind: "b",
               span: Span(
-                start: 9,
-                end: 10,
+                start: 7,
+                end: 8,
               ),
             ),
-          ],
-        )),
-        span: Span(
-          start: 7,
-          end: 11,
-        ),
-      ),
-      Node(
-        kind: TypeDesc(Array(
-          typ: Node(
-            kind: Base(
-              base: "d",
-            ),
-            span: Span(
-              start: 13,
-              end: 14,
+            args: Node(
+              kind: [
+                TypeDesc(Node(
+                  kind: Base(
+                    base: "c",
+                  ),
+                  span: Span(
+                    start: 9,
+                    end: 10,
+                  ),
+                )),
+              ],
+              span: Span(
+                start: 8,
+                end: 11,
+              ),
             ),
           ),
-          dimension: 10,
+          span: Span(
+            start: 7,
+            end: 11,
+          ),
         )),
-        span: Span(
-          start: 13,
-          end: 18,
-        ),
+        TypeDesc(Node(
+          kind: Array(
+            typ: Node(
+              kind: Base(
+                base: "d",
+              ),
+              span: Span(
+                start: 13,
+                end: 14,
+              ),
+            ),
+            dimension: 10,
+          ),
+          span: Span(
+            start: 13,
+            end: 18,
+          ),
+        )),
+      ],
+      span: Span(
+        start: 3,
+        end: 19,
       ),
-    ],
+    ),
   ),
   span: Span(
     start: 0,

@@ -1,3 +1,0 @@
-contract Foo:
-    pub def my_address() -> address:
-        return self.address

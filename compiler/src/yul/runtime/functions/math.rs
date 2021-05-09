@@ -185,7 +185,7 @@ fn checked_add_signed(size: Integer) -> yul::Statement {
     if !size.is_signed() {
         panic!("Expected signed integer")
     }
-    let (min_value, max_value) = get_min_max(size.clone());
+    let (min_value, max_value) = get_min_max(size);
     let fn_name = names::checked_add(&size);
     function_definition! {
         function [fn_name](val1, val2) -> sum {
@@ -211,7 +211,7 @@ fn checked_div_signed(size: Integer) -> yul::Statement {
     if !size.is_signed() {
         panic!("Expected signed integer")
     }
-    let (min_value, _) = get_min_max(size.clone());
+    let (min_value, _) = get_min_max(size);
     let fn_name = names::checked_div(&size);
     function_definition! {
         function [fn_name](val1, val2) -> result {
@@ -256,7 +256,7 @@ fn _checked_exp_signed(size: Integer) -> yul::Statement {
     if !size.is_signed() {
         panic!("Expected signed integer")
     }
-    let (min_value, max_value) = get_min_max(size.clone());
+    let (min_value, max_value) = get_min_max(size);
     let fn_name = names::checked_exp(&size);
     function_definition! {
         function [fn_name](base, exponent) -> power {
@@ -269,7 +269,7 @@ fn _checked_exp_unsigned(size: Integer) -> yul::Statement {
     if size.is_signed() {
         panic!("Expected unsigned integer")
     }
-    let (_, max_value) = get_min_max(size.clone());
+    let (_, max_value) = get_min_max(size);
     let fn_name = names::checked_exp(&size);
     function_definition! {
         function [fn_name](base, exponent) -> power {

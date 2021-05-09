@@ -1,0 +1,26 @@
+---
+source: tests/src/compile_errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: location mismatch
+  ┌─ fixtures/compile_errors/needs_mem_copy.fe:5:9
+  │
+5 │         my_array = self.my_sto_array
+  │         ^^^^^^^^   ----------------- this value is located in storage
+  │         │           
+  │         this variable is located in memory
+  │
+  = Hint: values located in storage can be copied to memory using the `to_mem` function.
+  = Example: `self.my_array.to_mem()`
+
+error: value must be copied to memory
+  ┌─ fixtures/compile_errors/needs_mem_copy.fe:8:16
+  │
+8 │         return self.my_sto_array
+  │                ^^^^^^^^^^^^^^^^^ this value is in storage
+  │
+  = Hint: values located in storage can be copied to memory using the `to_mem` function.
+  = Example: `self.my_array.to_mem()`
+
+

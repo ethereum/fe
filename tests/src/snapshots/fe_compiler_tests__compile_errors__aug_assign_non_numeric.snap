@@ -1,0 +1,12 @@
+---
+source: tests/src/compile_errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+
+
+TypeError on line 5
+pub def f():
+  a: u256 = 1
+  b: bool = true
+  [31ma += b[0m

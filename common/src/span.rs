@@ -34,6 +34,10 @@ impl Span {
     }
 }
 
+pub trait Spanned {
+    fn span(&self) -> Span;
+}
+
 impl Add for Span {
     type Output = Self;
 

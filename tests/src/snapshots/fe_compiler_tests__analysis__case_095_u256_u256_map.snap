@@ -1,0 +1,416 @@
+---
+source: tests/src/analysis.rs
+expression: "build_snapshot(fixture, &src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "read_bar",
+                        params: [
+                            (
+                                "key",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "write_bar",
+                        params: [
+                            (
+                                "key",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "value",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Unit,
+                    },
+                ],
+            },
+        ),
+    },
+    tuples_used: {},
+}
+
+note: 
+  ┌─ features/u256_u256_map.fe:5:16
+  │
+5 │         return self.bar[key]
+  │                ^^^^^^^^ attributes hash: 11084999791471164417
+  │
+  = ExpressionAttributes {
+        typ: Map(
+            Map {
+                key: Numeric(
+                    U256,
+                ),
+                value: Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            },
+        ),
+        location: Storage {
+            nonce: Some(
+                0,
+            ),
+        },
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/u256_u256_map.fe:5:25
+  │
+5 │         return self.bar[key]
+  │                         ^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/u256_u256_map.fe:5:16
+  │
+5 │         return self.bar[key]
+  │                ^^^^^^^^^^^^^ attributes hash: 9781479072077703403
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Storage {
+            nonce: None,
+        },
+        move_location: Some(
+            Value,
+        ),
+    }
+
+note: 
+  ┌─ features/u256_u256_map.fe:8:9
+  │
+8 │         self.bar[key] = value
+  │         ^^^^^^^^ attributes hash: 11084999791471164417
+  │
+  = ExpressionAttributes {
+        typ: Map(
+            Map {
+                key: Numeric(
+                    U256,
+                ),
+                value: Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            },
+        ),
+        location: Storage {
+            nonce: Some(
+                0,
+            ),
+        },
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/u256_u256_map.fe:8:18
+  │
+8 │         self.bar[key] = value
+  │                  ^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/u256_u256_map.fe:8:9
+  │
+8 │         self.bar[key] = value
+  │         ^^^^^^^^^^^^^ attributes hash: 5973407925075462624
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Storage {
+            nonce: None,
+        },
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/u256_u256_map.fe:8:25
+  │
+8 │         self.bar[key] = value
+  │                         ^^^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/u256_u256_map.fe:4:5
+  │  
+4 │ ╭     pub def read_bar(key: u256) -> u256:
+5 │ │         return self.bar[key]
+  │ ╰────────────────────────────^ attributes hash: 7854779242225617252
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "read_bar",
+        params: [
+            (
+                "key",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+        ],
+        return_type: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/u256_u256_map.fe:7:5
+  │  
+7 │ ╭     pub def write_bar(key: u256, value: u256):
+8 │ │         self.bar[key] = value
+  │ ╰─────────────────────────────^ attributes hash: 4145513212852308044
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "write_bar",
+        params: [
+            (
+                "key",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+            (
+                "value",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+        ],
+        return_type: Unit,
+    }
+
+note: 
+  ┌─ features/u256_u256_map.fe:1:1
+  │  
+1 │ ╭ contract Foo:
+2 │ │     pub bar: map<u256, u256>
+3 │ │ 
+4 │ │     pub def read_bar(key: u256) -> u256:
+  · │
+7 │ │     pub def write_bar(key: u256, value: u256):
+8 │ │         self.bar[key] = value
+  │ ╰─────────────────────────────^ attributes hash: 3030546017647404527
+  │  
+  = ContractAttributes {
+        public_functions: [
+            FunctionAttributes {
+                is_public: true,
+                name: "read_bar",
+                params: [
+                    (
+                        "key",
+                        Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    ),
+                ],
+                return_type: Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            },
+            FunctionAttributes {
+                is_public: true,
+                name: "write_bar",
+                params: [
+                    (
+                        "key",
+                        Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    ),
+                    (
+                        "value",
+                        Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    ),
+                ],
+                return_type: Unit,
+            },
+        ],
+        init_function: None,
+        events: [],
+        list_expressions: {},
+        string_literals: {},
+        structs: [],
+        external_contracts: [],
+        created_contracts: {},
+    }
+
+note: 
+  ┌─ features/u256_u256_map.fe:4:27
+  │
+4 │     pub def read_bar(key: u256) -> u256:
+  │                           ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/u256_u256_map.fe:4:36
+  │
+4 │     pub def read_bar(key: u256) -> u256:
+  │                                    ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/u256_u256_map.fe:7:28
+  │
+7 │     pub def write_bar(key: u256, value: u256):
+  │                            ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/u256_u256_map.fe:7:41
+  │
+7 │     pub def write_bar(key: u256, value: u256):
+  │                                         ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/u256_u256_map.fe:2:18
+  │
+2 │     pub bar: map<u256, u256>
+  │                  ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/u256_u256_map.fe:2:24
+  │
+2 │     pub bar: map<u256, u256>
+  │                        ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/u256_u256_map.fe:2:14
+  │
+2 │     pub bar: map<u256, u256>
+  │              ^^^^^^^^^^^^^^^ attributes hash: 3210256860376722957
+  │
+  = Map(
+        Map {
+            key: Numeric(
+                U256,
+            ),
+            value: Base(
+                Numeric(
+                    U256,
+                ),
+            ),
+        },
+    )
+
+

@@ -15,40 +15,46 @@ Node(
     args: Node(
       kind: [
         Node(
-          kind: Arg(Node(
-            kind: Num("1"),
-            span: Span(
-              start: 9,
-              end: 10,
+          kind: CallArg(
+            label: None,
+            value: Node(
+              kind: Num("1"),
+              span: Span(
+                start: 9,
+                end: 10,
+              ),
             ),
-          )),
+          ),
           span: Span(
             start: 9,
             end: 10,
           ),
         ),
         Node(
-          kind: Arg(Node(
-            kind: Num("2"),
-            span: Span(
-              start: 12,
-              end: 13,
+          kind: CallArg(
+            label: None,
+            value: Node(
+              kind: Num("2"),
+              span: Span(
+                start: 12,
+                end: 13,
+              ),
             ),
-          )),
+          ),
           span: Span(
             start: 12,
             end: 13,
           ),
         ),
         Node(
-          kind: Kwarg(Kwarg(
-            name: Node(
+          kind: CallArg(
+            label: Some(Node(
               kind: "x",
               span: Span(
                 start: 15,
                 end: 16,
               ),
-            ),
+            )),
             value: Node(
               kind: Name("y"),
               span: Span(
@@ -56,7 +62,7 @@ Node(
                 end: 18,
               ),
             ),
-          )),
+          ),
           span: Span(
             start: 15,
             end: 18,

@@ -1,0 +1,8 @@
+contract Bar:
+  event Foo:
+    idx x: address
+    y: u256
+    z: bool
+
+  pub def test():
+    emit Foo((1, 2), z=10, y=true, x=5)

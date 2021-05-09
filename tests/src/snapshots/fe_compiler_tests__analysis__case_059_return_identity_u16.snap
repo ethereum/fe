@@ -1,0 +1,144 @@
+---
+source: tests/src/analysis.rs
+expression: "build_snapshot(fixture, &src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "bar",
+                        params: [
+                            (
+                                "x",
+                                Base(
+                                    Numeric(
+                                        U16,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U16,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+    tuples_used: {},
+}
+
+note: 
+  ┌─ features/return_identity_u16.fe:3:16
+  │
+3 │         return x
+  │                ^ attributes hash: 17931047209024117248
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U16,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/return_identity_u16.fe:2:5
+  │  
+2 │ ╭     pub def bar(x: u16) -> u16:
+3 │ │         return x
+  │ ╰────────────────^ attributes hash: 11534801112110868331
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "bar",
+        params: [
+            (
+                "x",
+                Base(
+                    Numeric(
+                        U16,
+                    ),
+                ),
+            ),
+        ],
+        return_type: Base(
+            Numeric(
+                U16,
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/return_identity_u16.fe:1:1
+  │  
+1 │ ╭ contract Foo:
+2 │ │     pub def bar(x: u16) -> u16:
+3 │ │         return x
+  │ ╰────────────────^ attributes hash: 1709506813633838929
+  │  
+  = ContractAttributes {
+        public_functions: [
+            FunctionAttributes {
+                is_public: true,
+                name: "bar",
+                params: [
+                    (
+                        "x",
+                        Base(
+                            Numeric(
+                                U16,
+                            ),
+                        ),
+                    ),
+                ],
+                return_type: Base(
+                    Numeric(
+                        U16,
+                    ),
+                ),
+            },
+        ],
+        init_function: None,
+        events: [],
+        list_expressions: {},
+        string_literals: {},
+        structs: [],
+        external_contracts: [],
+        created_contracts: {},
+    }
+
+note: 
+  ┌─ features/return_identity_u16.fe:2:20
+  │
+2 │     pub def bar(x: u16) -> u16:
+  │                    ^^^ attributes hash: 547894393873242964
+  │
+  = Base(
+        Numeric(
+            U16,
+        ),
+    )
+
+note: 
+  ┌─ features/return_identity_u16.fe:2:28
+  │
+2 │     pub def bar(x: u16) -> u16:
+  │                            ^^^ attributes hash: 547894393873242964
+  │
+  = Base(
+        Numeric(
+            U16,
+        ),
+    )
+
+

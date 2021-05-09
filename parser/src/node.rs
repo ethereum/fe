@@ -1,4 +1,4 @@
-pub use fe_common::Span;
+pub use fe_common::{Span, Spanned};
 use serde::{Deserialize, Serialize};
 use std::ops::Add;
 use uuid::Uuid;
@@ -41,6 +41,12 @@ impl<T> Node<T> {
     pub fn new_id(mut self) -> Self {
         self.id = NodeId::create();
         self
+    }
+}
+
+impl<T> Spanned for Node<T> {
+    fn span(&self) -> Span {
+        self.span
     }
 }
 

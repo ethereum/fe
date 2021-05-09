@@ -1,0 +1,10 @@
+---
+source: tests/src/compile_errors.rs
+expression: "error_string(&path, &src)"
+
+---
+
+
+AlreadyDefined on line 5
+event MyEvent:
+        idx addr1: address
