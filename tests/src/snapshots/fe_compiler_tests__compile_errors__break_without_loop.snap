@@ -1,0 +1,12 @@
+---
+source: tests/src/compile_errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: `break` outside of a loop
+  ┌─ [snippet]:3:3
+  │
+3 │   break
+  │   ^^^^^ cannot `break` outside of a `for` or `while` loop
+
+

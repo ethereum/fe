@@ -1,3 +1,0 @@
-contract Foo:
-    pub def bar(my_num: u256, my_bool: bool) -> (u256, bool):
-        return (my_num, my_bool)

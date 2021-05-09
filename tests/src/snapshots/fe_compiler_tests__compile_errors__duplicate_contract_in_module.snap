@@ -1,0 +1,9 @@
+---
+source: tests/src/compile_errors.rs
+expression: "error_string(&path, &src)"
+
+---
+
+
+AlreadyDefined on line 0
+no error context available

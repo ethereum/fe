@@ -57,17 +57,20 @@ Node(
         end: 9,
       ),
     ),
-    generic_args: [],
+    generic_args: None,
     args: Node(
       kind: [
         Node(
-          kind: Arg(Node(
-            kind: Num("1"),
-            span: Span(
-              start: 10,
-              end: 11,
+          kind: CallArg(
+            label: None,
+            value: Node(
+              kind: Num("1"),
+              span: Span(
+                start: 10,
+                end: 11,
+              ),
             ),
-          )),
+          ),
           span: Span(
             start: 10,
             end: 11,

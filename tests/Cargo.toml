@@ -16,6 +16,7 @@ evm-runtime = "0.18"
 fe-analyzer = {path = "../analyzer", version = "^0.5.0-alpha"}
 fe-common = {path = "../common", version = "^0.5.0-alpha"}
 fe-compiler-test-utils = {path = "../test-utils", features = ["solc-backend"]}
+fe-parser = {path = "../parser", version = "^0.5.0-alpha"}
 hex = "0.4"
 primitive-types = {version = "0.7", default-features = false, features = ["rlp"]}
 rand = "0.7.3"
@@ -23,6 +24,9 @@ regex = "1.1.0"
 rstest = "0.6.4"
 stringreader = "0.1"
 yultsur = {git = "https://github.com/g-r-a-n-t/yultsur"}
+
+[dev-dependencies]
+insta = "1.7.1"
 
 [features]
 solc-backend = ["fe-compiler/solc-backend", "fe-compiler-test-utils/solc-backend"]

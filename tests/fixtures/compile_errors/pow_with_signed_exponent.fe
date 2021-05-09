@@ -1,4 +1,0 @@
-contract Foo:
-
-    pub def bar(base: i128, exponent: i128) -> i128:
-        return base ** exponent

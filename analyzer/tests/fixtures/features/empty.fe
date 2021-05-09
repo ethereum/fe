@@ -1,2 +1,0 @@
-contract Empty:
-  lonely: u256

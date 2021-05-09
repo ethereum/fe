@@ -1,0 +1,19 @@
+---
+source: tests/src/compile_errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: `__init__` function has incorrect return type
+  ┌─ fixtures/compile_errors/return_from_init.fe:2:27
+  │
+2 │     pub def __init__() -> i32:
+  │                           ^^^ return type should be `()`
+  │
+  = Hint: Remove the return type specification.
+  = Example: `pub def __init__():`
+
+
+
+TypeError on line 3
+pub def __init__() -> i32:
+        [31mreturn 0[0m

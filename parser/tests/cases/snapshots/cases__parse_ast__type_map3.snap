@@ -12,78 +12,96 @@ Node(
         end: 3,
       ),
     ),
-    args: [
-      Node(
-        kind: TypeDesc(Base(
-          base: "address",
-        )),
-        span: Span(
-          start: 4,
-          end: 11,
-        ),
-      ),
-      Node(
-        kind: TypeDesc(Generic(
-          base: Node(
-            kind: "map",
-            span: Span(
-              start: 13,
-              end: 16,
-            ),
+    args: Node(
+      kind: [
+        TypeDesc(Node(
+          kind: Base(
+            base: "address",
           ),
-          args: [
-            Node(
-              kind: TypeDesc(Base(
-                base: "u8",
-              )),
+          span: Span(
+            start: 4,
+            end: 11,
+          ),
+        )),
+        TypeDesc(Node(
+          kind: Generic(
+            base: Node(
+              kind: "map",
               span: Span(
-                start: 17,
-                end: 19,
+                start: 13,
+                end: 16,
               ),
             ),
-            Node(
-              kind: TypeDesc(Generic(
-                base: Node(
-                  kind: "map",
+            args: Node(
+              kind: [
+                TypeDesc(Node(
+                  kind: Base(
+                    base: "u8",
+                  ),
+                  span: Span(
+                    start: 17,
+                    end: 19,
+                  ),
+                )),
+                TypeDesc(Node(
+                  kind: Generic(
+                    base: Node(
+                      kind: "map",
+                      span: Span(
+                        start: 21,
+                        end: 24,
+                      ),
+                    ),
+                    args: Node(
+                      kind: [
+                        TypeDesc(Node(
+                          kind: Base(
+                            base: "u8",
+                          ),
+                          span: Span(
+                            start: 25,
+                            end: 27,
+                          ),
+                        )),
+                        TypeDesc(Node(
+                          kind: Base(
+                            base: "u8",
+                          ),
+                          span: Span(
+                            start: 29,
+                            end: 31,
+                          ),
+                        )),
+                      ],
+                      span: Span(
+                        start: 24,
+                        end: 32,
+                      ),
+                    ),
+                  ),
                   span: Span(
                     start: 21,
-                    end: 24,
+                    end: 32,
                   ),
-                ),
-                args: [
-                  Node(
-                    kind: TypeDesc(Base(
-                      base: "u8",
-                    )),
-                    span: Span(
-                      start: 25,
-                      end: 27,
-                    ),
-                  ),
-                  Node(
-                    kind: TypeDesc(Base(
-                      base: "u8",
-                    )),
-                    span: Span(
-                      start: 29,
-                      end: 31,
-                    ),
-                  ),
-                ],
-              )),
+                )),
+              ],
               span: Span(
-                start: 21,
-                end: 32,
+                start: 16,
+                end: 33,
               ),
             ),
-          ],
+          ),
+          span: Span(
+            start: 13,
+            end: 33,
+          ),
         )),
-        span: Span(
-          start: 13,
-          end: 33,
-        ),
+      ],
+      span: Span(
+        start: 3,
+        end: 34,
       ),
-    ],
+    ),
   ),
   span: Span(
     start: 0,

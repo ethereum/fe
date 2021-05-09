@@ -39,22 +39,22 @@ contract ERC20:
     pub def balanceOf(account: address) -> u256:
         return self._balances[account]
 
-    pub def transfer(recipient: address, amount: u256) -> bool:
-        self._transfer(msg.sender, recipient, amount)
+    pub def transfer(recipient: address, value: u256) -> bool:
+        self._transfer(msg.sender, recipient, value)
         return true
 
     pub def allowance(owner: address, spender: address) -> u256:
         return self._allowances[owner][spender]
 
-    pub def approve(spender: address, amount: u256) -> bool:
-        self._approve(msg.sender, spender, amount)
+    pub def approve(spender: address, value: u256) -> bool:
+        self._approve(msg.sender, spender, value)
         return true
 
-    pub def transferFrom(sender: address, recipient: address, amount: u256) -> bool:
-        assert self._allowances[sender][msg.sender] >= amount
+    pub def transferFrom(sender: address, recipient: address, value: u256) -> bool:
+        assert self._allowances[sender][msg.sender] >= value
 
-        self._transfer(sender, recipient, amount)
-        self._approve(sender, msg.sender, self._allowances[sender][msg.sender] - amount)
+        self._transfer(sender, recipient, value)
+        self._approve(sender, msg.sender, self._allowances[sender][msg.sender] - value)
         return true
 
     pub def increaseAllowance(spender: address, addedValue: u256) -> bool:
@@ -65,43 +65,43 @@ contract ERC20:
         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] - subtractedValue)
         return true
 
-    def _transfer(sender: address, recipient: address, amount: u256):
+    def _transfer(sender: address, recipient: address, value: u256):
         assert sender != address(0)
         assert recipient != address(0)
 
-        self._before_token_transfer(sender, recipient, amount)
+        self._before_token_transfer(sender, recipient, value)
 
-        self._balances[sender] = self._balances[sender] - amount
-        self._balances[recipient] = self._balances[recipient] + amount
-        emit Transfer(sender, recipient, amount)
+        self._balances[sender] = self._balances[sender] - value
+        self._balances[recipient] = self._balances[recipient] + value
+        emit Transfer(from=sender, to=recipient, value=value)
 
-    def _mint(account: address, amount: u256):
+    def _mint(account: address, value: u256):
         assert account != address(0)
 
-        self._before_token_transfer(address(0), account, amount)
+        self._before_token_transfer(address(0), account, value)
 
-        self._total_supply = self._total_supply + amount
-        self._balances[account] = self._balances[account] + amount
-        emit Transfer(address(0), account, amount)
+        self._total_supply = self._total_supply + value
+        self._balances[account] = self._balances[account] + value
+        emit Transfer(from=address(0), to=account, value=value)
 
-    def _burn(account: address, amount: u256):
+    def _burn(account: address, value: u256):
         assert account != address(0)
 
-        self._before_token_transfer(account, address(0), amount)
+        self._before_token_transfer(account, address(0), value)
 
-        self._balances[account] = self._balances[account] - amount
-        self._total_supply = self._total_supply - amount
-        emit Transfer(account, address(0), amount)
+        self._balances[account] = self._balances[account] - value
+        self._total_supply = self._total_supply - value
+        emit Transfer(from=account, to=address(0), value)
 
-    def _approve(owner: address, spender: address, amount: u256):
+    def _approve(owner: address, spender: address, value: u256):
         assert owner != address(0)
         assert spender != address(0)
 
-        self._allowances[owner][spender] = amount
-        emit Approval(owner, spender, amount)
+        self._allowances[owner][spender] = value
+        emit Approval(owner, spender, value)
 
     def _setup_decimals(decimals_: u8):
         self._decimals = decimals_
 
-    def _before_token_transfer(from: address, to: address, amount: u256):
+    def _before_token_transfer(from: address, to: address, value: u256):
         pass

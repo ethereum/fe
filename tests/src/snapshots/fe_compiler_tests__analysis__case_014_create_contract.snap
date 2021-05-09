@@ -1,0 +1,381 @@
+---
+source: tests/src/analysis.rs
+expression: "build_snapshot(fixture, &src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "get_my_num",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+        "FooFactory": Contract(
+            Contract {
+                name: "FooFactory",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "create_foo",
+                        params: [],
+                        return_type: Base(
+                            Address,
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+    tuples_used: {},
+}
+
+note: 
+  ┌─ features/create_contract.fe:3:16
+  │
+3 │         return 42
+  │                ^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/create_contract.fe:7:31
+  │
+7 │         foo: Foo = Foo.create(0)
+  │                               ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/create_contract.fe:7:20
+  │
+7 │         foo: Foo = Foo.create(0)
+  │                    ^^^^^^^^^^^^^ attributes hash: 8552961459538575979
+  │
+  = ExpressionAttributes {
+        typ: Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "get_my_num",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/create_contract.fe:8:24
+  │
+8 │         return address(foo)
+  │                        ^^^ attributes hash: 8552961459538575979
+  │
+  = ExpressionAttributes {
+        typ: Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "get_my_num",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/create_contract.fe:8:16
+  │
+8 │         return address(foo)
+  │                ^^^^^^^^^^^^ attributes hash: 513065555763557710
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Address,
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/create_contract.fe:2:5
+  │  
+2 │ ╭     pub def get_my_num() -> u256:
+3 │ │         return 42
+  │ ╰─────────────────^ attributes hash: 10550548704405770348
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "get_my_num",
+        params: [],
+        return_type: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/create_contract.fe:6:5
+  │  
+6 │ ╭     pub def create_foo() -> address:
+7 │ │         foo: Foo = Foo.create(0)
+8 │ │         return address(foo)
+  │ ╰───────────────────────────^ attributes hash: 15105527221342038630
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "create_foo",
+        params: [],
+        return_type: Base(
+            Address,
+        ),
+    }
+
+note: 
+  ┌─ features/create_contract.fe:7:9
+  │
+7 │         foo: Foo = Foo.create(0)
+  │         ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11013990582171916248
+  │
+  = Contract(
+        Contract {
+            name: "Foo",
+            functions: [
+                FunctionAttributes {
+                    is_public: true,
+                    name: "get_my_num",
+                    params: [],
+                    return_type: Base(
+                        Numeric(
+                            U256,
+                        ),
+                    ),
+                },
+            ],
+        },
+    )
+
+note: 
+  ┌─ features/create_contract.fe:1:1
+  │  
+1 │ ╭ contract Foo:
+2 │ │     pub def get_my_num() -> u256:
+3 │ │         return 42
+  │ ╰─────────────────^ attributes hash: 1249068046238630911
+  │  
+  = ContractAttributes {
+        public_functions: [
+            FunctionAttributes {
+                is_public: true,
+                name: "get_my_num",
+                params: [],
+                return_type: Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            },
+        ],
+        init_function: None,
+        events: [],
+        list_expressions: {},
+        string_literals: {},
+        structs: [],
+        external_contracts: [
+            Contract {
+                name: "FooFactory",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "create_foo",
+                        params: [],
+                        return_type: Base(
+                            Address,
+                        ),
+                    },
+                ],
+            },
+        ],
+        created_contracts: {},
+    }
+
+note: 
+  ┌─ features/create_contract.fe:5:1
+  │  
+5 │ ╭ contract FooFactory:
+6 │ │     pub def create_foo() -> address:
+7 │ │         foo: Foo = Foo.create(0)
+8 │ │         return address(foo)
+  │ ╰───────────────────────────^ attributes hash: 16172122424065765611
+  │  
+  = ContractAttributes {
+        public_functions: [
+            FunctionAttributes {
+                is_public: true,
+                name: "create_foo",
+                params: [],
+                return_type: Base(
+                    Address,
+                ),
+            },
+        ],
+        init_function: None,
+        events: [],
+        list_expressions: {},
+        string_literals: {},
+        structs: [],
+        external_contracts: [
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "get_my_num",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ],
+        created_contracts: {
+            "Foo",
+        },
+    }
+
+note: 
+  ┌─ features/create_contract.fe:7:20
+  │
+7 │         foo: Foo = Foo.create(0)
+  │                    ^^^^^^^^^^ attributes hash: 4712101790258272829
+  │
+  = TypeAttribute {
+        typ: Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "get_my_num",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+        func_name: "create",
+    }
+
+note: 
+  ┌─ features/create_contract.fe:8:16
+  │
+8 │         return address(foo)
+  │                ^^^^^^^ attributes hash: 6114858510168753394
+  │
+  = TypeConstructor {
+        typ: Base(
+            Address,
+        ),
+    }
+
+note: 
+  ┌─ features/create_contract.fe:2:29
+  │
+2 │     pub def get_my_num() -> u256:
+  │                             ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/create_contract.fe:6:29
+  │
+6 │     pub def create_foo() -> address:
+  │                             ^^^^^^^ attributes hash: 574436082528610497
+  │
+  = Base(
+        Address,
+    )
+
+note: 
+  ┌─ features/create_contract.fe:7:14
+  │
+7 │         foo: Foo = Foo.create(0)
+  │              ^^^ attributes hash: 2324270301873557290
+  │
+  = Contract(
+        Contract {
+            name: "Foo",
+            functions: [
+                FunctionAttributes {
+                    is_public: true,
+                    name: "get_my_num",
+                    params: [],
+                    return_type: Base(
+                        Numeric(
+                            U256,
+                        ),
+                    ),
+                },
+            ],
+        },
+    )
+
+

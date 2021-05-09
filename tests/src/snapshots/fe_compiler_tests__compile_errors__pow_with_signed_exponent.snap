@@ -1,0 +1,9 @@
+---
+source: tests/src/compile_errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+
+
+SignedExponentNotAllowed on line 5
+[31mbase ** exp[0m

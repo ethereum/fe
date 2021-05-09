@@ -12,7 +12,7 @@ Node(
         end: 3,
       ),
     ),
-    generic_args: [],
+    generic_args: None,
     args: Node(
       kind: [],
       span: Span(

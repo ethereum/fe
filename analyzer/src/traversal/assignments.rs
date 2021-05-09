@@ -3,6 +3,7 @@ use crate::errors::SemanticError;
 use crate::namespace::scopes::{BlockScope, Shared};
 use crate::operations;
 use crate::traversal::expressions;
+use fe_common::diagnostics::Label;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use std::rc::Rc;
@@ -17,26 +18,76 @@ pub fn assign(
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::Assign { target, value } = &stmt.kind {
         let target_attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), target)?;
-        let value_attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), value)?;
 
+        let value_attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), value)?;
+        check_assign_target(Rc::clone(&context), target)?;
         if target_attributes.typ != value_attributes.typ {
-            return Err(SemanticError::type_error());
+            context.borrow_mut().fancy_error(
+                "mismatched types",
+                vec![
+                    Label::primary(
+                        target.span,
+                        format!("this variable has type `{}`", target_attributes.typ),
+                    ),
+                    Label::secondary(
+                        value.span,
+                        format!(
+                            "this value has incompatible type `{}`",
+                            value_attributes.typ
+                        ),
+                    ),
+                ],
+                vec![],
+            );
         }
 
         if matches!(
             (
+                target_attributes.location,
                 value_attributes.final_location(),
-                target_attributes.location
             ),
-            (Location::Storage { .. }, Location::Memory)
+            (Location::Memory, Location::Storage { .. })
         ) {
-            return Err(SemanticError::cannot_move());
+            context.borrow_mut().fancy_error(
+                "location mismatch",
+                vec![
+                    Label::primary(target.span, "this variable is located in memory"),
+                    Label::secondary(value.span, "this value is located in storage"),
+                ],
+                vec!["Hint: values located in storage can be copied to memory using the `to_mem` function.".into(),
+                     "Example: `self.my_array.to_mem()`".into(),
+                    ],
+            );
         }
 
         return Ok(());
     }
 
     unreachable!()
+}
+
+pub fn check_assign_target(
+    context: Shared<Context>,
+    expr: &Node<fe::Expr>,
+) -> Result<(), SemanticError> {
+    use fe::Expr::*;
+    match &expr.kind {
+        Attribute { .. } => Ok(()),
+        Subscript { .. } => Ok(()),
+        Tuple { elts } => {
+            for elt in elts {
+                check_assign_target(Rc::clone(&context), elt)?;
+            }
+            Ok(())
+        }
+        Name(_) => Ok(()),
+        _ => {
+            context.borrow_mut().fancy_error("invalid assignment target",
+                                             vec![Label::primary(expr.span, "")],
+                                             vec!["The left side of an assignment can be a variable name, attribute, subscript, or tuple.".into()]);
+            Err(SemanticError::fatal())
+        }
+    }
 }
 
 /// Gather context information for assignments and check for type errors.

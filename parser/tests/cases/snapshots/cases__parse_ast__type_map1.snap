@@ -12,26 +12,32 @@ Node(
         end: 3,
       ),
     ),
-    args: [
-      Node(
-        kind: TypeDesc(Base(
-          base: "address",
+    args: Node(
+      kind: [
+        TypeDesc(Node(
+          kind: Base(
+            base: "address",
+          ),
+          span: Span(
+            start: 4,
+            end: 11,
+          ),
         )),
-        span: Span(
-          start: 4,
-          end: 11,
-        ),
-      ),
-      Node(
-        kind: TypeDesc(Base(
-          base: "u256",
+        TypeDesc(Node(
+          kind: Base(
+            base: "u256",
+          ),
+          span: Span(
+            start: 13,
+            end: 17,
+          ),
         )),
-        span: Span(
-          start: 13,
-          end: 17,
-        ),
+      ],
+      span: Span(
+        start: 3,
+        end: 18,
       ),
-    ],
+    ),
   ),
   span: Span(
     start: 0,

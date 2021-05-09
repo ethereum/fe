@@ -1,4 +1,5 @@
-#![cfg(feature = "solc-backend")]
+#[cfg(test)]
+mod analysis;
 #[cfg(test)]
 mod compile_errors;
 #[cfg(test)]

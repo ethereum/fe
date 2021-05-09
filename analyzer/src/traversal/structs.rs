@@ -1,10 +1,14 @@
 use fe_parser::{ast::Field, node::Node};
 
 use crate::errors::SemanticError;
-use crate::namespace::scopes::{ModuleScope, Shared};
-use crate::namespace::types::{type_desc, FixedSize, Struct, Type};
+use crate::namespace::scopes::{ModuleScope, Scope, Shared};
+use crate::namespace::types::{FixedSize, Struct, Type};
+use crate::traversal::types::type_desc;
+use crate::Context;
+use std::rc::Rc;
 
 pub fn struct_def(
+    context: Shared<Context>,
     module_scope: Shared<ModuleScope>,
     name: &str,
     fields: &[Node<Field>],
@@ -12,7 +16,11 @@ pub fn struct_def(
     let mut val = Struct::new(name);
     for field in fields {
         let Field { name, typ, .. } = &field.kind;
-        let field_type = type_desc(&module_scope.borrow().type_defs, &typ.kind)?;
+        let field_type = type_desc(
+            &Scope::Module(Rc::clone(&module_scope)),
+            Rc::clone(&context),
+            typ,
+        )?;
         if let Type::Base(base_typ) = field_type {
             val.add_field(&name.kind, &FixedSize::Base(base_typ))?;
         } else {

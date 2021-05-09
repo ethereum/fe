@@ -1,0 +1,8 @@
+struct House:
+    vacant: bool
+    price: u256
+
+contract Foo:
+
+    pub def bar():
+        my_house: House = House(price=false, vacant=100, bar=address(0))

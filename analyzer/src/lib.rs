@@ -11,21 +11,44 @@ pub mod namespace;
 mod operations;
 mod traversal;
 
-use crate::errors::SemanticError;
+use crate::errors::{AnalyzerError, ErrorKind};
 use context::Context;
+use fe_common::files::SourceFileId;
 use fe_parser::ast as fe;
 use std::rc::Rc;
 
 /// Performs semantic analysis of the source program and returns a `Context`
 /// instance.
-pub fn analyze(module: &fe::Module) -> Result<Context, SemanticError> {
-    let context = Context::new_shared();
-    traversal::module::module(Rc::clone(&context), module)?;
-    Ok(Rc::try_unwrap(context)
+pub fn analyze(module: &fe::Module, file_id: SourceFileId) -> Result<Context, AnalyzerError> {
+    let context = Context::new_shared(file_id);
+    let result = traversal::module::module(Rc::clone(&context), module);
+
+    // This should never panic.
+    let context = Rc::try_unwrap(context)
         .map_err(|_| "more than one strong reference pointing to context")
-        // This should never panic.
         .expect("failed to unwrap reference counter")
-        .into_inner())
+        .into_inner();
+
+    match result {
+        Ok(()) => {
+            if context.diagnostics.is_empty() {
+                Ok(context)
+            } else {
+                Err(AnalyzerError {
+                    diagnostics: context.diagnostics,
+                    classic: None,
+                })
+            }
+        }
+        Err(err) => Err(AnalyzerError {
+            diagnostics: context.diagnostics,
+            classic: if err.kind == ErrorKind::Fatal {
+                None
+            } else {
+                Some(err)
+            },
+        }),
+    }
 }
 
 #[cfg(feature = "fix-context-harness")]

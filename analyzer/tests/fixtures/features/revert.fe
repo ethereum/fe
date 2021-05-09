@@ -1,3 +1,0 @@
-contract Foo:
-    pub def bar() -> u256:
-        revert

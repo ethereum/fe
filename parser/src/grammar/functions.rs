@@ -27,7 +27,7 @@ pub fn parse_fn_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Nod
                 "function definition requires a list of parameters",
                 vec![Label::primary(
                     name.span,
-                    "function name must be followed by `(`".into(),
+                    "function name must be followed by `(`",
                 )],
                 vec![
                     format!(
@@ -286,7 +286,7 @@ fn expr_to_vardecl_target(par: &mut Parser, expr: Node<Expr>) -> ParseResult<Nod
                 "failed to parse variable declaration",
                 vec![Label::primary(
                     expr.span,
-                    "invalid variable declaration target".into(),
+                    "invalid variable declaration target",
                 )],
                 vec![
                     "The left side of a variable declaration can be either a name\nor a non-empty tuple."

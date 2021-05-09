@@ -1,0 +1,2332 @@
+---
+source: tests/src/analysis.rs
+expression: "build_snapshot(fixture, &src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "build_array",
+                        params: [
+                            (
+                                "a",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "b",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Array(
+                            Array {
+                                size: 3,
+                                inner: Numeric(
+                                    U256,
+                                ),
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "emit_event",
+                        params: [
+                            (
+                                "my_num",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "my_addrs",
+                                Array(
+                                    Array {
+                                        size: 5,
+                                        inner: Address,
+                                    },
+                                ),
+                            ),
+                            (
+                                "my_string",
+                                String(
+                                    FeString {
+                                        max_size: 11,
+                                    },
+                                ),
+                            ),
+                        ],
+                        return_type: Unit,
+                    },
+                ],
+            },
+        ),
+        "FooProxy": Contract(
+            Contract {
+                name: "FooProxy",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "call_build_array",
+                        params: [
+                            (
+                                "foo_address",
+                                Base(
+                                    Address,
+                                ),
+                            ),
+                            (
+                                "a",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "b",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Array(
+                            Array {
+                                size: 3,
+                                inner: Numeric(
+                                    U256,
+                                ),
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "call_emit_event",
+                        params: [
+                            (
+                                "foo_address",
+                                Base(
+                                    Address,
+                                ),
+                            ),
+                            (
+                                "my_num",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "my_addrs",
+                                Array(
+                                    Array {
+                                        size: 5,
+                                        inner: Address,
+                                    },
+                                ),
+                            ),
+                            (
+                                "my_string",
+                                String(
+                                    FeString {
+                                        max_size: 11,
+                                    },
+                                ),
+                            ),
+                        ],
+                        return_type: Unit,
+                    },
+                ],
+            },
+        ),
+    },
+    tuples_used: {},
+}
+
+note: 
+  ┌─ features/external_contract.fe:8:22
+  │
+8 │         emit MyEvent(my_num, my_addrs, my_string)
+  │                      ^^^^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/external_contract.fe:8:30
+  │
+8 │         emit MyEvent(my_num, my_addrs, my_string)
+  │                              ^^^^^^^^ attributes hash: 9740078941645877256
+  │
+  = ExpressionAttributes {
+        typ: Array(
+            Array {
+                size: 5,
+                inner: Address,
+            },
+        ),
+        location: Memory,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/external_contract.fe:8:40
+  │
+8 │         emit MyEvent(my_num, my_addrs, my_string)
+  │                                        ^^^^^^^^^ attributes hash: 6861635195207119580
+  │
+  = ExpressionAttributes {
+        typ: String(
+            FeString {
+                max_size: 11,
+            },
+        ),
+        location: Memory,
+        move_location: None,
+    }
+
+note: 
+   ┌─ features/external_contract.fe:12:9
+   │
+12 │         my_array[0] = a
+   │         ^^^^^^^^ attributes hash: 4935018943425161537
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 3,
+                 inner: Numeric(
+                     U256,
+                 ),
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:12:18
+   │
+12 │         my_array[0] = a
+   │                  ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:12:9
+   │
+12 │         my_array[0] = a
+   │         ^^^^^^^^^^^ attributes hash: 3617588353493611640
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:12:23
+   │
+12 │         my_array[0] = a
+   │                       ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:13:9
+   │
+13 │         my_array[1] = a * b
+   │         ^^^^^^^^ attributes hash: 4935018943425161537
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 3,
+                 inner: Numeric(
+                     U256,
+                 ),
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:13:18
+   │
+13 │         my_array[1] = a * b
+   │                  ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:13:9
+   │
+13 │         my_array[1] = a * b
+   │         ^^^^^^^^^^^ attributes hash: 3617588353493611640
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:13:23
+   │
+13 │         my_array[1] = a * b
+   │                       ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:13:27
+   │
+13 │         my_array[1] = a * b
+   │                           ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:13:23
+   │
+13 │         my_array[1] = a * b
+   │                       ^^^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:14:9
+   │
+14 │         my_array[2] = b
+   │         ^^^^^^^^ attributes hash: 4935018943425161537
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 3,
+                 inner: Numeric(
+                     U256,
+                 ),
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:14:18
+   │
+14 │         my_array[2] = b
+   │                  ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:14:9
+   │
+14 │         my_array[2] = b
+   │         ^^^^^^^^^^^ attributes hash: 3617588353493611640
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:14:23
+   │
+14 │         my_array[2] = b
+   │                       ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:15:16
+   │
+15 │         return my_array
+   │                ^^^^^^^^ attributes hash: 4935018943425161537
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 3,
+                 inner: Numeric(
+                     U256,
+                 ),
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:24:24
+   │
+24 │         foo: Foo = Foo(foo_address)
+   │                        ^^^^^^^^^^^ attributes hash: 513065555763557710
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Address,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:24:20
+   │
+24 │         foo: Foo = Foo(foo_address)
+   │                    ^^^^^^^^^^^^^^^^ attributes hash: 18356014201510878751
+   │
+   = ExpressionAttributes {
+         typ: Contract(
+             Contract {
+                 name: "Foo",
+                 functions: [
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "build_array",
+                         params: [
+                             (
+                                 "a",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "b",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                         ],
+                         return_type: Array(
+                             Array {
+                                 size: 3,
+                                 inner: Numeric(
+                                     U256,
+                                 ),
+                             },
+                         ),
+                     },
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "emit_event",
+                         params: [
+                             (
+                                 "my_num",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "my_addrs",
+                                 Array(
+                                     Array {
+                                         size: 5,
+                                         inner: Address,
+                                     },
+                                 ),
+                             ),
+                             (
+                                 "my_string",
+                                 String(
+                                     FeString {
+                                         max_size: 11,
+                                     },
+                                 ),
+                             ),
+                         ],
+                         return_type: Unit,
+                     },
+                 ],
+             },
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:25:9
+   │
+25 │         foo.emit_event(my_num, my_addrs, my_string)
+   │         ^^^ attributes hash: 18356014201510878751
+   │
+   = ExpressionAttributes {
+         typ: Contract(
+             Contract {
+                 name: "Foo",
+                 functions: [
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "build_array",
+                         params: [
+                             (
+                                 "a",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "b",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                         ],
+                         return_type: Array(
+                             Array {
+                                 size: 3,
+                                 inner: Numeric(
+                                     U256,
+                                 ),
+                             },
+                         ),
+                     },
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "emit_event",
+                         params: [
+                             (
+                                 "my_num",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "my_addrs",
+                                 Array(
+                                     Array {
+                                         size: 5,
+                                         inner: Address,
+                                     },
+                                 ),
+                             ),
+                             (
+                                 "my_string",
+                                 String(
+                                     FeString {
+                                         max_size: 11,
+                                     },
+                                 ),
+                             ),
+                         ],
+                         return_type: Unit,
+                     },
+                 ],
+             },
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:25:24
+   │
+25 │         foo.emit_event(my_num, my_addrs, my_string)
+   │                        ^^^^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:25:32
+   │
+25 │         foo.emit_event(my_num, my_addrs, my_string)
+   │                                ^^^^^^^^ attributes hash: 9740078941645877256
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 5,
+                 inner: Address,
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:25:42
+   │
+25 │         foo.emit_event(my_num, my_addrs, my_string)
+   │                                          ^^^^^^^^^ attributes hash: 6861635195207119580
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 11,
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:25:9
+   │
+25 │         foo.emit_event(my_num, my_addrs, my_string)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11340536269963356597
+   │
+   = ExpressionAttributes {
+         typ: Unit,
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:32:24
+   │
+32 │         foo: Foo = Foo(foo_address)
+   │                        ^^^^^^^^^^^ attributes hash: 513065555763557710
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Address,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:32:20
+   │
+32 │         foo: Foo = Foo(foo_address)
+   │                    ^^^^^^^^^^^^^^^^ attributes hash: 18356014201510878751
+   │
+   = ExpressionAttributes {
+         typ: Contract(
+             Contract {
+                 name: "Foo",
+                 functions: [
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "build_array",
+                         params: [
+                             (
+                                 "a",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "b",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                         ],
+                         return_type: Array(
+                             Array {
+                                 size: 3,
+                                 inner: Numeric(
+                                     U256,
+                                 ),
+                             },
+                         ),
+                     },
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "emit_event",
+                         params: [
+                             (
+                                 "my_num",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "my_addrs",
+                                 Array(
+                                     Array {
+                                         size: 5,
+                                         inner: Address,
+                                     },
+                                 ),
+                             ),
+                             (
+                                 "my_string",
+                                 String(
+                                     FeString {
+                                         max_size: 11,
+                                     },
+                                 ),
+                             ),
+                         ],
+                         return_type: Unit,
+                     },
+                 ],
+             },
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:33:16
+   │
+33 │         return foo.build_array(a, b)
+   │                ^^^ attributes hash: 18356014201510878751
+   │
+   = ExpressionAttributes {
+         typ: Contract(
+             Contract {
+                 name: "Foo",
+                 functions: [
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "build_array",
+                         params: [
+                             (
+                                 "a",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "b",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                         ],
+                         return_type: Array(
+                             Array {
+                                 size: 3,
+                                 inner: Numeric(
+                                     U256,
+                                 ),
+                             },
+                         ),
+                     },
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "emit_event",
+                         params: [
+                             (
+                                 "my_num",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "my_addrs",
+                                 Array(
+                                     Array {
+                                         size: 5,
+                                         inner: Address,
+                                     },
+                                 ),
+                             ),
+                             (
+                                 "my_string",
+                                 String(
+                                     FeString {
+                                         max_size: 11,
+                                     },
+                                 ),
+                             ),
+                         ],
+                         return_type: Unit,
+                     },
+                 ],
+             },
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:33:32
+   │
+33 │         return foo.build_array(a, b)
+   │                                ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:33:35
+   │
+33 │         return foo.build_array(a, b)
+   │                                   ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:33:16
+   │
+33 │         return foo.build_array(a, b)
+   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4935018943425161537
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 3,
+                 inner: Numeric(
+                     U256,
+                 ),
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+  ┌─ features/external_contract.fe:8:9
+  │
+8 │         emit MyEvent(my_num, my_addrs, my_string)
+  │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7378635640628475731
+  │
+  = EventDef {
+        name: "MyEvent",
+        topic: "0xd67c2bc3a91d2cec185a9b15d2b3c2ab27e058d76493e2442c375b78fc226e7b",
+        fields: [
+            (
+                "my_num",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+            (
+                "my_addrs",
+                Array(
+                    Array {
+                        size: 5,
+                        inner: Address,
+                    },
+                ),
+            ),
+            (
+                "my_string",
+                String(
+                    FeString {
+                        max_size: 11,
+                    },
+                ),
+            ),
+        ],
+        indexed_fields: [],
+    }
+
+note: 
+  ┌─ features/external_contract.fe:7:5
+  │  
+7 │ ╭     pub def emit_event(my_num: u256, my_addrs: address[5], my_string: String<11>):
+8 │ │         emit MyEvent(my_num, my_addrs, my_string)
+  │ ╰─────────────────────────────────────────────────^ attributes hash: 5933194758192470687
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "emit_event",
+        params: [
+            (
+                "my_num",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+            (
+                "my_addrs",
+                Array(
+                    Array {
+                        size: 5,
+                        inner: Address,
+                    },
+                ),
+            ),
+            (
+                "my_string",
+                String(
+                    FeString {
+                        max_size: 11,
+                    },
+                ),
+            ),
+        ],
+        return_type: Unit,
+    }
+
+note: 
+   ┌─ features/external_contract.fe:10:5
+   │  
+10 │ ╭     pub def build_array(a: u256, b: u256) -> u256[3]:
+11 │ │         my_array: u256[3]
+12 │ │         my_array[0] = a
+13 │ │         my_array[1] = a * b
+14 │ │         my_array[2] = b
+15 │ │         return my_array
+   │ ╰───────────────────────^ attributes hash: 18192261253764317470
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "build_array",
+         params: [
+             (
+                 "a",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+             (
+                 "b",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+         ],
+         return_type: Array(
+             Array {
+                 size: 3,
+                 inner: Numeric(
+                     U256,
+                 ),
+             },
+         ),
+     }
+
+note: 
+   ┌─ features/external_contract.fe:18:5
+   │  
+18 │ ╭     pub def call_emit_event(
+19 │ │         foo_address: address,
+20 │ │         my_num: u256,
+21 │ │         my_addrs: address[5],
+   · │
+24 │ │         foo: Foo = Foo(foo_address)
+25 │ │         foo.emit_event(my_num, my_addrs, my_string)
+   │ ╰───────────────────────────────────────────────────^ attributes hash: 16534951539656982547
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "call_emit_event",
+         params: [
+             (
+                 "foo_address",
+                 Base(
+                     Address,
+                 ),
+             ),
+             (
+                 "my_num",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+             (
+                 "my_addrs",
+                 Array(
+                     Array {
+                         size: 5,
+                         inner: Address,
+                     },
+                 ),
+             ),
+             (
+                 "my_string",
+                 String(
+                     FeString {
+                         max_size: 11,
+                     },
+                 ),
+             ),
+         ],
+         return_type: Unit,
+     }
+
+note: 
+   ┌─ features/external_contract.fe:27:5
+   │  
+27 │ ╭     pub def call_build_array(
+28 │ │          foo_address: address,
+29 │ │          a: u256,
+30 │ │          b: u256,
+31 │ │     ) -> u256[3]:
+32 │ │         foo: Foo = Foo(foo_address)
+33 │ │         return foo.build_array(a, b)
+   │ ╰────────────────────────────────────^ attributes hash: 10488008556965136008
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "call_build_array",
+         params: [
+             (
+                 "foo_address",
+                 Base(
+                     Address,
+                 ),
+             ),
+             (
+                 "a",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+             (
+                 "b",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+         ],
+         return_type: Array(
+             Array {
+                 size: 3,
+                 inner: Numeric(
+                     U256,
+                 ),
+             },
+         ),
+     }
+
+note: 
+   ┌─ features/external_contract.fe:11:9
+   │
+11 │         my_array: u256[3]
+   │         ^^^^^^^^^^^^^^^^^ attributes hash: 5963828201795370982
+   │
+   = Array(
+         Array {
+             size: 3,
+             inner: Numeric(
+                 U256,
+             ),
+         },
+     )
+
+note: 
+   ┌─ features/external_contract.fe:24:9
+   │
+24 │         foo: Foo = Foo(foo_address)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8627347501674821884
+   │
+   = Contract(
+         Contract {
+             name: "Foo",
+             functions: [
+                 FunctionAttributes {
+                     is_public: true,
+                     name: "build_array",
+                     params: [
+                         (
+                             "a",
+                             Base(
+                                 Numeric(
+                                     U256,
+                                 ),
+                             ),
+                         ),
+                         (
+                             "b",
+                             Base(
+                                 Numeric(
+                                     U256,
+                                 ),
+                             ),
+                         ),
+                     ],
+                     return_type: Array(
+                         Array {
+                             size: 3,
+                             inner: Numeric(
+                                 U256,
+                             ),
+                         },
+                     ),
+                 },
+                 FunctionAttributes {
+                     is_public: true,
+                     name: "emit_event",
+                     params: [
+                         (
+                             "my_num",
+                             Base(
+                                 Numeric(
+                                     U256,
+                                 ),
+                             ),
+                         ),
+                         (
+                             "my_addrs",
+                             Array(
+                                 Array {
+                                     size: 5,
+                                     inner: Address,
+                                 },
+                             ),
+                         ),
+                         (
+                             "my_string",
+                             String(
+                                 FeString {
+                                     max_size: 11,
+                                 },
+                             ),
+                         ),
+                     ],
+                     return_type: Unit,
+                 },
+             ],
+         },
+     )
+
+note: 
+   ┌─ features/external_contract.fe:32:9
+   │
+32 │         foo: Foo = Foo(foo_address)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8627347501674821884
+   │
+   = Contract(
+         Contract {
+             name: "Foo",
+             functions: [
+                 FunctionAttributes {
+                     is_public: true,
+                     name: "build_array",
+                     params: [
+                         (
+                             "a",
+                             Base(
+                                 Numeric(
+                                     U256,
+                                 ),
+                             ),
+                         ),
+                         (
+                             "b",
+                             Base(
+                                 Numeric(
+                                     U256,
+                                 ),
+                             ),
+                         ),
+                     ],
+                     return_type: Array(
+                         Array {
+                             size: 3,
+                             inner: Numeric(
+                                 U256,
+                             ),
+                         },
+                     ),
+                 },
+                 FunctionAttributes {
+                     is_public: true,
+                     name: "emit_event",
+                     params: [
+                         (
+                             "my_num",
+                             Base(
+                                 Numeric(
+                                     U256,
+                                 ),
+                             ),
+                         ),
+                         (
+                             "my_addrs",
+                             Array(
+                                 Array {
+                                     size: 5,
+                                     inner: Address,
+                                 },
+                             ),
+                         ),
+                         (
+                             "my_string",
+                             String(
+                                 FeString {
+                                     max_size: 11,
+                                 },
+                             ),
+                         ),
+                     ],
+                     return_type: Unit,
+                 },
+             ],
+         },
+     )
+
+note: 
+   ┌─ features/external_contract.fe:1:1
+   │  
+ 1 │ ╭ contract Foo:
+ 2 │ │     event MyEvent:
+ 3 │ │         my_num: u256
+ 4 │ │         my_addrs: address[5]
+   · │
+14 │ │         my_array[2] = b
+15 │ │         return my_array
+   │ ╰───────────────────────^ attributes hash: 11261423298995789029
+   │  
+   = ContractAttributes {
+         public_functions: [
+             FunctionAttributes {
+                 is_public: true,
+                 name: "build_array",
+                 params: [
+                     (
+                         "a",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "b",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Array(
+                     Array {
+                         size: 3,
+                         inner: Numeric(
+                             U256,
+                         ),
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "emit_event",
+                 params: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_addrs",
+                         Array(
+                             Array {
+                                 size: 5,
+                                 inner: Address,
+                             },
+                         ),
+                     ),
+                     (
+                         "my_string",
+                         String(
+                             FeString {
+                                 max_size: 11,
+                             },
+                         ),
+                     ),
+                 ],
+                 return_type: Unit,
+             },
+         ],
+         init_function: None,
+         events: [
+             EventDef {
+                 name: "MyEvent",
+                 topic: "0xd67c2bc3a91d2cec185a9b15d2b3c2ab27e058d76493e2442c375b78fc226e7b",
+                 fields: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_addrs",
+                         Array(
+                             Array {
+                                 size: 5,
+                                 inner: Address,
+                             },
+                         ),
+                     ),
+                     (
+                         "my_string",
+                         String(
+                             FeString {
+                                 max_size: 11,
+                             },
+                         ),
+                     ),
+                 ],
+                 indexed_fields: [],
+             },
+         ],
+         list_expressions: {},
+         string_literals: {},
+         structs: [],
+         external_contracts: [
+             Contract {
+                 name: "FooProxy",
+                 functions: [
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "call_build_array",
+                         params: [
+                             (
+                                 "foo_address",
+                                 Base(
+                                     Address,
+                                 ),
+                             ),
+                             (
+                                 "a",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "b",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                         ],
+                         return_type: Array(
+                             Array {
+                                 size: 3,
+                                 inner: Numeric(
+                                     U256,
+                                 ),
+                             },
+                         ),
+                     },
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "call_emit_event",
+                         params: [
+                             (
+                                 "foo_address",
+                                 Base(
+                                     Address,
+                                 ),
+                             ),
+                             (
+                                 "my_num",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "my_addrs",
+                                 Array(
+                                     Array {
+                                         size: 5,
+                                         inner: Address,
+                                     },
+                                 ),
+                             ),
+                             (
+                                 "my_string",
+                                 String(
+                                     FeString {
+                                         max_size: 11,
+                                     },
+                                 ),
+                             ),
+                         ],
+                         return_type: Unit,
+                     },
+                 ],
+             },
+         ],
+         created_contracts: {},
+     }
+
+note: 
+   ┌─ features/external_contract.fe:17:1
+   │  
+17 │ ╭ contract FooProxy:
+18 │ │     pub def call_emit_event(
+19 │ │         foo_address: address,
+20 │ │         my_num: u256,
+   · │
+32 │ │         foo: Foo = Foo(foo_address)
+33 │ │         return foo.build_array(a, b)
+   │ ╰────────────────────────────────────^ attributes hash: 14627458604945366717
+   │  
+   = ContractAttributes {
+         public_functions: [
+             FunctionAttributes {
+                 is_public: true,
+                 name: "call_build_array",
+                 params: [
+                     (
+                         "foo_address",
+                         Base(
+                             Address,
+                         ),
+                     ),
+                     (
+                         "a",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "b",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Array(
+                     Array {
+                         size: 3,
+                         inner: Numeric(
+                             U256,
+                         ),
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "call_emit_event",
+                 params: [
+                     (
+                         "foo_address",
+                         Base(
+                             Address,
+                         ),
+                     ),
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_addrs",
+                         Array(
+                             Array {
+                                 size: 5,
+                                 inner: Address,
+                             },
+                         ),
+                     ),
+                     (
+                         "my_string",
+                         String(
+                             FeString {
+                                 max_size: 11,
+                             },
+                         ),
+                     ),
+                 ],
+                 return_type: Unit,
+             },
+         ],
+         init_function: None,
+         events: [],
+         list_expressions: {},
+         string_literals: {},
+         structs: [],
+         external_contracts: [
+             Contract {
+                 name: "Foo",
+                 functions: [
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "build_array",
+                         params: [
+                             (
+                                 "a",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "b",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                         ],
+                         return_type: Array(
+                             Array {
+                                 size: 3,
+                                 inner: Numeric(
+                                     U256,
+                                 ),
+                             },
+                         ),
+                     },
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "emit_event",
+                         params: [
+                             (
+                                 "my_num",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "my_addrs",
+                                 Array(
+                                     Array {
+                                         size: 5,
+                                         inner: Address,
+                                     },
+                                 ),
+                             ),
+                             (
+                                 "my_string",
+                                 String(
+                                     FeString {
+                                         max_size: 11,
+                                     },
+                                 ),
+                             ),
+                         ],
+                         return_type: Unit,
+                     },
+                 ],
+             },
+         ],
+         created_contracts: {},
+     }
+
+note: 
+   ┌─ features/external_contract.fe:24:20
+   │
+24 │         foo: Foo = Foo(foo_address)
+   │                    ^^^ attributes hash: 1990501847882761040
+   │
+   = TypeConstructor {
+         typ: Contract(
+             Contract {
+                 name: "Foo",
+                 functions: [
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "build_array",
+                         params: [
+                             (
+                                 "a",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "b",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                         ],
+                         return_type: Array(
+                             Array {
+                                 size: 3,
+                                 inner: Numeric(
+                                     U256,
+                                 ),
+                             },
+                         ),
+                     },
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "emit_event",
+                         params: [
+                             (
+                                 "my_num",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "my_addrs",
+                                 Array(
+                                     Array {
+                                         size: 5,
+                                         inner: Address,
+                                     },
+                                 ),
+                             ),
+                             (
+                                 "my_string",
+                                 String(
+                                     FeString {
+                                         max_size: 11,
+                                     },
+                                 ),
+                             ),
+                         ],
+                         return_type: Unit,
+                     },
+                 ],
+             },
+         ),
+     }
+
+note: 
+   ┌─ features/external_contract.fe:25:9
+   │
+25 │         foo.emit_event(my_num, my_addrs, my_string)
+   │         ^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │
+   = ValueAttribute
+
+note: 
+   ┌─ features/external_contract.fe:32:20
+   │
+32 │         foo: Foo = Foo(foo_address)
+   │                    ^^^ attributes hash: 1990501847882761040
+   │
+   = TypeConstructor {
+         typ: Contract(
+             Contract {
+                 name: "Foo",
+                 functions: [
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "build_array",
+                         params: [
+                             (
+                                 "a",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "b",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                         ],
+                         return_type: Array(
+                             Array {
+                                 size: 3,
+                                 inner: Numeric(
+                                     U256,
+                                 ),
+                             },
+                         ),
+                     },
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "emit_event",
+                         params: [
+                             (
+                                 "my_num",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "my_addrs",
+                                 Array(
+                                     Array {
+                                         size: 5,
+                                         inner: Address,
+                                     },
+                                 ),
+                             ),
+                             (
+                                 "my_string",
+                                 String(
+                                     FeString {
+                                         max_size: 11,
+                                     },
+                                 ),
+                             ),
+                         ],
+                         return_type: Unit,
+                     },
+                 ],
+             },
+         ),
+     }
+
+note: 
+   ┌─ features/external_contract.fe:33:16
+   │
+33 │         return foo.build_array(a, b)
+   │                ^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │
+   = ValueAttribute
+
+note: 
+  ┌─ features/external_contract.fe:2:5
+  │  
+2 │ ╭     event MyEvent:
+3 │ │         my_num: u256
+4 │ │         my_addrs: address[5]
+5 │ │         my_string: String<11>
+  │ ╰─────────────────────────────^ attributes hash: 7378635640628475731
+  │  
+  = EventDef {
+        name: "MyEvent",
+        topic: "0xd67c2bc3a91d2cec185a9b15d2b3c2ab27e058d76493e2442c375b78fc226e7b",
+        fields: [
+            (
+                "my_num",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+            (
+                "my_addrs",
+                Array(
+                    Array {
+                        size: 5,
+                        inner: Address,
+                    },
+                ),
+            ),
+            (
+                "my_string",
+                String(
+                    FeString {
+                        max_size: 11,
+                    },
+                ),
+            ),
+        ],
+        indexed_fields: [],
+    }
+
+note: 
+  ┌─ features/external_contract.fe:3:17
+  │
+3 │         my_num: u256
+  │                 ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/external_contract.fe:4:19
+  │
+4 │         my_addrs: address[5]
+  │                   ^^^^^^^ attributes hash: 574436082528610497
+  │
+  = Base(
+        Address,
+    )
+
+note: 
+  ┌─ features/external_contract.fe:4:19
+  │
+4 │         my_addrs: address[5]
+  │                   ^^^^^^^^^^ attributes hash: 14952089586677068254
+  │
+  = Array(
+        Array {
+            size: 5,
+            inner: Address,
+        },
+    )
+
+note: 
+  ┌─ features/external_contract.fe:5:20
+  │
+5 │         my_string: String<11>
+  │                    ^^^^^^^^^^ attributes hash: 635517298199288434
+  │
+  = String(
+        FeString {
+            max_size: 11,
+        },
+    )
+
+note: 
+  ┌─ features/external_contract.fe:7:32
+  │
+7 │     pub def emit_event(my_num: u256, my_addrs: address[5], my_string: String<11>):
+  │                                ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/external_contract.fe:7:48
+  │
+7 │     pub def emit_event(my_num: u256, my_addrs: address[5], my_string: String<11>):
+  │                                                ^^^^^^^ attributes hash: 574436082528610497
+  │
+  = Base(
+        Address,
+    )
+
+note: 
+  ┌─ features/external_contract.fe:7:48
+  │
+7 │     pub def emit_event(my_num: u256, my_addrs: address[5], my_string: String<11>):
+  │                                                ^^^^^^^^^^ attributes hash: 14952089586677068254
+  │
+  = Array(
+        Array {
+            size: 5,
+            inner: Address,
+        },
+    )
+
+note: 
+  ┌─ features/external_contract.fe:7:71
+  │
+7 │     pub def emit_event(my_num: u256, my_addrs: address[5], my_string: String<11>):
+  │                                                                       ^^^^^^^^^^ attributes hash: 635517298199288434
+  │
+  = String(
+        FeString {
+            max_size: 11,
+        },
+    )
+
+note: 
+   ┌─ features/external_contract.fe:10:28
+   │
+10 │     pub def build_array(a: u256, b: u256) -> u256[3]:
+   │                            ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/external_contract.fe:10:37
+   │
+10 │     pub def build_array(a: u256, b: u256) -> u256[3]:
+   │                                     ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/external_contract.fe:10:46
+   │
+10 │     pub def build_array(a: u256, b: u256) -> u256[3]:
+   │                                              ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/external_contract.fe:10:46
+   │
+10 │     pub def build_array(a: u256, b: u256) -> u256[3]:
+   │                                              ^^^^^^^ attributes hash: 5963828201795370982
+   │
+   = Array(
+         Array {
+             size: 3,
+             inner: Numeric(
+                 U256,
+             ),
+         },
+     )
+
+note: 
+   ┌─ features/external_contract.fe:19:22
+   │
+19 │         foo_address: address,
+   │                      ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ features/external_contract.fe:20:17
+   │
+20 │         my_num: u256,
+   │                 ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/external_contract.fe:21:19
+   │
+21 │         my_addrs: address[5],
+   │                   ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ features/external_contract.fe:21:19
+   │
+21 │         my_addrs: address[5],
+   │                   ^^^^^^^^^^ attributes hash: 14952089586677068254
+   │
+   = Array(
+         Array {
+             size: 5,
+             inner: Address,
+         },
+     )
+
+note: 
+   ┌─ features/external_contract.fe:22:20
+   │
+22 │         my_string: String<11>
+   │                    ^^^^^^^^^^ attributes hash: 635517298199288434
+   │
+   = String(
+         FeString {
+             max_size: 11,
+         },
+     )
+
+note: 
+   ┌─ features/external_contract.fe:28:23
+   │
+28 │          foo_address: address,
+   │                       ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ features/external_contract.fe:29:13
+   │
+29 │          a: u256,
+   │             ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/external_contract.fe:30:13
+   │
+30 │          b: u256,
+   │             ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/external_contract.fe:31:10
+   │
+31 │     ) -> u256[3]:
+   │          ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/external_contract.fe:31:10
+   │
+31 │     ) -> u256[3]:
+   │          ^^^^^^^ attributes hash: 5963828201795370982
+   │
+   = Array(
+         Array {
+             size: 3,
+             inner: Numeric(
+                 U256,
+             ),
+         },
+     )
+
+note: 
+   ┌─ features/external_contract.fe:11:19
+   │
+11 │         my_array: u256[3]
+   │                   ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/external_contract.fe:11:19
+   │
+11 │         my_array: u256[3]
+   │                   ^^^^^^^ attributes hash: 5963828201795370982
+   │
+   = Array(
+         Array {
+             size: 3,
+             inner: Numeric(
+                 U256,
+             ),
+         },
+     )
+
+note: 
+   ┌─ features/external_contract.fe:24:14
+   │
+24 │         foo: Foo = Foo(foo_address)
+   │              ^^^ attributes hash: 4899098567064031318
+   │
+   = Contract(
+         Contract {
+             name: "Foo",
+             functions: [
+                 FunctionAttributes {
+                     is_public: true,
+                     name: "build_array",
+                     params: [
+                         (
+                             "a",
+                             Base(
+                                 Numeric(
+                                     U256,
+                                 ),
+                             ),
+                         ),
+                         (
+                             "b",
+                             Base(
+                                 Numeric(
+                                     U256,
+                                 ),
+                             ),
+                         ),
+                     ],
+                     return_type: Array(
+                         Array {
+                             size: 3,
+                             inner: Numeric(
+                                 U256,
+                             ),
+                         },
+                     ),
+                 },
+                 FunctionAttributes {
+                     is_public: true,
+                     name: "emit_event",
+                     params: [
+                         (
+                             "my_num",
+                             Base(
+                                 Numeric(
+                                     U256,
+                                 ),
+                             ),
+                         ),
+                         (
+                             "my_addrs",
+                             Array(
+                                 Array {
+                                     size: 5,
+                                     inner: Address,
+                                 },
+                             ),
+                         ),
+                         (
+                             "my_string",
+                             String(
+                                 FeString {
+                                     max_size: 11,
+                                 },
+                             ),
+                         ),
+                     ],
+                     return_type: Unit,
+                 },
+             ],
+         },
+     )
+
+note: 
+   ┌─ features/external_contract.fe:32:14
+   │
+32 │         foo: Foo = Foo(foo_address)
+   │              ^^^ attributes hash: 4899098567064031318
+   │
+   = Contract(
+         Contract {
+             name: "Foo",
+             functions: [
+                 FunctionAttributes {
+                     is_public: true,
+                     name: "build_array",
+                     params: [
+                         (
+                             "a",
+                             Base(
+                                 Numeric(
+                                     U256,
+                                 ),
+                             ),
+                         ),
+                         (
+                             "b",
+                             Base(
+                                 Numeric(
+                                     U256,
+                                 ),
+                             ),
+                         ),
+                     ],
+                     return_type: Array(
+                         Array {
+                             size: 3,
+                             inner: Numeric(
+                                 U256,
+                             ),
+                         },
+                     ),
+                 },
+                 FunctionAttributes {
+                     is_public: true,
+                     name: "emit_event",
+                     params: [
+                         (
+                             "my_num",
+                             Base(
+                                 Numeric(
+                                     U256,
+                                 ),
+                             ),
+                         ),
+                         (
+                             "my_addrs",
+                             Array(
+                                 Array {
+                                     size: 5,
+                                     inner: Address,
+                                 },
+                             ),
+                         ),
+                         (
+                             "my_string",
+                             String(
+                                 FeString {
+                                     max_size: 11,
+                                 },
+                             ),
+                         ),
+                     ],
+                     return_type: Unit,
+                 },
+             ],
+         },
+     )
+
+

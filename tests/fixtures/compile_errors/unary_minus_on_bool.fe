@@ -1,5 +1,0 @@
-contract Foo:
-
-    pub def bar():
-        x:bool = true
-        -x

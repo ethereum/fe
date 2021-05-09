@@ -1,2 +1,0 @@
-contract Foo:
-  x: map<map<u8, u8>, address>

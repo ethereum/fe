@@ -1,0 +1,10 @@
+---
+source: tests/src/compile_errors.rs
+expression: "error_string(&path, &src)"
+
+---
+
+
+TypeError on line 7
+pub def bar() -> u256:
+        [31mreturn self.foo()[0m

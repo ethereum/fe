@@ -1,5 +1,5 @@
 #![cfg(feature = "solc-backend")]
-use compiler::errors::{CompileError, ErrorKind};
+use compiler::errors::{AnalyzerError, CompileError, ErrorKind};
 use evm_runtime::{ExitReason, Handler};
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::files::{FileStore, SourceFileId};
@@ -196,8 +196,14 @@ fn print_compiler_errors(error: CompileError, src: &str, files: &FileStore) {
     for err in error.errors {
         match err {
             ErrorKind::Str(err) => eprintln!("Compiler error: {}", err),
-            ErrorKind::Analyzer(err) => {
-                eprintln!("Analyzer error: {}", err.format_user(&src))
+            ErrorKind::Analyzer(AnalyzerError {
+                diagnostics,
+                classic,
+            }) => {
+                print_diagnostics(&diagnostics, &files);
+                if let Some(err) = classic {
+                    eprintln!("Analyzer error: {}", err.format_user(&src))
+                }
             }
             ErrorKind::Parser(diags) => print_diagnostics(&diags, &files),
         }

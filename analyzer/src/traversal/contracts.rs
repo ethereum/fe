@@ -95,7 +95,7 @@ fn contract_field(
     stmt: &Node<fe::Field>,
 ) -> Result<(), SemanticError> {
     let fe::Field { name, typ, .. } = &stmt.kind;
-    let typ = types::type_desc(Scope::Contract(Rc::clone(&scope)), context, typ)?;
+    let typ = types::type_desc(&Scope::Contract(Rc::clone(&scope)), context, &typ)?;
     scope.borrow_mut().add_field(&name.kind, typ)
 }
 
@@ -148,11 +148,12 @@ fn event_field(
     context: Shared<Context>,
     field: &Node<fe::EventField>,
 ) -> Result<(bool, (String, FixedSize)), SemanticError> {
+    let fe::EventField { is_idx, name, typ } = &field.kind;
     Ok((
-        field.kind.is_idx,
+        *is_idx,
         (
-            field.kind.name.kind.to_string(),
-            types::type_desc_fixed_size(Scope::Contract(scope), context, &field.kind.typ)?,
+            name.kind.to_string(),
+            types::type_desc_fixed_size(&Scope::Contract(scope), context, &typ)?,
         ),
     ))
 }

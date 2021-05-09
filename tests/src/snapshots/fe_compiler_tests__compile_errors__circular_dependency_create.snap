@@ -1,0 +1,9 @@
+---
+source: tests/src/compile_errors.rs
+expression: "error_string(&path, &src)"
+
+---
+
+
+CircularDependency on line 3
+foo: Foo = [31mFoo.create(0)[0m

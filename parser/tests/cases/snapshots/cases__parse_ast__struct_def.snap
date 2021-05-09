@@ -114,26 +114,32 @@ Node(
                   end: 67,
                 ),
               ),
-              args: [
-                Node(
-                  kind: TypeDesc(Base(
-                    base: "u8",
+              args: Node(
+                kind: [
+                  TypeDesc(Node(
+                    kind: Base(
+                      base: "u8",
+                    ),
+                    span: Span(
+                      start: 68,
+                      end: 70,
+                    ),
                   )),
-                  span: Span(
-                    start: 68,
-                    end: 70,
-                  ),
-                ),
-                Node(
-                  kind: TypeDesc(Base(
-                    base: "foo",
+                  TypeDesc(Node(
+                    kind: Base(
+                      base: "foo",
+                    ),
+                    span: Span(
+                      start: 72,
+                      end: 75,
+                    ),
                   )),
-                  span: Span(
-                    start: 72,
-                    end: 75,
-                  ),
+                ],
+                span: Span(
+                  start: 67,
+                  end: 76,
                 ),
-              ],
+              ),
             ),
             span: Span(
               start: 64,

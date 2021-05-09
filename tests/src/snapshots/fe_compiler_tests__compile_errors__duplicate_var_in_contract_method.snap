@@ -1,0 +1,11 @@
+---
+source: tests/src/compile_errors.rs
+expression: "error_string(&path, &src)"
+
+---
+
+
+AlreadyDefined on line 4
+pub def bar():
+        foo: u8
+        [31mfoo: u8[0m

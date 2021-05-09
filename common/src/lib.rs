@@ -3,4 +3,4 @@ pub mod files;
 pub mod numeric;
 mod span;
 pub mod utils;
-pub use span::Span;
+pub use span::{Span, Spanned};

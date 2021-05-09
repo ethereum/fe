@@ -1,0 +1,12 @@
+---
+source: tests/src/compile_errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: literal out of range for `i64`
+  ┌─ [snippet]:3:7
+  │
+3 │   i64(9223372036854775808)
+  │       ^^^^^^^^^^^^^^^^^^^ does not fit into type `i64`
+
+

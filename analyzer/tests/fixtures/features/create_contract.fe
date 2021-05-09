@@ -1,8 +1,0 @@
-contract Foo:
-    pub def get_my_num() -> u256:
-        return 42
-
-contract FooFactory:
-    pub def create_foo() -> address:
-        foo: Foo = Foo.create(0)
-        return address(foo)

@@ -1,6 +1,6 @@
 //! Errors returned by the compilers and ABI builder.
 
-use fe_analyzer::errors::SemanticError;
+pub use fe_analyzer::errors::AnalyzerError;
 use fe_common::diagnostics::Diagnostic;
 use once_cell::sync::Lazy;
 use std::borrow::Cow;
@@ -22,7 +22,7 @@ pub fn install_compiler_panic_hook() {
 #[derive(Debug)]
 pub enum ErrorKind {
     Str(Cow<'static, str>),
-    Analyzer(SemanticError),
+    Analyzer(AnalyzerError),
     Parser(Vec<Diagnostic>),
 }
 
@@ -56,12 +56,6 @@ impl CompileError {
             errors: vec![ErrorKind::Str(val.to_string().into())],
         }
     }
-
-    pub fn analyzer(err: SemanticError) -> Self {
-        Self {
-            errors: vec![ErrorKind::Analyzer(err)],
-        }
-    }
 }
 
 impl<'a> From<serde_json::error::Error> for CompileError {
@@ -73,12 +67,6 @@ impl<'a> From<serde_json::error::Error> for CompileError {
 impl<'a> From<ethabi::Error> for CompileError {
     fn from(e: ethabi::Error) -> Self {
         CompileError::str(&format!("ethabi error: {}", e))
-    }
-}
-
-impl<'a> From<SemanticError> for CompileError {
-    fn from(e: SemanticError) -> Self {
-        CompileError::analyzer(e)
     }
 }
 

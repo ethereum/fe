@@ -1,3 +1,0 @@
-contract Foo:
-    pub def bar(some_condition: bool) -> bool:
-        return not some_condition

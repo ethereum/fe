@@ -1,7 +1,6 @@
 use crate::errors::SemanticError;
-use crate::namespace::scopes::{ModuleScope, Shared};
-use crate::namespace::types;
-use crate::traversal::{contracts, structs};
+use crate::namespace::scopes::{ModuleScope, Scope, Shared};
+use crate::traversal::{contracts, structs, types};
 use crate::Context;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
@@ -15,9 +14,11 @@ pub fn module(context: Shared<Context>, module: &fe::Module) -> Result<(), Seman
 
     for stmt in module.body.iter() {
         match &stmt.kind {
-            fe::ModuleStmt::TypeDef { .. } => type_def(Rc::clone(&scope), stmt)?,
+            fe::ModuleStmt::TypeDef { .. } => {
+                type_def(Rc::clone(&context), Rc::clone(&scope), stmt)?
+            }
             fe::ModuleStmt::StructDef { name, fields } => {
-                structs::struct_def(Rc::clone(&scope), &name.kind, fields)?
+                structs::struct_def(Rc::clone(&context), Rc::clone(&scope), &name.kind, fields)?
             }
             fe::ModuleStmt::ContractDef { .. } => {
                 // Collect contract statements and the scope that we create for them. After we
@@ -43,9 +44,13 @@ pub fn module(context: Shared<Context>, module: &fe::Module) -> Result<(), Seman
     Ok(())
 }
 
-fn type_def(scope: Shared<ModuleScope>, def: &Node<fe::ModuleStmt>) -> Result<(), SemanticError> {
+fn type_def(
+    context: Shared<Context>,
+    scope: Shared<ModuleScope>,
+    def: &Node<fe::ModuleStmt>,
+) -> Result<(), SemanticError> {
     if let fe::ModuleStmt::TypeDef { name, typ } = &def.kind {
-        let typ = types::type_desc(&scope.borrow().type_defs, &typ.kind)?;
+        let typ = types::type_desc(&Scope::Module(Rc::clone(&scope)), context, &typ)?;
         scope.borrow_mut().add_type_def(&name.kind, typ)?;
         return Ok(());
     }

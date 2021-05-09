@@ -96,7 +96,7 @@ mod _utils;
 use crate::_utils::pretty_curly_print;
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::files::FileStore;
-use fe_compiler::errors::{install_compiler_panic_hook, ErrorKind};
+use fe_compiler::errors::{install_compiler_panic_hook, AnalyzerError, ErrorKind};
 use fe_compiler::types::CompiledModule;
 
 const DEFAULT_OUTPUT_DIR_NAME: &str = "output";
@@ -183,8 +183,14 @@ pub fn main() {
             for err in error.errors {
                 match err {
                     ErrorKind::Str(err) => eprintln!("Compiler error: {}", err),
-                    ErrorKind::Analyzer(err) => {
-                        eprintln!("Analyzer error: {}", err.format_user(&content))
+                    ErrorKind::Analyzer(AnalyzerError {
+                        diagnostics,
+                        classic,
+                    }) => {
+                        print_diagnostics(&diagnostics, &files);
+                        if let Some(err) = classic {
+                            eprintln!("Analyzer error: {}", err.format_user(&content));
+                        }
                     }
                     ErrorKind::Parser(diags) => print_diagnostics(&diags, &files),
                 }

@@ -134,7 +134,7 @@ fn emit(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
         let event_values = args
             .kind
             .iter()
-            .map(|arg| expressions::call_arg(context, arg))
+            .map(|arg| expressions::expr(context, &arg.kind.value))
             .collect();
 
         if let Some(event) = context.get_emit(stmt) {
