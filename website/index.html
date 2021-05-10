@@ -25,6 +25,8 @@
   <meta property="twitter:site" content="fe.ethereum.org">
 
   <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@10.7.2/styles/default.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/highlightjs@9.16.2/styles/vs2015.css">
 </head>
 <body>
   <header class="bg-white">
@@ -178,29 +180,29 @@
   23
 
                       </div>
-                      <code class="flex-auto relative block text-white pt-4 pb-4 px-4 overflow-auto">contract Ownable:
-  _owner: address
-  
-  event OwnershipTransferred:
-    idx previousOwner: address
-    idx newOwner: address
-    
-  def __init__():
-    self._owner = msg.sender
-  
-  pub def owner() -> address:
-    return self._owner
-  
-  pub def renounceOwnership():
-    assert msg.sender == self._owner
-    self._owner = address(0)
-    emit OwnershipTransferred(msg.sender, address(0))
-  
-  pub def transferOwnership(newOwner: address):
-    assert msg.sender == self._owner
-    assert newOwner != address(0)
-    self._owner = newOwner
-    emit OwnershipTransferred(msg.sender, newOwner)</code>
+                      <code class="language-python flex-auto relative block text-white pt-4 pb-4 px-4 overflow-auto">
+
+# We can define type aliases using the `type` keyword
+type BookMsg = bytes[100]
+
+# The `contract` keyword defines a new contract type
+contract GuestBook:
+    pub guest_book: map&lt;address, BookMsg&gt;
+
+    # Events can be defined on contract or module level
+    event Signed:
+        book_msg: BookMsg
+
+    pub def sign(book_msg: BookMsg):
+        # All storage access is explicit using `self.&lt;some-key&gt;`
+        self.guest_book[msg.sender] = book_msg
+
+        # Emit the `Signed` event
+        emit Signed(book_msg=book_msg)
+
+    pub def get_msg(addr: address) -> BookMsg:
+        return self.guest_book[addr].to_mem()
+</code>
                     </pre>
                   </div>
                 </div>
@@ -290,5 +292,8 @@
 
     menuBtn.addEventListener('click', toggleMenu)
   </script>
+  <script src="https://unpkg.com/@highlightjs/cdn-assets@10.7.2/highlight.min.js"></script>
+  <script src="https://unpkg.com/@highlightjs/cdn-assets@10.7.2/languages/python.min.js"></script>
+  <script>hljs.highlightAll();</script>
 </body>
 </html>
