@@ -47,5 +47,7 @@ fn test_lowering(fixture: &str) {
     assert_strings_eq!(
         replace_spans(to_ron_string_pretty(&expected_lowered_ast).unwrap()),
         replace_spans(to_ron_string_pretty(&actual_lowered_ast).unwrap()),
-    )
+    );
+
+    fe_analyzer::analyze(&actual_lowered_ast).expect("analysis of the lowered module failed");
 }
