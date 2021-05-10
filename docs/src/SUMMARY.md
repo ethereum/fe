@@ -10,3 +10,4 @@
     * [Release](development/release.md)
 * [Specification (WIP)](spec/index.md)
 * [Release Notes](release_notes.md)
+* [Code of Conduct](code_of_conduct.md)
