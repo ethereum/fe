@@ -98,7 +98,9 @@ use rstest::rstest;
     case("binary_operations/add_uints.fe", TypeError),
     case("binary_operations/lshift_bool.fe", TypeError),
     case("binary_operations/lshift_with_int.fe", TypeError),
-    case("binary_operations/pow_int.fe", TypeError)
+    case("binary_operations/pow_int.fe", TypeError),
+    case("bad_tuple_attr1.fe", UndefinedValue),
+    case("bad_tuple_attr2.fe", UndefinedValue)
 )]
 fn test_compile_errors(fixture_file: &str, expected_error: fe_analyzer::errors::ErrorKind) {
     let mut files = FileStore::new();

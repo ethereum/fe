@@ -366,9 +366,13 @@ fn expr_attribute(
 
 /// Pull the item index from the attribute string (e.g. "item4" -> "4").
 fn tuple_item_index(item: &str) -> Result<usize, SemanticError> {
-    item[4..]
-        .parse::<usize>()
-        .map_err(|_| SemanticError::undefined_value())
+    if item.len() < 5 || &item[..4] != "item" {
+        Err(SemanticError::undefined_value())
+    } else {
+        item[4..]
+            .parse::<usize>()
+            .map_err(|_| SemanticError::undefined_value())
+    }
 }
 
 fn expr_attribute_self(
