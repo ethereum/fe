@@ -58,22 +58,6 @@ note:
     }
 
 note: 
-  ┌─ features/create_contract_from_init.fe:3:16
-  │
-3 │         return 42
-  │                ^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/create_contract_from_init.fe:9:9
   │
 9 │         self.foo_addr = address(Foo.create(0))
@@ -102,50 +86,6 @@ note:
             Numeric(
                 U256,
             ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/create_contract_from_init.fe:9:44
-  │
-9 │         self.foo_addr = address(Foo.create(0))
-  │                                            ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/create_contract_from_init.fe:9:33
-  │
-9 │         self.foo_addr = address(Foo.create(0))
-  │                                 ^^^^^^^^^^^^^ attributes hash: 8552961459538575979
-  │
-  = ExpressionAttributes {
-        typ: Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_my_num",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ],
-            },
         ),
         location: Value,
         move_location: None,
@@ -192,26 +132,6 @@ note:
         location: Value,
         move_location: None,
     }
-
-note: 
-   ┌─ features/create_contract_from_init.fe:12:16
-   │
-12 │         return self.foo_addr
-   │                ^^^^^^^^^^^^^ attributes hash: 10848859084443309747
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
 
 note: 
    ┌─ features/create_contract_from_init.fe:12:16

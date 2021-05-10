@@ -118,14 +118,15 @@ fn aug_assign(
     op: Node<fe::BinOperator>,
     value: Node<fe::Expr>,
 ) -> Vec<fe::FuncStmt> {
-    let lowered_target = expressions::expr(context, target);
     let original_value_span = value.span;
-    let lowered_value = expressions::expr(context, value);
+    let lowered_target = expressions::expr(context, target.clone());
+    let lowered_lh_value = expressions::expr(context, target);
+    let lowered_rh_value = expressions::expr(context, value);
 
     let new_value_kind = fe::Expr::BinOperation {
-        left: Box::new(lowered_target.clone().new_id()),
+        left: Box::new(lowered_lh_value),
         op,
-        right: Box::new(lowered_value),
+        right: Box::new(lowered_rh_value),
     };
 
     let new_value = Node::new(new_value_kind, original_value_span);

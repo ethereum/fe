@@ -43,38 +43,6 @@ note:
     }
 
 note: 
-  ┌─ features/return_u128_cast.fe:3:21
-  │
-3 │         return u128(42)
-  │                     ^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_u128_cast.fe:3:16
-  │
-3 │         return u128(42)
-  │                ^^^^^^^^ attributes hash: 9341420026351674595
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U128,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/return_u128_cast.fe:3:16
   │
 3 │         return u128(42)

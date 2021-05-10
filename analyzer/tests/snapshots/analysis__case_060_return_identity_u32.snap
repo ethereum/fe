@@ -52,22 +52,6 @@ note:
     }
 
 note: 
-  ┌─ features/return_identity_u32.fe:3:16
-  │
-3 │         return x
-  │                ^ attributes hash: 5442387896079309831
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U32,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/return_identity_u32.fe:2:5
   │  
 2 │ ╭     pub def bar(x: u32) -> u32:

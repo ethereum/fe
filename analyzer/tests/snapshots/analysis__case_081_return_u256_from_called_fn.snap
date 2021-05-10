@@ -53,38 +53,6 @@ note:
     }
 
 note: 
-  ┌─ features/return_u256_from_called_fn.fe:5:16
-  │
-5 │         return self.foo()
-  │                ^^^^^^^^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_u256_from_called_fn.fe:8:16
-  │
-8 │         return 42
-  │                ^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/return_u256_from_called_fn.fe:8:16
   │
 8 │         return 42

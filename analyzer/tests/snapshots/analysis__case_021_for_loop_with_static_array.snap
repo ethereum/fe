@@ -62,22 +62,6 @@ note:
     }
 
 note: 
-  ┌─ features/for_loop_with_static_array.fe:5:18
-  │
-5 │         my_array[0] = 5
-  │                  ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/for_loop_with_static_array.fe:5:9
   │
 5 │         my_array[0] = 5
@@ -125,22 +109,6 @@ note:
             },
         ),
         location: Memory,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/for_loop_with_static_array.fe:6:18
-  │
-6 │         my_array[1] = 10
-  │                  ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
         move_location: None,
     }
 
@@ -228,22 +196,6 @@ note:
     }
 
 note: 
-  ┌─ features/for_loop_with_static_array.fe:7:18
-  │
-7 │         my_array[2] = 15
-  │                  ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/for_loop_with_static_array.fe:7:9
   │
 7 │         my_array[2] = 15
@@ -264,22 +216,6 @@ note:
   │
 7 │         my_array[2] = 15
   │                       ^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/for_loop_with_static_array.fe:8:21
-  │
-8 │         sum: u256 = 0
-  │                     ^ attributes hash: 16797824492585953824
   │
   = ExpressionAttributes {
         typ: Base(
@@ -359,38 +295,6 @@ note:
      }
 
 note: 
-   ┌─ features/for_loop_with_static_array.fe:10:19
-   │
-10 │             sum = sum + i
-   │                   ^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/for_loop_with_static_array.fe:10:25
-   │
-10 │             sum = sum + i
-   │                         ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/for_loop_with_static_array.fe:10:25
    │
 10 │             sum = sum + i
@@ -411,22 +315,6 @@ note:
    │
 10 │             sum = sum + i
    │                   ^^^^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/for_loop_with_static_array.fe:11:16
-   │
-11 │         return sum
-   │                ^^^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(

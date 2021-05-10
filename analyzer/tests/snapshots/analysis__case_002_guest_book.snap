@@ -101,20 +101,6 @@ note:
      }
 
 note: 
-   ┌─ demos/guest_book.fe:10:25
-   │
-10 │         self.guest_book[msg.sender] = book_msg
-   │                         ^^^^^^^^^^ attributes hash: 513065555763557710
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ demos/guest_book.fe:10:9
    │
 10 │         self.guest_book[msg.sender] = book_msg
@@ -138,23 +124,6 @@ note:
    │
 10 │         self.guest_book[msg.sender] = book_msg
    │                                       ^^^^^^^^ attributes hash: 6578844474441717363
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 100,
-                 inner: Byte,
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ demos/guest_book.fe:12:30
-   │
-12 │         emit Signed(book_msg=book_msg)
-   │                              ^^^^^^^^ attributes hash: 6578844474441717363
    │
    = ExpressionAttributes {
          typ: Array(
@@ -225,20 +194,6 @@ note:
      }
 
 note: 
-   ┌─ demos/guest_book.fe:15:32
-   │
-15 │         return self.guest_book[addr].to_mem()
-   │                                ^^^^ attributes hash: 513065555763557710
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ demos/guest_book.fe:15:16
    │
 15 │         return self.guest_book[addr].to_mem()
@@ -255,27 +210,6 @@ note:
              nonce: None,
          },
          move_location: None,
-     }
-
-note: 
-   ┌─ demos/guest_book.fe:15:16
-   │
-15 │         return self.guest_book[addr].to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16413446491870513894
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 100,
-                 inner: Byte,
-             },
-         ),
-         location: Storage {
-             nonce: None,
-         },
-         move_location: Some(
-             Memory,
-         ),
      }
 
 note: 

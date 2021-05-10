@@ -106,42 +106,6 @@ note:
     }
 
 note: 
-  ┌─ features/u32_u32_map.fe:5:25
-  │
-5 │         return self.bar[key]
-  │                         ^^^ attributes hash: 5442387896079309831
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U32,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/u32_u32_map.fe:5:16
-  │
-5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ attributes hash: 15300787439658747760
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U32,
-            ),
-        ),
-        location: Storage {
-            nonce: None,
-        },
-        move_location: Some(
-            Value,
-        ),
-    }
-
-note: 
   ┌─ features/u32_u32_map.fe:5:16
   │
 5 │         return self.bar[key]
@@ -185,22 +149,6 @@ note:
                 0,
             ),
         },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/u32_u32_map.fe:8:18
-  │
-8 │         self.bar[key] = value
-  │                  ^^^ attributes hash: 5442387896079309831
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U32,
-            ),
-        ),
-        location: Value,
         move_location: None,
     }
 

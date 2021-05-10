@@ -80,38 +80,6 @@ note:
      }
 
 note: 
-   ┌─ features/strings.fe:12:22
-   │
-12 │         emit MyEvent(s2, u, s1, s3, a, "static string", string100("foo"))
-   │                      ^^ attributes hash: 10420235251610747606
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 26,
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/strings.fe:12:26
-   │
-12 │         emit MyEvent(s2, u, s1, s3, a, "static string", string100("foo"))
-   │                          ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/strings.fe:12:26
    │
 12 │         emit MyEvent(s2, u, s1, s3, a, "static string", string100("foo"))
@@ -137,38 +105,6 @@ note:
          typ: String(
              FeString {
                  max_size: 42,
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/strings.fe:12:29
-   │
-12 │         emit MyEvent(s2, u, s1, s3, a, "static string", string100("foo"))
-   │                             ^^ attributes hash: 9569027785754553796
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 42,
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/strings.fe:12:33
-   │
-12 │         emit MyEvent(s2, u, s1, s3, a, "static string", string100("foo"))
-   │                                 ^^ attributes hash: 10521411858691425038
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 100,
              },
          ),
          location: Memory,
@@ -206,36 +142,6 @@ note:
      }
 
 note: 
-   ┌─ features/strings.fe:12:37
-   │
-12 │         emit MyEvent(s2, u, s1, s3, a, "static string", string100("foo"))
-   │                                     ^ attributes hash: 513065555763557710
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/strings.fe:12:40
-   │
-12 │         emit MyEvent(s2, u, s1, s3, a, "static string", string100("foo"))
-   │                                        ^^^^^^^^^^^^^^^ attributes hash: 15184264815905725710
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 13,
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/strings.fe:12:40
    │
 12 │         emit MyEvent(s2, u, s1, s3, a, "static string", string100("foo"))
@@ -268,58 +174,10 @@ note:
      }
 
 note: 
-   ┌─ features/strings.fe:12:67
-   │
-12 │         emit MyEvent(s2, u, s1, s3, a, "static string", string100("foo"))
-   │                                                                   ^^^^^ attributes hash: 16852372960864427970
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 3,
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/strings.fe:12:57
    │
 12 │         emit MyEvent(s2, u, s1, s3, a, "static string", string100("foo"))
    │                                                         ^^^^^^^^^^^^^^^^ attributes hash: 10521411858691425038
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 100,
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/strings.fe:12:57
-   │
-12 │         emit MyEvent(s2, u, s1, s3, a, "static string", string100("foo"))
-   │                                                         ^^^^^^^^^^^^^^^^ attributes hash: 10521411858691425038
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 100,
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/strings.fe:15:16
-   │
-15 │         return s2
-   │                ^^ attributes hash: 10521411858691425038
    │
    = ExpressionAttributes {
          typ: String(
@@ -364,22 +222,6 @@ note:
      }
 
 note: 
-   ┌─ features/strings.fe:18:16
-   │
-18 │         return "The quick brown fox jumps over the lazy dog"
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 789892328184844625
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 43,
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/strings.fe:21:26
    │
 21 │         return string100("foo")
@@ -389,38 +231,6 @@ note:
          typ: String(
              FeString {
                  max_size: 3,
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/strings.fe:21:26
-   │
-21 │         return string100("foo")
-   │                          ^^^^^ attributes hash: 16852372960864427970
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 3,
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/strings.fe:21:16
-   │
-21 │         return string100("foo")
-   │                ^^^^^^^^^^^^^^^^ attributes hash: 10521411858691425038
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 100,
              },
          ),
          location: Memory,

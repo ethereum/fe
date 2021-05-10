@@ -97,38 +97,6 @@ note:
     }
 
 note: 
-  ┌─ features/return_empty_tuple.fe:7:12
-  │
-7 │     return ()
-  │            ^^ attributes hash: 2354569150226010475
-  │
-  = ExpressionAttributes {
-        typ: Tuple(
-            Tuple {
-                items: [],
-            },
-        ),
-        location: Memory,
-        move_location: None,
-    }
-
-note: 
-   ┌─ features/return_empty_tuple.fe:13:12
-   │
-13 │     return ()
-   │            ^^ attributes hash: 2354569150226010475
-   │
-   = ExpressionAttributes {
-         typ: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/return_empty_tuple.fe:13:12
    │
 13 │     return ()

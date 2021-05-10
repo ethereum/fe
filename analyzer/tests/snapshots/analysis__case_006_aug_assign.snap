@@ -416,22 +416,6 @@ note:
     }
 
 note: 
-  ┌─ features/aug_assign.fe:6:16
-  │
-6 │         return a
-  │                ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/aug_assign.fe:9:9
   │
 9 │         a -= b
@@ -480,22 +464,6 @@ note:
      }
 
 note: 
-   ┌─ features/aug_assign.fe:10:16
-   │
-10 │         return a
-   │                ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/aug_assign.fe:13:9
    │
 13 │         a *= b
@@ -516,22 +484,6 @@ note:
    │
 13 │         a *= b
    │              ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/aug_assign.fe:14:16
-   │
-14 │         return a
-   │                ^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -608,22 +560,6 @@ note:
      }
 
 note: 
-   ┌─ features/aug_assign.fe:18:16
-   │
-18 │         return a
-   │                ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/aug_assign.fe:21:9
    │
 21 │         a %= b
@@ -644,22 +580,6 @@ note:
    │
 21 │         a %= b
    │              ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/aug_assign.fe:22:16
-   │
-22 │         return a
-   │                ^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -736,22 +656,6 @@ note:
      }
 
 note: 
-   ┌─ features/aug_assign.fe:26:16
-   │
-26 │         return a
-   │                ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/aug_assign.fe:29:9
    │
 29 │         a <<= b
@@ -772,22 +676,6 @@ note:
    │
 29 │         a <<= b
    │               ^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/aug_assign.fe:30:16
-   │
-30 │         return a
-   │                ^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
@@ -864,22 +752,6 @@ note:
      }
 
 note: 
-   ┌─ features/aug_assign.fe:34:16
-   │
-34 │         return a
-   │                ^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/aug_assign.fe:37:9
    │
 37 │         a |= b
@@ -900,22 +772,6 @@ note:
    │
 37 │         a |= b
    │              ^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/aug_assign.fe:38:16
-   │
-38 │         return a
-   │                ^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
@@ -992,22 +848,6 @@ note:
      }
 
 note: 
-   ┌─ features/aug_assign.fe:42:16
-   │
-42 │         return a
-   │                ^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/aug_assign.fe:45:9
    │
 45 │         a &= b
@@ -1028,22 +868,6 @@ note:
    │
 45 │         a &= b
    │              ^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/aug_assign.fe:46:16
-   │
-46 │         return a
-   │                ^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1166,28 +990,6 @@ note:
      }
 
 note: 
-   ┌─ features/aug_assign.fe:51:16
-   │
-51 │         return self.my_num
-   │                ^^^^^^^^^^^ attributes hash: 4679040613115932727
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
    ┌─ features/aug_assign.fe:55:9
    │
 55 │         my_array[7] = a
@@ -1203,22 +1005,6 @@ note:
              },
          ),
          location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/aug_assign.fe:55:18
-   │
-55 │         my_array[7] = a
-   │                  ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
          move_location: None,
      }
 
@@ -1306,22 +1092,6 @@ note:
      }
 
 note: 
-   ┌─ features/aug_assign.fe:56:18
-   │
-56 │         my_array[7] += b
-   │                  ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/aug_assign.fe:56:9
    │
 56 │         my_array[7] += b
@@ -1386,40 +1156,6 @@ note:
          ),
          location: Value,
          move_location: None,
-     }
-
-note: 
-   ┌─ features/aug_assign.fe:57:25
-   │
-57 │         return my_array[7]
-   │                         ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/aug_assign.fe:57:16
-   │
-57 │         return my_array[7]
-   │                ^^^^^^^^^^^ attributes hash: 11934894478308934606
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Memory,
-         move_location: Some(
-             Value,
-         ),
      }
 
 note: 

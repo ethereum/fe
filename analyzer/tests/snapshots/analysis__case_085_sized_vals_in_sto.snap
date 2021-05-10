@@ -178,28 +178,6 @@ note:
      }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:15:16
-   │
-15 │         return self.num
-   │                ^^^^^^^^ attributes hash: 4679040613115932727
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
    ┌─ features/sized_vals_in_sto.fe:18:9
    │
 18 │         self.nums = x
@@ -262,31 +240,6 @@ note:
              ),
          },
          move_location: None,
-     }
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:21:16
-   │
-21 │         return self.nums.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 2528791973804439794
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 42,
-                 inner: Numeric(
-                     U256,
-                 ),
-             },
-         ),
-         location: Storage {
-             nonce: Some(
-                 1,
-             ),
-         },
-         move_location: Some(
-             Memory,
-         ),
      }
 
 note: 
@@ -393,50 +346,6 @@ note:
      }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:27:16
-   │
-27 │         return self.str.to_mem()
-   │                ^^^^^^^^^^^^^^^^^ attributes hash: 8485417019611755295
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 26,
-             },
-         ),
-         location: Storage {
-             nonce: Some(
-                 2,
-             ),
-         },
-         move_location: Some(
-             Memory,
-         ),
-     }
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:31:13
-   │
-31 │             self.num,
-   │             ^^^^^^^^ attributes hash: 4679040613115932727
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
    ┌─ features/sized_vals_in_sto.fe:31:13
    │
 31 │             self.num,
@@ -507,31 +416,6 @@ note:
      }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:32:13
-   │
-32 │             self.nums.to_mem(),
-   │             ^^^^^^^^^^^^^^^^^^ attributes hash: 2528791973804439794
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 42,
-                 inner: Numeric(
-                     U256,
-                 ),
-             },
-         ),
-         location: Storage {
-             nonce: Some(
-                 1,
-             ),
-         },
-         move_location: Some(
-             Memory,
-         ),
-     }
-
-note: 
    ┌─ features/sized_vals_in_sto.fe:33:13
    │
 33 │             self.str.to_mem()
@@ -549,28 +433,6 @@ note:
              ),
          },
          move_location: None,
-     }
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:33:13
-   │
-33 │             self.str.to_mem()
-   │             ^^^^^^^^^^^^^^^^^ attributes hash: 8485417019611755295
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 26,
-             },
-         ),
-         location: Storage {
-             nonce: Some(
-                 2,
-             ),
-         },
-         move_location: Some(
-             Memory,
-         ),
      }
 
 note: 

@@ -43,38 +43,6 @@ note:
     }
 
 note: 
-  ┌─ features/if_statement_with_block_declaration.fe:5:23
-  │
-5 │             y: u256 = 1
-  │                       ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/if_statement_with_block_declaration.fe:6:20
-  │
-6 │             return y
-  │                    ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/if_statement_with_block_declaration.fe:6:20
   │
 6 │             return y
@@ -95,38 +63,6 @@ note:
   │
 8 │             y: u256 = 1
   │                       ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/if_statement_with_block_declaration.fe:8:23
-  │
-8 │             y: u256 = 1
-  │                       ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/if_statement_with_block_declaration.fe:9:20
-  │
-9 │             return y
-  │                    ^ attributes hash: 16797824492585953824
   │
   = ExpressionAttributes {
         typ: Base(

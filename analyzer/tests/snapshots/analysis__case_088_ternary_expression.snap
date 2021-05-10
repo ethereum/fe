@@ -52,22 +52,6 @@ note:
     }
 
 note: 
-  ┌─ features/ternary_expression.fe:4:21
-  │
-4 │         return 1 if input > 5 else 0
-  │                     ^^^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/ternary_expression.fe:4:29
   │
 4 │         return 1 if input > 5 else 0
@@ -78,36 +62,6 @@ note:
             Numeric(
                 U256,
             ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/ternary_expression.fe:4:29
-  │
-4 │         return 1 if input > 5 else 0
-  │                             ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/ternary_expression.fe:4:21
-  │
-4 │         return 1 if input > 5 else 0
-  │                     ^^^^^^^^^ attributes hash: 10866140763116710699
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
         ),
         location: Value,
         move_location: None,
@@ -144,58 +98,10 @@ note:
     }
 
 note: 
-  ┌─ features/ternary_expression.fe:4:16
-  │
-4 │         return 1 if input > 5 else 0
-  │                ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/ternary_expression.fe:4:36
   │
 4 │         return 1 if input > 5 else 0
   │                                    ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/ternary_expression.fe:4:36
-  │
-4 │         return 1 if input > 5 else 0
-  │                                    ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/ternary_expression.fe:4:16
-  │
-4 │         return 1 if input > 5 else 0
-  │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
   │
   = ExpressionAttributes {
         typ: Base(

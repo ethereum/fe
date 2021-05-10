@@ -419,29 +419,6 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:27:16
-   │
-27 │         return self.my_addrs.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14222027602690501828
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 5,
-                 inner: Address,
-             },
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Memory,
-         ),
-     }
-
-note: 
    ┌─ stress/abi_encoding_stress.fe:30:9
    │
 30 │         self.my_u128 = my_u128
@@ -475,28 +452,6 @@ note:
          ),
          location: Value,
          move_location: None,
-     }
-
-note: 
-   ┌─ stress/abi_encoding_stress.fe:33:16
-   │
-33 │         return self.my_u128
-   │                ^^^^^^^^^^^^ attributes hash: 10067809958524075301
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U128,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 1,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
      }
 
 note: 
@@ -575,28 +530,6 @@ note:
              ),
          },
          move_location: None,
-     }
-
-note: 
-   ┌─ stress/abi_encoding_stress.fe:39:16
-   │
-39 │         return self.my_string.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 980173007631351881
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 10,
-             },
-         ),
-         location: Storage {
-             nonce: Some(
-                 2,
-             ),
-         },
-         move_location: Some(
-             Memory,
-         ),
      }
 
 note: 
@@ -712,31 +645,6 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:45:16
-   │
-45 │         return self.my_u8s.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 3855584261660153860
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 255,
-                 inner: Numeric(
-                     U8,
-                 ),
-             },
-         ),
-         location: Storage {
-             nonce: Some(
-                 3,
-             ),
-         },
-         move_location: Some(
-             Memory,
-         ),
-     }
-
-note: 
    ┌─ stress/abi_encoding_stress.fe:48:9
    │
 48 │         self.my_bool = my_bool
@@ -766,26 +674,6 @@ note:
          ),
          location: Value,
          move_location: None,
-     }
-
-note: 
-   ┌─ stress/abi_encoding_stress.fe:51:16
-   │
-51 │         return self.my_bool
-   │                ^^^^^^^^^^^^ attributes hash: 11793743503936840609
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Storage {
-             nonce: Some(
-                 4,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
      }
 
 note: 
@@ -891,65 +779,10 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:57:16
-   │
-57 │         return self.my_bytes.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12051565540558389281
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 100,
-                 inner: Byte,
-             },
-         ),
-         location: Storage {
-             nonce: Some(
-                 5,
-             ),
-         },
-         move_location: Some(
-             Memory,
-         ),
-     }
-
-note: 
    ┌─ stress/abi_encoding_stress.fe:61:20
    │
 61 │             my_num=42,
    │                    ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/abi_encoding_stress.fe:61:20
-   │
-61 │             my_num=42,
-   │                    ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/abi_encoding_stress.fe:62:24
-   │
-62 │             my_num2=u8(26),
-   │                        ^^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -994,22 +827,6 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:62:21
-   │
-62 │             my_num2=u8(26),
-   │                     ^^^^^^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/abi_encoding_stress.fe:63:21
    │
 63 │             my_bool=true,
@@ -1018,36 +835,6 @@ note:
    = ExpressionAttributes {
          typ: Base(
              Bool,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/abi_encoding_stress.fe:63:21
-   │
-63 │             my_bool=true,
-   │                     ^^^^ attributes hash: 10866140763116710699
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/abi_encoding_stress.fe:64:29
-   │
-64 │             my_addr=address(123456)
-   │                             ^^^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
          ),
          location: Value,
          move_location: None,
@@ -1080,66 +867,6 @@ note:
              Address,
          ),
          location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/abi_encoding_stress.fe:64:21
-   │
-64 │             my_addr=address(123456)
-   │                     ^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/abi_encoding_stress.fe:60:16
-   │  
-60 │           return MyStruct(
-   │ ╭────────────────^
-61 │ │             my_num=42,
-62 │ │             my_num2=u8(26),
-63 │ │             my_bool=true,
-64 │ │             my_addr=address(123456)
-65 │ │         )
-   │ ╰─────────^ attributes hash: 4224724267794589733
-   │  
-   = ExpressionAttributes {
-         typ: Struct(
-             Struct {
-                 name: "MyStruct",
-                 fields: {
-                     "my_addr": Base(
-                         Address,
-                     ),
-                     "my_bool": Base(
-                         Bool,
-                     ),
-                     "my_num": Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                     "my_num2": Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 },
-                 order: [
-                     "my_num",
-                     "my_num2",
-                     "my_bool",
-                     "my_addr",
-                 ],
-             },
-         ),
-         location: Memory,
          move_location: None,
      }
 
@@ -1334,22 +1061,6 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:69:32
-   │
-69 │         my_struct.my_num2 = u8(42)
-   │                                ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/abi_encoding_stress.fe:69:29
    │
 69 │         my_struct.my_num2 = u8(42)
@@ -1504,22 +1215,6 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:71:37
-   │
-71 │         my_struct.my_addr = address(9999)
-   │                                     ^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ stress/abi_encoding_stress.fe:71:29
    │
 71 │         my_struct.my_addr = address(9999)
@@ -1530,46 +1225,6 @@ note:
              Address,
          ),
          location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ stress/abi_encoding_stress.fe:72:16
-   │
-72 │         return my_struct
-   │                ^^^^^^^^^ attributes hash: 4224724267794589733
-   │
-   = ExpressionAttributes {
-         typ: Struct(
-             Struct {
-                 name: "MyStruct",
-                 fields: {
-                     "my_addr": Base(
-                         Address,
-                     ),
-                     "my_bool": Base(
-                         Bool,
-                     ),
-                     "my_num": Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                     "my_num2": Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 },
-                 order: [
-                     "my_num",
-                     "my_num2",
-                     "my_bool",
-                     "my_addr",
-                 ],
-             },
-         ),
-         location: Memory,
          move_location: None,
      }
 
@@ -1658,51 +1313,6 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:76:13
-   │
-76 │             self.my_addrs.to_mem(),
-   │             ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14222027602690501828
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 5,
-                 inner: Address,
-             },
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Memory,
-         ),
-     }
-
-note: 
-   ┌─ stress/abi_encoding_stress.fe:77:13
-   │
-77 │             self.my_u128,
-   │             ^^^^^^^^^^^^ attributes hash: 10067809958524075301
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U128,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 1,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
    ┌─ stress/abi_encoding_stress.fe:77:13
    │
 77 │             self.my_u128,
@@ -1742,28 +1352,6 @@ note:
              ),
          },
          move_location: None,
-     }
-
-note: 
-   ┌─ stress/abi_encoding_stress.fe:78:13
-   │
-78 │             self.my_string.to_mem(),
-   │             ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 980173007631351881
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 10,
-             },
-         ),
-         location: Storage {
-             nonce: Some(
-                 2,
-             ),
-         },
-         move_location: Some(
-             Memory,
-         ),
      }
 
 note: 
@@ -1837,51 +1425,6 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:79:13
-   │
-79 │             self.my_u8s.to_mem(),
-   │             ^^^^^^^^^^^^^^^^^^^^ attributes hash: 3855584261660153860
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 255,
-                 inner: Numeric(
-                     U8,
-                 ),
-             },
-         ),
-         location: Storage {
-             nonce: Some(
-                 3,
-             ),
-         },
-         move_location: Some(
-             Memory,
-         ),
-     }
-
-note: 
-   ┌─ stress/abi_encoding_stress.fe:80:13
-   │
-80 │             self.my_bool,
-   │             ^^^^^^^^^^^^ attributes hash: 11793743503936840609
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Storage {
-             nonce: Some(
-                 4,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
    ┌─ stress/abi_encoding_stress.fe:80:13
    │
 80 │             self.my_bool,
@@ -1920,29 +1463,6 @@ note:
              ),
          },
          move_location: None,
-     }
-
-note: 
-   ┌─ stress/abi_encoding_stress.fe:81:13
-   │
-81 │             self.my_bytes.to_mem()
-   │             ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12051565540558389281
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 100,
-                 inner: Byte,
-             },
-         ),
-         location: Storage {
-             nonce: Some(
-                 5,
-             ),
-         },
-         move_location: Some(
-             Memory,
-         ),
      }
 
 note: 

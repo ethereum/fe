@@ -70,22 +70,6 @@ note:
     }
 
 note: 
-  ┌─ features/call_statement_with_args_2.fe:5:18
-  │
-5 │         self.baz[0] = val
-  │                  ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/call_statement_with_args_2.fe:5:9
   │
 5 │         self.baz[0] = val
@@ -124,38 +108,6 @@ note:
   │
 6 │         return val
   │                ^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/call_statement_with_args_2.fe:6:16
-  │
-6 │         return val
-  │                ^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/call_statement_with_args_2.fe:9:21
-  │
-9 │         self.assign(100)
-  │                     ^^^ attributes hash: 16797824492585953824
   │
   = ExpressionAttributes {
         typ: Base(
@@ -240,42 +192,6 @@ note:
          ),
          location: Value,
          move_location: None,
-     }
-
-note: 
-   ┌─ features/call_statement_with_args_2.fe:10:25
-   │
-10 │         return self.baz[0]
-   │                         ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/call_statement_with_args_2.fe:10:16
-   │
-10 │         return self.baz[0]
-   │                ^^^^^^^^^^^ attributes hash: 9781479072077703403
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Storage {
-             nonce: None,
-         },
-         move_location: Some(
-             Value,
-         ),
      }
 
 note: 

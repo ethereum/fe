@@ -43,22 +43,6 @@ note:
     }
 
 note: 
-  ┌─ features/while_loop.fe:3:21
-  │
-3 │         val: u256 = 0
-  │                     ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/while_loop.fe:5:13
   │
 5 │             val = val + 1
@@ -79,38 +63,6 @@ note:
   │
 5 │             val = val + 1
   │                   ^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop.fe:5:19
-  │
-5 │             val = val + 1
-  │                   ^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop.fe:5:25
-  │
-5 │             val = val + 1
-  │                         ^ attributes hash: 16797824492585953824
   │
   = ExpressionAttributes {
         typ: Base(
@@ -203,38 +155,6 @@ note:
     }
 
 note: 
-  ┌─ features/while_loop.fe:6:16
-  │
-6 │             if val == 2:
-  │                ^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop.fe:6:23
-  │
-6 │             if val == 2:
-  │                       ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/while_loop.fe:6:23
   │
 6 │             if val == 2:
@@ -281,38 +201,6 @@ note:
     }
 
 note: 
-  ┌─ features/while_loop.fe:4:15
-  │
-4 │         while val < 2:
-  │               ^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop.fe:4:21
-  │
-4 │         while val < 2:
-  │                     ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/while_loop.fe:4:21
   │
 4 │         while val < 2:
@@ -337,22 +225,6 @@ note:
   = ExpressionAttributes {
         typ: Base(
             Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop.fe:8:16
-  │
-8 │         return val
-  │                ^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
         ),
         location: Value,
         move_location: None,

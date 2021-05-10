@@ -115,56 +115,10 @@ note:
     }
 
 note: 
-  ┌─ features/return_builtin_attributes.fe:3:16
-  │
-3 │         return block.coinbase
-  │                ^^^^^^^^^^^^^^ attributes hash: 513065555763557710
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Address,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/return_builtin_attributes.fe:6:16
   │
 6 │         return block.difficulty
   │                ^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_builtin_attributes.fe:6:16
-  │
-6 │         return block.difficulty
-  │                ^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_builtin_attributes.fe:9:16
-  │
-9 │         return block.number
-  │                ^^^^^^^^^^^^ attributes hash: 16797824492585953824
   │
   = ExpressionAttributes {
         typ: Base(
@@ -209,22 +163,6 @@ note:
      }
 
 note: 
-   ┌─ features/return_builtin_attributes.fe:12:16
-   │
-12 │         return block.timestamp
-   │                ^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/return_builtin_attributes.fe:15:16
    │
 15 │         return chain.id
@@ -235,36 +173,6 @@ note:
              Numeric(
                  U256,
              ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/return_builtin_attributes.fe:15:16
-   │
-15 │         return chain.id
-   │                ^^^^^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/return_builtin_attributes.fe:18:16
-   │
-18 │         return msg.sender
-   │                ^^^^^^^^^^ attributes hash: 513065555763557710
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
          ),
          location: Value,
          move_location: None,
@@ -301,22 +209,6 @@ note:
      }
 
 note: 
-   ┌─ features/return_builtin_attributes.fe:21:16
-   │
-21 │         return msg.value
-   │                ^^^^^^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/return_builtin_attributes.fe:24:16
    │
 24 │         return tx.origin
@@ -325,36 +217,6 @@ note:
    = ExpressionAttributes {
          typ: Base(
              Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/return_builtin_attributes.fe:24:16
-   │
-24 │         return tx.origin
-   │                ^^^^^^^^^ attributes hash: 513065555763557710
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/return_builtin_attributes.fe:27:16
-   │
-27 │         return tx.gas_price
-   │                ^^^^^^^^^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
          ),
          location: Value,
          move_location: None,

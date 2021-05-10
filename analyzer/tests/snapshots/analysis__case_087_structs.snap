@@ -151,58 +151,10 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:12:19
-   │
-12 │             price=1,
-   │                   ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/structs.fe:13:18
    │
 13 │             size=2,
    │                  ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:13:18
-   │
-13 │             size=2,
-   │                  ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:14:22
-   │
-14 │             rooms=u8(5),
-   │                      ^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -241,36 +193,6 @@ note:
              Numeric(
                  U8,
              ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:14:19
-   │
-14 │             rooms=u8(5),
-   │                   ^^^^^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:15:20
-   │
-15 │             vacant=false
-   │                    ^^^^^ attributes hash: 10866140763116710699
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
          ),
          location: Value,
          move_location: None,
@@ -407,44 +329,6 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:17:16
-   │
-17 │         assert self.my_house.price == 1
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ features/structs.fe:17:39
-   │
-17 │         assert self.my_house.price == 1
-   │                                       ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/structs.fe:17:39
    │
 17 │         assert self.my_house.price == 1
@@ -540,44 +424,6 @@ note:
          move_location: Some(
              Value,
          ),
-     }
-
-note: 
-   ┌─ features/structs.fe:18:16
-   │
-18 │         assert self.my_house.size == 2
-   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ features/structs.fe:18:38
-   │
-18 │         assert self.my_house.size == 2
-   │                                      ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
      }
 
 note: 
@@ -679,28 +525,6 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:19:16
-   │
-19 │         assert self.my_house.rooms == u8(5)
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 3920863001671643912
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
    ┌─ features/structs.fe:19:42
    │
 19 │         assert self.my_house.rooms == u8(5)
@@ -710,38 +534,6 @@ note:
          typ: Base(
              Numeric(
                  U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:19:42
-   │
-19 │         assert self.my_house.rooms == u8(5)
-   │                                          ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:19:39
-   │
-19 │         assert self.my_house.rooms == u8(5)
-   │                                       ^^^^^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
              ),
          ),
          location: Value,
@@ -842,40 +634,6 @@ note:
          move_location: Some(
              Value,
          ),
-     }
-
-note: 
-   ┌─ features/structs.fe:20:16
-   │
-20 │         assert self.my_house.vacant == false
-   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 5019499297016497421
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ features/structs.fe:20:40
-   │
-20 │         assert self.my_house.vacant == false
-   │                                        ^^^^^ attributes hash: 10866140763116710699
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Value,
-         move_location: None,
      }
 
 note: 
@@ -1057,44 +815,6 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:23:16
-   │
-23 │         assert self.my_house.size == 50
-   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ features/structs.fe:23:38
-   │
-23 │         assert self.my_house.size == 50
-   │                                      ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/structs.fe:23:38
    │
 23 │         assert self.my_house.size == 50
@@ -1190,44 +910,6 @@ note:
          move_location: Some(
              Value,
          ),
-     }
-
-note: 
-   ┌─ features/structs.fe:24:16
-   │
-24 │         assert self.my_house.price == 1
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ features/structs.fe:24:39
-   │
-24 │         assert self.my_house.price == 1
-   │                                       ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
      }
 
 note: 
@@ -1329,28 +1011,6 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:25:16
-   │
-25 │         assert self.my_house.rooms == u8(5)
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 3920863001671643912
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
    ┌─ features/structs.fe:25:42
    │
 25 │         assert self.my_house.rooms == u8(5)
@@ -1360,38 +1020,6 @@ note:
          typ: Base(
              Numeric(
                  U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:25:42
-   │
-25 │         assert self.my_house.rooms == u8(5)
-   │                                          ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:25:39
-   │
-25 │         assert self.my_house.rooms == u8(5)
-   │                                       ^^^^^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
              ),
          ),
          location: Value,
@@ -1492,40 +1120,6 @@ note:
          move_location: Some(
              Value,
          ),
-     }
-
-note: 
-   ┌─ features/structs.fe:26:16
-   │
-26 │         assert self.my_house.vacant == false
-   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 5019499297016497421
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ features/structs.fe:26:40
-   │
-26 │         assert self.my_house.vacant == false
-   │                                        ^^^^^ attributes hash: 10866140763116710699
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Value,
-         move_location: None,
      }
 
 note: 
@@ -1707,44 +1301,6 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:29:16
-   │
-29 │         assert self.my_house.size == 50
-   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ features/structs.fe:29:38
-   │
-29 │         assert self.my_house.size == 50
-   │                                      ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/structs.fe:29:38
    │
 29 │         assert self.my_house.size == 50
@@ -1840,44 +1396,6 @@ note:
          move_location: Some(
              Value,
          ),
-     }
-
-note: 
-   ┌─ features/structs.fe:30:16
-   │
-30 │         assert self.my_house.price == 1000
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ features/structs.fe:30:39
-   │
-30 │         assert self.my_house.price == 1000
-   │                                       ^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
      }
 
 note: 
@@ -1979,28 +1497,6 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:31:16
-   │
-31 │         assert self.my_house.rooms == u8(5)
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 3920863001671643912
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
    ┌─ features/structs.fe:31:42
    │
 31 │         assert self.my_house.rooms == u8(5)
@@ -2010,38 +1506,6 @@ note:
          typ: Base(
              Numeric(
                  U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:31:42
-   │
-31 │         assert self.my_house.rooms == u8(5)
-   │                                          ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:31:39
-   │
-31 │         assert self.my_house.rooms == u8(5)
-   │                                       ^^^^^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
              ),
          ),
          location: Value,
@@ -2142,40 +1606,6 @@ note:
          move_location: Some(
              Value,
          ),
-     }
-
-note: 
-   ┌─ features/structs.fe:32:16
-   │
-32 │         assert self.my_house.vacant == false
-   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 5019499297016497421
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ features/structs.fe:32:40
-   │
-32 │         assert self.my_house.vacant == false
-   │                                        ^^^^^ attributes hash: 10866140763116710699
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Value,
-         move_location: None,
      }
 
 note: 
@@ -2353,44 +1783,6 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:34:16
-   │
-34 │         assert self.my_house.size == 50
-   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ features/structs.fe:34:38
-   │
-34 │         assert self.my_house.size == 50
-   │                                      ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/structs.fe:34:38
    │
 34 │         assert self.my_house.size == 50
@@ -2486,44 +1878,6 @@ note:
          move_location: Some(
              Value,
          ),
-     }
-
-note: 
-   ┌─ features/structs.fe:35:16
-   │
-35 │         assert self.my_house.price == 1000
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ features/structs.fe:35:39
-   │
-35 │         assert self.my_house.price == 1000
-   │                                       ^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
      }
 
 note: 
@@ -2625,28 +1979,6 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:36:16
-   │
-36 │         assert self.my_house.rooms == u8(5)
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 3920863001671643912
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
    ┌─ features/structs.fe:36:42
    │
 36 │         assert self.my_house.rooms == u8(5)
@@ -2656,38 +1988,6 @@ note:
          typ: Base(
              Numeric(
                  U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:36:42
-   │
-36 │         assert self.my_house.rooms == u8(5)
-   │                                          ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:36:39
-   │
-36 │         assert self.my_house.rooms == u8(5)
-   │                                       ^^^^^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
              ),
          ),
          location: Value,
@@ -2871,22 +2171,6 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:38:34
-   │
-38 │         self.my_house.rooms = u8(100)
-   │                                  ^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/structs.fe:38:31
    │
 38 │         self.my_house.rooms = u8(100)
@@ -2968,44 +2252,6 @@ note:
          move_location: Some(
              Value,
          ),
-     }
-
-note: 
-   ┌─ features/structs.fe:39:16
-   │
-39 │         assert self.my_house.size == 50
-   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ features/structs.fe:39:38
-   │
-39 │         assert self.my_house.size == 50
-   │                                      ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
      }
 
 note: 
@@ -3107,44 +2353,6 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:40:16
-   │
-40 │         assert self.my_house.price == 1000
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ features/structs.fe:40:39
-   │
-40 │         assert self.my_house.price == 1000
-   │                                       ^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/structs.fe:40:39
    │
 40 │         assert self.my_house.price == 1000
@@ -3243,28 +2451,6 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:41:16
-   │
-41 │         assert self.my_house.rooms == u8(100)
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 3920863001671643912
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
    ┌─ features/structs.fe:41:42
    │
 41 │         assert self.my_house.rooms == u8(100)
@@ -3274,38 +2460,6 @@ note:
          typ: Base(
              Numeric(
                  U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:41:42
-   │
-41 │         assert self.my_house.rooms == u8(100)
-   │                                          ^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:41:39
-   │
-41 │         assert self.my_house.rooms == u8(100)
-   │                                       ^^^^^^^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
              ),
          ),
          location: Value,
@@ -3423,58 +2577,10 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:46:19
-   │
-46 │             price=300,
-   │                   ^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/structs.fe:47:18
    │
 47 │             size=500,
    │                  ^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:47:18
-   │
-47 │             size=500,
-   │                  ^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:48:22
-   │
-48 │             rooms=u8(20),
-   │                      ^^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3519,22 +2625,6 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:48:19
-   │
-48 │             rooms=u8(20),
-   │                   ^^^^^^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/structs.fe:49:20
    │
 49 │             vacant=true
@@ -3545,68 +2635,6 @@ note:
              Bool,
          ),
          location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:49:20
-   │
-49 │             vacant=true
-   │                    ^^^^ attributes hash: 10866140763116710699
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:45:27
-   │  
-45 │           building: House = House(
-   │ ╭───────────────────────────^
-46 │ │             price=300,
-47 │ │             size=500,
-48 │ │             rooms=u8(20),
-49 │ │             vacant=true
-50 │ │         )
-   │ ╰─────────^ attributes hash: 7861995031096832649
-   │  
-   = ExpressionAttributes {
-         typ: Struct(
-             Struct {
-                 name: "House",
-                 fields: {
-                     "price": Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                     "rooms": Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                     "size": Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                     "vacant": Base(
-                         Bool,
-                     ),
-                 },
-                 order: [
-                     "price",
-                     "size",
-                     "rooms",
-                     "vacant",
-                 ],
-             },
-         ),
-         location: Memory,
          move_location: None,
      }
 
@@ -3716,40 +2744,6 @@ note:
          move_location: Some(
              Value,
          ),
-     }
-
-note: 
-   ┌─ features/structs.fe:51:16
-   │
-51 │         assert building.size == 500
-   │                ^^^^^^^^^^^^^ attributes hash: 11934894478308934606
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Memory,
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ features/structs.fe:51:33
-   │
-51 │         assert building.size == 500
-   │                                 ^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
      }
 
 note: 
@@ -3843,40 +2837,6 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:52:16
-   │
-52 │         assert building.price == 300
-   │                ^^^^^^^^^^^^^^ attributes hash: 11934894478308934606
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Memory,
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ features/structs.fe:52:34
-   │
-52 │         assert building.price == 300
-   │                                  ^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/structs.fe:52:34
    │
 52 │         assert building.price == 300
@@ -3967,24 +2927,6 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:53:16
-   │
-53 │         assert building.rooms == u8(20)
-   │                ^^^^^^^^^^^^^^ attributes hash: 16427982076128084429
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Memory,
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
    ┌─ features/structs.fe:53:37
    │
 53 │         assert building.rooms == u8(20)
@@ -3994,38 +2936,6 @@ note:
          typ: Base(
              Numeric(
                  U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:53:37
-   │
-53 │         assert building.rooms == u8(20)
-   │                                     ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:53:34
-   │
-53 │         assert building.rooms == u8(20)
-   │                                  ^^^^^^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
              ),
          ),
          location: Value,
@@ -4411,22 +3321,6 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:59:29
-   │
-59 │         building.rooms = u8(10)
-   │                             ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/structs.fe:59:26
    │
 59 │         building.rooms = u8(10)
@@ -4498,36 +3392,6 @@ note:
          move_location: Some(
              Value,
          ),
-     }
-
-note: 
-   ┌─ features/structs.fe:61:16
-   │
-61 │         assert building.vacant == false
-   │                ^^^^^^^^^^^^^^^ attributes hash: 16124721822221882146
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Memory,
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ features/structs.fe:61:35
-   │
-61 │         assert building.vacant == false
-   │                                   ^^^^^ attributes hash: 10866140763116710699
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Value,
-         move_location: None,
      }
 
 note: 
@@ -4616,40 +3480,6 @@ note:
          move_location: Some(
              Value,
          ),
-     }
-
-note: 
-   ┌─ features/structs.fe:62:16
-   │
-62 │         assert building.price == 1
-   │                ^^^^^^^^^^^^^^ attributes hash: 11934894478308934606
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Memory,
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ features/structs.fe:62:34
-   │
-62 │         assert building.price == 1
-   │                                  ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
      }
 
 note: 
@@ -4743,40 +3573,6 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:63:16
-   │
-63 │         assert building.size == 2
-   │                ^^^^^^^^^^^^^ attributes hash: 11934894478308934606
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Memory,
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ features/structs.fe:63:33
-   │
-63 │         assert building.size == 2
-   │                                 ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/structs.fe:63:33
    │
 63 │         assert building.size == 2
@@ -4867,24 +3663,6 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:64:16
-   │
-64 │         assert building.rooms == u8(10)
-   │                ^^^^^^^^^^^^^^ attributes hash: 16427982076128084429
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Memory,
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
    ┌─ features/structs.fe:64:37
    │
 64 │         assert building.rooms == u8(10)
@@ -4894,38 +3672,6 @@ note:
          typ: Base(
              Numeric(
                  U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:64:37
-   │
-64 │         assert building.rooms == u8(10)
-   │                                     ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:64:34
-   │
-64 │         assert building.rooms == u8(10)
-   │                                  ^^^^^^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
              ),
          ),
          location: Value,
@@ -5023,60 +3769,10 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:65:16
-   │
-65 │         return building.size
-   │                ^^^^^^^^^^^^^ attributes hash: 11934894478308934606
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Memory,
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
    ┌─ features/structs.fe:69:19
    │
 69 │             price=300,
    │                   ^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:69:19
-   │
-69 │             price=300,
-   │                   ^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:70:18
-   │
-70 │             size=500,
-   │                  ^^^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -5121,38 +3817,6 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:71:22
-   │
-71 │             rooms=u8(20),
-   │                      ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:71:19
-   │
-71 │             rooms=u8(20),
-   │                   ^^^^^^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/structs.fe:71:19
    │
 71 │             rooms=u8(20),
@@ -5179,68 +3843,6 @@ note:
              Bool,
          ),
          location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:72:20
-   │
-72 │             vacant=true
-   │                    ^^^^ attributes hash: 10866140763116710699
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:68:24
-   │  
-68 │           house: House = House(
-   │ ╭────────────────────────^
-69 │ │             price=300,
-70 │ │             size=500,
-71 │ │             rooms=u8(20),
-72 │ │             vacant=true
-73 │ │         )
-   │ ╰─────────^ attributes hash: 7861995031096832649
-   │  
-   = ExpressionAttributes {
-         typ: Struct(
-             Struct {
-                 name: "House",
-                 fields: {
-                     "price": Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                     "rooms": Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                     "size": Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                     "vacant": Base(
-                         Bool,
-                     ),
-                 },
-                 order: [
-                     "price",
-                     "size",
-                     "rooms",
-                     "vacant",
-                 ],
-             },
-         ),
-         location: Memory,
          move_location: None,
      }
 
@@ -5352,59 +3954,10 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:74:16
-   │
-74 │         return house.abi_encode()
-   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 14553861407964170732
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 128,
-                 inner: Byte,
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/structs.fe:78:19
    │
 78 │             price=300,
    │                   ^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:78:19
-   │
-78 │             price=300,
-   │                   ^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:79:18
-   │
-79 │             size=500,
-   │                  ^^^ attributes hash: 16797824492585953824
    │
    = ExpressionAttributes {
          typ: Base(
@@ -5449,38 +4002,6 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:80:22
-   │
-80 │             rooms=u8(20),
-   │                      ^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:80:19
-   │
-80 │             rooms=u8(20),
-   │                   ^^^^^^ attributes hash: 6817314866882205962
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/structs.fe:80:19
    │
 80 │             rooms=u8(20),
@@ -5507,68 +4028,6 @@ note:
              Bool,
          ),
          location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:81:20
-   │
-81 │             vacant=true
-   │                    ^^^^ attributes hash: 10866140763116710699
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:77:24
-   │  
-77 │           house: House = House(
-   │ ╭────────────────────────^
-78 │ │             price=300,
-79 │ │             size=500,
-80 │ │             rooms=u8(20),
-81 │ │             vacant=true
-82 │ │         )
-   │ ╰─────────^ attributes hash: 7861995031096832649
-   │  
-   = ExpressionAttributes {
-         typ: Struct(
-             Struct {
-                 name: "House",
-                 fields: {
-                     "price": Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                     "rooms": Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                     "size": Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                     "vacant": Base(
-                         Bool,
-                     ),
-                 },
-                 order: [
-                     "price",
-                     "size",
-                     "rooms",
-                     "vacant",
-                 ],
-             },
-         ),
-         location: Memory,
          move_location: None,
      }
 
@@ -5676,39 +4135,6 @@ note:
              },
          ),
          location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:83:26
-   │
-83 │         return keccak256(house.abi_encode())
-   │                          ^^^^^^^^^^^^^^^^^^ attributes hash: 14553861407964170732
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 128,
-                 inner: Byte,
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/structs.fe:83:16
-   │
-83 │         return keccak256(house.abi_encode())
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
          move_location: None,
      }
 

@@ -169,20 +169,6 @@ note:
     }
 
 note: 
-  ┌─ features/nested_map.fe:6:25
-  │
-6 │         return self.bar[a][b]
-  │                         ^ attributes hash: 513065555763557710
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Address,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/nested_map.fe:6:16
   │
 6 │         return self.bar[a][b]
@@ -217,40 +203,6 @@ note:
         ),
         location: Value,
         move_location: None,
-    }
-
-note: 
-  ┌─ features/nested_map.fe:6:28
-  │
-6 │         return self.bar[a][b]
-  │                            ^ attributes hash: 513065555763557710
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Address,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/nested_map.fe:6:16
-  │
-6 │         return self.bar[a][b]
-  │                ^^^^^^^^^^^^^^ attributes hash: 9781479072077703403
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Storage {
-            nonce: None,
-        },
-        move_location: Some(
-            Value,
-        ),
     }
 
 note: 
@@ -318,20 +270,6 @@ note:
     }
 
 note: 
-  ┌─ features/nested_map.fe:9:18
-  │
-9 │         self.bar[a][b] = value
-  │                  ^ attributes hash: 513065555763557710
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Address,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/nested_map.fe:9:9
   │
 9 │         self.bar[a][b] = value
@@ -351,20 +289,6 @@ note:
         location: Storage {
             nonce: None,
         },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/nested_map.fe:9:21
-  │
-9 │         self.bar[a][b] = value
-  │                     ^ attributes hash: 513065555763557710
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Address,
-        ),
-        location: Value,
         move_location: None,
     }
 
@@ -461,20 +385,6 @@ note:
      }
 
 note: 
-   ┌─ features/nested_map.fe:12:25
-   │
-12 │         return self.baz[a][b]
-   │                         ^ attributes hash: 513065555763557710
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/nested_map.fe:12:16
    │
 12 │         return self.baz[a][b]
@@ -511,40 +421,6 @@ note:
          ),
          location: Value,
          move_location: None,
-     }
-
-note: 
-   ┌─ features/nested_map.fe:12:28
-   │
-12 │         return self.baz[a][b]
-   │                            ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/nested_map.fe:12:16
-   │
-12 │         return self.baz[a][b]
-   │                ^^^^^^^^^^^^^^ attributes hash: 11651497198297579333
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Storage {
-             nonce: None,
-         },
-         move_location: Some(
-             Value,
-         ),
      }
 
 note: 
@@ -610,20 +486,6 @@ note:
      }
 
 note: 
-   ┌─ features/nested_map.fe:15:18
-   │
-15 │         self.baz[a][b] = value
-   │                  ^ attributes hash: 513065555763557710
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
    ┌─ features/nested_map.fe:15:9
    │
 15 │         self.baz[a][b] = value
@@ -643,22 +505,6 @@ note:
          location: Storage {
              nonce: None,
          },
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/nested_map.fe:15:21
-   │
-15 │         self.baz[a][b] = value
-   │                     ^ attributes hash: 16797824492585953824
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
          move_location: None,
      }
 

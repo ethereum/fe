@@ -319,9 +319,27 @@ impl Context {
     }
 
     /// Attribute contextual information to an expression node.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an entry already exists for the node id.
     pub fn add_expression(&mut self, node: &Node<fe::Expr>, attributes: ExpressionAttributes) {
         self.add_node(node);
-        self.expressions.insert(node.id, attributes);
+        expect_none(
+            self.expressions.insert(node.id, attributes),
+            "expression attributes already exist",
+        );
+    }
+
+    /// Update the expression attributes.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an entry does not already exist for the node id.
+    pub fn update_expression(&mut self, node: &Node<fe::Expr>, attributes: ExpressionAttributes) {
+        self.expressions
+            .insert(node.id, attributes)
+            .expect("expression attributes do not exist");
     }
 
     /// Get information that has been attributed to an expression node.
@@ -330,9 +348,16 @@ impl Context {
     }
 
     /// Attribute contextual information to an emit statement node.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an entry already exists for the node id.
     pub fn add_emit(&mut self, node: &Node<fe::FuncStmt>, event: EventDef) {
         self.add_node(node);
-        self.emits.insert(node.id, event);
+        expect_none(
+            self.emits.insert(node.id, event),
+            "emit statement attributes already exist",
+        );
     }
 
     /// Get information that has been attributed to an emit statement node.
@@ -341,9 +366,16 @@ impl Context {
     }
 
     /// Attribute contextual information to a function definition node.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an entry already exists for the node id.
     pub fn add_function(&mut self, node: &Node<fe::ContractStmt>, attributes: FunctionAttributes) {
         self.add_node(node);
-        self.functions.insert(node.id, attributes);
+        expect_none(
+            self.functions.insert(node.id, attributes),
+            "function attributes already exist",
+        );
     }
 
     /// Get information that has been attributed to a function definition node.
@@ -352,9 +384,16 @@ impl Context {
     }
 
     /// Attribute contextual information to a declaration node.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an entry already exists for the node id.
     pub fn add_declaration(&mut self, node: &Node<fe::FuncStmt>, typ: FixedSize) {
         self.add_node(node);
-        self.declarations.insert(node.id, typ);
+        expect_none(
+            self.declarations.insert(node.id, typ),
+            "declaration attributes already exist",
+        );
     }
 
     /// Get information that has been attributed to a declaration node.
@@ -363,9 +402,16 @@ impl Context {
     }
 
     /// Attribute contextual information to a contract definition node.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an entry already exists for the node id.
     pub fn add_contract(&mut self, node: &Node<fe::ModuleStmt>, attributes: ContractAttributes) {
         self.add_node(node);
-        self.contracts.insert(node.id, attributes);
+        expect_none(
+            self.contracts.insert(node.id, attributes),
+            "contract attributes already exist",
+        );
     }
 
     /// Get information that has been attributed to a contract definition node.
@@ -374,9 +420,16 @@ impl Context {
     }
 
     /// Attribute contextual information to a call expression node.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an entry already exists for the node id.
     pub fn add_call(&mut self, node: &Node<fe::Expr>, call_type: CallType) {
         self.add_node(node);
-        self.calls.insert(node.id, call_type);
+        expect_none(
+            self.calls.insert(node.id, call_type),
+            "call attributes already exist",
+        );
     }
 
     /// Get information that has been attributed to a call expression node.
@@ -385,9 +438,16 @@ impl Context {
     }
 
     /// Attribute contextual information to an event definition node.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an entry already exists for the node id.
     pub fn add_event(&mut self, node: &Node<fe::ContractStmt>, event: EventDef) {
         self.add_node(node);
-        self.events.insert(node.id, event);
+        expect_none(
+            self.events.insert(node.id, event),
+            "event attributes already exist",
+        );
     }
 
     /// Get information that has been attributed to an event definition node.
@@ -396,9 +456,16 @@ impl Context {
     }
 
     /// Attribute contextual information to a type description node.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an entry already exists for the node id.
     pub fn add_type_desc(&mut self, node: &Node<fe::TypeDesc>, typ: Type) {
         self.add_node(node);
-        self.type_descs.insert(node.id, typ);
+        expect_none(
+            self.type_descs.insert(node.id, typ),
+            "type desc attributes already exist",
+        );
     }
 
     /// Get information that has been attributed to a type description node.
@@ -502,5 +569,12 @@ impl Context {
                     .map(|attributes| (self.spans[node_id], attributes.to_owned()))
             })
             .collect::<Vec<_>>()
+    }
+}
+
+/// Temporary helper until `expect_none` is stable.
+fn expect_none<T>(item: Option<T>, msg: &str) {
+    if item.is_some() {
+        panic!("{}", msg)
     }
 }

@@ -101,20 +101,6 @@ note:
     }
 
 note: 
-  ┌─ features/address_bytes10_map.fe:5:25
-  │
-5 │         return self.bar[key].to_mem()
-  │                         ^^^ attributes hash: 513065555763557710
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Address,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
@@ -131,27 +117,6 @@ note:
             nonce: None,
         },
         move_location: None,
-    }
-
-note: 
-  ┌─ features/address_bytes10_map.fe:5:16
-  │
-5 │         return self.bar[key].to_mem()
-  │                ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16692882328884997814
-  │
-  = ExpressionAttributes {
-        typ: Array(
-            Array {
-                size: 10,
-                inner: Byte,
-            },
-        ),
-        location: Storage {
-            nonce: None,
-        },
-        move_location: Some(
-            Memory,
-        ),
     }
 
 note: 
@@ -198,20 +163,6 @@ note:
                 0,
             ),
         },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/address_bytes10_map.fe:8:18
-  │
-8 │         self.bar[key] = value
-  │                  ^^^ attributes hash: 513065555763557710
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Address,
-        ),
-        location: Value,
         move_location: None,
     }
 

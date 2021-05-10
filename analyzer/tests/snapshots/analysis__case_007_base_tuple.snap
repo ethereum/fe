@@ -80,22 +80,6 @@ note:
     }
 
 note: 
-  ┌─ features/base_tuple.fe:3:17
-  │
-3 │         return (my_num, my_bool)
-  │                 ^^^^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/base_tuple.fe:3:25
   │
 3 │         return (my_num, my_bool)
@@ -106,45 +90,6 @@ note:
             Bool,
         ),
         location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/base_tuple.fe:3:25
-  │
-3 │         return (my_num, my_bool)
-  │                         ^^^^^^^ attributes hash: 10866140763116710699
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/base_tuple.fe:3:16
-  │
-3 │         return (my_num, my_bool)
-  │                ^^^^^^^^^^^^^^^^^ attributes hash: 11698647864115949400
-  │
-  = ExpressionAttributes {
-        typ: Tuple(
-            Tuple {
-                items: [
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                    Base(
-                        Bool,
-                    ),
-                ],
-            },
-        ),
-        location: Memory,
         move_location: None,
     }
 

@@ -52,52 +52,10 @@ note:
     }
 
 note: 
-  ┌─ features/return_bool_op_or.fe:3:16
-  │
-3 │         return x or y
-  │                ^ attributes hash: 10866140763116710699
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/return_bool_op_or.fe:3:21
   │
 3 │         return x or y
   │                     ^ attributes hash: 10866140763116710699
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_bool_op_or.fe:3:21
-  │
-3 │         return x or y
-  │                     ^ attributes hash: 10866140763116710699
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_bool_op_or.fe:3:16
-  │
-3 │         return x or y
-  │                ^^^^^^ attributes hash: 10866140763116710699
   │
   = ExpressionAttributes {
         typ: Base(
