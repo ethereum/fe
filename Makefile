@@ -8,6 +8,9 @@ build-website:
 	# Copy the entire website directory to target/website
 	cp -r website/ target/
 
+	# Fill version marker with current version
+	sed -i "s/{{FE_VERSION}}/$$(cargo pkgid | cut -d# -f2 | cut -d: -f2)/g" target/website/index.html
+
 	# Generate the compiler API docs
 	cargo doc --no-deps --workspace
 
