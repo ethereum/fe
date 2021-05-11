@@ -93,9 +93,13 @@ pub fn compile(
         })
         .collect::<NamedContracts>();
 
-    Ok(CompiledModule {
-        src_ast: format!("{:#?}", fe_module),
-        lowered_ast: format!("{:#?}", lowered_fe_module),
-        contracts,
-    })
+    if errors.is_empty() {
+        Ok(CompiledModule {
+            src_ast: format!("{:#?}", fe_module),
+            lowered_ast: format!("{:#?}", lowered_fe_module),
+            contracts,
+        })
+    } else {
+        Err(CompileError { errors })
+    }
 }
