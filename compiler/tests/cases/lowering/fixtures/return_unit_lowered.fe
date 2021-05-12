@@ -1,0 +1,34 @@
+contract Foo:
+  pub def explicit_return_a1() -> ():
+    return ()
+
+  pub def explicit_return_a2() -> ():
+    return ()
+
+  pub def explicit_return_b1() -> ():
+    return ()
+
+  pub def explicit_return_b2() -> ():
+    return ()
+
+  pub def implicit_a1() -> ():
+    pass
+    return ()
+
+  pub def implicit_a2() -> ():
+    pass
+    return ()
+
+  pub def if_elif_else() -> ():
+    if true:
+        return ()
+    elif false:
+        return ()
+    else:
+        pass
+
+    return ()
+
+  pub def tuple_stmt() -> ():
+    ()
+    return ()

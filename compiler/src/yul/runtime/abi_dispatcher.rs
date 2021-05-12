@@ -25,7 +25,7 @@ pub fn dispatcher(attributes: Vec<FunctionAttributes>) -> yul::Statement {
 fn dispatch_arm(attributes: FunctionAttributes) -> yul::Case {
     let selector = selector(&attributes.name, &attributes.param_types());
 
-    if !attributes.return_type.is_empty_tuple() {
+    if !attributes.return_type.is_unit() {
         let selection = selection(&attributes.name, &attributes.param_types());
         let return_data = abi_operations::encode(
             vec![attributes.return_type.clone()],
@@ -45,11 +45,11 @@ fn dispatch_arm(attributes: FunctionAttributes) -> yul::Case {
                 ([selection_with_return])
             }
         };
+    } else {
+        // The return value of the selected statement muse be popped since all user defined function return a value.
+        let selection = selection_as_pop_statement(&attributes.name, &attributes.param_types());
+        case! { case [selector] { [selection] } }
     }
-
-    let selection = selection_as_statement(&attributes.name, &attributes.param_types());
-
-    case! { case [selector] { [selection] } }
 }
 
 fn selector(name: &str, params: &[FixedSize]) -> yul::Literal {
@@ -73,8 +73,8 @@ fn selection(name: &str, params: &[FixedSize]) -> yul::Expression {
     expression! { [name]([decoded_params...]) }
 }
 
-fn selection_as_statement(name: &str, params: &[FixedSize]) -> yul::Statement {
-    yul::Statement::Expression(selection(name, params))
+fn selection_as_pop_statement(name: &str, params: &[FixedSize]) -> yul::Statement {
+    yul::Statement::Expression(expression! { pop([selection(name, params)]) })
 }
 
 #[cfg(test)]

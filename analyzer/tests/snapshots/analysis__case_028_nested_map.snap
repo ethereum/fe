@@ -80,11 +80,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -111,11 +107,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                 ],
             },
@@ -590,7 +582,7 @@ note:
   │  
 8 │ ╭     pub def write_bar(a: address, b: address, value: u256):
 9 │ │         self.bar[a][b] = value
-  │ ╰──────────────────────────────^ attributes hash: 202558989119979160
+  │ ╰──────────────────────────────^ attributes hash: 3782835354110485341
   │  
   = FunctionAttributes {
         is_public: true,
@@ -617,11 +609,7 @@ note:
                 ),
             ),
         ],
-        return_type: Tuple(
-            Tuple {
-                items: [],
-            },
-        ),
+        return_type: Unit,
     }
 
 note: 
@@ -660,7 +648,7 @@ note:
    │  
 14 │ ╭     pub def write_baz(a: address, b: u256, value: bool):
 15 │ │         self.baz[a][b] = value
-   │ ╰──────────────────────────────^ attributes hash: 11833017979478403907
+   │ ╰──────────────────────────────^ attributes hash: 4071428523554519660
    │  
    = FunctionAttributes {
          is_public: true,
@@ -687,11 +675,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -704,7 +688,7 @@ note:
    · │
 14 │ │     pub def write_baz(a: address, b: u256, value: bool):
 15 │ │         self.baz[a][b] = value
-   │ ╰──────────────────────────────^ attributes hash: 8078655450695078604
+   │ ╰──────────────────────────────^ attributes hash: 8827419361338718420
    │  
    = ContractAttributes {
          public_functions: [
@@ -779,11 +763,7 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
              FunctionAttributes {
                  is_public: true,
@@ -810,11 +790,7 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
          ],
          init_function: None,

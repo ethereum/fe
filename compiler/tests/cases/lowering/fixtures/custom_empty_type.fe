@@ -1,0 +1,6 @@
+struct MyEmptyType:
+    pass
+
+contract Foo:
+    pub def bar() -> MyEmptyType:
+        return MyEmptyType()

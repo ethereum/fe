@@ -8,9 +8,7 @@ pub fn type_desc(context: &Context, desc: Node<fe::TypeDesc>) -> Node<fe::TypeDe
     let typ = context.get_type_desc(&desc).expect("missing attributes");
 
     match typ {
-        Type::Tuple(tuple) if !tuple.is_empty() => {
-            Node::new(names::tuple_struct_type_desc(tuple), desc.span)
-        }
+        Type::Tuple(tuple) => Node::new(names::tuple_struct_type_desc(tuple), desc.span),
         _ => desc,
     }
 }

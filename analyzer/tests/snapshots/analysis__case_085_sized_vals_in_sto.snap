@@ -13,11 +13,7 @@ ModuleAttributes {
                         is_public: true,
                         name: "emit_event",
                         params: [],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -65,11 +61,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -87,11 +79,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -106,11 +94,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                 ],
             },
@@ -507,7 +491,7 @@ note:
    │  
 11 │ ╭     pub def write_num(x: u256):
 12 │ │         self.num = x
-   │ ╰────────────────────^ attributes hash: 2464432602967739658
+   │ ╰────────────────────^ attributes hash: 4723311554161287362
    │  
    = FunctionAttributes {
          is_public: true,
@@ -522,11 +506,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -552,7 +532,7 @@ note:
    │  
 17 │ ╭     pub def write_nums(x: u256[42]):
 18 │ │         self.nums = x
-   │ ╰─────────────────────^ attributes hash: 1613064510716257135
+   │ ╰─────────────────────^ attributes hash: 13274737919563050399
    │  
    = FunctionAttributes {
          is_public: true,
@@ -570,11 +550,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -603,7 +579,7 @@ note:
    │  
 23 │ ╭     pub def write_str(x: string26):
 24 │ │         self.str = x
-   │ ╰────────────────────^ attributes hash: 17299579049592555284
+   │ ╰────────────────────^ attributes hash: 8954082301525757861
    │  
    = FunctionAttributes {
          is_public: true,
@@ -618,11 +594,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -652,17 +624,13 @@ note:
 32 │ │             self.nums.to_mem(),
 33 │ │             self.str.to_mem()
 34 │ │         )
-   │ ╰─────────^ attributes hash: 16088778846117250470
+   │ ╰─────────^ attributes hash: 3495533453674637575
    │  
    = FunctionAttributes {
          is_public: true,
          name: "emit_event",
          params: [],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -675,7 +643,7 @@ note:
    · │
 33 │ │             self.str.to_mem()
 34 │ │         )
-   │ ╰─────────^ attributes hash: 15737525148715434146
+   │ ╰─────────^ attributes hash: 6287727376829083665
    │  
    = ContractAttributes {
          public_functions: [
@@ -683,11 +651,7 @@ note:
                  is_public: true,
                  name: "emit_event",
                  params: [],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
              FunctionAttributes {
                  is_public: true,
@@ -735,11 +699,7 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
              FunctionAttributes {
                  is_public: true,
@@ -757,11 +717,7 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
              FunctionAttributes {
                  is_public: true,
@@ -776,11 +732,7 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
          ],
          init_function: None,

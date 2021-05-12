@@ -58,6 +58,7 @@ pub fn expr(context: &Context, exp: Node<fe::Expr>) -> Node<fe::Expr> {
         fe::Expr::List { .. } => expr_list(context, exp),
         fe::Expr::Tuple { .. } => expr_tuple(context, exp),
         fe::Expr::Str(_) => exp.kind,
+        fe::Expr::Unit => exp.kind,
     };
 
     Node::new(lowered_kind, span)
@@ -106,10 +107,6 @@ fn expr_tuple(context: &Context, exp: Node<fe::Expr>) -> fe::Expr {
     let attributes = context.get_expression(&exp).expect("missing attributes");
 
     if let Type::Tuple(tuple) = &attributes.typ {
-        if tuple.is_empty() {
-            return exp.kind;
-        }
-
         let name = tuple_struct_name(tuple);
 
         if let fe::Expr::Tuple { elts } = exp.kind {

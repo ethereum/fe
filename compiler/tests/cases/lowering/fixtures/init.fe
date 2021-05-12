@@ -1,0 +1,3 @@
+contract Foo:
+    pub def __init__():
+        pass

@@ -207,7 +207,7 @@ impl From<FunctionAttributes> for Function {
             .collect();
 
         let return_type = &attributes.return_type;
-        let outputs = if return_type.is_empty_tuple() {
+        let outputs = if return_type.is_unit() {
             vec![]
         } else {
             let components = return_type

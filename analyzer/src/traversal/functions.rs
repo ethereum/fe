@@ -1,7 +1,7 @@
 use crate::context::{Context, ExpressionAttributes, FunctionAttributes, Location};
 use crate::errors::SemanticError;
 use crate::namespace::scopes::{BlockScope, BlockScopeType, ContractScope, Scope, Shared};
-use crate::namespace::types::{Base, FixedSize, Tuple, Type};
+use crate::namespace::types::{Base, FixedSize, Type};
 use crate::traversal::utils::{expression_attributes_to_types, fixed_sizes_to_types};
 use crate::traversal::{assignments, declarations, expressions, types};
 use fe_parser::ast as fe;
@@ -20,7 +20,7 @@ pub fn func_def(
         name,
         args,
         return_type,
-        body: _,
+        ..
     } = &def.kind
     {
         let name = &name.kind;
@@ -41,10 +41,10 @@ pub fn func_def(
                 )
             })
             .transpose()?
-            .unwrap_or_else(|| Tuple::empty().into());
+            .unwrap_or(FixedSize::Unit);
 
         // `__init__` must not return any type other than `()`.
-        if name == "__init__" && !return_type.is_empty_tuple() {
+        if name == "__init__" && !return_type.is_unit() {
             return Err(SemanticError::type_error());
         }
 
@@ -62,10 +62,10 @@ pub fn func_def(
 
         context.borrow_mut().add_function(def, attributes);
 
-        return Ok(());
+        Ok(())
+    } else {
+        unreachable!()
     }
-
-    unreachable!();
 }
 
 /// Gather context information for a function body and check for type errors.
@@ -80,21 +80,19 @@ pub fn func_body(
             .function_def(&name.kind)
             .unwrap_or_else(|| panic!("Failed to lookup function definition for {}", &name.kind));
 
-        // If the return type is an empty tuple we do not have to validate any further
-        // at this point because both returning (explicit) or not returning (implicit
-        // return) are valid syntax.
+        // If the return type is unit we do not have to validate any further at this point because both returning (explicit) or not returning (implicit return) are valid syntax.
         // If the return type is anything else, we do need to ensure that all code paths
         // return or revert.
-        if !host_func_def.return_type.is_empty_tuple() {
+        if !host_func_def.return_type.is_unit() {
             validate_all_paths_return_or_revert(&body)?
         }
 
         traverse_statements(Rc::clone(&host_func_def.scope), Rc::clone(&context), body)?;
 
-        return Ok(());
+        Ok(())
+    } else {
+        unreachable!()
     }
-
-    unreachable!()
 }
 
 fn traverse_statements(
@@ -358,7 +356,7 @@ fn func_return(
     if let fe::FuncStmt::Return { value } = &stmt.kind {
         let attributes = match value {
             Some(val) => expressions::assignable_expr(Rc::clone(&scope), Rc::clone(&context), val)?,
-            None => ExpressionAttributes::new(Type::Tuple(Tuple::empty()), Location::Value),
+            None => ExpressionAttributes::new(Type::Unit, Location::Value),
         };
 
         let host_func_def = scope

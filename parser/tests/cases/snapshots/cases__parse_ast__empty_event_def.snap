@@ -1,0 +1,21 @@
+---
+source: parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(empty_event_def), types::parse_event_def,\n           \"event Foo:\\n  pass\")"
+
+---
+Node(
+  kind: EventDef(
+    name: Node(
+      kind: "Foo",
+      span: Span(
+        start: 6,
+        end: 9,
+      ),
+    ),
+    fields: [],
+  ),
+  span: Span(
+    start: 0,
+    end: 9,
+  ),
+)

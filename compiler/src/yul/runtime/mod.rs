@@ -19,7 +19,7 @@ pub fn build(context: &Context, contract: &Node<fe::ModuleStmt>) -> Vec<yul::Sta
             let public_functions_batch = attributes
                 .public_functions
                 .iter()
-                .filter(|attributes| !attributes.return_type.is_empty_tuple())
+                .filter(|attributes| !attributes.return_type.is_unit())
                 .map(|attributes| vec![attributes.return_type.clone()])
                 .collect::<Vec<_>>();
 
@@ -76,7 +76,7 @@ pub fn build(context: &Context, contract: &Node<fe::ModuleStmt>) -> Vec<yul::Sta
 
             let contracts_batch = external_functions
                 .into_iter()
-                .filter(|function| !function.return_type.is_empty_tuple())
+                .filter(|function| !function.return_type.is_unit())
                 .map(|function| (function.return_type, AbiDecodeLocation::Memory))
                 .collect();
 

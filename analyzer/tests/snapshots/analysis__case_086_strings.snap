@@ -326,7 +326,7 @@ note:
    │  
 11 │ ╭     pub def __init__(s1: string42, a: address, s2: string26, u: u256, s3: string100):
 12 │ │         emit MyEvent(s2, u, s1, s3, a, "static string", string100("foo"))
-   │ ╰─────────────────────────────────────────────────────────────────────────^ attributes hash: 6207938549978413359
+   │ ╰─────────────────────────────────────────────────────────────────────────^ attributes hash: 7357528411609044749
    │  
    = FunctionAttributes {
          is_public: true,
@@ -371,11 +371,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -459,7 +455,7 @@ note:
    · │
 20 │ │     pub def return_casted_static_string() -> string100:
 21 │ │         return string100("foo")
-   │ ╰───────────────────────────────^ attributes hash: 11507350326224577159
+   │ ╰───────────────────────────────^ attributes hash: 1334776889890751898
    │  
    = ContractAttributes {
          public_functions: [
@@ -555,11 +551,7 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
          ),
          events: [

@@ -15,6 +15,7 @@ pub fn index(value: Type, index: Type) -> Result<Type, SemanticError> {
         Type::String(_) => Err(SemanticError::not_subscriptable()),
         Type::Contract(_) => Err(SemanticError::not_subscriptable()),
         Type::Struct(_) => Err(SemanticError::not_subscriptable()),
+        Type::Unit => Err(SemanticError::not_subscriptable()),
     }
 }
 

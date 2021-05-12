@@ -2,6 +2,7 @@ use super::functions::parse_fn_def;
 use super::types::{parse_event_def, parse_field, parse_opt_qualifier};
 
 use crate::ast::ModuleStmt;
+use crate::grammar::functions::parse_single_word_stmt;
 use crate::node::Node;
 use crate::{ParseFailed, ParseResult, Parser, TokenKind};
 
@@ -83,6 +84,9 @@ pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
                 }
                 defs.push(parse_event_def(par)?);
             }
+            Some(Pass) => {
+                parse_single_word_stmt(par)?;
+            }
             Some(TokenKind::Dedent) => {
                 par.next()?;
                 break;
@@ -100,9 +104,6 @@ pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
         };
     }
 
-    if fields.is_empty() && defs.is_empty() {
-        par.error(header_span, "empty contract definition");
-    }
     let span = header_span + fields.last() + defs.last();
     Ok(Node::new(
         ModuleStmt::ContractDef {

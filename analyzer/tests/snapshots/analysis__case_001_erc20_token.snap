@@ -375,14 +375,10 @@ note:
    ┌─ demos/erc20_token.fe:25:9
    │
 25 │         self._mint(msg.sender, 1000000000000000000000000)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
    │
    = ExpressionAttributes {
-         typ: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         typ: Unit,
          location: Memory,
          move_location: None,
      }
@@ -622,14 +618,10 @@ note:
    ┌─ demos/erc20_token.fe:43:9
    │
 43 │         self._transfer(msg.sender, recipient, amount)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
    │
    = ExpressionAttributes {
-         typ: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         typ: Unit,
          location: Memory,
          move_location: None,
      }
@@ -797,14 +789,10 @@ note:
    ┌─ demos/erc20_token.fe:50:9
    │
 50 │         self._approve(msg.sender, spender, amount)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
    │
    = ExpressionAttributes {
-         typ: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         typ: Unit,
          location: Memory,
          move_location: None,
      }
@@ -1002,14 +990,10 @@ note:
    ┌─ demos/erc20_token.fe:56:9
    │
 56 │         self._transfer(sender, recipient, amount)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
    │
    = ExpressionAttributes {
-         typ: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         typ: Unit,
          location: Memory,
          move_location: None,
      }
@@ -1179,14 +1163,10 @@ note:
    ┌─ demos/erc20_token.fe:57:9
    │
 57 │         self._approve(sender, msg.sender, self._allowances[sender][msg.sender] - amount)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
    │
    = ExpressionAttributes {
-         typ: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         typ: Unit,
          location: Memory,
          move_location: None,
      }
@@ -1370,14 +1350,10 @@ note:
    ┌─ demos/erc20_token.fe:61:9
    │
 61 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] + addedValue)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
    │
    = ExpressionAttributes {
-         typ: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         typ: Unit,
          location: Memory,
          move_location: None,
      }
@@ -1561,14 +1537,10 @@ note:
    ┌─ demos/erc20_token.fe:65:9
    │
 65 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] - subtractedValue)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
    │
    = ExpressionAttributes {
-         typ: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         typ: Unit,
          location: Memory,
          move_location: None,
      }
@@ -1751,14 +1723,10 @@ note:
    ┌─ demos/erc20_token.fe:72:9
    │
 72 │         self._before_token_transfer(sender, recipient, amount)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
    │
    = ExpressionAttributes {
-         typ: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         typ: Unit,
          location: Memory,
          move_location: None,
      }
@@ -2225,14 +2193,10 @@ note:
    ┌─ demos/erc20_token.fe:81:9
    │
 81 │         self._before_token_transfer(address(0), account, amount)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
    │
    = ExpressionAttributes {
-         typ: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         typ: Unit,
          location: Memory,
          move_location: None,
      }
@@ -2641,14 +2605,10 @@ note:
    ┌─ demos/erc20_token.fe:90:9
    │
 90 │         self._before_token_transfer(account, address(0), amount)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
    │
    = ExpressionAttributes {
-         typ: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         typ: Unit,
          location: Memory,
          move_location: None,
      }
@@ -3402,7 +3362,7 @@ note:
 23 │ │         self._symbol = symbol
 24 │ │         self._decimals = u8(18)
 25 │ │         self._mint(msg.sender, 1000000000000000000000000)
-   │ ╰─────────────────────────────────────────────────────────^ attributes hash: 1495960738374912723
+   │ ╰─────────────────────────────────────────────────────────^ attributes hash: 12781195277125811671
    │  
    = FunctionAttributes {
          is_public: true,
@@ -3425,11 +3385,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -3739,7 +3695,7 @@ note:
    · │
 75 │ │         self._balances[recipient] = self._balances[recipient] + amount
 76 │ │         emit Transfer(sender, recipient, amount)
-   │ ╰────────────────────────────────────────────────^ attributes hash: 5845956910240859041
+   │ ╰────────────────────────────────────────────────^ attributes hash: 15928263751312618480
    │  
    = FunctionAttributes {
          is_public: false,
@@ -3766,11 +3722,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -3783,7 +3735,7 @@ note:
    · │
 84 │ │         self._balances[account] = self._balances[account] + amount
 85 │ │         emit Transfer(address(0), account, amount)
-   │ ╰──────────────────────────────────────────────────^ attributes hash: 11072772479687795920
+   │ ╰──────────────────────────────────────────────────^ attributes hash: 6035013189700399833
    │  
    = FunctionAttributes {
          is_public: false,
@@ -3804,11 +3756,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -3821,7 +3769,7 @@ note:
    · │
 93 │ │         self._total_supply = self._total_supply - amount
 94 │ │         emit Transfer(account, address(0), amount)
-   │ ╰──────────────────────────────────────────────────^ attributes hash: 3680320374264938545
+   │ ╰──────────────────────────────────────────────────^ attributes hash: 6192896585805843924
    │  
    = FunctionAttributes {
          is_public: false,
@@ -3842,11 +3790,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -3858,7 +3802,7 @@ note:
  99 │ │ 
 100 │ │         self._allowances[owner][spender] = amount
 101 │ │         emit Approval(owner, spender, amount)
-    │ ╰─────────────────────────────────────────────^ attributes hash: 15054951283132539212
+    │ ╰─────────────────────────────────────────────^ attributes hash: 9119925692855626593
     │  
     = FunctionAttributes {
           is_public: false,
@@ -3885,11 +3829,7 @@ note:
                   ),
               ),
           ],
-          return_type: Tuple(
-              Tuple {
-                  items: [],
-              },
-          ),
+          return_type: Unit,
       }
 
 note: 
@@ -3897,7 +3837,7 @@ note:
     │  
 103 │ ╭     def _setup_decimals(decimals_: u8):
 104 │ │         self._decimals = decimals_
-    │ ╰──────────────────────────────────^ attributes hash: 5432214243665186695
+    │ ╰──────────────────────────────────^ attributes hash: 17687756789057869061
     │  
     = FunctionAttributes {
           is_public: false,
@@ -3912,11 +3852,7 @@ note:
                   ),
               ),
           ],
-          return_type: Tuple(
-              Tuple {
-                  items: [],
-              },
-          ),
+          return_type: Unit,
       }
 
 note: 
@@ -3924,7 +3860,7 @@ note:
     │  
 106 │ ╭     def _before_token_transfer(from: address, to: address, amount: u256):
 107 │ │         pass
-    │ ╰────────────^ attributes hash: 16142237735491910309
+    │ ╰────────────^ attributes hash: 7834742190226794803
     │  
     = FunctionAttributes {
           is_public: false,
@@ -3951,11 +3887,7 @@ note:
                   ),
               ),
           ],
-          return_type: Tuple(
-              Tuple {
-                  items: [],
-              },
-          ),
+          return_type: Unit,
       }
 
 note: 
@@ -3968,7 +3900,7 @@ note:
     · │
 106 │ │     def _before_token_transfer(from: address, to: address, amount: u256):
 107 │ │         pass
-    │ ╰────────────^ attributes hash: 9117801603836548819
+    │ ╰────────────^ attributes hash: 7028258809904038920
     │  
     = ContractAttributes {
           public_functions: [
@@ -4196,11 +4128,7 @@ note:
                           ),
                       ),
                   ],
-                  return_type: Tuple(
-                      Tuple {
-                          items: [],
-                      },
-                  ),
+                  return_type: Unit,
               },
           ),
           events: [

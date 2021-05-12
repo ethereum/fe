@@ -61,7 +61,7 @@ use std::hash::{Hash, Hasher};
     case::return_builtin_attributes("features/return_builtin_attributes.fe"),
     case::return_division_i256("features/return_division_i256.fe"),
     case::return_division_u256("features/return_division_u256.fe"),
-    case::return_empty_tuple("features/return_empty_tuple.fe"),
+    case::return_empty_tuple("features/return_unit.fe"),
     case::return_eq_u256("features/return_eq_u256.fe"),
     case::return_gt_i256("features/return_gt_i256.fe"),
     case::return_gt_u256("features/return_gt_u256.fe"),

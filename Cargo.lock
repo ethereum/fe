@@ -631,6 +631,7 @@ dependencies = [
  "num-bigint",
  "rstest",
  "strum",
+ "vec1",
 ]
 
 [[package]]
@@ -665,6 +666,7 @@ dependencies = [
  "serde",
  "serde_json",
  "solc",
+ "vec1",
  "yultsur",
 ]
 
@@ -678,6 +680,7 @@ dependencies = [
  "serde",
  "unescape",
  "uuid",
+ "vec1",
  "wasm-bindgen",
  "wasm-bindgen-test",
 ]
@@ -1910,6 +1913,15 @@ name = "vcpkg"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cbdbff6266a24120518560b5dc983096efb98462e51d0d68169895b237be3e5d"
+
+[[package]]
+name = "vec1"
+version = "1.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fc1631c774f0f9570797191e01247cbefde789eebfbf128074cb934115a6133"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "vec_map"

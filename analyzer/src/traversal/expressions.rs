@@ -19,6 +19,7 @@ use fe_parser::node::Node;
 use std::convert::TryFrom;
 use std::rc::Rc;
 use std::str::FromStr;
+use vec1::Vec1;
 
 /// Gather context information for expressions and check for type errors.
 pub fn expr(
@@ -41,6 +42,7 @@ pub fn expr(
         fe::Expr::List { .. } => expr_list(scope, Rc::clone(&context), exp),
         fe::Expr::Tuple { .. } => expr_tuple(scope, Rc::clone(&context), exp),
         fe::Expr::Str(_) => expr_str(scope, exp),
+        fe::Expr::Unit => Ok(ExpressionAttributes::new(Type::Unit, Location::Value)),
     }
     .map_err(|error| error.with_context(exp.span))?;
 
@@ -135,39 +137,32 @@ fn expr_tuple(
     exp: &Node<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::Tuple { elts } = &exp.kind {
-        return if elts.is_empty() {
-            Ok(ExpressionAttributes::new(
-                Type::Tuple(Tuple::empty()),
-                Location::Memory,
-            ))
-        } else {
-            let types = elts
-                .iter()
-                .map(|elt| {
-                    assignable_expr(Rc::clone(&scope), Rc::clone(&context), elt)
-                        .map(|attributes| attributes.typ)
-                })
-                .collect::<Result<Vec<_>, _>>()?;
+        let types = elts
+            .iter()
+            .map(|elt| {
+                assignable_expr(Rc::clone(&scope), Rc::clone(&context), elt)
+                    .map(|attributes| attributes.typ)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
-            let tuple = Tuple {
-                items: types_to_fixed_sizes(types)?,
-            };
-
-            scope
-                .borrow()
-                .module_scope()
-                .borrow_mut()
-                .tuples_used
-                .insert(tuple.clone());
-
-            Ok(ExpressionAttributes::new(
-                Type::Tuple(tuple),
-                Location::Memory,
-            ))
+        let tuple = Tuple {
+            items: Vec1::try_from_vec(types_to_fixed_sizes(types)?).expect("tuple is empty"),
         };
-    }
 
-    unreachable!()
+        scope
+            .borrow()
+            .module_scope()
+            .borrow_mut()
+            .tuples_used
+            .insert(tuple.clone());
+
+        Ok(ExpressionAttributes::new(
+            Type::Tuple(tuple),
+            Location::Memory,
+        ))
+    } else {
+        unreachable!()
+    }
 }
 
 fn expr_name(
@@ -199,6 +194,7 @@ fn expr_name(
                 Type::Struct(val),
                 Location::Memory,
             )),
+            Some(FixedSize::Unit) => Ok(ExpressionAttributes::new(Type::Unit, Location::Value)),
             None => Err(SemanticError::undefined_value()),
         };
     }

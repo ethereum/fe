@@ -7,6 +7,7 @@ use std::convert::TryFrom;
 use crate::context::FunctionAttributes;
 use num_bigint::BigInt;
 use strum::IntoStaticStr;
+use vec1::Vec1;
 
 pub fn u256_max() -> BigInt {
     BigInt::from(2).pow(256) - 1
@@ -112,6 +113,7 @@ pub enum Type {
     String(FeString),
     Contract(Contract),
     Struct(Struct),
+    Unit,
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
@@ -122,6 +124,7 @@ pub enum FixedSize {
     String(FeString),
     Contract(Contract),
     Struct(Struct),
+    Unit,
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
@@ -164,7 +167,7 @@ pub struct Map {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct Tuple {
-    pub items: Vec<FixedSize>,
+    pub items: Vec1<FixedSize>,
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
@@ -194,7 +197,7 @@ impl Struct {
         }
     }
 
-    /// Return `true` if the struct has any fields, otherwise return `false`
+    /// Return `true` if the struct does not have any fields, otherwise return `false`
     pub fn is_empty(&self) -> bool {
         self.fields.is_empty()
     }
@@ -322,14 +325,6 @@ impl Integer {
 }
 
 impl Type {
-    /// Returns true if the type is a tuple with 0 elements.
-    pub fn is_empty_tuple(&self) -> bool {
-        if let Type::Tuple(tuple) = &self {
-            return tuple.is_empty();
-        }
-        false
-    }
-
     pub fn is_signed_integer(&self) -> bool {
         if let Type::Base(Base::Numeric(integer)) = &self {
             return integer.is_signed();
@@ -347,6 +342,7 @@ impl From<FixedSize> for Type {
             FixedSize::String(string) => Type::String(string),
             FixedSize::Contract(contract) => Type::Contract(contract),
             FixedSize::Struct(val) => Type::Struct(val),
+            FixedSize::Unit => Type::Unit,
         }
     }
 }
@@ -364,18 +360,12 @@ impl From<Base> for FixedSize {
 }
 
 impl FixedSize {
-    pub fn empty_tuple() -> Self {
-        FixedSize::Tuple(Tuple::empty())
+    /// Returns true if the type is `()`.
+    pub fn is_unit(&self) -> bool {
+        self == &Self::Unit
     }
 
-    pub fn is_empty_tuple(&self) -> bool {
-        if let FixedSize::Tuple(tuple) = self {
-            return tuple.is_empty();
-        }
-
-        false
-    }
-
+    /// Creates an instance of bool.
     pub fn bool() -> Self {
         FixedSize::Base(Base::Bool)
     }
@@ -393,17 +383,8 @@ impl TryFrom<Type> for FixedSize {
             Type::Struct(val) => Ok(FixedSize::Struct(val)),
             Type::Map(_) => Err(SemanticError::type_error()),
             Type::Contract(contract) => Ok(FixedSize::Contract(contract)),
+            Type::Unit => Ok(FixedSize::Unit),
         }
-    }
-}
-
-impl Tuple {
-    pub fn empty() -> Tuple {
-        Tuple { items: vec![] }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.size() == 0
     }
 }
 
@@ -422,6 +403,7 @@ impl FeSized for FixedSize {
             FixedSize::String(string) => string.size(),
             FixedSize::Contract(contract) => contract.size(),
             FixedSize::Struct(val) => val.size(),
+            FixedSize::Unit => 0,
         }
     }
 }
@@ -495,6 +477,7 @@ impl AbiEncoding for FixedSize {
             FixedSize::String(string) => string.abi_json_name(),
             FixedSize::Contract(contract) => contract.abi_json_name(),
             FixedSize::Struct(val) => val.abi_json_name(),
+            FixedSize::Unit => panic!("unit is not encodable"),
         }
     }
 
@@ -506,6 +489,7 @@ impl AbiEncoding for FixedSize {
             FixedSize::String(string) => string.abi_selector_name(),
             FixedSize::Contract(contract) => contract.abi_selector_name(),
             FixedSize::Struct(val) => val.abi_selector_name(),
+            FixedSize::Unit => panic!("unit is not encodable"),
         }
     }
 
@@ -517,6 +501,7 @@ impl AbiEncoding for FixedSize {
             FixedSize::String(string) => string.abi_components(),
             FixedSize::Contract(contract) => contract.abi_components(),
             FixedSize::Struct(val) => val.abi_components(),
+            FixedSize::Unit => panic!("unit is not encodable"),
         }
     }
 
@@ -528,6 +513,7 @@ impl AbiEncoding for FixedSize {
             FixedSize::String(string) => string.abi_type(),
             FixedSize::Contract(contract) => contract.abi_type(),
             FixedSize::Struct(val) => val.abi_type(),
+            FixedSize::Unit => panic!("unit is not encodable"),
         }
     }
 }
@@ -723,11 +709,7 @@ impl AbiEncoding for Struct {
 
 impl AbiEncoding for Tuple {
     fn abi_json_name(&self) -> String {
-        if self.is_empty() {
-            "".to_string()
-        } else {
-            "tuple".to_string()
-        }
+        "tuple".to_string()
     }
 
     fn abi_selector_name(&self) -> String {
@@ -812,6 +794,7 @@ impl SafeNames for FixedSize {
             FixedSize::String(string) => string.lower_snake(),
             FixedSize::Contract(contract) => contract.lower_snake(),
             FixedSize::Struct(val) => val.lower_snake(),
+            FixedSize::Unit => "unit".to_string(),
         }
     }
 }
@@ -858,6 +841,7 @@ impl SafeNames for Tuple {
             .map(|typ| typ.lower_snake())
             .collect::<Vec<String>>();
         let joined_names = field_names.join("_");
+
         format!("tuple_{}", joined_names)
     }
 }
@@ -948,10 +932,14 @@ pub fn type_desc(defs: &BTreeMap<String, Type>, typ: &fe::TypeDesc) -> Result<Ty
             }
         }
         fe::TypeDesc::Tuple { items } => Ok(Type::Tuple(Tuple {
-            items: items
-                .iter()
-                .map(|typ| type_desc_fixed_size(defs, &typ.kind))
-                .collect::<Result<_, _>>()?,
+            items: Vec1::try_from_vec(
+                items
+                    .iter()
+                    .map(|typ| type_desc_fixed_size(defs, &typ.kind))
+                    .collect::<Result<_, _>>()?,
+            )
+            .expect("tuple is empty"),
         })),
+        fe::TypeDesc::Unit => Ok(Type::Unit),
     }
 }

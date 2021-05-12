@@ -48,10 +48,10 @@ pub fn calls(contract: Contract) -> Vec<yul::Statement> {
             // the size of the encoded data
             let encoding_size = abi_operations::encode_size(function.param_types(), param_exprs);
 
-            if function.return_type.is_empty_tuple() {
+            if function.return_type.is_unit() {
                 // there is no return data to handle
                 function_definition! {
-                    function [function_name](addr, [param_idents...]) {
+                    function [function_name](addr, [param_idents...]) -> return_val {
                         (let instart := alloc_mstoren([selector], 4))
                         (let insize := add(4, [encoding_size]))
                         (pop([encoding_operation]))

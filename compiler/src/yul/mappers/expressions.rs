@@ -32,8 +32,9 @@ pub fn expr(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
             fe::Expr::CompOperation { .. } => expr_comp_operation(context, exp),
             fe::Expr::Call { .. } => expr_call(context, exp),
             fe::Expr::List { .. } => panic!("list expressions should be lowered"),
-            fe::Expr::Tuple { .. } => expr_tuple(exp),
+            fe::Expr::Tuple { .. } => panic!("tuple expressions should be lowered"),
             fe::Expr::Str(_) => expr_str(exp),
+            fe::Expr::Unit => expression! { 0x0 },
         };
 
         match (
@@ -282,18 +283,6 @@ pub fn expr_unary_operation(context: &Context, exp: &Node<fe::Expr>) -> yul::Exp
 pub fn expr_name_string(exp: &Node<fe::Expr>) -> String {
     if let fe::Expr::Name(name) = &exp.kind {
         return name.to_owned();
-    }
-
-    unreachable!()
-}
-
-fn expr_tuple(exp: &Node<fe::Expr>) -> yul::Expression {
-    if let fe::Expr::Tuple { elts } = &exp.kind {
-        if elts.is_empty() {
-            return literal_expression! {0x0};
-        } else {
-            panic!("Non-empty Tuples should be lowered to structs")
-        }
     }
 
     unreachable!()

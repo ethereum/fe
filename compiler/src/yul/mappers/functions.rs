@@ -19,37 +19,23 @@ pub fn multiple_func_stmt(
 
 /// Builds a Yul function definition from a Fe function definition.
 pub fn func_def(context: &Context, def: &Node<fe::ContractStmt>) -> yul::Statement {
-    if let (
-        Some(attributes),
-        fe::ContractStmt::FuncDef {
-            is_pub: _,
-            name,
-            args,
-            return_type: _,
-            body,
-        },
-    ) = (context.get_function(def).to_owned(), &def.kind)
+    if let fe::ContractStmt::FuncDef {
+        name, args, body, ..
+    } = &def.kind
     {
         let function_name = names::func_name(&name.kind);
         let param_names = args.iter().map(|arg| func_def_arg(arg)).collect::<Vec<_>>();
         let function_statements = multiple_func_stmt(context, body);
 
-        return if attributes.return_type.is_empty_tuple() {
-            function_definition! {
-                function [function_name]([param_names...]) {
-                    [function_statements...]
-                }
+        // all user-defined functions are given a return value during lowering
+        function_definition! {
+            function [function_name]([param_names...]) -> return_val {
+                [function_statements...]
             }
-        } else {
-            function_definition! {
-                function [function_name]([param_names...]) -> return_val {
-                    [function_statements...]
-                }
-            }
-        };
+        }
+    } else {
+        unreachable!()
     }
-
-    unreachable!()
 }
 
 fn func_def_arg(arg: &Node<fe::FuncDefArg>) -> yul::Identifier {
@@ -129,16 +115,10 @@ fn expr(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     if let fe::FuncStmt::Expr { value } = &stmt.kind {
         let expr = expressions::expr(context, value);
 
-        let attributes = context.get_expression(value).expect("missing attributes");
-
-        return if attributes.typ.is_empty_tuple() {
-            yul::Statement::Expression(expr)
-        } else {
-            statement! { pop([expr])}
-        };
+        statement! { pop([expr])}
+    } else {
+        unreachable!()
     }
-
-    unreachable!()
 }
 
 fn revert(stmt: &Node<fe::FuncStmt>) -> yul::Statement {
@@ -200,25 +180,18 @@ fn continue_statement(_context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Sta
 
 fn func_return(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     if let fe::FuncStmt::Return { value } = &stmt.kind {
-        return match value {
-            Some(value) => {
-                // Ensure `return ()` is handled as if the function does not return
-                let attributes = context.get_expression(value).expect("Missing attributes");
-                if attributes.is_empty_tuple() {
-                    return statement! { leave };
-                }
+        let value = value
+            .as_ref()
+            .expect("valueless return made it to Yul codegen");
+        let value = expressions::expr(context, value);
 
-                let value = expressions::expr(context, value);
-                return block_statement! {
-                    (return_val := [value])
-                    (leave)
-                };
-            }
-            None => statement! { leave },
-        };
+        block_statement! {
+            (return_val := [value])
+            (leave)
+        }
+    } else {
+        unreachable!()
     }
-
-    unreachable!()
 }
 
 fn while_loop(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {

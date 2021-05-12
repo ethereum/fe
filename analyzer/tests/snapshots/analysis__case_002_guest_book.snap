@@ -47,11 +47,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                 ],
             },
@@ -263,7 +259,7 @@ note:
 10 │ │         self.messages[msg.sender] = book_msg
 11 │ │ 
 12 │ │         emit Signed(book_msg=book_msg)
-   │ ╰──────────────────────────────────────^ attributes hash: 5066331849586951910
+   │ ╰──────────────────────────────────────^ attributes hash: 5981101296597642865
    │  
    = FunctionAttributes {
          is_public: true,
@@ -279,11 +275,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -322,7 +314,7 @@ note:
    · │
 14 │ │     pub def get_msg(addr: address) -> BookMsg:
 15 │ │         return self.messages[addr].to_mem()
-   │ ╰───────────────────────────────────────────^ attributes hash: 6562880586223247611
+   │ ╰───────────────────────────────────────────^ attributes hash: 9538492214726090170
    │  
    = ContractAttributes {
          public_functions: [
@@ -358,11 +350,7 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
          ],
          init_function: None,

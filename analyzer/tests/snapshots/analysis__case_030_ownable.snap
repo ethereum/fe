@@ -21,11 +21,7 @@ ModuleAttributes {
                         is_public: true,
                         name: "renounceOwnership",
                         params: [],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -38,11 +34,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                 ],
             },
@@ -472,17 +464,13 @@ note:
   │  
 8 │ ╭   def __init__():
 9 │ │     self._owner = msg.sender
-  │ ╰────────────────────────────^ attributes hash: 7453979726527099563
+  │ ╰────────────────────────────^ attributes hash: 16393739633064297277
   │  
   = FunctionAttributes {
         is_public: false,
         name: "__init__",
         params: [],
-        return_type: Tuple(
-            Tuple {
-                items: [],
-            },
-        ),
+        return_type: Unit,
     }
 
 note: 
@@ -508,17 +496,13 @@ note:
 15 │ │     assert msg.sender == self._owner
 16 │ │     self._owner = address(0)
 17 │ │     emit OwnershipTransferred(msg.sender, address(0))
-   │ ╰─────────────────────────────────────────────────────^ attributes hash: 2119217478443958417
+   │ ╰─────────────────────────────────────────────────────^ attributes hash: 12628352736240175616
    │  
    = FunctionAttributes {
          is_public: true,
          name: "renounceOwnership",
          params: [],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -529,7 +513,7 @@ note:
 21 │ │     assert newOwner != address(0)
 22 │ │     self._owner = newOwner
 23 │ │     emit OwnershipTransferred(msg.sender, newOwner)
-   │ ╰───────────────────────────────────────────────────^ attributes hash: 2356471017531517953
+   │ ╰───────────────────────────────────────────────────^ attributes hash: 11843099122202862420
    │  
    = FunctionAttributes {
          is_public: true,
@@ -542,11 +526,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -559,7 +539,7 @@ note:
    · │
 22 │ │     self._owner = newOwner
 23 │ │     emit OwnershipTransferred(msg.sender, newOwner)
-   │ ╰───────────────────────────────────────────────────^ attributes hash: 8120887206130330134
+   │ ╰───────────────────────────────────────────────────^ attributes hash: 10980029673205009560
    │  
    = ContractAttributes {
          public_functions: [
@@ -575,11 +555,7 @@ note:
                  is_public: true,
                  name: "renounceOwnership",
                  params: [],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
              FunctionAttributes {
                  is_public: true,
@@ -592,11 +568,7 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
          ],
          init_function: None,

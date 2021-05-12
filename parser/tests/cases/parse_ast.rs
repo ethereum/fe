@@ -65,6 +65,7 @@ test_parse! { expr_group, expressions::parse_expr, "(1 + 2) * 3" }
 test_parse! { expr_tuple1, expressions::parse_expr, "(1,)" }
 test_parse! { expr_tuple2, expressions::parse_expr, "(1, 2, \n 3)" }
 test_parse! { expr_tuple3, expressions::parse_expr, "(1, (2 + 3), (3 * 4, 5))" }
+test_parse! { expr_unit, expressions::parse_expr, "()" }
 
 test_parse! { ops_not, expressions::parse_expr, "x and not y" }
 test_parse! { ops_math, expressions::parse_expr, "a + b * -c ** d / e % f" }
@@ -116,9 +117,11 @@ test_parse! { type_map2, types::parse_type_desc, "map<address, map<u8, u256>>" }
 test_parse! { type_map3, types::parse_type_desc, "map<address, map<u8, map<u8, u8>>>" }
 test_parse! { type_map4, types::parse_type_desc, "map < address , map < u8, u256 > >" }
 test_parse! { type_tuple, types::parse_type_desc, "(u8, u16, address, map<u8, u8>)" }
+test_parse! { type_unit, types::parse_type_desc, "()" }
 
 test_parse! { fn_def, |par| functions::parse_fn_def(par, None), "def foo21(x: bool, y: address,) -> bool:\n x"}
 test_parse! { event_def, types::parse_event_def, "event Foo:\n  x: address\n  idx y: u8" }
+test_parse! { empty_event_def, types::parse_event_def, "event Foo:\n  pass" }
 
 test_parse! { import_simple, module::parse_simple_import, "import foo as bar, baz, bing as bop" }
 test_parse! { struct_def, types::parse_struct_def, r#"struct S:
@@ -126,6 +129,9 @@ test_parse! { struct_def, types::parse_struct_def, r#"struct S:
   pub y: u8
   const z: u8
   pub const a: map<u8, foo>
+"# }
+test_parse! { empty_struct_def, types::parse_struct_def, r#"struct S:
+  pass
 "# }
 
 test_parse! { contract_def, contracts::parse_contract_def, r#"contract Foo:
@@ -136,6 +142,10 @@ test_parse! { contract_def, contracts::parse_contract_def, r#"contract Foo:
     return 10
   event Bar:
     idx from: address
+"# }
+
+test_parse! { empty_contract_def, contracts::parse_contract_def, r#"contract Foo:
+    pass
 "# }
 
 test_parse! { module_stmts, module::parse_module, r#"

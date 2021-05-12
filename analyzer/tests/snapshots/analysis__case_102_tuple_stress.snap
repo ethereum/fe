@@ -56,11 +56,7 @@ ModuleAttributes {
                         is_public: true,
                         name: "build_tuple_and_emit",
                         params: [],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -87,11 +83,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -256,11 +248,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                 ],
             },
@@ -1142,14 +1130,10 @@ note:
    ┌─ stress/tuple_stress.fe:40:9
    │
 40 │         self.emit_my_event(my_tuple)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
    │
    = ExpressionAttributes {
-         typ: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         typ: Unit,
          location: Memory,
          move_location: None,
      }
@@ -1406,7 +1390,7 @@ note:
    │  
 23 │ ╭     pub def emit_my_event(my_tuple: (u256, bool, address)):
 24 │ │         emit MyEvent(my_tuple)
-   │ ╰──────────────────────────────^ attributes hash: 8416201692856968704
+   │ ╰──────────────────────────────^ attributes hash: 10195864716275896975
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1433,11 +1417,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -1446,7 +1426,7 @@ note:
 26 │ ╭     pub def set_my_sto_tuple(my_u256: u256, my_i32: i32):
 27 │ │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
 28 │ │         self.my_sto_tuple = (my_u256, my_i32)
-   │ ╰─────────────────────────────────────────────^ attributes hash: 15145010389276362855
+   │ ╰─────────────────────────────────────────────^ attributes hash: 3417003893761463383
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1469,11 +1449,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -1515,17 +1491,13 @@ note:
    · │
 39 │ │         )
 40 │ │         self.emit_my_event(my_tuple)
-   │ ╰────────────────────────────────────^ attributes hash: 13549455973056776159
+   │ ╰────────────────────────────────────^ attributes hash: 2667028644424766496
    │  
    = FunctionAttributes {
          is_public: true,
          name: "build_tuple_and_emit",
          params: [],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -1618,7 +1590,7 @@ note:
    · │
 42 │ │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> bytes[96]:
 43 │ │         return my_tuple.abi_encode()
-   │ ╰────────────────────────────────────^ attributes hash: 13334559621493045012
+   │ ╰────────────────────────────────────^ attributes hash: 14532587019825575010
    │  
    = ContractAttributes {
          public_functions: [
@@ -1669,11 +1641,7 @@ note:
                  is_public: true,
                  name: "build_tuple_and_emit",
                  params: [],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
              FunctionAttributes {
                  is_public: true,
@@ -1700,11 +1668,7 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
              FunctionAttributes {
                  is_public: true,
@@ -1869,11 +1833,7 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
          ],
          init_function: None,

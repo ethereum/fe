@@ -23,11 +23,7 @@ ModuleAttributes {
                         is_public: true,
                         name: "create_house",
                         params: [],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -4164,17 +4160,13 @@ note:
    · │
 41 │ │         assert self.my_house.rooms == u8(100)
 42 │ │         assert self.my_house.vacant
-   │ ╰───────────────────────────────────^ attributes hash: 134640957711020424
+   │ ╰───────────────────────────────────^ attributes hash: 10817782358155661560
    │  
    = FunctionAttributes {
          is_public: true,
          name: "create_house",
          params: [],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -4386,7 +4378,7 @@ note:
    · │
 82 │ │         )
 83 │ │         return keccak256(house.abi_encode())
-   │ ╰────────────────────────────────────────────^ attributes hash: 11136729322288201999
+   │ ╰────────────────────────────────────────────^ attributes hash: 13959008410411926672
    │  
    = ContractAttributes {
          public_functions: [
@@ -4404,11 +4396,7 @@ note:
                  is_public: true,
                  name: "create_house",
                  params: [],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
              FunctionAttributes {
                  is_public: true,
