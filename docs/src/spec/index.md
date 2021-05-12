@@ -774,19 +774,19 @@ Constant size values stored on the stack or in memory can be passed into and ret
 [Types]: #51-types
   [_Type_]: #51-types
   [type]: #51-types
-[Boolean]: #5111-boolean-type
-[Contract]: #5112-contract-type
+[Boolean]: #5111-boolean-types
+[Contract]: #5112-contract-types
 [Numeric]: #5113-numeric-type
 [Textual]: #5114-textual-types
-[Tuple]: #5115-tuple-type
-[Array]: #5116-array-type
+[Tuple]: #5115-tuple-types
+[Array]: #5116-array-types
 [Struct]: #5117-struct-types
   [struct type]: #5117-struct-types
-[Enum]: #5118-enum-type
-  [enumerated type]: #5118-enum-type
-[Function]: #5119-function-type
-[Address]: #51110-address-type
-[HashMap]: #51111-hashmap-type
-[Bytes]: #51112-bytes-type
-[Event]: #51113-bytes-type
-  [event type]: #51113-bytes-type
+[Enum]: #5118-enum-types
+  [enumerated type]: #5118-enum-types
+[Function]: #5119-function-types
+[Address]: #51110-address-types
+[HashMap]: #51111-hashmap-types
+[Bytes]: #51112-bytes-types
+[Event]: #51113-bytes-types
+  [event type]: #51113-bytes-types
