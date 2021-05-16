@@ -1,0 +1,73 @@
+---
+source: parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(stmt_while), functions::parse_stmt,\n           \"while a > 5:\\n a -= 1\")"
+
+---
+Node(
+  kind: While(
+    test: Node(
+      kind: CompOperation(
+        left: Node(
+          kind: Name("a"),
+          span: Span(
+            start: 6,
+            end: 7,
+          ),
+        ),
+        op: Node(
+          kind: Gt,
+          span: Span(
+            start: 8,
+            end: 9,
+          ),
+        ),
+        right: Node(
+          kind: Num("5"),
+          span: Span(
+            start: 10,
+            end: 11,
+          ),
+        ),
+      ),
+      span: Span(
+        start: 6,
+        end: 11,
+      ),
+    ),
+    body: [
+      Node(
+        kind: AugAssign(
+          target: Node(
+            kind: Name("a"),
+            span: Span(
+              start: 14,
+              end: 15,
+            ),
+          ),
+          op: Node(
+            kind: Sub,
+            span: Span(
+              start: 16,
+              end: 18,
+            ),
+          ),
+          value: Node(
+            kind: Num("1"),
+            span: Span(
+              start: 19,
+              end: 20,
+            ),
+          ),
+        ),
+        span: Span(
+          start: 14,
+          end: 20,
+        ),
+      ),
+    ],
+  ),
+  span: Span(
+    start: 0,
+    end: 20,
+  ),
+)

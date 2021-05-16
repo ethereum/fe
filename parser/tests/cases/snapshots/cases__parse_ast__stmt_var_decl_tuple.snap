@@ -1,0 +1,87 @@
+---
+source: parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(stmt_var_decl_tuple), functions::parse_stmt,\n           \"(foo, bar): (u256, u256) = (10, 10)\")"
+
+---
+Node(
+  kind: VarDecl(
+    target: Node(
+      kind: Tuple([
+        Node(
+          kind: Name("foo"),
+          span: Span(
+            start: 1,
+            end: 4,
+          ),
+        ),
+        Node(
+          kind: Name("bar"),
+          span: Span(
+            start: 6,
+            end: 9,
+          ),
+        ),
+      ]),
+      span: Span(
+        start: 0,
+        end: 10,
+      ),
+    ),
+    typ: Node(
+      kind: Tuple(
+        items: [
+          Node(
+            kind: Base(
+              base: "u256",
+            ),
+            span: Span(
+              start: 13,
+              end: 17,
+            ),
+          ),
+          Node(
+            kind: Base(
+              base: "u256",
+            ),
+            span: Span(
+              start: 19,
+              end: 23,
+            ),
+          ),
+        ],
+      ),
+      span: Span(
+        start: 12,
+        end: 24,
+      ),
+    ),
+    value: Some(Node(
+      kind: Tuple(
+        elts: [
+          Node(
+            kind: Num("10"),
+            span: Span(
+              start: 28,
+              end: 30,
+            ),
+          ),
+          Node(
+            kind: Num("10"),
+            span: Span(
+              start: 32,
+              end: 34,
+            ),
+          ),
+        ],
+      ),
+      span: Span(
+        start: 27,
+        end: 35,
+      ),
+    )),
+  ),
+  span: Span(
+    start: 0,
+    end: 35,
+  ),
+)

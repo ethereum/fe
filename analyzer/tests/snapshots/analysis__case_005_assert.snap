@@ -1,0 +1,482 @@
+---
+source: analyzer/tests/analysis.rs
+expression: "build_snapshot(fixture, src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "bar",
+                        params: [
+                            (
+                                "baz",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Tuple(
+                            Tuple {
+                                items: [],
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "revert_with",
+                        params: [
+                            (
+                                "baz",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "reason",
+                                String(
+                                    FeString {
+                                        max_size: 1000,
+                                    },
+                                ),
+                            ),
+                        ],
+                        return_type: Tuple(
+                            Tuple {
+                                items: [],
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "revert_with_static_string",
+                        params: [
+                            (
+                                "baz",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Tuple(
+                            Tuple {
+                                items: [],
+                            },
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+    tuples_used: {},
+}
+
+note: 
+  ┌─ features/assert.fe:3:16
+  │
+3 │         assert baz > 5
+  │                ^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/assert.fe:3:22
+  │
+3 │         assert baz > 5
+  │                      ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/assert.fe:3:16
+  │
+3 │         assert baz > 5
+  │                ^^^^^^^ attributes hash: 10866140763116710699
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Bool,
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/assert.fe:6:16
+  │
+6 │         assert baz > 5, "Must be greater than five"
+  │                ^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/assert.fe:6:22
+  │
+6 │         assert baz > 5, "Must be greater than five"
+  │                      ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/assert.fe:6:16
+  │
+6 │         assert baz > 5, "Must be greater than five"
+  │                ^^^^^^^ attributes hash: 10866140763116710699
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Bool,
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/assert.fe:6:25
+  │
+6 │         assert baz > 5, "Must be greater than five"
+  │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 758686948559484701
+  │
+  = ExpressionAttributes {
+        typ: String(
+            FeString {
+                max_size: 25,
+            },
+        ),
+        location: Memory,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/assert.fe:9:16
+  │
+9 │         assert baz > 5, reason
+  │                ^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/assert.fe:9:22
+  │
+9 │         assert baz > 5, reason
+  │                      ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/assert.fe:9:16
+  │
+9 │         assert baz > 5, reason
+  │                ^^^^^^^ attributes hash: 10866140763116710699
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Bool,
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/assert.fe:9:25
+  │
+9 │         assert baz > 5, reason
+  │                         ^^^^^^ attributes hash: 10487155938723362609
+  │
+  = ExpressionAttributes {
+        typ: String(
+            FeString {
+                max_size: 1000,
+            },
+        ),
+        location: Memory,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/assert.fe:2:5
+  │  
+2 │ ╭     pub def bar(baz: u256):
+3 │ │         assert baz > 5
+  │ ╰──────────────────────^ attributes hash: 1244139026356692478
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "bar",
+        params: [
+            (
+                "baz",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+        ],
+        return_type: Tuple(
+            Tuple {
+                items: [],
+            },
+        ),
+    }
+
+note: 
+  ┌─ features/assert.fe:5:5
+  │  
+5 │ ╭     pub def revert_with_static_string(baz: u256):
+6 │ │         assert baz > 5, "Must be greater than five"
+  │ ╰───────────────────────────────────────────────────^ attributes hash: 14217232402933960034
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "revert_with_static_string",
+        params: [
+            (
+                "baz",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+        ],
+        return_type: Tuple(
+            Tuple {
+                items: [],
+            },
+        ),
+    }
+
+note: 
+  ┌─ features/assert.fe:8:5
+  │  
+8 │ ╭     pub def revert_with(baz: u256, reason: string1000):
+9 │ │         assert baz > 5, reason
+  │ ╰──────────────────────────────^ attributes hash: 10551455119938656477
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "revert_with",
+        params: [
+            (
+                "baz",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+            (
+                "reason",
+                String(
+                    FeString {
+                        max_size: 1000,
+                    },
+                ),
+            ),
+        ],
+        return_type: Tuple(
+            Tuple {
+                items: [],
+            },
+        ),
+    }
+
+note: 
+  ┌─ features/assert.fe:1:1
+  │  
+1 │ ╭ contract Foo:
+2 │ │     pub def bar(baz: u256):
+3 │ │         assert baz > 5
+4 │ │ 
+  · │
+8 │ │     pub def revert_with(baz: u256, reason: string1000):
+9 │ │         assert baz > 5, reason
+  │ ╰──────────────────────────────^ attributes hash: 14526586822796911817
+  │  
+  = ContractAttributes {
+        public_functions: [
+            FunctionAttributes {
+                is_public: true,
+                name: "bar",
+                params: [
+                    (
+                        "baz",
+                        Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    ),
+                ],
+                return_type: Tuple(
+                    Tuple {
+                        items: [],
+                    },
+                ),
+            },
+            FunctionAttributes {
+                is_public: true,
+                name: "revert_with",
+                params: [
+                    (
+                        "baz",
+                        Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    ),
+                    (
+                        "reason",
+                        String(
+                            FeString {
+                                max_size: 1000,
+                            },
+                        ),
+                    ),
+                ],
+                return_type: Tuple(
+                    Tuple {
+                        items: [],
+                    },
+                ),
+            },
+            FunctionAttributes {
+                is_public: true,
+                name: "revert_with_static_string",
+                params: [
+                    (
+                        "baz",
+                        Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    ),
+                ],
+                return_type: Tuple(
+                    Tuple {
+                        items: [],
+                    },
+                ),
+            },
+        ],
+        init_function: None,
+        events: [],
+        list_expressions: {},
+        string_literals: {
+            "Must be greater than five",
+        },
+        structs: [],
+        external_contracts: [],
+        created_contracts: {},
+    }
+
+note: 
+  ┌─ features/assert.fe:2:22
+  │
+2 │     pub def bar(baz: u256):
+  │                      ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/assert.fe:5:44
+  │
+5 │     pub def revert_with_static_string(baz: u256):
+  │                                            ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/assert.fe:8:30
+  │
+8 │     pub def revert_with(baz: u256, reason: string1000):
+  │                              ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/assert.fe:8:44
+  │
+8 │     pub def revert_with(baz: u256, reason: string1000):
+  │                                            ^^^^^^^^^^ attributes hash: 18306761550294403845
+  │
+  = String(
+        FeString {
+            max_size: 1000,
+        },
+    )
+
+

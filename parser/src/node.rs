@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::ops::Add;
 use uuid::Uuid;
 
-#[derive(Debug, PartialEq, Copy, Clone, Hash, Eq, Default)]
+#[derive(Debug, PartialEq, Copy, Clone, Hash, Eq, Default, PartialOrd, Ord)]
 pub struct NodeId(Uuid);
 
 impl NodeId {

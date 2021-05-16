@@ -1,5 +1,4 @@
 //! Simple contract tests that narrowly test a given feature
-
 #![cfg(feature = "solc-backend")]
 use evm_runtime::Handler;
 use fe_common::utils::keccak;
@@ -146,6 +145,8 @@ fn test_assert() {
     case("return_u128_cast.fe", &[], uint_token(42)),
     case("return_i128_cast.fe", &[], int_token(-3)),
     case("return_msg_sig.fe", &[], bytes32_token("febb0f7e")),
+    case("return_sum_list_expression_1.fe", &[], uint_token(210)),
+    case("return_sum_list_expression_2.fe", &[], uint_token(210)),
     // binary operators
     case("return_addition_u256.fe", &[uint_token(42), uint_token(42)], uint_token(84)),
     case("return_addition_i256.fe", &[int_token(-42), int_token(-42)], int_token(-84)),

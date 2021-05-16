@@ -9,7 +9,7 @@ pub enum ValueMethod {
     AbiEncodePacked,
 }
 
-#[derive(Clone, Debug, PartialEq, EnumString, IntoStaticStr)]
+#[derive(Clone, Debug, PartialEq, EnumString, IntoStaticStr, Hash)]
 #[strum(serialize_all = "snake_case")]
 pub enum GlobalMethod {
     Keccak256,
@@ -22,7 +22,7 @@ pub enum ContractTypeMethod {
     Create2,
 }
 
-#[derive(Debug, PartialEq, EnumString)]
+#[derive(strum::ToString, Debug, PartialEq, EnumString)]
 #[strum(serialize_all = "lowercase")]
 pub enum Object {
     Block,

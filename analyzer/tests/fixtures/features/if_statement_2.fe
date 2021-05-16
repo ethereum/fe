@@ -1,0 +1,9 @@
+contract Foo:
+
+    pub def bar(val: u256) -> u256:
+        if val > 5:
+            return 1
+        else:
+            assert true
+
+        return 0

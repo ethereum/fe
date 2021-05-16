@@ -1,7 +1,4 @@
-use crate::ast::{
-    ConstQualifier, ContractStmt, EventField, Field, GenericArg, IdxQualifier, ModuleStmt,
-    PubQualifier, TypeDesc,
-};
+use crate::ast::{ContractStmt, EventField, Field, GenericArg, ModuleStmt, TypeDesc};
 use crate::grammar::expressions::parse_expr;
 use crate::node::{Node, Span};
 use crate::{ParseFailed, ParseResult, Parser, TokenKind};
@@ -22,8 +19,8 @@ pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     loop {
         match par.peek() {
             Some(Name) | Some(Pub) | Some(Const) => {
-                let pub_qual = parse_opt_qualifier(par, TokenKind::Pub, PubQualifier {});
-                let const_qual = parse_opt_qualifier(par, TokenKind::Const, ConstQualifier {});
+                let pub_qual = parse_opt_qualifier(par, TokenKind::Pub);
+                let const_qual = parse_opt_qualifier(par, TokenKind::Const);
                 fields.push(parse_field(par, pub_qual, const_qual)?);
             }
             Some(Dedent) => {
@@ -112,7 +109,7 @@ pub fn parse_event_def(par: &mut Parser) -> ParseResult<Node<ContractStmt>> {
 
 /// Parse an event field, e.g. `foo: u8` or `idx from: address`.
 pub fn parse_event_field(par: &mut Parser) -> ParseResult<Node<EventField>> {
-    let idx_qual = parse_opt_qualifier(par, TokenKind::Idx, IdxQualifier {});
+    let idx_qual = parse_opt_qualifier(par, TokenKind::Idx);
     let name = par.expect(TokenKind::Name, "failed to parse event field")?;
     par.expect_with_notes(TokenKind::Colon, "failed to parse event field", || {
         vec![
@@ -127,10 +124,10 @@ pub fn parse_event_field(par: &mut Parser) -> ParseResult<Node<EventField>> {
 
     let typ = parse_type_desc(par)?;
     par.expect_newline("event field")?;
-    let span = name.span + idx_qual.as_ref() + &typ;
+    let span = name.span + idx_qual + &typ;
     Ok(Node::new(
         EventField {
-            idx_qual,
+            is_idx: idx_qual.is_some(),
             name: Node::new(name.text.into(), name.span),
             typ,
         },
@@ -143,8 +140,8 @@ pub fn parse_event_field(par: &mut Parser) -> ParseResult<Node<EventField>> {
 /// Note that `event` fields are handled in [`parse_event_field`].
 pub fn parse_field(
     par: &mut Parser,
-    pub_qual: Option<Node<PubQualifier>>,
-    const_qual: Option<Node<ConstQualifier>>,
+    pub_qual: Option<Span>,
+    const_qual: Option<Span>,
 ) -> ParseResult<Node<Field>> {
     let name = par.expect(TokenKind::Name, "failed to parse field definition")?;
     par.expect_with_notes(TokenKind::Colon, "failed to parse field definition", || {
@@ -167,11 +164,11 @@ pub fn parse_field(
         None
     };
     par.expect_newline("field definition")?;
-    let span = name.span + pub_qual.as_ref() + const_qual.as_ref() + &typ;
+    let span = name.span + pub_qual + const_qual + &typ;
     Ok(Node::new(
         Field {
-            pub_qual,
-            const_qual,
+            is_pub: pub_qual.is_some(),
+            is_const: const_qual.is_some(),
             name: Node::new(name.text.into(), name.span),
             typ,
             value,
@@ -181,10 +178,10 @@ pub fn parse_field(
 }
 
 /// Parse an optional qualifier (`pub`, `const`, or `idx`).
-pub fn parse_opt_qualifier<T>(par: &mut Parser, tk: TokenKind, node_kind: T) -> Option<Node<T>> {
+pub fn parse_opt_qualifier(par: &mut Parser, tk: TokenKind) -> Option<Span> {
     if par.peek() == Some(tk) {
         let tok = par.next().unwrap();
-        Some(Node::new(node_kind, tok.span))
+        Some(tok.span)
     } else {
         None
     }
@@ -261,26 +258,6 @@ fn parse_generic_args(par: &mut Parser) -> ParseResult<(Vec<Node<GenericArg>>, S
     Ok((args, span))
 }
 
-// TODO: remove TypeDesc::Map and this fn
-fn temporary_backward_compatible_map_type(
-    mut args: Vec<Node<GenericArg>>,
-    span: Span,
-) -> Node<TypeDesc> {
-    let to_node = args.pop().unwrap();
-    let from_node = args.pop().unwrap();
-    if let (GenericArg::TypeDesc(from), GenericArg::TypeDesc(to)) = (from_node.kind, to_node.kind) {
-        Node::new(
-            TypeDesc::Map {
-                from: Box::new(Node::new(from, from_node.span)),
-                to: Box::new(Node::new(to, to_node.span)),
-            },
-            span,
-        )
-    } else {
-        panic!()
-    }
-}
-
 /// Parse a type description, e.g. `u8` or `map<address, u256>`.
 pub fn parse_type_desc(par: &mut Parser) -> ParseResult<Node<TypeDesc>> {
     use TokenKind::*;
@@ -292,17 +269,13 @@ pub fn parse_type_desc(par: &mut Parser) -> ParseResult<Node<TypeDesc>> {
                 Some(Lt) => {
                     let (args, argspan) = parse_generic_args(par)?;
                     let span = name.span + argspan;
-                    if name.text == "map" {
-                        temporary_backward_compatible_map_type(args, span)
-                    } else {
-                        Node::new(
-                            TypeDesc::Generic {
-                                base: name.into(),
-                                args,
-                            },
-                            span,
-                        )
-                    }
+                    Node::new(
+                        TypeDesc::Generic {
+                            base: name.into(),
+                            args,
+                        },
+                        span,
+                    )
                 }
                 _ => Node::new(
                     TypeDesc::Base {

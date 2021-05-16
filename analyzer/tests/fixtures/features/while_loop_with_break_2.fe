@@ -1,0 +1,8 @@
+contract Foo:
+    pub def bar() -> u256:
+        val: u256 = 0
+        while val < 2:
+            val = val + 1
+            if val == 1:
+                break
+        return val

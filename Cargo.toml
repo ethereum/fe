@@ -25,3 +25,6 @@ fe-parser = {path = "parser", version = "^0.4.0-alpha"}
 [dev-dependencies]
 cargo-release = "0.13.9"
 fe-compiler-tests = {path = "tests", features = ["solc-backend"], version = "^0.4.0-alpha"}
+
+[profile.dev.package.solc]
+opt-level = 3

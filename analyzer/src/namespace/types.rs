@@ -1,6 +1,7 @@
-use crate::errors::SemanticError;
+use crate::errors::{ErrorKind, SemanticError};
 use fe_parser::ast as fe;
-use std::collections::{btree_map::Entry, BTreeMap, HashMap};
+use fe_parser::node::Node;
+use std::collections::{btree_map::Entry, BTreeMap};
 use std::convert::TryFrom;
 
 use crate::context::FunctionAttributes;
@@ -102,7 +103,7 @@ pub trait SafeNames {
     fn lower_snake(&self) -> String;
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub enum Type {
     Base(Base),
     Array(Array),
@@ -113,7 +114,7 @@ pub enum Type {
     Struct(Struct),
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub enum FixedSize {
     Base(Base),
     Array(Array),
@@ -123,7 +124,7 @@ pub enum FixedSize {
     Struct(Struct),
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub enum Base {
     Numeric(Integer),
     Bool,
@@ -149,36 +150,36 @@ pub enum Integer {
 
 pub const U256: Base = Base::Numeric(Integer::U256);
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct Array {
     pub size: usize,
     pub inner: Base,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct Map {
     pub key: Base,
     pub value: Box<Type>,
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct Tuple {
     pub items: Vec<FixedSize>,
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct Struct {
     pub name: String,
     fields: BTreeMap<String, FixedSize>,
     order: Vec<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct FeString {
     pub max_size: usize,
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct Contract {
     pub name: String,
     pub functions: Vec<FunctionAttributes>,
@@ -353,6 +354,12 @@ impl From<FixedSize> for Type {
 impl From<Base> for Type {
     fn from(value: Base) -> Self {
         Type::Base(value)
+    }
+}
+
+impl From<Base> for FixedSize {
+    fn from(value: Base) -> Self {
+        FixedSize::Base(value)
     }
 }
 
@@ -868,14 +875,14 @@ impl SafeNames for FeString {
 }
 
 pub fn type_desc_fixed_size(
-    defs: &HashMap<String, Type>,
+    defs: &BTreeMap<String, Type>,
     typ: &fe::TypeDesc,
 ) -> Result<FixedSize, SemanticError> {
     FixedSize::try_from(type_desc(defs, typ)?)
 }
 
 pub fn type_desc_base(
-    defs: &HashMap<String, Type>,
+    defs: &BTreeMap<String, Type>,
     typ: &fe::TypeDesc,
 ) -> Result<Base, SemanticError> {
     match type_desc(defs, typ)? {
@@ -884,7 +891,7 @@ pub fn type_desc_base(
     }
 }
 
-pub fn type_desc(defs: &HashMap<String, Type>, typ: &fe::TypeDesc) -> Result<Type, SemanticError> {
+pub fn type_desc(defs: &BTreeMap<String, Type>, typ: &fe::TypeDesc) -> Result<Type, SemanticError> {
     match typ {
         fe::TypeDesc::Base { base } => match base.as_str() {
             "u256" => Ok(Type::Base(U256)),
@@ -918,11 +925,28 @@ pub fn type_desc(defs: &HashMap<String, Type>, typ: &fe::TypeDesc) -> Result<Typ
             inner: type_desc_base(defs, &typ.kind)?,
             size: *dimension,
         })),
-        fe::TypeDesc::Map { from, to } => Ok(Type::Map(Map {
-            key: type_desc_base(defs, &from.kind)?,
-            value: Box::new(type_desc(defs, &to.kind)?),
-        })),
-        fe::TypeDesc::Generic { .. } => todo!(),
+        fe::TypeDesc::Generic { base, args } => {
+            if base.kind == "map" {
+                match &args[..] {
+                    [Node {
+                        kind: fe::GenericArg::TypeDesc(from),
+                        ..
+                    }, Node {
+                        kind: fe::GenericArg::TypeDesc(to),
+                        ..
+                    }] => Ok(Type::Map(Map {
+                        key: type_desc_base(defs, &from)?,
+                        value: Box::new(type_desc(defs, &to)?),
+                    })),
+                    _ => Err(SemanticError {
+                        kind: ErrorKind::MapTypeError,
+                        context: vec![],
+                    }),
+                }
+            } else {
+                Err(SemanticError::undefined_value())
+            }
+        }
         fe::TypeDesc::Tuple { items } => Ok(Type::Tuple(Tuple {
             items: items
                 .iter()

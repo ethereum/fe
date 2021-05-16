@@ -1,0 +1,2535 @@
+---
+source: analyzer/tests/analysis.rs
+expression: "build_snapshot(fixture, src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "add",
+                        params: [
+                            (
+                                "a",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "b",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "add_from_mem",
+                        params: [
+                            (
+                                "a",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "b",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "add_from_sto",
+                        params: [
+                            (
+                                "a",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "b",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "bit_and",
+                        params: [
+                            (
+                                "a",
+                                Base(
+                                    Numeric(
+                                        U8,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "b",
+                                Base(
+                                    Numeric(
+                                        U8,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U8,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "bit_or",
+                        params: [
+                            (
+                                "a",
+                                Base(
+                                    Numeric(
+                                        U8,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "b",
+                                Base(
+                                    Numeric(
+                                        U8,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U8,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "bit_xor",
+                        params: [
+                            (
+                                "a",
+                                Base(
+                                    Numeric(
+                                        U8,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "b",
+                                Base(
+                                    Numeric(
+                                        U8,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U8,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "div",
+                        params: [
+                            (
+                                "a",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "b",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "lshift",
+                        params: [
+                            (
+                                "a",
+                                Base(
+                                    Numeric(
+                                        U8,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "b",
+                                Base(
+                                    Numeric(
+                                        U8,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U8,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "mod",
+                        params: [
+                            (
+                                "a",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "b",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "mul",
+                        params: [
+                            (
+                                "a",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "b",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "pow",
+                        params: [
+                            (
+                                "a",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "b",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "rshift",
+                        params: [
+                            (
+                                "a",
+                                Base(
+                                    Numeric(
+                                        U8,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "b",
+                                Base(
+                                    Numeric(
+                                        U8,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U8,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "sub",
+                        params: [
+                            (
+                                "a",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "b",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+    tuples_used: {},
+}
+
+note: 
+  ┌─ features/aug_assign.fe:5:9
+  │
+5 │         a += b
+  │         ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/aug_assign.fe:5:14
+  │
+5 │         a += b
+  │              ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/aug_assign.fe:6:16
+  │
+6 │         return a
+  │                ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/aug_assign.fe:9:9
+  │
+9 │         a -= b
+  │         ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/aug_assign.fe:9:14
+  │
+9 │         a -= b
+  │              ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+   ┌─ features/aug_assign.fe:10:16
+   │
+10 │         return a
+   │                ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:13:9
+   │
+13 │         a *= b
+   │         ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:13:14
+   │
+13 │         a *= b
+   │              ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:14:16
+   │
+14 │         return a
+   │                ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:17:9
+   │
+17 │         a /= b
+   │         ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:17:14
+   │
+17 │         a /= b
+   │              ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:18:16
+   │
+18 │         return a
+   │                ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:21:9
+   │
+21 │         a %= b
+   │         ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:21:14
+   │
+21 │         a %= b
+   │              ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:22:16
+   │
+22 │         return a
+   │                ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:25:9
+   │
+25 │         a **= b
+   │         ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:25:15
+   │
+25 │         a **= b
+   │               ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:26:16
+   │
+26 │         return a
+   │                ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:29:9
+   │
+29 │         a <<= b
+   │         ^ attributes hash: 6817314866882205962
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:29:15
+   │
+29 │         a <<= b
+   │               ^ attributes hash: 6817314866882205962
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:30:16
+   │
+30 │         return a
+   │                ^ attributes hash: 6817314866882205962
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:33:9
+   │
+33 │         a >>= b
+   │         ^ attributes hash: 6817314866882205962
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:33:15
+   │
+33 │         a >>= b
+   │               ^ attributes hash: 6817314866882205962
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:34:16
+   │
+34 │         return a
+   │                ^ attributes hash: 6817314866882205962
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:37:9
+   │
+37 │         a |= b
+   │         ^ attributes hash: 6817314866882205962
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:37:14
+   │
+37 │         a |= b
+   │              ^ attributes hash: 6817314866882205962
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:38:16
+   │
+38 │         return a
+   │                ^ attributes hash: 6817314866882205962
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:41:9
+   │
+41 │         a ^= b
+   │         ^ attributes hash: 6817314866882205962
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:41:14
+   │
+41 │         a ^= b
+   │              ^ attributes hash: 6817314866882205962
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:42:16
+   │
+42 │         return a
+   │                ^ attributes hash: 6817314866882205962
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:45:9
+   │
+45 │         a &= b
+   │         ^ attributes hash: 6817314866882205962
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:45:14
+   │
+45 │         a &= b
+   │              ^ attributes hash: 6817314866882205962
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:46:16
+   │
+46 │         return a
+   │                ^ attributes hash: 6817314866882205962
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:49:9
+   │
+49 │         self.my_num = a
+   │         ^^^^^^^^^^^ attributes hash: 14248074759348295768
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:49:23
+   │
+49 │         self.my_num = a
+   │                       ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:50:9
+   │
+50 │         self.my_num += b
+   │         ^^^^^^^^^^^ attributes hash: 14248074759348295768
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:50:24
+   │
+50 │         self.my_num += b
+   │                        ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:51:16
+   │
+51 │         return self.my_num
+   │                ^^^^^^^^^^^ attributes hash: 4679040613115932727
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:55:9
+   │
+55 │         my_array[7] = a
+   │         ^^^^^^^^ attributes hash: 12880944358712268851
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 10,
+                 inner: Numeric(
+                     U256,
+                 ),
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:55:18
+   │
+55 │         my_array[7] = a
+   │                  ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:55:9
+   │
+55 │         my_array[7] = a
+   │         ^^^^^^^^^^^ attributes hash: 3617588353493611640
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:55:23
+   │
+55 │         my_array[7] = a
+   │                       ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:56:9
+   │
+56 │         my_array[7] += b
+   │         ^^^^^^^^ attributes hash: 12880944358712268851
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 10,
+                 inner: Numeric(
+                     U256,
+                 ),
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:56:18
+   │
+56 │         my_array[7] += b
+   │                  ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:56:9
+   │
+56 │         my_array[7] += b
+   │         ^^^^^^^^^^^ attributes hash: 3617588353493611640
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:56:24
+   │
+56 │         my_array[7] += b
+   │                        ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:57:16
+   │
+57 │         return my_array[7]
+   │                ^^^^^^^^ attributes hash: 12880944358712268851
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 10,
+                 inner: Numeric(
+                     U256,
+                 ),
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:57:25
+   │
+57 │         return my_array[7]
+   │                         ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:57:16
+   │
+57 │         return my_array[7]
+   │                ^^^^^^^^^^^ attributes hash: 11934894478308934606
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Memory,
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+  ┌─ features/aug_assign.fe:4:5
+  │  
+4 │ ╭     pub def add(a: u256, b: u256) -> u256:
+5 │ │         a += b
+6 │ │         return a
+  │ ╰────────────────^ attributes hash: 8455816205466106675
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "add",
+        params: [
+            (
+                "a",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+            (
+                "b",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+        ],
+        return_type: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+    }
+
+note: 
+   ┌─ features/aug_assign.fe:8:5
+   │  
+ 8 │ ╭     pub def sub(a: u256, b: u256) -> u256:
+ 9 │ │         a -= b
+10 │ │         return a
+   │ ╰────────────────^ attributes hash: 16091578434680699875
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "sub",
+         params: [
+             (
+                 "a",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+             (
+                 "b",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:12:5
+   │  
+12 │ ╭     pub def mul(a: u256, b: u256) -> u256:
+13 │ │         a *= b
+14 │ │         return a
+   │ ╰────────────────^ attributes hash: 6168010477688075581
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "mul",
+         params: [
+             (
+                 "a",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+             (
+                 "b",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:16:5
+   │  
+16 │ ╭     pub def div(a: u256, b: u256) -> u256:
+17 │ │         a /= b
+18 │ │         return a
+   │ ╰────────────────^ attributes hash: 3897552324896049592
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "div",
+         params: [
+             (
+                 "a",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+             (
+                 "b",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:20:5
+   │  
+20 │ ╭     pub def mod(a: u256, b: u256) -> u256:
+21 │ │         a %= b
+22 │ │         return a
+   │ ╰────────────────^ attributes hash: 3763952960367586811
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "mod",
+         params: [
+             (
+                 "a",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+             (
+                 "b",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:24:5
+   │  
+24 │ ╭     pub def pow(a: u256, b: u256) -> u256:
+25 │ │         a **= b
+26 │ │         return a
+   │ ╰────────────────^ attributes hash: 18377585950244297320
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "pow",
+         params: [
+             (
+                 "a",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+             (
+                 "b",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:28:5
+   │  
+28 │ ╭     pub def lshift(a: u8, b: u8) -> u8:
+29 │ │         a <<= b
+30 │ │         return a
+   │ ╰────────────────^ attributes hash: 69680886778008031
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "lshift",
+         params: [
+             (
+                 "a",
+                 Base(
+                     Numeric(
+                         U8,
+                     ),
+                 ),
+             ),
+             (
+                 "b",
+                 Base(
+                     Numeric(
+                         U8,
+                     ),
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:32:5
+   │  
+32 │ ╭     pub def rshift(a: u8, b: u8) -> u8:
+33 │ │         a >>= b
+34 │ │         return a
+   │ ╰────────────────^ attributes hash: 17140648423673954502
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "rshift",
+         params: [
+             (
+                 "a",
+                 Base(
+                     Numeric(
+                         U8,
+                     ),
+                 ),
+             ),
+             (
+                 "b",
+                 Base(
+                     Numeric(
+                         U8,
+                     ),
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:36:5
+   │  
+36 │ ╭     pub def bit_or(a: u8, b: u8) -> u8:
+37 │ │         a |= b
+38 │ │         return a
+   │ ╰────────────────^ attributes hash: 6177130929568473988
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "bit_or",
+         params: [
+             (
+                 "a",
+                 Base(
+                     Numeric(
+                         U8,
+                     ),
+                 ),
+             ),
+             (
+                 "b",
+                 Base(
+                     Numeric(
+                         U8,
+                     ),
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:40:5
+   │  
+40 │ ╭     pub def bit_xor(a: u8, b: u8) -> u8:
+41 │ │         a ^= b
+42 │ │         return a
+   │ ╰────────────────^ attributes hash: 4558320078336684152
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "bit_xor",
+         params: [
+             (
+                 "a",
+                 Base(
+                     Numeric(
+                         U8,
+                     ),
+                 ),
+             ),
+             (
+                 "b",
+                 Base(
+                     Numeric(
+                         U8,
+                     ),
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:44:5
+   │  
+44 │ ╭     pub def bit_and(a: u8, b: u8) -> u8:
+45 │ │         a &= b
+46 │ │         return a
+   │ ╰────────────────^ attributes hash: 6185318841228751213
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "bit_and",
+         params: [
+             (
+                 "a",
+                 Base(
+                     Numeric(
+                         U8,
+                     ),
+                 ),
+             ),
+             (
+                 "b",
+                 Base(
+                     Numeric(
+                         U8,
+                     ),
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:48:5
+   │  
+48 │ ╭     pub def add_from_sto(a: u256, b: u256) -> u256:
+49 │ │         self.my_num = a
+50 │ │         self.my_num += b
+51 │ │         return self.my_num
+   │ ╰──────────────────────────^ attributes hash: 10677529871783607439
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "add_from_sto",
+         params: [
+             (
+                 "a",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+             (
+                 "b",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:53:5
+   │  
+53 │ ╭     pub def add_from_mem(a: u256, b: u256) -> u256:
+54 │ │         my_array: u256[10]
+55 │ │         my_array[7] = a
+56 │ │         my_array[7] += b
+57 │ │         return my_array[7]
+   │ ╰──────────────────────────^ attributes hash: 8049420799106688794
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "add_from_mem",
+         params: [
+             (
+                 "a",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+             (
+                 "b",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/aug_assign.fe:54:9
+   │
+54 │         my_array: u256[10]
+   │         ^^^^^^^^^^^^^^^^^^ attributes hash: 17323625354857110317
+   │
+   = Array(
+         Array {
+             size: 10,
+             inner: Numeric(
+                 U256,
+             ),
+         },
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:1:1
+   │  
+ 1 │ ╭ contract Foo:
+ 2 │ │     my_num: u256
+ 3 │ │ 
+ 4 │ │     pub def add(a: u256, b: u256) -> u256:
+   · │
+56 │ │         my_array[7] += b
+57 │ │         return my_array[7]
+   │ ╰──────────────────────────^ attributes hash: 18047688976674921008
+   │  
+   = ContractAttributes {
+         public_functions: [
+             FunctionAttributes {
+                 is_public: true,
+                 name: "add",
+                 params: [
+                     (
+                         "a",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "b",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "add_from_mem",
+                 params: [
+                     (
+                         "a",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "b",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "add_from_sto",
+                 params: [
+                     (
+                         "a",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "b",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "bit_and",
+                 params: [
+                     (
+                         "a",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
+                         ),
+                     ),
+                     (
+                         "b",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Numeric(
+                         U8,
+                     ),
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "bit_or",
+                 params: [
+                     (
+                         "a",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
+                         ),
+                     ),
+                     (
+                         "b",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Numeric(
+                         U8,
+                     ),
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "bit_xor",
+                 params: [
+                     (
+                         "a",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
+                         ),
+                     ),
+                     (
+                         "b",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Numeric(
+                         U8,
+                     ),
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "div",
+                 params: [
+                     (
+                         "a",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "b",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "lshift",
+                 params: [
+                     (
+                         "a",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
+                         ),
+                     ),
+                     (
+                         "b",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Numeric(
+                         U8,
+                     ),
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "mod",
+                 params: [
+                     (
+                         "a",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "b",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "mul",
+                 params: [
+                     (
+                         "a",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "b",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "pow",
+                 params: [
+                     (
+                         "a",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "b",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "rshift",
+                 params: [
+                     (
+                         "a",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
+                         ),
+                     ),
+                     (
+                         "b",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Numeric(
+                         U8,
+                     ),
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "sub",
+                 params: [
+                     (
+                         "a",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "b",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             },
+         ],
+         init_function: None,
+         events: [],
+         list_expressions: {},
+         string_literals: {},
+         structs: [],
+         external_contracts: [],
+         created_contracts: {},
+     }
+
+note: 
+  ┌─ features/aug_assign.fe:4:20
+  │
+4 │     pub def add(a: u256, b: u256) -> u256:
+  │                    ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/aug_assign.fe:4:29
+  │
+4 │     pub def add(a: u256, b: u256) -> u256:
+  │                             ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/aug_assign.fe:4:38
+  │
+4 │     pub def add(a: u256, b: u256) -> u256:
+  │                                      ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/aug_assign.fe:8:20
+  │
+8 │     pub def sub(a: u256, b: u256) -> u256:
+  │                    ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/aug_assign.fe:8:29
+  │
+8 │     pub def sub(a: u256, b: u256) -> u256:
+  │                             ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/aug_assign.fe:8:38
+  │
+8 │     pub def sub(a: u256, b: u256) -> u256:
+  │                                      ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+   ┌─ features/aug_assign.fe:12:20
+   │
+12 │     pub def mul(a: u256, b: u256) -> u256:
+   │                    ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:12:29
+   │
+12 │     pub def mul(a: u256, b: u256) -> u256:
+   │                             ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:12:38
+   │
+12 │     pub def mul(a: u256, b: u256) -> u256:
+   │                                      ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:16:20
+   │
+16 │     pub def div(a: u256, b: u256) -> u256:
+   │                    ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:16:29
+   │
+16 │     pub def div(a: u256, b: u256) -> u256:
+   │                             ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:16:38
+   │
+16 │     pub def div(a: u256, b: u256) -> u256:
+   │                                      ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:20:20
+   │
+20 │     pub def mod(a: u256, b: u256) -> u256:
+   │                    ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:20:29
+   │
+20 │     pub def mod(a: u256, b: u256) -> u256:
+   │                             ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:20:38
+   │
+20 │     pub def mod(a: u256, b: u256) -> u256:
+   │                                      ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:24:20
+   │
+24 │     pub def pow(a: u256, b: u256) -> u256:
+   │                    ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:24:29
+   │
+24 │     pub def pow(a: u256, b: u256) -> u256:
+   │                             ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:24:38
+   │
+24 │     pub def pow(a: u256, b: u256) -> u256:
+   │                                      ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:28:23
+   │
+28 │     pub def lshift(a: u8, b: u8) -> u8:
+   │                       ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:28:30
+   │
+28 │     pub def lshift(a: u8, b: u8) -> u8:
+   │                              ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:28:37
+   │
+28 │     pub def lshift(a: u8, b: u8) -> u8:
+   │                                     ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:32:23
+   │
+32 │     pub def rshift(a: u8, b: u8) -> u8:
+   │                       ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:32:30
+   │
+32 │     pub def rshift(a: u8, b: u8) -> u8:
+   │                              ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:32:37
+   │
+32 │     pub def rshift(a: u8, b: u8) -> u8:
+   │                                     ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:36:23
+   │
+36 │     pub def bit_or(a: u8, b: u8) -> u8:
+   │                       ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:36:30
+   │
+36 │     pub def bit_or(a: u8, b: u8) -> u8:
+   │                              ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:36:37
+   │
+36 │     pub def bit_or(a: u8, b: u8) -> u8:
+   │                                     ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:40:24
+   │
+40 │     pub def bit_xor(a: u8, b: u8) -> u8:
+   │                        ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:40:31
+   │
+40 │     pub def bit_xor(a: u8, b: u8) -> u8:
+   │                               ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:40:38
+   │
+40 │     pub def bit_xor(a: u8, b: u8) -> u8:
+   │                                      ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:44:24
+   │
+44 │     pub def bit_and(a: u8, b: u8) -> u8:
+   │                        ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:44:31
+   │
+44 │     pub def bit_and(a: u8, b: u8) -> u8:
+   │                               ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:44:38
+   │
+44 │     pub def bit_and(a: u8, b: u8) -> u8:
+   │                                      ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:48:29
+   │
+48 │     pub def add_from_sto(a: u256, b: u256) -> u256:
+   │                             ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:48:38
+   │
+48 │     pub def add_from_sto(a: u256, b: u256) -> u256:
+   │                                      ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:48:47
+   │
+48 │     pub def add_from_sto(a: u256, b: u256) -> u256:
+   │                                               ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:53:29
+   │
+53 │     pub def add_from_mem(a: u256, b: u256) -> u256:
+   │                             ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:53:38
+   │
+53 │     pub def add_from_mem(a: u256, b: u256) -> u256:
+   │                                      ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/aug_assign.fe:53:47
+   │
+53 │     pub def add_from_mem(a: u256, b: u256) -> u256:
+   │                                               ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+  ┌─ features/aug_assign.fe:2:13
+  │
+2 │     my_num: u256
+  │             ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+   ┌─ features/aug_assign.fe:54:19
+   │
+54 │         my_array: u256[10]
+   │                   ^^^^^^^^ attributes hash: 17323625354857110317
+   │
+   = Array(
+         Array {
+             size: 10,
+             inner: Numeric(
+                 U256,
+             ),
+         },
+     )
+
+

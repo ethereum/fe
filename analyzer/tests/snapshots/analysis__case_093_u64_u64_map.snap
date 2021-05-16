@@ -1,0 +1,404 @@
+---
+source: analyzer/tests/analysis.rs
+expression: "build_snapshot(fixture, src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "read_bar",
+                        params: [
+                            (
+                                "key",
+                                Base(
+                                    Numeric(
+                                        U64,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U64,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "write_bar",
+                        params: [
+                            (
+                                "key",
+                                Base(
+                                    Numeric(
+                                        U64,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "value",
+                                Base(
+                                    Numeric(
+                                        U64,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Tuple(
+                            Tuple {
+                                items: [],
+                            },
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+    tuples_used: {},
+}
+
+note: 
+  ┌─ features/u64_u64_map.fe:5:16
+  │
+5 │         return self.bar[key]
+  │                ^^^^^^^^ attributes hash: 8023811517735407117
+  │
+  = ExpressionAttributes {
+        typ: Map(
+            Map {
+                key: Numeric(
+                    U64,
+                ),
+                value: Base(
+                    Numeric(
+                        U64,
+                    ),
+                ),
+            },
+        ),
+        location: Storage {
+            nonce: Some(
+                0,
+            ),
+        },
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/u64_u64_map.fe:5:25
+  │
+5 │         return self.bar[key]
+  │                         ^^^ attributes hash: 3044889006329355385
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U64,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/u64_u64_map.fe:5:16
+  │
+5 │         return self.bar[key]
+  │                ^^^^^^^^^^^^^ attributes hash: 15688310892038921170
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U64,
+            ),
+        ),
+        location: Storage {
+            nonce: None,
+        },
+        move_location: Some(
+            Value,
+        ),
+    }
+
+note: 
+  ┌─ features/u64_u64_map.fe:8:9
+  │
+8 │         self.bar[key] = value
+  │         ^^^^^^^^ attributes hash: 8023811517735407117
+  │
+  = ExpressionAttributes {
+        typ: Map(
+            Map {
+                key: Numeric(
+                    U64,
+                ),
+                value: Base(
+                    Numeric(
+                        U64,
+                    ),
+                ),
+            },
+        ),
+        location: Storage {
+            nonce: Some(
+                0,
+            ),
+        },
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/u64_u64_map.fe:8:18
+  │
+8 │         self.bar[key] = value
+  │                  ^^^ attributes hash: 3044889006329355385
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U64,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/u64_u64_map.fe:8:9
+  │
+8 │         self.bar[key] = value
+  │         ^^^^^^^^^^^^^ attributes hash: 16246061440592408528
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U64,
+            ),
+        ),
+        location: Storage {
+            nonce: None,
+        },
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/u64_u64_map.fe:8:25
+  │
+8 │         self.bar[key] = value
+  │                         ^^^^^ attributes hash: 3044889006329355385
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U64,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/u64_u64_map.fe:4:5
+  │  
+4 │ ╭     pub def read_bar(key: u64) -> u64:
+5 │ │         return self.bar[key]
+  │ ╰────────────────────────────^ attributes hash: 13368727428360435549
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "read_bar",
+        params: [
+            (
+                "key",
+                Base(
+                    Numeric(
+                        U64,
+                    ),
+                ),
+            ),
+        ],
+        return_type: Base(
+            Numeric(
+                U64,
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/u64_u64_map.fe:7:5
+  │  
+7 │ ╭     pub def write_bar(key: u64, value: u64):
+8 │ │         self.bar[key] = value
+  │ ╰─────────────────────────────^ attributes hash: 8145520116947299875
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "write_bar",
+        params: [
+            (
+                "key",
+                Base(
+                    Numeric(
+                        U64,
+                    ),
+                ),
+            ),
+            (
+                "value",
+                Base(
+                    Numeric(
+                        U64,
+                    ),
+                ),
+            ),
+        ],
+        return_type: Tuple(
+            Tuple {
+                items: [],
+            },
+        ),
+    }
+
+note: 
+  ┌─ features/u64_u64_map.fe:1:1
+  │  
+1 │ ╭ contract Foo:
+2 │ │     pub bar: map<u64, u64>
+3 │ │ 
+4 │ │     pub def read_bar(key: u64) -> u64:
+  · │
+7 │ │     pub def write_bar(key: u64, value: u64):
+8 │ │         self.bar[key] = value
+  │ ╰─────────────────────────────^ attributes hash: 1163151968938979795
+  │  
+  = ContractAttributes {
+        public_functions: [
+            FunctionAttributes {
+                is_public: true,
+                name: "read_bar",
+                params: [
+                    (
+                        "key",
+                        Base(
+                            Numeric(
+                                U64,
+                            ),
+                        ),
+                    ),
+                ],
+                return_type: Base(
+                    Numeric(
+                        U64,
+                    ),
+                ),
+            },
+            FunctionAttributes {
+                is_public: true,
+                name: "write_bar",
+                params: [
+                    (
+                        "key",
+                        Base(
+                            Numeric(
+                                U64,
+                            ),
+                        ),
+                    ),
+                    (
+                        "value",
+                        Base(
+                            Numeric(
+                                U64,
+                            ),
+                        ),
+                    ),
+                ],
+                return_type: Tuple(
+                    Tuple {
+                        items: [],
+                    },
+                ),
+            },
+        ],
+        init_function: None,
+        events: [],
+        list_expressions: {},
+        string_literals: {},
+        structs: [],
+        external_contracts: [],
+        created_contracts: {},
+    }
+
+note: 
+  ┌─ features/u64_u64_map.fe:4:27
+  │
+4 │     pub def read_bar(key: u64) -> u64:
+  │                           ^^^ attributes hash: 17534999559619587862
+  │
+  = Base(
+        Numeric(
+            U64,
+        ),
+    )
+
+note: 
+  ┌─ features/u64_u64_map.fe:4:35
+  │
+4 │     pub def read_bar(key: u64) -> u64:
+  │                                   ^^^ attributes hash: 17534999559619587862
+  │
+  = Base(
+        Numeric(
+            U64,
+        ),
+    )
+
+note: 
+  ┌─ features/u64_u64_map.fe:7:28
+  │
+7 │     pub def write_bar(key: u64, value: u64):
+  │                            ^^^ attributes hash: 17534999559619587862
+  │
+  = Base(
+        Numeric(
+            U64,
+        ),
+    )
+
+note: 
+  ┌─ features/u64_u64_map.fe:7:40
+  │
+7 │     pub def write_bar(key: u64, value: u64):
+  │                                        ^^^ attributes hash: 17534999559619587862
+  │
+  = Base(
+        Numeric(
+            U64,
+        ),
+    )
+
+note: 
+  ┌─ features/u64_u64_map.fe:2:14
+  │
+2 │     pub bar: map<u64, u64>
+  │              ^^^^^^^^^^^^^ attributes hash: 4568353499523922040
+  │
+  = Map(
+        Map {
+            key: Numeric(
+                U64,
+            ),
+            value: Base(
+                Numeric(
+                    U64,
+                ),
+            ),
+        },
+    )
+
+

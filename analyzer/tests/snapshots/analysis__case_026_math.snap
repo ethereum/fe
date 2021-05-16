@@ -1,0 +1,862 @@
+---
+source: analyzer/tests/analysis.rs
+expression: "build_snapshot(fixture, src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Math": Contract(
+            Contract {
+                name: "Math",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "min",
+                        params: [
+                            (
+                                "x",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "y",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "sqrt",
+                        params: [
+                            (
+                                "val",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+    tuples_used: {},
+}
+
+note: 
+  ┌─ features/math.fe:7:13
+  │
+7 │             z = val
+  │             ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/math.fe:7:17
+  │
+7 │             z = val
+  │                 ^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/math.fe:8:23
+  │
+8 │             x: u256 = val / 2 + 1
+  │                       ^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/math.fe:8:29
+  │
+8 │             x: u256 = val / 2 + 1
+  │                             ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/math.fe:8:23
+  │
+8 │             x: u256 = val / 2 + 1
+  │                       ^^^^^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/math.fe:8:33
+  │
+8 │             x: u256 = val / 2 + 1
+  │                                 ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/math.fe:8:23
+  │
+8 │             x: u256 = val / 2 + 1
+  │                       ^^^^^^^^^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+   ┌─ features/math.fe:10:17
+   │
+10 │                 z = x
+   │                 ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/math.fe:10:21
+   │
+10 │                 z = x
+   │                     ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/math.fe:11:17
+   │
+11 │                 x = (val / x + x) / 2
+   │                 ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/math.fe:11:22
+   │
+11 │                 x = (val / x + x) / 2
+   │                      ^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/math.fe:11:28
+   │
+11 │                 x = (val / x + x) / 2
+   │                            ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/math.fe:11:22
+   │
+11 │                 x = (val / x + x) / 2
+   │                      ^^^^^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/math.fe:11:32
+   │
+11 │                 x = (val / x + x) / 2
+   │                                ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/math.fe:11:21
+   │
+11 │                 x = (val / x + x) / 2
+   │                     ^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/math.fe:11:37
+   │
+11 │                 x = (val / x + x) / 2
+   │                                     ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/math.fe:11:21
+   │
+11 │                 x = (val / x + x) / 2
+   │                     ^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+  ┌─ features/math.fe:9:20
+  │
+9 │             while (x < z):
+  │                    ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/math.fe:9:24
+  │
+9 │             while (x < z):
+  │                        ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/math.fe:9:19
+  │
+9 │             while (x < z):
+  │                   ^^^^^^^ attributes hash: 10866140763116710699
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Bool,
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+   ┌─ features/math.fe:13:13
+   │
+13 │             z = 1
+   │             ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/math.fe:13:17
+   │
+13 │             z = 1
+   │                 ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/math.fe:12:15
+   │
+12 │         elif (val != 0):
+   │               ^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/math.fe:12:22
+   │
+12 │         elif (val != 0):
+   │                      ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/math.fe:12:14
+   │
+12 │         elif (val != 0):
+   │              ^^^^^^^^^^ attributes hash: 10866140763116710699
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+  ┌─ features/math.fe:6:13
+  │
+6 │         if (val > 3):
+  │             ^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/math.fe:6:19
+  │
+6 │         if (val > 3):
+  │                   ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/math.fe:6:12
+  │
+6 │         if (val > 3):
+  │            ^^^^^^^^^ attributes hash: 10866140763116710699
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Bool,
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+   ┌─ features/math.fe:14:16
+   │
+14 │         return z
+   │                ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/math.fe:17:21
+   │
+17 │         return x if x < y else y
+   │                     ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/math.fe:17:25
+   │
+17 │         return x if x < y else y
+   │                         ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/math.fe:17:21
+   │
+17 │         return x if x < y else y
+   │                     ^^^^^ attributes hash: 10866140763116710699
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/math.fe:17:16
+   │
+17 │         return x if x < y else y
+   │                ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/math.fe:17:32
+   │
+17 │         return x if x < y else y
+   │                                ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/math.fe:17:16
+   │
+17 │         return x if x < y else y
+   │                ^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/math.fe:4:5
+   │  
+ 4 │ ╭     pub def sqrt(val: u256) -> u256:
+ 5 │ │         z: u256
+ 6 │ │         if (val > 3):
+ 7 │ │             z = val
+   · │
+13 │ │             z = 1
+14 │ │         return z
+   │ ╰────────────────^ attributes hash: 18158161492670261301
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "sqrt",
+         params: [
+             (
+                 "val",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/math.fe:16:5
+   │  
+16 │ ╭     pub def min(x: u256, y: u256) -> u256:
+17 │ │         return x if x < y else y
+   │ ╰────────────────────────────────^ attributes hash: 2148978833714321410
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "min",
+         params: [
+             (
+                 "x",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+             (
+                 "y",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+     }
+
+note: 
+  ┌─ features/math.fe:5:9
+  │
+5 │         z: u256
+  │         ^^^^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/math.fe:8:13
+  │
+8 │             x: u256 = val / 2 + 1
+  │             ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+   ┌─ features/math.fe:1:1
+   │  
+ 1 │ ╭ contract Math:
+ 2 │ │ 
+ 3 │ │     # https://github.com/Uniswap/uniswap-v2-core/blob/4dd59067c76dea4a0e8e4bfdda41877a6b16dedc/contracts/libraries/Math.sol#L11-L22
+ 4 │ │     pub def sqrt(val: u256) -> u256:
+   · │
+16 │ │     pub def min(x: u256, y: u256) -> u256:
+17 │ │         return x if x < y else y
+   │ ╰────────────────────────────────^ attributes hash: 15596530210058701866
+   │  
+   = ContractAttributes {
+         public_functions: [
+             FunctionAttributes {
+                 is_public: true,
+                 name: "min",
+                 params: [
+                     (
+                         "x",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "y",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "sqrt",
+                 params: [
+                     (
+                         "val",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             },
+         ],
+         init_function: None,
+         events: [],
+         list_expressions: {},
+         string_literals: {},
+         structs: [],
+         external_contracts: [],
+         created_contracts: {},
+     }
+
+note: 
+  ┌─ features/math.fe:4:23
+  │
+4 │     pub def sqrt(val: u256) -> u256:
+  │                       ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/math.fe:4:32
+  │
+4 │     pub def sqrt(val: u256) -> u256:
+  │                                ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+   ┌─ features/math.fe:16:20
+   │
+16 │     pub def min(x: u256, y: u256) -> u256:
+   │                    ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/math.fe:16:29
+   │
+16 │     pub def min(x: u256, y: u256) -> u256:
+   │                             ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/math.fe:16:38
+   │
+16 │     pub def min(x: u256, y: u256) -> u256:
+   │                                      ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+  ┌─ features/math.fe:5:12
+  │
+5 │         z: u256
+  │            ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/math.fe:8:16
+  │
+8 │             x: u256 = val / 2 + 1
+  │                ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+

@@ -1,0 +1,12 @@
+---
+source: parser/tests/cases/errors.rs
+expression: "err_string(stringify!(emit_no_args), functions::parse_stmt, true, \"emit x\")"
+
+---
+error: unexpected end of file
+  ┌─ emit_no_args:1:7
+  │
+1 │ emit x
+  │       ^
+
+

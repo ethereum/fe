@@ -1,0 +1,12 @@
+---
+source: parser/tests/cases/errors.rs
+expression: "err_string(stringify!(emit_expr), functions::parse_stmt, true, \"emit x + 1\")"
+
+---
+error: failed to parse event invocation parameter list
+  ┌─ emit_expr:1:8
+  │
+1 │ emit x + 1
+  │        ^ Unexpected token. Expected `(`
+
+

@@ -2,14 +2,18 @@ use crate::builtins::GlobalMethod;
 use crate::errors::SemanticError;
 use crate::namespace::events::EventDef;
 use crate::namespace::scopes::{ContractFunctionDef, ContractScope, ModuleScope, Shared};
-use crate::namespace::types::{Contract, FixedSize, Struct, Tuple, Type};
-use fe_parser::node::NodeId;
+use crate::namespace::types::{Array, Contract, FixedSize, Struct, Tuple, Type};
+use fe_common::Span;
+use fe_parser::ast as fe;
+use fe_parser::node::{Node, NodeId};
 use std::cell::RefCell;
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::Debug;
+use std::hash::Hash;
 use std::rc::Rc;
 
 /// Indicates where an expression is stored.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub enum Location {
     /// A storage value may not have a nonce known at compile time, so it is
     /// optional.
@@ -37,7 +41,7 @@ impl Location {
 }
 
 /// Contains contextual information relating to a contract AST node.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct ContractAttributes {
     /// Public functions that have been defined by the user.
     pub public_functions: Vec<FunctionAttributes>,
@@ -45,14 +49,16 @@ pub struct ContractAttributes {
     pub init_function: Option<FunctionAttributes>,
     /// Events that have been defined by the user.
     pub events: Vec<EventDef>,
+    /// List expressions that the contract uses
+    pub list_expressions: BTreeSet<Array>,
     /// Static strings that the contract defines
-    pub string_literals: HashSet<String>,
+    pub string_literals: BTreeSet<String>,
     /// Structs that have been defined by the user
     pub structs: Vec<Struct>,
     /// External contracts that may be called from within this contract.
     pub external_contracts: Vec<Contract>,
     /// Names of contracts that have been created inside of this contract.
-    pub created_contracts: HashSet<String>,
+    pub created_contracts: BTreeSet<String>,
 }
 
 impl From<Shared<ContractScope>> for ContractAttributes {
@@ -112,6 +118,7 @@ impl From<Shared<ContractScope>> for ContractAttributes {
                 .values()
                 .map(|event| event.to_owned())
                 .collect::<Vec<EventDef>>(),
+            list_expressions: scope.borrow().list_expressions.clone(),
             string_literals: scope.borrow().string_defs.clone(),
             structs,
             external_contracts,
@@ -121,7 +128,7 @@ impl From<Shared<ContractScope>> for ContractAttributes {
 }
 
 /// Contains contextual information relating to an expression AST node.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct ExpressionAttributes {
     pub typ: Type,
     pub location: Location,
@@ -215,7 +222,7 @@ impl ExpressionAttributes {
 }
 
 /// The type of a function call.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub enum CallType {
     BuiltinFunction { func: GlobalMethod },
     TypeConstructor { typ: Type },
@@ -225,7 +232,7 @@ pub enum CallType {
 }
 
 /// Contains contextual information relating to a function definition AST node.
-#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct FunctionAttributes {
     pub is_public: bool,
     pub name: String,
@@ -260,7 +267,7 @@ impl From<ContractFunctionDef> for FunctionAttributes {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ModuleAttributes {
     /// Type definitions in a module.
-    pub type_defs: HashMap<String, Type>,
+    pub type_defs: BTreeMap<String, Type>,
     /// Tuples that were used inside of a module.
     ///
     /// BTreeSet is used for ordering, this way items are retrieved in the same order every time.
@@ -280,14 +287,18 @@ impl From<Shared<ModuleScope>> for ModuleAttributes {
 /// `Spanned` AST nodes.
 #[derive(Clone, Debug, Default)]
 pub struct Context {
-    pub expressions: HashMap<NodeId, ExpressionAttributes>,
-    pub emits: HashMap<NodeId, EventDef>,
-    pub functions: HashMap<NodeId, FunctionAttributes>,
-    pub declarations: HashMap<NodeId, FixedSize>,
-    pub contracts: HashMap<NodeId, ContractAttributes>,
-    pub calls: HashMap<NodeId, CallType>,
-    pub events: HashMap<NodeId, EventDef>,
-    pub type_descs: HashMap<NodeId, Type>,
+    /// Node ids in the order they were visited.
+    pub node_ids: Vec<NodeId>,
+    /// The span of a given node id.
+    pub spans: BTreeMap<NodeId, Span>,
+    pub expressions: BTreeMap<NodeId, ExpressionAttributes>,
+    pub emits: BTreeMap<NodeId, EventDef>,
+    pub functions: BTreeMap<NodeId, FunctionAttributes>,
+    pub declarations: BTreeMap<NodeId, FixedSize>,
+    pub contracts: BTreeMap<NodeId, ContractAttributes>,
+    pub calls: BTreeMap<NodeId, CallType>,
+    pub events: BTreeMap<NodeId, EventDef>,
+    pub type_descs: BTreeMap<NodeId, Type>,
     pub module: Option<ModuleAttributes>,
 }
 
@@ -298,25 +309,37 @@ impl Context {
 
     pub fn new() -> Self {
         Context {
-            expressions: HashMap::new(),
-            emits: HashMap::new(),
-            functions: HashMap::new(),
-            declarations: HashMap::new(),
-            contracts: HashMap::new(),
-            calls: HashMap::new(),
-            events: HashMap::new(),
-            type_descs: HashMap::new(),
-            module: None,
+            ..Default::default()
         }
     }
 
+    fn add_node<T>(&mut self, node: &Node<T>) {
+        self.node_ids.push(node.id);
+        self.spans.insert(node.id, node.span);
+    }
+
     /// Attribute contextual information to an expression node.
-    pub fn add_expression<T: Into<NodeId>>(
-        &mut self,
-        node_id: T,
-        attributes: ExpressionAttributes,
-    ) {
-        self.expressions.insert(node_id.into(), attributes);
+    ///
+    /// # Panics
+    ///
+    /// Panics if an entry already exists for the node id.
+    pub fn add_expression(&mut self, node: &Node<fe::Expr>, attributes: ExpressionAttributes) {
+        self.add_node(node);
+        expect_none(
+            self.expressions.insert(node.id, attributes),
+            "expression attributes already exist",
+        );
+    }
+
+    /// Update the expression attributes.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an entry does not already exist for the node id.
+    pub fn update_expression(&mut self, node: &Node<fe::Expr>, attributes: ExpressionAttributes) {
+        self.expressions
+            .insert(node.id, attributes)
+            .expect("expression attributes do not exist");
     }
 
     /// Get information that has been attributed to an expression node.
@@ -325,8 +348,16 @@ impl Context {
     }
 
     /// Attribute contextual information to an emit statement node.
-    pub fn add_emit<T: Into<NodeId>>(&mut self, node_id: T, event: EventDef) {
-        self.emits.insert(node_id.into(), event);
+    ///
+    /// # Panics
+    ///
+    /// Panics if an entry already exists for the node id.
+    pub fn add_emit(&mut self, node: &Node<fe::FuncStmt>, event: EventDef) {
+        self.add_node(node);
+        expect_none(
+            self.emits.insert(node.id, event),
+            "emit statement attributes already exist",
+        );
     }
 
     /// Get information that has been attributed to an emit statement node.
@@ -335,8 +366,16 @@ impl Context {
     }
 
     /// Attribute contextual information to a function definition node.
-    pub fn add_function<T: Into<NodeId>>(&mut self, node_id: T, attributes: FunctionAttributes) {
-        self.functions.insert(node_id.into(), attributes);
+    ///
+    /// # Panics
+    ///
+    /// Panics if an entry already exists for the node id.
+    pub fn add_function(&mut self, node: &Node<fe::ContractStmt>, attributes: FunctionAttributes) {
+        self.add_node(node);
+        expect_none(
+            self.functions.insert(node.id, attributes),
+            "function attributes already exist",
+        );
     }
 
     /// Get information that has been attributed to a function definition node.
@@ -345,8 +384,16 @@ impl Context {
     }
 
     /// Attribute contextual information to a declaration node.
-    pub fn add_declaration<T: Into<NodeId>>(&mut self, node_id: T, typ: FixedSize) {
-        self.declarations.insert(node_id.into(), typ);
+    ///
+    /// # Panics
+    ///
+    /// Panics if an entry already exists for the node id.
+    pub fn add_declaration(&mut self, node: &Node<fe::FuncStmt>, typ: FixedSize) {
+        self.add_node(node);
+        expect_none(
+            self.declarations.insert(node.id, typ),
+            "declaration attributes already exist",
+        );
     }
 
     /// Get information that has been attributed to a declaration node.
@@ -355,8 +402,16 @@ impl Context {
     }
 
     /// Attribute contextual information to a contract definition node.
-    pub fn add_contract<T: Into<NodeId>>(&mut self, node_id: T, attributes: ContractAttributes) {
-        self.contracts.insert(node_id.into(), attributes);
+    ///
+    /// # Panics
+    ///
+    /// Panics if an entry already exists for the node id.
+    pub fn add_contract(&mut self, node: &Node<fe::ModuleStmt>, attributes: ContractAttributes) {
+        self.add_node(node);
+        expect_none(
+            self.contracts.insert(node.id, attributes),
+            "contract attributes already exist",
+        );
     }
 
     /// Get information that has been attributed to a contract definition node.
@@ -365,8 +420,16 @@ impl Context {
     }
 
     /// Attribute contextual information to a call expression node.
-    pub fn add_call<T: Into<NodeId>>(&mut self, node_id: T, call_type: CallType) {
-        self.calls.insert(node_id.into(), call_type);
+    ///
+    /// # Panics
+    ///
+    /// Panics if an entry already exists for the node id.
+    pub fn add_call(&mut self, node: &Node<fe::Expr>, call_type: CallType) {
+        self.add_node(node);
+        expect_none(
+            self.calls.insert(node.id, call_type),
+            "call attributes already exist",
+        );
     }
 
     /// Get information that has been attributed to a call expression node.
@@ -375,8 +438,16 @@ impl Context {
     }
 
     /// Attribute contextual information to an event definition node.
-    pub fn add_event<T: Into<NodeId>>(&mut self, node_id: T, event: EventDef) {
-        self.events.insert(node_id.into(), event);
+    ///
+    /// # Panics
+    ///
+    /// Panics if an entry already exists for the node id.
+    pub fn add_event(&mut self, node: &Node<fe::ContractStmt>, event: EventDef) {
+        self.add_node(node);
+        expect_none(
+            self.events.insert(node.id, event),
+            "event attributes already exist",
+        );
     }
 
     /// Get information that has been attributed to an event definition node.
@@ -385,8 +456,16 @@ impl Context {
     }
 
     /// Attribute contextual information to a type description node.
-    pub fn add_type_desc<T: Into<NodeId>>(&mut self, node_id: T, typ: Type) {
-        self.type_descs.insert(node_id.into(), typ);
+    ///
+    /// # Panics
+    ///
+    /// Panics if an entry already exists for the node id.
+    pub fn add_type_desc(&mut self, node: &Node<fe::TypeDesc>, typ: Type) {
+        self.add_node(node);
+        expect_none(
+            self.type_descs.insert(node.id, typ),
+            "type desc attributes already exist",
+        );
     }
 
     /// Get information that has been attributed to a type description node.
@@ -402,5 +481,100 @@ impl Context {
     /// Get information that has been attributed to the module.
     pub fn get_module(&self) -> Option<&ModuleAttributes> {
         self.module.as_ref()
+    }
+
+    /// Get the span and attributes of all expressions.
+    pub fn get_spanned_expressions(&self) -> Vec<(Span, ExpressionAttributes)> {
+        self.node_ids
+            .iter()
+            .filter_map(|node_id| {
+                self.get_expression(*node_id)
+                    .map(|attributes| (self.spans[node_id], attributes.to_owned()))
+            })
+            .collect::<Vec<_>>()
+    }
+
+    /// Get the span and attributes of all emits.
+    pub fn get_spanned_emits(&self) -> Vec<(Span, EventDef)> {
+        self.node_ids
+            .iter()
+            .filter_map(|node_id| {
+                self.get_emit(*node_id)
+                    .map(|attributes| (self.spans[node_id], attributes.to_owned()))
+            })
+            .collect::<Vec<_>>()
+    }
+
+    /// Get the span and attributes of all functions.
+    pub fn get_spanned_functions(&self) -> Vec<(Span, FunctionAttributes)> {
+        self.node_ids
+            .iter()
+            .filter_map(|node_id| {
+                self.get_function(*node_id)
+                    .map(|attributes| (self.spans[node_id], attributes.to_owned()))
+            })
+            .collect::<Vec<_>>()
+    }
+
+    /// Get the span and attributes of all declarations.
+    pub fn get_spanned_declarations(&self) -> Vec<(Span, FixedSize)> {
+        self.node_ids
+            .iter()
+            .filter_map(|node_id| {
+                self.get_declaration(*node_id)
+                    .map(|attributes| (self.spans[node_id], attributes.to_owned()))
+            })
+            .collect::<Vec<_>>()
+    }
+
+    /// Get the span and attributes of all contracts.
+    pub fn get_spanned_contracts(&self) -> Vec<(Span, ContractAttributes)> {
+        self.node_ids
+            .iter()
+            .filter_map(|node_id| {
+                self.get_contract(*node_id)
+                    .map(|attributes| (self.spans[node_id], attributes.to_owned()))
+            })
+            .collect::<Vec<_>>()
+    }
+
+    /// Get the span and attributes of all calls.
+    pub fn get_spanned_calls(&self) -> Vec<(Span, CallType)> {
+        self.node_ids
+            .iter()
+            .filter_map(|node_id| {
+                self.get_call(*node_id)
+                    .map(|attributes| (self.spans[node_id], attributes.to_owned()))
+            })
+            .collect::<Vec<_>>()
+    }
+
+    /// Get the span and attributes of all events.
+    pub fn get_spanned_events(&self) -> Vec<(Span, EventDef)> {
+        self.node_ids
+            .iter()
+            .filter_map(|node_id| {
+                self.get_event(*node_id)
+                    .map(|attributes| (self.spans[node_id], attributes.to_owned()))
+            })
+            .collect::<Vec<_>>()
+    }
+
+    /// Get the span and attributes of all type descs.
+    pub fn get_spanned_type_descs(&self) -> Vec<(Span, Type)> {
+        self.node_ids
+            .iter()
+            .filter_map(|node_id| {
+                self.get_type_desc(*node_id)
+                    .map(|attributes| (self.spans[node_id], attributes.to_owned()))
+            })
+            .collect::<Vec<_>>()
+    }
+}
+
+/// Temporary helper until `expect_none` is stable.
+fn expect_none<T>(item: Option<T>, msg: &str) {
+    if item.is_some() {
+        panic!("{}", msg)
     }
 }

@@ -1,0 +1,66 @@
+---
+source: parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(type_map2), types::parse_type_desc,\n           \"map<address, map<u8, u256>>\")"
+
+---
+Node(
+  kind: Generic(
+    base: Node(
+      kind: "map",
+      span: Span(
+        start: 0,
+        end: 3,
+      ),
+    ),
+    args: [
+      Node(
+        kind: TypeDesc(Base(
+          base: "address",
+        )),
+        span: Span(
+          start: 4,
+          end: 11,
+        ),
+      ),
+      Node(
+        kind: TypeDesc(Generic(
+          base: Node(
+            kind: "map",
+            span: Span(
+              start: 13,
+              end: 16,
+            ),
+          ),
+          args: [
+            Node(
+              kind: TypeDesc(Base(
+                base: "u8",
+              )),
+              span: Span(
+                start: 17,
+                end: 19,
+              ),
+            ),
+            Node(
+              kind: TypeDesc(Base(
+                base: "u256",
+              )),
+              span: Span(
+                start: 21,
+                end: 25,
+              ),
+            ),
+          ],
+        )),
+        span: Span(
+          start: 13,
+          end: 26,
+        ),
+      ),
+    ],
+  ),
+  span: Span(
+    start: 0,
+    end: 27,
+  ),
+)

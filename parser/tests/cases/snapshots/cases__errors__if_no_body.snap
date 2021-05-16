@@ -1,0 +1,12 @@
+---
+source: parser/tests/cases/errors.rs
+expression: "err_string(stringify!(if_no_body), functions::parse_stmt, true,\n           \"if x:\\nelse:\\n x\")"
+
+---
+error: failed to parse `if` statement body
+  ┌─ if_no_body:1:1
+  │
+1 │ if x:
+  │ ^^^^^ the body of this `if` statement must be indented and non-empty
+
+

@@ -1,0 +1,23 @@
+---
+source: parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(type_array), types::parse_type_desc, \"address[25]\")"
+
+---
+Node(
+  kind: Array(
+    typ: Node(
+      kind: Base(
+        base: "address",
+      ),
+      span: Span(
+        start: 0,
+        end: 7,
+      ),
+    ),
+    dimension: 25,
+  ),
+  span: Span(
+    start: 0,
+    end: 11,
+  ),
+)

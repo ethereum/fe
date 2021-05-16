@@ -1,9 +1,9 @@
 use super::expressions::{parse_call_args, parse_expr};
 use super::types::parse_type_desc;
 
-use crate::ast::{BinOperator, ContractStmt, FuncDefArg, FuncStmt, PubQualifier};
+use crate::ast::{BinOperator, ContractStmt, Expr, FuncDefArg, FuncStmt, VarDeclTarget};
 use crate::lexer::TokenKind;
-use crate::node::Node;
+use crate::node::{Node, Span};
 use crate::{Label, ParseFailed, ParseResult, Parser};
 
 /// Parse a function definition. The optional `pub` qualifier must be parsed by
@@ -11,13 +11,10 @@ use crate::{Label, ParseFailed, ParseResult, Parser};
 ///
 /// # Panics
 /// Panics if the next token isn't `def`.
-pub fn parse_fn_def(
-    par: &mut Parser,
-    pub_qual: Option<Node<PubQualifier>>,
-) -> ParseResult<Node<ContractStmt>> {
+pub fn parse_fn_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Node<ContractStmt>> {
     let def_tok = par.assert(TokenKind::Def);
     let name = par.expect(TokenKind::Name, "failed to parse function definition")?;
-    let mut span = def_tok.span + pub_qual.as_ref() + name.span;
+    let mut span = def_tok.span + pub_qual + name.span;
 
     let args = match par.peek_or_err()? {
         TokenKind::ParenOpen => {
@@ -72,7 +69,7 @@ pub fn parse_fn_def(
     span += body.last();
     Ok(Node::new(
         ContractStmt::FuncDef {
-            pub_qual,
+            is_pub: pub_qual.is_some(),
             name: name.into(),
             args,
             return_type,
@@ -224,6 +221,8 @@ fn parse_expr_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
         }
         Some(Colon) => {
             par.next()?;
+
+            let target = expr_to_vardecl_target(par, expr)?;
             let typ = parse_type_desc(par)?;
             let value = if par.peek() == Some(Eq) {
                 par.next()?;
@@ -231,16 +230,8 @@ fn parse_expr_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
             } else {
                 None
             };
-            let span = expr.span + typ.span + value.as_ref();
-            // TODO: restrict VarDecl target type?
-            Node::new(
-                FuncStmt::VarDecl {
-                    target: expr,
-                    typ,
-                    value,
-                },
-                span,
-            )
+            let span = target.span + typ.span + value.as_ref();
+            Node::new(FuncStmt::VarDecl { target, typ, value }, span)
         }
         Some(Eq) => {
             par.next()?;
@@ -249,7 +240,7 @@ fn parse_expr_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
             // TODO: should `x = y = z` be allowed?
             Node::new(
                 FuncStmt::Assign {
-                    targets: vec![expr],
+                    target: expr,
                     value,
                 },
                 span,
@@ -277,6 +268,34 @@ fn parse_expr_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     };
     par.expect_newline("statement")?;
     Ok(node)
+}
+
+fn expr_to_vardecl_target(par: &mut Parser, expr: Node<Expr>) -> ParseResult<Node<VarDeclTarget>> {
+    match expr.kind {
+        Expr::Name(name) => Ok(Node::new(VarDeclTarget::Name(name), expr.span)),
+        Expr::Tuple { elts } if !elts.is_empty() => Ok(Node::new(
+            VarDeclTarget::Tuple(
+                elts.into_iter()
+                    .map(|elt| expr_to_vardecl_target(par, elt))
+                    .collect::<ParseResult<Vec<_>>>()?,
+            ),
+            expr.span,
+        )),
+        _ => {
+            par.fancy_error(
+                "failed to parse variable declaration",
+                vec![Label::primary(
+                    expr.span,
+                    "invalid variable declaration target".into(),
+                )],
+                vec![
+                    "The left side of a variable declaration can be either a name\nor a non-empty tuple."
+                        .into(),
+                ],
+            );
+            Err(ParseFailed)
+        }
+    }
 }
 
 /// Parse an `if` statement, or an `elif` block.
@@ -324,25 +343,9 @@ pub fn parse_while_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let test = parse_expr(par)?;
     par.enter_block(while_tok.span + test.span, "`while` statement")?;
     let body = parse_block_stmts(par)?;
+    let span = while_tok.span + test.span + body.last();
 
-    let else_block = match par.peek() {
-        Some(TokenKind::Else) => {
-            let else_tok = par.next()?;
-            par.enter_block(else_tok.span, "`while` statement `else` block")?;
-            parse_block_stmts(par)?
-        }
-        _ => vec![],
-    };
-    let span = while_tok.span + test.span + body.last() + else_block.last();
-
-    Ok(Node::new(
-        FuncStmt::While {
-            test,
-            body,
-            or_else: else_block,
-        },
-        span,
-    ))
+    Ok(Node::new(FuncStmt::While { test, body }, span))
 }
 
 /// Parse a `for` statement.
@@ -352,31 +355,16 @@ pub fn parse_while_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
 pub fn parse_for_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let for_tok = par.assert(TokenKind::For);
 
-    let target = parse_expr(par)?;
+    let target = par
+        .expect(TokenKind::Name, "failed to parse `for` statement")?
+        .into();
     par.expect(TokenKind::In, "failed to parse `for` statement")?;
     let iter = parse_expr(par)?;
     par.enter_block(for_tok.span + iter.span, "`for` statement")?;
     let body = parse_block_stmts(par)?;
+    let span = for_tok.span + iter.span + body.last();
 
-    let else_block = match par.peek() {
-        Some(TokenKind::Else) => {
-            let else_tok = par.next()?;
-            par.enter_block(else_tok.span, "`for` statement `else` block")?;
-            parse_block_stmts(par)?
-        }
-        _ => vec![],
-    };
-    let span = for_tok.span + iter.span + body.last() + else_block.last();
-
-    Ok(Node::new(
-        FuncStmt::For {
-            target,
-            iter,
-            body,
-            or_else: else_block,
-        },
-        span,
-    ))
+    Ok(Node::new(FuncStmt::For { target, iter, body }, span))
 }
 
 /// Parse a `return` statement.

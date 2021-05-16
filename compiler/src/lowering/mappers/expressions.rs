@@ -1,4 +1,6 @@
-use crate::lowering::names::tuple_struct_name;
+use crate::lowering::names::{list_expr_generator_fn_name, tuple_struct_name};
+use crate::lowering::utils::ZeroSpanNode;
+use fe_analyzer::builtins::Object;
 use fe_analyzer::context::Context;
 use fe_analyzer::namespace::types::Type;
 use fe_parser::ast as fe;
@@ -13,9 +15,9 @@ pub fn expr(context: &Context, exp: Node<fe::Expr>) -> Node<fe::Expr> {
         fe::Expr::Name(_) => exp.kind,
         fe::Expr::Num(_) => exp.kind,
         fe::Expr::Bool(_) => exp.kind,
-        fe::Expr::Subscript { value, slices } => fe::Expr::Subscript {
+        fe::Expr::Subscript { value, index } => fe::Expr::Subscript {
             value: boxed_expr(context, value),
-            slices: slices_index_expr(context, slices),
+            index: boxed_expr(context, index),
         },
         fe::Expr::Attribute { value, attr } => fe::Expr::Attribute {
             value: boxed_expr(context, value),
@@ -53,34 +55,12 @@ pub fn expr(context: &Context, exp: Node<fe::Expr>) -> Node<fe::Expr> {
             func: boxed_expr(context, func),
             args: call_args(context, args),
         },
-        fe::Expr::List { .. } => unimplemented!(),
-        fe::Expr::ListComp { .. } => unimplemented!(),
-        // We only accept empty tuples for now. We may want to completely eliminate tuple
-        // expressions before the Yul codegen pass, tho.
+        fe::Expr::List { .. } => expr_list(context, exp),
         fe::Expr::Tuple { .. } => expr_tuple(context, exp),
         fe::Expr::Str(_) => exp.kind,
     };
 
     Node::new(lowered_kind, span)
-}
-
-fn slices_index_expr(
-    context: &Context,
-    slices: Node<Vec<Node<fe::Slice>>>,
-) -> Node<Vec<Node<fe::Slice>>> {
-    let first_slice = &slices.kind[0];
-
-    if let fe::Slice::Index(exp) = &first_slice.kind {
-        return Node::new(
-            vec![Node::new(
-                fe::Slice::Index(Box::new(expr(context, *exp.to_owned()))),
-                first_slice.span,
-            )],
-            slices.span,
-        );
-    }
-
-    unreachable!()
 }
 
 /// Lowers and optional expression.
@@ -92,11 +72,6 @@ pub fn optional_expr(context: &Context, exp: Option<Node<fe::Expr>>) -> Option<N
 #[allow(clippy::boxed_local)]
 pub fn boxed_expr(context: &Context, exp: Box<Node<fe::Expr>>) -> Box<Node<fe::Expr>> {
     Box::new(expr(context, *exp))
-}
-
-/// Lowers a list of expression.
-pub fn multiple_exprs(context: &Context, exp: Vec<Node<fe::Expr>>) -> Vec<Node<fe::Expr>> {
-    exp.into_iter().map(|exp| expr(context, exp)).collect()
 }
 
 /// Lowers call arguments
@@ -158,6 +133,34 @@ fn expr_tuple(context: &Context, exp: Node<fe::Expr>) -> fe::Expr {
             // create type constructor call for the lowered tuple
             return fe::Expr::Call {
                 func: Box::new(Node::new(name, exp.span)),
+                args,
+            };
+        }
+    }
+
+    unreachable!()
+}
+
+fn expr_list(context: &Context, exp: Node<fe::Expr>) -> fe::Expr {
+    let attributes = context.get_expression(&exp).expect("missing attributes");
+
+    if let Type::Array(array) = &attributes.typ {
+        let fn_name = list_expr_generator_fn_name(array);
+
+        if let fe::Expr::List { elts } = exp.kind {
+            let args = elts
+                .into_iter()
+                .map(|list_val| fe::CallArg::Arg(list_val).into_node())
+                .collect::<Vec<_>>()
+                .into_node();
+
+            // Turn List Expression into a function call
+            return fe::Expr::Call {
+                func: fe::Expr::Attribute {
+                    value: fe::Expr::Name(Object::Self_.to_string()).into_boxed_node(),
+                    attr: fn_name.into_node(),
+                }
+                .into_boxed_node(),
                 args,
             };
         }

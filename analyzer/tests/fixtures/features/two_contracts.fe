@@ -1,0 +1,19 @@
+contract Foo:
+
+    other: Bar
+
+    pub def external_bar() -> u256:
+        return Bar(address(0)).bar()
+
+    pub def foo() -> u256:
+        return 42
+
+contract Bar:
+
+    other: Foo
+
+    pub def external_foo() -> u256:
+        return Foo(address(0)).foo()
+
+    pub def bar() -> u256:
+        return 26

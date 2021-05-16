@@ -46,6 +46,18 @@ impl Add for Span {
     }
 }
 
+impl Add<Option<Span>> for Span {
+    type Output = Self;
+
+    fn add(self, other: Option<Span>) -> Self {
+        if let Some(other) = other {
+            self + other
+        } else {
+            self
+        }
+    }
+}
+
 impl<'a, T> Add<Option<&'a T>> for Span
 where
     Span: Add<&'a T, Output = Self>,

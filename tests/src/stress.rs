@@ -1,9 +1,7 @@
 //! Stress tests that test broad behavior
-
 #![cfg(feature = "solc-backend")]
-use std::iter;
-
 use fe_compiler_test_utils::*;
+use std::iter;
 
 pub fn deploy_contract(
     executor: &mut Executor,

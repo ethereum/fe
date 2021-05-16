@@ -1,7 +1,7 @@
 use super::functions::parse_fn_def;
 use super::types::{parse_event_def, parse_field, parse_opt_qualifier};
 
-use crate::ast::{ConstQualifier, ModuleStmt, PubQualifier};
+use crate::ast::ModuleStmt;
 use crate::node::Node;
 use crate::{ParseFailed, ParseResult, Parser, TokenKind};
 
@@ -44,12 +44,12 @@ pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     let mut defs = vec![];
 
     loop {
-        let pub_qual = parse_opt_qualifier(par, TokenKind::Pub, PubQualifier {});
-        let const_qual = parse_opt_qualifier(par, TokenKind::Const, ConstQualifier {});
+        let mut pub_qual = parse_opt_qualifier(par, TokenKind::Pub);
+        let const_qual = parse_opt_qualifier(par, TokenKind::Const);
         if pub_qual.is_none() && const_qual.is_some() && par.peek() == Some(Pub) {
-            let tok = par.next()?;
+            pub_qual = parse_opt_qualifier(par, TokenKind::Pub);
             par.error(
-                const_qual.as_ref().unwrap().span + tok.span,
+                pub_qual.unwrap() + const_qual,
                 "`const pub` should be written `pub const`",
             );
         }
@@ -63,24 +63,21 @@ pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
                 fields.push(field);
             }
             Some(TokenKind::Def) => {
-                if let Some(node) = const_qual {
+                if let Some(span) = const_qual {
                     par.error(
-                        node.span,
+                        span,
                         "`const` qualifier can't be used with function definitions",
                     );
                 }
                 defs.push(parse_fn_def(par, pub_qual)?);
             }
             Some(TokenKind::Event) => {
-                if let Some(node) = pub_qual {
-                    par.error(
-                        node.span,
-                        "`pub` qualifier can't be used with event definitions",
-                    );
+                if let Some(span) = pub_qual {
+                    par.error(span, "`pub` qualifier can't be used with event definitions");
                 }
-                if let Some(node) = const_qual {
+                if let Some(span) = const_qual {
                     par.error(
-                        node.span,
+                        span,
                         "`const` qualifier can't be used with event definitions",
                     );
                 }

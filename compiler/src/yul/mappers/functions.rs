@@ -22,7 +22,7 @@ pub fn func_def(context: &Context, def: &Node<fe::ContractStmt>) -> yul::Stateme
     if let (
         Some(attributes),
         fe::ContractStmt::FuncDef {
-            pub_qual: _,
+            is_pub: _,
             name,
             args,
             return_type: _,
@@ -64,7 +64,7 @@ fn func_stmt(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
         fe::FuncStmt::VarDecl { .. } => declarations::var_decl(context, stmt),
         fe::FuncStmt::Assign { .. } => assignments::assign(context, stmt),
         fe::FuncStmt::Emit { .. } => emit(context, stmt),
-        fe::FuncStmt::AugAssign { .. } => unimplemented!(),
+        fe::FuncStmt::AugAssign { .. } => panic!("AugAssign should be lowered"),
         fe::FuncStmt::For { .. } => for_loop(context, stmt),
         fe::FuncStmt::While { .. } => while_loop(context, stmt),
         fe::FuncStmt::If { .. } => if_statement(context, stmt),
@@ -78,15 +78,9 @@ fn func_stmt(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
 }
 
 fn for_loop(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
-    if let fe::FuncStmt::For {
-        target,
-        iter,
-        body,
-        or_else: _,
-    } = &stmt.kind
-    {
+    if let fe::FuncStmt::For { target, iter, body } = &stmt.kind {
         let iterator = expressions::expr(context, iter);
-        let target_var = names::var_name(&expressions::expr_name_string(target));
+        let target_var = names::var_name(&target.kind);
         let yul_body = multiple_func_stmt(context, body);
         return if let Some(ExpressionAttributes {
             typ: Type::Array(array),
@@ -228,12 +222,7 @@ fn func_return(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
 }
 
 fn while_loop(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
-    if let fe::FuncStmt::While {
-        test,
-        body,
-        or_else: _,
-    } = &stmt.kind
-    {
+    if let fe::FuncStmt::While { test, body } = &stmt.kind {
         let test = expressions::expr(context, test);
         let yul_body = multiple_func_stmt(context, body);
 

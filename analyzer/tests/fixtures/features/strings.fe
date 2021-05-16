@@ -1,0 +1,21 @@
+contract Foo:
+    event MyEvent:
+        s2: string26
+        u: u256
+        s1: string42
+        s3: string100
+        a: address
+        s4: string13
+        s5: string100
+
+    pub def __init__(s1: string42, a: address, s2: string26, u: u256, s3: string100):
+        emit MyEvent(s2, u, s1, s3, a, "static string", string100("foo"))
+
+    pub def bar(s1: string100, s2: string100) -> string100:
+        return s2
+
+    pub def return_static_string() -> string43:
+        return "The quick brown fox jumps over the lazy dog"
+
+    pub def return_casted_static_string() -> string100:
+        return string100("foo")

@@ -1,9 +1,9 @@
 use crate::errors::SemanticError;
 use crate::namespace::events::EventDef;
-use crate::namespace::types::{FixedSize, Tuple, Type};
+use crate::namespace::types::{Array, FixedSize, Tuple, Type};
 use std::cell::RefCell;
-use std::collections::hash_map::Entry;
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::btree_map::Entry;
+use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 pub type Shared<T> = Rc<RefCell<T>>;
@@ -26,7 +26,7 @@ pub struct ContractFieldDef {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ModuleScope {
     /// Type definitions in a module.
-    pub type_defs: HashMap<String, Type>,
+    pub type_defs: BTreeMap<String, Type>,
     /// Tuples that were used inside of a module.
     ///
     /// BTreeSet is used for ordering, this way items are retrieved in the same order every time.
@@ -38,11 +38,12 @@ pub struct ContractScope {
     pub name: String,
     pub parent: Shared<ModuleScope>,
     pub interface: Vec<String>,
-    pub event_defs: HashMap<String, EventDef>,
-    pub field_defs: HashMap<String, ContractFieldDef>,
-    pub function_defs: HashMap<String, ContractFunctionDef>,
-    pub string_defs: HashSet<String>,
-    pub created_contracts: HashSet<String>,
+    pub event_defs: BTreeMap<String, EventDef>,
+    pub field_defs: BTreeMap<String, ContractFieldDef>,
+    pub function_defs: BTreeMap<String, ContractFunctionDef>,
+    pub list_expressions: BTreeSet<Array>,
+    pub string_defs: BTreeSet<String>,
+    pub created_contracts: BTreeSet<String>,
     num_fields: usize,
 }
 
@@ -50,7 +51,7 @@ pub struct ContractScope {
 pub struct BlockScope {
     pub name: String,
     pub parent: BlockScopeParent,
-    pub variable_defs: HashMap<String, FixedSize>,
+    pub variable_defs: BTreeMap<String, FixedSize>,
     pub typ: BlockScopeType,
 }
 
@@ -87,7 +88,7 @@ impl Scope {
 impl ModuleScope {
     pub fn new() -> Shared<Self> {
         Rc::new(RefCell::new(ModuleScope {
-            type_defs: HashMap::new(),
+            type_defs: BTreeMap::new(),
             tuples_used: BTreeSet::new(),
         }))
     }
@@ -116,12 +117,13 @@ impl ContractScope {
         Rc::new(RefCell::new(ContractScope {
             name: name.to_owned(),
             parent,
-            function_defs: HashMap::new(),
-            event_defs: HashMap::new(),
-            field_defs: HashMap::new(),
-            string_defs: HashSet::new(),
+            function_defs: BTreeMap::new(),
+            event_defs: BTreeMap::new(),
+            field_defs: BTreeMap::new(),
+            string_defs: BTreeSet::new(),
             interface: vec![],
-            created_contracts: HashSet::new(),
+            created_contracts: BTreeSet::new(),
+            list_expressions: BTreeSet::new(),
             num_fields: 0,
         }))
     }
@@ -209,6 +211,11 @@ impl ContractScope {
     pub fn add_created_contract(&mut self, name: &str) {
         self.created_contracts.insert(name.to_owned());
     }
+
+    /// Add the array type of a list expression that was used within the contract.
+    pub fn add_used_list_expression(&mut self, typ: Array) {
+        self.list_expressions.insert(typ);
+    }
 }
 
 impl BlockScope {
@@ -216,7 +223,7 @@ impl BlockScope {
         Rc::new(RefCell::new(BlockScope {
             name: name.to_owned(),
             parent,
-            variable_defs: HashMap::new(),
+            variable_defs: BTreeMap::new(),
             typ,
         }))
     }

@@ -1,10 +1,8 @@
-//! Solidity tests that help us prove assumptions about how Solidty handles
+//! Solidity tests that help us prove assumptions about how Solidity handles
 //! certain things
-
 #![cfg(feature = "solc-backend")]
-use rstest::rstest;
-
 use fe_compiler_test_utils::*;
+use rstest::rstest;
 
 #[rstest(
     method,

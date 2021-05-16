@@ -1,5 +1,4 @@
 //! Tests for contracts that should cause compile errors
-
 #![cfg(feature = "solc-backend")]
 use fe_analyzer::errors::{ErrorKind::*, SemanticError};
 use fe_common::diagnostics::print_diagnostics;
@@ -11,6 +10,11 @@ use rstest::rstest;
     fixture_file,
     expected_error,
     case("assert_reason_not_string.fe", TypeError),
+    case("bad_map.fe", MapTypeError),
+    case("bad_map2.fe", MapTypeError),
+    case("bad_map3.fe", MapTypeError),
+    case("bad_map4.fe", MapTypeError),
+    case("bad_map5.fe", TypeError),
     case("break_without_loop_2.fe", BreakWithoutLoop),
     case("break_without_loop.fe", BreakWithoutLoop),
     case("call_event_with_wrong_types.fe", TypeError),
@@ -94,7 +98,9 @@ use rstest::rstest;
     case("binary_operations/add_uints.fe", TypeError),
     case("binary_operations/lshift_bool.fe", TypeError),
     case("binary_operations/lshift_with_int.fe", TypeError),
-    case("binary_operations/pow_int.fe", TypeError)
+    case("binary_operations/pow_int.fe", TypeError),
+    case("bad_tuple_attr1.fe", UndefinedValue),
+    case("bad_tuple_attr2.fe", UndefinedValue)
 )]
 fn test_compile_errors(fixture_file: &str, expected_error: fe_analyzer::errors::ErrorKind) {
     let mut files = FileStore::new();

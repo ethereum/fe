@@ -1,0 +1,706 @@
+---
+source: analyzer/tests/analysis.rs
+expression: "build_snapshot(fixture, src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Bar": Contract(
+            Contract {
+                name: "Bar",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "bar",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "external_foo",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "external_bar",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "foo",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+    tuples_used: {},
+}
+
+note: 
+  ┌─ features/two_contracts.fe:6:28
+  │
+6 │         return Bar(address(0)).bar()
+  │                            ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/two_contracts.fe:6:20
+  │
+6 │         return Bar(address(0)).bar()
+  │                    ^^^^^^^^^^ attributes hash: 513065555763557710
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Address,
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/two_contracts.fe:6:16
+  │
+6 │         return Bar(address(0)).bar()
+  │                ^^^^^^^^^^^^^^^ attributes hash: 4801555575728098785
+  │
+  = ExpressionAttributes {
+        typ: Contract(
+            Contract {
+                name: "Bar",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "bar",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "external_foo",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/two_contracts.fe:6:16
+  │
+6 │         return Bar(address(0)).bar()
+  │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/two_contracts.fe:9:16
+  │
+9 │         return 42
+  │                ^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+   ┌─ features/two_contracts.fe:16:28
+   │
+16 │         return Foo(address(0)).foo()
+   │                            ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/two_contracts.fe:16:20
+   │
+16 │         return Foo(address(0)).foo()
+   │                    ^^^^^^^^^^ attributes hash: 513065555763557710
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Address,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/two_contracts.fe:16:16
+   │
+16 │         return Foo(address(0)).foo()
+   │                ^^^^^^^^^^^^^^^ attributes hash: 479874229303688399
+   │
+   = ExpressionAttributes {
+         typ: Contract(
+             Contract {
+                 name: "Foo",
+                 functions: [
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "external_bar",
+                         params: [],
+                         return_type: Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     },
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "foo",
+                         params: [],
+                         return_type: Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     },
+                 ],
+             },
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/two_contracts.fe:16:16
+   │
+16 │         return Foo(address(0)).foo()
+   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/two_contracts.fe:19:16
+   │
+19 │         return 26
+   │                ^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+  ┌─ features/two_contracts.fe:5:5
+  │  
+5 │ ╭     pub def external_bar() -> u256:
+6 │ │         return Bar(address(0)).bar()
+  │ ╰────────────────────────────────────^ attributes hash: 15336561783001008931
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "external_bar",
+        params: [],
+        return_type: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/two_contracts.fe:8:5
+  │  
+8 │ ╭     pub def foo() -> u256:
+9 │ │         return 42
+  │ ╰─────────────────^ attributes hash: 15216770869499965069
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "foo",
+        params: [],
+        return_type: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+    }
+
+note: 
+   ┌─ features/two_contracts.fe:15:5
+   │  
+15 │ ╭     pub def external_foo() -> u256:
+16 │ │         return Foo(address(0)).foo()
+   │ ╰────────────────────────────────────^ attributes hash: 4132907585680072308
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "external_foo",
+         params: [],
+         return_type: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/two_contracts.fe:18:5
+   │  
+18 │ ╭     pub def bar() -> u256:
+19 │ │         return 26
+   │ ╰─────────────────^ attributes hash: 2041944711719443549
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "bar",
+         params: [],
+         return_type: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+     }
+
+note: 
+  ┌─ features/two_contracts.fe:1:1
+  │  
+1 │ ╭ contract Foo:
+2 │ │ 
+3 │ │     other: Bar
+4 │ │ 
+  · │
+8 │ │     pub def foo() -> u256:
+9 │ │         return 42
+  │ ╰─────────────────^ attributes hash: 17893928644519020980
+  │  
+  = ContractAttributes {
+        public_functions: [
+            FunctionAttributes {
+                is_public: true,
+                name: "external_bar",
+                params: [],
+                return_type: Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            },
+            FunctionAttributes {
+                is_public: true,
+                name: "foo",
+                params: [],
+                return_type: Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            },
+        ],
+        init_function: None,
+        events: [],
+        list_expressions: {},
+        string_literals: {},
+        structs: [],
+        external_contracts: [
+            Contract {
+                name: "Bar",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "bar",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "external_foo",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ],
+        created_contracts: {},
+    }
+
+note: 
+   ┌─ features/two_contracts.fe:11:1
+   │  
+11 │ ╭ contract Bar:
+12 │ │ 
+13 │ │     other: Foo
+14 │ │ 
+   · │
+18 │ │     pub def bar() -> u256:
+19 │ │         return 26
+   │ ╰─────────────────^ attributes hash: 13932634080351298271
+   │  
+   = ContractAttributes {
+         public_functions: [
+             FunctionAttributes {
+                 is_public: true,
+                 name: "bar",
+                 params: [],
+                 return_type: Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "external_foo",
+                 params: [],
+                 return_type: Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             },
+         ],
+         init_function: None,
+         events: [],
+         list_expressions: {},
+         string_literals: {},
+         structs: [],
+         external_contracts: [
+             Contract {
+                 name: "Foo",
+                 functions: [
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "external_bar",
+                         params: [],
+                         return_type: Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     },
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "foo",
+                         params: [],
+                         return_type: Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     },
+                 ],
+             },
+         ],
+         created_contracts: {},
+     }
+
+note: 
+  ┌─ features/two_contracts.fe:6:16
+  │
+6 │         return Bar(address(0)).bar()
+  │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+  │
+  = ValueAttribute
+
+note: 
+  ┌─ features/two_contracts.fe:6:16
+  │
+6 │         return Bar(address(0)).bar()
+  │                ^^^ attributes hash: 3185254658974518455
+  │
+  = TypeConstructor {
+        typ: Contract(
+            Contract {
+                name: "Bar",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "bar",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "external_foo",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+    }
+
+note: 
+  ┌─ features/two_contracts.fe:6:20
+  │
+6 │         return Bar(address(0)).bar()
+  │                    ^^^^^^^ attributes hash: 6114858510168753394
+  │
+  = TypeConstructor {
+        typ: Base(
+            Address,
+        ),
+    }
+
+note: 
+   ┌─ features/two_contracts.fe:16:16
+   │
+16 │         return Foo(address(0)).foo()
+   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │
+   = ValueAttribute
+
+note: 
+   ┌─ features/two_contracts.fe:16:16
+   │
+16 │         return Foo(address(0)).foo()
+   │                ^^^ attributes hash: 5649951690903124242
+   │
+   = TypeConstructor {
+         typ: Contract(
+             Contract {
+                 name: "Foo",
+                 functions: [
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "external_bar",
+                         params: [],
+                         return_type: Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     },
+                     FunctionAttributes {
+                         is_public: true,
+                         name: "foo",
+                         params: [],
+                         return_type: Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     },
+                 ],
+             },
+         ),
+     }
+
+note: 
+   ┌─ features/two_contracts.fe:16:20
+   │
+16 │         return Foo(address(0)).foo()
+   │                    ^^^^^^^ attributes hash: 6114858510168753394
+   │
+   = TypeConstructor {
+         typ: Base(
+             Address,
+         ),
+     }
+
+note: 
+  ┌─ features/two_contracts.fe:5:31
+  │
+5 │     pub def external_bar() -> u256:
+  │                               ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/two_contracts.fe:8:22
+  │
+8 │     pub def foo() -> u256:
+  │                      ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+   ┌─ features/two_contracts.fe:15:31
+   │
+15 │     pub def external_foo() -> u256:
+   │                               ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/two_contracts.fe:18:22
+   │
+18 │     pub def bar() -> u256:
+   │                      ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+  ┌─ features/two_contracts.fe:3:12
+  │
+3 │     other: Bar
+  │            ^^^ attributes hash: 13645389495962387725
+  │
+  = Contract(
+        Contract {
+            name: "Bar",
+            functions: [
+                FunctionAttributes {
+                    is_public: true,
+                    name: "bar",
+                    params: [],
+                    return_type: Base(
+                        Numeric(
+                            U256,
+                        ),
+                    ),
+                },
+                FunctionAttributes {
+                    is_public: true,
+                    name: "external_foo",
+                    params: [],
+                    return_type: Base(
+                        Numeric(
+                            U256,
+                        ),
+                    ),
+                },
+            ],
+        },
+    )
+
+note: 
+   ┌─ features/two_contracts.fe:13:12
+   │
+13 │     other: Foo
+   │            ^^^ attributes hash: 7444901037140767234
+   │
+   = Contract(
+         Contract {
+             name: "Foo",
+             functions: [
+                 FunctionAttributes {
+                     is_public: true,
+                     name: "external_bar",
+                     params: [],
+                     return_type: Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 },
+                 FunctionAttributes {
+                     is_public: true,
+                     name: "foo",
+                     params: [],
+                     return_type: Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 },
+             ],
+         },
+     )
+
+

@@ -104,8 +104,6 @@ pub enum TokenKind {
     As,
     #[token("in")]
     In,
-    #[token("is")]
-    Is,
     #[token("not")]
     Not,
     #[token("or")]
@@ -246,7 +244,6 @@ impl TokenKind {
             And => "and",
             As => "as",
             In => "in",
-            Is => "is",
             Not => "not",
             Or => "or",
             ParenOpen => "(",

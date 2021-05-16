@@ -40,10 +40,6 @@ pub enum TypeDesc {
         typ: Box<Node<TypeDesc>>,
         dimension: usize,
     },
-    Map {
-        from: Box<Node<TypeDesc>>,
-        to: Box<Node<TypeDesc>>,
-    },
     Tuple {
         items: Vec<Node<TypeDesc>>,
     },
@@ -91,19 +87,12 @@ pub struct FromImportName {
 /// struct or contract field, with optional 'pub' and 'const' qualifiers
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Field {
-    pub pub_qual: Option<Node<PubQualifier>>,
-    pub const_qual: Option<Node<ConstQualifier>>,
+    pub is_pub: bool,
+    pub is_const: bool,
     pub name: Node<String>,
     pub typ: Node<TypeDesc>,
     pub value: Option<Node<Expr>>,
 }
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct PubQualifier {}
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct ConstQualifier {}
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct IdxQualifier {}
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ContractStmt {
@@ -112,7 +101,7 @@ pub enum ContractStmt {
         fields: Vec<Node<EventField>>,
     },
     FuncDef {
-        pub_qual: Option<Node<PubQualifier>>,
+        is_pub: bool,
         name: Node<String>,
         args: Vec<Node<FuncDefArg>>,
         return_type: Option<Node<TypeDesc>>,
@@ -122,7 +111,7 @@ pub enum ContractStmt {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct EventField {
-    pub idx_qual: Option<Node<IdxQualifier>>,
+    pub is_idx: bool,
     pub name: Node<String>,
     pub typ: Node<TypeDesc>,
 }
@@ -133,20 +122,18 @@ pub struct FuncDefArg {
     pub typ: Node<TypeDesc>,
 }
 
-// TODO: `Node`s are very large. VarDecl is 328 bytes
-#[allow(clippy::large_enum_variant)]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum FuncStmt {
     Return {
         value: Option<Node<Expr>>,
     },
     VarDecl {
-        target: Node<Expr>,
+        target: Node<VarDeclTarget>,
         typ: Node<TypeDesc>,
         value: Option<Node<Expr>>,
     },
     Assign {
-        targets: Vec<Node<Expr>>,
+        target: Node<Expr>,
         value: Node<Expr>,
     },
     AugAssign {
@@ -155,15 +142,13 @@ pub enum FuncStmt {
         value: Node<Expr>,
     },
     For {
-        target: Node<Expr>, // TODO: change to Vec<Node<String>>
+        target: Node<String>,
         iter: Node<Expr>,
         body: Vec<Node<FuncStmt>>,
-        or_else: Vec<Node<FuncStmt>>,
     },
     While {
         test: Node<Expr>,
         body: Vec<Node<FuncStmt>>,
-        or_else: Vec<Node<FuncStmt>>,
     },
     If {
         test: Node<Expr>,
@@ -185,6 +170,12 @@ pub enum FuncStmt {
     Break,
     Continue,
     Revert,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub enum VarDeclTarget {
+    Name(String),
+    Tuple(Vec<Node<VarDeclTarget>>),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -219,7 +210,7 @@ pub enum Expr {
     },
     Subscript {
         value: Box<Node<Expr>>,
-        slices: Node<Vec<Node<Slice>>>,
+        index: Box<Node<Expr>>,
     },
     Call {
         func: Box<Node<Expr>>,
@@ -228,27 +219,13 @@ pub enum Expr {
     List {
         elts: Vec<Node<Expr>>,
     },
-    ListComp {
-        elt: Box<Node<Expr>>,
-        comps: Vec<Node<Comprehension>>,
-    },
     Tuple {
         elts: Vec<Node<Expr>>,
     },
     Bool(bool),
     Name(String),
     Num(String),
-    Str(Vec<String>),
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum Slice {
-    Slice {
-        lower: Option<Box<Node<Expr>>>,
-        upper: Option<Box<Node<Expr>>>,
-        step: Option<Box<Node<Expr>>>,
-    },
-    Index(Box<Node<Expr>>),
+    Str(String),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -261,13 +238,6 @@ pub enum CallArg {
 pub struct Kwarg {
     pub name: Node<String>,
     pub value: Box<Node<Expr>>,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct Comprehension {
-    pub target: Box<Node<Expr>>,
-    pub iter: Box<Node<Expr>>,
-    pub ifs: Vec<Node<Expr>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -289,7 +259,6 @@ pub enum BinOperator {
     BitOr,
     BitXor,
     BitAnd,
-    FloorDiv,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -308,8 +277,4 @@ pub enum CompOperator {
     LtE,
     Gt,
     GtE,
-    Is,
-    IsNot,
-    In,
-    NotIn,
 }

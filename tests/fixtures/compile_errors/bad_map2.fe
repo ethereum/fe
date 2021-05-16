@@ -1,0 +1,2 @@
+contract Foo:
+  x: map<address, 100>

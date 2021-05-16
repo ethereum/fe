@@ -16,7 +16,7 @@ pub fn func_def(
     def: &Node<fe::ContractStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::ContractStmt::FuncDef {
-        pub_qual,
+        is_pub,
         name,
         args,
         return_type,
@@ -25,8 +25,6 @@ pub fn func_def(
     {
         let name = &name.kind;
         let function_scope = BlockScope::from_contract_scope(name, Rc::clone(&contract_scope));
-
-        let is_public = pub_qual.is_some();
 
         let params = args
             .iter()
@@ -54,7 +52,7 @@ pub fn func_def(
             .borrow_mut()
             .add_function(
                 name,
-                is_public,
+                *is_pub,
                 params,
                 return_type,
                 Rc::clone(&function_scope),
@@ -181,24 +179,13 @@ fn for_loop(
     stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     match &stmt.kind {
-        fe::FuncStmt::For {
-            target,
-            iter,
-            body,
-            or_else,
-        } => {
-            // Step 1: Make sure it is empty.
-            // TODO: (SA) needs to add support for it.
-            if !or_else.is_empty() {
-                unimplemented!();
-            }
-            // Step 2: Create the for loop body scope.
+        fe::FuncStmt::For { target, iter, body } => {
+            // Create the for loop body scope.
             let body_scope = BlockScope::from_block_scope(BlockScopeType::Loop, Rc::clone(&scope));
-            // Step 3: Make sure iter is in the function scope & it should be an array.
+            // Make sure iter is in the function scope & it should be an array.
             let target_type = verify_is_array(scope, Rc::clone(&context), iter)?;
-            let target_name = expressions::expr_name_string(target)?;
-            body_scope.borrow_mut().add_var(&target_name, target_type)?;
-            // Step 4: Traverse the statements within the `for loop` body scope.
+            body_scope.borrow_mut().add_var(&target.kind, target_type)?;
+            // Traverse the statements within the `for loop` body scope.
             traverse_statements(body_scope, context, body)
         }
         _ => unreachable!(),
@@ -293,14 +280,7 @@ fn while_loop(
     stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     match &stmt.kind {
-        fe::FuncStmt::While {
-            test,
-            body,
-            or_else,
-        } => {
-            if !or_else.is_empty() {
-                unimplemented!();
-            }
+        fe::FuncStmt::While { test, body } => {
             let body_scope = BlockScope::from_block_scope(BlockScopeType::Loop, Rc::clone(&scope));
             traverse_statements(body_scope, Rc::clone(&context), body)?;
             verify_is_boolean(scope, context, test)
@@ -393,62 +373,4 @@ fn func_return(
     }
 
     unreachable!()
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::namespace::scopes::{
-        BlockScope, BlockScopeParent, BlockScopeType, ContractScope, ModuleScope, Shared,
-    };
-    use crate::namespace::types::{FixedSize, U256};
-    use crate::traversal::functions::{func_body, func_def};
-    use crate::Context;
-    use fe_parser::{grammar::functions::parse_fn_def, parse_code_chunk};
-    use std::rc::Rc;
-
-    fn scope() -> Shared<ContractScope> {
-        let module_scope = ModuleScope::new();
-        ContractScope::new("", module_scope)
-    }
-
-    fn analyze(scope: Shared<ContractScope>, src: &str) -> Context {
-        let context = Context::new_shared();
-        // parse_fn_def takes Option<Node<PubQualifier>>
-        let def = parse_code_chunk(|par| parse_fn_def(par, None), src)
-            .expect("Couldn't build func def AST");
-        func_def(Rc::clone(&scope), Rc::clone(&context), &def).expect("Couldn't map func def AST");
-        func_body(scope, Rc::clone(&context), &def).expect("Couldn't map func body AST");
-        Rc::try_unwrap(context)
-            .map_err(|_| "")
-            .unwrap()
-            .into_inner()
-    }
-
-    #[test]
-    fn simple_func_def() {
-        let scope = scope();
-        let func_def = "\
-        def foo(x: u256) -> u256:\n \
-            return x + x\
-        ";
-        let context = analyze(Rc::clone(&scope), func_def);
-        assert_eq!(context.expressions.len(), 3);
-
-        let def = scope
-            .borrow()
-            .function_def("foo")
-            .expect("No definiton for foo exists");
-
-        assert_eq!(def.is_public, false);
-        assert_eq!(def.params, vec![("x".to_string(), FixedSize::Base(U256))]);
-        assert_eq!(def.return_type, FixedSize::Base(U256));
-        assert!(matches!(
-            *def.scope.borrow(),
-            BlockScope {
-                typ: BlockScopeType::Function,
-                parent: BlockScopeParent::Contract(_),
-                ..
-            }
-        ));
-    }
 }

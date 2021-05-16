@@ -1,0 +1,156 @@
+---
+source: parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(struct_def), types::parse_struct_def,\n           r#\"struct S:\n  x: address\n  pub y: u8\n  const z: u8\n  pub const a: map<u8, foo>\n\"#)"
+
+---
+Node(
+  kind: StructDef(
+    name: Node(
+      kind: "S",
+      span: Span(
+        start: 7,
+        end: 8,
+      ),
+    ),
+    fields: [
+      Node(
+        kind: Field(
+          is_pub: false,
+          is_const: false,
+          name: Node(
+            kind: "x",
+            span: Span(
+              start: 12,
+              end: 13,
+            ),
+          ),
+          typ: Node(
+            kind: Base(
+              base: "address",
+            ),
+            span: Span(
+              start: 15,
+              end: 22,
+            ),
+          ),
+          value: None,
+        ),
+        span: Span(
+          start: 12,
+          end: 22,
+        ),
+      ),
+      Node(
+        kind: Field(
+          is_pub: true,
+          is_const: false,
+          name: Node(
+            kind: "y",
+            span: Span(
+              start: 29,
+              end: 30,
+            ),
+          ),
+          typ: Node(
+            kind: Base(
+              base: "u8",
+            ),
+            span: Span(
+              start: 32,
+              end: 34,
+            ),
+          ),
+          value: None,
+        ),
+        span: Span(
+          start: 25,
+          end: 34,
+        ),
+      ),
+      Node(
+        kind: Field(
+          is_pub: false,
+          is_const: true,
+          name: Node(
+            kind: "z",
+            span: Span(
+              start: 43,
+              end: 44,
+            ),
+          ),
+          typ: Node(
+            kind: Base(
+              base: "u8",
+            ),
+            span: Span(
+              start: 46,
+              end: 48,
+            ),
+          ),
+          value: None,
+        ),
+        span: Span(
+          start: 37,
+          end: 48,
+        ),
+      ),
+      Node(
+        kind: Field(
+          is_pub: true,
+          is_const: true,
+          name: Node(
+            kind: "a",
+            span: Span(
+              start: 61,
+              end: 62,
+            ),
+          ),
+          typ: Node(
+            kind: Generic(
+              base: Node(
+                kind: "map",
+                span: Span(
+                  start: 64,
+                  end: 67,
+                ),
+              ),
+              args: [
+                Node(
+                  kind: TypeDesc(Base(
+                    base: "u8",
+                  )),
+                  span: Span(
+                    start: 68,
+                    end: 70,
+                  ),
+                ),
+                Node(
+                  kind: TypeDesc(Base(
+                    base: "foo",
+                  )),
+                  span: Span(
+                    start: 72,
+                    end: 75,
+                  ),
+                ),
+              ],
+            ),
+            span: Span(
+              start: 64,
+              end: 76,
+            ),
+          ),
+          value: None,
+        ),
+        span: Span(
+          start: 51,
+          end: 76,
+        ),
+      ),
+    ],
+  ),
+  span: Span(
+    start: 0,
+    end: 76,
+  ),
+)

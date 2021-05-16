@@ -11,7 +11,7 @@ pub fn var_decl(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement 
     let decl_type = context.get_declaration(stmt).expect("missing attributes");
 
     if let fe::FuncStmt::VarDecl { target, value, .. } = &stmt.kind {
-        let target = names::var_name(&expressions::expr_name_string(&target));
+        let target = names::var_name(var_decl_name(&target.kind));
 
         return if let Some(value) = value {
             let value = expressions::expr(context, &value);
@@ -28,6 +28,14 @@ pub fn var_decl(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement 
     }
 
     unreachable!()
+}
+
+fn var_decl_name(target: &fe::VarDeclTarget) -> &str {
+    if let fe::VarDeclTarget::Name(name) = target {
+        name
+    } else {
+        panic!("complex VarDeclTargets should be lowered to VarDeclTarget::Name")
+    }
 }
 
 #[cfg(test)]

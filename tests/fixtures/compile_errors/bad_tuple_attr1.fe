@@ -1,0 +1,6 @@
+# See ethereum/fe issue #396
+contract foo:
+    my_sto_tuple: (u256, i32)
+
+    pub def bar():
+        self.my_sto_tuple.iteo0

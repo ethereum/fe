@@ -1,0 +1,260 @@
+---
+source: analyzer/tests/analysis.rs
+expression: "build_snapshot(fixture, src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "bar",
+                        params: [
+                            (
+                                "my_num",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "my_bool",
+                                Base(
+                                    Bool,
+                                ),
+                            ),
+                        ],
+                        return_type: Tuple(
+                            Tuple {
+                                items: [
+                                    Base(
+                                        Numeric(
+                                            U256,
+                                        ),
+                                    ),
+                                    Base(
+                                        Bool,
+                                    ),
+                                ],
+                            },
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+    tuples_used: {
+        Tuple {
+            items: [
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+                Base(
+                    Bool,
+                ),
+            ],
+        },
+    },
+}
+
+note: 
+  ┌─ features/base_tuple.fe:3:17
+  │
+3 │         return (my_num, my_bool)
+  │                 ^^^^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/base_tuple.fe:3:25
+  │
+3 │         return (my_num, my_bool)
+  │                         ^^^^^^^ attributes hash: 10866140763116710699
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Bool,
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/base_tuple.fe:3:16
+  │
+3 │         return (my_num, my_bool)
+  │                ^^^^^^^^^^^^^^^^^ attributes hash: 11698647864115949400
+  │
+  = ExpressionAttributes {
+        typ: Tuple(
+            Tuple {
+                items: [
+                    Base(
+                        Numeric(
+                            U256,
+                        ),
+                    ),
+                    Base(
+                        Bool,
+                    ),
+                ],
+            },
+        ),
+        location: Memory,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/base_tuple.fe:2:5
+  │  
+2 │ ╭     pub def bar(my_num: u256, my_bool: bool) -> (u256, bool):
+3 │ │         return (my_num, my_bool)
+  │ ╰────────────────────────────────^ attributes hash: 13316683547811575743
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "bar",
+        params: [
+            (
+                "my_num",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+            (
+                "my_bool",
+                Base(
+                    Bool,
+                ),
+            ),
+        ],
+        return_type: Tuple(
+            Tuple {
+                items: [
+                    Base(
+                        Numeric(
+                            U256,
+                        ),
+                    ),
+                    Base(
+                        Bool,
+                    ),
+                ],
+            },
+        ),
+    }
+
+note: 
+  ┌─ features/base_tuple.fe:1:1
+  │  
+1 │ ╭ contract Foo:
+2 │ │     pub def bar(my_num: u256, my_bool: bool) -> (u256, bool):
+3 │ │         return (my_num, my_bool)
+  │ ╰────────────────────────────────^ attributes hash: 15350353781433648161
+  │  
+  = ContractAttributes {
+        public_functions: [
+            FunctionAttributes {
+                is_public: true,
+                name: "bar",
+                params: [
+                    (
+                        "my_num",
+                        Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    ),
+                    (
+                        "my_bool",
+                        Base(
+                            Bool,
+                        ),
+                    ),
+                ],
+                return_type: Tuple(
+                    Tuple {
+                        items: [
+                            Base(
+                                Numeric(
+                                    U256,
+                                ),
+                            ),
+                            Base(
+                                Bool,
+                            ),
+                        ],
+                    },
+                ),
+            },
+        ],
+        init_function: None,
+        events: [],
+        list_expressions: {},
+        string_literals: {},
+        structs: [],
+        external_contracts: [],
+        created_contracts: {},
+    }
+
+note: 
+  ┌─ features/base_tuple.fe:2:25
+  │
+2 │     pub def bar(my_num: u256, my_bool: bool) -> (u256, bool):
+  │                         ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/base_tuple.fe:2:40
+  │
+2 │     pub def bar(my_num: u256, my_bool: bool) -> (u256, bool):
+  │                                        ^^^^ attributes hash: 8311861578736502650
+  │
+  = Base(
+        Bool,
+    )
+
+note: 
+  ┌─ features/base_tuple.fe:2:49
+  │
+2 │     pub def bar(my_num: u256, my_bool: bool) -> (u256, bool):
+  │                                                 ^^^^^^^^^^^^ attributes hash: 17738700950303828394
+  │
+  = Tuple(
+        Tuple {
+            items: [
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+                Base(
+                    Bool,
+                ),
+            ],
+        },
+    )
+
+

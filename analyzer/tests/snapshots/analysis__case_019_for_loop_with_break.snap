@@ -1,0 +1,514 @@
+---
+source: analyzer/tests/analysis.rs
+expression: "build_snapshot(fixture, src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "bar",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+    tuples_used: {},
+}
+
+note: 
+  ┌─ features/for_loop_with_break.fe:5:9
+  │
+5 │         my_array[0] = 5
+  │         ^^^^^^^^ attributes hash: 4935018943425161537
+  │
+  = ExpressionAttributes {
+        typ: Array(
+            Array {
+                size: 3,
+                inner: Numeric(
+                    U256,
+                ),
+            },
+        ),
+        location: Memory,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/for_loop_with_break.fe:5:18
+  │
+5 │         my_array[0] = 5
+  │                  ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/for_loop_with_break.fe:5:9
+  │
+5 │         my_array[0] = 5
+  │         ^^^^^^^^^^^ attributes hash: 3617588353493611640
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Memory,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/for_loop_with_break.fe:5:23
+  │
+5 │         my_array[0] = 5
+  │                       ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/for_loop_with_break.fe:6:9
+  │
+6 │         my_array[1] = 10
+  │         ^^^^^^^^ attributes hash: 4935018943425161537
+  │
+  = ExpressionAttributes {
+        typ: Array(
+            Array {
+                size: 3,
+                inner: Numeric(
+                    U256,
+                ),
+            },
+        ),
+        location: Memory,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/for_loop_with_break.fe:6:18
+  │
+6 │         my_array[1] = 10
+  │                  ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/for_loop_with_break.fe:6:9
+  │
+6 │         my_array[1] = 10
+  │         ^^^^^^^^^^^ attributes hash: 3617588353493611640
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Memory,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/for_loop_with_break.fe:6:23
+  │
+6 │         my_array[1] = 10
+  │                       ^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/for_loop_with_break.fe:7:9
+  │
+7 │         my_array[2] = 15
+  │         ^^^^^^^^ attributes hash: 4935018943425161537
+  │
+  = ExpressionAttributes {
+        typ: Array(
+            Array {
+                size: 3,
+                inner: Numeric(
+                    U256,
+                ),
+            },
+        ),
+        location: Memory,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/for_loop_with_break.fe:7:18
+  │
+7 │         my_array[2] = 15
+  │                  ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/for_loop_with_break.fe:7:9
+  │
+7 │         my_array[2] = 15
+  │         ^^^^^^^^^^^ attributes hash: 3617588353493611640
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Memory,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/for_loop_with_break.fe:7:23
+  │
+7 │         my_array[2] = 15
+  │                       ^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/for_loop_with_break.fe:8:21
+  │
+8 │         sum: u256 = 0
+  │                     ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/for_loop_with_break.fe:9:18
+  │
+9 │         for i in my_array:
+  │                  ^^^^^^^^ attributes hash: 4935018943425161537
+  │
+  = ExpressionAttributes {
+        typ: Array(
+            Array {
+                size: 3,
+                inner: Numeric(
+                    U256,
+                ),
+            },
+        ),
+        location: Memory,
+        move_location: None,
+    }
+
+note: 
+   ┌─ features/for_loop_with_break.fe:10:13
+   │
+10 │             sum = sum + i
+   │             ^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/for_loop_with_break.fe:10:19
+   │
+10 │             sum = sum + i
+   │                   ^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/for_loop_with_break.fe:10:25
+   │
+10 │             sum = sum + i
+   │                         ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/for_loop_with_break.fe:10:19
+   │
+10 │             sum = sum + i
+   │                   ^^^^^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/for_loop_with_break.fe:11:16
+   │
+11 │             if sum == 15:
+   │                ^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/for_loop_with_break.fe:11:23
+   │
+11 │             if sum == 15:
+   │                       ^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/for_loop_with_break.fe:11:16
+   │
+11 │             if sum == 15:
+   │                ^^^^^^^^^ attributes hash: 10866140763116710699
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/for_loop_with_break.fe:13:16
+   │
+13 │         return sum
+   │                ^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/for_loop_with_break.fe:3:5
+   │  
+ 3 │ ╭     pub def bar() -> u256:
+ 4 │ │         my_array: u256[3]
+ 5 │ │         my_array[0] = 5
+ 6 │ │         my_array[1] = 10
+   · │
+12 │ │                 break
+13 │ │         return sum
+   │ ╰──────────────────^ attributes hash: 2041944711719443549
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "bar",
+         params: [],
+         return_type: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+     }
+
+note: 
+  ┌─ features/for_loop_with_break.fe:4:9
+  │
+4 │         my_array: u256[3]
+  │         ^^^^^^^^^^^^^^^^^ attributes hash: 5963828201795370982
+  │
+  = Array(
+        Array {
+            size: 3,
+            inner: Numeric(
+                U256,
+            ),
+        },
+    )
+
+note: 
+  ┌─ features/for_loop_with_break.fe:8:9
+  │
+8 │         sum: u256 = 0
+  │         ^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+   ┌─ features/for_loop_with_break.fe:1:1
+   │  
+ 1 │ ╭ contract Foo:
+ 2 │ │ 
+ 3 │ │     pub def bar() -> u256:
+ 4 │ │         my_array: u256[3]
+   · │
+12 │ │                 break
+13 │ │         return sum
+   │ ╰──────────────────^ attributes hash: 16417315723405128961
+   │  
+   = ContractAttributes {
+         public_functions: [
+             FunctionAttributes {
+                 is_public: true,
+                 name: "bar",
+                 params: [],
+                 return_type: Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             },
+         ],
+         init_function: None,
+         events: [],
+         list_expressions: {},
+         string_literals: {},
+         structs: [],
+         external_contracts: [],
+         created_contracts: {},
+     }
+
+note: 
+  ┌─ features/for_loop_with_break.fe:3:22
+  │
+3 │     pub def bar() -> u256:
+  │                      ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/for_loop_with_break.fe:4:19
+  │
+4 │         my_array: u256[3]
+  │                   ^^^^^^^ attributes hash: 5963828201795370982
+  │
+  = Array(
+        Array {
+            size: 3,
+            inner: Numeric(
+                U256,
+            ),
+        },
+    )
+
+note: 
+  ┌─ features/for_loop_with_break.fe:8:14
+  │
+8 │         sum: u256 = 0
+  │              ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+

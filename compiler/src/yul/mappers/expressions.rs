@@ -31,8 +31,7 @@ pub fn expr(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
             fe::Expr::UnaryOperation { .. } => expr_unary_operation(context, exp),
             fe::Expr::CompOperation { .. } => expr_comp_operation(context, exp),
             fe::Expr::Call { .. } => expr_call(context, exp),
-            fe::Expr::List { .. } => unimplemented!(),
-            fe::Expr::ListComp { .. } => unimplemented!(),
+            fe::Expr::List { .. } => panic!("list expressions should be lowered"),
             fe::Expr::Tuple { .. } => expr_tuple(exp),
             fe::Expr::Str(_) => expr_str(exp),
         };
@@ -195,7 +194,6 @@ pub fn expr_comp_operation(context: &Context, exp: &Node<fe::Expr>) -> yul::Expr
                 true => expression! { iszero((slt([yul_left], [yul_right]))) },
                 false => expression! { iszero((lt([yul_left], [yul_right]))) },
             },
-            _ => unimplemented!(),
         };
     }
 
@@ -257,7 +255,6 @@ pub fn expr_bin_operation(context: &Context, exp: &Node<fe::Expr>) -> yul::Expre
                 }
                 _ => unreachable!(),
             },
-            fe::BinOperator::FloorDiv => unimplemented!(),
         };
     }
 
@@ -290,29 +287,12 @@ pub fn expr_name_string(exp: &Node<fe::Expr>) -> String {
     unreachable!()
 }
 
-/// Builds a Yul expression from the first slice, if it is an index.
-pub fn slices_index(context: &Context, slices: &Node<Vec<Node<fe::Slice>>>) -> yul::Expression {
-    if let Some(first_slice) = slices.kind.first() {
-        return slice_index(context, first_slice);
-    }
-
-    unreachable!()
-}
-
-pub fn slice_index(context: &Context, slice: &Node<fe::Slice>) -> yul::Expression {
-    if let fe::Slice::Index(index) = &slice.kind {
-        return expr(context, index);
-    }
-
-    unreachable!()
-}
-
 fn expr_tuple(exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Tuple { elts } = &exp.kind {
-        if !elts.is_empty() {
-            todo!("Non empty Tuples aren't yet supported")
-        } else {
+        if elts.is_empty() {
             return literal_expression! {0x0};
+        } else {
+            panic!("Non-empty Tuples should be lowered to structs")
         }
     }
 
@@ -342,8 +322,7 @@ fn expr_bool(exp: &Node<fe::Expr>) -> yul::Expression {
 }
 
 fn expr_str(exp: &Node<fe::Expr>) -> yul::Expression {
-    if let fe::Expr::Str(lines) = &exp.kind {
-        let content = lines.join("");
+    if let fe::Expr::Str(content) = &exp.kind {
         let string_identifier = format!(r#""{}""#, keccak::full(content.as_bytes()));
 
         let offset = expression! { dataoffset([literal_expression! { (string_identifier) }]) };
@@ -356,10 +335,10 @@ fn expr_str(exp: &Node<fe::Expr>) -> yul::Expression {
 }
 
 fn expr_subscript(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
-    if let fe::Expr::Subscript { value, slices } = &exp.kind {
+    if let fe::Expr::Subscript { value, index } = &exp.kind {
         if let Some(value_attributes) = context.get_expression(value) {
             let value = expr(context, value);
-            let index = slices_index(context, slices);
+            let index = expr(context, index);
 
             return match value_attributes.typ.to_owned() {
                 Type::Map(_) => data_operations::keyed_map(value, index),

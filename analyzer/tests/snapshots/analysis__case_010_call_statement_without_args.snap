@@ -1,0 +1,297 @@
+---
+source: analyzer/tests/analysis.rs
+expression: "build_snapshot(fixture, src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "bar",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+    tuples_used: {},
+}
+
+note: 
+  ┌─ features/call_statement_without_args.fe:5:9
+  │
+5 │         self.baz[0] = 100
+  │         ^^^^^^^^ attributes hash: 11084999791471164417
+  │
+  = ExpressionAttributes {
+        typ: Map(
+            Map {
+                key: Numeric(
+                    U256,
+                ),
+                value: Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            },
+        ),
+        location: Storage {
+            nonce: Some(
+                0,
+            ),
+        },
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/call_statement_without_args.fe:5:18
+  │
+5 │         self.baz[0] = 100
+  │                  ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/call_statement_without_args.fe:5:9
+  │
+5 │         self.baz[0] = 100
+  │         ^^^^^^^^^^^ attributes hash: 5973407925075462624
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Storage {
+            nonce: None,
+        },
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/call_statement_without_args.fe:5:23
+  │
+5 │         self.baz[0] = 100
+  │                       ^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/call_statement_without_args.fe:8:9
+  │
+8 │         self.assign()
+  │         ^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+  │
+  = ExpressionAttributes {
+        typ: Tuple(
+            Tuple {
+                items: [],
+            },
+        ),
+        location: Memory,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/call_statement_without_args.fe:9:16
+  │
+9 │         return self.baz[0]
+  │                ^^^^^^^^ attributes hash: 11084999791471164417
+  │
+  = ExpressionAttributes {
+        typ: Map(
+            Map {
+                key: Numeric(
+                    U256,
+                ),
+                value: Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            },
+        ),
+        location: Storage {
+            nonce: Some(
+                0,
+            ),
+        },
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/call_statement_without_args.fe:9:25
+  │
+9 │         return self.baz[0]
+  │                         ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/call_statement_without_args.fe:9:16
+  │
+9 │         return self.baz[0]
+  │                ^^^^^^^^^^^ attributes hash: 9781479072077703403
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Storage {
+            nonce: None,
+        },
+        move_location: Some(
+            Value,
+        ),
+    }
+
+note: 
+  ┌─ features/call_statement_without_args.fe:4:5
+  │  
+4 │ ╭     def assign():
+5 │ │         self.baz[0] = 100
+  │ ╰─────────────────────────^ attributes hash: 7401515594834105637
+  │  
+  = FunctionAttributes {
+        is_public: false,
+        name: "assign",
+        params: [],
+        return_type: Tuple(
+            Tuple {
+                items: [],
+            },
+        ),
+    }
+
+note: 
+  ┌─ features/call_statement_without_args.fe:7:5
+  │  
+7 │ ╭     pub def bar() -> u256:
+8 │ │         self.assign()
+9 │ │         return self.baz[0]
+  │ ╰──────────────────────────^ attributes hash: 2041944711719443549
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "bar",
+        params: [],
+        return_type: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/call_statement_without_args.fe:1:1
+  │  
+1 │ ╭ contract Foo:
+2 │ │     baz: map<u256, u256>
+3 │ │ 
+4 │ │     def assign():
+  · │
+8 │ │         self.assign()
+9 │ │         return self.baz[0]
+  │ ╰──────────────────────────^ attributes hash: 16417315723405128961
+  │  
+  = ContractAttributes {
+        public_functions: [
+            FunctionAttributes {
+                is_public: true,
+                name: "bar",
+                params: [],
+                return_type: Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            },
+        ],
+        init_function: None,
+        events: [],
+        list_expressions: {},
+        string_literals: {},
+        structs: [],
+        external_contracts: [],
+        created_contracts: {},
+    }
+
+note: 
+  ┌─ features/call_statement_without_args.fe:8:9
+  │
+8 │         self.assign()
+  │         ^^^^^^^^^^^ attributes hash: 15094834859003080759
+  │
+  = SelfAttribute {
+        func_name: "assign",
+    }
+
+note: 
+  ┌─ features/call_statement_without_args.fe:7:22
+  │
+7 │     pub def bar() -> u256:
+  │                      ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/call_statement_without_args.fe:2:10
+  │
+2 │     baz: map<u256, u256>
+  │          ^^^^^^^^^^^^^^^ attributes hash: 3210256860376722957
+  │
+  = Map(
+        Map {
+            key: Numeric(
+                U256,
+            ),
+            value: Base(
+                Numeric(
+                    U256,
+                ),
+            ),
+        },
+    )
+
+

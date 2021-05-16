@@ -364,6 +364,7 @@ fn test_runtime_house_struct() {
                 [assert_eq!(rooms, (mloadn((struct_House_get_rooms_ptr(house)), 1)))]
                 [assert_eq!(vacant, (mloadn((struct_House_get_vacant_ptr(house)), 1)))]
 
+
                 // We test the same thing in storage.
 
                 // Note that the storage pointer for `house` is a multiple of 32.

@@ -1,0 +1,371 @@
+---
+source: analyzer/tests/analysis.rs
+expression: "build_snapshot(fixture, src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "read_bar",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+    tuples_used: {},
+}
+
+note: 
+  ┌─ features/constructor.fe:5:9
+  │
+5 │         self.bar[42] = baz + bing
+  │         ^^^^^^^^ attributes hash: 11084999791471164417
+  │
+  = ExpressionAttributes {
+        typ: Map(
+            Map {
+                key: Numeric(
+                    U256,
+                ),
+                value: Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            },
+        ),
+        location: Storage {
+            nonce: Some(
+                0,
+            ),
+        },
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/constructor.fe:5:18
+  │
+5 │         self.bar[42] = baz + bing
+  │                  ^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/constructor.fe:5:9
+  │
+5 │         self.bar[42] = baz + bing
+  │         ^^^^^^^^^^^^ attributes hash: 5973407925075462624
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Storage {
+            nonce: None,
+        },
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/constructor.fe:5:24
+  │
+5 │         self.bar[42] = baz + bing
+  │                        ^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/constructor.fe:5:30
+  │
+5 │         self.bar[42] = baz + bing
+  │                              ^^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/constructor.fe:5:24
+  │
+5 │         self.bar[42] = baz + bing
+  │                        ^^^^^^^^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/constructor.fe:8:16
+  │
+8 │         return self.bar[42]
+  │                ^^^^^^^^ attributes hash: 11084999791471164417
+  │
+  = ExpressionAttributes {
+        typ: Map(
+            Map {
+                key: Numeric(
+                    U256,
+                ),
+                value: Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            },
+        ),
+        location: Storage {
+            nonce: Some(
+                0,
+            ),
+        },
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/constructor.fe:8:25
+  │
+8 │         return self.bar[42]
+  │                         ^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/constructor.fe:8:16
+  │
+8 │         return self.bar[42]
+  │                ^^^^^^^^^^^^ attributes hash: 9781479072077703403
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Storage {
+            nonce: None,
+        },
+        move_location: Some(
+            Value,
+        ),
+    }
+
+note: 
+  ┌─ features/constructor.fe:4:5
+  │  
+4 │ ╭     pub def __init__(baz: u256, bing: u256):
+5 │ │         self.bar[42] = baz + bing
+  │ ╰─────────────────────────────────^ attributes hash: 15466134198657444413
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "__init__",
+        params: [
+            (
+                "baz",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+            (
+                "bing",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+        ],
+        return_type: Tuple(
+            Tuple {
+                items: [],
+            },
+        ),
+    }
+
+note: 
+  ┌─ features/constructor.fe:7:5
+  │  
+7 │ ╭     pub def read_bar() -> u256:
+8 │ │         return self.bar[42]
+  │ ╰───────────────────────────^ attributes hash: 4138000309877767632
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "read_bar",
+        params: [],
+        return_type: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/constructor.fe:1:1
+  │  
+1 │ ╭ contract Foo:
+2 │ │     bar: map<u256, u256>
+3 │ │ 
+4 │ │     pub def __init__(baz: u256, bing: u256):
+  · │
+7 │ │     pub def read_bar() -> u256:
+8 │ │         return self.bar[42]
+  │ ╰───────────────────────────^ attributes hash: 9573607969460786196
+  │  
+  = ContractAttributes {
+        public_functions: [
+            FunctionAttributes {
+                is_public: true,
+                name: "read_bar",
+                params: [],
+                return_type: Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            },
+        ],
+        init_function: Some(
+            FunctionAttributes {
+                is_public: true,
+                name: "__init__",
+                params: [
+                    (
+                        "baz",
+                        Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    ),
+                    (
+                        "bing",
+                        Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    ),
+                ],
+                return_type: Tuple(
+                    Tuple {
+                        items: [],
+                    },
+                ),
+            },
+        ),
+        events: [],
+        list_expressions: {},
+        string_literals: {},
+        structs: [],
+        external_contracts: [],
+        created_contracts: {},
+    }
+
+note: 
+  ┌─ features/constructor.fe:4:27
+  │
+4 │     pub def __init__(baz: u256, bing: u256):
+  │                           ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/constructor.fe:4:39
+  │
+4 │     pub def __init__(baz: u256, bing: u256):
+  │                                       ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/constructor.fe:7:27
+  │
+7 │     pub def read_bar() -> u256:
+  │                           ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/constructor.fe:2:10
+  │
+2 │     bar: map<u256, u256>
+  │          ^^^^^^^^^^^^^^^ attributes hash: 3210256860376722957
+  │
+  = Map(
+        Map {
+            key: Numeric(
+                U256,
+            ),
+            value: Base(
+                Numeric(
+                    U256,
+                ),
+            ),
+        },
+    )
+
+

@@ -1,0 +1,12 @@
+---
+source: parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(expr_hex2), expressions::parse_expr, \"0xFEED1234\")"
+
+---
+Node(
+  kind: Num("0xFEED1234"),
+  span: Span(
+    start: 0,
+    end: 10,
+  ),
+)

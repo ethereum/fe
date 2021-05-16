@@ -7,7 +7,7 @@ use fe_parser::node::Node;
 /// Lowers a function definition.
 pub fn func_def(context: &Context, def: Node<fe::ContractStmt>) -> Node<fe::ContractStmt> {
     if let fe::ContractStmt::FuncDef {
-        pub_qual,
+        is_pub,
         name,
         args,
         return_type,
@@ -31,7 +31,7 @@ pub fn func_def(context: &Context, def: Node<fe::ContractStmt>) -> Node<fe::Cont
             .collect();
 
         let lowered_kind = fe::ContractStmt::FuncDef {
-            pub_qual,
+            is_pub,
             name,
             args: lowered_args,
             return_type: lowered_return_type,
@@ -49,13 +49,16 @@ fn func_stmt(context: &Context, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::FuncSt
         fe::FuncStmt::Return { value } => vec![fe::FuncStmt::Return {
             value: expressions::optional_expr(context, value),
         }],
-        fe::FuncStmt::VarDecl { target, typ, value } => vec![fe::FuncStmt::VarDecl {
+        fe::FuncStmt::VarDecl { target, typ, value } => match target.kind {
+            fe::VarDeclTarget::Name(_) => vec![fe::FuncStmt::VarDecl {
+                target,
+                typ: types::type_desc(context, typ),
+                value: expressions::optional_expr(context, value),
+            }],
+            fe::VarDeclTarget::Tuple(_) => todo!("tuple var decl lowering"),
+        },
+        fe::FuncStmt::Assign { target, value } => vec![fe::FuncStmt::Assign {
             target: expressions::expr(context, target),
-            typ: types::type_desc(context, typ),
-            value: expressions::optional_expr(context, value),
-        }],
-        fe::FuncStmt::Assign { targets, value } => vec![fe::FuncStmt::Assign {
-            targets: expressions::multiple_exprs(context, targets),
             value: expressions::expr(context, value),
         }],
         fe::FuncStmt::Emit { name, args } => vec![fe::FuncStmt::Emit {
@@ -63,25 +66,14 @@ fn func_stmt(context: &Context, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::FuncSt
             args: expressions::call_args(context, args),
         }],
         fe::FuncStmt::AugAssign { target, op, value } => aug_assign(context, target, op, value),
-        fe::FuncStmt::For {
+        fe::FuncStmt::For { target, iter, body } => vec![fe::FuncStmt::For {
             target,
-            iter,
-            body,
-            or_else,
-        } => vec![fe::FuncStmt::For {
-            target: expressions::expr(context, target),
             iter: expressions::expr(context, iter),
             body: multiple_stmts(context, body),
-            or_else: multiple_stmts(context, or_else),
         }],
-        fe::FuncStmt::While {
-            test,
-            body,
-            or_else,
-        } => vec![fe::FuncStmt::While {
+        fe::FuncStmt::While { test, body } => vec![fe::FuncStmt::While {
             test: expressions::expr(context, test),
             body: multiple_stmts(context, body),
-            or_else: multiple_stmts(context, or_else),
         }],
         fe::FuncStmt::If {
             test,
@@ -126,21 +118,22 @@ fn aug_assign(
     op: Node<fe::BinOperator>,
     value: Node<fe::Expr>,
 ) -> Vec<fe::FuncStmt> {
-    let lowered_target = expressions::expr(context, target);
     let original_value_span = value.span;
-    let lowered_value = expressions::expr(context, value);
+    let lowered_target = expressions::expr(context, target.clone());
+    let lowered_lh_value = expressions::expr(context, target);
+    let lowered_rh_value = expressions::expr(context, value);
 
     let new_value_kind = fe::Expr::BinOperation {
-        left: Box::new(lowered_target.clone().new_id()),
+        left: Box::new(lowered_lh_value),
         op,
-        right: Box::new(lowered_value),
+        right: Box::new(lowered_rh_value),
     };
 
     let new_value = Node::new(new_value_kind, original_value_span);
 
     // the new statement is: `target = target <op> value`.
     vec![fe::FuncStmt::Assign {
-        targets: vec![lowered_target],
+        target: lowered_target,
         value: new_value,
     }]
 }

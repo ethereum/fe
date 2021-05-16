@@ -1,0 +1,12 @@
+contract Foo:
+    pub def get_my_num() -> u256:
+        return 42
+
+contract FooFactory:
+    foo_addr: address
+
+    pub def __init__():
+        self.foo_addr = address(Foo.create(0))
+
+    pub def get_foo_addr() -> address:
+        return self.foo_addr

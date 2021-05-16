@@ -39,7 +39,6 @@ pub fn expr(
         fe::Expr::CompOperation { .. } => expr_comp_operation(scope, Rc::clone(&context), exp),
         fe::Expr::Call { .. } => expr_call(scope, Rc::clone(&context), exp),
         fe::Expr::List { .. } => expr_list(scope, Rc::clone(&context), exp),
-        fe::Expr::ListComp { .. } => unimplemented!(),
         fe::Expr::Tuple { .. } => expr_tuple(scope, Rc::clone(&context), exp),
         fe::Expr::Str(_) => expr_str(scope, exp),
     }
@@ -65,7 +64,7 @@ pub fn expr_list(
             // Rationale - A list contains only one type of element.
             // No need to iterate the whole list if the first attribute doesn't match next
             // one.
-            for elt in elts.iter() {
+            for elt in elts.iter().skip(1) {
                 let next_attribute = expr(Rc::clone(&scope), Rc::clone(&context), elt)?;
                 validate_types_equal(&next_attribute, &attribute_to_be_matched)?;
             }
@@ -73,12 +72,20 @@ pub fn expr_list(
             // TODO: Right now we are only supporting Base type arrays
             // Potential we can support the tuples as well.
             if let Type::Base(base) = attribute_to_be_matched.typ {
+                let array_typ = Array {
+                    size: elts.len(),
+                    inner: base,
+                };
+
+                scope
+                    .borrow()
+                    .contract_scope()
+                    .borrow_mut()
+                    .add_used_list_expression(array_typ.clone());
+
                 return Ok(ExpressionAttributes {
-                    typ: Type::Array(Array {
-                        size: elts.len(),
-                        inner: base,
-                    }),
-                    location: attribute_to_be_matched.location,
+                    typ: Type::Array(array_typ),
+                    location: Location::Memory,
                     move_location: None,
                 });
             }
@@ -98,7 +105,9 @@ pub fn value_expr(
 ) -> Result<ExpressionAttributes, SemanticError> {
     let attributes = expr(Rc::clone(&scope), Rc::clone(&context), exp)?.into_loaded()?;
 
-    context.borrow_mut().add_expression(exp, attributes.clone());
+    context
+        .borrow_mut()
+        .update_expression(exp, attributes.clone());
 
     Ok(attributes)
 }
@@ -113,46 +122,11 @@ pub fn assignable_expr(
 ) -> Result<ExpressionAttributes, SemanticError> {
     let attributes = expr(Rc::clone(&scope), Rc::clone(&context), exp)?.into_assignable()?;
 
-    context.borrow_mut().add_expression(exp, attributes.clone());
+    context
+        .borrow_mut()
+        .update_expression(exp, attributes.clone());
 
     Ok(attributes)
-}
-
-/// Retrieves the String value of a name expression.
-pub fn expr_name_string(exp: &Node<fe::Expr>) -> Result<String, SemanticError> {
-    if let fe::Expr::Name(name) = &exp.kind {
-        return Ok(name.to_owned());
-    }
-
-    unreachable!()
-}
-
-/// Gather context information for an index and check for type errors.
-pub fn slices_index(
-    scope: Shared<BlockScope>,
-    context: Shared<Context>,
-    slices: &Node<Vec<Node<fe::Slice>>>,
-) -> Result<ExpressionAttributes, SemanticError> {
-    if let Some(first_slice) = slices.kind.first() {
-        return slice_index(scope, context, first_slice);
-    }
-
-    unreachable!()
-}
-
-/// Gather context information for an index and check for type errors.
-pub fn slice_index(
-    scope: Shared<BlockScope>,
-    context: Shared<Context>,
-    slice: &Node<fe::Slice>,
-) -> Result<ExpressionAttributes, SemanticError> {
-    if let fe::Slice::Index(index) = &slice.kind {
-        let attributes = value_expr(scope, Rc::clone(&context), index)?;
-
-        return Ok(attributes);
-    }
-
-    unreachable!()
 }
 
 fn expr_tuple(
@@ -236,19 +210,16 @@ fn expr_str(
     scope: Shared<BlockScope>,
     exp: &Node<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
-    if let fe::Expr::Str(lines) = &exp.kind {
-        let string_val = lines.join("");
-        let string_length = string_val.len();
-
+    if let fe::Expr::Str(string) = &exp.kind {
         scope
             .borrow()
             .contract_scope()
             .borrow_mut()
-            .add_string(&string_val)?;
+            .add_string(&string)?;
 
         return Ok(ExpressionAttributes::new(
             Type::String(FeString {
-                max_size: string_length,
+                max_size: string.len(),
             }),
             Location::Memory,
         ));
@@ -282,9 +253,9 @@ fn expr_subscript(
     context: Shared<Context>,
     exp: &Node<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
-    if let fe::Expr::Subscript { value, slices } = &exp.kind {
+    if let fe::Expr::Subscript { value, index } = &exp.kind {
         let value_attributes = expr(Rc::clone(&scope), Rc::clone(&context), value)?;
-        let index_attributes = slices_index(scope, context, slices)?;
+        let index_attributes = value_expr(scope, context, index)?;
 
         // performs type checking
         let typ = operations::index(value_attributes.typ.clone(), index_attributes.typ)?;
@@ -395,9 +366,13 @@ fn expr_attribute(
 
 /// Pull the item index from the attribute string (e.g. "item4" -> "4").
 fn tuple_item_index(item: &str) -> Result<usize, SemanticError> {
-    item[4..]
-        .parse::<usize>()
-        .map_err(|_| SemanticError::undefined_value())
+    if item.len() < 5 || &item[..4] != "item" {
+        Err(SemanticError::undefined_value())
+    } else {
+        item[4..]
+            .parse::<usize>()
+            .map_err(|_| SemanticError::undefined_value())
+    }
 }
 
 fn expr_attribute_self(
@@ -641,15 +616,17 @@ fn expr_call_self_attribute(
     func_name: &str,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, SemanticError> {
+    let called_func = scope
+        .borrow()
+        .contract_scope()
+        .borrow()
+        .function_def(func_name);
+
     if let Some(ContractFunctionDef {
         params,
         return_type,
         ..
-    }) = scope
-        .borrow()
-        .contract_scope()
-        .borrow()
-        .function_def(func_name)
+    }) = called_func
     {
         let argument_attributes = expr_call_args(Rc::clone(&scope), Rc::clone(&context), args)?;
 
@@ -998,9 +975,8 @@ fn validate_str_literal_fits_type(
     call_arg: &fe::CallArg,
     typ: &FeString,
 ) -> Result<(), SemanticError> {
-    if let fe::Expr::Str(lines) = &call_arg_value(call_arg).kind {
-        let string_length: usize = lines.join("").len();
-        return if string_length > typ.max_size {
+    if let fe::Expr::Str(string) = &call_arg_value(call_arg).kind {
+        return if string.len() > typ.max_size {
             Err(SemanticError::string_capacity_mismatch())
         } else {
             Ok(())
@@ -1089,184 +1065,4 @@ fn expr_bool_operation(
     }
 
     unreachable!()
-}
-
-#[cfg(test)]
-#[cfg(feature = "fix-context-harness")]
-mod tests {
-    use crate::namespace::scopes::{BlockScope, ContractScope, ModuleScope, Shared};
-    use crate::namespace::types::{Array, Base, FixedSize, Integer, Map, Type, U256};
-    use crate::traversal::expressions::expr;
-    use crate::{Context, ExpressionAttributes, Location};
-    use fe_parser as parser;
-    use rstest::rstest;
-    use std::rc::Rc;
-
-    fn u256_val() -> ExpressionAttributes {
-        ExpressionAttributes::new(Type::Base(U256), Location::Value)
-    }
-
-    fn u128_val() -> ExpressionAttributes {
-        ExpressionAttributes::new(Type::Base(Base::Numeric(Integer::U128)), Location::Value)
-    }
-
-    fn u256_sto_with_move() -> ExpressionAttributes {
-        let mut attributes =
-            ExpressionAttributes::new(Type::Base(U256), Location::Storage { nonce: None });
-        attributes.move_location = Some(Location::Value);
-        attributes
-    }
-
-    fn addr_val() -> ExpressionAttributes {
-        ExpressionAttributes::new(Type::Base(Base::Address), Location::Value)
-    }
-
-    fn addr_mem() -> ExpressionAttributes {
-        ExpressionAttributes::new(Type::Base(Base::Address), Location::Memory)
-    }
-
-    fn addr_mem_with_move() -> ExpressionAttributes {
-        let mut attributes = ExpressionAttributes::new(Type::Base(Base::Address), Location::Memory);
-        attributes.move_location = Some(Location::Value);
-        attributes
-    }
-
-    fn addr_array_mem() -> ExpressionAttributes {
-        ExpressionAttributes::new(
-            Type::Array(Array {
-                size: 100,
-                inner: Base::Address,
-            }),
-            Location::Memory,
-        )
-    }
-
-    fn addr_u256_map_sto() -> ExpressionAttributes {
-        ExpressionAttributes::new(
-            Type::Map(Map {
-                key: Base::Address,
-                value: Box::new(Type::Base(U256)),
-            }),
-            Location::Storage { nonce: Some(0) },
-        )
-    }
-
-    fn scope() -> Shared<BlockScope> {
-        let module_scope = ModuleScope::new();
-        let contract_scope = ContractScope::new("", module_scope);
-        BlockScope::from_contract_scope("", contract_scope)
-    }
-
-    fn analyze(scope: Shared<BlockScope>, src: &str) -> Context {
-        let context = Context::new_shared();
-        let tokens = parser::get_parse_tokens(src).expect("Couldn't parse expression");
-        let expression = &parser::parsers::expr(&tokens[..])
-            .expect("Couldn't build expression AST")
-            .1;
-
-        expr(scope, Rc::clone(&context), expression).expect("Couldn't map expression AST");
-        Rc::try_unwrap(context)
-            .map_err(|_| "")
-            .unwrap()
-            .into_inner()
-    }
-
-    #[rstest(
-        expression,
-        expected_attributes,
-        case("42", &[("42", &u256_val())]),
-        case(
-            "42 + 26",
-            &[
-                ("42", &u256_val()),
-                ("26", &u256_val()),
-                ("42 + 26", &u256_val())
-            ]
-        ),
-        case(
-            "my_addr_array",
-            &[
-                ("my_addr_array", &addr_array_mem())
-            ]
-        ),
-        case(
-            "my_addr_array[42]",
-            &[
-                ("my_addr_array", &addr_array_mem()),
-                ("42", &u256_val()),
-                ("my_addr_array[42]", &addr_mem())
-            ]
-        ),
-        case(
-            "self.my_addr_u256_map[my_addr_array[42]] + 26",
-            &[
-                ("self.my_addr_u256_map", &addr_u256_map_sto()),
-                ("my_addr_array", &addr_array_mem()),
-                ("42", &u256_val()),
-                ("26", &u256_val()),
-                ("my_addr_array[42]", &addr_mem_with_move()),
-                ("self.my_addr_u256_map[my_addr_array[42]]", &u256_sto_with_move()),
-                ("self.my_addr_u256_map[my_addr_array[42]] + 26", &u256_val())
-            ]
-        ),
-        case(
-            "address(0)",
-            &[
-                ("0", &u256_val()),
-                ("address(0)", &addr_val()),
-            ]
-        ),
-        case(
-            "u128(0)",
-            &[
-                ("0", &u256_val()),
-                ("u128(0)", &u128_val()),
-            ]
-        )
-    )]
-    fn exprs(expression: &str, expected_attributes: &[(&str, &ExpressionAttributes)]) {
-        let scope = scope();
-        scope
-            .borrow_mut()
-            .add_var("my_addr", FixedSize::Base(Base::Address))
-            .unwrap();
-        scope
-            .borrow_mut()
-            .add_var(
-                "my_addr_array",
-                FixedSize::Array(Array {
-                    size: 100,
-                    inner: Base::Address,
-                }),
-            )
-            .unwrap();
-        scope
-            .borrow_mut()
-            .contract_scope()
-            .borrow_mut()
-            .add_field(
-                "my_addr_u256_map",
-                Type::Map(Map {
-                    key: Base::Address,
-                    value: Box::new(Type::Base(U256)),
-                }),
-            )
-            .unwrap();
-
-        let context = analyze(scope, expression);
-
-        for (sub_expression, expected_attribute) in expected_attributes.to_owned() {
-            let start = expression
-                .find(sub_expression)
-                .expect(&format!("sub expression not found: {}", sub_expression));
-            let end = start + sub_expression.len();
-
-            // let actual_attributes = context
-            //     .expressions
-            //     .get(&Span { start, end })
-            //     .expect(&format!("attributes missing: {}", sub_expression));
-            //
-            // assert_eq!(expected_attribute, actual_attributes)
-        }
-    }
 }

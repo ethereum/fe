@@ -1,4 +1,4 @@
-use crate::ast::{self, CallArg, Expr, Kwarg, Slice};
+use crate::ast::{self, CallArg, Expr, Kwarg};
 use crate::node::Node;
 use crate::{Label, ParseFailed, ParseResult, Parser, Token, TokenKind};
 
@@ -35,12 +35,17 @@ pub fn parse_expr_with_min_bp(par: &mut Parser, min_bp: u8) -> ParseResult<Node<
                     )
                 }
                 TokenKind::BracketOpen => {
-                    let slices = parse_subscript(par)?;
-                    let span = expr_head.span + slices.span;
+                    par.next()?;
+                    let index = parse_expr(par)?;
+                    let rbracket = par.expect(
+                        TokenKind::BracketClose,
+                        "failed to parse subscript expression",
+                    )?;
+                    let span = expr_head.span + rbracket.span;
                     Node::new(
                         Expr::Subscript {
                             value: Box::new(expr_head),
-                            slices,
+                            index: Box::new(index),
                         },
                         span,
                     )
@@ -194,9 +199,6 @@ fn infix_binding_power(op: TokenKind) -> Option<(u8, u8)> {
         // prefix Not => 65
 
         // all comparisons are the same
-        // In | NotIn => todo!("in, not in"), // conflicts with current `for` parsing impl
-        // TODO: `is not`
-        Is => (70, 71),
         Lt | LtEq | Gt | GtEq | NotEq | EqEq => (70, 71),
 
         Pipe => (80, 81),
@@ -226,22 +228,6 @@ fn postfix_binding_power(op: TokenKind) -> Option<u8> {
         ParenOpen => Some(150),
         _ => None,
     }
-}
-
-/// Parse a trailing square-bracket-enclosed subscript operation.
-/// This currently only supports `Slice::Index`, not `Slice::Slice`.
-fn parse_subscript(par: &mut Parser) -> ParseResult<Node<Vec<Node<Slice>>>> {
-    use TokenKind::*;
-
-    // TODO: slices
-    let lbracket = par.assert(BracketOpen);
-    let idx = parse_expr(par)?;
-    let rbracket = par.expect(BracketClose, "failed to parse subscript expression")?;
-    let idx_span = idx.span;
-    Ok(Node::new(
-        vec![Node::new(Slice::Index(Box::new(idx)), idx_span)],
-        lbracket.span + rbracket.span,
-    ))
 }
 
 /// Parse a square-bracket list expression, eg. `[1, 2, x]`
@@ -341,10 +327,10 @@ fn atom(par: &mut Parser, tok: &Token) -> Node<Expr> {
         True | False => Expr::Bool(tok.kind == True),
         Text => {
             if let Some(string) = unescape_string(tok.text) {
-                Expr::Str(vec![string])
+                Expr::Str(string)
             } else {
                 par.error(tok.span, "String contains an invalid escape sequence");
-                Expr::Str(vec![tok.text.into()])
+                Expr::Str(tok.text.into())
             }
         }
         _ => panic!("Unexpected atom token: {:?}", tok),
@@ -367,8 +353,7 @@ fn infix_op(left: Node<Expr>, op: &Token, right: Node<Expr>) -> Node<Expr> {
             bin_op(left, op, right)
         }
 
-        In => todo!("in, not in"),
-        Is | Lt | LtEq | Gt | GtEq | NotEq | EqEq => comp_op(left, op, right),
+        Lt | LtEq | Gt | GtEq | NotEq | EqEq => comp_op(left, op, right),
 
         Dot => {
             let span = left.span + right.span;
@@ -469,7 +454,6 @@ fn comp_op(left: Node<Expr>, op: &Token, right: Node<Expr>) -> Node<Expr> {
     use TokenKind::*;
     let astop = match op.kind {
         In => todo!("in"), // CompOperator::In,
-        Is => CompOperator::Is,
         Lt => CompOperator::Lt,
         LtEq => CompOperator::LtE,
         Gt => CompOperator::Gt,

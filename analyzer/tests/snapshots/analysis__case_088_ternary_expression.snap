@@ -1,0 +1,223 @@
+---
+source: analyzer/tests/analysis.rs
+expression: "build_snapshot(fixture, src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "bar",
+                        params: [
+                            (
+                                "input",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+    tuples_used: {},
+}
+
+note: 
+  ┌─ features/ternary_expression.fe:4:21
+  │
+4 │         return 1 if input > 5 else 0
+  │                     ^^^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/ternary_expression.fe:4:29
+  │
+4 │         return 1 if input > 5 else 0
+  │                             ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/ternary_expression.fe:4:21
+  │
+4 │         return 1 if input > 5 else 0
+  │                     ^^^^^^^^^ attributes hash: 10866140763116710699
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Bool,
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/ternary_expression.fe:4:16
+  │
+4 │         return 1 if input > 5 else 0
+  │                ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/ternary_expression.fe:4:36
+  │
+4 │         return 1 if input > 5 else 0
+  │                                    ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/ternary_expression.fe:4:16
+  │
+4 │         return 1 if input > 5 else 0
+  │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/ternary_expression.fe:3:5
+  │  
+3 │ ╭     pub def bar(input: u256) -> u256:
+4 │ │         return 1 if input > 5 else 0
+  │ ╰────────────────────────────────────^ attributes hash: 7333905096283030004
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "bar",
+        params: [
+            (
+                "input",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+        ],
+        return_type: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/ternary_expression.fe:1:1
+  │  
+1 │ ╭ contract Foo:
+2 │ │ 
+3 │ │     pub def bar(input: u256) -> u256:
+4 │ │         return 1 if input > 5 else 0
+  │ ╰────────────────────────────────────^ attributes hash: 600014852149833207
+  │  
+  = ContractAttributes {
+        public_functions: [
+            FunctionAttributes {
+                is_public: true,
+                name: "bar",
+                params: [
+                    (
+                        "input",
+                        Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    ),
+                ],
+                return_type: Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            },
+        ],
+        init_function: None,
+        events: [],
+        list_expressions: {},
+        string_literals: {},
+        structs: [],
+        external_contracts: [],
+        created_contracts: {},
+    }
+
+note: 
+  ┌─ features/ternary_expression.fe:3:24
+  │
+3 │     pub def bar(input: u256) -> u256:
+  │                        ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/ternary_expression.fe:3:33
+  │
+3 │     pub def bar(input: u256) -> u256:
+  │                                 ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+

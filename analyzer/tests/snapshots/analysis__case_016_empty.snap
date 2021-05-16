@@ -1,0 +1,48 @@
+---
+source: analyzer/tests/analysis.rs
+expression: "build_snapshot(fixture, src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Empty": Contract(
+            Contract {
+                name: "Empty",
+                functions: [],
+            },
+        ),
+    },
+    tuples_used: {},
+}
+
+note: 
+  ┌─ features/empty.fe:1:1
+  │  
+1 │ ╭ contract Empty:
+2 │ │   lonely: u256
+  │ ╰──────────────^ attributes hash: 9947701623212590258
+  │  
+  = ContractAttributes {
+        public_functions: [],
+        init_function: None,
+        events: [],
+        list_expressions: {},
+        string_literals: {},
+        structs: [],
+        external_contracts: [],
+        created_contracts: {},
+    }
+
+note: 
+  ┌─ features/empty.fe:2:11
+  │
+2 │   lonely: u256
+  │           ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+
