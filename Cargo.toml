@@ -14,7 +14,7 @@ version = "0.4.0-alpha"
 members = [".", "parser", "compiler"]
 
 [features]
-solc-backend = ["fe-compiler/solc-backend", "fe-compiler-tests/solc-backend"]
+solc-backend = ["fe-compiler/solc-backend"]
 
 [dependencies]
 clap = "2.33.3"
