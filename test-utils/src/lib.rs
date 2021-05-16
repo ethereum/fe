@@ -6,9 +6,9 @@ use fe_common::files::{FileStore, SourceFileId};
 use fe_compiler as compiler;
 use fe_compiler::yul::runtime::functions;
 use primitive_types::{H160, H256, U256};
-use std::collections::BTreeMap;
 use std::fs;
 use std::str::FromStr;
+use std::{collections::BTreeMap, path::Path};
 use stringreader::StringReader;
 use yultsur::*;
 
@@ -189,9 +189,12 @@ pub fn with_executor_backend(backend: evm::backend::MemoryBackend, test: &dyn Fn
 }
 
 pub fn read_fixture(path: &str) -> (String, SourceFileId) {
+    let file_path = Path::new(path);
+    let absolute_path =
+        fs::canonicalize(file_path).expect(&format!("unable to find the file at: {:?}", file_path));
     let mut files = FileStore::new();
     files
-        .load_file(path)
+        .load_file(absolute_path.to_str().unwrap())
         .expect(&format!("unable to read fixture file: {}", path))
 }
 

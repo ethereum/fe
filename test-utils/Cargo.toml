@@ -15,9 +15,9 @@ fe-compiler = {path = "../compiler", features = ["solc-backend"], version = "0.4
 hex = "0.4"
 primitive-types = {version = "0.7", default-features = false, features = ["rlp"]}
 serde_json = "1.0.64"
-solc = {git = "https://github.com/g-r-a-n-t/solc-rust"}
+solc = {git = "https://github.com/g-r-a-n-t/solc-rust", optional = true}
 stringreader = "0.1"
 yultsur = {git = "https://github.com/g-r-a-n-t/yultsur"}
 
 [features]
-solc-backend = ["fe-compiler/solc-backend"]
+solc-backend = ["fe-compiler/solc-backend", "solc"]

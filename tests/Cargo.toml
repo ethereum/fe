@@ -25,4 +25,4 @@ stringreader = "0.1"
 yultsur = {git = "https://github.com/g-r-a-n-t/yultsur"}
 
 [features]
-solc-backend = ["fe-compiler/solc-backend"]
+solc-backend = ["fe-compiler/solc-backend", "fe-compiler-test-utils/solc-backend"]
