@@ -63,8 +63,8 @@ ModuleAttributes {
 note: 
    ┌─ demos/guest_book.fe:10:9
    │
-10 │         self.guest_book[msg.sender] = book_msg
-   │         ^^^^^^^^^^^^^^^ attributes hash: 7171665311786934563
+10 │         self.messages[msg.sender] = book_msg
+   │         ^^^^^^^^^^^^^ attributes hash: 7171665311786934563
    │
    = ExpressionAttributes {
          typ: Map(
@@ -87,10 +87,10 @@ note:
      }
 
 note: 
-   ┌─ demos/guest_book.fe:10:25
+   ┌─ demos/guest_book.fe:10:23
    │
-10 │         self.guest_book[msg.sender] = book_msg
-   │                         ^^^^^^^^^^ attributes hash: 513065555763557710
+10 │         self.messages[msg.sender] = book_msg
+   │                       ^^^^^^^^^^ attributes hash: 513065555763557710
    │
    = ExpressionAttributes {
          typ: Base(
@@ -103,8 +103,8 @@ note:
 note: 
    ┌─ demos/guest_book.fe:10:9
    │
-10 │         self.guest_book[msg.sender] = book_msg
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 453830748720542459
+10 │         self.messages[msg.sender] = book_msg
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 453830748720542459
    │
    = ExpressionAttributes {
          typ: Array(
@@ -120,10 +120,10 @@ note:
      }
 
 note: 
-   ┌─ demos/guest_book.fe:10:39
+   ┌─ demos/guest_book.fe:10:37
    │
-10 │         self.guest_book[msg.sender] = book_msg
-   │                                       ^^^^^^^^ attributes hash: 6578844474441717363
+10 │         self.messages[msg.sender] = book_msg
+   │                                     ^^^^^^^^ attributes hash: 6578844474441717363
    │
    = ExpressionAttributes {
          typ: Array(
@@ -156,8 +156,8 @@ note:
 note: 
    ┌─ demos/guest_book.fe:15:16
    │
-15 │         return self.guest_book[addr].to_mem()
-   │                ^^^^^^^^^^^^^^^ attributes hash: 7171665311786934563
+15 │         return self.messages[addr].to_mem()
+   │                ^^^^^^^^^^^^^ attributes hash: 7171665311786934563
    │
    = ExpressionAttributes {
          typ: Map(
@@ -180,10 +180,10 @@ note:
      }
 
 note: 
-   ┌─ demos/guest_book.fe:15:32
+   ┌─ demos/guest_book.fe:15:30
    │
-15 │         return self.guest_book[addr].to_mem()
-   │                                ^^^^ attributes hash: 513065555763557710
+15 │         return self.messages[addr].to_mem()
+   │                              ^^^^ attributes hash: 513065555763557710
    │
    = ExpressionAttributes {
          typ: Base(
@@ -196,8 +196,8 @@ note:
 note: 
    ┌─ demos/guest_book.fe:15:16
    │
-15 │         return self.guest_book[addr].to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 453830748720542459
+15 │         return self.messages[addr].to_mem()
+   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 453830748720542459
    │
    = ExpressionAttributes {
          typ: Array(
@@ -215,8 +215,8 @@ note:
 note: 
    ┌─ demos/guest_book.fe:15:16
    │
-15 │         return self.guest_book[addr].to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16413446491870513894
+15 │         return self.messages[addr].to_mem()
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16413446491870513894
    │
    = ExpressionAttributes {
          typ: Array(
@@ -260,7 +260,7 @@ note:
    ┌─ demos/guest_book.fe:9:5
    │  
  9 │ ╭     pub def sign(book_msg: BookMsg):
-10 │ │         self.guest_book[msg.sender] = book_msg
+10 │ │         self.messages[msg.sender] = book_msg
 11 │ │ 
 12 │ │         emit Signed(book_msg=book_msg)
    │ ╰──────────────────────────────────────^ attributes hash: 5066331849586951910
@@ -290,8 +290,8 @@ note:
    ┌─ demos/guest_book.fe:14:5
    │  
 14 │ ╭     pub def get_msg(addr: address) -> BookMsg:
-15 │ │         return self.guest_book[addr].to_mem()
-   │ ╰─────────────────────────────────────────────^ attributes hash: 14720587159970812425
+15 │ │         return self.messages[addr].to_mem()
+   │ ╰───────────────────────────────────────────^ attributes hash: 14720587159970812425
    │  
    = FunctionAttributes {
          is_public: true,
@@ -316,13 +316,13 @@ note:
    ┌─ demos/guest_book.fe:3:1
    │  
  3 │ ╭ contract GuestBook:
- 4 │ │     pub guest_book: map<address, BookMsg>
+ 4 │ │     messages: map<address, BookMsg>
  5 │ │ 
  6 │ │     event Signed:
    · │
 14 │ │     pub def get_msg(addr: address) -> BookMsg:
-15 │ │         return self.guest_book[addr].to_mem()
-   │ ╰─────────────────────────────────────────────^ attributes hash: 6562880586223247611
+15 │ │         return self.messages[addr].to_mem()
+   │ ╰───────────────────────────────────────────^ attributes hash: 6562880586223247611
    │  
    = ContractAttributes {
          public_functions: [
@@ -394,8 +394,8 @@ note:
 note: 
    ┌─ demos/guest_book.fe:15:16
    │
-15 │         return self.guest_book[addr].to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+15 │         return self.messages[addr].to_mem()
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
    │
    = ValueAttribute
 
@@ -473,10 +473,10 @@ note:
      )
 
 note: 
-  ┌─ demos/guest_book.fe:4:21
+  ┌─ demos/guest_book.fe:4:15
   │
-4 │     pub guest_book: map<address, BookMsg>
-  │                     ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10049485715821994445
+4 │     messages: map<address, BookMsg>
+  │               ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10049485715821994445
   │
   = Map(
         Map {
