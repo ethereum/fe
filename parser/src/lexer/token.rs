@@ -45,6 +45,10 @@ pub enum TokenKind {
     Int,
     #[regex("0[xX][0-9a-fA-F]+")]
     Hex,
+    #[regex("0[oO][0-7]+")]
+    Octal,
+    #[regex("0[bB][0-1]+")]
+    Binary,
     // Float,
     #[regex(r#""([^"\\]|\\.)*""#)]
     #[regex(r#"'([^'\\]|\\.)*'"#)]
@@ -207,6 +211,8 @@ impl TokenKind {
             Name => "a name",
             Int => "a number",
             Hex => "a hexadecimal number",
+            Octal => "an octal number",
+            Binary => "a binary number",
             Text => "a string",
             _ => return self.symbol_str(),
         };
@@ -288,7 +294,9 @@ impl TokenKind {
             LtLtEq => "<<=",
             GtGtEq => ">>=",
             Arrow => "->",
-            Error | Newline | Indent | Dedent | Name | Int | Hex | Text => return None,
+            Error | Newline | Indent | Dedent | Name | Int | Hex | Octal | Binary | Text => {
+                return None
+            }
         };
         Some(val)
     }
