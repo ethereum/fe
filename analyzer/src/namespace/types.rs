@@ -6,8 +6,13 @@ use std::convert::TryFrom;
 
 use crate::context::FunctionAttributes;
 use num_bigint::BigInt;
+use num_traits::ToPrimitive;
 use strum::IntoStaticStr;
 use vec1::Vec1;
+
+pub fn u256_min() -> BigInt {
+    BigInt::from(0)
+}
 
 pub fn u256_max() -> BigInt {
     BigInt::from(2).pow(256) - 1
@@ -281,45 +286,20 @@ impl Integer {
     }
 
     /// Returns `true` if `num` represents a number that fits the type
-    pub fn fits(&self, num: &str) -> bool {
-        use lexical_core::{parse, ErrorCode, FromLexical};
-        fn check_fit<T: FromLexical>(num: &str) -> bool {
-            if let Err(err) = parse::<T>(num.as_bytes()) {
-                match err.code {
-                    ErrorCode::Overflow => false,
-                    ErrorCode::Underflow => false,
-                    // If we try to parse a negative value for an unsigned type
-                    ErrorCode::InvalidDigit => false,
-                    // We don't expect this but it would be tragic if we would map this to `false`
-                    // incase it happens because it would mean we sweep a bug under the rug.
-                    other => panic!("Unexpected ParseIntError: {:?}", other),
-                }
-            } else {
-                true
-            }
-        }
-
-        // We reject octal number literals.
-        if num.len() > 1 && num.starts_with('0') {
-            return false;
-        }
-
-        let radix = 10;
+    pub fn fits(&self, num: BigInt) -> bool {
         match self {
-            Integer::U8 => check_fit::<u8>(num),
-            Integer::U16 => check_fit::<u16>(num),
-            Integer::U32 => check_fit::<u32>(num),
-            Integer::U64 => check_fit::<u64>(num),
-            Integer::U128 => check_fit::<u128>(num),
-            Integer::U256 => BigInt::parse_bytes(num.as_bytes(), radix)
-                .map_or(false, |val| val >= BigInt::from(0) && val <= u256_max()),
-            Integer::I8 => check_fit::<i8>(num),
-            Integer::I16 => check_fit::<i16>(num),
-            Integer::I32 => check_fit::<i32>(num),
-            Integer::I64 => check_fit::<i64>(num),
-            Integer::I128 => check_fit::<i128>(num),
-            Integer::I256 => BigInt::parse_bytes(num.as_bytes(), radix)
-                .map_or(false, |val| val >= i256_min() && val <= i256_max()),
+            Integer::U8 => num.to_u8().is_some(),
+            Integer::U16 => num.to_u16().is_some(),
+            Integer::U32 => num.to_u32().is_some(),
+            Integer::U64 => num.to_u64().is_some(),
+            Integer::U128 => num.to_u128().is_some(),
+            Integer::I8 => num.to_i8().is_some(),
+            Integer::I16 => num.to_i16().is_some(),
+            Integer::I32 => num.to_i32().is_some(),
+            Integer::I64 => num.to_i64().is_some(),
+            Integer::I128 => num.to_i128().is_some(),
+            Integer::U256 => num >= u256_min() && num <= u256_max(),
+            Integer::I256 => num >= i256_min() && num <= i256_max(),
         }
     }
 }

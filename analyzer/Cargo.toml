@@ -12,8 +12,8 @@ fe-parser = {path = "../parser", version = "^0.4.0-alpha"}
 hex = "0.4"
 ansi_term = "0.12.1"
 num-bigint = "0.3.1"
+num-traits = "0.2.14"
 strum = { version = "0.20.0", features = ["derive"] }
-lexical-core = "0.7.6"
 vec1 = "1.8.0"
 
 [dev-dependencies]
