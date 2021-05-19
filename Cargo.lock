@@ -641,6 +641,7 @@ dependencies = [
  "codespan-reporting",
  "difference",
  "hex",
+ "num-traits",
  "ron",
  "serde",
  "tiny-keccak 2.0.2",
