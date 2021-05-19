@@ -659,6 +659,7 @@ dependencies = [
  "fe-parser",
  "hex",
  "maplit",
+ "num-bigint",
  "once_cell",
  "primitive-types",
  "rand",
