@@ -42,7 +42,7 @@ Fe had its first alpha release January 2021 and is now following a monthly relea
 
 ## Getting started
 
-- [Build the compiler](https://github.com/ethereum/fe/blob/master/docs/build.md)
+- [Build the compiler](https://github.com/ethereum/fe/blob/master/docs/src/development/build.md)
 - [Or download the binary release](https://github.com/ethereum/fe/releases)
 
 To compile Fe code:
