@@ -14,8 +14,10 @@ use builtins::{
     BlockField, ChainField, ContractTypeMethod, GlobalMethod, MsgField, Object, TxField,
     ValueMethod,
 };
+use fe_common::numeric;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
+use num_bigint::BigInt;
 use std::convert::TryFrom;
 use std::rc::Rc;
 use std::str::FromStr;
@@ -237,6 +239,7 @@ fn expr_bool(exp: &Node<fe::Expr>) -> Result<ExpressionAttributes, SemanticError
 
 fn expr_num(exp: &Node<fe::Expr>) -> Result<ExpressionAttributes, SemanticError> {
     if let fe::Expr::Num(num) = &exp.kind {
+        let num = to_bigint(num);
         validate_numeric_literal_fits_type(num, &Type::Base(U256))?;
         return Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value));
     }
@@ -577,7 +580,7 @@ fn expr_call_type_constructor(
         }
         Type::Base(Base::Numeric(_)) => {
             let num = validate_is_numeric_literal(&args.kind[0].kind)?;
-            validate_numeric_literal_fits_type(&num, &typ)?;
+            validate_numeric_literal_fits_type(num, &typ)?;
             Ok(ExpressionAttributes::new(typ, Location::Value))
         }
         Type::Base(Base::Address) => {
@@ -941,21 +944,23 @@ fn validate_are_kw_args(args: &[Node<fe::CallArg>]) -> Result<(), SemanticError>
     Ok(())
 }
 
-fn validate_is_numeric_literal(call_arg: &fe::CallArg) -> Result<String, SemanticError> {
+fn validate_is_numeric_literal(call_arg: &fe::CallArg) -> Result<BigInt, SemanticError> {
     let value = call_arg_value(call_arg);
 
     if let fe::Expr::UnaryOperation { operand, op: _ } = &value.kind {
         if let fe::Expr::Num(num) = &operand.kind {
-            return Ok(format!("-{}", num));
+            let num = to_bigint(num);
+            return Ok(-num);
         }
     } else if let fe::Expr::Num(num) = &value.kind {
-        return Ok(num.to_string());
+        let num = to_bigint(num);
+        return Ok(num);
     }
 
     Err(SemanticError::numeric_literal_expected())
 }
 
-fn validate_numeric_literal_fits_type(num: &str, typ: &Type) -> Result<(), SemanticError> {
+fn validate_numeric_literal_fits_type(num: BigInt, typ: &Type) -> Result<(), SemanticError> {
     if let Type::Base(Base::Numeric(integer)) = typ {
         return if integer.fits(num) {
             Ok(())
@@ -1061,4 +1066,14 @@ fn expr_bool_operation(
     }
 
     unreachable!()
+}
+
+/// Converts a input string to `BigInt`.
+///
+/// # Panics
+/// Panics if `num` contains invalid digit.
+fn to_bigint(num: &str) -> BigInt {
+    numeric::Literal::new(num)
+        .parse::<BigInt>()
+        .expect("the numeric literal contains a invalid digit")
 }

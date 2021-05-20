@@ -235,6 +235,10 @@ fn test_assert() {
     case("return_bool_op_or.fe", &[bool_token(true), bool_token(false)], bool_token(true)),
     case("return_bool_op_or.fe", &[bool_token(false), bool_token(true)], bool_token(true)),
     case("return_bool_op_or.fe", &[bool_token(false), bool_token(false)], bool_token(false)),
+    // radix
+    case("radix_hex.fe", &[], uint_token(0xfe)),
+    case("radix_octal.fe", &[], uint_token(0o70)),
+    case("radix_binary.fe", &[], uint_token(0b10)),
 )]
 fn test_method_return(fixture_file: &str, input: &[ethabi::Token], expected: ethabi::Token) {
     with_executor(&|mut executor| {

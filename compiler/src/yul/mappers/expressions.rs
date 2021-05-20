@@ -9,9 +9,11 @@ use fe_analyzer::builtins;
 use fe_analyzer::builtins::{ContractTypeMethod, GlobalMethod};
 use fe_analyzer::context::{CallType, Context, Location};
 use fe_analyzer::namespace::types::{Base, FeSized, FixedSize, Type};
+use fe_common::numeric;
 use fe_common::utils::keccak;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
+use num_bigint::BigInt;
 use std::convert::TryFrom;
 use std::str::FromStr;
 use yultsur::*;
@@ -296,6 +298,14 @@ fn expr_name(exp: &Node<fe::Expr>) -> yul::Expression {
 
 fn expr_num(exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Num(num) = &exp.kind {
+        let literal = numeric::Literal::new(num);
+        let num = literal.parse::<BigInt>().expect("Invalid numeric literal");
+        let num = if matches!(literal.radix(), numeric::Radix::Decimal) {
+            format!("{}", num)
+        } else {
+            format!("{:#x}", num)
+        };
+
         return literal_expression! {(num)};
     }
 
