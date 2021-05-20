@@ -30,7 +30,11 @@ fn replace_spans(input: String) -> String {
     fixture,
     case("aug_assign"),
     case("base_tuple"),
-    case("list_expressions")
+    case("list_expressions"),
+    case("return_unit"),
+    case("unit_implicit"),
+    case("init"),
+    case("custom_empty_type")
 )]
 fn test_lowering(fixture: &str) {
     let src = fs::read_to_string(format!("tests/cases/lowering/fixtures/{}.fe", fixture))

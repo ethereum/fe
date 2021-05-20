@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::node::Node;
+use vec1::Vec1;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Module {
@@ -33,6 +34,7 @@ pub enum ModuleStmt {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum TypeDesc {
+    Unit,
     Base {
         base: String,
     },
@@ -41,7 +43,7 @@ pub enum TypeDesc {
         dimension: usize,
     },
     Tuple {
-        items: Vec<Node<TypeDesc>>,
+        items: Vec1<Node<TypeDesc>>,
     },
     Generic {
         base: Node<String>,
@@ -226,6 +228,7 @@ pub enum Expr {
     Name(String),
     Num(String),
     Str(String),
+    Unit,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]

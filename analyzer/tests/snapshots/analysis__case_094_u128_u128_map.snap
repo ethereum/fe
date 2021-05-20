@@ -49,11 +49,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                 ],
             },
@@ -234,7 +230,7 @@ note:
   │  
 7 │ ╭     pub def write_bar(key: u128, value: u128):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 17452933495510495998
+  │ ╰─────────────────────────────^ attributes hash: 7164863281079071239
   │  
   = FunctionAttributes {
         is_public: true,
@@ -257,11 +253,7 @@ note:
                 ),
             ),
         ],
-        return_type: Tuple(
-            Tuple {
-                items: [],
-            },
-        ),
+        return_type: Unit,
     }
 
 note: 
@@ -274,7 +266,7 @@ note:
   · │
 7 │ │     pub def write_bar(key: u128, value: u128):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 12213709802116237904
+  │ ╰─────────────────────────────^ attributes hash: 4883751938912357307
   │  
   = ContractAttributes {
         public_functions: [
@@ -318,11 +310,7 @@ note:
                         ),
                     ),
                 ],
-                return_type: Tuple(
-                    Tuple {
-                        items: [],
-                    },
-                ),
+                return_type: Unit,
             },
         ],
         init_function: None,

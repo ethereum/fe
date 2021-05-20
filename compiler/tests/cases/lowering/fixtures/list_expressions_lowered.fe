@@ -1,7 +1,7 @@
 contract Foo:
-
-    pub def foo():
+    pub def foo() -> ():
         x: u256[3] = self.list_expr_array_u256_3(10, 20, 30)
+        return ()
 
     def list_expr_array_u256_3(val0: u256, val1: u256, val2: u256) -> u256[3]:
         generated_array: u256[3]

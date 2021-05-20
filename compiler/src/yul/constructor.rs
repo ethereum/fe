@@ -22,7 +22,7 @@ pub fn build_with_init(
     init_params: Vec<FixedSize>,
     runtime: Vec<yul::Statement>,
 ) -> yul::Code {
-    // get the deplyment statements
+    // get the deployment statements
     let deployment = deployment();
     // we need to decode the init parameters before passing them into `__init__`
     // `params_start_mem` is added to the scope of the code block found below
@@ -52,7 +52,8 @@ pub fn build_with_init(
 
         // add init function amd call it
         [init_func]
-        ([init_func_name]([decoded_params...]))
+        // init returns a unit value, so we must pop it.
+        (pop(([init_func_name]([decoded_params...]))))
 
         // add the runtime functions
         [runtime...]

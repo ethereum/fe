@@ -1,7 +1,9 @@
 use crate::ast::{ContractStmt, EventField, Field, GenericArg, ModuleStmt, TypeDesc};
 use crate::grammar::expressions::parse_expr;
+use crate::grammar::functions::parse_single_word_stmt;
 use crate::node::{Node, Span};
 use crate::{ParseFailed, ParseResult, Parser, TokenKind};
+use vec1::Vec1;
 
 /// Parse a [`ModuleStmt::StructDef`].
 /// # Panics
@@ -26,6 +28,9 @@ pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
             Some(Dedent) => {
                 par.next()?;
                 break;
+            }
+            Some(Pass) => {
+                parse_single_word_stmt(par)?;
             }
             None => break,
             Some(_) => {
@@ -84,6 +89,9 @@ pub fn parse_event_def(par: &mut Parser) -> ParseResult<Node<ContractStmt>> {
         match par.peek() {
             Some(Name) | Some(Idx) => {
                 fields.push(parse_event_field(par)?);
+            }
+            Some(Pass) => {
+                parse_single_word_stmt(par)?;
             }
             Some(Dedent) => {
                 par.next()?;
@@ -323,7 +331,16 @@ pub fn parse_type_desc(par: &mut Parser) -> ParseResult<Node<TypeDesc>> {
                     }
                 }
             }
-            Node::new(TypeDesc::Tuple { items }, span)
+            if items.is_empty() {
+                Node::new(TypeDesc::Unit, span)
+            } else {
+                Node::new(
+                    TypeDesc::Tuple {
+                        items: Vec1::try_from_vec(items).expect("couldn't convert vec to vec1"),
+                    },
+                    span,
+                )
+            }
         }
         _ => {
             let tok = par.next()?;

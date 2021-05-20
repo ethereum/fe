@@ -36,6 +36,7 @@ impl Location {
             Type::String(_) => Ok(Location::Memory),
             Type::Struct(_) => Ok(Location::Memory),
             Type::Map(_) => Err(SemanticError::cannot_move()),
+            Type::Unit => Ok(Location::Value),
         }
     }
 }
@@ -83,7 +84,7 @@ impl From<Shared<ContractScope>> for ContractAttributes {
                     is_public: def.is_public,
                     name: name.clone(),
                     params: def.params.to_owned(),
-                    return_type: FixedSize::empty_tuple(),
+                    return_type: FixedSize::Unit,
                 })
             }
         }
@@ -144,20 +145,6 @@ impl ExpressionAttributes {
         }
     }
 
-    /// Return `true` if the type of the expression is an empty Tuple, otherwise
-    /// `false`
-    pub fn is_empty_tuple(&self) -> bool {
-        if let ExpressionAttributes {
-            typ: Type::Tuple(tuple),
-            ..
-        } = self
-        {
-            tuple.is_empty()
-        } else {
-            false
-        }
-    }
-
     /// Adds a move to memory, if it is already in memory.
     pub fn into_cloned(mut self) -> Result<Self, SemanticError> {
         if self.location != Location::Memory {
@@ -182,6 +169,7 @@ impl ExpressionAttributes {
     pub fn into_loaded(mut self) -> Result<Self, SemanticError> {
         match self.typ {
             Type::Base(_) => {}
+            Type::Unit => {}
             Type::Contract(_) => {}
             _ => return Err(SemanticError::cannot_move()),
         }

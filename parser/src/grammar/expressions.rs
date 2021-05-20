@@ -247,7 +247,7 @@ fn parse_group_or_tuple(par: &mut Parser) -> ParseResult<Node<Expr>> {
     if par.peek_or_err()? == ParenClose {
         let rparen = par.next()?;
         let span = lparen.span + rparen.span;
-        return Ok(Node::new(Expr::Tuple { elts: vec![] }, span));
+        return Ok(Node::new(Expr::Unit, span));
     }
 
     let elem = parse_expr(par)?;

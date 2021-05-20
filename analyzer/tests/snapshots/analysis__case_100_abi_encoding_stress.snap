@@ -13,11 +13,7 @@ ModuleAttributes {
                         is_public: true,
                         name: "emit_my_event",
                         params: [],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -197,11 +193,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -214,11 +206,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -234,11 +222,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -253,11 +237,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -272,11 +252,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -294,11 +270,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                 ],
             },
@@ -1564,7 +1536,7 @@ note:
    │  
 23 │ ╭     pub def set_my_addrs(my_addrs: address[5]):
 24 │ │         self.my_addrs = my_addrs
-   │ ╰────────────────────────────────^ attributes hash: 3253391299501811303
+   │ ╰────────────────────────────────^ attributes hash: 12708309224674535663
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1580,11 +1552,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -1611,7 +1579,7 @@ note:
    │  
 29 │ ╭     pub def set_my_u128(my_u128: u128):
 30 │ │         self.my_u128 = my_u128
-   │ ╰──────────────────────────────^ attributes hash: 10759345849115917585
+   │ ╰──────────────────────────────^ attributes hash: 17530708413772808696
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1626,11 +1594,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -1656,7 +1620,7 @@ note:
    │  
 35 │ ╭     pub def set_my_string(my_string: string10):
 36 │ │         self.my_string = my_string
-   │ ╰──────────────────────────────────^ attributes hash: 8573499476494223691
+   │ ╰──────────────────────────────────^ attributes hash: 3033660936924075855
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1671,11 +1635,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -1701,7 +1661,7 @@ note:
    │  
 41 │ ╭     pub def set_my_u8s(my_u8s: u8[255]):
 42 │ │         self.my_u8s = my_u8s
-   │ ╰────────────────────────────^ attributes hash: 7019028477921618603
+   │ ╰────────────────────────────^ attributes hash: 7605717007273386303
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1719,11 +1679,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -1752,7 +1708,7 @@ note:
    │  
 47 │ ╭     pub def set_my_bool(my_bool: bool):
 48 │ │         self.my_bool = my_bool
-   │ ╰──────────────────────────────^ attributes hash: 3034905425530120743
+   │ ╰──────────────────────────────^ attributes hash: 1436793526906496838
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1765,11 +1721,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -1793,7 +1745,7 @@ note:
    │  
 53 │ ╭     pub def set_my_bytes(my_bytes: bytes[100]):
 54 │ │         self.my_bytes = my_bytes
-   │ ╰────────────────────────────────^ attributes hash: 17789960674327457533
+   │ ╰────────────────────────────────^ attributes hash: 14296638220629361927
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1809,11 +1761,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -1971,17 +1919,13 @@ note:
    · │
 81 │ │             self.my_bytes.to_mem()
 82 │ │         )
-   │ ╰─────────^ attributes hash: 8897788371178855601
+   │ ╰─────────^ attributes hash: 9089586501468789190
    │  
    = FunctionAttributes {
          is_public: true,
          name: "emit_my_event",
          params: [],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -1994,7 +1938,7 @@ note:
    · │
 81 │ │             self.my_bytes.to_mem()
 82 │ │         )
-   │ ╰─────────^ attributes hash: 13316776063628239512
+   │ ╰─────────^ attributes hash: 11850337474676938507
    │  
    = ContractAttributes {
          public_functions: [
@@ -2002,11 +1946,7 @@ note:
                  is_public: true,
                  name: "emit_my_event",
                  params: [],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
              FunctionAttributes {
                  is_public: true,
@@ -2186,11 +2126,7 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
              FunctionAttributes {
                  is_public: true,
@@ -2203,11 +2139,7 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
              FunctionAttributes {
                  is_public: true,
@@ -2223,11 +2155,7 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
              FunctionAttributes {
                  is_public: true,
@@ -2242,11 +2170,7 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
              FunctionAttributes {
                  is_public: true,
@@ -2261,11 +2185,7 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
              FunctionAttributes {
                  is_public: true,
@@ -2283,11 +2203,7 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
          ],
          init_function: None,

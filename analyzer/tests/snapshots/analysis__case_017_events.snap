@@ -26,11 +26,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -43,11 +39,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -69,21 +61,13 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
                         name: "emit_nums",
                         params: [],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                 ],
             },
@@ -491,17 +475,13 @@ note:
    │  
 19 │ ╭     pub def emit_nums():
 20 │ │         emit Nums(26, 42)
-   │ ╰─────────────────────────^ attributes hash: 9764190810044556773
+   │ ╰─────────────────────────^ attributes hash: 5142136245848237202
    │  
    = FunctionAttributes {
          is_public: true,
          name: "emit_nums",
          params: [],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -509,7 +489,7 @@ note:
    │  
 22 │ ╭     pub def emit_bases(addr: address):
 23 │ │         emit Bases(26, addr)
-   │ ╰────────────────────────────^ attributes hash: 13121295556902477896
+   │ ╰────────────────────────────^ attributes hash: 4675655585256261045
    │  
    = FunctionAttributes {
          is_public: true,
@@ -522,11 +502,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -534,7 +510,7 @@ note:
    │  
 25 │ ╭     pub def emit_mix(addr: address, my_bytes: bytes[100]):
 26 │ │         emit Mix(26, addr, 42, my_bytes)
-   │ ╰────────────────────────────────────────^ attributes hash: 17728699728265147345
+   │ ╰────────────────────────────────────────^ attributes hash: 3521292099077188868
    │  
    = FunctionAttributes {
          is_public: true,
@@ -556,11 +532,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -571,7 +543,7 @@ note:
 30 │ │         addrs[0] = addr1
 31 │ │         addrs[1] = addr2
 32 │ │         emit Addresses(addrs)
-   │ ╰─────────────────────────────^ attributes hash: 4578897966775545399
+   │ ╰─────────────────────────────^ attributes hash: 3139577003742282823
    │  
    = FunctionAttributes {
          is_public: true,
@@ -590,11 +562,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -620,7 +588,7 @@ note:
    · │
 31 │ │         addrs[1] = addr2
 32 │ │         emit Addresses(addrs)
-   │ ╰─────────────────────────────^ attributes hash: 446541908033730660
+   │ ╰─────────────────────────────^ attributes hash: 17863159823823136104
    │  
    = ContractAttributes {
          public_functions: [
@@ -641,11 +609,7 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
              FunctionAttributes {
                  is_public: true,
@@ -658,11 +622,7 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
              FunctionAttributes {
                  is_public: true,
@@ -684,21 +644,13 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
              FunctionAttributes {
                  is_public: true,
                  name: "emit_nums",
                  params: [],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
          ],
          init_function: None,

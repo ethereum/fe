@@ -1188,7 +1188,7 @@ fn create_contract_from_init() {
     contract_name,
     case("ownable.fe", "Ownable"),
     case("empty.fe", "Empty"),
-    case("return_empty_tuple.fe", "Foo")
+    case("return_unit.fe", "Foo")
 )]
 fn can_deploy_fixture(fixture_file: &str, contract_name: &str) {
     with_executor(&|mut executor| {

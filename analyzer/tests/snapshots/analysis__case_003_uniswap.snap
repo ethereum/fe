@@ -114,11 +114,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -131,11 +127,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                 ],
             },
@@ -263,11 +255,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -297,11 +285,7 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -330,21 +314,13 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
                         name: "sync",
                         params: [],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -1698,14 +1674,10 @@ note:
    ┌─ demos/uniswap.fe:95:9
    │
 95 │         self._approve(msg.sender, spender, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
    │
    = ExpressionAttributes {
-         typ: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         typ: Unit,
          location: Memory,
          move_location: None,
      }
@@ -1772,14 +1744,10 @@ note:
    ┌─ demos/uniswap.fe:99:9
    │
 99 │         self._transfer(msg.sender, to, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
    │
    = ExpressionAttributes {
-         typ: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         typ: Unit,
          location: Memory,
          move_location: None,
      }
@@ -2209,14 +2177,10 @@ note:
     ┌─ demos/uniswap.fe:106:9
     │
 106 │         self._transfer(from, to, value)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
     │
     = ExpressionAttributes {
-          typ: Tuple(
-              Tuple {
-                  items: [],
-              },
-          ),
+          typ: Unit,
           location: Memory,
           move_location: None,
       }
@@ -3272,7 +3236,7 @@ note:
     ┌─ demos/uniswap.fe:140:27
     │
 140 │         fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6890569393451193432
+    │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8306689668146703337
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -3337,11 +3301,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -3354,11 +3314,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                   ],
               },
@@ -3805,14 +3761,10 @@ note:
     ┌─ demos/uniswap.fe:152:25
     │
 152 │                         self._mint(fee_to, liquidity)
-    │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+    │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
     │
     = ExpressionAttributes {
-          typ: Tuple(
-              Tuple {
-                  items: [],
-              },
-          ),
+          typ: Unit,
           location: Memory,
           move_location: None,
       }
@@ -4695,14 +4647,10 @@ note:
     ┌─ demos/uniswap.fe:173:13
     │
 173 │             self._mint(address(0), MINIMUM_LIQUIDITY) # permanently lock the first MINIMUM_LIQUIDITY tokens
-    │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+    │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
     │
     = ExpressionAttributes {
-          typ: Tuple(
-              Tuple {
-                  items: [],
-              },
-          ),
+          typ: Unit,
           location: Memory,
           move_location: None,
       }
@@ -5041,14 +4989,10 @@ note:
     ┌─ demos/uniswap.fe:179:9
     │
 179 │         self._mint(to, liquidity)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
     │
     = ExpressionAttributes {
-          typ: Tuple(
-              Tuple {
-                  items: [],
-              },
-          ),
+          typ: Unit,
           location: Memory,
           move_location: None,
       }
@@ -5121,14 +5065,10 @@ note:
     ┌─ demos/uniswap.fe:180:9
     │
 180 │         self._update(balance0, balance1, reserve0, reserve1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
     │
     = ExpressionAttributes {
-          typ: Tuple(
-              Tuple {
-                  items: [],
-              },
-          ),
+          typ: Unit,
           location: Memory,
           move_location: None,
       }
@@ -6096,14 +6036,10 @@ note:
     ┌─ demos/uniswap.fe:203:9
     │
 203 │         self._burn(self.address, liquidity)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
     │
     = ExpressionAttributes {
-          typ: Tuple(
-              Tuple {
-                  items: [],
-              },
-          ),
+          typ: Unit,
           location: Memory,
           move_location: None,
       }
@@ -6588,14 +6524,10 @@ note:
     ┌─ demos/uniswap.fe:209:9
     │
 209 │         self._update(balance0, balance1, reserve0, reserve1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
     │
     = ExpressionAttributes {
-          typ: Tuple(
-              Tuple {
-                  items: [],
-              },
-          ),
+          typ: Unit,
           location: Memory,
           move_location: None,
       }
@@ -8899,14 +8831,10 @@ note:
     ┌─ demos/uniswap.fe:253:9
     │
 253 │         self._update(balance0, balance1, reserve0, reserve1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
     │
     = ExpressionAttributes {
-          typ: Tuple(
-              Tuple {
-                  items: [],
-              },
-          ),
+          typ: Unit,
           location: Memory,
           move_location: None,
       }
@@ -9963,14 +9891,10 @@ note:
     ┌─ demos/uniswap.fe:268:9
     │
 268 │         self._update(token0.balanceOf(self.address), token1.balanceOf(self.address), self.reserve0, self.reserve1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
     │
     = ExpressionAttributes {
-          typ: Tuple(
-              Tuple {
-                  items: [],
-              },
-          ),
+          typ: Unit,
           location: Memory,
           move_location: None,
       }
@@ -11196,7 +11120,7 @@ note:
     ┌─ demos/uniswap.fe:321:31
     │
 321 │         pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
-    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2891139793169608093
+    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 749789108576145022
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -11322,11 +11246,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -11356,11 +11276,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -11389,21 +11305,13 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
                           name: "sync",
                           params: [],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -11484,7 +11392,7 @@ note:
     ┌─ demos/uniswap.fe:322:9
     │
 322 │         pair.initialize(token0, token1)
-    │         ^^^^ attributes hash: 2891139793169608093
+    │         ^^^^ attributes hash: 749789108576145022
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -11610,11 +11518,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -11644,11 +11548,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -11677,21 +11577,13 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
                           name: "sync",
                           params: [],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -11800,15 +11692,11 @@ note:
     ┌─ demos/uniswap.fe:322:9
     │
 322 │         pair.initialize(token0, token1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2354569150226010475
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11340536269963356597
     │
     = ExpressionAttributes {
-          typ: Tuple(
-              Tuple {
-                  items: [],
-              },
-          ),
-          location: Memory,
+          typ: Unit,
+          location: Value,
           move_location: None,
       }
 
@@ -11909,7 +11797,7 @@ note:
     ┌─ demos/uniswap.fe:324:46
     │
 324 │         self.pairs[token0][token1] = address(pair)
-    │                                              ^^^^ attributes hash: 2891139793169608093
+    │                                              ^^^^ attributes hash: 749789108576145022
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -12035,11 +11923,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -12069,11 +11953,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -12102,21 +11982,13 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
                           name: "sync",
                           params: [],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -12304,7 +12176,7 @@ note:
     ┌─ demos/uniswap.fe:325:46
     │
 325 │         self.pairs[token1][token0] = address(pair)
-    │                                              ^^^^ attributes hash: 2891139793169608093
+    │                                              ^^^^ attributes hash: 749789108576145022
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -12430,11 +12302,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -12464,11 +12332,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -12497,21 +12361,13 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
                           name: "sync",
                           params: [],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -12665,7 +12521,7 @@ note:
     ┌─ demos/uniswap.fe:326:53
     │
 326 │         self.all_pairs[self.pair_counter] = address(pair)
-    │                                                     ^^^^ attributes hash: 2891139793169608093
+    │                                                     ^^^^ attributes hash: 749789108576145022
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -12791,11 +12647,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -12825,11 +12677,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -12858,21 +12706,13 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
                           name: "sync",
                           params: [],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -13069,7 +12909,7 @@ note:
     ┌─ demos/uniswap.fe:329:50
     │
 329 │         emit PairCreated(token0, token1, address(pair), self.pair_counter)
-    │                                                  ^^^^ attributes hash: 2891139793169608093
+    │                                                  ^^^^ attributes hash: 749789108576145022
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -13195,11 +13035,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -13229,11 +13065,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -13262,21 +13094,13 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
                           name: "sync",
                           params: [],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -13393,7 +13217,7 @@ note:
     ┌─ demos/uniswap.fe:330:24
     │
 330 │         return address(pair)
-    │                        ^^^^ attributes hash: 2891139793169608093
+    │                        ^^^^ attributes hash: 749789108576145022
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -13519,11 +13343,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -13553,11 +13373,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -13586,21 +13402,13 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
                           name: "sync",
                           params: [],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -14303,17 +14111,13 @@ note:
    │  
 63 │ ╭     pub def __init__():
 64 │ │         self.factory = msg.sender
-   │ ╰─────────────────────────────────^ attributes hash: 11571125529778075370
+   │ ╰─────────────────────────────────^ attributes hash: 10134238868280923582
    │  
    = FunctionAttributes {
          is_public: true,
          name: "__init__",
          params: [],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -14371,7 +14175,7 @@ note:
 76 │ │         self.total_supply = self.total_supply + value
 77 │ │         self.balances[to] = self.balances[to] + value
 78 │ │         emit Transfer(address(0), to, value)
-   │ ╰────────────────────────────────────────────^ attributes hash: 10457838918248983829
+   │ ╰────────────────────────────────────────────^ attributes hash: 11812640435561676428
    │  
    = FunctionAttributes {
          is_public: false,
@@ -14392,11 +14196,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -14406,7 +14206,7 @@ note:
 81 │ │         self.balances[from] = self.balances[from] - value
 82 │ │         self.total_supply = self.total_supply - value
 83 │ │         emit Transfer(from, address(0), value)
-   │ ╰──────────────────────────────────────────────^ attributes hash: 6739626012262523171
+   │ ╰──────────────────────────────────────────────^ attributes hash: 5860083618676178729
    │  
    = FunctionAttributes {
          is_public: false,
@@ -14427,11 +14227,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -14440,7 +14236,7 @@ note:
 85 │ ╭     def _approve(owner: address, spender: address, value: u256):
 86 │ │         self.allowances[owner][spender] = value
 87 │ │         emit Approval(owner, spender, value)
-   │ ╰────────────────────────────────────────────^ attributes hash: 16661919557302265406
+   │ ╰────────────────────────────────────────────^ attributes hash: 10525944821091525871
    │  
    = FunctionAttributes {
          is_public: false,
@@ -14467,11 +14263,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -14481,7 +14273,7 @@ note:
 90 │ │         self.balances[from] = self.balances[from] - value
 91 │ │         self.balances[to] = self.balances[to] + value
 92 │ │         emit Transfer(from, to, value)
-   │ ╰──────────────────────────────────────^ attributes hash: 11495578340139812831
+   │ ╰──────────────────────────────────────^ attributes hash: 1168662896011493597
    │  
    = FunctionAttributes {
          is_public: false,
@@ -14508,11 +14300,7 @@ note:
                  ),
              ),
          ],
-         return_type: Tuple(
-             Tuple {
-                 items: [],
-             },
-         ),
+         return_type: Unit,
      }
 
 note: 
@@ -14687,7 +14475,7 @@ note:
 118 │ │         assert msg.sender == self.factory, "UniswapV2: FORBIDDEN"
 119 │ │         self.token0 = token0
 120 │ │         self.token1 = token1
-    │ ╰────────────────────────────^ attributes hash: 14512620512439155257
+    │ ╰────────────────────────────^ attributes hash: 10036853354460040729
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14706,11 +14494,7 @@ note:
                   ),
               ),
           ],
-          return_type: Tuple(
-              Tuple {
-                  items: [],
-              },
-          ),
+          return_type: Unit,
       }
 
 note: 
@@ -14723,7 +14507,7 @@ note:
     · │
 135 │ │         self.block_timestamp_last = block_timestamp
 136 │ │         emit Sync(self.reserve0, self.reserve1)
-    │ ╰───────────────────────────────────────────────^ attributes hash: 2893663465664541813
+    │ ╰───────────────────────────────────────────────^ attributes hash: 16195792106909731120
     │  
     = FunctionAttributes {
           is_public: false,
@@ -14762,11 +14546,7 @@ note:
                   ),
               ),
           ],
-          return_type: Tuple(
-              Tuple {
-                  items: [],
-              },
-          ),
+          return_type: Unit,
       }
 
 note: 
@@ -14888,7 +14668,7 @@ note:
     · │
 253 │ │         self._update(balance0, balance1, reserve0, reserve1)
 254 │ │         emit Swap(msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
-    │ ╰───────────────────────────────────────────────────────────────────────────────────^ attributes hash: 3378424488272191105
+    │ ╰───────────────────────────────────────────────────────────────────────────────────^ attributes hash: 13058644270313011387
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14917,11 +14697,7 @@ note:
                   ),
               ),
           ],
-          return_type: Tuple(
-              Tuple {
-                  items: [],
-              },
-          ),
+          return_type: Unit,
       }
 
 note: 
@@ -14933,7 +14709,7 @@ note:
 260 │ │ 
 261 │ │         token0.transfer(to, token0.balanceOf(self.address) - self.reserve0)
 262 │ │         token1.transfer(to, token1.balanceOf(self.address) - self.reserve1)
-    │ ╰───────────────────────────────────────────────────────────────────────────^ attributes hash: 14233159095900006828
+    │ ╰───────────────────────────────────────────────────────────────────────────^ attributes hash: 4624738249280070544
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14946,11 +14722,7 @@ note:
                   ),
               ),
           ],
-          return_type: Tuple(
-              Tuple {
-                  items: [],
-              },
-          ),
+          return_type: Unit,
       }
 
 note: 
@@ -14960,17 +14732,13 @@ note:
 266 │ │         token0: ERC20 = ERC20(self.token0)
 267 │ │         token1: ERC20 = ERC20(self.token1)
 268 │ │         self._update(token0.balanceOf(self.address), token1.balanceOf(self.address), self.reserve0, self.reserve1)
-    │ ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 10414785629978741686
+    │ ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 8760164921434830532
     │  
     = FunctionAttributes {
           is_public: true,
           name: "sync",
           params: [],
-          return_type: Tuple(
-              Tuple {
-                  items: [],
-              },
-          ),
+          return_type: Unit,
       }
 
 note: 
@@ -15045,7 +14813,7 @@ note:
     │  
 300 │ ╭     pub def __init__(fee_to_setter: address):
 301 │ │        self.fee_to_setter = fee_to_setter
-    │ ╰─────────────────────────────────────────^ attributes hash: 5326105143136009791
+    │ ╰─────────────────────────────────────────^ attributes hash: 7172151177252087884
     │  
     = FunctionAttributes {
           is_public: true,
@@ -15058,11 +14826,7 @@ note:
                   ),
               ),
           ],
-          return_type: Tuple(
-              Tuple {
-                  items: [],
-              },
-          ),
+          return_type: Unit,
       }
 
 note: 
@@ -15155,7 +14919,7 @@ note:
 332 │ ╭     pub def set_fee_to(fee_to: address):
 333 │ │         assert msg.sender == self.fee_to_setter, "UniswapV2: FORBIDDEN"
 334 │ │         self.fee_to = fee_to
-    │ ╰────────────────────────────^ attributes hash: 2042923417878929513
+    │ ╰────────────────────────────^ attributes hash: 12890648541865675606
     │  
     = FunctionAttributes {
           is_public: true,
@@ -15168,11 +14932,7 @@ note:
                   ),
               ),
           ],
-          return_type: Tuple(
-              Tuple {
-                  items: [],
-              },
-          ),
+          return_type: Unit,
       }
 
 note: 
@@ -15181,7 +14941,7 @@ note:
 336 │ ╭     pub def set_fee_to_setter(fee_to_setter: address):
 337 │ │         assert msg.sender == fee_to_setter, "UniswapV2: FORBIDDEN"
 338 │ │         self.fee_to_setter = fee_to_setter
-    │ ╰──────────────────────────────────────────^ attributes hash: 4099915240007156138
+    │ ╰──────────────────────────────────────────^ attributes hash: 9123870829841798734
     │  
     = FunctionAttributes {
           is_public: true,
@@ -15194,11 +14954,7 @@ note:
                   ),
               ),
           ],
-          return_type: Tuple(
-              Tuple {
-                  items: [],
-              },
-          ),
+          return_type: Unit,
       }
 
 note: 
@@ -16129,7 +15885,7 @@ note:
     ┌─ demos/uniswap.fe:321:9
     │
 321 │         pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 642945088941980557
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1220900674874998731
     │
     = Contract(
           Contract {
@@ -16254,11 +16010,7 @@ note:
                               ),
                           ),
                       ],
-                      return_type: Tuple(
-                          Tuple {
-                              items: [],
-                          },
-                      ),
+                      return_type: Unit,
                   },
                   FunctionAttributes {
                       is_public: true,
@@ -16288,11 +16040,7 @@ note:
                               ),
                           ),
                       ],
-                      return_type: Tuple(
-                          Tuple {
-                              items: [],
-                          },
-                      ),
+                      return_type: Unit,
                   },
                   FunctionAttributes {
                       is_public: true,
@@ -16321,21 +16069,13 @@ note:
                               ),
                           ),
                       ],
-                      return_type: Tuple(
-                          Tuple {
-                              items: [],
-                          },
-                      ),
+                      return_type: Unit,
                   },
                   FunctionAttributes {
                       is_public: true,
                       name: "sync",
                       params: [],
-                      return_type: Tuple(
-                          Tuple {
-                              items: [],
-                          },
-                      ),
+                      return_type: Unit,
                   },
                   FunctionAttributes {
                       is_public: true,
@@ -16418,7 +16158,7 @@ note:
 4 │ │ 
 5 │ │     pub def transfer(recipient: address, amount: u256) -> bool:
 6 │ │         return false
-  │ ╰────────────────────^ attributes hash: 2840914271945151140
+  │ ╰────────────────────^ attributes hash: 8223504823133455958
   │  
   = ContractAttributes {
         public_functions: [
@@ -16530,11 +16270,7 @@ note:
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -16547,11 +16283,7 @@ note:
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                 ],
             },
@@ -16677,11 +16409,7 @@ note:
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -16711,11 +16439,7 @@ note:
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -16744,21 +16468,13 @@ note:
                                 ),
                             ),
                         ],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
                         name: "sync",
                         params: [],
-                        return_type: Tuple(
-                            Tuple {
-                                items: [],
-                            },
-                        ),
+                        return_type: Unit,
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -16844,7 +16560,7 @@ note:
     · │
 282 │ │     def min(x: u256, y: u256) -> u256:
 283 │ │         return x if x < y else y
-    │ ╰────────────────────────────────^ attributes hash: 11724459557550607125
+    │ ╰────────────────────────────────^ attributes hash: 9232809846161970947
     │  
     = ContractAttributes {
           public_functions: [
@@ -16967,11 +16683,7 @@ note:
                           ),
                       ),
                   ],
-                  return_type: Tuple(
-                      Tuple {
-                          items: [],
-                      },
-                  ),
+                  return_type: Unit,
               },
               FunctionAttributes {
                   is_public: true,
@@ -17001,11 +16713,7 @@ note:
                           ),
                       ),
                   ],
-                  return_type: Tuple(
-                      Tuple {
-                          items: [],
-                      },
-                  ),
+                  return_type: Unit,
               },
               FunctionAttributes {
                   is_public: true,
@@ -17034,21 +16742,13 @@ note:
                           ),
                       ),
                   ],
-                  return_type: Tuple(
-                      Tuple {
-                          items: [],
-                      },
-                  ),
+                  return_type: Unit,
               },
               FunctionAttributes {
                   is_public: true,
                   name: "sync",
                   params: [],
-                  return_type: Tuple(
-                      Tuple {
-                          items: [],
-                      },
-                  ),
+                  return_type: Unit,
               },
               FunctionAttributes {
                   is_public: true,
@@ -17124,11 +16824,7 @@ note:
                   is_public: true,
                   name: "__init__",
                   params: [],
-                  return_type: Tuple(
-                      Tuple {
-                          items: [],
-                      },
-                  ),
+                  return_type: Unit,
               },
           ),
           events: [
@@ -17458,11 +17154,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -17475,11 +17167,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                   ],
               },
@@ -17497,7 +17185,7 @@ note:
     · │
 337 │ │         assert msg.sender == fee_to_setter, "UniswapV2: FORBIDDEN"
 338 │ │         self.fee_to_setter = fee_to_setter
-    │ ╰──────────────────────────────────────────^ attributes hash: 2124876945431632220
+    │ ╰──────────────────────────────────────────^ attributes hash: 9161501736308064308
     │  
     = ContractAttributes {
           public_functions: [
@@ -17559,11 +17247,7 @@ note:
                           ),
                       ),
                   ],
-                  return_type: Tuple(
-                      Tuple {
-                          items: [],
-                      },
-                  ),
+                  return_type: Unit,
               },
               FunctionAttributes {
                   is_public: true,
@@ -17576,11 +17260,7 @@ note:
                           ),
                       ),
                   ],
-                  return_type: Tuple(
-                      Tuple {
-                          items: [],
-                      },
-                  ),
+                  return_type: Unit,
               },
           ],
           init_function: Some(
@@ -17595,11 +17275,7 @@ note:
                           ),
                       ),
                   ],
-                  return_type: Tuple(
-                      Tuple {
-                          items: [],
-                      },
-                  ),
+                  return_type: Unit,
               },
           ),
           events: [
@@ -17816,11 +17492,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -17850,11 +17522,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -17883,21 +17551,13 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
                           name: "sync",
                           params: [],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -18041,7 +17701,7 @@ note:
     ┌─ demos/uniswap.fe:140:27
     │
 140 │         fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                           ^^^^^^^^^^^^^^^^ attributes hash: 5671730781585971701
+    │                           ^^^^^^^^^^^^^^^^ attributes hash: 8392063984522607378
     │
     = TypeConstructor {
           typ: Contract(
@@ -18106,11 +17766,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -18123,11 +17779,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                   ],
               },
@@ -19072,7 +18724,7 @@ note:
     ┌─ demos/uniswap.fe:321:31
     │
 321 │         pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
-    │                               ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17518774099962529419
+    │                               ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15173707327387249702
     │
     = TypeAttribute {
           typ: Contract(
@@ -19198,11 +18850,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -19232,11 +18880,7 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -19265,21 +18909,13 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
                           name: "sync",
                           params: [],
-                          return_type: Tuple(
-                              Tuple {
-                                  items: [],
-                              },
-                          ),
+                          return_type: Unit,
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -21879,7 +21515,7 @@ note:
     ┌─ demos/uniswap.fe:321:15
     │
 321 │         pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
-    │               ^^^^^^^^^^^^^ attributes hash: 4251708556825716669
+    │               ^^^^^^^^^^^^^ attributes hash: 675782158511795747
     │
     = Contract(
           Contract {
@@ -22004,11 +21640,7 @@ note:
                               ),
                           ),
                       ],
-                      return_type: Tuple(
-                          Tuple {
-                              items: [],
-                          },
-                      ),
+                      return_type: Unit,
                   },
                   FunctionAttributes {
                       is_public: true,
@@ -22038,11 +21670,7 @@ note:
                               ),
                           ),
                       ],
-                      return_type: Tuple(
-                          Tuple {
-                              items: [],
-                          },
-                      ),
+                      return_type: Unit,
                   },
                   FunctionAttributes {
                       is_public: true,
@@ -22071,21 +21699,13 @@ note:
                               ),
                           ),
                       ],
-                      return_type: Tuple(
-                          Tuple {
-                              items: [],
-                          },
-                      ),
+                      return_type: Unit,
                   },
                   FunctionAttributes {
                       is_public: true,
                       name: "sync",
                       params: [],
-                      return_type: Tuple(
-                          Tuple {
-                              items: [],
-                          },
-                      ),
+                      return_type: Unit,
                   },
                   FunctionAttributes {
                       is_public: true,

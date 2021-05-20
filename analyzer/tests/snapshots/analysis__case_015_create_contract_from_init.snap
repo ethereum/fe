@@ -176,17 +176,13 @@ note:
   │  
 8 │ ╭     pub def __init__():
 9 │ │         self.foo_addr = address(Foo.create(0))
-  │ ╰──────────────────────────────────────────────^ attributes hash: 11571125529778075370
+  │ ╰──────────────────────────────────────────────^ attributes hash: 10134238868280923582
   │  
   = FunctionAttributes {
         is_public: true,
         name: "__init__",
         params: [],
-        return_type: Tuple(
-            Tuple {
-                items: [],
-            },
-        ),
+        return_type: Unit,
     }
 
 note: 
@@ -259,7 +255,7 @@ note:
    · │
 11 │ │     pub def get_foo_addr() -> address:
 12 │ │         return self.foo_addr
-   │ ╰────────────────────────────^ attributes hash: 12497859864939413860
+   │ ╰────────────────────────────^ attributes hash: 2130015407891692482
    │  
    = ContractAttributes {
          public_functions: [
@@ -277,11 +273,7 @@ note:
                  is_public: true,
                  name: "__init__",
                  params: [],
-                 return_type: Tuple(
-                     Tuple {
-                         items: [],
-                     },
-                 ),
+                 return_type: Unit,
              },
          ),
          events: [],

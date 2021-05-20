@@ -1,6 +1,9 @@
 use crate::lowering::mappers::expressions;
 use crate::lowering::mappers::types;
+use crate::lowering::names;
+use crate::lowering::utils::ZeroSpanNode;
 use fe_analyzer::context::Context;
+use fe_analyzer::namespace::types::FixedSize;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 
@@ -14,9 +17,27 @@ pub fn func_def(context: &Context, def: Node<fe::ContractStmt>) -> Node<fe::Cont
         body,
     } = def.kind
     {
-        let lowered_return_type =
-            return_type.map(|return_type| types::type_desc(context, return_type));
-        let lowered_body = multiple_stmts(context, body);
+        let attributes = context.get_function(def.id).expect("missing attributes");
+
+        // The return type is lowered if it exists. If there is no return type, we set it to the unit type.
+        let lowered_return_type = return_type
+            .map(|return_type| types::type_desc(context, return_type))
+            .unwrap_or_else(|| names::fixed_size_type_desc(&FixedSize::Unit).into_node());
+
+        let lowered_body = {
+            let mut lowered_body = multiple_stmts(context, body);
+            // append `return ()` to the body if there is no return
+            if attributes.return_type.is_unit() && !is_last_statement_return(&lowered_body) {
+                lowered_body.push(
+                    fe::FuncStmt::Return {
+                        value: Some(fe::Expr::Unit.into_node()),
+                    }
+                    .into_node(),
+                );
+            }
+            lowered_body
+        };
+
         let lowered_args = args
             .into_iter()
             .map(|arg| {
@@ -30,25 +51,23 @@ pub fn func_def(context: &Context, def: Node<fe::ContractStmt>) -> Node<fe::Cont
             })
             .collect();
 
-        let lowered_kind = fe::ContractStmt::FuncDef {
+        let lowered_function = fe::ContractStmt::FuncDef {
             is_pub,
             name,
             args: lowered_args,
-            return_type: lowered_return_type,
+            return_type: Some(lowered_return_type),
             body: lowered_body,
         };
 
-        return Node::new(lowered_kind, def.span);
+        Node::new(lowered_function, def.span)
+    } else {
+        unreachable!()
     }
-
-    unreachable!()
 }
 
 fn func_stmt(context: &Context, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::FuncStmt>> {
     let lowered_kinds = match stmt.kind {
-        fe::FuncStmt::Return { value } => vec![fe::FuncStmt::Return {
-            value: expressions::optional_expr(context, value),
-        }],
+        fe::FuncStmt::Return { value } => stmt_return(context, value),
         fe::FuncStmt::VarDecl { target, typ, value } => match target.kind {
             fe::VarDeclTarget::Name(_) => vec![fe::FuncStmt::VarDecl {
                 target,
@@ -65,7 +84,9 @@ fn func_stmt(context: &Context, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::FuncSt
             name,
             args: expressions::call_args(context, args),
         }],
-        fe::FuncStmt::AugAssign { target, op, value } => aug_assign(context, target, op, value),
+        fe::FuncStmt::AugAssign { target, op, value } => {
+            stmt_aug_assign(context, target, op, value)
+        }
         fe::FuncStmt::For { target, iter, body } => vec![fe::FuncStmt::For {
             target,
             iter: expressions::expr(context, iter),
@@ -112,7 +133,7 @@ fn multiple_stmts(context: &Context, stmts: Vec<Node<fe::FuncStmt>>) -> Vec<Node
         .concat()
 }
 
-fn aug_assign(
+fn stmt_aug_assign(
     context: &Context,
     target: Node<fe::Expr>,
     op: Node<fe::BinOperator>,
@@ -136,4 +157,26 @@ fn aug_assign(
         target: lowered_target,
         value: new_value,
     }]
+}
+
+fn stmt_return(context: &Context, value: Option<Node<fe::Expr>>) -> Vec<fe::FuncStmt> {
+    if let Some(value) = value {
+        // lower a return statement that contains a value (e.g. `return true` or `return ()`)
+        vec![fe::FuncStmt::Return {
+            value: Some(expressions::expr(context, value)),
+        }]
+    } else {
+        // lower a return statement with no value to `return empty_tuple()`
+        vec![fe::FuncStmt::Return {
+            value: Some(fe::Expr::Unit.into_node()),
+        }]
+    }
+}
+
+fn is_last_statement_return(stmts: &[Node<fe::FuncStmt>]) -> bool {
+    if let Some(stmt) = stmts.last() {
+        matches!(stmt.kind, fe::FuncStmt::Return { .. })
+    } else {
+        false
+    }
 }
