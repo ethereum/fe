@@ -118,7 +118,7 @@ mod tests {
     #[test]
     fn test_encode_name() {
         assert_eq!(
-            encode_name(&vec![
+            encode_name(&[
                 FixedSize::Base(U256),
                 FixedSize::Array(Array {
                     inner: Base::Byte,

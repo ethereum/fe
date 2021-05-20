@@ -66,7 +66,7 @@ impl ContractHarness {
 
         let input = function
             .encode_input(input)
-            .expect(&format!("Unable to encode input for {}", name));
+            .unwrap_or_else(|_| panic!("Unable to encode input for {}", name));
 
         executor.call(self.address, None, input, None, false, context)
     }
@@ -91,16 +91,10 @@ impl ContractHarness {
         let function = &self.abi.functions[name][0];
 
         match self.capture_call(executor, name, &input) {
-            evm::Capture::Exit((ExitReason::Succeed(_), output)) => {
-                let output = function
-                    .decode_output(&output)
-                    .expect(&format!(
-                        "unable to decode output of {}: {:?}",
-                        name, &output
-                    ))
-                    .pop();
-                return output;
-            }
+            evm::Capture::Exit((ExitReason::Succeed(_), output)) => function
+                .decode_output(&output)
+                .unwrap_or_else(|_| panic!("unable to decode output of {}: {:?}", name, &output))
+                .pop(),
             evm::Capture::Exit((reason, _)) => panic!("failed to run \"{}\": {:?}", name, reason),
             _ => panic!("trap"),
         }
@@ -146,7 +140,7 @@ impl ContractHarness {
                 })
                 .collect::<Vec<_>>();
 
-            if !outputs_for_event.iter().any(|v| &v == expected_output) {
+            if !outputs_for_event.iter().any(|v| v == expected_output) {
                 panic!(
                     "no {} logs matching: {:?}\nfound: {:?}",
                     name, expected_output, outputs_for_event
@@ -191,7 +185,7 @@ pub fn read_fixture(path: &str) -> (String, SourceFileId) {
     let mut files = FileStore::new();
     files
         .load_file(path)
-        .expect(&format!("unable to read fixture file: {}", path))
+        .unwrap_or_else(|_| panic!("unable to read fixture file: {}", path))
 }
 
 fn print_compiler_errors(error: CompileError, src: &str, files: &FileStore) {
@@ -230,12 +224,12 @@ pub fn deploy_contract(
         .get(contract_name)
         .expect("could not find contract in fixture");
 
-    return _deploy_contract(
+    _deploy_contract(
         executor,
         &compiled_contract.bytecode,
         &compiled_contract.json_abi,
         init_params,
-    );
+    )
 }
 
 #[allow(dead_code)]
@@ -253,7 +247,7 @@ pub fn deploy_solidity_contract(
     let (bytecode, abi) =
         compile_solidity_contract(contract_name, &src).expect("Could not compile contract");
 
-    return _deploy_contract(executor, &bytecode, &abi, init_params);
+    _deploy_contract(executor, &bytecode, &abi, init_params)
 }
 
 #[allow(dead_code)]
@@ -275,7 +269,7 @@ pub fn encode_error_reason(reason: &str) -> Vec<u8> {
     let string_bytes = hex::encode(&string_bytes);
 
     let all = format!("{}{}{}{}", SELECTOR, DATA_OFFSET, string_len, string_bytes);
-    hex::decode(&all).expect(&format!("No valid hex: {}", &all))
+    hex::decode(&all).unwrap_or_else(|_| panic!("No valid hex: {}", &all))
 }
 
 fn _deploy_contract(
@@ -397,7 +391,7 @@ impl Runtime {
 
     // Add the given set of data
     pub fn with_data(self, data: Vec<yul::Data>) -> Runtime {
-        Runtime { data: data, ..self }
+        Runtime { data, ..self }
     }
 
     /// Generate the top level YUL object
@@ -500,7 +494,7 @@ pub fn string_token(s: &str) -> ethabi::Token {
 
 #[allow(dead_code)]
 pub fn address(s: &str) -> H160 {
-    H160::from_str(s).expect(&format!("couldn't create address from: {}", s))
+    H160::from_str(s).unwrap_or_else(|_| panic!("couldn't create address from: {}", s))
 }
 
 #[allow(dead_code)]
@@ -522,7 +516,7 @@ pub fn bytes_token(s: &str) -> ethabi::Token {
 #[allow(dead_code)]
 pub fn bytes32(val: &str) -> Vec<u8> {
     H256::from_str(val)
-        .expect(&format!("couldn't create bytes[32] from: {}", val))
+        .unwrap_or_else(|_| panic!("couldn't create bytes[32] from: {}", val))
         .as_bytes()
         .to_vec()
 }
@@ -559,7 +553,7 @@ pub fn to_2s_complement(val: isize) -> U256 {
     if val >= 0 {
         U256::from(val)
     } else {
-        let positive_val = val * -1;
+        let positive_val = -val;
         get_2s_complement_for_negative(U256::from(positive_val))
     }
 }
@@ -602,7 +596,7 @@ impl NumericAbiTokenBounds {
             U256::from(2).pow(U256::from(255)),
         ));
 
-        let sizes = [
+        [
             NumericAbiTokenBounds {
                 size: 8,
                 u_min: zero.clone(),
@@ -627,26 +621,24 @@ impl NumericAbiTokenBounds {
             NumericAbiTokenBounds {
                 size: 64,
                 u_min: zero.clone(),
-                i_min: i64_min.clone(),
-                u_max: u64_max.clone(),
+                i_min: i64_min,
+                u_max: u64_max,
                 i_max: int_token(9223372036854775807),
             },
             NumericAbiTokenBounds {
                 size: 128,
                 u_min: zero.clone(),
-                i_min: i128_min.clone(),
-                u_max: u128_max.clone(),
-                i_max: i128_max.clone(),
+                i_min: i128_min,
+                u_max: u128_max,
+                i_max: i128_max,
             },
             NumericAbiTokenBounds {
                 size: 256,
-                u_min: zero.clone(),
-                i_min: i256_min.clone(),
-                u_max: u256_max.clone(),
-                i_max: i256_max.clone(),
+                u_min: zero,
+                i_min: i256_min,
+                u_max: u256_max,
+                i_max: i256_max,
             },
-        ];
-
-        sizes
+        ]
     }
 }

@@ -1,4 +1,3 @@
-use fe_analyzer;
 use fe_analyzer::context::Context;
 use fe_common::diagnostics::{diagnostics_string, Diagnostic, Label};
 use fe_common::files::{FileStore, SourceFileId};
@@ -153,12 +152,10 @@ fn build_diagnostics<T: Hash + Debug>(
     file_id: SourceFileId,
     spanned_attributes: &[(Span, T)],
 ) -> Vec<Diagnostic> {
-    let diagnostics = spanned_attributes
-        .into_iter()
+    spanned_attributes
+        .iter()
         .map(|(span, attributes)| build_attributes_diagnostic(file_id, span, attributes))
-        .collect::<Vec<_>>();
-
-    diagnostics
+        .collect::<Vec<_>>()
 }
 
 fn build_attributes_diagnostic<T: Hash + Debug>(
