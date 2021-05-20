@@ -24,14 +24,14 @@ where
         if parser.diagnostics.is_empty() {
             eprintln!("parsing failed, but no diagnostics were generated. this should be fixed.");
             let next = parser.next();
-            if next.is_err() {
-                eprintln!("parser is at end of file");
-            } else {
+            if let Ok(tok) = next {
                 parser.error(
-                    next.unwrap().span,
+                    tok.span,
                     "this is the next token at time of parsing failure",
                 );
                 print_diagnostics(&parser.diagnostics, &files);
+            } else {
+                eprintln!("parser is at end of file");
             }
         } else {
             print_diagnostics(&parser.diagnostics, &files);

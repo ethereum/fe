@@ -76,7 +76,6 @@ fn contract_def(
 #[cfg(test)]
 mod tests {
     use crate::abi::builder;
-    use fe_analyzer;
     use fe_parser::{grammar::module::parse_module, parse_code_chunk};
 
     #[test]

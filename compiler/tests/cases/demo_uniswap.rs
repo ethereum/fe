@@ -268,19 +268,19 @@ fn uniswap_contracts() {
         token1_harness.test_function(
             &mut executor,
             "balanceOf",
-            &[bob.clone()],
+            &[bob],
             Some(&uint_token_from_dec_str("499999999999999999999000")),
         );
         token1_harness.test_function(
             &mut executor,
             "balanceOf",
-            &[alice.clone()],
+            &[alice],
             Some(&uint_token_from_dec_str("500000000000000000000292")),
         );
         token1_harness.test_function(
             &mut executor,
             "balanceOf",
-            &[pair_address.clone()],
+            &[pair_address],
             Some(&uint_token_from_dec_str("708")),
         );
     });

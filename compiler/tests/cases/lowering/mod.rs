@@ -12,7 +12,7 @@ use fe_common::utils::ron::{to_ron_string_pretty, Diff};
 fn lower_file(src: &str) -> fe::Module {
     let fe_module = parse_file(src);
     let context = fe_analyzer::analyze(&fe_module).expect("failed to get context");
-    lowering::lower(&context, fe_module.clone())
+    lowering::lower(&context, fe_module)
 }
 
 fn parse_file(src: &str) -> fe::Module {

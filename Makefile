@@ -77,7 +77,7 @@ coverage:
 
 .PHONY: clippy
 clippy:
-	cargo clippy --all-targets --all-features -- -D warnings -A clippy::upper-case-acronyms
+	cargo clippy --workspace --all-targets --all-features -- -D warnings -A clippy::upper-case-acronyms
 
 .PHONY: rustfmt
 rustfmt:

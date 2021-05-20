@@ -109,15 +109,10 @@ fn test_compile_errors(fixture_file: &str, expected_error: fe_analyzer::errors::
 
     match fe_compiler::compile(&src, id, true, false) {
         Err(error) => {
-            if error
-                .errors
-                .iter()
-                .find(|err| match err {
-                    ErrorKind::Analyzer(SemanticError { kind, .. }) => *kind == expected_error,
-                    _ => false,
-                })
-                .is_some()
-            {
+            if error.errors.iter().any(|err| match err {
+                ErrorKind::Analyzer(SemanticError { kind, .. }) => *kind == expected_error,
+                _ => false,
+            }) {
                 return;
             }
 
