@@ -256,3 +256,75 @@ fn tuple_stress() {
         );
     });
 }
+
+#[test]
+fn external_calls_stress() {
+    with_executor(&|mut executor| {
+        let foo_harness = deploy_contract(&mut executor, "external_calls.fe", "Foo", &[]);
+        let foo_address = ethabi::Token::Address(foo_harness.address);
+        let proxy_harness = deploy_contract(
+            &mut executor,
+            "external_calls.fe",
+            "FooProxy",
+            &[foo_address],
+        );
+
+        let my_tuple = tuple_token(&[uint_token(42), address_token("26")]);
+        let my_string = string_token("hello world");
+        let my_other_tuple = tuple_token(&[uint_token(99), address_token("ab")]);
+        let my_other_string = string_token("foo");
+
+        proxy_harness.test_function(
+            &mut executor,
+            "call_set_my_string",
+            &[my_string.clone()],
+            None,
+        );
+        proxy_harness.test_function(&mut executor, "call_get_my_string", &[], Some(&my_string));
+
+        proxy_harness.test_function(
+            &mut executor,
+            "call_set_my_tuple",
+            &[my_tuple.clone()],
+            None,
+        );
+        proxy_harness.test_function(&mut executor, "call_get_my_tuple", &[], Some(&my_tuple));
+
+        proxy_harness.test_function(
+            &mut executor,
+            "call_set_my_string_and_tuple",
+            &[my_other_string.clone(), my_other_tuple.clone()],
+            None,
+        );
+        proxy_harness.test_function(
+            &mut executor,
+            "call_get_my_tuple",
+            &[],
+            Some(&my_other_tuple),
+        );
+        proxy_harness.test_function(
+            &mut executor,
+            "call_get_my_string",
+            &[],
+            Some(&my_other_string),
+        );
+
+        proxy_harness.test_function(
+            &mut executor,
+            "call_get_tuple",
+            &[],
+            Some(&tuple_token(&[
+                uint_token(42),
+                uint_token(26),
+                bool_token(false),
+            ])),
+        );
+        proxy_harness.test_function(
+            &mut executor,
+            "call_get_string",
+            &[],
+            Some(&string_token("hi")),
+        );
+        proxy_harness.test_function(&mut executor, "call_get_array", &[], None);
+    })
+}
