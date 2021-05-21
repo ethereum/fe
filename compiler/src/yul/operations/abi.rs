@@ -51,41 +51,6 @@ pub fn encode_size<T: AbiEncoding>(types: Vec<T>, vals: Vec<yul::Expression>) ->
     return expression! { add([static_size], [data_operations::sum(dyn_size)]) };
 }
 
-/// Returns an expression that gives the max size of the encoded values.
-///
-/// # Panics
-/// This will panic if any of the elements of the `types` vector have dynamic
-/// size.
-pub fn static_encode_size<T: AbiEncoding>(types: Vec<T>) -> yul::Expression {
-    let mut static_size = 0;
-
-    for typ in types {
-        match typ.abi_type() {
-            AbiType::Uint { .. } => static_size += 32,
-            AbiType::Array { inner, size } => {
-                let inner_size = match *inner {
-                    AbiType::Uint {
-                        size: AbiUintSize { padded_size, .. },
-                    } => padded_size,
-                    AbiType::Array { .. } => todo!(),
-                    AbiType::Tuple { .. } => todo!(),
-                };
-                match size {
-                    AbiArraySize::Static { size } => {
-                        static_size += utils::ceil_32(inner_size * size)
-                    }
-                    AbiArraySize::Dynamic => {
-                        panic!("tried to get the static encoding size of dynamically sized value")
-                    }
-                }
-            }
-            AbiType::Tuple { elems } => static_size += elems.len() * 32,
-        }
-    }
-
-    literal_expression! { (static_size) }
-}
-
 /// Returns a list of expressions that can be used to decode given types.
 /// `start` is where the encoding starts and `loc` indicates whether the data is
 /// in calldata or memory.
@@ -110,10 +75,8 @@ pub fn decode<T: AbiEncoding>(
 
 #[cfg(test)]
 mod tests {
-    use crate::yul::operations::abi::{decode, encode, encode_size, static_encode_size};
-    use fe_analyzer::namespace::types::{
-        AbiDecodeLocation, Array, Base, FeString, FixedSize, U256,
-    };
+    use crate::yul::operations::abi::{decode, encode, encode_size};
+    use fe_analyzer::namespace::types::{AbiDecodeLocation, FeString, U256};
     use yultsur::*;
 
     #[test]
@@ -142,21 +105,6 @@ mod tests {
             )[0]
             .to_string(),
             "abi_decode_string_26_calldata(42, 0)"
-        )
-    }
-
-    #[test]
-    fn test_static_encode_size() {
-        assert_eq!(
-            static_encode_size(vec![
-                FixedSize::Array(Array {
-                    inner: Base::Address,
-                    size: 42
-                }),
-                FixedSize::bool()
-            ])
-            .to_string(),
-            "1376"
         )
     }
 }

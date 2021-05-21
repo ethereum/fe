@@ -1,0 +1,63 @@
+contract Foo:
+    my_tuple: (u256, address)
+    my_string: string100
+
+    pub def get_my_string() -> string100:
+        return self.my_string.to_mem()
+
+    pub def set_my_string(some_string: string100):
+        self.my_string = some_string
+
+    pub def get_my_tuple() -> (u256, address):
+        return self.my_tuple.to_mem()
+
+    pub def set_my_tuple(some_tuple: (u256, address)):
+        self.my_tuple = some_tuple
+
+    pub def set_my_string_and_tuple(some_string: string100, some_tuple: (u256, address)):
+        self.my_string = some_string
+        self.my_tuple = some_tuple
+
+    pub def get_string() -> string10:
+        return string10("hi")
+
+    pub def get_array() -> u16[4]:
+        return [u16(1), u16(2), u16(3), u16(257)]
+
+    pub def get_tuple() -> (u256, u256, bool):
+        return (42, 26, false)
+
+
+contract FooProxy:
+    foo: Foo
+
+    pub def __init__(foo_addr: address):
+        self.foo = Foo(foo_addr)
+
+    pub def call_set_my_string(some_string: string100):
+        self.foo.set_my_string(some_string)
+
+    pub def call_get_my_string() -> string100:
+        return self.foo.get_my_string()
+
+    pub def call_set_my_tuple(some_tuple: (u256, address)):
+        self.foo.set_my_tuple(some_tuple)
+
+    pub def call_get_my_tuple() -> (u256, address):
+        return self.foo.get_my_tuple()
+
+    pub def call_set_my_string_and_tuple(some_string: string100, some_tuple: (u256, address)):
+        self.foo.set_my_string_and_tuple(some_string, some_tuple)
+
+    pub def call_get_string() -> string10:
+        return self.foo.get_string()
+
+    pub def call_get_tuple() -> (u256, u256, bool):
+        return self.foo.get_tuple()
+
+    pub def call_get_array():
+        my_array: u16[4] = self.foo.get_array()
+        assert my_array[0] == u16(1)
+        assert my_array[1] == u16(2)
+        assert my_array[2] == u16(3)
+        assert my_array[3] == u16(257)

@@ -661,8 +661,18 @@ fn expr_call_value_attribute(
     if let fe::Expr::Attribute { value, attr } = &func.kind {
         let value_attributes = expr(Rc::clone(&scope), Rc::clone(&context), &value)?;
 
-        if let Type::Contract(contract) = value_attributes.typ {
-            return expr_call_contract_attribute(scope, context, contract, &attr.kind, args);
+        if let Type::Contract(contract) = &value_attributes.typ {
+            // We must ensure the expression is loaded onto the stack.
+            context
+                .borrow_mut()
+                .update_expression(value, value_attributes.clone().into_loaded()?);
+            return expr_call_contract_attribute(
+                scope,
+                context,
+                contract.to_owned(),
+                &attr.kind,
+                args,
+            );
         }
 
         // for now all of these function expect 0 arguments
@@ -790,12 +800,6 @@ fn expr_call_contract_attribute(
         .find(|function| function.name == func_name)
     {
         let return_type = function.return_type.to_owned();
-
-        if matches!(return_type, FixedSize::String(_)) {
-            // we need figure out how to deal with dynamically sized returns
-            // for now, this only affects strings
-            todo!("external call string returns")
-        }
 
         let argument_attributes = args
             .kind

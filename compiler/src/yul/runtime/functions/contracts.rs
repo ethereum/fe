@@ -59,8 +59,6 @@ pub fn calls(contract: Contract) -> Vec<yul::Statement> {
                     }
                 }
             } else {
-                let decoding_size =
-                    abi_operations::static_encode_size(vec![function.return_type.clone()]);
                 let decoding_operation = abi_operations::decode(
                     vec![function.return_type],
                     identifier_expression! { outstart },
@@ -73,9 +71,10 @@ pub fn calls(contract: Contract) -> Vec<yul::Statement> {
                         (let instart := alloc_mstoren([selector], 4))
                         (let insize := add(4, [encoding_size]))
                         (pop([encoding_operation]))
-                        (let outsize := [decoding_size])
+                        (pop((call((gas()), addr, 0, instart, insize, 0, 0))))
+                        (let outsize := returndatasize())
                         (let outstart := alloc(outsize))
-                        (pop((call((gas()), addr, 0, instart, insize, outstart, outsize))))
+                        (returndatacopy(outstart, 0, outsize))
                         (return_val := [decoding_operation])
                     }
                 }
