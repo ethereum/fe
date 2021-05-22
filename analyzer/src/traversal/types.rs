@@ -1,18 +1,17 @@
 use crate::context::Context;
 use crate::errors::SemanticError;
-use crate::namespace::scopes::{Scope, Shared};
+use crate::namespace::scopes::Scope;
 use crate::namespace::types::{Array, Base, FeString, FixedSize, Integer, Map, Tuple, Type};
 use crate::traversal::expressions::validate_arg_count;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use std::convert::TryFrom;
-use std::rc::Rc;
 use vec1::Vec1;
 
 /// Maps a type description node to an enum type.
 pub fn type_desc(
     scope: &Scope,
-    context: Shared<Context>,
+    context: &mut Context,
     desc: &Node<fe::TypeDesc>,
 ) -> Result<Type, SemanticError> {
     use Base::*;
@@ -39,7 +38,7 @@ pub fn type_desc(
                 if let Some(typ) = scope.module_scope().borrow().type_defs.get(base) {
                     typ.clone()
                 } else {
-                    context.borrow_mut().error(
+                    context.error(
                         "undefined type",
                         desc.span,
                         "this type name has not been defined",
@@ -49,13 +48,13 @@ pub fn type_desc(
             }
         },
         fe::TypeDesc::Array { typ, dimension } => {
-            if let Type::Base(base) = type_desc(scope, Rc::clone(&context), &typ)? {
+            if let Type::Base(base) = type_desc(scope, context, &typ)? {
                 Type::Array(Array {
                     inner: base,
                     size: *dimension,
                 })
             } else {
-                context.borrow_mut().error(
+                context.error(
                     "arrays can only hold primitive types",
                     typ.span,
                     "can't be stored in an array",
@@ -65,20 +64,20 @@ pub fn type_desc(
         }
         fe::TypeDesc::Generic { base, args } => match base.kind.as_str() {
             "map" => {
-                validate_arg_count(Rc::clone(&context), &base.kind, base.span, &args, 2);
+                validate_arg_count(context, &base.kind, base.span, &args, 2);
                 if args.kind.len() < 2 {
                     return Err(SemanticError::fatal());
                 }
                 match &args.kind[..2] {
                     [fe::GenericArg::TypeDesc(from), fe::GenericArg::TypeDesc(to)] => {
-                        let key_type = type_desc(scope, Rc::clone(&context), &from)?;
+                        let key_type = type_desc(scope, context, &from)?;
                         if let Type::Base(base) = key_type {
                             Type::Map(Map {
                                 key: base,
-                                value: Box::new(type_desc(scope, Rc::clone(&context), &to)?),
+                                value: Box::new(type_desc(scope, context, &to)?),
                             })
                         } else {
-                            context.borrow_mut().error(
+                            context.error(
                                 "`map` key must be a primitive type",
                                 from.span,
                                 "this can't be used as a map key",
@@ -89,7 +88,7 @@ pub fn type_desc(
                     _ => {
                         for arg in &args.kind[..2] {
                             if let fe::GenericArg::Int(node) = arg {
-                                context.borrow_mut().error(
+                                context.error(
                                     "`map` key and value must be types",
                                     node.span,
                                     "this should be a type name",
@@ -105,7 +104,7 @@ pub fn type_desc(
                 _ => return Err(SemanticError::type_error()),
             },
             _ => {
-                context.borrow_mut().error(
+                context.error(
                     "undefined generic type",
                     base.span,
                     "this type name has not been defined",
@@ -117,7 +116,7 @@ pub fn type_desc(
             items: Vec1::try_from_vec(
                 items
                     .iter()
-                    .map(|typ| type_desc_fixed_size(scope, Rc::clone(&context), &typ))
+                    .map(|typ| type_desc_fixed_size(scope, context, &typ))
                     .collect::<Result<_, _>>()?,
             )
             .expect("tuple is empty"),
@@ -125,7 +124,7 @@ pub fn type_desc(
         fe::TypeDesc::Unit => Type::Unit,
     };
 
-    context.borrow_mut().add_type_desc(desc, typ.clone());
+    context.add_type_desc(desc, typ.clone());
     if let Type::Tuple(tuple) = &typ {
         scope
             .module_scope()
@@ -139,7 +138,7 @@ pub fn type_desc(
 /// Maps a type description node to a fixed size enum type.
 pub fn type_desc_fixed_size(
     scope: &Scope,
-    context: Shared<Context>,
+    context: &mut Context,
     desc: &Node<fe::TypeDesc>,
 ) -> Result<FixedSize, SemanticError> {
     FixedSize::try_from(type_desc(scope, context, desc)?)
