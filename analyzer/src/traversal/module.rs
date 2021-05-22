@@ -7,7 +7,7 @@ use fe_parser::node::Node;
 use std::rc::Rc;
 
 /// Gather context information for a module and check for type errors.
-pub fn module(context: Shared<Context>, module: &fe::Module) -> Result<(), SemanticError> {
+pub fn module(context: &mut Context, module: &fe::Module) -> Result<(), SemanticError> {
     let scope = ModuleScope::new();
 
     let mut contracts = vec![];
@@ -15,17 +15,17 @@ pub fn module(context: Shared<Context>, module: &fe::Module) -> Result<(), Seman
     for stmt in module.body.iter() {
         match &stmt.kind {
             fe::ModuleStmt::TypeDef { .. } => {
-                type_def(Rc::clone(&context), Rc::clone(&scope), stmt)?
+                type_def(context, Rc::clone(&scope), stmt)?
             }
             fe::ModuleStmt::StructDef { name, fields } => {
-                structs::struct_def(Rc::clone(&context), Rc::clone(&scope), &name.kind, fields)?
+                structs::struct_def(context, Rc::clone(&scope), &name.kind, fields)?
             }
             fe::ModuleStmt::ContractDef { .. } => {
                 // Collect contract statements and the scope that we create for them. After we
                 // have walked all contracts once, we walk over them again for a
                 // more detailed inspection.
                 let contract_scope =
-                    contracts::contract_def(Rc::clone(&scope), Rc::clone(&context), stmt)?;
+                    contracts::contract_def(Rc::clone(&scope), context, stmt)?;
                 contracts.push((stmt, contract_scope))
             }
             fe::ModuleStmt::FromImport { .. } => unimplemented!(),
@@ -35,17 +35,17 @@ pub fn module(context: Shared<Context>, module: &fe::Module) -> Result<(), Seman
 
     for (stmt, scope) in contracts.iter() {
         if let fe::ModuleStmt::ContractDef { .. } = stmt.kind {
-            contracts::contract_body(Rc::clone(&scope), Rc::clone(&context), stmt)?
+            contracts::contract_body(Rc::clone(&scope), context, stmt)?
         }
     }
 
-    context.borrow_mut().set_module(scope.into());
+    context.set_module(scope.into());
 
     Ok(())
 }
 
 fn type_def(
-    context: Shared<Context>,
+    context: &mut Context,
     scope: Shared<ModuleScope>,
     def: &Node<fe::ModuleStmt>,
 ) -> Result<(), SemanticError> {
