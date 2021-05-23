@@ -27,6 +27,7 @@ pub fn tuple_struct_name(tuple: &Tuple) -> fe::Expr {
 /// Maps a FixedSize type to its type description.
 pub fn fixed_size_type_desc(typ: &FixedSize) -> fe::TypeDesc {
     match typ {
+        FixedSize::Base(Base::Unit) => fe::TypeDesc::Unit,
         FixedSize::Base(base) => fe::TypeDesc::Base {
             base: base_type_name(base),
         },
@@ -34,7 +35,6 @@ pub fn fixed_size_type_desc(typ: &FixedSize) -> fe::TypeDesc {
             dimension: array.size,
             typ: fixed_size_type_desc(&array.inner.clone().into()).into_boxed_node(),
         },
-        FixedSize::Unit => fe::TypeDesc::Unit,
         FixedSize::Tuple(_) => todo!(),
         FixedSize::String(_) => todo!(),
         FixedSize::Contract(_) => todo!(),
@@ -61,6 +61,7 @@ fn base_type_name(typ: &Base) -> String {
         Base::Bool => "bool",
         Base::Byte => unimplemented!("byte should be removed"),
         Base::Address => "address",
+        Base::Unit => "unit",
     }
     .to_string()
 }

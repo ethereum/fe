@@ -26,7 +26,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -39,7 +41,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -61,13 +65,17 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
                         name: "emit_nums",
                         params: [],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                 ],
             },
@@ -475,13 +483,15 @@ note:
    │  
 19 │ ╭     pub def emit_nums():
 20 │ │         emit Nums(num1=26, num2=42)
-   │ ╰───────────────────────────────────^ attributes hash: 5142136245848237202
+   │ ╰───────────────────────────────────^ attributes hash: 18215520939189548337
    │  
    = FunctionAttributes {
          is_public: true,
          name: "emit_nums",
          params: [],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -489,7 +499,7 @@ note:
    │  
 22 │ ╭     pub def emit_bases(addr: address):
 23 │ │         emit Bases(num=26, addr)
-   │ ╰────────────────────────────────^ attributes hash: 4675655585256261045
+   │ ╰────────────────────────────────^ attributes hash: 17638379303524345796
    │  
    = FunctionAttributes {
          is_public: true,
@@ -502,7 +512,9 @@ note:
                  ),
              ),
          ],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -510,7 +522,7 @@ note:
    │  
 25 │ ╭     pub def emit_mix(addr: address, my_bytes: bytes[100]):
 26 │ │         emit Mix(num1=26, addr, num2=42, my_bytes)
-   │ ╰──────────────────────────────────────────────────^ attributes hash: 3521292099077188868
+   │ ╰──────────────────────────────────────────────────^ attributes hash: 14039713244791060395
    │  
    = FunctionAttributes {
          is_public: true,
@@ -532,7 +544,9 @@ note:
                  ),
              ),
          ],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -543,7 +557,7 @@ note:
 30 │ │         addrs[0] = addr1
 31 │ │         addrs[1] = addr2
 32 │ │         emit Addresses(addrs)
-   │ ╰─────────────────────────────^ attributes hash: 3139577003742282823
+   │ ╰─────────────────────────────^ attributes hash: 13037764687780655657
    │  
    = FunctionAttributes {
          is_public: true,
@@ -562,7 +576,9 @@ note:
                  ),
              ),
          ],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -588,7 +604,7 @@ note:
    · │
 31 │ │         addrs[1] = addr2
 32 │ │         emit Addresses(addrs)
-   │ ╰─────────────────────────────^ attributes hash: 17863159823823136104
+   │ ╰─────────────────────────────^ attributes hash: 8487763690206504167
    │  
    = ContractAttributes {
          public_functions: [
@@ -609,7 +625,9 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
              FunctionAttributes {
                  is_public: true,
@@ -622,7 +640,9 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
              FunctionAttributes {
                  is_public: true,
@@ -644,13 +664,17 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
              FunctionAttributes {
                  is_public: true,
                  name: "emit_nums",
                  params: [],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
          ],
          init_function: None,

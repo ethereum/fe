@@ -13,7 +13,9 @@ ModuleAttributes {
                         is_public: true,
                         name: "emit_event",
                         params: [],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -61,7 +63,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -79,7 +83,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -94,7 +100,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                 ],
             },
@@ -491,7 +499,7 @@ note:
    │  
 11 │ ╭     pub def write_num(x: u256):
 12 │ │         self.num = x
-   │ ╰────────────────────^ attributes hash: 4723311554161287362
+   │ ╰────────────────────^ attributes hash: 3870046753883905095
    │  
    = FunctionAttributes {
          is_public: true,
@@ -506,7 +514,9 @@ note:
                  ),
              ),
          ],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -532,7 +542,7 @@ note:
    │  
 17 │ ╭     pub def write_nums(x: u256[42]):
 18 │ │         self.nums = x
-   │ ╰─────────────────────^ attributes hash: 13274737919563050399
+   │ ╰─────────────────────^ attributes hash: 3486766203781743725
    │  
    = FunctionAttributes {
          is_public: true,
@@ -550,7 +560,9 @@ note:
                  ),
              ),
          ],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -579,7 +591,7 @@ note:
    │  
 23 │ ╭     pub def write_str(x: String<26>):
 24 │ │         self.str = x
-   │ ╰────────────────────^ attributes hash: 8954082301525757861
+   │ ╰────────────────────^ attributes hash: 3276279393402660932
    │  
    = FunctionAttributes {
          is_public: true,
@@ -594,7 +606,9 @@ note:
                  ),
              ),
          ],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -624,13 +638,15 @@ note:
 32 │ │             nums=self.nums.to_mem(),
 33 │ │             str=self.str.to_mem()
 34 │ │         )
-   │ ╰─────────^ attributes hash: 3495533453674637575
+   │ ╰─────────^ attributes hash: 4747163906894849288
    │  
    = FunctionAttributes {
          is_public: true,
          name: "emit_event",
          params: [],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -643,7 +659,7 @@ note:
    · │
 33 │ │             str=self.str.to_mem()
 34 │ │         )
-   │ ╰─────────^ attributes hash: 6287727376829083665
+   │ ╰─────────^ attributes hash: 17206214854182202311
    │  
    = ContractAttributes {
          public_functions: [
@@ -651,7 +667,9 @@ note:
                  is_public: true,
                  name: "emit_event",
                  params: [],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
              FunctionAttributes {
                  is_public: true,
@@ -699,7 +717,9 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
              FunctionAttributes {
                  is_public: true,
@@ -717,7 +737,9 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
              FunctionAttributes {
                  is_public: true,
@@ -732,7 +754,9 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
          ],
          init_function: None,

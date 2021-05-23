@@ -22,7 +22,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -45,7 +47,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -60,7 +64,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                 ],
             },
@@ -244,7 +250,7 @@ note:
   │  
 2 │ ╭     pub def bar(baz: u256):
 3 │ │         assert baz > 5
-  │ ╰──────────────────────^ attributes hash: 3771050984671870939
+  │ ╰──────────────────────^ attributes hash: 15822262529719405181
   │  
   = FunctionAttributes {
         is_public: true,
@@ -259,7 +265,9 @@ note:
                 ),
             ),
         ],
-        return_type: Unit,
+        return_type: Base(
+            Unit,
+        ),
     }
 
 note: 
@@ -267,7 +275,7 @@ note:
   │  
 5 │ ╭     pub def revert_with_static_string(baz: u256):
 6 │ │         assert baz > 5, "Must be greater than five"
-  │ ╰───────────────────────────────────────────────────^ attributes hash: 949803207543601617
+  │ ╰───────────────────────────────────────────────────^ attributes hash: 17432662740340635293
   │  
   = FunctionAttributes {
         is_public: true,
@@ -282,7 +290,9 @@ note:
                 ),
             ),
         ],
-        return_type: Unit,
+        return_type: Base(
+            Unit,
+        ),
     }
 
 note: 
@@ -290,7 +300,7 @@ note:
   │  
 8 │ ╭     pub def revert_with(baz: u256, reason: String<1000>):
 9 │ │         assert baz > 5, reason
-  │ ╰──────────────────────────────^ attributes hash: 8362848128767449402
+  │ ╰──────────────────────────────^ attributes hash: 15346937376382820850
   │  
   = FunctionAttributes {
         is_public: true,
@@ -313,7 +323,9 @@ note:
                 ),
             ),
         ],
-        return_type: Unit,
+        return_type: Base(
+            Unit,
+        ),
     }
 
 note: 
@@ -326,7 +338,7 @@ note:
   · │
 8 │ │     pub def revert_with(baz: u256, reason: String<1000>):
 9 │ │         assert baz > 5, reason
-  │ ╰──────────────────────────────^ attributes hash: 18279959482144090337
+  │ ╰──────────────────────────────^ attributes hash: 3230845884331180109
   │  
   = ContractAttributes {
         public_functions: [
@@ -343,7 +355,9 @@ note:
                         ),
                     ),
                 ],
-                return_type: Unit,
+                return_type: Base(
+                    Unit,
+                ),
             },
             FunctionAttributes {
                 is_public: true,
@@ -366,7 +380,9 @@ note:
                         ),
                     ),
                 ],
-                return_type: Unit,
+                return_type: Base(
+                    Unit,
+                ),
             },
             FunctionAttributes {
                 is_public: true,
@@ -381,7 +397,9 @@ note:
                         ),
                     ),
                 ],
-                return_type: Unit,
+                return_type: Base(
+                    Unit,
+                ),
             },
         ],
         init_function: None,

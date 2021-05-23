@@ -76,7 +76,9 @@ ModuleAttributes {
                         is_public: true,
                         name: "emit_my_event",
                         params: [],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -102,7 +104,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -143,7 +147,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -182,13 +188,17 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
                         name: "set_to_my_other_vals",
                         params: [],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                 ],
             },
@@ -1949,11 +1959,13 @@ note:
 69 │ │             self.my_string.to_mem(),
 70 │ │             self.my_u256.to_mem()
 71 │ │         )
-   │ ╰─────────^ attributes hash: 5074014468841562254
+   │ ╰─────────^ attributes hash: 13510039392732087821
    │  
    = ExpressionAttributes {
-         typ: Unit,
-         location: Memory,
+         typ: Base(
+             Unit,
+         ),
+         location: Value,
          move_location: None,
      }
 
@@ -2122,7 +2134,7 @@ note:
    · │
 24 │ │         self.my_u256 = my_u256
 25 │ │         self.my_other_u256 = my_other_u256
-   │ ╰──────────────────────────────────────────^ attributes hash: 16864902024724254016
+   │ ╰──────────────────────────────────────────^ attributes hash: 1560259300258650942
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2161,7 +2173,9 @@ note:
                  ),
              ),
          ],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -2170,13 +2184,15 @@ note:
 27 │ ╭     pub def set_to_my_other_vals():
 28 │ │         self.my_string = self.my_other_string
 29 │ │         self.my_u256 = self.my_other_u256
-   │ ╰─────────────────────────────────────────^ attributes hash: 383055877702058380
+   │ ╰─────────────────────────────────────────^ attributes hash: 16862758663013252212
    │  
    = FunctionAttributes {
          is_public: true,
          name: "set_to_my_other_vals",
          params: [],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -2189,7 +2205,7 @@ note:
    · │
 43 │ │         assert my_2nd_array[3] == 50
 44 │ │         assert my_3rd_array[3] == 50
-   │ ╰────────────────────────────────────^ attributes hash: 12963554119915947050
+   │ ╰────────────────────────────────────^ attributes hash: 6476964505927014984
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2207,7 +2223,9 @@ note:
                  ),
              ),
          ],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -2345,13 +2363,15 @@ note:
 69 │ │             self.my_string.to_mem(),
 70 │ │             self.my_u256.to_mem()
 71 │ │         )
-   │ ╰─────────^ attributes hash: 9089586501468789190
+   │ ╰─────────^ attributes hash: 10533351548551667725
    │  
    = FunctionAttributes {
          is_public: true,
          name: "emit_my_event",
          params: [],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -2359,7 +2379,7 @@ note:
    │  
 73 │ ╭     def emit_my_event_internal(some_string: String<42>, some_u256: u256):
 74 │ │         emit MyEvent(my_string=some_string, my_u256=some_u256)
-   │ ╰──────────────────────────────────────────────────────────────^ attributes hash: 11329158825917724746
+   │ ╰──────────────────────────────────────────────────────────────^ attributes hash: 2034642201325374256
    │  
    = FunctionAttributes {
          is_public: false,
@@ -2382,7 +2402,9 @@ note:
                  ),
              ),
          ],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -2390,7 +2412,7 @@ note:
    │  
 76 │ ╭     pub def set_my_addrs(my_addrs: address[3]):
 77 │ │         self.my_addrs = my_addrs
-   │ ╰────────────────────────────────^ attributes hash: 220845659595033400
+   │ ╰────────────────────────────────^ attributes hash: 12139699556071315906
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2406,7 +2428,9 @@ note:
                  ),
              ),
          ],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -2480,7 +2504,7 @@ note:
    · │
 79 │ │     pub def get_my_second_addr() -> address:
 80 │ │         return self.my_addrs[1]
-   │ ╰───────────────────────────────^ attributes hash: 5097426127984065559
+   │ ╰───────────────────────────────^ attributes hash: 11054534901318549189
    │  
    = ContractAttributes {
          public_functions: [
@@ -2551,7 +2575,9 @@ note:
                  is_public: true,
                  name: "emit_my_event",
                  params: [],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
              FunctionAttributes {
                  is_public: true,
@@ -2577,7 +2603,9 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
              FunctionAttributes {
                  is_public: true,
@@ -2618,7 +2646,9 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
              FunctionAttributes {
                  is_public: true,
@@ -2657,13 +2687,17 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
              FunctionAttributes {
                  is_public: true,
                  name: "set_to_my_other_vals",
                  params: [],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
          ],
          init_function: None,

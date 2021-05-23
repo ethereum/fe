@@ -121,7 +121,7 @@ pub fn type_desc(
             )
             .expect("tuple is empty"),
         }),
-        fe::TypeDesc::Unit => Type::Unit,
+        fe::TypeDesc::Unit => Type::unit(),
     };
 
     context.add_type_desc(desc, typ.clone());

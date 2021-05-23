@@ -40,7 +40,6 @@ impl Location {
             Type::String(_) => Ok(Location::Memory),
             Type::Struct(_) => Ok(Location::Memory),
             Type::Map(_) => Err(SemanticError::cannot_move()),
-            Type::Unit => Ok(Location::Value),
         }
     }
 }
@@ -88,7 +87,7 @@ impl From<Shared<ContractScope>> for ContractAttributes {
                     is_public: def.is_public,
                     name: name.clone(),
                     params: def.params.to_owned(),
-                    return_type: FixedSize::Unit,
+                    return_type: FixedSize::unit(),
                 })
             }
         }
@@ -159,7 +158,6 @@ impl ExpressionAttributes {
     pub fn into_loaded(mut self) -> Result<Self, SemanticError> {
         match self.typ {
             Type::Base(_) => {}
-            Type::Unit => {}
             Type::Contract(_) => {}
             _ => return Err(SemanticError::cannot_move()),
         }

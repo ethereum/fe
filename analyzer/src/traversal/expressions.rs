@@ -43,7 +43,7 @@ pub fn expr(
         fe::Expr::List { .. } => expr_list(scope, context, exp),
         fe::Expr::Tuple { .. } => expr_tuple(scope, context, exp),
         fe::Expr::Str(_) => expr_str(scope, exp),
-        fe::Expr::Unit => Ok(ExpressionAttributes::new(Type::Unit, Location::Value)),
+        fe::Expr::Unit => Ok(ExpressionAttributes::new(Type::unit(), Location::Value)),
     }
     .map_err(|error| error.with_context(exp.span))?;
 
@@ -146,7 +146,7 @@ pub fn assignable_expr(
 
     let mut attributes = expr(Rc::clone(&scope), context, exp)?;
     match &attributes.typ {
-        Base(_) | Contract(_) | Unit => {
+        Base(_) | Contract(_) => {
             if attributes.location != Location::Value {
                 attributes.move_location = Some(Location::Value);
             }
@@ -239,7 +239,6 @@ fn expr_name(
                 Type::Struct(val),
                 Location::Memory,
             )),
-            Some(FixedSize::Unit) => Ok(ExpressionAttributes::new(Type::Unit, Location::Value)),
             None => {
                 context.error(
                     format!("cannot find value `{}` in this scope", name),
