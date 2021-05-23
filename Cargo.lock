@@ -615,6 +615,7 @@ dependencies = [
  "clap",
  "fe-common",
  "fe-compiler",
+ "fe-compiler-tests",
  "fe-parser",
 ]
 

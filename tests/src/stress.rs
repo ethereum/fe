@@ -10,7 +10,7 @@ pub fn deploy_contract(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    utils::deploy_contract(
+    fe_compiler_test_utils::deploy_contract(
         executor,
         &format!("../tests/fixtures/stress/{}", fixture),
         contract_name,

@@ -16,7 +16,7 @@ pub fn deploy_contract(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    utils::deploy_contract(
+    test_utils::deploy_contract(
         executor,
         &format!("../tests/fixtures/features/{}", fixture),
         contract_name,

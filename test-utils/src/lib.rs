@@ -6,6 +6,7 @@ use fe_common::files::{FileStore, SourceFileId};
 use fe_compiler as compiler;
 use fe_compiler::yul::runtime::functions;
 use primitive_types::{H160, H256, U256};
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 use std::str::FromStr;
