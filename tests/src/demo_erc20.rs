@@ -1,5 +1,4 @@
 #![cfg(feature = "solc-backend")]
-
 use fe_compiler_test_utils::*;
 
 #[test]

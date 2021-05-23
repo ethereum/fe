@@ -1,5 +1,4 @@
 //! Simple contract tests that narrowly test a given feature
-
 #![cfg(feature = "solc-backend")]
 use evm_runtime::Handler;
 use fe_common::utils::keccak;

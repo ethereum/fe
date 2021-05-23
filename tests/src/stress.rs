@@ -1,5 +1,4 @@
 //! Stress tests that test broad behavior
-
 #![cfg(feature = "solc-backend")]
 use fe_compiler_test_utils::*;
 use std::iter;

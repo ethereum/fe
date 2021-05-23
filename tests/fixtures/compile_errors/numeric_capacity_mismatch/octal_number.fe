@@ -1,0 +1,3 @@
+contract Foo:
+    pub def test() -> u8:
+        return u8(001)

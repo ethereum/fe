@@ -1,5 +1,4 @@
 //! Tests for contracts that should cause compile errors
-
 #![cfg(feature = "solc-backend")]
 use fe_analyzer::errors::{ErrorKind::*, SemanticError};
 use fe_common::diagnostics::print_diagnostics;
