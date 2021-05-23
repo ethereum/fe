@@ -203,7 +203,7 @@ note:
   │  
 4 │ ╭     pub def __init__(baz: u256, bing: u256):
 5 │ │         self.bar[42] = baz + bing
-  │ ╰─────────────────────────────────^ attributes hash: 10600873716255629789
+  │ ╰─────────────────────────────────^ attributes hash: 9809353878122723186
   │  
   = FunctionAttributes {
         is_public: true,
@@ -226,7 +226,9 @@ note:
                 ),
             ),
         ],
-        return_type: Unit,
+        return_type: Base(
+            Unit,
+        ),
     }
 
 note: 
@@ -257,7 +259,7 @@ note:
   · │
 7 │ │     pub def read_bar() -> u256:
 8 │ │         return self.bar[42]
-  │ ╰───────────────────────────^ attributes hash: 176296086338423957
+  │ ╰───────────────────────────^ attributes hash: 12040919694487486401
   │  
   = ContractAttributes {
         public_functions: [
@@ -294,7 +296,9 @@ note:
                         ),
                     ),
                 ],
-                return_type: Unit,
+                return_type: Base(
+                    Unit,
+                ),
             },
         ),
         events: [],

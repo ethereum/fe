@@ -114,7 +114,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -127,7 +129,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                 ],
             },
@@ -255,7 +259,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -285,7 +291,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -314,13 +322,17 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
                         name: "sync",
                         params: [],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -1674,11 +1686,13 @@ note:
    ┌─ demos/uniswap.fe:95:9
    │
 95 │         self._approve(msg.sender, spender, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
    │
    = ExpressionAttributes {
-         typ: Unit,
-         location: Memory,
+         typ: Base(
+             Unit,
+         ),
+         location: Value,
          move_location: None,
      }
 
@@ -1744,11 +1758,13 @@ note:
    ┌─ demos/uniswap.fe:99:9
    │
 99 │         self._transfer(msg.sender, to, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
    │
    = ExpressionAttributes {
-         typ: Unit,
-         location: Memory,
+         typ: Base(
+             Unit,
+         ),
+         location: Value,
          move_location: None,
      }
 
@@ -2177,11 +2193,13 @@ note:
     ┌─ demos/uniswap.fe:106:9
     │
 106 │         self._transfer(from, to, value)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
     │
     = ExpressionAttributes {
-          typ: Unit,
-          location: Memory,
+          typ: Base(
+              Unit,
+          ),
+          location: Value,
           move_location: None,
       }
 
@@ -3236,7 +3254,7 @@ note:
     ┌─ demos/uniswap.fe:140:27
     │
 140 │         fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8306689668146703337
+    │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 3186366198341923168
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -3301,7 +3319,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -3314,7 +3334,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                   ],
               },
@@ -3913,11 +3935,13 @@ note:
     ┌─ demos/uniswap.fe:152:25
     │
 152 │                         self._mint(fee_to, liquidity)
-    │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
+    │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
     │
     = ExpressionAttributes {
-          typ: Unit,
-          location: Memory,
+          typ: Base(
+              Unit,
+          ),
+          location: Value,
           move_location: None,
       }
 
@@ -4693,11 +4717,13 @@ note:
     ┌─ demos/uniswap.fe:173:13
     │
 173 │             self._mint(address(0), MINIMUM_LIQUIDITY) # permanently lock the first MINIMUM_LIQUIDITY tokens
-    │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
+    │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
     │
     = ExpressionAttributes {
-          typ: Unit,
-          location: Memory,
+          typ: Base(
+              Unit,
+          ),
+          location: Value,
           move_location: None,
       }
 
@@ -4989,11 +5015,13 @@ note:
     ┌─ demos/uniswap.fe:179:9
     │
 179 │         self._mint(to, liquidity)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
     │
     = ExpressionAttributes {
-          typ: Unit,
-          location: Memory,
+          typ: Base(
+              Unit,
+          ),
+          location: Value,
           move_location: None,
       }
 
@@ -5065,11 +5093,13 @@ note:
     ┌─ demos/uniswap.fe:180:9
     │
 180 │         self._update(balance0, balance1, reserve0, reserve1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
     │
     = ExpressionAttributes {
-          typ: Unit,
-          location: Memory,
+          typ: Base(
+              Unit,
+          ),
+          location: Value,
           move_location: None,
       }
 
@@ -6036,11 +6066,13 @@ note:
     ┌─ demos/uniswap.fe:203:9
     │
 203 │         self._burn(self.address, liquidity)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
     │
     = ExpressionAttributes {
-          typ: Unit,
-          location: Memory,
+          typ: Base(
+              Unit,
+          ),
+          location: Value,
           move_location: None,
       }
 
@@ -6524,11 +6556,13 @@ note:
     ┌─ demos/uniswap.fe:209:9
     │
 209 │         self._update(balance0, balance1, reserve0, reserve1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
     │
     = ExpressionAttributes {
-          typ: Unit,
-          location: Memory,
+          typ: Base(
+              Unit,
+          ),
+          location: Value,
           move_location: None,
       }
 
@@ -8831,11 +8865,13 @@ note:
     ┌─ demos/uniswap.fe:253:9
     │
 253 │         self._update(balance0, balance1, reserve0, reserve1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
     │
     = ExpressionAttributes {
-          typ: Unit,
-          location: Memory,
+          typ: Base(
+              Unit,
+          ),
+          location: Value,
           move_location: None,
       }
 
@@ -9891,11 +9927,13 @@ note:
     ┌─ demos/uniswap.fe:268:9
     │
 268 │         self._update(token0.balanceOf(self.address), token1.balanceOf(self.address), self.reserve0, self.reserve1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
     │
     = ExpressionAttributes {
-          typ: Unit,
-          location: Memory,
+          typ: Base(
+              Unit,
+          ),
+          location: Value,
           move_location: None,
       }
 
@@ -11120,7 +11158,7 @@ note:
     ┌─ demos/uniswap.fe:321:31
     │
 321 │         pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
-    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 749789108576145022
+    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1132705859373981687
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -11246,7 +11284,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -11276,7 +11316,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -11305,13 +11347,17 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
                           name: "sync",
                           params: [],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -11392,7 +11438,7 @@ note:
     ┌─ demos/uniswap.fe:322:9
     │
 322 │         pair.initialize(token0, token1)
-    │         ^^^^ attributes hash: 749789108576145022
+    │         ^^^^ attributes hash: 1132705859373981687
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -11518,7 +11564,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -11548,7 +11596,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -11577,13 +11627,17 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
                           name: "sync",
                           params: [],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -11692,10 +11746,12 @@ note:
     ┌─ demos/uniswap.fe:322:9
     │
 322 │         pair.initialize(token0, token1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11340536269963356597
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
     │
     = ExpressionAttributes {
-          typ: Unit,
+          typ: Base(
+              Unit,
+          ),
           location: Value,
           move_location: None,
       }
@@ -11797,7 +11853,7 @@ note:
     ┌─ demos/uniswap.fe:324:46
     │
 324 │         self.pairs[token0][token1] = address(pair)
-    │                                              ^^^^ attributes hash: 749789108576145022
+    │                                              ^^^^ attributes hash: 1132705859373981687
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -11923,7 +11979,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -11953,7 +12011,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -11982,13 +12042,17 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
                           name: "sync",
                           params: [],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -12176,7 +12240,7 @@ note:
     ┌─ demos/uniswap.fe:325:46
     │
 325 │         self.pairs[token1][token0] = address(pair)
-    │                                              ^^^^ attributes hash: 749789108576145022
+    │                                              ^^^^ attributes hash: 1132705859373981687
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -12302,7 +12366,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -12332,7 +12398,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -12361,13 +12429,17 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
                           name: "sync",
                           params: [],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -12521,7 +12593,7 @@ note:
     ┌─ demos/uniswap.fe:326:53
     │
 326 │         self.all_pairs[self.pair_counter] = address(pair)
-    │                                                     ^^^^ attributes hash: 749789108576145022
+    │                                                     ^^^^ attributes hash: 1132705859373981687
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -12647,7 +12719,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -12677,7 +12751,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -12706,13 +12782,17 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
                           name: "sync",
                           params: [],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -12909,7 +12989,7 @@ note:
     ┌─ demos/uniswap.fe:329:55
     │
 329 │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
-    │                                                       ^^^^ attributes hash: 749789108576145022
+    │                                                       ^^^^ attributes hash: 1132705859373981687
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -13035,7 +13115,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -13065,7 +13147,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -13094,13 +13178,17 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
                           name: "sync",
                           params: [],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -13217,7 +13305,7 @@ note:
     ┌─ demos/uniswap.fe:330:24
     │
 330 │         return address(pair)
-    │                        ^^^^ attributes hash: 749789108576145022
+    │                        ^^^^ attributes hash: 1132705859373981687
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -13343,7 +13431,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -13373,7 +13463,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -13402,13 +13494,17 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
                           name: "sync",
                           params: [],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -14111,13 +14207,15 @@ note:
    │  
 63 │ ╭     pub def __init__():
 64 │ │         self.factory = msg.sender
-   │ ╰─────────────────────────────────^ attributes hash: 10134238868280923582
+   │ ╰─────────────────────────────────^ attributes hash: 3035129065019296448
    │  
    = FunctionAttributes {
          is_public: true,
          name: "__init__",
          params: [],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -14175,7 +14273,7 @@ note:
 76 │ │         self.total_supply = self.total_supply + value
 77 │ │         self.balances[to] = self.balances[to] + value
 78 │ │         emit Transfer(from=address(0), to, value)
-   │ ╰─────────────────────────────────────────────────^ attributes hash: 11812640435561676428
+   │ ╰─────────────────────────────────────────────────^ attributes hash: 15443469740899698302
    │  
    = FunctionAttributes {
          is_public: false,
@@ -14196,7 +14294,9 @@ note:
                  ),
              ),
          ],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -14206,7 +14306,7 @@ note:
 81 │ │         self.balances[from] = self.balances[from] - value
 82 │ │         self.total_supply = self.total_supply - value
 83 │ │         emit Transfer(from, to=address(0), value)
-   │ ╰─────────────────────────────────────────────────^ attributes hash: 5860083618676178729
+   │ ╰─────────────────────────────────────────────────^ attributes hash: 17962913940352130665
    │  
    = FunctionAttributes {
          is_public: false,
@@ -14227,7 +14327,9 @@ note:
                  ),
              ),
          ],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -14236,7 +14338,7 @@ note:
 85 │ ╭     def _approve(owner: address, spender: address, value: u256):
 86 │ │         self.allowances[owner][spender] = value
 87 │ │         emit Approval(owner, spender, value)
-   │ ╰────────────────────────────────────────────^ attributes hash: 10525944821091525871
+   │ ╰────────────────────────────────────────────^ attributes hash: 422334171292144355
    │  
    = FunctionAttributes {
          is_public: false,
@@ -14263,7 +14365,9 @@ note:
                  ),
              ),
          ],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -14273,7 +14377,7 @@ note:
 90 │ │         self.balances[from] = self.balances[from] - value
 91 │ │         self.balances[to] = self.balances[to] + value
 92 │ │         emit Transfer(from, to, value)
-   │ ╰──────────────────────────────────────^ attributes hash: 1168662896011493597
+   │ ╰──────────────────────────────────────^ attributes hash: 13745782628834436029
    │  
    = FunctionAttributes {
          is_public: false,
@@ -14300,7 +14404,9 @@ note:
                  ),
              ),
          ],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -14475,7 +14581,7 @@ note:
 118 │ │         assert msg.sender == self.factory, "UniswapV2: FORBIDDEN"
 119 │ │         self.token0 = token0
 120 │ │         self.token1 = token1
-    │ ╰────────────────────────────^ attributes hash: 10036853354460040729
+    │ ╰────────────────────────────^ attributes hash: 6029898335230722584
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14494,7 +14600,9 @@ note:
                   ),
               ),
           ],
-          return_type: Unit,
+          return_type: Base(
+              Unit,
+          ),
       }
 
 note: 
@@ -14507,7 +14615,7 @@ note:
     · │
 135 │ │         self.block_timestamp_last = block_timestamp
 136 │ │         emit Sync(reserve0=self.reserve0, reserve1=self.reserve1)
-    │ ╰─────────────────────────────────────────────────────────────────^ attributes hash: 16195792106909731120
+    │ ╰─────────────────────────────────────────────────────────────────^ attributes hash: 7299884525502940162
     │  
     = FunctionAttributes {
           is_public: false,
@@ -14546,7 +14654,9 @@ note:
                   ),
               ),
           ],
-          return_type: Unit,
+          return_type: Base(
+              Unit,
+          ),
       }
 
 note: 
@@ -14668,7 +14778,7 @@ note:
     · │
 253 │ │         self._update(balance0, balance1, reserve0, reserve1)
 254 │ │         emit Swap(sender=msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
-    │ ╰──────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 13058644270313011387
+    │ ╰──────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 13894903424287666132
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14697,7 +14807,9 @@ note:
                   ),
               ),
           ],
-          return_type: Unit,
+          return_type: Base(
+              Unit,
+          ),
       }
 
 note: 
@@ -14709,7 +14821,7 @@ note:
 260 │ │ 
 261 │ │         token0.transfer(to, token0.balanceOf(self.address) - self.reserve0)
 262 │ │         token1.transfer(to, token1.balanceOf(self.address) - self.reserve1)
-    │ ╰───────────────────────────────────────────────────────────────────────────^ attributes hash: 4624738249280070544
+    │ ╰───────────────────────────────────────────────────────────────────────────^ attributes hash: 5235908045540984219
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14722,7 +14834,9 @@ note:
                   ),
               ),
           ],
-          return_type: Unit,
+          return_type: Base(
+              Unit,
+          ),
       }
 
 note: 
@@ -14732,13 +14846,15 @@ note:
 266 │ │         token0: ERC20 = ERC20(self.token0)
 267 │ │         token1: ERC20 = ERC20(self.token1)
 268 │ │         self._update(token0.balanceOf(self.address), token1.balanceOf(self.address), self.reserve0, self.reserve1)
-    │ ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 8760164921434830532
+    │ ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 5850979630449604761
     │  
     = FunctionAttributes {
           is_public: true,
           name: "sync",
           params: [],
-          return_type: Unit,
+          return_type: Base(
+              Unit,
+          ),
       }
 
 note: 
@@ -14813,7 +14929,7 @@ note:
     │  
 300 │ ╭     pub def __init__(fee_to_setter: address):
 301 │ │        self.fee_to_setter = fee_to_setter
-    │ ╰─────────────────────────────────────────^ attributes hash: 7172151177252087884
+    │ ╰─────────────────────────────────────────^ attributes hash: 12436435812329240313
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14826,7 +14942,9 @@ note:
                   ),
               ),
           ],
-          return_type: Unit,
+          return_type: Base(
+              Unit,
+          ),
       }
 
 note: 
@@ -14919,7 +15037,7 @@ note:
 332 │ ╭     pub def set_fee_to(fee_to: address):
 333 │ │         assert msg.sender == self.fee_to_setter, "UniswapV2: FORBIDDEN"
 334 │ │         self.fee_to = fee_to
-    │ ╰────────────────────────────^ attributes hash: 12890648541865675606
+    │ ╰────────────────────────────^ attributes hash: 13957803856706170765
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14932,7 +15050,9 @@ note:
                   ),
               ),
           ],
-          return_type: Unit,
+          return_type: Base(
+              Unit,
+          ),
       }
 
 note: 
@@ -14941,7 +15061,7 @@ note:
 336 │ ╭     pub def set_fee_to_setter(fee_to_setter: address):
 337 │ │         assert msg.sender == fee_to_setter, "UniswapV2: FORBIDDEN"
 338 │ │         self.fee_to_setter = fee_to_setter
-    │ ╰──────────────────────────────────────────^ attributes hash: 9123870829841798734
+    │ ╰──────────────────────────────────────────^ attributes hash: 4180541968382977460
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14954,7 +15074,9 @@ note:
                   ),
               ),
           ],
-          return_type: Unit,
+          return_type: Base(
+              Unit,
+          ),
       }
 
 note: 
@@ -15885,7 +16007,7 @@ note:
     ┌─ demos/uniswap.fe:321:9
     │
 321 │         pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1220900674874998731
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7884733282109801466
     │
     = Contract(
           Contract {
@@ -16010,7 +16132,9 @@ note:
                               ),
                           ),
                       ],
-                      return_type: Unit,
+                      return_type: Base(
+                          Unit,
+                      ),
                   },
                   FunctionAttributes {
                       is_public: true,
@@ -16040,7 +16164,9 @@ note:
                               ),
                           ),
                       ],
-                      return_type: Unit,
+                      return_type: Base(
+                          Unit,
+                      ),
                   },
                   FunctionAttributes {
                       is_public: true,
@@ -16069,13 +16195,17 @@ note:
                               ),
                           ),
                       ],
-                      return_type: Unit,
+                      return_type: Base(
+                          Unit,
+                      ),
                   },
                   FunctionAttributes {
                       is_public: true,
                       name: "sync",
                       params: [],
-                      return_type: Unit,
+                      return_type: Base(
+                          Unit,
+                      ),
                   },
                   FunctionAttributes {
                       is_public: true,
@@ -16158,7 +16288,7 @@ note:
 4 │ │ 
 5 │ │     pub def transfer(recipient: address, amount: u256) -> bool:
 6 │ │         return false
-  │ ╰────────────────────^ attributes hash: 8223504823133455958
+  │ ╰────────────────────^ attributes hash: 9114548470230238367
   │  
   = ContractAttributes {
         public_functions: [
@@ -16270,7 +16400,9 @@ note:
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -16283,7 +16415,9 @@ note:
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                 ],
             },
@@ -16409,7 +16543,9 @@ note:
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -16439,7 +16575,9 @@ note:
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -16468,13 +16606,17 @@ note:
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
                         name: "sync",
                         params: [],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -16560,7 +16702,7 @@ note:
     · │
 282 │ │     def min(x: u256, y: u256) -> u256:
 283 │ │         return x if x < y else y
-    │ ╰────────────────────────────────^ attributes hash: 9232809846161970947
+    │ ╰────────────────────────────────^ attributes hash: 1073470112117261301
     │  
     = ContractAttributes {
           public_functions: [
@@ -16683,7 +16825,9 @@ note:
                           ),
                       ),
                   ],
-                  return_type: Unit,
+                  return_type: Base(
+                      Unit,
+                  ),
               },
               FunctionAttributes {
                   is_public: true,
@@ -16713,7 +16857,9 @@ note:
                           ),
                       ),
                   ],
-                  return_type: Unit,
+                  return_type: Base(
+                      Unit,
+                  ),
               },
               FunctionAttributes {
                   is_public: true,
@@ -16742,13 +16888,17 @@ note:
                           ),
                       ),
                   ],
-                  return_type: Unit,
+                  return_type: Base(
+                      Unit,
+                  ),
               },
               FunctionAttributes {
                   is_public: true,
                   name: "sync",
                   params: [],
-                  return_type: Unit,
+                  return_type: Base(
+                      Unit,
+                  ),
               },
               FunctionAttributes {
                   is_public: true,
@@ -16824,7 +16974,9 @@ note:
                   is_public: true,
                   name: "__init__",
                   params: [],
-                  return_type: Unit,
+                  return_type: Base(
+                      Unit,
+                  ),
               },
           ),
           events: [
@@ -17154,7 +17306,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -17167,7 +17321,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                   ],
               },
@@ -17185,7 +17341,7 @@ note:
     · │
 337 │ │         assert msg.sender == fee_to_setter, "UniswapV2: FORBIDDEN"
 338 │ │         self.fee_to_setter = fee_to_setter
-    │ ╰──────────────────────────────────────────^ attributes hash: 9161501736308064308
+    │ ╰──────────────────────────────────────────^ attributes hash: 6112704229203799669
     │  
     = ContractAttributes {
           public_functions: [
@@ -17247,7 +17403,9 @@ note:
                           ),
                       ),
                   ],
-                  return_type: Unit,
+                  return_type: Base(
+                      Unit,
+                  ),
               },
               FunctionAttributes {
                   is_public: true,
@@ -17260,7 +17418,9 @@ note:
                           ),
                       ),
                   ],
-                  return_type: Unit,
+                  return_type: Base(
+                      Unit,
+                  ),
               },
           ],
           init_function: Some(
@@ -17275,7 +17435,9 @@ note:
                           ),
                       ),
                   ],
-                  return_type: Unit,
+                  return_type: Base(
+                      Unit,
+                  ),
               },
           ),
           events: [
@@ -17492,7 +17654,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -17522,7 +17686,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -17551,13 +17717,17 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
                           name: "sync",
                           params: [],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -17701,7 +17871,7 @@ note:
     ┌─ demos/uniswap.fe:140:27
     │
 140 │         fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                           ^^^^^^^^^^^^^^^^ attributes hash: 8392063984522607378
+    │                           ^^^^^^^^^^^^^^^^ attributes hash: 8456606813876647095
     │
     = TypeConstructor {
           typ: Contract(
@@ -17766,7 +17936,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -17779,7 +17951,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                   ],
               },
@@ -18724,7 +18898,7 @@ note:
     ┌─ demos/uniswap.fe:321:31
     │
 321 │         pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
-    │                               ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15173707327387249702
+    │                               ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6272831764403363833
     │
     = TypeAttribute {
           typ: Contract(
@@ -18850,7 +19024,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -18880,7 +19056,9 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -18909,13 +19087,17 @@ note:
                                   ),
                               ),
                           ],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
                           name: "sync",
                           params: [],
-                          return_type: Unit,
+                          return_type: Base(
+                              Unit,
+                          ),
                       },
                       FunctionAttributes {
                           is_public: true,
@@ -21723,7 +21905,7 @@ note:
     ┌─ demos/uniswap.fe:321:15
     │
 321 │         pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
-    │               ^^^^^^^^^^^^^ attributes hash: 675782158511795747
+    │               ^^^^^^^^^^^^^ attributes hash: 8065529683655712314
     │
     = Contract(
           Contract {
@@ -21848,7 +22030,9 @@ note:
                               ),
                           ),
                       ],
-                      return_type: Unit,
+                      return_type: Base(
+                          Unit,
+                      ),
                   },
                   FunctionAttributes {
                       is_public: true,
@@ -21878,7 +22062,9 @@ note:
                               ),
                           ),
                       ],
-                      return_type: Unit,
+                      return_type: Base(
+                          Unit,
+                      ),
                   },
                   FunctionAttributes {
                       is_public: true,
@@ -21907,13 +22093,17 @@ note:
                               ),
                           ),
                       ],
-                      return_type: Unit,
+                      return_type: Base(
+                          Unit,
+                      ),
                   },
                   FunctionAttributes {
                       is_public: true,
                       name: "sync",
                       params: [],
-                      return_type: Unit,
+                      return_type: Base(
+                          Unit,
+                      ),
                   },
                   FunctionAttributes {
                       is_public: true,

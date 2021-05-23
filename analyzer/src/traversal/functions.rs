@@ -40,7 +40,7 @@ pub fn func_def(
                 )
             })
             .transpose()?
-            .unwrap_or(FixedSize::Unit);
+            .unwrap_or_else(FixedSize::unit);
 
         // `__init__` must not return any type other than `()`.
         if name == "__init__" && !return_type.is_unit() {
@@ -58,7 +58,7 @@ pub fn func_def(
                     ),
                 ],
             );
-            return_type = FixedSize::Unit;
+            return_type = FixedSize::unit();
         }
 
         let attributes: FunctionAttributes = contract_scope
@@ -395,7 +395,7 @@ fn func_return(
     if let fe::FuncStmt::Return { value } = &stmt.kind {
         let attributes = match value {
             Some(val) => expressions::assignable_expr(Rc::clone(&scope), context, val)?,
-            None => ExpressionAttributes::new(Type::Unit, Location::Value),
+            None => ExpressionAttributes::new(Type::unit(), Location::Value),
         };
 
         let host_func_def = scope

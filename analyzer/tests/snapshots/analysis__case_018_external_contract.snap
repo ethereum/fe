@@ -69,7 +69,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                 ],
             },
@@ -150,7 +152,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                 ],
             },
@@ -478,7 +482,7 @@ note:
    ┌─ features/external_contract.fe:24:20
    │
 24 │         foo: Foo = Foo(foo_address)
-   │                    ^^^^^^^^^^^^^^^^ attributes hash: 18356014201510878751
+   │                    ^^^^^^^^^^^^^^^^ attributes hash: 16886301623501386624
    │
    = ExpressionAttributes {
          typ: Contract(
@@ -545,7 +549,9 @@ note:
                                  ),
                              ),
                          ],
-                         return_type: Unit,
+                         return_type: Base(
+                             Unit,
+                         ),
                      },
                  ],
              },
@@ -558,7 +564,7 @@ note:
    ┌─ features/external_contract.fe:25:9
    │
 25 │         foo.emit_event(my_num, my_addrs, my_string)
-   │         ^^^ attributes hash: 18356014201510878751
+   │         ^^^ attributes hash: 16886301623501386624
    │
    = ExpressionAttributes {
          typ: Contract(
@@ -625,7 +631,9 @@ note:
                                  ),
                              ),
                          ],
-                         return_type: Unit,
+                         return_type: Base(
+                             Unit,
+                         ),
                      },
                  ],
              },
@@ -687,10 +695,12 @@ note:
    ┌─ features/external_contract.fe:25:9
    │
 25 │         foo.emit_event(my_num, my_addrs, my_string)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11340536269963356597
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
    │
    = ExpressionAttributes {
-         typ: Unit,
+         typ: Base(
+             Unit,
+         ),
          location: Value,
          move_location: None,
      }
@@ -713,7 +723,7 @@ note:
    ┌─ features/external_contract.fe:32:20
    │
 32 │         foo: Foo = Foo(foo_address)
-   │                    ^^^^^^^^^^^^^^^^ attributes hash: 18356014201510878751
+   │                    ^^^^^^^^^^^^^^^^ attributes hash: 16886301623501386624
    │
    = ExpressionAttributes {
          typ: Contract(
@@ -780,7 +790,9 @@ note:
                                  ),
                              ),
                          ],
-                         return_type: Unit,
+                         return_type: Base(
+                             Unit,
+                         ),
                      },
                  ],
              },
@@ -793,7 +805,7 @@ note:
    ┌─ features/external_contract.fe:33:16
    │
 33 │         return foo.build_array(a, b)
-   │                ^^^ attributes hash: 18356014201510878751
+   │                ^^^ attributes hash: 16886301623501386624
    │
    = ExpressionAttributes {
          typ: Contract(
@@ -860,7 +872,9 @@ note:
                                  ),
                              ),
                          ],
-                         return_type: Unit,
+                         return_type: Base(
+                             Unit,
+                         ),
                      },
                  ],
              },
@@ -964,7 +978,7 @@ note:
   │  
 7 │ ╭     pub def emit_event(my_num: u256, my_addrs: address[5], my_string: string11):
 8 │ │         emit MyEvent(my_num, my_addrs, my_string)
-  │ ╰─────────────────────────────────────────────────^ attributes hash: 5933194758192470687
+  │ ╰─────────────────────────────────────────────────^ attributes hash: 5642126450243024971
   │  
   = FunctionAttributes {
         is_public: true,
@@ -996,7 +1010,9 @@ note:
                 ),
             ),
         ],
-        return_type: Unit,
+        return_type: Base(
+            Unit,
+        ),
     }
 
 note: 
@@ -1051,7 +1067,7 @@ note:
    · │
 24 │ │         foo: Foo = Foo(foo_address)
 25 │ │         foo.emit_event(my_num, my_addrs, my_string)
-   │ ╰───────────────────────────────────────────────────^ attributes hash: 16534951539656982547
+   │ ╰───────────────────────────────────────────────────^ attributes hash: 10419898371504184233
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1089,7 +1105,9 @@ note:
                  ),
              ),
          ],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -1160,7 +1178,7 @@ note:
    ┌─ features/external_contract.fe:24:9
    │
 24 │         foo: Foo = Foo(foo_address)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8627347501674821884
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5062774276835571497
    │
    = Contract(
          Contract {
@@ -1226,7 +1244,9 @@ note:
                              ),
                          ),
                      ],
-                     return_type: Unit,
+                     return_type: Base(
+                         Unit,
+                     ),
                  },
              ],
          },
@@ -1236,7 +1256,7 @@ note:
    ┌─ features/external_contract.fe:32:9
    │
 32 │         foo: Foo = Foo(foo_address)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8627347501674821884
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5062774276835571497
    │
    = Contract(
          Contract {
@@ -1302,7 +1322,9 @@ note:
                              ),
                          ),
                      ],
-                     return_type: Unit,
+                     return_type: Base(
+                         Unit,
+                     ),
                  },
              ],
          },
@@ -1318,7 +1340,7 @@ note:
    · │
 14 │ │         my_array[2] = b
 15 │ │         return my_array
-   │ ╰───────────────────────^ attributes hash: 11261423298995789029
+   │ ╰───────────────────────^ attributes hash: 5506265018671571882
    │  
    = ContractAttributes {
          public_functions: [
@@ -1382,7 +1404,9 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
          ],
          init_function: None,
@@ -1499,7 +1523,9 @@ note:
                                  ),
                              ),
                          ],
-                         return_type: Unit,
+                         return_type: Base(
+                             Unit,
+                         ),
                      },
                  ],
              },
@@ -1517,7 +1543,7 @@ note:
    · │
 32 │ │         foo: Foo = Foo(foo_address)
 33 │ │         return foo.build_array(a, b)
-   │ ╰────────────────────────────────────^ attributes hash: 14627458604945366717
+   │ ╰────────────────────────────────────^ attributes hash: 16068234830659304327
    │  
    = ContractAttributes {
          public_functions: [
@@ -1593,7 +1619,9 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
          ],
          init_function: None,
@@ -1665,7 +1693,9 @@ note:
                                  ),
                              ),
                          ],
-                         return_type: Unit,
+                         return_type: Base(
+                             Unit,
+                         ),
                      },
                  ],
              },
@@ -1677,7 +1707,7 @@ note:
    ┌─ features/external_contract.fe:24:20
    │
 24 │         foo: Foo = Foo(foo_address)
-   │                    ^^^ attributes hash: 1990501847882761040
+   │                    ^^^ attributes hash: 16020630380854771161
    │
    = TypeConstructor {
          typ: Contract(
@@ -1744,7 +1774,9 @@ note:
                                  ),
                              ),
                          ],
-                         return_type: Unit,
+                         return_type: Base(
+                             Unit,
+                         ),
                      },
                  ],
              },
@@ -1763,7 +1795,7 @@ note:
    ┌─ features/external_contract.fe:32:20
    │
 32 │         foo: Foo = Foo(foo_address)
-   │                    ^^^ attributes hash: 1990501847882761040
+   │                    ^^^ attributes hash: 16020630380854771161
    │
    = TypeConstructor {
          typ: Contract(
@@ -1830,7 +1862,9 @@ note:
                                  ),
                              ),
                          ],
-                         return_type: Unit,
+                         return_type: Base(
+                             Unit,
+                         ),
                      },
                  ],
              },
@@ -2181,7 +2215,7 @@ note:
    ┌─ features/external_contract.fe:24:14
    │
 24 │         foo: Foo = Foo(foo_address)
-   │              ^^^ attributes hash: 4899098567064031318
+   │              ^^^ attributes hash: 13177979788212096402
    │
    = Contract(
          Contract {
@@ -2247,7 +2281,9 @@ note:
                              ),
                          ),
                      ],
-                     return_type: Unit,
+                     return_type: Base(
+                         Unit,
+                     ),
                  },
              ],
          },
@@ -2257,7 +2293,7 @@ note:
    ┌─ features/external_contract.fe:32:14
    │
 32 │         foo: Foo = Foo(foo_address)
-   │              ^^^ attributes hash: 4899098567064031318
+   │              ^^^ attributes hash: 13177979788212096402
    │
    = Contract(
          Contract {
@@ -2323,7 +2359,9 @@ note:
                              ),
                          ),
                      ],
-                     return_type: Unit,
+                     return_type: Base(
+                         Unit,
+                     ),
                  },
              ],
          },
