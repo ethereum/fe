@@ -1,5 +1,5 @@
 ---
-source: tests/src/analysis.rs
+source: analyzer/tests/analysis.rs
 expression: "build_snapshot(fixture, &src, &context)"
 
 ---
@@ -30,12 +30,12 @@ note:
   ┌─ features/return_u128_cast.fe:3:21
   │
 3 │         return u128(42)
-  │                     ^^ attributes hash: 16797824492585953824
+  │                     ^^ attributes hash: 9341420026351674595
   │
   = ExpressionAttributes {
         typ: Base(
             Numeric(
-                U256,
+                U128,
             ),
         ),
         location: Value,

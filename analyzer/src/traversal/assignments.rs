@@ -17,9 +17,14 @@ pub fn assign(
     stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::Assign { target, value } = &stmt.kind {
-        let target_attributes = expressions::expr(Rc::clone(&scope), context, target)?;
+        let target_attributes = expressions::expr(Rc::clone(&scope), context, target, None)?;
 
-        let value_attributes = expressions::expr(Rc::clone(&scope), context, value)?;
+        let value_attributes = expressions::expr(
+            Rc::clone(&scope),
+            context,
+            value,
+            Some(&target_attributes.typ),
+        )?;
         check_assign_target(context, target)?;
         if target_attributes.typ != value_attributes.typ {
             context.fancy_error(
@@ -97,8 +102,9 @@ pub fn aug_assign(
     stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::AugAssign { target, op, value } = &stmt.kind {
-        let target_attributes = expressions::expr(Rc::clone(&scope), context, target)?;
-        let value_attributes = expressions::expr(scope, context, value)?;
+        let target_attributes = expressions::expr(Rc::clone(&scope), context, target, None)?;
+        let value_attributes =
+            expressions::expr(scope, context, value, Some(&target_attributes.typ))?;
 
         operations::bin(&target_attributes.typ, &op.kind, &value_attributes.typ)?;
         return Ok(());

@@ -215,7 +215,7 @@ fn for_loop(
             let body_scope = BlockScope::from_block_scope(BlockScopeType::Loop, Rc::clone(&scope));
             // Make sure iter is in the function scope & it should be an array.
 
-            let iter_type = expressions::expr(Rc::clone(&scope), context, &iter)?.typ;
+            let iter_type = expressions::expr(Rc::clone(&scope), context, &iter, None)?.typ;
             let target_type = if let Type::Array(array) = iter_type {
                 FixedSize::Base(array.inner)
             } else {
@@ -265,7 +265,7 @@ fn if_statement(
             body,
             or_else,
         } => {
-            let test_type = expressions::expr(Rc::clone(&scope), context, test)?.typ;
+            let test_type = expressions::expr(Rc::clone(&scope), context, test, None)?.typ;
             if test_type != Type::Base(Base::Bool) {
                 context.type_error(
                     "`if` statement condition is not bool",
@@ -294,7 +294,7 @@ fn while_loop(
 ) -> Result<(), SemanticError> {
     match &stmt.kind {
         fe::FuncStmt::While { test, body } => {
-            let test_type = expressions::expr(Rc::clone(&scope), context, &test)?.typ;
+            let test_type = expressions::expr(Rc::clone(&scope), context, &test, None)?.typ;
             if test_type != Type::Base(Base::Bool) {
                 context.type_error(
                     "`while` loop condition is not bool",
@@ -318,7 +318,7 @@ fn expr(
     stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::Expr { value } = &stmt.kind {
-        let _attributes = expressions::expr(scope, context, value)?;
+        let _attributes = expressions::expr(scope, context, value, None)?;
     }
 
     Ok(())
@@ -360,7 +360,7 @@ fn assert(
     stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::Assert { test, msg } = &stmt.kind {
-        let test_type = expressions::expr(Rc::clone(&scope), context, &test)?.typ;
+        let test_type = expressions::expr(Rc::clone(&scope), context, &test, None)?.typ;
         if test_type != Type::Base(Base::Bool) {
             context.type_error(
                 "`assert` condition is not bool",
@@ -371,7 +371,7 @@ fn assert(
         }
 
         if let Some(msg) = msg {
-            let msg_attributes = expressions::expr(scope, context, msg)?;
+            let msg_attributes = expressions::expr(scope, context, msg, None)?;
             if !matches!(msg_attributes.typ, Type::String(_)) {
                 context.error(
                     "`assert` reason must be a string",
@@ -393,16 +393,21 @@ fn func_return(
     stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::Return { value } = &stmt.kind {
-        let attributes = match value {
-            Some(val) => expressions::assignable_expr(Rc::clone(&scope), context, val)?,
-            None => ExpressionAttributes::new(Type::unit(), Location::Value),
-        };
-
         let host_func_def = scope
             .borrow()
             .current_function_def()
             .expect("Failed to get function definition");
-        if attributes.typ != host_func_def.return_type.into() {
+
+        let expected_type = host_func_def.return_type.into();
+
+        let attributes = match value {
+            Some(val) => {
+                expressions::assignable_expr(Rc::clone(&scope), context, val, Some(&expected_type))?
+            }
+            None => ExpressionAttributes::new(Type::unit(), Location::Value),
+        };
+
+        if attributes.typ != expected_type {
             return Err(SemanticError::type_error());
         }
 

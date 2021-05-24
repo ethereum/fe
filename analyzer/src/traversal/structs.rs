@@ -16,11 +16,7 @@ pub fn struct_def(
     let mut val = Struct::new(name);
     for field in fields {
         let Field { name, typ, .. } = &field.kind;
-        let field_type = type_desc(
-            &Scope::Module(Rc::clone(&module_scope)),
-            context,
-            typ,
-        )?;
+        let field_type = type_desc(&Scope::Module(Rc::clone(&module_scope)), context, typ)?;
         if let Type::Base(base_typ) = field_type {
             val.add_field(&name.kind, &FixedSize::Base(base_typ))?;
         } else {

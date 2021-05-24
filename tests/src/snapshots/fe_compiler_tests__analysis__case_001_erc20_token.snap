@@ -313,12 +313,12 @@ note:
    ┌─ demos/erc20_token.fe:24:29
    │
 24 │         self._decimals = u8(18)
-   │                             ^^ attributes hash: 16797824492585953824
+   │                             ^^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U8,
              ),
          ),
          location: Value,

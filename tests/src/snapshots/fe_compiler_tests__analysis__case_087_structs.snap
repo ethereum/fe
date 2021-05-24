@@ -180,12 +180,12 @@ note:
    ┌─ features/structs.fe:14:22
    │
 14 │             rooms=u8(5),
-   │                      ^ attributes hash: 16797824492585953824
+   │                      ^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U8,
              ),
          ),
          location: Value,
@@ -562,12 +562,12 @@ note:
    ┌─ features/structs.fe:19:42
    │
 19 │         assert self.my_house.rooms == u8(5)
-   │                                          ^ attributes hash: 16797824492585953824
+   │                                          ^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U8,
              ),
          ),
          location: Value,
@@ -1078,12 +1078,12 @@ note:
    ┌─ features/structs.fe:25:42
    │
 25 │         assert self.my_house.rooms == u8(5)
-   │                                          ^ attributes hash: 16797824492585953824
+   │                                          ^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U8,
              ),
          ),
          location: Value,
@@ -1594,12 +1594,12 @@ note:
    ┌─ features/structs.fe:31:42
    │
 31 │         assert self.my_house.rooms == u8(5)
-   │                                          ^ attributes hash: 16797824492585953824
+   │                                          ^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U8,
              ),
          ),
          location: Value,
@@ -2106,12 +2106,12 @@ note:
    ┌─ features/structs.fe:36:42
    │
 36 │         assert self.my_house.rooms == u8(5)
-   │                                          ^ attributes hash: 16797824492585953824
+   │                                          ^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U8,
              ),
          ),
          location: Value,
@@ -2294,12 +2294,12 @@ note:
    ┌─ features/structs.fe:38:34
    │
 38 │         self.my_house.rooms = u8(100)
-   │                                  ^^^ attributes hash: 16797824492585953824
+   │                                  ^^^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U8,
              ),
          ),
          location: Value,
@@ -2608,12 +2608,12 @@ note:
    ┌─ features/structs.fe:41:42
    │
 41 │         assert self.my_house.rooms == u8(100)
-   │                                          ^^^ attributes hash: 16797824492585953824
+   │                                          ^^^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U8,
              ),
          ),
          location: Value,
@@ -2756,12 +2756,12 @@ note:
    ┌─ features/structs.fe:48:22
    │
 48 │             rooms=u8(20),
-   │                      ^^ attributes hash: 16797824492585953824
+   │                      ^^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U8,
              ),
          ),
          location: Value,
@@ -3114,12 +3114,12 @@ note:
    ┌─ features/structs.fe:53:37
    │
 53 │         assert building.rooms == u8(20)
-   │                                     ^^ attributes hash: 16797824492585953824
+   │                                     ^^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U8,
              ),
          ),
          location: Value,
@@ -3522,12 +3522,12 @@ note:
    ┌─ features/structs.fe:59:29
    │
 59 │         building.rooms = u8(10)
-   │                             ^^ attributes hash: 16797824492585953824
+   │                             ^^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U8,
              ),
          ),
          location: Value,
@@ -3904,12 +3904,12 @@ note:
    ┌─ features/structs.fe:64:37
    │
 64 │         assert building.rooms == u8(10)
-   │                                     ^^ attributes hash: 16797824492585953824
+   │                                     ^^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U8,
              ),
          ),
          location: Value,
@@ -4048,12 +4048,12 @@ note:
    ┌─ features/structs.fe:71:22
    │
 71 │             rooms=u8(20),
-   │                      ^^ attributes hash: 16797824492585953824
+   │                      ^^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U8,
              ),
          ),
          location: Value,
@@ -4245,12 +4245,12 @@ note:
    ┌─ features/structs.fe:80:22
    │
 80 │             rooms=u8(20),
-   │                      ^^ attributes hash: 16797824492585953824
+   │                      ^^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U8,
              ),
          ),
          location: Value,

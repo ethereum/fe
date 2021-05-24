@@ -808,12 +808,12 @@ note:
    ┌─ stress/abi_encoding_stress.fe:62:24
    │
 62 │             my_num2=u8(26),
-   │                        ^^ attributes hash: 16797824492585953824
+   │                        ^^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U8,
              ),
          ),
          location: Value,
@@ -1076,12 +1076,12 @@ note:
    ┌─ stress/abi_encoding_stress.fe:69:32
    │
 69 │         my_struct.my_num2 = u8(42)
-   │                                ^^ attributes hash: 16797824492585953824
+   │                                ^^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U8,
              ),
          ),
          location: Value,

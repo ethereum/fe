@@ -50,7 +50,8 @@ macro_rules! test_stmt {
 }
 
 test_stmt! { array_non_primitive, "x: (u8, u8)[10]" }
-test_stmt! { array_mixed_types, "x: u256[3] = [1, address(0), \"hi\"]" }
+test_stmt! { array_mixed_types, "x: u16[3] = [1, address(0), \"hi\"]" }
+test_stmt! { array_size_mismatch, "x: u8[3] = []\ny: u8[3] = [1, 2]" }
 test_stmt! { assert_reason_not_string, "assert true, 1" }
 test_stmt! { assign_int, "5 = 6" }
 test_stmt! { assign_call, "self.f() = 10" }
@@ -89,11 +90,11 @@ test_stmt! { overflow_i32_neg, "i32(-2147483649)" }
 test_stmt! { overflow_i32_pos, "i32(2147483648)" }
 test_stmt! { overflow_i64_neg, "i64(-9223372036854775809)" }
 test_stmt! { overflow_i64_pos, "i64(9223372036854775808)" }
-test_stmt! { overflow_i8_neg, "i8(-129)" }
-test_stmt! { overflow_i8_pos, "i8(128)" }
+test_stmt! { overflow_i8_neg, "x: i8 = -129" }
+test_stmt! { overflow_i8_pos, "x: i8 = 128" }
 test_stmt! { overflow_literal_too_big, "115792089237316195423570985008687907853269984665640564039457584007913129639936" }
 test_stmt! { overflow_literal_too_small, "-115792089237316195423570985008687907853269984665640564039457584007913129639936" }
-test_stmt! { overflow_u128_neg, "u128(-1)" }
+test_stmt! { overflow_u128_neg, "x: u128 = -1" }
 test_stmt! { overflow_u128_pos, "u128(340282366920938463463374607431768211456)" }
 test_stmt! { overflow_u16_neg, "u16(-1)" }
 test_stmt! { overflow_u16_pos, "u16(65536)" }
@@ -105,6 +106,7 @@ test_stmt! { overflow_u64_neg, "u64(-1)" }
 test_stmt! { overflow_u64_pos, "u64(18446744073709551616)" }
 test_stmt! { overflow_u8_neg, "u8(-1)" }
 test_stmt! { overflow_u8_pos, "u8(256)" }
+test_stmt! { overflow_u8_assignment, "x: u8 = 260" }
 test_stmt! { pow_with_signed_exponent, "base: i128\nexp: i128\nbase ** exp" }
 // Exponent can be unsigned but needs to be same size or smaller
 test_stmt! { pow_with_wrong_capacity, "base: i128\nexp: u256\nbase ** exp" }
@@ -114,8 +116,9 @@ test_stmt! { type_constructor_from_variable, "x: u8\ny: u16 = u16(x)" }
 test_stmt! { type_constructor_arg_count, "x: u8 = u8(1, 10)" }
 test_stmt! { unary_minus_on_bool, "x: bool = true\n-x" }
 test_stmt! { unary_not_on_int, "x: u256 = 10\nnot x" }
-test_stmt! { undefined_type, "x: foobar = 10" }
 test_stmt! { undefined_generic_type, "x: foobar<u256> = 10" }
+test_stmt! { undefined_name, "x: u16 = y\nz: u16 = y" }
+test_stmt! { undefined_type, "x: foobar = 10" }
 test_stmt! { unexpected_return, "return 1" }
 
 test_file! { bad_tuple_attr1 }

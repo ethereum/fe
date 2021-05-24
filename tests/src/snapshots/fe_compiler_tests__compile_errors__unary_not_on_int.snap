@@ -7,6 +7,6 @@ error: cannot apply unary operator `not` to type `u256`
   ┌─ [snippet]:4:7
   │
 4 │   not x
-  │       ^ this has type `u256`; expected a `bool`
+  │       ^ this has type `u256`; expected type `bool`
 
 

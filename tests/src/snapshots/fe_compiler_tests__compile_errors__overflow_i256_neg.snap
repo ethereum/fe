@@ -1,5 +1,5 @@
 ---
-source: tests/src/compile_errors.rs
+source: analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---

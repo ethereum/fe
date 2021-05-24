@@ -1,5 +1,5 @@
 ---
-source: tests/src/analysis.rs
+source: analyzer/tests/analysis.rs
 expression: "build_snapshot(fixture, &src, &context)"
 
 ---
@@ -260,12 +260,12 @@ note:
   ┌─ features/numeric_sizes.fe:4:19
   │
 4 │         return u8(0)
-  │                   ^ attributes hash: 16797824492585953824
+  │                   ^ attributes hash: 6817314866882205962
   │
   = ExpressionAttributes {
         typ: Base(
             Numeric(
-                U256,
+                U8,
             ),
         ),
         location: Value,
@@ -292,12 +292,12 @@ note:
   ┌─ features/numeric_sizes.fe:7:20
   │
 7 │         return u16(0)
-  │                    ^ attributes hash: 16797824492585953824
+  │                    ^ attributes hash: 17931047209024117248
   │
   = ExpressionAttributes {
         typ: Base(
             Numeric(
-                U256,
+                U16,
             ),
         ),
         location: Value,
@@ -324,12 +324,12 @@ note:
    ┌─ features/numeric_sizes.fe:10:20
    │
 10 │         return u32(0)
-   │                    ^ attributes hash: 16797824492585953824
+   │                    ^ attributes hash: 5442387896079309831
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U32,
              ),
          ),
          location: Value,
@@ -356,12 +356,12 @@ note:
    ┌─ features/numeric_sizes.fe:13:20
    │
 13 │         return u64(0)
-   │                    ^ attributes hash: 16797824492585953824
+   │                    ^ attributes hash: 3044889006329355385
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U64,
              ),
          ),
          location: Value,
@@ -388,12 +388,12 @@ note:
    ┌─ features/numeric_sizes.fe:16:21
    │
 16 │         return u128(0)
-   │                     ^ attributes hash: 16797824492585953824
+   │                     ^ attributes hash: 9341420026351674595
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U128,
              ),
          ),
          location: Value,
@@ -468,12 +468,12 @@ note:
    ┌─ features/numeric_sizes.fe:22:19
    │
 22 │         return i8(-128)
-   │                   ^^^^ attributes hash: 17351186385905986417
+   │                   ^^^^ attributes hash: 9715536092457030614
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 I256,
+                 I8,
              ),
          ),
          location: Value,
@@ -516,12 +516,12 @@ note:
    ┌─ features/numeric_sizes.fe:25:20
    │
 25 │         return i16(-32768)
-   │                    ^^^^^^ attributes hash: 17351186385905986417
+   │                    ^^^^^^ attributes hash: 13584665093848691268
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 I256,
+                 I16,
              ),
          ),
          location: Value,
@@ -564,12 +564,12 @@ note:
    ┌─ features/numeric_sizes.fe:28:20
    │
 28 │         return i32(-2147483648)
-   │                    ^^^^^^^^^^^ attributes hash: 17351186385905986417
+   │                    ^^^^^^^^^^^ attributes hash: 13972995067286817043
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 I256,
+                 I32,
              ),
          ),
          location: Value,
@@ -612,12 +612,12 @@ note:
    ┌─ features/numeric_sizes.fe:31:20
    │
 31 │         return i64(-9223372036854775808)
-   │                    ^^^^^^^^^^^^^^^^^^^^ attributes hash: 17351186385905986417
+   │                    ^^^^^^^^^^^^^^^^^^^^ attributes hash: 16198180549924123587
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 I256,
+                 I64,
              ),
          ),
          location: Value,
@@ -660,12 +660,12 @@ note:
    ┌─ features/numeric_sizes.fe:34:21
    │
 34 │         return i128(-170141183460469231731687303715884105728)
-   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17351186385905986417
+   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5494075259962106032
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 I256,
+                 I128,
              ),
          ),
          location: Value,
@@ -740,12 +740,12 @@ note:
    ┌─ features/numeric_sizes.fe:40:19
    │
 40 │         return u8(255)
-   │                   ^^^ attributes hash: 16797824492585953824
+   │                   ^^^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U8,
              ),
          ),
          location: Value,
@@ -772,12 +772,12 @@ note:
    ┌─ features/numeric_sizes.fe:43:20
    │
 43 │         return u16(65535)
-   │                    ^^^^^ attributes hash: 16797824492585953824
+   │                    ^^^^^ attributes hash: 17931047209024117248
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U16,
              ),
          ),
          location: Value,
@@ -804,12 +804,12 @@ note:
    ┌─ features/numeric_sizes.fe:46:20
    │
 46 │         return u32(4294967295)
-   │                    ^^^^^^^^^^ attributes hash: 16797824492585953824
+   │                    ^^^^^^^^^^ attributes hash: 5442387896079309831
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U32,
              ),
          ),
          location: Value,
@@ -836,12 +836,12 @@ note:
    ┌─ features/numeric_sizes.fe:49:20
    │
 49 │         return u64(18446744073709551615)
-   │                    ^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+   │                    ^^^^^^^^^^^^^^^^^^^^ attributes hash: 3044889006329355385
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U64,
              ),
          ),
          location: Value,
@@ -868,12 +868,12 @@ note:
    ┌─ features/numeric_sizes.fe:52:21
    │
 52 │         return u128(340282366920938463463374607431768211455)
-   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9341420026351674595
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U128,
              ),
          ),
          location: Value,
@@ -932,12 +932,12 @@ note:
    ┌─ features/numeric_sizes.fe:58:19
    │
 58 │         return i8(127)
-   │                   ^^^ attributes hash: 16797824492585953824
+   │                   ^^^ attributes hash: 9715536092457030614
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 I8,
              ),
          ),
          location: Value,
@@ -964,12 +964,12 @@ note:
    ┌─ features/numeric_sizes.fe:61:20
    │
 61 │         return i16(32767)
-   │                    ^^^^^ attributes hash: 16797824492585953824
+   │                    ^^^^^ attributes hash: 13584665093848691268
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 I16,
              ),
          ),
          location: Value,
@@ -996,12 +996,12 @@ note:
    ┌─ features/numeric_sizes.fe:64:20
    │
 64 │         return i32(2147483647)
-   │                    ^^^^^^^^^^ attributes hash: 16797824492585953824
+   │                    ^^^^^^^^^^ attributes hash: 13972995067286817043
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 I32,
              ),
          ),
          location: Value,
@@ -1028,12 +1028,12 @@ note:
    ┌─ features/numeric_sizes.fe:67:20
    │
 67 │         return i64(9223372036854775807)
-   │                    ^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+   │                    ^^^^^^^^^^^^^^^^^^^ attributes hash: 16198180549924123587
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 I64,
              ),
          ),
          location: Value,
@@ -1060,12 +1060,12 @@ note:
    ┌─ features/numeric_sizes.fe:70:21
    │
 70 │         return i128(170141183460469231731687303715884105727)
-   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5494075259962106032
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 I128,
              ),
          ),
          location: Value,
@@ -1092,12 +1092,12 @@ note:
    ┌─ features/numeric_sizes.fe:73:21
    │
 73 │         return i256(57896044618658097711785492504343953926634992332820282019728792003956564819967)
-   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17351186385905986417
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 I256,
              ),
          ),
          location: Value,

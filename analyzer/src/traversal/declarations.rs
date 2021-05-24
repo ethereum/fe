@@ -1,6 +1,5 @@
 use crate::errors::SemanticError;
 use crate::namespace::scopes::{BlockScope, Scope, Shared};
-use crate::namespace::types::Type;
 use crate::traversal::{expressions, types};
 use crate::Context;
 use fe_parser::ast as fe;
@@ -18,17 +17,24 @@ pub fn var_decl(
             fe::VarDeclTarget::Name(name) => name,
             fe::VarDeclTarget::Tuple(_) => todo!("tuple destructuring variable declaration"),
         };
-        let declared_type = types::type_desc_fixed_size(
-            &Scope::Block(Rc::clone(&scope)),
-            context,
-            &typ,
-        )?;
-        if let Some(value) = value {
-            let value_attributes =
-                expressions::assignable_expr(Rc::clone(&scope), context, value)?;
+        let declared_type =
+            types::type_desc_fixed_size(&Scope::Block(Rc::clone(&scope)), context, &typ)?;
 
-            if Type::from(declared_type.clone()) != value_attributes.typ {
-                return Err(SemanticError::type_error());
+        if let Some(value) = value {
+            let value_attributes = expressions::assignable_expr(
+                Rc::clone(&scope),
+                context,
+                value,
+                Some(&declared_type.clone().into()),
+            )?;
+
+            if declared_type != value_attributes.typ {
+                context.type_error(
+                    "type mismatch",
+                    value.span,
+                    &declared_type,
+                    value_attributes.typ,
+                );
             }
         }
 

@@ -16,12 +16,8 @@ pub fn module(context: &mut Context, module: &fe::Module) -> Result<(), Semantic
 
     for stmt in module.body.iter() {
         match &stmt.kind {
-            fe::ModuleStmt::TypeDef { .. } => {
-                type_def(context, Rc::clone(&scope), stmt)?
-            }
-            fe::ModuleStmt::Pragma { .. } => {
-                pragma_stmt(Rc::clone(&context), Rc::clone(&scope), stmt)
-            }
+            fe::ModuleStmt::TypeDef { .. } => type_def(context, Rc::clone(&scope), stmt)?,
+            fe::ModuleStmt::Pragma { .. } => pragma_stmt(context, stmt),
             fe::ModuleStmt::StructDef { name, fields } => {
                 structs::struct_def(context, Rc::clone(&scope), &name.kind, fields)?
             }
@@ -29,8 +25,7 @@ pub fn module(context: &mut Context, module: &fe::Module) -> Result<(), Semantic
                 // Collect contract statements and the scope that we create for them. After we
                 // have walked all contracts once, we walk over them again for a
                 // more detailed inspection.
-                let contract_scope =
-                    contracts::contract_def(Rc::clone(&scope), context, stmt)?;
+                let contract_scope = contracts::contract_def(Rc::clone(&scope), context, stmt)?;
                 contracts.push((stmt, contract_scope))
             }
             fe::ModuleStmt::FromImport { .. } => unimplemented!(),
@@ -63,7 +58,7 @@ fn type_def(
     unreachable!()
 }
 
-fn pragma_stmt(context: Shared<Context>, _scope: Shared<ModuleScope>, stmt: &Node<fe::ModuleStmt>) {
+fn pragma_stmt(context: &mut Context, stmt: &Node<fe::ModuleStmt>) {
     match &stmt.kind {
         fe::ModuleStmt::Pragma {
             version_requirement,
@@ -75,7 +70,7 @@ fn pragma_stmt(context: Shared<Context>, _scope: Shared<ModuleScope>, stmt: &Nod
                 Version::parse(env!("CARGO_PKG_VERSION")).expect("Missing package version");
 
             if !requirement.matches(&actual_version) {
-                context.borrow_mut().fancy_error(
+                context.fancy_error(
                     format!(
                         "The current compiler version {} doesn't match the specified requirement",
                         actual_version

@@ -683,12 +683,12 @@ note:
    ┌─ stress/tuple_stress.fe:27:86
    │
 27 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
-   │                                                                                      ^ attributes hash: 16797824492585953824
+   │                                                                                      ^ attributes hash: 13972995067286817043
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 I32,
              ),
          ),
          location: Value,
