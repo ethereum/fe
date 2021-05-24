@@ -1,6 +1,6 @@
 ---
 source: analyzer/tests/errors.rs
-expression: "error_string(\"[snippet]\", &src_str)"
+expression: "error_string(\"[snippet]\", &src)"
 
 ---
 error: literal out of range for `i256`

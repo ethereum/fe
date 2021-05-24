@@ -290,6 +290,51 @@ impl Type {
     pub fn unit() -> Self {
         Type::Base(Base::Unit)
     }
+
+    pub fn int(int_type: Integer) -> Self {
+        Type::Base(Base::Numeric(int_type))
+    }
+}
+
+pub trait TypeDowncast {
+    fn as_array(&self) -> Option<&Array>;
+    fn as_tuple(&self) -> Option<&Tuple>;
+    fn as_string(&self) -> Option<&FeString>;
+    fn as_map(&self) -> Option<&Map>;
+    fn as_int(&self) -> Option<Integer>;
+}
+
+impl TypeDowncast for Option<&Type> {
+    fn as_array(&self) -> Option<&Array> {
+        match self {
+            Some(Type::Array(inner)) => Some(inner),
+            _ => None,
+        }
+    }
+    fn as_tuple(&self) -> Option<&Tuple> {
+        match self {
+            Some(Type::Tuple(inner)) => Some(inner),
+            _ => None,
+        }
+    }
+    fn as_string(&self) -> Option<&FeString> {
+        match self {
+            Some(Type::String(inner)) => Some(inner),
+            _ => None,
+        }
+    }
+    fn as_map(&self) -> Option<&Map> {
+        match self {
+            Some(Type::Map(inner)) => Some(inner),
+            _ => None,
+        }
+    }
+    fn as_int(&self) -> Option<Integer> {
+        match self {
+            Some(Type::Base(Base::Numeric(int))) => Some(*int),
+            _ => None,
+        }
+    }
 }
 
 impl From<FixedSize> for Type {

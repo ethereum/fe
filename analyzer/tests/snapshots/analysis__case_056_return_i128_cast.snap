@@ -1,6 +1,6 @@
 ---
 source: analyzer/tests/analysis.rs
-expression: "build_snapshot(fixture, src, &context)"
+expression: "build_snapshot(fixture, &src, &context)"
 
 ---
 ModuleAttributes {
@@ -46,12 +46,12 @@ note:
   ┌─ features/return_i128_cast.fe:3:21
   │
 3 │         return i128(-3)
-  │                     ^^ attributes hash: 17351186385905986417
+  │                     ^^ attributes hash: 5494075259962106032
   │
   = ExpressionAttributes {
         typ: Base(
             Numeric(
-                I256,
+                I128,
             ),
         ),
         location: Value,

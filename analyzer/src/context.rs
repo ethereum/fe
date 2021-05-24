@@ -31,15 +31,14 @@ pub enum Location {
 impl Location {
     /// The expected location of a value with the given type when being
     /// assigned, returned, or passed.
-    pub fn assign_location(typ: Type) -> Result<Self, SemanticError> {
+    pub fn assign_location(typ: &FixedSize) -> Self {
         match typ {
-            Type::Base(_) => Ok(Location::Value),
-            Type::Contract(_) => Ok(Location::Value),
-            Type::Array(_) => Ok(Location::Memory),
-            Type::Tuple(_) => Ok(Location::Memory),
-            Type::String(_) => Ok(Location::Memory),
-            Type::Struct(_) => Ok(Location::Memory),
-            Type::Map(_) => Err(SemanticError::cannot_move()),
+            FixedSize::Base(_) => Location::Value,
+            FixedSize::Contract(_) => Location::Value,
+            FixedSize::Array(_) => Location::Memory,
+            FixedSize::Tuple(_) => Location::Memory,
+            FixedSize::String(_) => Location::Memory,
+            FixedSize::Struct(_) => Location::Memory,
         }
     }
 }
