@@ -529,6 +529,7 @@ The list of types is:
             * [Tuple]
             * [Array]
             * [Bytes]
+            * [String]
             * [Struct]
             * [Enum]
         * [HashMap]
@@ -635,11 +636,15 @@ Map<TKey,TValue>
 
 Where TKey is a base type and TValue is any data type.
 
-### 5.1.1.12. Bytes type
+### 5.1.1.12. Bytes types
 
 MISSING
 
-### 5.1.1.13. Event types
+### 5.1.1.13. String types
+
+MISSING
+
+### 5.1.1.14. Event types
 
 An *event type* is the type denoted by the name of an [`event` item].
 
@@ -805,5 +810,6 @@ Constant size values stored on the stack or in memory can be passed into and ret
 [Address]: #51110-address-types
 [HashMap]: #51111-hashmap-types
 [Bytes]: #51112-bytes-types
-[Event]: #51113-bytes-types
-  [event type]: #51113-bytes-types
+[String]: #51113-string-types
+[Event]: #51114-event-types
+  [event type]: #51114-event-types
