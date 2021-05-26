@@ -37,12 +37,12 @@ error: unexpected end of file
 
 Fe follows Pythonic block indentation rules and the compiler expects us to provide a block of indented code after `GuestBook:`.
 
-Let's expand the code by providing a [`map`](/docs/spec/index.html#51111-hashmap-types) where we can associate messages with Ethereum addresses. The messages will simply be [arrays](/docs/spec/index.html#5116-array-types) of a maximum of `100` bytes written as `bytes[100]`.
+Let's expand the code by providing a [`map`](/docs/spec/index.html#51111-hashmap-types) where we can associate messages with Ethereum addresses. The messages will simply be a [`string`](/docs/spec/index.html#51113-string-types) of a maximum length of `100` written as `string100`.
 The addresses are represented by the builtin [`address`](/docs/spec/index.html#51110-address-type) type.
 
 ```
 contract GuestBook:
-  messages: Map<address, bytes[100]>
+  messages: Map<address, String<100>>
 ```
 
 Execute `./fe guest_book.fe` again to recompile the file.
@@ -76,9 +76,9 @@ Let's focus on the functionality of our world changing application and add a met
 
 ```python
 contract GuestBook:
-  messages: Map<address, bytes[100]>
+  messages: Map<address, String<100>>
 
-  pub def sign(book_msg: bytes[100]):
+  pub def sign(book_msg: string100):
       self.messages[msg.sender] = book_msg
 ```
 
@@ -120,12 +120,12 @@ To make the guest book more useful we will also add a method `get_msg` to read e
 
 ```python
 contract GuestBook:
-  messages: Map<address, bytes[100]>
+  messages: Map<address, String<100>>
 
-  pub def sign(book_msg: bytes[100]):
+  pub def sign(book_msg: string100):
       self.messages[msg.sender] = book_msg
 
-  pub def get_msg(addr: address) -> bytes[100]:
+  pub def get_msg(addr: address) -> string100:
       return self.messages[addr]
 ```
 
@@ -134,7 +134,7 @@ However, we will hit another error as we try to recompile the current code.
 ```
 Unable to compile guest_book.fe.
 Analyzer error: CannotMove on line 8
-pub def get_msg(addr: address) -> bytes[100]:
+pub def get_msg(addr: address) -> string100:
       return self.messages[addr]
 ```
 
@@ -146,12 +146,12 @@ The code should compile fine when we change it accordingly.
 
 ```python
 contract GuestBook:
-  messages: Map<address, bytes[100]>
+  messages: Map<address, String<100>>
 
-  pub def sign(book_msg: bytes[100]):
+  pub def sign(book_msg: string100):
       self.messages[msg.sender] = book_msg
 
-  pub def get_msg(addr: address) -> bytes[100]:
+  pub def get_msg(addr: address) -> string100:
       return self.messages[addr].to_mem()
 ```
 
