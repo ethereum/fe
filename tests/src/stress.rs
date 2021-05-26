@@ -3,8 +3,7 @@
 #![cfg(feature = "solc-backend")]
 use std::iter;
 
-use crate::utils;
-use crate::utils::*;
+use fe_compiler_test_utils::*;
 
 pub fn deploy_contract(
     executor: &mut Executor,
@@ -12,9 +11,9 @@ pub fn deploy_contract(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    utils::deploy_contract(
+    fe_compiler_test_utils::deploy_contract(
         executor,
-        &format!("stress/{}", fixture),
+        &format!("fixtures/stress/{}", fixture),
         contract_name,
         init_params,
     )

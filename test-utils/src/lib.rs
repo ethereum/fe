@@ -8,6 +8,7 @@ use fe_compiler::yul::runtime::functions;
 use primitive_types::{H160, H256, U256};
 use std::collections::BTreeMap;
 use std::fs;
+use std::path::Path;
 use std::str::FromStr;
 use yultsur::*;
 
@@ -182,9 +183,12 @@ pub fn with_executor_backend(backend: evm::backend::MemoryBackend, test: &dyn Fn
 }
 
 pub fn read_fixture(path: &str) -> (String, SourceFileId) {
+    let file_path = Path::new(path);
+    let absolute_path = fs::canonicalize(file_path)
+        .unwrap_or_else(|_| panic!("unable to find the file at: {:?}", file_path));
     let mut files = FileStore::new();
     files
-        .load_file(path)
+        .load_file(absolute_path.to_str().unwrap())
         .unwrap_or_else(|_| panic!("unable to read fixture file: {}", path))
 }
 
@@ -207,15 +211,16 @@ pub fn deploy_contract(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    let path = format!("tests/fixtures/{}", fixture);
     let mut files = FileStore::new();
-    let (src, id) = files.load_file(&path).expect("unable to read fixture file");
+    let (src, id) = files
+        .load_file(&fixture)
+        .expect("unable to read fixture file");
 
     let compiled_module = match compiler::compile(&src, id, true, true) {
         Ok(module) => module,
         Err(error) => {
             print_compiler_errors(error, &src, &files);
-            panic!("failed to compile module: {}", path)
+            panic!("failed to compile module: {}", fixture)
         }
     };
 
@@ -239,7 +244,7 @@ pub fn deploy_solidity_contract(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    let src = fs::read_to_string(format!("tests/fixtures/solidity/{}", fixture))
+    let src = fs::read_to_string(&fixture)
         .expect("unable to read fixture file")
         .replace("\n", "")
         .replace("\"", "\\\"");
@@ -333,7 +338,7 @@ pub fn compile_solidity_contract(name: &str, solidity_src: &str) -> Result<(Stri
 
 #[allow(dead_code)]
 pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
-    let (src, id) = read_fixture(&format!("tests/fixtures/{}", fixture));
+    let (src, id) = read_fixture(&fixture);
     let compiled_module =
         compiler::compile(&src, id, true, true).expect("failed to compile module");
     let compiled_contract = compiled_module

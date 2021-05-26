@@ -1,26 +1,29 @@
 [package]
-name = "fe"
-version = "0.5.0-alpha"
 authors = ["David Sanders <david@ethereum.org>"]
-edition = "2018"
-license = "Apache-2.0"
-repository = "https://github.com/ethereum/fe"
-description = "An implementation of the Fe smart contract language"
-keywords = ["ethereum", "fe", "yul", "smart", "contract", "compiler"]
 categories = ["cryptography::cryptocurrencies", "command-line-utilities", "development-tools"]
+description = "An implementation of the Fe smart contract language"
+edition = "2018"
+keywords = ["ethereum", "fe", "yul", "smart", "contract", "compiler"]
+license = "Apache-2.0"
+name = "fe"
+name = "fe"
 readme = "README.md"
+repository = "https://github.com/ethereum/fe"
+version = "0.5.0-alpha"
+version = "0.4.0-alpha"
 
 [workspace]
-members = [".", "parser", "compiler"]
+members = [".", "parser", "compiler", "tests"]
 
 [features]
-solc-backend = ["fe-compiler/solc-backend"]
+solc-backend = ["fe-compiler/solc-backend", "fe-compiler-tests/solc-backend"]
 
 [dependencies]
-fe-common = {path = "common", version = "^0.5.0-alpha"}
-fe-parser = {path = "parser", version = "^0.5.0-alpha"}
-fe-compiler = {path = "compiler", version = "^0.5.0-alpha"}
 clap = "2.33.3"
+fe-common = {path = "common", version = "^0.5.0-alpha"}
+fe-compiler = {path = "compiler", version = "^0.5.0-alpha"}
+fe-compiler-tests = {path = "tests", features = ["solc-backend"], version = "^0.4.0-alpha"}
+fe-parser = {path = "parser", version = "^0.5.0-alpha"}
 
 [dev-dependencies]
 cargo-release = "0.13.9"
