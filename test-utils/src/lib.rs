@@ -350,11 +350,16 @@ pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> Contr
 
     ContractHarness::new(address, abi)
 }
-
 pub struct Runtime {
     functions: Vec<yul::Statement>,
     test_statements: Vec<yul::Statement>,
     data: Vec<yul::Data>,
+}
+
+impl Default for Runtime {
+    fn default() -> Self {
+        Self::new().with_functions(functions::std())
+    }
 }
 
 pub struct ExecutionOutput {
@@ -364,11 +369,6 @@ pub struct ExecutionOutput {
 
 #[allow(dead_code)]
 impl Runtime {
-    /// Create a `Runtime` instance with all `std` functions.
-    pub fn default() -> Runtime {
-        Runtime::new().with_functions(functions::std())
-    }
-
     /// Create a new `Runtime` instance.
     pub fn new() -> Runtime {
         Runtime {
