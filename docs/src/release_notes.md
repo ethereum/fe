@@ -12,6 +12,81 @@ Fe is moving fast. Read up on all the latest improvements.
 **WARNING: All Fe releases are alpha releases and only meant to share the development progress with developers and enthusiasts. It is NOT yet ready for production usage.**
 
 [//]: # (towncrier release notes start)
+## 0.5.0-alpha (2021-05-27)
+
+
+### Features
+
+
+- Add support for hexadecimal/octal/binary numeric literals.
+
+  Example:
+
+  ```
+  value_hex: u256 = 0xff
+  value_octal: u256 = 0o77
+  value_binary: u256 = 0b11
+  ```
+  ([#333](https://github.com/ethereum/fe/issues/333))
+- Added support for list expressions.
+
+  Example:
+
+  ```
+  values: u256[3] = [10, 20, 30]
+
+  # or anywhere else where expressions can be used such as in a call
+
+  sum: u256 = self.sum([10, 20, 30])
+  ```
+  ([#388](https://github.com/ethereum/fe/issues/388))
+- Contracts, events, and structs can now be empty.
+
+  e.g.
+
+  ```
+  event MyEvent:
+      pass
+
+  ...
+    
+  contract MyContract:
+      pass
+   
+  ...
+    
+  struct MyStruct:
+      pass
+  ```
+  ([#406](https://github.com/ethereum/fe/issues/406))
+- External calls can now handle dynamically-sized return types. ([#415](https://github.com/ethereum/fe/issues/415))
+
+
+### Bugfixes
+
+
+- The analyzer will return an error if a tuple attribute is not of the form `item<index>`. ([#401](https://github.com/ethereum/fe/issues/401))
+
+
+### Improved Documentation
+
+
+- Created a landing page for Fe at https://fe.ethereum.org ([#394](https://github.com/ethereum/fe/issues/394))
+- Provide a Quickstart chapter in Fe Guide ([#403](https://github.com/ethereum/fe/issues/403))
+
+
+### Internal Changes - for Fe Contributors
+
+
+- Using insta to validate Analyzer outputs. ([#387](https://github.com/ethereum/fe/issues/387))
+- Analyzer now disallows using `context.add_` methods to update attributes. ([#392](https://github.com/ethereum/fe/issues/392))
+- `()` now represents a distinct type internally called the unit type, instead of an empty tuple.
+
+  The lowering pass now does the following: Valueless return statements are given a `()` value and 
+  functions without a return value are given explicit `()` returns. ([#406](https://github.com/ethereum/fe/issues/406))
+- Add CI check to ensure fragment files always end with a new line ([#4711](https://github.com/ethereum/fe/issues/4711))
+
+
 ## 0.4.0-alpha (2021-04-28)
 
 
