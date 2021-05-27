@@ -306,7 +306,21 @@ fn _deploy_contract(
     panic!("Failed to create contract")
 }
 
-pub fn compile_solidity_contract(name: &str, solidity_src: &str) -> Result<(String, String), ()> {
+#[derive(Debug)]
+pub struct NotAbleToCompile;
+
+impl std::fmt::Display for NotAbleToCompile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Not Able to compile contract")
+    }
+}
+
+impl std::error::Error for NotAbleToCompile {}
+
+pub fn compile_solidity_contract(
+    name: &str,
+    solidity_src: &str,
+) -> Result<(String, String), NotAbleToCompile> {
     let solc_config = r#"
     {
         "language": "Solidity",
@@ -330,7 +344,7 @@ pub fn compile_solidity_contract(name: &str, solidity_src: &str) -> Result<(Stri
     let abi = output["contracts"]["input.sol"][name]["abi"].to_string();
 
     if [&bytecode, &abi].iter().any(|val| val == &"null") {
-        return Err(());
+        return Err(NotAbleToCompile);
     }
 
     Ok((bytecode, abi))
