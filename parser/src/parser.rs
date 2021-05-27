@@ -22,6 +22,8 @@ pub type ParseResult<T> = Result<T, ParseFailed>;
 /// `Parser` maintains the parsing state, such as the token stream,
 /// indent stack, paren stack, diagnostics, etc.
 /// Syntax parsing logic is in the [`crate::grammar`] module.
+///
+/// See [`BTParser`] if you need backtrackable parser.
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
 
@@ -56,6 +58,10 @@ impl<'a> Parser<'a> {
             diagnostics: vec![],
             file_id,
         }
+    }
+
+    pub fn as_bt_parser<'b>(&'b mut self) -> BTParser<'a, 'b> {
+        BTParser::new(self)
     }
 
     /// Return the next token, or an error if we've reached the end of the file.
@@ -462,6 +468,50 @@ impl<'a> Parser<'a> {
     }
 }
 
+/// A thin wrapper that makes [`Parser`] backtrackable.
+pub struct BTParser<'a, 'b> {
+    snapshot: &'b mut Parser<'a>,
+    parser: Parser<'a>,
+}
+
+impl<'a, 'b> BTParser<'a, 'b> {
+    pub fn new(snapshot: &'b mut Parser<'a>) -> Self {
+        let parser = Parser {
+            lexer: snapshot.lexer.clone(),
+            buffered: snapshot.buffered.clone(),
+            paren_stack: snapshot.paren_stack.clone(),
+            indent_stack: snapshot.indent_stack.clone(),
+            indent_style: snapshot.indent_style,
+            diagnostics: Vec::new(),
+            file_id: snapshot.file_id,
+        };
+        Self { snapshot, parser }
+    }
+
+    pub fn accept(self) {
+        self.snapshot.lexer = self.parser.lexer;
+        self.snapshot.buffered = self.parser.buffered;
+        self.snapshot.paren_stack = self.parser.paren_stack;
+        self.snapshot.indent_stack = self.parser.indent_stack;
+        self.snapshot.indent_style = self.parser.indent_style;
+        self.snapshot.diagnostics.extend(self.parser.diagnostics);
+    }
+}
+
+impl<'a, 'b> std::ops::Deref for BTParser<'a, 'b> {
+    type Target = Parser<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.parser
+    }
+}
+
+impl<'a, 'b> std::ops::DerefMut for BTParser<'a, 'b> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.parser
+    }
+}
+
 fn indent_char_name(c: char) -> &'static str {
     match c {
         ' ' => "space",
@@ -504,6 +554,7 @@ impl Label {
     }
 }
 
+#[derive(Clone)]
 struct BlockIndent<'a> {
     context_span: Span,
     context_name: String,

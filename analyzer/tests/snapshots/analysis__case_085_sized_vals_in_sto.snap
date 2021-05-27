@@ -577,7 +577,7 @@ note:
 note: 
    ┌─ features/sized_vals_in_sto.fe:23:5
    │  
-23 │ ╭     pub def write_str(x: string26):
+23 │ ╭     pub def write_str(x: String<26>):
 24 │ │         self.str = x
    │ ╰────────────────────^ attributes hash: 8954082301525757861
    │  
@@ -600,7 +600,7 @@ note:
 note: 
    ┌─ features/sized_vals_in_sto.fe:26:5
    │  
-26 │ ╭     pub def read_str() -> string26:
+26 │ ╭     pub def read_str() -> String<26>:
 27 │ │         return self.str.to_mem()
    │ ╰────────────────────────────────^ attributes hash: 14969878574351140770
    │  
@@ -639,7 +639,7 @@ note:
  1 │ ╭ contract Foo:
  2 │ │     num: u256
  3 │ │     nums: u256[42]
- 4 │ │     str: string26
+ 4 │ │     str: String<26>
    · │
 33 │ │             self.str.to_mem()
 34 │ │         )
@@ -817,8 +817,8 @@ note:
 6 │ ╭     event MyEvent:
 7 │ │         num: u256
 8 │ │         nums: u256[42]
-9 │ │         str: string26
-  │ ╰─────────────────────^ attributes hash: 17206441778791770980
+9 │ │         str: String<26>
+  │ ╰───────────────────────^ attributes hash: 17206441778791770980
   │  
   = EventDef {
         name: "MyEvent",
@@ -885,8 +885,8 @@ note:
 note: 
   ┌─ features/sized_vals_in_sto.fe:9:14
   │
-9 │         str: string26
-  │              ^^^^^^^^ attributes hash: 14735093766067758717
+9 │         str: String<26>
+  │              ^^^^^^^^^^ attributes hash: 14735093766067758717
   │
   = String(
         FeString {
@@ -951,8 +951,8 @@ note:
 note: 
    ┌─ features/sized_vals_in_sto.fe:23:26
    │
-23 │     pub def write_str(x: string26):
-   │                          ^^^^^^^^ attributes hash: 14735093766067758717
+23 │     pub def write_str(x: String<26>):
+   │                          ^^^^^^^^^^ attributes hash: 14735093766067758717
    │
    = String(
          FeString {
@@ -963,8 +963,8 @@ note:
 note: 
    ┌─ features/sized_vals_in_sto.fe:26:27
    │
-26 │     pub def read_str() -> string26:
-   │                           ^^^^^^^^ attributes hash: 14735093766067758717
+26 │     pub def read_str() -> String<26>:
+   │                           ^^^^^^^^^^ attributes hash: 14735093766067758717
    │
    = String(
          FeString {
@@ -1002,8 +1002,8 @@ note:
 note: 
   ┌─ features/sized_vals_in_sto.fe:4:10
   │
-4 │     str: string26
-  │          ^^^^^^^^ attributes hash: 14735093766067758717
+4 │     str: String<26>
+  │          ^^^^^^^^^^ attributes hash: 14735093766067758717
   │
   = String(
         FeString {

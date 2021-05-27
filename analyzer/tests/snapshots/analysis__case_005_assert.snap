@@ -288,7 +288,7 @@ note:
 note: 
   ┌─ features/assert.fe:8:5
   │  
-8 │ ╭     pub def revert_with(baz: u256, reason: string1000):
+8 │ ╭     pub def revert_with(baz: u256, reason: String<1000>):
 9 │ │         assert baz > 5, reason
   │ ╰──────────────────────────────^ attributes hash: 8362848128767449402
   │  
@@ -324,7 +324,7 @@ note:
 3 │ │         assert baz > 5
 4 │ │ 
   · │
-8 │ │     pub def revert_with(baz: u256, reason: string1000):
+8 │ │     pub def revert_with(baz: u256, reason: String<1000>):
 9 │ │         assert baz > 5, reason
   │ ╰──────────────────────────────^ attributes hash: 18279959482144090337
   │  
@@ -422,7 +422,7 @@ note:
 note: 
   ┌─ features/assert.fe:8:30
   │
-8 │     pub def revert_with(baz: u256, reason: string1000):
+8 │     pub def revert_with(baz: u256, reason: String<1000>):
   │                              ^^^^ attributes hash: 17942395924573474124
   │
   = Base(
@@ -434,8 +434,8 @@ note:
 note: 
   ┌─ features/assert.fe:8:44
   │
-8 │     pub def revert_with(baz: u256, reason: string1000):
-  │                                            ^^^^^^^^^^ attributes hash: 18306761550294403845
+8 │     pub def revert_with(baz: u256, reason: String<1000>):
+  │                                            ^^^^^^^^^^^^ attributes hash: 18306761550294403845
   │
   = String(
         FeString {

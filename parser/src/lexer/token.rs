@@ -2,7 +2,7 @@ use crate::node::{Node, Span};
 use logos::Logos;
 use std::ops::Add;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Token<'a> {
     pub kind: TokenKind,
     pub text: &'a str,

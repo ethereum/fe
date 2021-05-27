@@ -18,7 +18,6 @@ use fe_common::numeric;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use num_bigint::BigInt;
-use std::convert::TryFrom;
 use std::rc::Rc;
 use std::str::FromStr;
 use vec1::Vec1;
@@ -482,8 +481,13 @@ fn expr_call(
     context: Shared<Context>,
     exp: &Node<fe::Expr>,
 ) -> Result<ExpressionAttributes, SemanticError> {
-    if let fe::Expr::Call { func, args } = &exp.kind {
-        return match expr_call_type(Rc::clone(&scope), Rc::clone(&context), func)? {
+    if let fe::Expr::Call {
+        func,
+        generic_args,
+        args,
+    } = &exp.kind
+    {
+        return match expr_call_type(Rc::clone(&scope), Rc::clone(&context), func, &generic_args)? {
             CallType::BuiltinFunction { func } => {
                 expr_call_builtin_function(scope, context, func, args)
             }
@@ -830,9 +834,10 @@ fn expr_call_type(
     scope: Shared<BlockScope>,
     context: Shared<Context>,
     func: &Node<fe::Expr>,
+    generic_args: &[Node<fe::GenericArg>],
 ) -> Result<CallType, SemanticError> {
     let call_type = match &func.kind {
-        fe::Expr::Name(name) => expr_name_call_type(scope, Rc::clone(&context), name),
+        fe::Expr::Name(name) => expr_name_call_type(scope, Rc::clone(&context), name, generic_args),
         fe::Expr::Attribute { .. } => expr_attribute_call_type(scope, Rc::clone(&context), func),
         _ => Err(SemanticError::not_callable()),
     }?;
@@ -845,56 +850,61 @@ fn expr_name_call_type(
     scope: Shared<BlockScope>,
     _context: Shared<Context>,
     name: &str,
+    generic_args: &[Node<fe::GenericArg>],
 ) -> Result<CallType, SemanticError> {
-    match name {
-        "keccak256" => Ok(CallType::BuiltinFunction {
+    match (name, generic_args) {
+        ("keccak256", _) => Ok(CallType::BuiltinFunction {
             func: GlobalMethod::Keccak256,
         }),
-        "address" => Ok(CallType::TypeConstructor {
+        ("address", _) => Ok(CallType::TypeConstructor {
             typ: Type::Base(Base::Address),
         }),
-        "u256" => Ok(CallType::TypeConstructor {
+        ("u256", _) => Ok(CallType::TypeConstructor {
             typ: Type::Base(Base::Numeric(Integer::U256)),
         }),
-        "u128" => Ok(CallType::TypeConstructor {
+        ("u128", _) => Ok(CallType::TypeConstructor {
             typ: Type::Base(Base::Numeric(Integer::U128)),
         }),
-        "u64" => Ok(CallType::TypeConstructor {
+        ("u64", _) => Ok(CallType::TypeConstructor {
             typ: Type::Base(Base::Numeric(Integer::U64)),
         }),
-        "u32" => Ok(CallType::TypeConstructor {
+        ("u32", _) => Ok(CallType::TypeConstructor {
             typ: Type::Base(Base::Numeric(Integer::U32)),
         }),
-        "u16" => Ok(CallType::TypeConstructor {
+        ("u16", _) => Ok(CallType::TypeConstructor {
             typ: Type::Base(Base::Numeric(Integer::U16)),
         }),
-        "u8" => Ok(CallType::TypeConstructor {
+        ("u8", _) => Ok(CallType::TypeConstructor {
             typ: Type::Base(Base::Numeric(Integer::U8)),
         }),
-        "i256" => Ok(CallType::TypeConstructor {
+        ("i256", _) => Ok(CallType::TypeConstructor {
             typ: Type::Base(Base::Numeric(Integer::I256)),
         }),
-        "i128" => Ok(CallType::TypeConstructor {
+        ("i128", _) => Ok(CallType::TypeConstructor {
             typ: Type::Base(Base::Numeric(Integer::I128)),
         }),
-        "i64" => Ok(CallType::TypeConstructor {
+        ("i64", _) => Ok(CallType::TypeConstructor {
             typ: Type::Base(Base::Numeric(Integer::I64)),
         }),
-        "i32" => Ok(CallType::TypeConstructor {
+        ("i32", _) => Ok(CallType::TypeConstructor {
             typ: Type::Base(Base::Numeric(Integer::I32)),
         }),
-        "i16" => Ok(CallType::TypeConstructor {
+        ("i16", _) => Ok(CallType::TypeConstructor {
             typ: Type::Base(Base::Numeric(Integer::I16)),
         }),
-        "i8" => Ok(CallType::TypeConstructor {
+        ("i8", _) => Ok(CallType::TypeConstructor {
             typ: Type::Base(Base::Numeric(Integer::I8)),
         }),
-        value if value.starts_with("string") => Ok(CallType::TypeConstructor {
-            typ: Type::String(
-                TryFrom::try_from(value).map_err(|_| SemanticError::undefined_value())?,
-            ),
+        (
+            "String",
+            [Node {
+                kind: fe::GenericArg::Int(len),
+                ..
+            }],
+        ) => Ok(CallType::TypeConstructor {
+            typ: Type::String(FeString { max_size: *len }),
         }),
-        value => {
+        (value, _) => {
             if let Some(typ) = scope.borrow().get_module_type_def(value) {
                 Ok(CallType::TypeConstructor { typ })
             } else {

@@ -57,6 +57,7 @@ Node(
         end: 9,
       ),
     ),
+    generic_args: [],
     args: Node(
       kind: [
         Node(

@@ -677,6 +677,7 @@ name = "fe-parser"
 version = "0.4.0-alpha"
 dependencies = [
  "fe-common",
+ "if_chain",
  "insta",
  "logos",
  "serde",
@@ -859,6 +860,12 @@ dependencies = [
  "unicode-bidi",
  "unicode-normalization",
 ]
+
+[[package]]
+name = "if_chain"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f7280c75fb2e2fc47080ec80ccc481376923acb04501957fc38f935c3de5088"
 
 [[package]]
 name = "ignore"

@@ -3,6 +3,7 @@ use crate::node::Span;
 use logos::Logos;
 pub use token::{Token, TokenKind};
 
+#[derive(Clone)]
 pub struct Lexer<'a> {
     inner: logos::Lexer<'a, TokenKind>,
 }

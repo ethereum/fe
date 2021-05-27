@@ -199,7 +199,7 @@ pub fn parse_opt_qualifier(par: &mut Parser, tk: TokenKind) -> Option<Span> {
 /// of `map<address, u256>`).
 /// # Panics
 /// Panics if the first token isn't `<`.
-fn parse_generic_args(par: &mut Parser) -> ParseResult<(Vec<Node<GenericArg>>, Span)> {
+pub fn parse_generic_args(par: &mut Parser) -> ParseResult<(Vec<Node<GenericArg>>, Span)> {
     use TokenKind::*;
     let mut span = par.assert(Lt).span;
 

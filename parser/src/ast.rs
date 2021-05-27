@@ -216,6 +216,7 @@ pub enum Expr {
     },
     Call {
         func: Box<Node<Expr>>,
+        generic_args: Vec<Node<GenericArg>>,
         args: Node<Vec<Node<CallArg>>>,
     },
     List {

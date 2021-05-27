@@ -2116,8 +2116,8 @@ note:
    ┌─ stress/data_copying_stress.fe:16:5
    │  
 16 │ ╭     pub def set_my_vals(
-17 │ │         my_string: string42,
-18 │ │         my_other_string: string42,
+17 │ │         my_string: String<42>,
+18 │ │         my_other_string: String<42>,
 19 │ │         my_u256: u256,
    · │
 24 │ │         self.my_u256 = my_u256
@@ -2357,7 +2357,7 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:73:5
    │  
-73 │ ╭     def emit_my_event_internal(some_string: string42, some_u256: u256):
+73 │ ╭     def emit_my_event_internal(some_string: String<42>, some_u256: u256):
 74 │ │         emit MyEvent(some_string, some_u256)
    │ ╰────────────────────────────────────────────^ attributes hash: 11329158825917724746
    │  
@@ -2474,8 +2474,8 @@ note:
    ┌─ stress/data_copying_stress.fe:1:1
    │  
  1 │ ╭ contract Foo:
- 2 │ │     my_string: string42
- 3 │ │     my_other_string: string42
+ 2 │ │     my_string: String<42>
+ 3 │ │     my_other_string: String<42>
  4 │ │ 
    · │
 79 │ │     pub def get_my_second_addr() -> address:
@@ -2753,7 +2753,7 @@ note:
    ┌─ stress/data_copying_stress.fe:12:5
    │  
 12 │ ╭     event MyEvent:
-13 │ │         my_string: string42
+13 │ │         my_string: String<42>
 14 │ │         my_u256: u256
    │ ╰─────────────────────^ attributes hash: 9960040166005382103
    │  
@@ -2784,8 +2784,8 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:13:20
    │
-13 │         my_string: string42
-   │                    ^^^^^^^^ attributes hash: 12783265608664719061
+13 │         my_string: String<42>
+   │                    ^^^^^^^^^^ attributes hash: 12783265608664719061
    │
    = String(
          FeString {
@@ -2808,8 +2808,8 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:17:20
    │
-17 │         my_string: string42,
-   │                    ^^^^^^^^ attributes hash: 12783265608664719061
+17 │         my_string: String<42>,
+   │                    ^^^^^^^^^^ attributes hash: 12783265608664719061
    │
    = String(
          FeString {
@@ -2820,8 +2820,8 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:18:26
    │
-18 │         my_other_string: string42,
-   │                          ^^^^^^^^ attributes hash: 12783265608664719061
+18 │         my_other_string: String<42>,
+   │                          ^^^^^^^^^^ attributes hash: 12783265608664719061
    │
    = String(
          FeString {
@@ -2976,8 +2976,8 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:73:45
    │
-73 │     def emit_my_event_internal(some_string: string42, some_u256: u256):
-   │                                             ^^^^^^^^ attributes hash: 12783265608664719061
+73 │     def emit_my_event_internal(some_string: String<42>, some_u256: u256):
+   │                                             ^^^^^^^^^^ attributes hash: 12783265608664719061
    │
    = String(
          FeString {
@@ -2986,10 +2986,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:73:66
+   ┌─ stress/data_copying_stress.fe:73:68
    │
-73 │     def emit_my_event_internal(some_string: string42, some_u256: u256):
-   │                                                                  ^^^^ attributes hash: 17942395924573474124
+73 │     def emit_my_event_internal(some_string: String<42>, some_u256: u256):
+   │                                                                    ^^^^ attributes hash: 17942395924573474124
    │
    = Base(
          Numeric(
@@ -3023,8 +3023,8 @@ note:
 note: 
   ┌─ stress/data_copying_stress.fe:2:16
   │
-2 │     my_string: string42
-  │                ^^^^^^^^ attributes hash: 12783265608664719061
+2 │     my_string: String<42>
+  │                ^^^^^^^^^^ attributes hash: 12783265608664719061
   │
   = String(
         FeString {
@@ -3035,8 +3035,8 @@ note:
 note: 
   ┌─ stress/data_copying_stress.fe:3:22
   │
-3 │     my_other_string: string42
-  │                      ^^^^^^^^ attributes hash: 12783265608664719061
+3 │     my_other_string: String<42>
+  │                      ^^^^^^^^^^ attributes hash: 12783265608664719061
   │
   = String(
         FeString {

@@ -3357,7 +3357,7 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:21:5
    │  
-21 │ ╭     pub def __init__(name: string100, symbol: string100):
+21 │ ╭     pub def __init__(name: String<100>, symbol: String<100>):
 22 │ │         self._name = name
 23 │ │         self._symbol = symbol
 24 │ │         self._decimals = u8(18)
@@ -3391,7 +3391,7 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:27:5
    │  
-27 │ ╭     pub def name() -> string100:
+27 │ ╭     pub def name() -> String<100>:
 28 │ │         return self._name.to_mem()
    │ ╰──────────────────────────────────^ attributes hash: 5720617903306357983
    │  
@@ -3409,7 +3409,7 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:30:5
    │  
-30 │ ╭     pub def symbol() -> string100:
+30 │ ╭     pub def symbol() -> String<100>:
 31 │ │         return self._symbol.to_mem()
    │ ╰────────────────────────────────────^ attributes hash: 11260969396255851957
    │  
@@ -4597,8 +4597,8 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:21:28
    │
-21 │     pub def __init__(name: string100, symbol: string100):
-   │                            ^^^^^^^^^ attributes hash: 17803113925034335199
+21 │     pub def __init__(name: String<100>, symbol: String<100>):
+   │                            ^^^^^^^^^^^ attributes hash: 17803113925034335199
    │
    = String(
          FeString {
@@ -4607,10 +4607,10 @@ note:
      )
 
 note: 
-   ┌─ demos/erc20_token.fe:21:47
+   ┌─ demos/erc20_token.fe:21:49
    │
-21 │     pub def __init__(name: string100, symbol: string100):
-   │                                               ^^^^^^^^^ attributes hash: 17803113925034335199
+21 │     pub def __init__(name: String<100>, symbol: String<100>):
+   │                                                 ^^^^^^^^^^^ attributes hash: 17803113925034335199
    │
    = String(
          FeString {
@@ -4621,8 +4621,8 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:27:23
    │
-27 │     pub def name() -> string100:
-   │                       ^^^^^^^^^ attributes hash: 17803113925034335199
+27 │     pub def name() -> String<100>:
+   │                       ^^^^^^^^^^^ attributes hash: 17803113925034335199
    │
    = String(
          FeString {
@@ -4633,8 +4633,8 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:30:25
    │
-30 │     pub def symbol() -> string100:
-   │                         ^^^^^^^^^ attributes hash: 17803113925034335199
+30 │     pub def symbol() -> String<100>:
+   │                         ^^^^^^^^^^^ attributes hash: 17803113925034335199
    │
    = String(
          FeString {
@@ -5096,8 +5096,8 @@ note:
 note: 
   ┌─ demos/erc20_token.fe:7:12
   │
-7 │     _name: string100
-  │            ^^^^^^^^^ attributes hash: 17803113925034335199
+7 │     _name: String<100>
+  │            ^^^^^^^^^^^ attributes hash: 17803113925034335199
   │
   = String(
         FeString {
@@ -5108,8 +5108,8 @@ note:
 note: 
   ┌─ demos/erc20_token.fe:8:14
   │
-8 │     _symbol: string100
-  │              ^^^^^^^^^ attributes hash: 17803113925034335199
+8 │     _symbol: String<100>
+  │              ^^^^^^^^^^^ attributes hash: 17803113925034335199
   │
   = String(
         FeString {

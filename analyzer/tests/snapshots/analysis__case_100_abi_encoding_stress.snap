@@ -1618,7 +1618,7 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:35:5
    │  
-35 │ ╭     pub def set_my_string(my_string: string10):
+35 │ ╭     pub def set_my_string(my_string: String<10>):
 36 │ │         self.my_string = my_string
    │ ╰──────────────────────────────────^ attributes hash: 3033660936924075855
    │  
@@ -1641,7 +1641,7 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:38:5
    │  
-38 │ ╭     pub def get_my_string() -> string10:
+38 │ ╭     pub def get_my_string() -> String<10>:
 39 │ │         return self.my_string.to_mem()
    │ ╰──────────────────────────────────────^ attributes hash: 707398757101008385
    │  
@@ -1934,7 +1934,7 @@ note:
  7 │ ╭ contract Foo:
  8 │ │     my_addrs: address[5]
  9 │ │     my_u128: u128
-10 │ │     my_string: string10
+10 │ │     my_string: String<10>
    · │
 81 │ │             self.my_bytes.to_mem()
 82 │ │         )
@@ -2462,7 +2462,7 @@ note:
 15 │ ╭     event MyEvent:
 16 │ │         my_addrs: address[5]
 17 │ │         my_u128: u128
-18 │ │         my_string: string10
+18 │ │         my_string: String<10>
 19 │ │         my_u8s: u8[255]
 20 │ │         my_bool: bool
 21 │ │         my_bytes: bytes[100]
@@ -2555,8 +2555,8 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:18:20
    │
-18 │         my_string: string10
-   │                    ^^^^^^^^ attributes hash: 3801988794903197532
+18 │         my_string: String<10>
+   │                    ^^^^^^^^^^ attributes hash: 3801988794903197532
    │
    = String(
          FeString {
@@ -2655,8 +2655,8 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:35:38
    │
-35 │     pub def set_my_string(my_string: string10):
-   │                                      ^^^^^^^^ attributes hash: 3801988794903197532
+35 │     pub def set_my_string(my_string: String<10>):
+   │                                      ^^^^^^^^^^ attributes hash: 3801988794903197532
    │
    = String(
          FeString {
@@ -2667,8 +2667,8 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:38:32
    │
-38 │     pub def get_my_string() -> string10:
-   │                                ^^^^^^^^ attributes hash: 3801988794903197532
+38 │     pub def get_my_string() -> String<10>:
+   │                                ^^^^^^^^^^ attributes hash: 3801988794903197532
    │
    = String(
          FeString {
@@ -2888,8 +2888,8 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:10:16
    │
-10 │     my_string: string10
-   │                ^^^^^^^^ attributes hash: 3801988794903197532
+10 │     my_string: String<10>
+   │                ^^^^^^^^^^ attributes hash: 3801988794903197532
    │
    = String(
          FeString {
