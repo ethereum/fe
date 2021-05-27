@@ -2,9 +2,9 @@ contract Foo:
     event MyEvent:
         my_num: u256
         my_addrs: address[5]
-        my_string: string11
+        my_string: String<11>
 
-    pub def emit_event(my_num: u256, my_addrs: address[5], my_string: string11):
+    pub def emit_event(my_num: u256, my_addrs: address[5], my_string: String<11>):
         emit MyEvent(my_num, my_addrs, my_string)
 
     pub def build_array(a: u256, b: u256) -> u256[3]:
@@ -19,7 +19,7 @@ contract FooProxy:
         foo_address: address,
         my_num: u256,
         my_addrs: address[5],
-        my_string: string11
+        my_string: String<11>
     ):
         foo: Foo = Foo(foo_address)
         foo.emit_event(my_num, my_addrs, my_string)

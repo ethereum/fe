@@ -1,6 +1,6 @@
 contract Foo:
     event MyEvent:
-        val_1: string100
+        val_1: String<100>
         idx val_2: u8
 
     pub def foo():

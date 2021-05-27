@@ -1,12 +1,12 @@
 contract Foo:
     num: u256
     nums: u256[42]
-    str: string26
+    str: String<26>
 
     event MyEvent:
         num: u256
         nums: u256[42]
-        str: string26
+        str: String<26>
 
     pub def write_num(x: u256):
         self.num = x
@@ -20,10 +20,10 @@ contract Foo:
     pub def read_nums() -> u256[42]:
         return self.nums.to_mem()
 
-    pub def write_str(x: string26):
+    pub def write_str(x: String<26>):
         self.str = x
 
-    pub def read_str() -> string26:
+    pub def read_str() -> String<26>:
         return self.str.to_mem()
 
     pub def emit_event():

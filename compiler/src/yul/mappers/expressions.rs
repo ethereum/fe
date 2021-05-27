@@ -76,7 +76,12 @@ pub fn call_arg(context: &Context, arg: &Node<fe::CallArg>) -> yul::Expression {
 }
 
 fn expr_call(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
-    if let fe::Expr::Call { args, func } = &exp.kind {
+    if let fe::Expr::Call {
+        args,
+        generic_args: _,
+        func,
+    } = &exp.kind
+    {
         if let Some(call_type) = context.get_call(func) {
             let yul_args: Vec<yul::Expression> =
                 args.kind.iter().map(|val| call_arg(context, val)).collect();

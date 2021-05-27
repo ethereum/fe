@@ -7,7 +7,7 @@ struct MyStruct:
 contract Foo:
     my_addrs: address[5]
     my_u128: u128
-    my_string: string10
+    my_string: String<10>
     my_u8s: u8[255]
     my_bool: bool
     my_bytes: bytes[100]
@@ -15,7 +15,7 @@ contract Foo:
     event MyEvent:
         my_addrs: address[5]
         my_u128: u128
-        my_string: string10
+        my_string: String<10>
         my_u8s: u8[255]
         my_bool: bool
         my_bytes: bytes[100]
@@ -32,10 +32,10 @@ contract Foo:
     pub def get_my_u128() -> u128:
         return self.my_u128
 
-    pub def set_my_string(my_string: string10):
+    pub def set_my_string(my_string: String<10>):
         self.my_string = my_string
 
-    pub def get_my_string() -> string10:
+    pub def get_my_string() -> String<10>:
         return self.my_string.to_mem()
 
     pub def set_my_u8s(my_u8s: u8[255]):

@@ -962,7 +962,7 @@ note:
 note: 
   ┌─ features/external_contract.fe:7:5
   │  
-7 │ ╭     pub def emit_event(my_num: u256, my_addrs: address[5], my_string: string11):
+7 │ ╭     pub def emit_event(my_num: u256, my_addrs: address[5], my_string: String<11>):
 8 │ │         emit MyEvent(my_num, my_addrs, my_string)
   │ ╰─────────────────────────────────────────────────^ attributes hash: 5933194758192470687
   │  
@@ -1851,8 +1851,8 @@ note:
 2 │ ╭     event MyEvent:
 3 │ │         my_num: u256
 4 │ │         my_addrs: address[5]
-5 │ │         my_string: string11
-  │ ╰───────────────────────────^ attributes hash: 7378635640628475731
+5 │ │         my_string: String<11>
+  │ ╰─────────────────────────────^ attributes hash: 7378635640628475731
   │  
   = EventDef {
         name: "MyEvent",
@@ -1915,8 +1915,8 @@ note:
 note: 
   ┌─ features/external_contract.fe:5:20
   │
-5 │         my_string: string11
-  │                    ^^^^^^^^ attributes hash: 635517298199288434
+5 │         my_string: String<11>
+  │                    ^^^^^^^^^^ attributes hash: 635517298199288434
   │
   = String(
         FeString {
@@ -1927,7 +1927,7 @@ note:
 note: 
   ┌─ features/external_contract.fe:7:32
   │
-7 │     pub def emit_event(my_num: u256, my_addrs: address[5], my_string: string11):
+7 │     pub def emit_event(my_num: u256, my_addrs: address[5], my_string: String<11>):
   │                                ^^^^ attributes hash: 17942395924573474124
   │
   = Base(
@@ -1939,7 +1939,7 @@ note:
 note: 
   ┌─ features/external_contract.fe:7:48
   │
-7 │     pub def emit_event(my_num: u256, my_addrs: address[5], my_string: string11):
+7 │     pub def emit_event(my_num: u256, my_addrs: address[5], my_string: String<11>):
   │                                                ^^^^^^^^^^ attributes hash: 14952089586677068254
   │
   = Array(
@@ -1952,8 +1952,8 @@ note:
 note: 
   ┌─ features/external_contract.fe:7:71
   │
-7 │     pub def emit_event(my_num: u256, my_addrs: address[5], my_string: string11):
-  │                                                                       ^^^^^^^^ attributes hash: 635517298199288434
+7 │     pub def emit_event(my_num: u256, my_addrs: address[5], my_string: String<11>):
+  │                                                                       ^^^^^^^^^^ attributes hash: 635517298199288434
   │
   = String(
         FeString {
@@ -2038,8 +2038,8 @@ note:
 note: 
    ┌─ features/external_contract.fe:22:20
    │
-22 │         my_string: string11
-   │                    ^^^^^^^^ attributes hash: 635517298199288434
+22 │         my_string: String<11>
+   │                    ^^^^^^^^^^ attributes hash: 635517298199288434
    │
    = String(
          FeString {

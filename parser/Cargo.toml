@@ -17,6 +17,7 @@ serde = { version = "1", features = ["derive"] }
 unescape = "0.1.0"
 uuid = { version = "0.8", features = ["v4", "stdweb"] }
 vec1 = { version = "1.8.0", features = ["serde"] }
+if_chain = "1.0.1"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2"

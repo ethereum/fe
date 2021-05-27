@@ -51,8 +51,13 @@ pub fn expr(context: &Context, exp: Node<fe::Expr>) -> Node<fe::Expr> {
             op,
             right: boxed_expr(context, right),
         },
-        fe::Expr::Call { func, args } => fe::Expr::Call {
+        fe::Expr::Call {
+            func,
+            generic_args,
+            args,
+        } => fe::Expr::Call {
             func: boxed_expr(context, func),
+            generic_args,
             args: call_args(context, args),
         },
         fe::Expr::List { .. } => expr_list(context, exp),
@@ -130,6 +135,7 @@ fn expr_tuple(context: &Context, exp: Node<fe::Expr>) -> fe::Expr {
             // create type constructor call for the lowered tuple
             return fe::Expr::Call {
                 func: Box::new(Node::new(name, exp.span)),
+                generic_args: vec![],
                 args,
             };
         }
@@ -158,6 +164,7 @@ fn expr_list(context: &Context, exp: Node<fe::Expr>) -> fe::Expr {
                     attr: fn_name.into_node(),
                 }
                 .into_boxed_node(),
+                generic_args: vec![],
                 args,
             };
         }

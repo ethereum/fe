@@ -251,20 +251,6 @@ impl Struct {
     }
 }
 
-impl TryFrom<&str> for FeString {
-    type Error = String;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        if !value.starts_with("string") {
-            return Err("Value must start with 'string'".to_string());
-        }
-
-        let max_size = value[6..].parse::<u32>().map_err(|err| err.to_string())? as usize;
-
-        Ok(FeString { max_size })
-    }
-}
-
 impl Integer {
     /// Returns `true` if the integer is signed, otherwise `false`
     pub fn is_signed(&self) -> bool {
@@ -874,11 +860,7 @@ pub fn type_desc(defs: &BTreeMap<String, Type>, typ: &fe::TypeDesc) -> Result<Ty
             "bytes" => Ok(Type::Base(Base::Byte)),
             "address" => Ok(Type::Base(Base::Address)),
             base => {
-                if base.starts_with("string") {
-                    Ok(Type::String(
-                        TryFrom::try_from(base).map_err(|_| SemanticError::type_error())?,
-                    ))
-                } else if let Some(typ) = defs.get(base) {
+                if let Some(typ) = defs.get(base) {
                     Ok(typ.clone())
                 } else {
                     Err(SemanticError::undefined_value())
@@ -906,6 +888,14 @@ pub fn type_desc(defs: &BTreeMap<String, Type>, typ: &fe::TypeDesc) -> Result<Ty
                         kind: ErrorKind::MapTypeError,
                         context: vec![],
                     }),
+                }
+            } else if base.kind == "String" {
+                match &args[..] {
+                    [Node {
+                        kind: fe::GenericArg::Int(len),
+                        ..
+                    }] => Ok(Type::String(FeString { max_size: *len })),
+                    _ => Err(SemanticError::type_error()),
                 }
             } else {
                 Err(SemanticError::undefined_value())

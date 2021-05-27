@@ -12,6 +12,7 @@ Node(
         end: 3,
       ),
     ),
+    generic_args: [],
     args: Node(
       kind: [
         Node(

@@ -2,6 +2,10 @@ use crate::ast::{self, CallArg, Expr, Kwarg};
 use crate::node::Node;
 use crate::{Label, ParseFailed, ParseResult, Parser, Token, TokenKind};
 
+use super::types::parse_generic_args;
+
+use if_chain::if_chain;
+
 // Expressions are parsed in Pratt's top-down operator precedence style.
 // See this article for a nice explanation:
 // <https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html>
@@ -29,6 +33,7 @@ pub fn parse_expr_with_min_bp(par: &mut Parser, min_bp: u8) -> ParseResult<Node<
                     Node::new(
                         Expr::Call {
                             func: Box::new(expr_head),
+                            generic_args: vec![],
                             args,
                         },
                         span,
@@ -71,6 +76,28 @@ pub fn parse_expr_with_min_bp(par: &mut Parser, min_bp: u8) -> ParseResult<Node<
                 _ => unreachable!(), // patterns above must match those in `postfix_binding_power`
             };
             continue;
+        }
+
+        if matches!(op, TokenKind::Lt) {
+            let mut bt_par = par.as_bt_parser();
+            if_chain! {
+                if let Ok((generic_args, _)) = parse_generic_args(&mut bt_par);
+                if matches!(bt_par.peek(), Some(TokenKind::ParenOpen));
+                if let Ok(args) = parse_call_args(&mut bt_par);
+                then {
+                    let span = expr_head.span + args.span;
+                    expr_head = Node::new(
+                        Expr::Call {
+                            func: Box::new(expr_head),
+                            generic_args,
+                            args,
+                        },
+                        span,
+                    );
+                    bt_par.accept();
+                    continue;
+                }
+            }
         }
 
         if let Some((lbp, rbp)) = infix_binding_power(op) {
