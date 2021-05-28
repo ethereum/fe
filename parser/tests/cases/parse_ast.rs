@@ -124,6 +124,10 @@ test_parse! { fn_def, |par| functions::parse_fn_def(par, None), "def foo21(x: bo
 test_parse! { event_def, types::parse_event_def, "event Foo:\n  x: address\n  idx y: u8" }
 test_parse! { empty_event_def, types::parse_event_def, "event Foo:\n  pass" }
 
+test_parse! { pragma1, module::parse_pragma, "pragma 0.1.0" }
+test_parse! { pragma2, module::parse_pragma, "pragma 0.1.0-alpha" }
+test_parse! { pragma3, module::parse_pragma, "pragma >= 1.2, < 1.5" }
+
 test_parse! { import_simple, module::parse_simple_import, "import foo as bar, baz, bing as bop" }
 test_parse! { struct_def, types::parse_struct_def, r#"struct S:
   x: address
@@ -150,6 +154,8 @@ test_parse! { empty_contract_def, contracts::parse_contract_def, r#"contract Foo
 "# }
 
 test_parse! { module_stmts, module::parse_module, r#"
+pragma 0.5.0
+
 import foo as bar, baz as bum
 
 type X = map<u8, u16>

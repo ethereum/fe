@@ -2,7 +2,9 @@ use super::contracts::parse_contract_def;
 use super::types::{parse_struct_def, parse_type_def};
 use crate::ast::{Module, ModuleStmt, SimpleImportName};
 use crate::node::{Node, Span};
-use crate::{ParseFailed, ParseResult, Parser, TokenKind};
+use crate::{Label, ParseFailed, ParseResult, Parser, TokenKind};
+
+use semver::VersionReq;
 
 /// Parse a [`Module`].
 pub fn parse_module(par: &mut Parser) -> ParseResult<Node<Module>> {
@@ -33,6 +35,7 @@ pub fn parse_module(par: &mut Parser) -> ParseResult<Node<Module>> {
 /// Parse a [`ModuleStmt`].
 pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     match par.peek_or_err()? {
+        TokenKind::Pragma => parse_pragma(par),
         TokenKind::Import => parse_simple_import(par),
         TokenKind::Name if par.peeked_text() == "from" => parse_from_import(par),
         TokenKind::Contract => parse_contract_def(par),
@@ -113,4 +116,55 @@ pub fn parse_from_import(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     let tok = par.assert(TokenKind::Name);
     assert_eq!(tok.text, "from");
     todo!("parse from .. import (not supported in rest of compiler yet)")
+}
+
+/// Parse a `pragma <version-requirement>` statement.
+pub fn parse_pragma(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
+    let tok = par.assert(TokenKind::Pragma);
+    assert_eq!(tok.text, "pragma");
+
+    let mut version_string = String::new();
+    let mut tokens = vec![];
+    loop {
+        match par.peek() {
+            Some(TokenKind::Newline) => break,
+            None => break,
+            _ => {
+                let tok = par.next()?;
+                version_string.push_str(tok.text);
+                tokens.push(tok);
+            }
+        }
+    }
+
+    let version_requirement_span = match (tokens.first(), tokens.last()) {
+        (Some(first), Some(last)) => first.span + last.span,
+        _ => {
+            par.error(
+                tok.span,
+                "failed to parse pragma statement: missing version requirement",
+            );
+            return Err(ParseFailed);
+        }
+    };
+
+    match VersionReq::parse(&version_string) {
+        Ok(_) => Ok(Node::new(
+            ModuleStmt::Pragma {
+                version_requirement: Node::new(version_string, version_requirement_span),
+            },
+            tok.span + version_requirement_span,
+        )),
+        Err(err) => {
+            par.fancy_error(
+                format!("failed to parse pragma statement: {}", err),
+                vec![Label::primary(
+                    version_requirement_span,
+                    "Invalid version requirement",
+                )],
+                vec!["Example: `^0.5.0`".into()],
+            );
+            Err(ParseFailed)
+        }
+    }
 }

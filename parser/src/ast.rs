@@ -11,6 +11,9 @@ pub struct Module {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ModuleStmt {
+    Pragma {
+        version_requirement: Node<String>,
+    },
     TypeDef {
         name: Node<String>,
         typ: Node<TypeDesc>,

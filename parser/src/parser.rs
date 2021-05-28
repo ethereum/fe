@@ -61,6 +61,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Return as wrapped back tracking parser
     pub fn as_bt_parser<'b>(&'b mut self) -> BTParser<'a, 'b> {
         BTParser::new(self)
     }

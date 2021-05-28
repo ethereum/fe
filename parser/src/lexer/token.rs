@@ -85,6 +85,8 @@ pub enum TokenKind {
     If,
     #[token("import")]
     Import,
+    #[token("pragma")]
+    Pragma,
     #[token("pass")]
     Pass,
     #[token("for")]
@@ -239,6 +241,7 @@ impl TokenKind {
             Idx => "idx",
             If => "if",
             Import => "import",
+            Pragma => "pragma",
             Pass => "pass",
             For => "for",
             Pub => "pub",
