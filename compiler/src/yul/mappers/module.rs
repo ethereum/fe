@@ -13,6 +13,7 @@ pub fn module(context: &Context, module: &fe::Module) -> YulContracts {
         .iter()
         .fold(YulContracts::new(), |mut contracts, stmt| {
             match &stmt.kind {
+                fe::ModuleStmt::Pragma { .. } => {}
                 fe::ModuleStmt::TypeDef { .. } => {}
                 fe::ModuleStmt::ContractDef { name, .. } => {
                     // Map the set of created contract names to their Yul objects so they can be

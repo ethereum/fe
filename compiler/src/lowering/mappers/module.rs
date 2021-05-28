@@ -12,6 +12,7 @@ pub fn module(context: &Context, module: fe::Module) -> fe::Module {
         .body
         .into_iter()
         .map(|stmt| match &stmt.kind {
+            fe::ModuleStmt::Pragma { .. } => stmt,
             fe::ModuleStmt::TypeDef { .. } => stmt,
             fe::ModuleStmt::StructDef { .. } => stmt,
             fe::ModuleStmt::FromImport { .. } => stmt,

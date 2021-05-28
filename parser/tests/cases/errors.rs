@@ -33,6 +33,20 @@ macro_rules! test_parse_err {
 // These tests use the insta crate. insta will automatically generate the
 // snapshot file on the first run.
 
+test_parse_err! { contract_invalid_version_requirement, module::parse_module, true, r#"
+pragma 0.o
+contract C:
+  pass
+"#
+}
+
+test_parse_err! { contract_missing_version_requirement, module::parse_module, true, r#"
+pragma
+contract C:
+  pass
+"#
+}
+
 test_parse_err! { contract_bad_name, contracts::parse_contract_def, true, "contract 1X:\n x: u8" }
 test_parse_err! { contract_empty_body, module::parse_module, true, "contract X:\n \n \ncontract Y:\n x: u8" }
 test_parse_err! { contract_field_after_def, module::parse_module, false, r#"

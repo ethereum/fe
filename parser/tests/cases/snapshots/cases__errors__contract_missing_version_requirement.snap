@@ -1,0 +1,12 @@
+---
+source: parser/tests/cases/errors.rs
+expression: "err_string(stringify!(contract_missing_version_requirement),\n           module::parse_module, true, r#\"\npragma\ncontract C:\n  pass\n\"#)"
+
+---
+error: failed to parse pragma statement: missing version requirement
+  ┌─ contract_missing_version_requirement:2:1
+  │
+2 │ pragma
+  │ ^^^^^^
+
+

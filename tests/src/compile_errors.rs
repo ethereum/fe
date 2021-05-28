@@ -139,6 +139,7 @@ test_file! { emit_bad_args }
 test_file! { external_call_type_error }
 test_file! { external_call_wrong_number_of_params }
 test_file! { indexed_event }
+test_file! { invalid_compiler_version }
 test_file! { mismatch_return_type }
 test_file! { missing_return }
 test_file! { missing_return_in_else }

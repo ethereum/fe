@@ -631,6 +631,7 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "rstest",
+ "semver 1.0.0",
  "strum",
  "vec1",
 ]
@@ -720,6 +721,7 @@ dependencies = [
  "if_chain",
  "insta",
  "logos",
+ "semver 1.0.0",
  "serde",
  "unescape",
  "uuid",
@@ -1542,6 +1544,12 @@ checksum = "f301af10236f6df4160f7c3f04eec6dbc70ace82d23326abad5edee88801c6b6"
 dependencies = [
  "semver-parser 0.10.2",
 ]
+
+[[package]]
+name = "semver"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76b5842e81eb9bbea19276a9dbbda22ac042532f390a67ab08b895617978abf3"
 
 [[package]]
 name = "semver-parser"
