@@ -7,7 +7,7 @@ use fe_parser::ast as fe;
 use fe_parser::node::{Node, Span};
 
 /// Lowers a module.
-pub fn module(context: &Context, module: fe::Module) -> fe::Module {
+pub fn module(context: &mut Context, module: fe::Module) -> fe::Module {
     let lowered_body = module
         .body
         .into_iter()

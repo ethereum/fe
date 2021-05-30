@@ -5,7 +5,7 @@ use fe_common::Spanned;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 
-pub fn type_desc(context: &Context, desc: Node<fe::TypeDesc>) -> Node<fe::TypeDesc> {
+pub fn type_desc(context: &mut Context, desc: Node<fe::TypeDesc>) -> Node<fe::TypeDesc> {
     let typ = context.get_type_desc(&desc).expect("missing attributes");
 
     match typ {

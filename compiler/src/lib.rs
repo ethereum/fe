@@ -35,7 +35,7 @@ pub fn compile(
     }
 
     // analyze source code
-    let context = match fe_analyzer::analyze(&fe_module, file_id) {
+    let mut context = match fe_analyzer::analyze(&fe_module, file_id) {
         Ok(_) if !errors.is_empty() => return Err(CompileError { errors }),
         Ok(context) => context,
         Err(err) => {
@@ -48,7 +48,7 @@ pub fn compile(
     let json_abis = abi::build(&context, &fe_module)?;
 
     // lower the AST
-    let lowered_fe_module = lowering::lower(&context, fe_module.clone());
+    let lowered_fe_module = lowering::lower(&mut context, fe_module.clone());
 
     // analyze the lowered AST
     let context =
