@@ -6,7 +6,7 @@ expression: "error_string(\"[snippet]\", &src)"
 error: `map` key must be a primitive type
   ┌─ [snippet]:3:10
   │
-3 │   x: map<map<u8, u8>, address>
+3 │   x: Map<Map<u8, u8>, address>
   │          ^^^^^^^^^^^ this can't be used as a map key
 
 

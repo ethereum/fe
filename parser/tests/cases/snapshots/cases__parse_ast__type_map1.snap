@@ -1,12 +1,12 @@
 ---
 source: parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(type_map1), types::parse_type_desc,\n           \"map<address, u256>\")"
+expression: "ast_string(stringify!(type_map1), types::parse_type_desc,\n           \"Map<address, u256>\")"
 
 ---
 Node(
   kind: Generic(
     base: Node(
-      kind: "map",
+      kind: "Map",
       span: Span(
         start: 0,
         end: 3,

@@ -1,5 +1,5 @@
 contract Foo:
-    bar: map<u256, u256>
+    bar: Map<u256, u256>
 
     pub def __init__(baz: u256, bing: u256):
         self.bar[42] = baz + bing

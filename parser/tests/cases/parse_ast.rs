@@ -106,18 +106,18 @@ test_parse! { stmt_var_decl_name, functions::parse_stmt, "foo: u256" }
 test_parse! { stmt_var_decl_tuple, functions::parse_stmt, "(foo, bar): (u256, u256) = (10, 10)" }
 test_parse! { stmt_var_decl_tuples, functions::parse_stmt, "(a, (b, (c, d))): x" }
 
-test_parse! { type_def, types::parse_type_def, "type X = map<address, u256>" }
+test_parse! { type_def, types::parse_type_def, "type X = Map<address, u256>" }
 test_parse! { type_name, types::parse_type_desc, "MyType" }
 test_parse! { type_array, types::parse_type_desc, "address[25]" }
 test_parse! { type_3d, types::parse_type_desc, "u256[4][4][4]" }
 test_parse! { type_string, types::parse_type_desc, "string<100>" }
 test_parse! { type_generic, types::parse_type_desc, "foo<a, b<c>, d[10]>" }
 test_parse! { type_generic_int, types::parse_type_desc, "foo<1, 2>" }
-test_parse! { type_map1, types::parse_type_desc, "map<address, u256>" }
-test_parse! { type_map2, types::parse_type_desc, "map<address, map<u8, u256>>" }
-test_parse! { type_map3, types::parse_type_desc, "map<address, map<u8, map<u8, u8>>>" }
+test_parse! { type_map1, types::parse_type_desc, "Map<address, u256>" }
+test_parse! { type_map2, types::parse_type_desc, "Map<address, Map<u8, u256>>" }
+test_parse! { type_map3, types::parse_type_desc, "Map<address, Map<u8, Map<u8, u8>>>" }
 test_parse! { type_map4, types::parse_type_desc, "map < address , map < u8, u256 > >" }
-test_parse! { type_tuple, types::parse_type_desc, "(u8, u16, address, map<u8, u8>)" }
+test_parse! { type_tuple, types::parse_type_desc, "(u8, u16, address, Map<u8, u8>)" }
 test_parse! { type_unit, types::parse_type_desc, "()" }
 
 test_parse! { fn_def, |par| functions::parse_fn_def(par, None), "def foo21(x: bool, y: address,) -> bool:\n x"}
@@ -133,7 +133,7 @@ test_parse! { struct_def, types::parse_struct_def, r#"struct S:
   x: address
   pub y: u8
   const z: u8
-  pub const a: map<u8, foo>
+  pub const a: Map<u8, foo>
 "# }
 test_parse! { empty_struct_def, types::parse_struct_def, r#"struct S:
   pass
@@ -142,7 +142,7 @@ test_parse! { empty_struct_def, types::parse_struct_def, r#"struct S:
 test_parse! { contract_def, contracts::parse_contract_def, r#"contract Foo:
   x: address
   pub y: u8
-  pub const z: map<u8, address>
+  pub const z: Map<u8, address>
   pub def foo() -> u8:
     return 10
   event Bar:
@@ -158,7 +158,7 @@ pragma 0.5.0
 
 import foo as bar, baz as bum
 
-type X = map<u8, u16>
+type X = Map<u8, u16>
 
 contract A:
     pub const x: u256 = 10
@@ -171,7 +171,7 @@ test_parse! { guest_book, module::parse_module, r#"
 type BookMsg = bytes[100]
 
 contract GuestBook:
-    pub guest_book: map<address, BookMsg>
+    pub guest_book: Map<address, BookMsg>
 
     event Signed:
         idx book_msg: BookMsg

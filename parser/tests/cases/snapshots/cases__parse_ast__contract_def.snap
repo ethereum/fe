@@ -1,6 +1,6 @@
 ---
 source: parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(contract_def), contracts::parse_contract_def,\n           r#\"contract Foo:\n  x: address\n  pub y: u8\n  pub const z: map<u8, address>\n  pub def foo() -> u8:\n    return 10\n  event Bar:\n    idx from: address\n\"#)"
+expression: "ast_string(stringify!(contract_def), contracts::parse_contract_def,\n           r#\"contract Foo:\n  x: address\n  pub y: u8\n  pub const z: Map<u8, address>\n  pub def foo() -> u8:\n    return 10\n  event Bar:\n    idx from: address\n\"#)"
 
 ---
 Node(
@@ -81,7 +81,7 @@ Node(
           typ: Node(
             kind: Generic(
               base: Node(
-                kind: "map",
+                kind: "Map",
                 span: Span(
                   start: 54,
                   end: 57,

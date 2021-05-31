@@ -265,7 +265,7 @@ note:
    ┌─ features/call_statement_with_args_2.fe:1:1
    │  
  1 │ ╭ contract Foo:
- 2 │ │     baz: map<u256, u256>
+ 2 │ │     baz: Map<u256, u256>
  3 │ │ 
  4 │ │     def assign(val: u256) -> u256:
    · │
@@ -344,7 +344,7 @@ note:
 note: 
   ┌─ features/call_statement_with_args_2.fe:2:14
   │
-2 │     baz: map<u256, u256>
+2 │     baz: Map<u256, u256>
   │              ^^^^ attributes hash: 17942395924573474124
   │
   = Base(
@@ -356,7 +356,7 @@ note:
 note: 
   ┌─ features/call_statement_with_args_2.fe:2:20
   │
-2 │     baz: map<u256, u256>
+2 │     baz: Map<u256, u256>
   │                    ^^^^ attributes hash: 17942395924573474124
   │
   = Base(
@@ -368,7 +368,7 @@ note:
 note: 
   ┌─ features/call_statement_with_args_2.fe:2:10
   │
-2 │     baz: map<u256, u256>
+2 │     baz: Map<u256, u256>
   │          ^^^^^^^^^^^^^^^ attributes hash: 3210256860376722957
   │
   = Map(

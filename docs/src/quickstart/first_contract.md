@@ -42,7 +42,7 @@ The addresses are represented by the builtin [`address`](/docs/spec/index.html#5
 
 ```
 contract GuestBook:
-  messages: map<address, bytes[100]>
+  messages: Map<address, bytes[100]>
 ```
 
 Execute `./fe guest_book.fe` again to recompile the file.
@@ -76,7 +76,7 @@ Let's focus on the functionality of our world changing application and add a met
 
 ```python
 contract GuestBook:
-  messages: map<address, bytes[100]>
+  messages: Map<address, bytes[100]>
 
   pub def sign(book_msg: bytes[100]):
       self.messages[msg.sender] = book_msg
@@ -120,7 +120,7 @@ To make the guest book more useful we will also add a method `get_msg` to read e
 
 ```python
 contract GuestBook:
-  messages: map<address, bytes[100]>
+  messages: Map<address, bytes[100]>
 
   pub def sign(book_msg: bytes[100]):
       self.messages[msg.sender] = book_msg
@@ -146,7 +146,7 @@ The code should compile fine when we change it accordingly.
 
 ```python
 contract GuestBook:
-  messages: map<address, bytes[100]>
+  messages: Map<address, bytes[100]>
 
   pub def sign(book_msg: bytes[100]):
       self.messages[msg.sender] = book_msg

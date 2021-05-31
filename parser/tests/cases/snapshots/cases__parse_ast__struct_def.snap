@@ -1,6 +1,6 @@
 ---
 source: parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(struct_def), types::parse_struct_def,\n           r#\"struct S:\n  x: address\n  pub y: u8\n  const z: u8\n  pub const a: map<u8, foo>\n\"#)"
+expression: "ast_string(stringify!(struct_def), types::parse_struct_def,\n           r#\"struct S:\n  x: address\n  pub y: u8\n  const z: u8\n  pub const a: Map<u8, foo>\n\"#)"
 
 ---
 Node(
@@ -108,7 +108,7 @@ Node(
           typ: Node(
             kind: Generic(
               base: Node(
-                kind: "map",
+                kind: "Map",
                 span: Span(
                   start: 64,
                   end: 67,

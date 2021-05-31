@@ -189,7 +189,7 @@ pub fn assignable_expr(
         }
         Map(_) => {
             context.error(
-                "maps cannot reside in memory",
+                "Maps cannot reside in memory",
                 exp.span,
                 "this type can only be used in a contract field",
             );

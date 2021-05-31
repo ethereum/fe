@@ -3,10 +3,10 @@ source: tests/src/compile_errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: `map` expects 2 arguments, but 1 was provided
+error: `Map` expects 2 arguments, but 1 was provided
   ┌─ [snippet]:3:6
   │
-3 │   x: map<y>
+3 │   x: Map<y>
   │      ^^^ - supplied 1 argument
   │      │    
   │      expects 2 arguments

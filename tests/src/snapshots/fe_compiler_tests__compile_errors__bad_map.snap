@@ -3,10 +3,10 @@ source: tests/src/compile_errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: `map` expects 2 arguments, but 3 were provided
+error: `Map` expects 2 arguments, but 3 were provided
   ┌─ [snippet]:3:6
   │
-3 │   x: map<u8, u8, u8>
+3 │   x: Map<u8, u8, u8>
   │      ^^^ --  --  -- supplied 3 arguments
   │      │            
   │      expects 2 arguments
@@ -15,4 +15,4 @@ error: `map` expects 2 arguments, but 3 were provided
 
 TypeError on line 3
 pub def f():
-  [31mx: map<u8, u8, u8>[0m
+  [31mx: Map<u8, u8, u8>[0m

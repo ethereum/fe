@@ -20597,7 +20597,7 @@ note:
 note: 
    ┌─ demos/uniswap.fe:12:19
    │
-12 │     balances: map<address, u256>
+12 │     balances: Map<address, u256>
    │                   ^^^^^^^ attributes hash: 574436082528610497
    │
    = Base(
@@ -20607,7 +20607,7 @@ note:
 note: 
    ┌─ demos/uniswap.fe:12:28
    │
-12 │     balances: map<address, u256>
+12 │     balances: Map<address, u256>
    │                            ^^^^ attributes hash: 17942395924573474124
    │
    = Base(
@@ -20619,7 +20619,7 @@ note:
 note: 
    ┌─ demos/uniswap.fe:12:15
    │
-12 │     balances: map<address, u256>
+12 │     balances: Map<address, u256>
    │               ^^^^^^^^^^^^^^^^^^ attributes hash: 6830914040603267556
    │
    = Map(
@@ -20636,7 +20636,7 @@ note:
 note: 
    ┌─ demos/uniswap.fe:13:21
    │
-13 │     allowances: map<address, map<address, u256>>
+13 │     allowances: Map<address, Map<address, u256>>
    │                     ^^^^^^^ attributes hash: 574436082528610497
    │
    = Base(
@@ -20646,7 +20646,7 @@ note:
 note: 
    ┌─ demos/uniswap.fe:13:34
    │
-13 │     allowances: map<address, map<address, u256>>
+13 │     allowances: Map<address, Map<address, u256>>
    │                                  ^^^^^^^ attributes hash: 574436082528610497
    │
    = Base(
@@ -20656,7 +20656,7 @@ note:
 note: 
    ┌─ demos/uniswap.fe:13:43
    │
-13 │     allowances: map<address, map<address, u256>>
+13 │     allowances: Map<address, Map<address, u256>>
    │                                           ^^^^ attributes hash: 17942395924573474124
    │
    = Base(
@@ -20668,7 +20668,7 @@ note:
 note: 
    ┌─ demos/uniswap.fe:13:30
    │
-13 │     allowances: map<address, map<address, u256>>
+13 │     allowances: Map<address, Map<address, u256>>
    │                              ^^^^^^^^^^^^^^^^^^ attributes hash: 6830914040603267556
    │
    = Map(
@@ -20685,7 +20685,7 @@ note:
 note: 
    ┌─ demos/uniswap.fe:13:17
    │
-13 │     allowances: map<address, map<address, u256>>
+13 │     allowances: Map<address, Map<address, u256>>
    │                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 652293232820874660
    │
    = Map(
@@ -20719,7 +20719,7 @@ note:
 note: 
    ┌─ demos/uniswap.fe:16:17
    │
-16 │     nonces: map<address, u256>
+16 │     nonces: Map<address, u256>
    │                 ^^^^^^^ attributes hash: 574436082528610497
    │
    = Base(
@@ -20729,7 +20729,7 @@ note:
 note: 
    ┌─ demos/uniswap.fe:16:26
    │
-16 │     nonces: map<address, u256>
+16 │     nonces: Map<address, u256>
    │                          ^^^^ attributes hash: 17942395924573474124
    │
    = Base(
@@ -20741,7 +20741,7 @@ note:
 note: 
    ┌─ demos/uniswap.fe:16:13
    │
-16 │     nonces: map<address, u256>
+16 │     nonces: Map<address, u256>
    │             ^^^^^^^^^^^^^^^^^^ attributes hash: 6830914040603267556
    │
    = Map(
@@ -21772,7 +21772,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:289:16
     │
-289 │     pairs: map<address, map<address, address>>
+289 │     pairs: Map<address, Map<address, address>>
     │                ^^^^^^^ attributes hash: 574436082528610497
     │
     = Base(
@@ -21782,7 +21782,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:289:29
     │
-289 │     pairs: map<address, map<address, address>>
+289 │     pairs: Map<address, Map<address, address>>
     │                             ^^^^^^^ attributes hash: 574436082528610497
     │
     = Base(
@@ -21792,7 +21792,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:289:38
     │
-289 │     pairs: map<address, map<address, address>>
+289 │     pairs: Map<address, Map<address, address>>
     │                                      ^^^^^^^ attributes hash: 574436082528610497
     │
     = Base(
@@ -21802,7 +21802,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:289:25
     │
-289 │     pairs: map<address, map<address, address>>
+289 │     pairs: Map<address, Map<address, address>>
     │                         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4628772786735305773
     │
     = Map(
@@ -21817,7 +21817,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:289:12
     │
-289 │     pairs: map<address, map<address, address>>
+289 │     pairs: Map<address, Map<address, address>>
     │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8166731215027904440
     │
     = Map(

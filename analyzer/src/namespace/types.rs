@@ -858,7 +858,7 @@ impl fmt::Display for Array {
 
 impl fmt::Display for Map {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "map<{}, {}>", self.key, self.value)
+        write!(f, "Map<{}, {}>", self.key, self.value)
     }
 }
 

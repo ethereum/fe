@@ -20,7 +20,7 @@ pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     let contract_tok = par.assert(Contract);
 
     // contract Foo:
-    //   x: map<address, u256>
+    //   x: Map<address, u256>
     //   pub y: u8
     //   const z: u256 = 10
     //

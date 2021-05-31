@@ -264,7 +264,7 @@ note:
   ┌─ features/u256_u256_map.fe:1:1
   │  
 1 │ ╭ contract Foo:
-2 │ │     pub bar: map<u256, u256>
+2 │ │     pub bar: Map<u256, u256>
 3 │ │ 
 4 │ │     pub def read_bar(key: u256) -> u256:
   · │
@@ -379,7 +379,7 @@ note:
 note: 
   ┌─ features/u256_u256_map.fe:2:18
   │
-2 │     pub bar: map<u256, u256>
+2 │     pub bar: Map<u256, u256>
   │                  ^^^^ attributes hash: 17942395924573474124
   │
   = Base(
@@ -391,7 +391,7 @@ note:
 note: 
   ┌─ features/u256_u256_map.fe:2:24
   │
-2 │     pub bar: map<u256, u256>
+2 │     pub bar: Map<u256, u256>
   │                        ^^^^ attributes hash: 17942395924573474124
   │
   = Base(
@@ -403,7 +403,7 @@ note:
 note: 
   ┌─ features/u256_u256_map.fe:2:14
   │
-2 │     pub bar: map<u256, u256>
+2 │     pub bar: Map<u256, u256>
   │              ^^^^^^^^^^^^^^^ attributes hash: 3210256860376722957
   │
   = Map(

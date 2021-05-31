@@ -690,8 +690,8 @@ note:
    ┌─ features/nested_map.fe:1:1
    │  
  1 │ ╭ contract Foo:
- 2 │ │     bar: map<address, map<address, u256>>
- 3 │ │     baz: map<address, map<u256, bool>>
+ 2 │ │     bar: Map<address, Map<address, u256>>
+ 3 │ │     baz: Map<address, Map<u256, bool>>
  4 │ │ 
    · │
 14 │ │     pub def write_baz(a: address, b: u256, value: bool):
@@ -945,7 +945,7 @@ note:
 note: 
   ┌─ features/nested_map.fe:2:14
   │
-2 │     bar: map<address, map<address, u256>>
+2 │     bar: Map<address, Map<address, u256>>
   │              ^^^^^^^ attributes hash: 574436082528610497
   │
   = Base(
@@ -955,7 +955,7 @@ note:
 note: 
   ┌─ features/nested_map.fe:2:27
   │
-2 │     bar: map<address, map<address, u256>>
+2 │     bar: Map<address, Map<address, u256>>
   │                           ^^^^^^^ attributes hash: 574436082528610497
   │
   = Base(
@@ -965,7 +965,7 @@ note:
 note: 
   ┌─ features/nested_map.fe:2:36
   │
-2 │     bar: map<address, map<address, u256>>
+2 │     bar: Map<address, Map<address, u256>>
   │                                    ^^^^ attributes hash: 17942395924573474124
   │
   = Base(
@@ -977,7 +977,7 @@ note:
 note: 
   ┌─ features/nested_map.fe:2:23
   │
-2 │     bar: map<address, map<address, u256>>
+2 │     bar: Map<address, Map<address, u256>>
   │                       ^^^^^^^^^^^^^^^^^^ attributes hash: 6830914040603267556
   │
   = Map(
@@ -994,7 +994,7 @@ note:
 note: 
   ┌─ features/nested_map.fe:2:10
   │
-2 │     bar: map<address, map<address, u256>>
+2 │     bar: Map<address, Map<address, u256>>
   │          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 652293232820874660
   │
   = Map(
@@ -1016,7 +1016,7 @@ note:
 note: 
   ┌─ features/nested_map.fe:3:14
   │
-3 │     baz: map<address, map<u256, bool>>
+3 │     baz: Map<address, Map<u256, bool>>
   │              ^^^^^^^ attributes hash: 574436082528610497
   │
   = Base(
@@ -1026,7 +1026,7 @@ note:
 note: 
   ┌─ features/nested_map.fe:3:27
   │
-3 │     baz: map<address, map<u256, bool>>
+3 │     baz: Map<address, Map<u256, bool>>
   │                           ^^^^ attributes hash: 17942395924573474124
   │
   = Base(
@@ -1038,7 +1038,7 @@ note:
 note: 
   ┌─ features/nested_map.fe:3:33
   │
-3 │     baz: map<address, map<u256, bool>>
+3 │     baz: Map<address, Map<u256, bool>>
   │                                 ^^^^ attributes hash: 8311861578736502650
   │
   = Base(
@@ -1048,7 +1048,7 @@ note:
 note: 
   ┌─ features/nested_map.fe:3:23
   │
-3 │     baz: map<address, map<u256, bool>>
+3 │     baz: Map<address, Map<u256, bool>>
   │                       ^^^^^^^^^^^^^^^ attributes hash: 8612757038189634989
   │
   = Map(
@@ -1065,7 +1065,7 @@ note:
 note: 
   ┌─ features/nested_map.fe:3:10
   │
-3 │     baz: map<address, map<u256, bool>>
+3 │     baz: Map<address, Map<u256, bool>>
   │          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12802517836116757582
   │
   = Map(

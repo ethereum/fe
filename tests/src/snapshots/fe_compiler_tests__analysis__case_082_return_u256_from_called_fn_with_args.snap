@@ -599,7 +599,7 @@ note:
    ┌─ features/return_u256_from_called_fn_with_args.fe:1:1
    │  
  1 │ ╭ contract Foo:
- 2 │ │     baz: map<u256, u256>
+ 2 │ │     baz: Map<u256, u256>
  3 │ │     pub def foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
  4 │ │         return val1 + val2 + val3 + val4 + val5
    · │
@@ -809,7 +809,7 @@ note:
 note: 
   ┌─ features/return_u256_from_called_fn_with_args.fe:2:14
   │
-2 │     baz: map<u256, u256>
+2 │     baz: Map<u256, u256>
   │              ^^^^ attributes hash: 17942395924573474124
   │
   = Base(
@@ -821,7 +821,7 @@ note:
 note: 
   ┌─ features/return_u256_from_called_fn_with_args.fe:2:20
   │
-2 │     baz: map<u256, u256>
+2 │     baz: Map<u256, u256>
   │                    ^^^^ attributes hash: 17942395924573474124
   │
   = Base(
@@ -833,7 +833,7 @@ note:
 note: 
   ┌─ features/return_u256_from_called_fn_with_args.fe:2:10
   │
-2 │     baz: map<u256, u256>
+2 │     baz: Map<u256, u256>
   │          ^^^^^^^^^^^^^^^ attributes hash: 3210256860376722957
   │
   = Map(

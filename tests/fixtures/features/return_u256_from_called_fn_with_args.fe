@@ -1,5 +1,5 @@
 contract Foo:
-    baz: map<u256, u256>
+    baz: Map<u256, u256>
     pub def foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
         return val1 + val2 + val3 + val4 + val5
 

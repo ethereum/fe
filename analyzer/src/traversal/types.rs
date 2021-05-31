@@ -63,7 +63,7 @@ pub fn type_desc(
             }
         }
         fe::TypeDesc::Generic { base, args } => match base.kind.as_str() {
-            "map" => {
+            "Map" => {
                 validate_arg_count(context, &base.kind, base.span, &args, 2);
                 if args.kind.len() < 2 {
                     return Err(SemanticError::fatal());

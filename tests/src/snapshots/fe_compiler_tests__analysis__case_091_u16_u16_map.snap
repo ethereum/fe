@@ -264,7 +264,7 @@ note:
   ┌─ features/u16_u16_map.fe:1:1
   │  
 1 │ ╭ contract Foo:
-2 │ │     pub bar: map<u16, u16>
+2 │ │     pub bar: Map<u16, u16>
 3 │ │ 
 4 │ │     pub def read_bar(key: u16) -> u16:
   · │
@@ -379,7 +379,7 @@ note:
 note: 
   ┌─ features/u16_u16_map.fe:2:18
   │
-2 │     pub bar: map<u16, u16>
+2 │     pub bar: Map<u16, u16>
   │                  ^^^ attributes hash: 547894393873242964
   │
   = Base(
@@ -391,7 +391,7 @@ note:
 note: 
   ┌─ features/u16_u16_map.fe:2:23
   │
-2 │     pub bar: map<u16, u16>
+2 │     pub bar: Map<u16, u16>
   │                       ^^^ attributes hash: 547894393873242964
   │
   = Base(
@@ -403,7 +403,7 @@ note:
 note: 
   ┌─ features/u16_u16_map.fe:2:14
   │
-2 │     pub bar: map<u16, u16>
+2 │     pub bar: Map<u16, u16>
   │              ^^^^^^^^^^^^^ attributes hash: 12146385998520654072
   │
   = Map(

@@ -9,11 +9,11 @@ contract UniswapV2Pair:
     # TODO: const support (https://github.com/ethereum/fe/issues/192)
     # const MINIMUM_LIQUIDITY: u256 = 1000
 
-    balances: map<address, u256>
-    allowances: map<address, map<address, u256>>
+    balances: Map<address, u256>
+    allowances: Map<address, Map<address, u256>>
     total_supply: u256
 
-    nonces: map<address, u256>
+    nonces: Map<address, u256>
 
     factory: address
     token0: address
@@ -286,7 +286,7 @@ contract UniswapV2Factory:
     fee_to: address
     fee_to_setter: address
 
-    pairs: map<address, map<address, address>>
+    pairs: Map<address, Map<address, address>>
 
     all_pairs: address[100]
     pair_counter: u256

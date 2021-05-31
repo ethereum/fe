@@ -276,7 +276,7 @@ note:
   ┌─ features/address_bytes10_map.fe:1:1
   │  
 1 │ ╭ contract Foo:
-2 │ │     pub bar: map<address, bytes[10]>
+2 │ │     pub bar: Map<address, bytes[10]>
 3 │ │ 
 4 │ │     pub def read_bar(key: address) -> bytes[10]:
   · │
@@ -415,7 +415,7 @@ note:
 note: 
   ┌─ features/address_bytes10_map.fe:2:18
   │
-2 │     pub bar: map<address, bytes[10]>
+2 │     pub bar: Map<address, bytes[10]>
   │                  ^^^^^^^ attributes hash: 574436082528610497
   │
   = Base(
@@ -425,7 +425,7 @@ note:
 note: 
   ┌─ features/address_bytes10_map.fe:2:27
   │
-2 │     pub bar: map<address, bytes[10]>
+2 │     pub bar: Map<address, bytes[10]>
   │                           ^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
@@ -435,7 +435,7 @@ note:
 note: 
   ┌─ features/address_bytes10_map.fe:2:27
   │
-2 │     pub bar: map<address, bytes[10]>
+2 │     pub bar: Map<address, bytes[10]>
   │                           ^^^^^^^^^ attributes hash: 3890203001217727260
   │
   = Array(
@@ -448,7 +448,7 @@ note:
 note: 
   ┌─ features/address_bytes10_map.fe:2:14
   │
-2 │     pub bar: map<address, bytes[10]>
+2 │     pub bar: Map<address, bytes[10]>
   │              ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4759287443158325036
   │
   = Map(
