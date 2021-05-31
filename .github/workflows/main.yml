@@ -2,81 +2,79 @@ name: CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
     tags:
       - v*
 
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-
   coverage:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Install system dependencies
-      run: |
-        "${GITHUB_WORKSPACE}/.github/install_deps.sh"
-    - name: Cache Rust dependencies
-      uses: actions/cache@v1.1.2
-      with:
-        # There's a problem with caching serde, hence we exclude it here
-        path: |
-          target
-          !target/**/*serde*
-        key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
-    - name: Install rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        override: true
-    - name: coverage with tarpaulin
-      run: |
-        cargo install cargo-tarpaulin
-        make coverage
-        bash <(curl -s https://codecov.io/bash)
+      - uses: actions/checkout@v2
+      - name: Install system dependencies
+        run: |
+          "${GITHUB_WORKSPACE}/.github/install_deps.sh"
+      - name: Cache Rust dependencies
+        uses: actions/cache@v1.1.2
+        with:
+          # There's a problem with caching serde, hence we exclude it here
+          path: |
+            target
+            !target/**/*serde*
+          key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: coverage with tarpaulin
+        run: |
+          cargo install cargo-tarpaulin
+          make coverage
+          bash <(curl -s https://codecov.io/bash)
 
   lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Install system dependencies
-      run: |
-        "${GITHUB_WORKSPACE}/.github/install_deps.sh"
-    - name: Cache Rust dependencies
-      uses: actions/cache@v1.1.2
-      with:
-        # There's a problem with caching serde, hence we exclude it here
-        path: |
-          target
-          !target/**/*serde*
-        key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
-    - name: Install rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        override: true
-        components: rustfmt, clippy
-    - name: Validate release notes entry
-      run: ./newsfragments/validate_files.py
-    - name: Lint with rustfmt
-      uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: --all -- --check
-    - name: Lint with clippy
-      uses: actions-rs/cargo@v1
-      with:
-        command: clippy
-        args: --workspace --all-targets --all-features -- -D warnings
+      - uses: actions/checkout@v2
+      - name: Install system dependencies
+        run: |
+          "${GITHUB_WORKSPACE}/.github/install_deps.sh"
+      - name: Cache Rust dependencies
+        uses: actions/cache@v1.1.2
+        with:
+          # There's a problem with caching serde, hence we exclude it here
+          path: |
+            target
+            !target/**/*serde*
+          key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+      - name: Validate release notes entry
+        run: ./newsfragments/validate_files.py
+      - name: Lint with rustfmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+      - name: Lint with clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --workspace --all-targets --all-features -- -D warnings
 
   test:
     # Build & Test runs on all platforms
@@ -84,87 +82,87 @@ jobs:
     strategy:
       matrix:
         include:
-        - os: ubuntu-latest
-        - os: macOS-latest
+          - os: ubuntu-latest
+          - os: macOS-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Cache Rust dependencies
-      uses: actions/cache@v1.1.2
-      with:
-        # There's a problem with caching serde, hence we exclude it here
-        path: |
-          target
-          !target/**/*serde*
-        key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
-    - name: Install Mac System dependencies
-      if: startsWith(matrix.os,'macOS')
-      run: |
-        brew install boost
-    - name: Install Linux dependencies
-      if: startsWith(matrix.os,'ubuntu')
-      run: |
-        "${GITHUB_WORKSPACE}/.github/install_deps.sh"
-    - name: Install rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        override: true
-    - name: Build
-      run: cargo build --all-features --verbose
-    - name: Run tests
-      run: cargo test --workspace --features solc-backend --verbose
-
-  wasm-test:
-      runs-on: ubuntu-latest
-      container: davesque/rust-wasm
-      steps:
       - uses: actions/checkout@v2
+      - name: Cache Rust dependencies
+        uses: actions/cache@v1.1.2
+        with:
+          # There's a problem with caching serde, hence we exclude it here
+          path: |
+            target
+            !target/**/*serde*
+          key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install Mac System dependencies
+        if: startsWith(matrix.os,'macOS')
+        run: |
+          brew install boost
+      - name: Install Linux dependencies
+        if: startsWith(matrix.os,'ubuntu')
+        run: |
+          "${GITHUB_WORKSPACE}/.github/install_deps.sh"
       - name: Install rust
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           override: true
-      - name: Run WASM tests
-        run: wasm-pack test --node -- --workspace
+      - name: Build
+        run: cargo build --all-features --verbose
+      - name: Run tests
+        run: cargo test --workspace --features solc-backend --verbose
 
+  # wasm-test:
+  #     runs-on: ubuntu-latest
+  #     container: davesque/rust-wasm
+  #     steps:
+  #     - uses: actions/checkout@v2
+  #     - name: Install rust
+  #       uses: actions-rs/toolchain@v1
+  #       with:
+  #         profile: minimal
+  #         toolchain: stable
+  #         override: true
+  #     - name: Run WASM tests
+  #       run: wasm-pack test --node -- --workspace
 
   release:
-      # Only run this when we push a tag
-      if: startsWith(github.ref, 'refs/tags/')
-      runs-on: ${{ matrix.os }}
-      needs: [lint, test, wasm-test]
-      strategy:
-        matrix:
-          include:
+    # Only run this when we push a tag
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ${{ matrix.os }}
+    # needs: [lint, test, wasm-test]
+    needs: [lint, test]
+    strategy:
+      matrix:
+        include:
           - os: ubuntu-latest
             BIN_FILE: fe_amd64
           - os: macOS-latest
             BIN_FILE: fe_mac
 
-      steps:
-        - uses: actions/checkout@v2
-        - name: Install Linux dependencies
-          if: startsWith(matrix.os,'ubuntu')
-          run: |
-            "${GITHUB_WORKSPACE}/.github/install_deps.sh"
-        - name: Install Mac System dependencies
-          if: startsWith(matrix.os,'macOS')
-          run: |
-            brew install boost
-        - name: Install rust
-          uses: actions-rs/toolchain@v1
-          with:
-            profile: minimal
-            toolchain: stable
-            override: true
-        - name: Build
-          run: cargo build --all-features --release && strip target/release/fe && mv target/release/fe target/release/${{ matrix.BIN_FILE }}
-        - name: Release
-          uses: softprops/action-gh-release@v1
-          with:
-            files: target/release/${{ matrix.BIN_FILE }}
-            prerelease: true
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Linux dependencies
+        if: startsWith(matrix.os,'ubuntu')
+        run: |
+          "${GITHUB_WORKSPACE}/.github/install_deps.sh"
+      - name: Install Mac System dependencies
+        if: startsWith(matrix.os,'macOS')
+        run: |
+          brew install boost
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Build
+        run: cargo build --all-features --release && strip target/release/fe && mv target/release/fe target/release/${{ matrix.BIN_FILE }}
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: target/release/${{ matrix.BIN_FILE }}
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

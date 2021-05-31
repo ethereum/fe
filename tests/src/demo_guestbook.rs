@@ -1,13 +1,18 @@
 #![cfg(feature = "solc-backend")]
 
-use crate::utils::*;
+use fe_compiler_test_utils::*;
 
 use std::iter;
 
 #[test]
 fn guest_book() {
     with_executor(&|mut executor| {
-        let mut harness = deploy_contract(&mut executor, "demos/guest_book.fe", "GuestBook", &[]);
+        let mut harness = deploy_contract(
+            &mut executor,
+            "fixtures/demos/guest_book.fe",
+            "GuestBook",
+            &[],
+        );
 
         let sender = address_token("1234000000000000000000000000000000005678");
         let bytes = bytes_token(

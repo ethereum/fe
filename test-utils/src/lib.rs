@@ -8,6 +8,7 @@ use fe_compiler::yul::runtime::functions;
 use primitive_types::{H160, H256, U256};
 use std::collections::BTreeMap;
 use std::fs;
+use std::path::Path;
 use std::str::FromStr;
 use yultsur::*;
 
@@ -182,9 +183,12 @@ pub fn with_executor_backend(backend: evm::backend::MemoryBackend, test: &dyn Fn
 }
 
 pub fn read_fixture(path: &str) -> (String, SourceFileId) {
+    let file_path = Path::new(path);
+    let absolute_path = fs::canonicalize(file_path)
+        .unwrap_or_else(|_| panic!("unable to find the file at: {:?}", file_path));
     let mut files = FileStore::new();
     files
-        .load_file(path)
+        .load_file(absolute_path.to_str().unwrap())
         .unwrap_or_else(|_| panic!("unable to read fixture file: {}", path))
 }
 
@@ -207,15 +211,16 @@ pub fn deploy_contract(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    let path = format!("tests/fixtures/{}", fixture);
     let mut files = FileStore::new();
-    let (src, id) = files.load_file(&path).expect("unable to read fixture file");
+    let (src, id) = files
+        .load_file(&fixture)
+        .expect("unable to read fixture file");
 
     let compiled_module = match compiler::compile(&src, id, true, true) {
         Ok(module) => module,
         Err(error) => {
             print_compiler_errors(error, &src, &files);
-            panic!("failed to compile module: {}", path)
+            panic!("failed to compile module: {}", fixture)
         }
     };
 
@@ -239,7 +244,7 @@ pub fn deploy_solidity_contract(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    let src = fs::read_to_string(format!("tests/fixtures/solidity/{}", fixture))
+    let src = fs::read_to_string(&fixture)
         .expect("unable to read fixture file")
         .replace("\n", "")
         .replace("\"", "\\\"");
@@ -301,7 +306,21 @@ fn _deploy_contract(
     panic!("Failed to create contract")
 }
 
-pub fn compile_solidity_contract(name: &str, solidity_src: &str) -> Result<(String, String), ()> {
+#[derive(Debug)]
+pub struct SolidityCompileError(Vec<serde_json::Value>);
+
+impl std::fmt::Display for SolidityCompileError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", &self.0[..])
+    }
+}
+
+impl std::error::Error for SolidityCompileError {}
+
+pub fn compile_solidity_contract(
+    name: &str,
+    solidity_src: &str,
+) -> Result<(String, String), SolidityCompileError> {
     let solc_config = r#"
     {
         "language": "Solidity",
@@ -318,6 +337,31 @@ pub fn compile_solidity_contract(name: &str, solidity_src: &str) -> Result<(Stri
     let output: serde_json::Value =
         serde_json::from_str(&raw_output).expect("Unable to compile contract");
 
+    if output["errors"].is_array() {
+        let severity: serde_json::Value =
+            serde_json::to_value("error").expect("Unable to convert into serde value type");
+        let errors: serde_json::Value = output["errors"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .cloned()
+            .filter_map(|err| {
+                if err["severity"] == severity {
+                    Some(err["formattedMessage"].clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let errors_list = errors
+            .as_array()
+            .unwrap_or_else(|| panic!("Unable to parse error properly"));
+        if !errors_list.is_empty() {
+            return Err(SolidityCompileError(errors_list.clone()));
+        }
+    }
+
     let bytecode = output["contracts"]["input.sol"][name]["evm"]["bytecode"]["object"]
         .to_string()
         .replace("\"", "");
@@ -325,7 +369,9 @@ pub fn compile_solidity_contract(name: &str, solidity_src: &str) -> Result<(Stri
     let abi = output["contracts"]["input.sol"][name]["abi"].to_string();
 
     if [&bytecode, &abi].iter().any(|val| val == &"null") {
-        return Err(());
+        return Err(SolidityCompileError(vec![serde_json::Value::String(
+            String::from("Bytecode not found"),
+        )]));
     }
 
     Ok((bytecode, abi))
@@ -333,7 +379,7 @@ pub fn compile_solidity_contract(name: &str, solidity_src: &str) -> Result<(Stri
 
 #[allow(dead_code)]
 pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
-    let (src, id) = read_fixture(&format!("tests/fixtures/{}", fixture));
+    let (src, id) = read_fixture(&fixture);
     let compiled_module =
         compiler::compile(&src, id, true, true).expect("failed to compile module");
     let compiled_contract = compiled_module
@@ -345,11 +391,16 @@ pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> Contr
 
     ContractHarness::new(address, abi)
 }
-
 pub struct Runtime {
     functions: Vec<yul::Statement>,
     test_statements: Vec<yul::Statement>,
     data: Vec<yul::Data>,
+}
+
+impl Default for Runtime {
+    fn default() -> Self {
+        Self::new().with_functions(functions::std())
+    }
 }
 
 pub struct ExecutionOutput {
@@ -359,11 +410,6 @@ pub struct ExecutionOutput {
 
 #[allow(dead_code)]
 impl Runtime {
-    /// Create a `Runtime` instance with all `std` functions.
-    pub fn default() -> Runtime {
-        Runtime::new().with_functions(functions::std())
-    }
-
     /// Create a new `Runtime` instance.
     pub fn new() -> Runtime {
         Runtime {
