@@ -23,9 +23,24 @@ where
 
 macro_rules! test_parse_err {
     ($name:ident, $parse_fn:expr, $should_fail:expr, $src:expr) => {
+        #[cfg(not(target_arch = "wasm32"))]
         #[test]
         fn $name() {
             assert_snapshot!(err_string(stringify!($name), $parse_fn, $should_fail, $src));
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        #[wasm_bindgen_test::wasm_bindgen_test]
+        fn $name() {
+            let actual = err_string(stringify!($name), $parse_fn, $should_fail, $src);
+            let (_, expected) = include_str!(concat!(
+                "snapshots/cases__errors__",
+                stringify!($name),
+                ".snap"
+            ))
+            .rsplit_once("---\n")
+            .unwrap();
+            pretty_assertions::assert_eq!(actual.trim(), expected.trim());
         }
     };
 }

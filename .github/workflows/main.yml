@@ -113,19 +113,19 @@ jobs:
       - name: Run tests
         run: cargo test --workspace --features solc-backend --verbose
 
-  # wasm-test:
-  #     runs-on: ubuntu-latest
-  #     container: davesque/rust-wasm
-  #     steps:
-  #     - uses: actions/checkout@v2
-  #     - name: Install rust
-  #       uses: actions-rs/toolchain@v1
-  #       with:
-  #         profile: minimal
-  #         toolchain: stable
-  #         override: true
-  #     - name: Run WASM tests
-  #       run: wasm-pack test --node -- --workspace
+  wasm-test:
+      runs-on: ubuntu-latest
+      container: davesque/rust-wasm
+      steps:
+      - uses: actions/checkout@v2
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Run WASM tests
+        run: wasm-pack test --node -- --workspace
 
   release:
     # Only run this when we push a tag
