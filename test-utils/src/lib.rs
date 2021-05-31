@@ -307,20 +307,20 @@ fn _deploy_contract(
 }
 
 #[derive(Debug)]
-pub struct NotAbleToCompile;
+pub struct SolidityCompileError(Vec<serde_json::Value>);
 
-impl std::fmt::Display for NotAbleToCompile {
+impl std::fmt::Display for SolidityCompileError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Not Able to compile contract")
+        write!(f, "{:?}", &self.0[..])
     }
 }
 
-impl std::error::Error for NotAbleToCompile {}
+impl std::error::Error for SolidityCompileError {}
 
 pub fn compile_solidity_contract(
     name: &str,
     solidity_src: &str,
-) -> Result<(String, String), NotAbleToCompile> {
+) -> Result<(String, String), SolidityCompileError> {
     let solc_config = r#"
     {
         "language": "Solidity",
@@ -337,6 +337,31 @@ pub fn compile_solidity_contract(
     let output: serde_json::Value =
         serde_json::from_str(&raw_output).expect("Unable to compile contract");
 
+    if output["errors"].is_array() {
+        let severity: serde_json::Value =
+            serde_json::to_value("error").expect("Unable to convert into serde value type");
+        let errors: serde_json::Value = output["errors"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .cloned()
+            .filter_map(|err| {
+                if err["severity"] == severity {
+                    Some(err["formattedMessage"].clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let errors_list = errors
+            .as_array()
+            .unwrap_or_else(|| panic!("Unable to parse error properly"));
+        if !errors_list.is_empty() {
+            return Err(SolidityCompileError(errors_list.clone()));
+        }
+    }
+
     let bytecode = output["contracts"]["input.sol"][name]["evm"]["bytecode"]["object"]
         .to_string()
         .replace("\"", "");
@@ -344,7 +369,9 @@ pub fn compile_solidity_contract(
     let abi = output["contracts"]["input.sol"][name]["abi"].to_string();
 
     if [&bytecode, &abi].iter().any(|val| val == &"null") {
-        return Err(NotAbleToCompile);
+        return Err(SolidityCompileError(vec![serde_json::Value::String(
+            String::from("Bytecode not found"),
+        )]));
     }
 
     Ok((bytecode, abi))

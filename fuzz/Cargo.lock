@@ -414,7 +414,7 @@ dependencies = [
 
 [[package]]
 name = "fe-analyzer"
-version = "0.4.0-alpha"
+version = "0.5.0-alpha"
 dependencies = [
  "ansi_term 0.12.1",
  "fe-common",
@@ -428,7 +428,7 @@ dependencies = [
 
 [[package]]
 name = "fe-common"
-version = "0.4.0-alpha"
+version = "0.5.0-alpha"
 dependencies = [
  "codespan-reporting",
  "difference",
@@ -441,7 +441,7 @@ dependencies = [
 
 [[package]]
 name = "fe-compiler"
-version = "0.4.0-alpha"
+version = "0.5.0-alpha"
 dependencies = [
  "ethabi",
  "fe-analyzer",
@@ -456,18 +456,6 @@ dependencies = [
  "solc",
  "vec1",
  "yultsur",
-]
-
-[[package]]
-name = "fe-compiler-fuzz"
-version = "0.4.0-alpha"
-dependencies = [
- "bincode",
- "ethabi",
- "fe-compiler-test-utils",
- "libfuzzer-sys",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -488,10 +476,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "fe-parser"
+name = "fe-fuzzer"
 version = "0.4.0-alpha"
 dependencies = [
+ "bincode",
+ "ethabi",
+ "fe-compiler-test-utils",
+ "libfuzzer-sys",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "fe-parser"
+version = "0.5.0-alpha"
+dependencies = [
  "fe-common",
+ "if_chain",
  "logos",
  "serde",
  "unescape",
@@ -611,6 +612,12 @@ name = "humantime"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
+
+[[package]]
+name = "if_chain"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f7280c75fb2e2fc47080ec80ccc481376923acb04501957fc38f935c3de5088"
 
 [[package]]
 name = "impl-codec"

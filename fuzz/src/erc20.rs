@@ -49,7 +49,11 @@ pub fn sol_erc20_constructor(details: TokenDetails) {
 }
 
 pub fn fe_erc20_transfer(info: TransferInfo) {
-    if info.value >= 1000000000000000000000000 as u128 {
+    if info.value
+        <= TOTAL_SUPPLY
+            .parse::<u128>()
+            .unwrap_or(1000000000000000000000000)
+    {
         with_executor(&|mut executor| {
             let mut harness = deploy_contract(
                 &mut executor,
@@ -63,7 +67,11 @@ pub fn fe_erc20_transfer(info: TransferInfo) {
 }
 
 pub fn sol_erc20_transfer(info: TransferInfo) {
-    if info.value >= 1000000000000000000000000 as u128 {
+    if info.value
+        <= TOTAL_SUPPLY
+            .parse::<u128>()
+            .unwrap_or(1000000000000000000000000)
+    {
         with_executor(&|mut executor| {
             let mut harness = deploy_contract(
                 &mut executor,
@@ -117,7 +125,11 @@ pub fn erc20_transfer(info: TransferInfo, mut executor: Executor, mut harness: C
         "balanceOf",
         &[address_token(ALICE)],
         Some(&uint_token_from_dec_str(
-            &(1000000000000000000000000 - info.value).to_string(),
+            &(TOTAL_SUPPLY
+                .parse::<u128>()
+                .unwrap_or(1000000000000000000000000)
+                - info.value)
+                .to_string(),
         )),
     );
 
