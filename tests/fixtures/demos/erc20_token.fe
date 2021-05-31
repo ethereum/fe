@@ -4,8 +4,8 @@ contract ERC20:
 
     _total_supply: u256
 
-    _name: string100
-    _symbol: string100
+    _name: String<100>
+    _symbol: String<100>
     _decimals: u8
 
     event Approval:
@@ -18,16 +18,16 @@ contract ERC20:
         idx to: address
         value: u256
 
-    pub def __init__(name: string100, symbol: string100):
+    pub def __init__(name: String<100>, symbol: String<100>):
         self._name = name
         self._symbol = symbol
         self._decimals = u8(18)
         self._mint(msg.sender, 1000000000000000000000000)
 
-    pub def name() -> string100:
+    pub def name() -> String<100>:
         return self._name.to_mem()
 
-    pub def symbol() -> string100:
+    pub def symbol() -> String<100>:
         return self._symbol.to_mem()
 
     pub def decimals() -> u8:
