@@ -1,5 +1,5 @@
 contract Foo:
-    pub bar: map<address, bytes[10]>
+    pub bar: Map<address, bytes[10]>
 
     pub def read_bar(key: address) -> bytes[10]:
         return self.bar[key].to_mem()

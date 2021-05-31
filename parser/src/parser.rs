@@ -30,7 +30,7 @@ pub struct Parser<'a> {
 
     /// Tokens that have been "peeked", or split from a larger token.
     /// Eg. `>>` may be split into two `>` tokens when parsing the end of a
-    /// generic type parameter list (eg. `map<u256, map<u256, address>>`).
+    /// generic type parameter list (eg. `Map<u256, Map<u256, address>>`).
     buffered: Vec<Token<'a>>,
 
     paren_stack: Vec<Span>,
@@ -150,7 +150,7 @@ impl<'a> Parser<'a> {
     /// Split the next token into two tokens, returning the first. Only supports
     /// splitting the `>>` token into two `>` tokens, specifically for
     /// parsing the closing angle bracket of a generic type argument list
-    /// (`map<x, map<y, z>>`).
+    /// (`Map<x, Map<y, z>>`).
     ///
     /// # Panics
     /// Panics if the next token isn't `>>`

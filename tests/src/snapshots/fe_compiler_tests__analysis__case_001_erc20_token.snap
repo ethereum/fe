@@ -3928,8 +3928,8 @@ note:
     ┌─ demos/erc20_token.fe:1:1
     │  
   1 │ ╭ contract ERC20:
-  2 │ │     _balances: map<address, u256>
-  3 │ │     _allowances: map<address, map<address, u256>>
+  2 │ │     _balances: Map<address, u256>
+  3 │ │     _allowances: Map<address, Map<address, u256>>
   4 │ │ 
     · │
 106 │ │     def _before_token_transfer(from: address, to: address, value: u256):
@@ -5081,7 +5081,7 @@ note:
 note: 
   ┌─ demos/erc20_token.fe:2:20
   │
-2 │     _balances: map<address, u256>
+2 │     _balances: Map<address, u256>
   │                    ^^^^^^^ attributes hash: 574436082528610497
   │
   = Base(
@@ -5091,7 +5091,7 @@ note:
 note: 
   ┌─ demos/erc20_token.fe:2:29
   │
-2 │     _balances: map<address, u256>
+2 │     _balances: Map<address, u256>
   │                             ^^^^ attributes hash: 17942395924573474124
   │
   = Base(
@@ -5103,7 +5103,7 @@ note:
 note: 
   ┌─ demos/erc20_token.fe:2:16
   │
-2 │     _balances: map<address, u256>
+2 │     _balances: Map<address, u256>
   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 6830914040603267556
   │
   = Map(
@@ -5120,7 +5120,7 @@ note:
 note: 
   ┌─ demos/erc20_token.fe:3:22
   │
-3 │     _allowances: map<address, map<address, u256>>
+3 │     _allowances: Map<address, Map<address, u256>>
   │                      ^^^^^^^ attributes hash: 574436082528610497
   │
   = Base(
@@ -5130,7 +5130,7 @@ note:
 note: 
   ┌─ demos/erc20_token.fe:3:35
   │
-3 │     _allowances: map<address, map<address, u256>>
+3 │     _allowances: Map<address, Map<address, u256>>
   │                                   ^^^^^^^ attributes hash: 574436082528610497
   │
   = Base(
@@ -5140,7 +5140,7 @@ note:
 note: 
   ┌─ demos/erc20_token.fe:3:44
   │
-3 │     _allowances: map<address, map<address, u256>>
+3 │     _allowances: Map<address, Map<address, u256>>
   │                                            ^^^^ attributes hash: 17942395924573474124
   │
   = Base(
@@ -5152,7 +5152,7 @@ note:
 note: 
   ┌─ demos/erc20_token.fe:3:31
   │
-3 │     _allowances: map<address, map<address, u256>>
+3 │     _allowances: Map<address, Map<address, u256>>
   │                               ^^^^^^^^^^^^^^^^^^ attributes hash: 6830914040603267556
   │
   = Map(
@@ -5169,7 +5169,7 @@ note:
 note: 
   ┌─ demos/erc20_token.fe:3:18
   │
-3 │     _allowances: map<address, map<address, u256>>
+3 │     _allowances: Map<address, Map<address, u256>>
   │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 652293232820874660
   │
   = Map(

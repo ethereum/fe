@@ -361,7 +361,7 @@ An example of a `contract`:
 
 ```
 contract GuestBook:
-    pub guest_book: map<address, bytes[100]>
+    pub guest_book: Map<address, bytes[100]>
 
     event Signed:
         idx book_msg: bytes[100]
@@ -630,7 +630,7 @@ Maps a key to a value.
 Example:
 
 ```
-map<TKey,TValue>
+Map<TKey,TValue>
 ```
 
 Where TKey is a base type and TValue is any data type.
@@ -705,8 +705,8 @@ Example:
 
 ``` python
 # contract scope
-bar: map<address, u256> # bar is assigned a static nonce by the compiler
-baz: map<address, map<address, u256>> # baz is assigned a static nonce by the compiler
+bar: Map<address, u256> # bar is assigned a static nonce by the compiler
+baz: Map<address, Map<address, u256>> # baz is assigned a static nonce by the compiler
 ```
 
 The expression `bar[0x00]` would resolve to the hash of both bar's nonce and the key value

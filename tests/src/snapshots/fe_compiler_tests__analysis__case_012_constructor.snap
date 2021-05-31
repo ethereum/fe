@@ -253,7 +253,7 @@ note:
   ┌─ features/constructor.fe:1:1
   │  
 1 │ ╭ contract Foo:
-2 │ │     bar: map<u256, u256>
+2 │ │     bar: Map<u256, u256>
 3 │ │ 
 4 │ │     pub def __init__(baz: u256, bing: u256):
   · │
@@ -348,7 +348,7 @@ note:
 note: 
   ┌─ features/constructor.fe:2:14
   │
-2 │     bar: map<u256, u256>
+2 │     bar: Map<u256, u256>
   │              ^^^^ attributes hash: 17942395924573474124
   │
   = Base(
@@ -360,7 +360,7 @@ note:
 note: 
   ┌─ features/constructor.fe:2:20
   │
-2 │     bar: map<u256, u256>
+2 │     bar: Map<u256, u256>
   │                    ^^^^ attributes hash: 17942395924573474124
   │
   = Base(
@@ -372,7 +372,7 @@ note:
 note: 
   ┌─ features/constructor.fe:2:10
   │
-2 │     bar: map<u256, u256>
+2 │     bar: Map<u256, u256>
   │          ^^^^^^^^^^^^^^^ attributes hash: 3210256860376722957
   │
   = Map(

@@ -1,6 +1,6 @@
 ---
 source: parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(module_stmts), module::parse_module,\n           r#\"\npragma 0.5.0\n\nimport foo as bar, baz as bum\n\ntype X = map<u8, u16>\n\ncontract A:\n    pub const x: u256 = 10\n\ncontract B:\n    pub x: X\n\"#)"
+expression: "ast_string(stringify!(module_stmts), module::parse_module,\n           r#\"\npragma 0.5.0\n\nimport foo as bar, baz as bum\n\ntype X = Map<u8, u16>\n\ncontract A:\n    pub const x: u256 = 10\n\ncontract B:\n    pub x: X\n\"#)"
 
 ---
 Node(
@@ -91,7 +91,7 @@ Node(
           typ: Node(
             kind: Generic(
               base: Node(
-                kind: "map",
+                kind: "Map",
                 span: Span(
                   start: 55,
                   end: 58,

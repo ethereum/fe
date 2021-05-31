@@ -1,5 +1,5 @@
 contract Foo:
-    baz: map<u256, u256>
+    baz: Map<u256, u256>
 
     def assign(val: u256):
         self.baz[0] = val

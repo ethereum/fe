@@ -264,7 +264,7 @@ note:
   ┌─ features/u32_u32_map.fe:1:1
   │  
 1 │ ╭ contract Foo:
-2 │ │     pub bar: map<u32, u32>
+2 │ │     pub bar: Map<u32, u32>
 3 │ │ 
 4 │ │     pub def read_bar(key: u32) -> u32:
   · │
@@ -379,7 +379,7 @@ note:
 note: 
   ┌─ features/u32_u32_map.fe:2:18
   │
-2 │     pub bar: map<u32, u32>
+2 │     pub bar: Map<u32, u32>
   │                  ^^^ attributes hash: 11356073382633174465
   │
   = Base(
@@ -391,7 +391,7 @@ note:
 note: 
   ┌─ features/u32_u32_map.fe:2:23
   │
-2 │     pub bar: map<u32, u32>
+2 │     pub bar: Map<u32, u32>
   │                       ^^^ attributes hash: 11356073382633174465
   │
   = Base(
@@ -403,7 +403,7 @@ note:
 note: 
   ┌─ features/u32_u32_map.fe:2:14
   │
-2 │     pub bar: map<u32, u32>
+2 │     pub bar: Map<u32, u32>
   │              ^^^^^^^^^^^^^ attributes hash: 4291380678104481154
   │
   = Map(

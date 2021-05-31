@@ -1,5 +1,5 @@
 contract Foo:
-    tuples: map<u256, (address, u256)>
+    tuples: Map<u256, (address, u256)>
 
     pub def bar(x: u256) -> u256:
         self.tuples[0] = (address(100), x)

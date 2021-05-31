@@ -1,5 +1,5 @@
 contract Foo:
-    pub bar: map<u64, u64>
+    pub bar: Map<u64, u64>
 
     pub def read_bar(key: u64) -> u64:
         return self.bar[key]

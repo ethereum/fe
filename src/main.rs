@@ -61,7 +61,7 @@ The following is a simple contract implemented in Fe.
 type BookMsg = bytes[100]
 
 contract GuestBook:
-    pub guest_book: map<address, BookMsg>
+    pub guest_book: Map<address, BookMsg>
 
     event Signed:
         book_msg: BookMsg

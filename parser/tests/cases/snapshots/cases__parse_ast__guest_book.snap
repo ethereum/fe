@@ -1,6 +1,6 @@
 ---
 source: parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(guest_book), module::parse_module,\n           r#\"\ntype BookMsg = bytes[100]\n\ncontract GuestBook:\n    pub guest_book: map<address, BookMsg>\n\n    event Signed:\n        idx book_msg: BookMsg\n\n    pub def sign(book_msg: BookMsg):\n        self.guest_book[msg.sender] = book_msg\n\n        emit Signed(book_msg=book_msg)\n\n    pub def get_msg(addr: address) -> BookMsg:\n        return self.guest_book[addr]\n\"#)"
+expression: "ast_string(stringify!(guest_book), module::parse_module,\n           r#\"\ntype BookMsg = bytes[100]\n\ncontract GuestBook:\n    pub guest_book: Map<address, BookMsg>\n\n    event Signed:\n        idx book_msg: BookMsg\n\n    pub def sign(book_msg: BookMsg):\n        self.guest_book[msg.sender] = book_msg\n\n        emit Signed(book_msg=book_msg)\n\n    pub def get_msg(addr: address) -> BookMsg:\n        return self.guest_book[addr]\n\"#)"
 
 ---
 Node(
@@ -63,7 +63,7 @@ Node(
                 typ: Node(
                   kind: Generic(
                     base: Node(
-                      kind: "map",
+                      kind: "Map",
                       span: Span(
                         start: 68,
                         end: 71,

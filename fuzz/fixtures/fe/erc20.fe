@@ -1,6 +1,6 @@
 contract ERC20:
-    _balances: map<address, u256>
-    _allowances: map<address, map<address, u256>>
+    _balances: Map<address, u256>
+    _allowances: Map<address, Map<address, u256>>
 
     _total_supply: u256
 

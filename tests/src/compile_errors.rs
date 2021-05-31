@@ -57,12 +57,12 @@ test_stmt! { assign_int, "5 = 6" }
 test_stmt! { assign_call, "self.f() = 10" }
 test_stmt! { assign_type_mismatch, "x: u256 = 10\nx = address(0)" }
 test_stmt! { aug_assign_non_numeric, "a: u256 = 1\nb: bool = true\na += b" }
-test_stmt! { bad_map, "x: map<u8, u8, u8>" }
-test_stmt! { bad_map2, "x: map<address, 100>" }
-test_stmt! { bad_map3, "x: map<>" }
-test_stmt! { bad_map4, "x: map<y>" }
-test_stmt! { bad_map5, "x: map<map<u8, u8>, address>" }
-test_stmt! { bad_map6, "x: map<10, 20>" }
+test_stmt! { bad_map, "x: Map<u8, u8, u8>" }
+test_stmt! { bad_map2, "x: Map<address, 100>" }
+test_stmt! { bad_map3, "x: Map<>" }
+test_stmt! { bad_map4, "x: Map<y>" }
+test_stmt! { bad_map5, "x: Map<Map<u8, u8>, address>" }
+test_stmt! { bad_map6, "x: Map<10, 20>" }
 test_stmt! { binary_op_add_uints, "a: u256 = 1\nb: u8 = 2\na + b" }
 test_stmt! { binary_op_lshift_bool, "a: bool = true\nb: i256\na << b" }
 test_stmt! { binary_op_lshift_with_int, "a: u256 = 1\nb: i256 = 2\na << b" }

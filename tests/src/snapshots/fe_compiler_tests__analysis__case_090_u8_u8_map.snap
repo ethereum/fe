@@ -264,7 +264,7 @@ note:
   ┌─ features/u8_u8_map.fe:1:1
   │  
 1 │ ╭ contract Foo:
-2 │ │     pub bar: map<u8, u8>
+2 │ │     pub bar: Map<u8, u8>
 3 │ │ 
 4 │ │     pub def read_bar(key: u8) -> u8:
   · │
@@ -379,7 +379,7 @@ note:
 note: 
   ┌─ features/u8_u8_map.fe:2:18
   │
-2 │     pub bar: map<u8, u8>
+2 │     pub bar: Map<u8, u8>
   │                  ^^ attributes hash: 1872326638020472004
   │
   = Base(
@@ -391,7 +391,7 @@ note:
 note: 
   ┌─ features/u8_u8_map.fe:2:22
   │
-2 │     pub bar: map<u8, u8>
+2 │     pub bar: Map<u8, u8>
   │                      ^^ attributes hash: 1872326638020472004
   │
   = Base(
@@ -403,7 +403,7 @@ note:
 note: 
   ┌─ features/u8_u8_map.fe:2:14
   │
-2 │     pub bar: map<u8, u8>
+2 │     pub bar: Map<u8, u8>
   │              ^^^^^^^^^^^ attributes hash: 15893437220884405684
   │
   = Map(

@@ -50,7 +50,7 @@ pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     ))
 }
 
-/// Parse a type definition, e.g. `type MyMap = map<u8, address>`.
+/// Parse a type definition, e.g. `type MyMap = Map<u8, address>`.
 /// # Panics
 /// Panics if the next token isn't `type`.
 pub fn parse_type_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
@@ -60,7 +60,7 @@ pub fn parse_type_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
         vec![
             "Note: a type alias name must be followed by an equals sign and a type description"
                 .into(),
-            format!("Example: `type {} = map<address, u64>`", name.text),
+            format!("Example: `type {} = Map<address, u64>`", name.text),
         ]
     })?;
     let typ = parse_type_desc(par)?;
@@ -196,7 +196,7 @@ pub fn parse_opt_qualifier(par: &mut Parser, tk: TokenKind) -> Option<Span> {
 }
 
 /// Parse an angle-bracket-wrapped list of generic arguments (eg. the tail end
-/// of `map<address, u256>`).
+/// of `Map<address, u256>`).
 /// # Panics
 /// Panics if the first token isn't `<`.
 pub fn parse_generic_args(par: &mut Parser) -> ParseResult<Node<Vec<GenericArg>>> {
@@ -271,7 +271,7 @@ pub fn parse_generic_args(par: &mut Parser) -> ParseResult<Node<Vec<GenericArg>>
     Ok(Node::new(args, span))
 }
 
-/// Parse a type description, e.g. `u8` or `map<address, u256>`.
+/// Parse a type description, e.g. `u8` or `Map<address, u256>`.
 pub fn parse_type_desc(par: &mut Parser) -> ParseResult<Node<TypeDesc>> {
     use TokenKind::*;
 

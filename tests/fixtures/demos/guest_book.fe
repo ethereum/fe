@@ -1,7 +1,7 @@
 type BookMsg = bytes[100]
 
 contract GuestBook:
-    messages: map<address, BookMsg>
+    messages: Map<address, BookMsg>
 
     event Signed:
         book_msg: BookMsg

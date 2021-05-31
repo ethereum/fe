@@ -1,6 +1,6 @@
 ---
 source: parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(type_tuple), types::parse_type_desc,\n           \"(u8, u16, address, map<u8, u8>)\")"
+expression: "ast_string(stringify!(type_tuple), types::parse_type_desc,\n           \"(u8, u16, address, Map<u8, u8>)\")"
 
 ---
 Node(
@@ -36,7 +36,7 @@ Node(
       Node(
         kind: Generic(
           base: Node(
-            kind: "map",
+            kind: "Map",
             span: Span(
               start: 19,
               end: 22,
