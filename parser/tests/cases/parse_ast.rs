@@ -4,6 +4,7 @@ use fe_parser::grammar::{contracts, expressions, functions, module, types};
 use fe_parser::{ParseResult, Parser};
 use insta::assert_snapshot;
 use serde::Serialize;
+use wasm_bindgen_test::wasm_bindgen_test;
 
 pub fn ast_string<F, T>(test_name: &str, mut parse_fn: F, src: &str) -> String
 where
@@ -40,11 +41,35 @@ where
     }
 }
 
+// TODO: remove this when tests are moved into 'tests' module
+macro_rules! assert_snapshot_wasm {
+    ($module:ident, $name:ident, $actual:expr) => {
+        let snap = include_str!(concat!(
+            "snapshots/cases__",
+            stringify!($module),
+            "__",
+            stringify!($name),
+            ".snap"
+        ));
+        let (_, expected) = snap.rsplit_once("---\n").unwrap();
+        pretty_assertions::assert_eq!($actual.trim(), expected.trim());
+    };
+}
+
 macro_rules! test_parse {
     ($name:ident, $parse_fn:expr, $src:expr) => {
         #[test]
+        #[wasm_bindgen_test]
         fn $name() {
-            assert_snapshot!(ast_string(stringify!($name), $parse_fn, $src));
+            if cfg!(target_arch = "wasm32") {
+                assert_snapshot_wasm!(
+                    parse_ast,
+                    $name,
+                    ast_string(stringify!($name), $parse_fn, $src)
+                );
+            } else {
+                assert_snapshot!(ast_string(stringify!($name), $parse_fn, $src));
+            }
         }
     };
 }

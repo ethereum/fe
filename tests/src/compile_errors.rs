@@ -3,6 +3,7 @@
 use fe_common::diagnostics::{diagnostics_string, print_diagnostics};
 use fe_common::files::FileStore;
 use insta::assert_snapshot;
+use wasm_bindgen_test::wasm_bindgen_test;
 
 fn error_string(path: &str, src: &str) -> String {
     let mut files = FileStore::new();
@@ -24,14 +25,36 @@ fn error_string(path: &str, src: &str) -> String {
     errstr
 }
 
+macro_rules! assert_snapshot_wasm {
+    ($module:ident, $name:ident, $actual:expr) => {
+        let snap = include_str!(concat!(
+            "snapshots/fe_compiler_tests__",
+            stringify!($module),
+            "__",
+            stringify!($name),
+            ".snap"
+        ));
+        let (_, expected) = snap.rsplit_once("---\n").unwrap();
+        pretty_assertions::assert_eq!($actual.trim(), expected.trim());
+    };
+}
+
 macro_rules! test_file {
     ($name:ident) => {
         #[test]
+        #[wasm_bindgen_test]
         fn $name() {
-            let path = format!("fixtures/compile_errors/{}.fe", stringify!($name));
-            dbg!(&path);
-            let src = std::fs::read_to_string(&path).unwrap();
-            assert_snapshot!(error_string(&path, &src));
+            let path = concat!("fixtures/compile_errors/", stringify!($name), ".fe");
+            let src = include_str!(concat!(
+                "../fixtures/compile_errors/",
+                stringify!($name),
+                ".fe"
+            ));
+            if cfg!(target_arch = "wasm32") {
+                assert_snapshot_wasm!(compile_errors, $name, error_string(&path, &src));
+            } else {
+                assert_snapshot!(error_string(&path, &src));
+            }
         }
     };
 }
@@ -39,12 +62,17 @@ macro_rules! test_file {
 macro_rules! test_stmt {
     ($name:ident, $stmt:expr) => {
         #[test]
+        #[wasm_bindgen_test]
         fn $name() {
             let src = format!(
                 "contract C:\n pub def f():\n  {}",
                 $stmt.replace('\n', "\n  ")
             );
-            assert_snapshot!(error_string("[snippet]", &src));
+            if cfg!(target_arch = "wasm32") {
+                assert_snapshot_wasm!(compile_errors, $name, error_string("[snippet]", &src));
+            } else {
+                assert_snapshot!(error_string("[snippet]", &src));
+            }
         }
     };
 }
