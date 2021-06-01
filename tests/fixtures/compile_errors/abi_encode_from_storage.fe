@@ -1,0 +1,5 @@
+contract Foo:
+    my_field: (u256, bool)
+
+    pub def bar():
+        self.my_field.abi_encode()

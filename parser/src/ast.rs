@@ -276,7 +276,6 @@ pub enum BinOperator {
 pub enum UnaryOperator {
     Invert,
     Not,
-    UAdd,
     USub,
 }
 
@@ -325,7 +324,6 @@ impl fmt::Display for UnaryOperator {
         match self {
             Invert => write!(f, "~"),
             Not => write!(f, "not"),
-            UAdd => write!(f, "+"),
             USub => write!(f, "-"),
         }
     }

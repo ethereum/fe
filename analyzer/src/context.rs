@@ -567,6 +567,14 @@ impl Context {
         )
     }
 
+    pub fn not_yet_implemented(&mut self, feature: impl Display, span: Span) {
+        self.error(
+            "feature not yet implemented",
+            span,
+            format!("{} is not yet implemented", feature),
+        )
+    }
+
     pub fn fancy_error(
         &mut self,
         message: impl Into<String>,

@@ -94,7 +94,6 @@ test_parse! { expr_unit, expressions::parse_expr, "()" }
 
 test_parse! { ops_not, expressions::parse_expr, "x and not y" }
 test_parse! { ops_math, expressions::parse_expr, "a + b * -c ** d / e % f" }
-test_parse! { ops_pos, expressions::parse_expr, "+x" }
 test_parse! { ops_neg, expressions::parse_expr, "-x" }
 test_parse! { ops_bnot, expressions::parse_expr, "~x" }
 // bitwise op precedence: shift > and > xor > or

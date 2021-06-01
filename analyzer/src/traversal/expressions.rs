@@ -16,6 +16,7 @@ use fe_common::diagnostics::Label;
 use fe_common::numeric;
 use fe_common::{Span, Spanned};
 use fe_parser::ast as fe;
+use fe_parser::ast::UnaryOperator;
 use fe_parser::node::Node;
 use num_bigint::BigInt;
 use std::convert::TryInto;
@@ -398,7 +399,6 @@ fn expr_attribute(
                 }
                 Ok(Object::Msg) => {
                     return match MsgField::from_str(&attr.kind) {
-                        Ok(MsgField::Data) => todo!(),
                         Ok(MsgField::Sender) => base_type(Base::Address),
                         Ok(MsgField::Sig) => array_type(Array {
                             size: 32,
@@ -556,7 +556,10 @@ fn expr_unary_operation(
                     Location::Value,
                 ))
             }
-            _ => todo!(),
+            UnaryOperator::Invert => {
+                context.not_yet_implemented("unary invert", exp.span);
+                Ok(ExpressionAttributes::new(Type::unit(), Location::Value))
+            }
         };
     }
 
@@ -983,7 +986,13 @@ fn expr_call_value_attribute(
             ValueMethod::AbiEncode => match &value_attributes.typ {
                 Type::Struct(struct_) => {
                     if value_attributes.final_location() != Location::Memory {
-                        todo!("encode structs from storage")
+                        context.fancy_error(
+                            "value must be copied to memory",
+                            vec![Label::primary(value.span, "this value is in storage")],
+                            vec!["Hint: values located in storage can be copied to memory using the `to_mem` function.".into(),
+                                 "Example: `self.my_array.to_mem().abi_encode()`".into(),
+                            ],
+                        );
                     }
 
                     Ok(ExpressionAttributes::new(
@@ -996,7 +1005,13 @@ fn expr_call_value_attribute(
                 }
                 Type::Tuple(tuple) => {
                     if value_attributes.final_location() != Location::Memory {
-                        todo!("encode tuple from storage")
+                        context.fancy_error(
+                            "value must be copied to memory",
+                            vec![Label::primary(value.span, "this value is in storage")],
+                            vec!["Hint: values located in storage can be copied to memory using the `to_mem` function.".into(),
+                                 "Example: `self.my_array.to_mem().abi_encode()`".into(),
+                            ],
+                        );
                     }
 
                     Ok(ExpressionAttributes::new(
@@ -1007,9 +1022,25 @@ fn expr_call_value_attribute(
                         Location::Memory,
                     ))
                 }
-                _ => todo!(),
+                _ => {
+                    context.fancy_error(
+                        format!(
+                            "value of type {} does not support `abi_encode()`",
+                            value_attributes.typ
+                        ),
+                        vec![Label::primary(
+                            value.span,
+                            "this value cannot be encoded using `abi_encode()`",
+                        )],
+                        vec![
+                            "Hint: struct and tuple values can be encoded.".into(),
+                            "Example: `(42,).abi_encode()`".into(),
+                        ],
+                    );
+
+                    Ok(ExpressionAttributes::new(Type::unit(), Location::Value))
+                }
             },
-            ValueMethod::AbiEncodePacked => todo!(),
         };
     }
 

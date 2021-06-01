@@ -28,8 +28,12 @@ pub fn module(context: &mut Context, module: &fe::Module) -> Result<(), Semantic
                 let contract_scope = contracts::contract_def(Rc::clone(&scope), context, stmt)?;
                 contracts.push((stmt, contract_scope))
             }
-            fe::ModuleStmt::FromImport { .. } => unimplemented!(),
-            fe::ModuleStmt::SimpleImport { .. } => unimplemented!(),
+            fe::ModuleStmt::FromImport { .. } => {
+                context.not_yet_implemented("from import", stmt.span)
+            }
+            fe::ModuleStmt::SimpleImport { .. } => {
+                context.not_yet_implemented("simple import", stmt.span)
+            }
         }
     }
 
