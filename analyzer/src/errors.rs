@@ -19,10 +19,7 @@ pub enum ErrorKind {
     MoreThanThreeIndexedParams,
     NotCallable,
     NotSubscriptable,
-    NumericCapacityMismatch,
-    NumericLiteralExpected,
     SignedExponentNotAllowed,
-    StringCapacityMismatch,
     TypeError,
     UndefinedValue,
     Fatal,
@@ -60,26 +57,10 @@ impl SemanticError {
         }
     }
 
-    /// Create a new error with kind `NumericCapacityMismatch`
-    pub fn numeric_capacity_mismatch() -> Self {
-        SemanticError {
-            kind: ErrorKind::NumericCapacityMismatch,
-            context: vec![],
-        }
-    }
-
     /// Create a new error with kind `SignedExponentNotAllowed`
     pub fn signed_exponent_not_allowed() -> Self {
         SemanticError {
             kind: ErrorKind::SignedExponentNotAllowed,
-            context: vec![],
-        }
-    }
-
-    /// Create a new error with kind `NumericCapacityMismatch`
-    pub fn string_capacity_mismatch() -> Self {
-        SemanticError {
-            kind: ErrorKind::StringCapacityMismatch,
             context: vec![],
         }
     }
@@ -120,14 +101,6 @@ impl SemanticError {
     pub fn not_callable() -> Self {
         SemanticError {
             kind: ErrorKind::NotCallable,
-            context: vec![],
-        }
-    }
-
-    /// Create a new error with kind `NumericLiteralExpected`
-    pub fn numeric_literal_expected() -> Self {
-        SemanticError {
-            kind: ErrorKind::NumericLiteralExpected,
             context: vec![],
         }
     }
