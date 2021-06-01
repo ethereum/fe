@@ -25,6 +25,7 @@ pub fn func_def(
         let name = &name.kind;
         let function_scope = BlockScope::from_contract_scope(name, Rc::clone(&contract_scope));
 
+        let mut is_pub = *is_pub;
         let params = args
             .iter()
             .map(|arg| func_def_arg(Rc::clone(&function_scope), context, arg))
@@ -42,30 +43,45 @@ pub fn func_def(
             .transpose()?
             .unwrap_or_else(FixedSize::unit);
 
-        // `__init__` must not return any type other than `()`.
-        if name == "__init__" && !return_type.is_unit() {
-            context.fancy_error(
-                "`__init__` function has incorrect return type",
-                vec![Label::primary(
-                    return_type_node.as_ref().unwrap().span,
-                    "return type should be `()`",
-                )],
-                vec![
-                    "Hint: Remove the return type specification.".to_string(),
-                    format!(
-                        "Example: `{}def __init__():`",
-                        if *is_pub { "pub " } else { "" }
-                    ),
-                ],
-            );
-            return_type = FixedSize::unit();
+        if name == "__init__" {
+            // `__init__` must not return any type other than `()`.
+            if !return_type.is_unit() {
+                context.fancy_error(
+                    "`__init__` function has incorrect return type",
+                    vec![Label::primary(
+                        return_type_node.as_ref().unwrap().span,
+                        "return type should be `()`",
+                    )],
+                    vec![
+                        "Hint: Remove the return type specification.".to_string(),
+                        "Example: `pub def __init__():`".to_string(),
+                    ],
+                );
+                return_type = FixedSize::unit();
+            }
+
+            // `__init__` must be `pub`.
+            if !is_pub {
+                context.fancy_error(
+                    "`__init__` function is not public",
+                    vec![Label::primary(
+                        def.span,
+                        "`__init__` function must be public",
+                    )],
+                    vec![
+                        "Hint: Add the `pub` modifier.".to_string(),
+                        "Example: `pub def __init__():`".to_string(),
+                    ],
+                );
+                is_pub = true;
+            }
         }
 
         let attributes: FunctionAttributes = contract_scope
             .borrow_mut()
             .add_function(
                 name,
-                *is_pub,
+                is_pub,
                 params,
                 return_type,
                 Rc::clone(&function_scope),

@@ -5,7 +5,7 @@ contract Ownable:
     idx previousOwner: address
     idx newOwner: address
 
-  def __init__():
+  pub def __init__():
     self._owner = msg.sender
 
   pub def owner() -> address:
