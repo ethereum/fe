@@ -1,0 +1,18 @@
+---
+source: tests/src/compile_errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: type mismatch
+  ┌─ [snippet]:3:14
+  │
+3 │   x: u8[3] = []
+  │              ^^ this has type `u8[0]`; expected type `u8[3]`
+
+error: type mismatch
+  ┌─ [snippet]:4:14
+  │
+4 │   y: u8[3] = [1, 2]
+  │              ^^^^^^ this has type `u8[2]`; expected type `u8[3]`
+
+

@@ -3,20 +3,16 @@ source: tests/src/compile_errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: array elements must have same type
-  ┌─ [snippet]:3:17
+error: type mismatch
+  ┌─ [snippet]:3:19
   │
-3 │   x: u256[3] = [1, address(0), "hi"]
-  │                 ^  ---------- this has type `address`
-  │                 │   
-  │                 this has type `u256`
+3 │   x: u16[3] = [1, address(0), "hi"]
+  │                   ^^^^^^^^^^ this has type `address`; expected type `u16`
 
-error: array elements must have same type
-  ┌─ [snippet]:3:17
+error: type mismatch
+  ┌─ [snippet]:3:31
   │
-3 │   x: u256[3] = [1, address(0), "hi"]
-  │                 ^              ---- this has type `string<2>`
-  │                 │               
-  │                 this has type `u256`
+3 │   x: u16[3] = [1, address(0), "hi"]
+  │                               ^^^^ this has type `string<2>`; expected type `u16`
 
 

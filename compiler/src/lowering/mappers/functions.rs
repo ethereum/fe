@@ -22,7 +22,7 @@ pub fn func_def(context: &Context, def: Node<fe::ContractStmt>) -> Node<fe::Cont
         // The return type is lowered if it exists. If there is no return type, we set it to the unit type.
         let lowered_return_type = return_type
             .map(|return_type| types::type_desc(context, return_type))
-            .unwrap_or_else(|| names::fixed_size_type_desc(&FixedSize::Unit).into_node());
+            .unwrap_or_else(|| names::fixed_size_type_desc(&FixedSize::unit()).into_node());
 
         let lowered_body = {
             let mut lowered_body = multiple_stmts(context, body);

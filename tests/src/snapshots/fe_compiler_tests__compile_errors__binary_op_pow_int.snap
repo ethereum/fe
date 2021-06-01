@@ -5,8 +5,5 @@ expression: "error_string(\"[snippet]\", &src)"
 ---
 
 
-TypeError on line 4
-pub def f():
-  a: u256 = 1
-  [31mb: i256 = 2[0m
-  a ** b
+SignedExponentNotAllowed on line 5
+[31ma ** b[0m

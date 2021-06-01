@@ -8,7 +8,7 @@ use crate::Context;
 use std::rc::Rc;
 
 pub fn struct_def(
-    context: Shared<Context>,
+    context: &mut Context,
     module_scope: Shared<ModuleScope>,
     name: &str,
     fields: &[Node<Field>],
@@ -16,11 +16,7 @@ pub fn struct_def(
     let mut val = Struct::new(name);
     for field in fields {
         let Field { name, typ, .. } = &field.kind;
-        let field_type = type_desc(
-            &Scope::Module(Rc::clone(&module_scope)),
-            Rc::clone(&context),
-            typ,
-        )?;
+        let field_type = type_desc(&Scope::Module(Rc::clone(&module_scope)), context, typ)?;
         if let Type::Base(base_typ) = field_type {
             val.add_field(&name.kind, &FixedSize::Base(base_typ))?;
         } else {

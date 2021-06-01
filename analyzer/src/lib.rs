@@ -15,19 +15,12 @@ use crate::errors::{AnalyzerError, ErrorKind};
 use context::Context;
 use fe_common::files::SourceFileId;
 use fe_parser::ast as fe;
-use std::rc::Rc;
 
 /// Performs semantic analysis of the source program and returns a `Context`
 /// instance.
 pub fn analyze(module: &fe::Module, file_id: SourceFileId) -> Result<Context, AnalyzerError> {
-    let context = Context::new_shared(file_id);
-    let result = traversal::module::module(Rc::clone(&context), module);
-
-    // This should never panic.
-    let context = Rc::try_unwrap(context)
-        .map_err(|_| "more than one strong reference pointing to context")
-        .expect("failed to unwrap reference counter")
-        .into_inner();
+    let mut context = Context::new(file_id);
+    let result = traversal::module::module(&mut context, module);
 
     match result {
         Ok(()) => {

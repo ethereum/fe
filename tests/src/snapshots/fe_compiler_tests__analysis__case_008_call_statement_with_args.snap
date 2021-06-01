@@ -123,11 +123,13 @@ note:
   ┌─ features/call_statement_with_args.fe:8:9
   │
 8 │         self.assign(100)
-  │         ^^^^^^^^^^^^^^^^ attributes hash: 5074014468841562254
+  │         ^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
   │
   = ExpressionAttributes {
-        typ: Unit,
-        location: Memory,
+        typ: Base(
+            Unit,
+        ),
+        location: Value,
         move_location: None,
     }
 
@@ -199,7 +201,7 @@ note:
   │  
 4 │ ╭     def assign(val: u256):
 5 │ │         self.baz[0] = val
-  │ ╰─────────────────────────^ attributes hash: 1203266608866525636
+  │ ╰─────────────────────────^ attributes hash: 430221338671783428
   │  
   = FunctionAttributes {
         is_public: false,
@@ -214,7 +216,9 @@ note:
                 ),
             ),
         ],
-        return_type: Unit,
+        return_type: Base(
+            Unit,
+        ),
     }
 
 note: 

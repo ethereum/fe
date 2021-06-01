@@ -116,7 +116,6 @@ pub enum Type {
     String(FeString),
     Contract(Contract),
     Struct(Struct),
-    Unit,
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
@@ -127,7 +126,6 @@ pub enum FixedSize {
     String(FeString),
     Contract(Contract),
     Struct(Struct),
-    Unit,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
@@ -136,6 +134,7 @@ pub enum Base {
     Bool,
     Byte,
     Address,
+    Unit,
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, PartialOrd, Ord, Eq, IntoStaticStr)]
@@ -273,6 +272,55 @@ impl Type {
         }
         false
     }
+
+    pub fn unit() -> Self {
+        Type::Base(Base::Unit)
+    }
+
+    pub fn int(int_type: Integer) -> Self {
+        Type::Base(Base::Numeric(int_type))
+    }
+}
+
+pub trait TypeDowncast {
+    fn as_array(&self) -> Option<&Array>;
+    fn as_tuple(&self) -> Option<&Tuple>;
+    fn as_string(&self) -> Option<&FeString>;
+    fn as_map(&self) -> Option<&Map>;
+    fn as_int(&self) -> Option<Integer>;
+}
+
+impl TypeDowncast for Option<&Type> {
+    fn as_array(&self) -> Option<&Array> {
+        match self {
+            Some(Type::Array(inner)) => Some(inner),
+            _ => None,
+        }
+    }
+    fn as_tuple(&self) -> Option<&Tuple> {
+        match self {
+            Some(Type::Tuple(inner)) => Some(inner),
+            _ => None,
+        }
+    }
+    fn as_string(&self) -> Option<&FeString> {
+        match self {
+            Some(Type::String(inner)) => Some(inner),
+            _ => None,
+        }
+    }
+    fn as_map(&self) -> Option<&Map> {
+        match self {
+            Some(Type::Map(inner)) => Some(inner),
+            _ => None,
+        }
+    }
+    fn as_int(&self) -> Option<Integer> {
+        match self {
+            Some(Type::Base(Base::Numeric(int))) => Some(*int),
+            _ => None,
+        }
+    }
 }
 
 impl From<FixedSize> for Type {
@@ -284,7 +332,6 @@ impl From<FixedSize> for Type {
             FixedSize::String(string) => Type::String(string),
             FixedSize::Contract(contract) => Type::Contract(contract),
             FixedSize::Struct(val) => Type::Struct(val),
-            FixedSize::Unit => Type::Unit,
         }
     }
 }
@@ -298,12 +345,17 @@ impl From<Base> for Type {
 impl FixedSize {
     /// Returns true if the type is `()`.
     pub fn is_unit(&self) -> bool {
-        self == &Self::Unit
+        self == &Self::Base(Base::Unit)
     }
 
     /// Creates an instance of bool.
     pub fn bool() -> Self {
         FixedSize::Base(Base::Bool)
+    }
+
+    /// Creates an instance of `()`.
+    pub fn unit() -> Self {
+        FixedSize::Base(Base::Unit)
     }
 }
 
@@ -339,7 +391,6 @@ impl TryFrom<Type> for FixedSize {
             Type::Struct(val) => Ok(FixedSize::Struct(val)),
             Type::Map(_) => Err(SemanticError::type_error()),
             Type::Contract(contract) => Ok(FixedSize::Contract(contract)),
-            Type::Unit => Ok(FixedSize::Unit),
         }
     }
 }
@@ -359,7 +410,6 @@ impl FeSized for FixedSize {
             FixedSize::String(string) => string.size(),
             FixedSize::Contract(contract) => contract.size(),
             FixedSize::Struct(val) => val.size(),
-            FixedSize::Unit => 0,
         }
     }
 }
@@ -390,6 +440,7 @@ impl FeSized for Base {
             Base::Bool => 1,
             Base::Byte => 1,
             Base::Address => 32,
+            Base::Unit => 0,
         }
     }
 }
@@ -433,7 +484,6 @@ impl AbiEncoding for FixedSize {
             FixedSize::String(string) => string.abi_json_name(),
             FixedSize::Contract(contract) => contract.abi_json_name(),
             FixedSize::Struct(val) => val.abi_json_name(),
-            FixedSize::Unit => panic!("unit is not encodable"),
         }
     }
 
@@ -445,7 +495,6 @@ impl AbiEncoding for FixedSize {
             FixedSize::String(string) => string.abi_selector_name(),
             FixedSize::Contract(contract) => contract.abi_selector_name(),
             FixedSize::Struct(val) => val.abi_selector_name(),
-            FixedSize::Unit => panic!("unit is not encodable"),
         }
     }
 
@@ -457,7 +506,6 @@ impl AbiEncoding for FixedSize {
             FixedSize::String(string) => string.abi_components(),
             FixedSize::Contract(contract) => contract.abi_components(),
             FixedSize::Struct(val) => val.abi_components(),
-            FixedSize::Unit => panic!("unit is not encodable"),
         }
     }
 
@@ -469,7 +517,6 @@ impl AbiEncoding for FixedSize {
             FixedSize::String(string) => string.abi_type(),
             FixedSize::Contract(contract) => contract.abi_type(),
             FixedSize::Struct(val) => val.abi_type(),
-            FixedSize::Unit => panic!("unit is not encodable"),
         }
     }
 }
@@ -492,6 +539,7 @@ impl AbiEncoding for Base {
             Base::Address => "address".to_string(),
             Base::Byte => "byte".to_string(),
             Base::Bool => "bool".to_string(),
+            Base::Unit => panic!("unit type is not abi encodable"),
         }
     }
 
@@ -504,98 +552,30 @@ impl AbiEncoding for Base {
     }
 
     fn abi_type(&self) -> AbiType {
-        match self {
-            Base::Bool => AbiType::Uint {
-                size: AbiUintSize {
-                    data_size: 1,
-                    padded_size: 32,
-                },
-            },
+        let (data_size, padded_size) = match self {
+            Base::Bool => (1, 32),
             Base::Numeric(size) => match size {
-                Integer::U256 => AbiType::Uint {
-                    size: AbiUintSize {
-                        data_size: 32,
-                        padded_size: 32,
-                    },
-                },
-                Integer::U128 => AbiType::Uint {
-                    size: AbiUintSize {
-                        data_size: 16,
-                        padded_size: 32,
-                    },
-                },
-                Integer::U64 => AbiType::Uint {
-                    size: AbiUintSize {
-                        data_size: 8,
-                        padded_size: 32,
-                    },
-                },
-                Integer::U32 => AbiType::Uint {
-                    size: AbiUintSize {
-                        data_size: 4,
-                        padded_size: 32,
-                    },
-                },
-                Integer::U16 => AbiType::Uint {
-                    size: AbiUintSize {
-                        data_size: 2,
-                        padded_size: 32,
-                    },
-                },
-                Integer::U8 => AbiType::Uint {
-                    size: AbiUintSize {
-                        data_size: 1,
-                        padded_size: 32,
-                    },
-                },
-                Integer::I256 => AbiType::Uint {
-                    size: AbiUintSize {
-                        data_size: 32,
-                        padded_size: 32,
-                    },
-                },
-                Integer::I128 => AbiType::Uint {
-                    size: AbiUintSize {
-                        data_size: 16,
-                        padded_size: 32,
-                    },
-                },
-                Integer::I64 => AbiType::Uint {
-                    size: AbiUintSize {
-                        data_size: 8,
-                        padded_size: 32,
-                    },
-                },
-                Integer::I32 => AbiType::Uint {
-                    size: AbiUintSize {
-                        data_size: 4,
-                        padded_size: 32,
-                    },
-                },
-                Integer::I16 => AbiType::Uint {
-                    size: AbiUintSize {
-                        data_size: 2,
-                        padded_size: 32,
-                    },
-                },
-                Integer::I8 => AbiType::Uint {
-                    size: AbiUintSize {
-                        data_size: 1,
-                        padded_size: 32,
-                    },
-                },
+                Integer::U256 => (32, 32),
+                Integer::U128 => (16, 32),
+                Integer::U64 => (8, 32),
+                Integer::U32 => (4, 32),
+                Integer::U16 => (2, 32),
+                Integer::U8 => (1, 32),
+                Integer::I256 => (32, 32),
+                Integer::I128 => (16, 32),
+                Integer::I64 => (8, 32),
+                Integer::I32 => (4, 32),
+                Integer::I16 => (2, 32),
+                Integer::I8 => (1, 32),
             },
-            Base::Address => AbiType::Uint {
-                size: AbiUintSize {
-                    data_size: 32,
-                    padded_size: 32,
-                },
-            },
-            Base::Byte => AbiType::Uint {
-                size: AbiUintSize {
-                    data_size: 1,
-                    padded_size: 1,
-                },
+            Base::Address => (32, 32),
+            Base::Byte => (1, 1),
+            Base::Unit => panic!("unit type is not abi encodable"),
+        };
+        AbiType::Uint {
+            size: AbiUintSize {
+                data_size,
+                padded_size,
             },
         }
     }
@@ -746,7 +726,6 @@ impl SafeNames for FixedSize {
             FixedSize::String(string) => string.lower_snake(),
             FixedSize::Contract(contract) => contract.lower_snake(),
             FixedSize::Struct(val) => val.lower_snake(),
-            FixedSize::Unit => "unit".to_string(),
         }
     }
 }
@@ -769,6 +748,7 @@ impl SafeNames for Base {
             Base::Address => "address".to_string(),
             Base::Byte => "byte".to_string(),
             Base::Bool => "bool".to_string(),
+            Base::Unit => "unit".to_string(),
         }
     }
 }
@@ -820,7 +800,6 @@ impl fmt::Display for Type {
             Type::String(inner) => inner.fmt(f),
             Type::Contract(inner) => inner.fmt(f),
             Type::Struct(inner) => inner.fmt(f),
-            Type::Unit => write!(f, "()"),
         }
     }
 }
@@ -834,7 +813,6 @@ impl fmt::Display for FixedSize {
             FixedSize::String(inner) => inner.fmt(f),
             FixedSize::Contract(inner) => inner.fmt(f),
             FixedSize::Struct(inner) => inner.fmt(f),
-            FixedSize::Unit => write!(f, "()"),
         }
     }
 }
@@ -846,6 +824,7 @@ impl fmt::Display for Base {
             Base::Bool => "bool",
             Base::Byte => "byte",
             Base::Address => "address",
+            Base::Unit => "()",
         };
         write!(f, "{}", name)
     }

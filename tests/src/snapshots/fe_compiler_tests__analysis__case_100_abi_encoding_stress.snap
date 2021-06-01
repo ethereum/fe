@@ -13,7 +13,9 @@ ModuleAttributes {
                         is_public: true,
                         name: "emit_my_event",
                         params: [],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -211,7 +213,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -224,7 +228,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -240,7 +246,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -255,7 +263,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -270,7 +280,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
@@ -288,7 +300,9 @@ ModuleAttributes {
                                 ),
                             ),
                         ],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                 ],
             },
@@ -794,12 +808,12 @@ note:
    ┌─ stress/abi_encoding_stress.fe:62:24
    │
 62 │             my_num2=u8(26),
-   │                        ^^ attributes hash: 16797824492585953824
+   │                        ^^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U8,
              ),
          ),
          location: Value,
@@ -1062,12 +1076,12 @@ note:
    ┌─ stress/abi_encoding_stress.fe:69:32
    │
 69 │         my_struct.my_num2 = u8(42)
-   │                                ^^ attributes hash: 16797824492585953824
+   │                                ^^ attributes hash: 6817314866882205962
    │
    = ExpressionAttributes {
          typ: Base(
              Numeric(
-                 U256,
+                 U8,
              ),
          ),
          location: Value,
@@ -1596,7 +1610,7 @@ note:
    │  
 23 │ ╭     pub def set_my_addrs(my_addrs: address[5]):
 24 │ │         self.my_addrs = my_addrs
-   │ ╰────────────────────────────────^ attributes hash: 12708309224674535663
+   │ ╰────────────────────────────────^ attributes hash: 14701522943662665464
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1612,7 +1626,9 @@ note:
                  ),
              ),
          ],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -1639,7 +1655,7 @@ note:
    │  
 29 │ ╭     pub def set_my_u128(my_u128: u128):
 30 │ │         self.my_u128 = my_u128
-   │ ╰──────────────────────────────^ attributes hash: 17530708413772808696
+   │ ╰──────────────────────────────^ attributes hash: 10635070491814674598
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1654,7 +1670,9 @@ note:
                  ),
              ),
          ],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -1680,7 +1698,7 @@ note:
    │  
 35 │ ╭     pub def set_my_string(my_string: String<10>):
 36 │ │         self.my_string = my_string
-   │ ╰──────────────────────────────────^ attributes hash: 3033660936924075855
+   │ ╰──────────────────────────────────^ attributes hash: 15141386370952016427
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1695,7 +1713,9 @@ note:
                  ),
              ),
          ],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -1721,7 +1741,7 @@ note:
    │  
 41 │ ╭     pub def set_my_u8s(my_u8s: u8[255]):
 42 │ │         self.my_u8s = my_u8s
-   │ ╰────────────────────────────^ attributes hash: 7605717007273386303
+   │ ╰────────────────────────────^ attributes hash: 3951353961439842676
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1739,7 +1759,9 @@ note:
                  ),
              ),
          ],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -1768,7 +1790,7 @@ note:
    │  
 47 │ ╭     pub def set_my_bool(my_bool: bool):
 48 │ │         self.my_bool = my_bool
-   │ ╰──────────────────────────────^ attributes hash: 1436793526906496838
+   │ ╰──────────────────────────────^ attributes hash: 9951927489494877708
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1781,7 +1803,9 @@ note:
                  ),
              ),
          ],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -1805,7 +1829,7 @@ note:
    │  
 53 │ ╭     pub def set_my_bytes(my_bytes: bytes[100]):
 54 │ │         self.my_bytes = my_bytes
-   │ ╰────────────────────────────────^ attributes hash: 14296638220629361927
+   │ ╰────────────────────────────────^ attributes hash: 1603819576134687581
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1821,7 +1845,9 @@ note:
                  ),
              ),
          ],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -1997,13 +2023,15 @@ note:
    · │
 81 │ │             my_bytes=self.my_bytes.to_mem()
 82 │ │         )
-   │ ╰─────────^ attributes hash: 9089586501468789190
+   │ ╰─────────^ attributes hash: 10533351548551667725
    │  
    = FunctionAttributes {
          is_public: true,
          name: "emit_my_event",
          params: [],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -2016,7 +2044,7 @@ note:
    · │
 81 │ │             my_bytes=self.my_bytes.to_mem()
 82 │ │         )
-   │ ╰─────────^ attributes hash: 3267493635957601068
+   │ ╰─────────^ attributes hash: 424456335303037920
    │  
    = ContractAttributes {
          public_functions: [
@@ -2024,7 +2052,9 @@ note:
                  is_public: true,
                  name: "emit_my_event",
                  params: [],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
              FunctionAttributes {
                  is_public: true,
@@ -2222,7 +2252,9 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
              FunctionAttributes {
                  is_public: true,
@@ -2235,7 +2267,9 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
              FunctionAttributes {
                  is_public: true,
@@ -2251,7 +2285,9 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
              FunctionAttributes {
                  is_public: true,
@@ -2266,7 +2302,9 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
              FunctionAttributes {
                  is_public: true,
@@ -2281,7 +2319,9 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
              FunctionAttributes {
                  is_public: true,
@@ -2299,7 +2339,9 @@ note:
                          ),
                      ),
                  ],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
          ],
          init_function: None,

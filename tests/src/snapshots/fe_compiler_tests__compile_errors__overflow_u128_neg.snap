@@ -1,12 +1,12 @@
 ---
-source: tests/src/compile_errors.rs
+source: analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
 error: literal out of range for `u128`
-  ┌─ [snippet]:3:8
+  ┌─ [snippet]:3:13
   │
-3 │   u128(-1)
-  │        ^^ does not fit into type `u128`
+3 │   x: u128 = -1
+  │             ^^ does not fit into type `u128`
 
 

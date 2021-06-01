@@ -1,0 +1,18 @@
+---
+source: analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: cannot find value `y` in this scope
+  ┌─ [snippet]:3:12
+  │
+3 │   x: u16 = y
+  │            ^ undefined
+
+error: cannot find value `y` in this scope
+  ┌─ [snippet]:4:12
+  │
+4 │   z: u16 = y
+  │            ^ undefined
+
+

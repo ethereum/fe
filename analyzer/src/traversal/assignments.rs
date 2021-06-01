@@ -13,16 +13,21 @@ use std::rc::Rc;
 /// e.g. `foo[42] = "bar"`, `self.foo[42] = "bar"`, `foo = 42`
 pub fn assign(
     scope: Shared<BlockScope>,
-    context: Shared<Context>,
+    context: &mut Context,
     stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::Assign { target, value } = &stmt.kind {
-        let target_attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), target)?;
+        let target_attributes = expressions::expr(Rc::clone(&scope), context, target, None)?;
 
-        let value_attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), value)?;
-        check_assign_target(Rc::clone(&context), target)?;
+        let value_attributes = expressions::expr(
+            Rc::clone(&scope),
+            context,
+            value,
+            Some(&target_attributes.typ),
+        )?;
+        check_assign_target(context, target)?;
         if target_attributes.typ != value_attributes.typ {
-            context.borrow_mut().fancy_error(
+            context.fancy_error(
                 "mismatched types",
                 vec![
                     Label::primary(
@@ -48,7 +53,7 @@ pub fn assign(
             ),
             (Location::Memory, Location::Storage { .. })
         ) {
-            context.borrow_mut().fancy_error(
+            context.fancy_error(
                 "location mismatch",
                 vec![
                     Label::primary(target.span, "this variable is located in memory"),
@@ -67,7 +72,7 @@ pub fn assign(
 }
 
 pub fn check_assign_target(
-    context: Shared<Context>,
+    context: &mut Context,
     expr: &Node<fe::Expr>,
 ) -> Result<(), SemanticError> {
     use fe::Expr::*;
@@ -76,13 +81,13 @@ pub fn check_assign_target(
         Subscript { .. } => Ok(()),
         Tuple { elts } => {
             for elt in elts {
-                check_assign_target(Rc::clone(&context), elt)?;
+                check_assign_target(context, elt)?;
             }
             Ok(())
         }
         Name(_) => Ok(()),
         _ => {
-            context.borrow_mut().fancy_error("invalid assignment target",
+            context.fancy_error("invalid assignment target",
                                              vec![Label::primary(expr.span, "")],
                                              vec!["The left side of an assignment can be a variable name, attribute, subscript, or tuple.".into()]);
             Err(SemanticError::fatal())
@@ -93,12 +98,13 @@ pub fn check_assign_target(
 /// Gather context information for assignments and check for type errors.
 pub fn aug_assign(
     scope: Shared<BlockScope>,
-    context: Shared<Context>,
+    context: &mut Context,
     stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), SemanticError> {
     if let fe::FuncStmt::AugAssign { target, op, value } = &stmt.kind {
-        let target_attributes = expressions::expr(Rc::clone(&scope), Rc::clone(&context), target)?;
-        let value_attributes = expressions::expr(scope, context, value)?;
+        let target_attributes = expressions::expr(Rc::clone(&scope), context, target, None)?;
+        let value_attributes =
+            expressions::expr(scope, context, value, Some(&target_attributes.typ))?;
 
         operations::bin(&target_attributes.typ, &op.kind, &value_attributes.typ)?;
         return Ok(());

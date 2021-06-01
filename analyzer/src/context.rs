@@ -31,16 +31,14 @@ pub enum Location {
 impl Location {
     /// The expected location of a value with the given type when being
     /// assigned, returned, or passed.
-    pub fn assign_location(typ: Type) -> Result<Self, SemanticError> {
+    pub fn assign_location(typ: &FixedSize) -> Self {
         match typ {
-            Type::Base(_) => Ok(Location::Value),
-            Type::Contract(_) => Ok(Location::Value),
-            Type::Array(_) => Ok(Location::Memory),
-            Type::Tuple(_) => Ok(Location::Memory),
-            Type::String(_) => Ok(Location::Memory),
-            Type::Struct(_) => Ok(Location::Memory),
-            Type::Map(_) => Err(SemanticError::cannot_move()),
-            Type::Unit => Ok(Location::Value),
+            FixedSize::Base(_) => Location::Value,
+            FixedSize::Contract(_) => Location::Value,
+            FixedSize::Array(_) => Location::Memory,
+            FixedSize::Tuple(_) => Location::Memory,
+            FixedSize::String(_) => Location::Memory,
+            FixedSize::Struct(_) => Location::Memory,
         }
     }
 }
@@ -88,7 +86,7 @@ impl From<Shared<ContractScope>> for ContractAttributes {
                     is_public: def.is_public,
                     name: name.clone(),
                     params: def.params.to_owned(),
-                    return_type: FixedSize::Unit,
+                    return_type: FixedSize::unit(),
                 })
             }
         }
@@ -159,7 +157,6 @@ impl ExpressionAttributes {
     pub fn into_loaded(mut self) -> Result<Self, SemanticError> {
         match self.typ {
             Type::Base(_) => {}
-            Type::Unit => {}
             Type::Contract(_) => {}
             _ => return Err(SemanticError::cannot_move()),
         }

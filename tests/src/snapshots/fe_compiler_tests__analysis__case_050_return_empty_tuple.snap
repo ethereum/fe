@@ -13,37 +13,49 @@ ModuleAttributes {
                         is_public: true,
                         name: "explicit_return_a1",
                         params: [],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
                         name: "explicit_return_a2",
                         params: [],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
                         name: "explicit_return_b1",
                         params: [],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
                         name: "explicit_return_b2",
                         params: [],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
                         name: "implicit_a1",
                         params: [],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                     FunctionAttributes {
                         is_public: true,
                         name: "implicit_a2",
                         params: [],
-                        return_type: Unit,
+                        return_type: Base(
+                            Unit,
+                        ),
                     },
                 ],
             },
@@ -56,10 +68,12 @@ note:
   ┌─ features/return_unit.fe:7:12
   │
 7 │     return ()
-  │            ^^ attributes hash: 11340536269963356597
+  │            ^^ attributes hash: 13510039392732087821
   │
   = ExpressionAttributes {
-        typ: Unit,
+        typ: Base(
+            Unit,
+        ),
         location: Value,
         move_location: None,
     }
@@ -68,10 +82,12 @@ note:
    ┌─ features/return_unit.fe:13:12
    │
 13 │     return ()
-   │            ^^ attributes hash: 11340536269963356597
+   │            ^^ attributes hash: 13510039392732087821
    │
    = ExpressionAttributes {
-         typ: Unit,
+         typ: Base(
+             Unit,
+         ),
          location: Value,
          move_location: None,
      }
@@ -81,13 +97,15 @@ note:
   │  
 3 │ ╭   pub def explicit_return_a1():
 4 │ │     return
-  │ ╰──────────^ attributes hash: 18083434021587872568
+  │ ╰──────────^ attributes hash: 1876963790513669126
   │  
   = FunctionAttributes {
         is_public: true,
         name: "explicit_return_a1",
         params: [],
-        return_type: Unit,
+        return_type: Base(
+            Unit,
+        ),
     }
 
 note: 
@@ -95,13 +113,15 @@ note:
   │  
 6 │ ╭   pub def explicit_return_a2():
 7 │ │     return ()
-  │ ╰─────────────^ attributes hash: 10617058239827021938
+  │ ╰─────────────^ attributes hash: 3364218285822111877
   │  
   = FunctionAttributes {
         is_public: true,
         name: "explicit_return_a2",
         params: [],
-        return_type: Unit,
+        return_type: Base(
+            Unit,
+        ),
     }
 
 note: 
@@ -109,13 +129,15 @@ note:
    │  
  9 │ ╭   pub def explicit_return_b1() -> ():
 10 │ │     return
-   │ ╰──────────^ attributes hash: 10657930867196598530
+   │ ╰──────────^ attributes hash: 3119760715755557810
    │  
    = FunctionAttributes {
          is_public: true,
          name: "explicit_return_b1",
          params: [],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -123,13 +145,15 @@ note:
    │  
 12 │ ╭   pub def explicit_return_b2() -> ():
 13 │ │     return ()
-   │ ╰─────────────^ attributes hash: 6198315681164674556
+   │ ╰─────────────^ attributes hash: 3632662372498159713
    │  
    = FunctionAttributes {
          is_public: true,
          name: "explicit_return_b2",
          params: [],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -137,13 +161,15 @@ note:
    │  
 15 │ ╭   pub def implicit_a1():
 16 │ │     pass
-   │ ╰────────^ attributes hash: 9693705213771787825
+   │ ╰────────^ attributes hash: 17402243144066639029
    │  
    = FunctionAttributes {
          is_public: true,
          name: "implicit_a1",
          params: [],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -151,13 +177,15 @@ note:
    │  
 18 │ ╭   pub def implicit_a2() -> ():
 19 │ │     pass
-   │ ╰────────^ attributes hash: 9930524211417055242
+   │ ╰────────^ attributes hash: 13481222315964146038
    │  
    = FunctionAttributes {
          is_public: true,
          name: "implicit_a2",
          params: [],
-         return_type: Unit,
+         return_type: Base(
+             Unit,
+         ),
      }
 
 note: 
@@ -170,7 +198,7 @@ note:
    · │
 18 │ │   pub def implicit_a2() -> ():
 19 │ │     pass
-   │ ╰────────^ attributes hash: 18253823632002334586
+   │ ╰────────^ attributes hash: 12660317516329267343
    │  
    = ContractAttributes {
          public_functions: [
@@ -178,37 +206,49 @@ note:
                  is_public: true,
                  name: "explicit_return_a1",
                  params: [],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
              FunctionAttributes {
                  is_public: true,
                  name: "explicit_return_a2",
                  params: [],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
              FunctionAttributes {
                  is_public: true,
                  name: "explicit_return_b1",
                  params: [],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
              FunctionAttributes {
                  is_public: true,
                  name: "explicit_return_b2",
                  params: [],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
              FunctionAttributes {
                  is_public: true,
                  name: "implicit_a1",
                  params: [],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
              FunctionAttributes {
                  is_public: true,
                  name: "implicit_a2",
                  params: [],
-                 return_type: Unit,
+                 return_type: Base(
+                     Unit,
+                 ),
              },
          ],
          init_function: None,
@@ -224,24 +264,30 @@ note:
   ┌─ features/return_unit.fe:9:35
   │
 9 │   pub def explicit_return_b1() -> ():
-  │                                   ^^ attributes hash: 7364705619221056123
+  │                                   ^^ attributes hash: 7530568563565570143
   │
-  = Unit
+  = Base(
+        Unit,
+    )
 
 note: 
    ┌─ features/return_unit.fe:12:35
    │
 12 │   pub def explicit_return_b2() -> ():
-   │                                   ^^ attributes hash: 7364705619221056123
+   │                                   ^^ attributes hash: 7530568563565570143
    │
-   = Unit
+   = Base(
+         Unit,
+     )
 
 note: 
    ┌─ features/return_unit.fe:18:28
    │
 18 │   pub def implicit_a2() -> ():
-   │                            ^^ attributes hash: 7364705619221056123
+   │                            ^^ attributes hash: 7530568563565570143
    │
-   = Unit
+   = Base(
+         Unit,
+     )
 
 

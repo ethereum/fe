@@ -319,6 +319,18 @@ impl fmt::Display for BinOperator {
     }
 }
 
+impl fmt::Display for UnaryOperator {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use UnaryOperator::*;
+        match self {
+            Invert => write!(f, "~"),
+            Not => write!(f, "not"),
+            UAdd => write!(f, "+"),
+            USub => write!(f, "-"),
+        }
+    }
+}
+
 impl fmt::Display for CompOperator {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use CompOperator::*;
