@@ -466,12 +466,12 @@ note:
 note: 
   ┌─ features/ownable.fe:8:3
   │  
-8 │ ╭   def __init__():
+8 │ ╭   pub def __init__():
 9 │ │     self._owner = msg.sender
-  │ ╰────────────────────────────^ attributes hash: 14570492547403311025
+  │ ╰────────────────────────────^ attributes hash: 3035129065019296448
   │  
   = FunctionAttributes {
-        is_public: false,
+        is_public: true,
         name: "__init__",
         params: [],
         return_type: Base(
@@ -549,7 +549,7 @@ note:
    · │
 22 │ │     self._owner = newOwner
 23 │ │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner)
-   │ ╰─────────────────────────────────────────────────────────────────^ attributes hash: 17730541326400548227
+   │ ╰─────────────────────────────────────────────────────────────────^ attributes hash: 17669221761082887319
    │  
    = ContractAttributes {
          public_functions: [
@@ -585,7 +585,16 @@ note:
                  ),
              },
          ],
-         init_function: None,
+         init_function: Some(
+             FunctionAttributes {
+                 is_public: true,
+                 name: "__init__",
+                 params: [],
+                 return_type: Base(
+                     Unit,
+                 ),
+             },
+         ),
          events: [
              EventDef {
                  name: "OwnershipTransferred",

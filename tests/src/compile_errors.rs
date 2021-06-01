@@ -185,3 +185,4 @@ test_file! { return_lt_mixed_types }
 test_file! { strict_boolean_if_else }
 test_file! { struct_call_bad_args }
 test_file! { struct_call_without_kw_args }
+test_file! { non_pub_init }
