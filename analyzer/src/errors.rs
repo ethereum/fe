@@ -15,7 +15,6 @@ pub struct AnalyzerError {
 pub enum ErrorKind {
     AlreadyDefined,
     CannotMove,
-    CircularDependency,
     MoreThanThreeIndexedParams,
     NotCallable,
     NotSubscriptable,
@@ -37,14 +36,6 @@ impl SemanticError {
     pub fn fatal() -> Self {
         SemanticError {
             kind: ErrorKind::Fatal,
-            context: vec![],
-        }
-    }
-
-    /// Create a new error with kind `CircularDependency`
-    pub fn circular_dependency() -> Self {
-        SemanticError {
-            kind: ErrorKind::CircularDependency,
             context: vec![],
         }
     }
