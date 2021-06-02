@@ -1,4 +1,4 @@
-use crate::errors::SemanticError;
+use crate::errors::{AlreadyDefined, SemanticError};
 use std::convert::TryFrom;
 use std::fmt;
 
@@ -203,9 +203,9 @@ impl Struct {
     }
 
     /// Add a field to the struct
-    pub fn add_field(&mut self, name: &str, value: &FixedSize) -> Result<(), SemanticError> {
+    pub fn add_field(&mut self, name: &str, value: &FixedSize) -> Result<(), AlreadyDefined> {
         if self.fields.iter().any(|(fname, _)| fname == name) {
-            Err(SemanticError::already_defined())
+            Err(AlreadyDefined)
         } else {
             self.fields.push((name.to_string(), value.clone()));
             Ok(())

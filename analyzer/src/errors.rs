@@ -4,6 +4,10 @@ use ansi_term::Color::Red;
 use fe_common::diagnostics::Diagnostic;
 use fe_parser::node::Span;
 
+/// Error to be returned from APIs that should reject duplicate definitions
+#[derive(Debug)]
+pub struct AlreadyDefined;
+
 #[derive(Debug)]
 pub struct AnalyzerError {
     pub diagnostics: Vec<Diagnostic>,
@@ -13,7 +17,6 @@ pub struct AnalyzerError {
 /// Errors for things that may arise in a valid Fe AST.
 #[derive(Debug, PartialEq)]
 pub enum ErrorKind {
-    AlreadyDefined,
     CannotMove,
     NotCallable,
     NotSubscriptable,
@@ -75,14 +78,6 @@ impl SemanticError {
     pub fn cannot_move() -> Self {
         SemanticError {
             kind: ErrorKind::CannotMove,
-            context: vec![],
-        }
-    }
-
-    /// Create a new error with kind `AlreadyDefined`
-    pub fn already_defined() -> Self {
-        SemanticError {
-            kind: ErrorKind::AlreadyDefined,
             context: vec![],
         }
     }

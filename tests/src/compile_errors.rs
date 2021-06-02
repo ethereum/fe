@@ -157,6 +157,7 @@ test_file! { call_undefined_function_on_memory_struct }
 test_file! { call_undefined_function_on_storage_struct }
 test_file! { circular_dependency_create }
 test_file! { circular_dependency_create2 }
+test_file! { duplicate_arg_in_contract_method }
 test_file! { duplicate_contract_in_module }
 test_file! { duplicate_event_in_contract }
 test_file! { duplicate_field_in_contract }
