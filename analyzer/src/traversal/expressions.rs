@@ -12,8 +12,8 @@ use builtins::{
     BlockField, ChainField, ContractTypeMethod, GlobalMethod, MsgField, Object, TxField,
     ValueMethod,
 };
-use fe_common::diagnostics::Label;
 use fe_common::numeric;
+use fe_common::{diagnostics::Label, utils::humanize::pluralize_conditionally};
 use fe_common::{Span, Spanned};
 use fe_parser::ast as fe;
 use fe_parser::ast::UnaryOperator;
@@ -631,12 +631,14 @@ pub fn validate_arg_count(
     args: &Node<Vec<impl Spanned>>,
     param_count: usize,
 ) {
-    let ess = |len| if len == 1 { "" } else { "s" };
-
     if args.kind.len() != param_count {
         let mut labels = vec![Label::primary(
             name_span,
-            format!("expects {} argument{}", param_count, ess(param_count)),
+            format!(
+                "expects {} {}",
+                param_count,
+                pluralize_conditionally("argument", param_count)
+            ),
         )];
         if args.kind.is_empty() {
             labels.push(Label::secondary(args.span, "supplied 0 arguments"));
@@ -645,20 +647,20 @@ pub fn validate_arg_count(
                 labels.push(Label::secondary(arg.span(), ""));
             }
             labels.last_mut().unwrap().message = format!(
-                "supplied {} argument{}",
+                "supplied {} {}",
                 args.kind.len(),
-                ess(args.kind.len()),
+                pluralize_conditionally("argument", args.kind.len())
             );
         }
 
         context.fancy_error(
             format!(
-                "`{}` expects {} argument{}, but {} {} provided",
+                "`{}` expects {} {}, but {} {} provided",
                 name,
                 param_count,
-                ess(param_count),
+                pluralize_conditionally("argument", param_count),
                 args.kind.len(),
-                if args.kind.len() == 1 { "was" } else { "were" },
+                pluralize_conditionally(("was", "were"), args.kind.len())
             ),
             labels,
             vec![],
