@@ -8,7 +8,7 @@ use fe_parser::ast as fe;
 use fe_parser::node::Node;
 
 /// Lowers a contract definition.
-pub fn contract_def(context: &Context, stmt: Node<fe::ModuleStmt>) -> Node<fe::ModuleStmt> {
+pub fn contract_def(context: &mut Context, stmt: Node<fe::ModuleStmt>) -> Node<fe::ModuleStmt> {
     if let fe::ModuleStmt::ContractDef { name, fields, body } = stmt.kind {
         let lowered_body = body
             .into_iter()
@@ -46,7 +46,7 @@ pub fn contract_def(context: &Context, stmt: Node<fe::ModuleStmt>) -> Node<fe::M
     unreachable!()
 }
 
-fn contract_field(context: &Context, field: Node<fe::Field>) -> Node<fe::Field> {
+fn contract_field(context: &mut Context, field: Node<fe::Field>) -> Node<fe::Field> {
     Node::new(
         fe::Field {
             is_pub: field.kind.is_pub,
@@ -59,7 +59,7 @@ fn contract_field(context: &Context, field: Node<fe::Field>) -> Node<fe::Field> 
     )
 }
 
-fn event_def(context: &Context, stmt: Node<fe::ContractStmt>) -> Node<fe::ContractStmt> {
+fn event_def(context: &mut Context, stmt: Node<fe::ContractStmt>) -> Node<fe::ContractStmt> {
     if let fe::ContractStmt::EventDef { name, fields } = stmt.kind {
         let lowered_fields = fields
             .into_iter()

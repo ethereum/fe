@@ -1262,3 +1262,17 @@ fn base_tuple() {
         );
     });
 }
+
+#[test]
+fn tuple_destructuring() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "tuple_destructuring.fe", "Foo", &[]);
+        harness.test_function(&mut executor, "bar", &[], Some(&uint_token(42)));
+        harness.test_function(
+            &mut executor,
+            "baz",
+            &[uint_token(1), bool_token(false)],
+            Some(&uint_token(1)),
+        );
+    });
+}

@@ -1,0 +1,11 @@
+contract Foo:
+    pub def bar() -> u256:
+        (x, y): (u256, bool) = (42, true)
+        return x
+
+    pub def baz(n: u256, b: bool) -> u256:
+        (x, y): (u256, bool) = self.make_tuple(n, b)
+        return x
+
+    def make_tuple(n: u256, b: bool) -> (u256, bool):
+        return (n, b)

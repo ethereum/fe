@@ -8,6 +8,6 @@ mod names;
 mod utils;
 
 /// Lowers the Fe source AST to a Fe HIR AST.
-pub fn lower(context: &Context, module: FeModuleAst) -> FeModuleAst {
+pub fn lower(context: &mut Context, module: FeModuleAst) -> FeModuleAst {
     mappers::module::module(context, module)
 }

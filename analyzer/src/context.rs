@@ -258,6 +258,8 @@ pub struct Context {
     pub module: Option<ModuleAttributes>,
     pub file_id: SourceFileId,
     pub diagnostics: Vec<Diagnostic>,
+    /// Holds fresh id for [`Context::make_unique_name`]
+    fresh_id: u64,
 }
 
 impl Context {
@@ -280,6 +282,7 @@ impl Context {
             module: None,
             file_id,
             diagnostics: Vec::new(),
+            fresh_id: 0,
         }
     }
 
@@ -580,6 +583,13 @@ impl Context {
                 .collect(),
             notes,
         });
+    }
+
+    /// Makes a unique name from the given name, keeping it as readable as possible.
+    pub fn make_unique_name(&mut self, name: &str) -> String {
+        let id = self.fresh_id;
+        self.fresh_id += 1;
+        format!("${}_{}", name, id)
     }
 }
 
