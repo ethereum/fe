@@ -5,6 +5,7 @@
 //! that can be used to query contextual information attributed to AST nodes.
 
 pub mod builtins;
+pub mod constants;
 pub mod context;
 pub mod errors;
 pub mod namespace;
