@@ -1,9 +1,12 @@
+use crate::constants;
 use crate::context::{Context, ContractAttributes};
 use crate::errors::SemanticError;
 use crate::namespace::events::EventDef;
 use crate::namespace::scopes::{ContractScope, ModuleScope, Scope, Shared};
 use crate::namespace::types::{Contract, FixedSize, Type};
 use crate::traversal::{functions, types};
+use fe_common::diagnostics::Label;
+use fe_common::utils::humanize::pluralize_conditionally;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use std::rc::Rc;
@@ -107,7 +110,7 @@ fn event_def(
     if let fe::ContractStmt::EventDef { name, fields } = &stmt.kind {
         let name = &name.kind;
 
-        let (is_indexed_bools, fields): (Vec<bool>, Vec<(String, FixedSize)>) = fields
+        let (is_indexed_bools, all_fields): (Vec<bool>, Vec<(String, FixedSize)>) = fields
             .iter()
             .map(|field| event_field(Rc::clone(&scope), context, field))
             .collect::<Result<Vec<_>, _>>()?
@@ -121,20 +124,43 @@ fn event_def(
             .map(|(index, _)| index)
             .collect::<Vec<_>>();
 
-        if indexed_fields.len() > 3 {
-            return Err(SemanticError::more_than_three_indexed_params());
+        if indexed_fields.len() > constants::MAX_INDEXED_EVENT_FIELDS {
+            let excess_count = indexed_fields.len() - constants::MAX_INDEXED_EVENT_FIELDS;
+
+            let labels = fields
+                .iter()
+                .enumerate()
+                .filter_map(|(idx, field)| {
+                    if indexed_fields.contains(&idx) {
+                        Some(field)
+                    } else {
+                        None
+                    }
+                })
+                .map(|field| Label::primary(field.span, "Indexed field"))
+                .collect();
+
+            context.fancy_error(
+                "More than three indexed fields.",
+                labels,
+                vec![format!(
+                    "Note: Remove the `idx` keyword from at least {} {}.",
+                    excess_count,
+                    pluralize_conditionally("field", excess_count)
+                )],
+            );
         }
 
         // check if they are trying to index an array type
         // todo clean all this up
         for index in indexed_fields.clone() {
-            match fields[index].1.to_owned() {
+            match all_fields[index].1.to_owned() {
                 FixedSize::Base(_) => {}
                 _ => context.not_yet_implemented("non-base type indexed event fields", stmt.span),
             }
         }
 
-        let event = EventDef::new(name, fields, indexed_fields);
+        let event = EventDef::new(name, all_fields, indexed_fields);
 
         context.add_event(stmt, event.clone());
 

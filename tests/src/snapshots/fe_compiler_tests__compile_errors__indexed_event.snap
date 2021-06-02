@@ -3,11 +3,18 @@ source: tests/src/compile_errors.rs
 expression: "error_string(&path, &src)"
 
 ---
+error: More than three indexed fields.
+  ┌─ fixtures/compile_errors/indexed_event.fe:3:9
+  │
+3 │         idx addr1: address
+  │         ^^^^^^^^^^^^^^^^^^ Indexed field
+4 │         idx addr2: address
+  │         ^^^^^^^^^^^^^^^^^^ Indexed field
+5 │         idx addr3: address
+  │         ^^^^^^^^^^^^^^^^^^ Indexed field
+6 │         idx addr4: address
+  │         ^^^^^^^^^^^^^^^^^^ Indexed field
+  │
+  = Note: Remove the `idx` keyword from at least 1 field.
 
 
-MoreThanThreeIndexedParams on line 2
-event MyEvent:
-        idx addr1: address
-        idx addr2: address
-        idx addr3: address
-        idx addr4: address
