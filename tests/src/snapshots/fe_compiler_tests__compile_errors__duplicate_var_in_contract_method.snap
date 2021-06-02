@@ -3,9 +3,12 @@ source: tests/src/compile_errors.rs
 expression: "error_string(&path, &src)"
 
 ---
+error: a variable with the same name already exists in this scope
+  ┌─ fixtures/compile_errors/duplicate_var_in_contract_method.fe:4:9
+  │
+4 │         foo: u8
+  │         ^^^ Conflicting definition of `foo` variables
+  │
+  = Note: Give one of the `foo` variables a different name
 
 
-AlreadyDefined on line 4
-pub def bar():
-        foo: u8
-        [31mfoo: u8[0m

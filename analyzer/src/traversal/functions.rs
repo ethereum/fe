@@ -1,5 +1,5 @@
 use crate::context::{Context, ExpressionAttributes, FunctionAttributes, Label, Location};
-use crate::errors::SemanticError;
+use crate::errors::{AlreadyDefined, SemanticError};
 use crate::namespace::scopes::{BlockScope, BlockScopeType, ContractScope, Scope, Shared};
 use crate::namespace::types::{Base, FixedSize, Type};
 use crate::traversal::{assignments, declarations, expressions, types};
@@ -77,19 +77,32 @@ pub fn func_def(
             }
         }
 
-        let attributes: FunctionAttributes = contract_scope
-            .borrow_mut()
-            .add_function(
-                name,
-                is_pub,
-                params,
-                return_type,
-                Rc::clone(&function_scope),
-            )?
-            .to_owned()
-            .into();
-
-        context.add_function(def, attributes);
+        match contract_scope.borrow_mut().add_function(
+            name,
+            is_pub,
+            params,
+            return_type,
+            Rc::clone(&function_scope),
+        ) {
+            Err(AlreadyDefined) => {
+                context.fancy_error(
+                    "a function with the same name already exists",
+                    // TODO: figure out how to include the previously defined function
+                    vec![Label::primary(
+                        def.span,
+                        format!("Conflicting definition of contract `{}`", name),
+                    )],
+                    vec![format!(
+                        "Note: Give one of the `{}` functions a different name",
+                        name
+                    )],
+                )
+            }
+            Ok(val) => {
+                let attributes: FunctionAttributes = val.to_owned().into();
+                context.add_function(def, attributes);
+            }
+        }
 
         Ok(())
     } else {
@@ -189,7 +202,25 @@ fn func_def_arg(
 ) -> Result<(String, FixedSize), SemanticError> {
     let fe::FuncDefArg { name, typ } = &arg.kind;
     let typ = types::type_desc_fixed_size(&Scope::Block(Rc::clone(&scope)), context, &typ)?;
-    scope.borrow_mut().add_var(&name.kind, typ.clone())?;
+
+    if let Err(AlreadyDefined) = scope.borrow_mut().add_var(&name.kind, typ.clone()) {
+        context.fancy_error(
+            "a function argument with the same name already exists",
+            // TODO: figure out how to include the previously defined arg
+            vec![Label::primary(
+                arg.span,
+                format!(
+                    "Conflicting definition of function argument `{}`",
+                    name.kind
+                ),
+            )],
+            vec![format!(
+                "Note: Give one of the `{}` function arguments a different name",
+                name.kind
+            )],
+        )
+    }
+
     Ok((name.kind.to_string(), typ))
 }
 
@@ -243,7 +274,22 @@ fn for_loop(
                 );
                 return Err(SemanticError::fatal());
             };
-            body_scope.borrow_mut().add_var(&target.kind, target_type)?;
+            if let Err(AlreadyDefined) = body_scope.borrow_mut().add_var(&target.kind, target_type)
+            {
+                context.fancy_error(
+                    "a variable with the same name already exists in this scope",
+                    // TODO: figure out how to include the previously defined var
+                    vec![Label::primary(
+                        stmt.span,
+                        format!("Conflicting definition of `{}` variables", &target.kind),
+                    )],
+                    vec![format!(
+                        "Note: Give one of the `{}` variables a different name",
+                        &target.kind
+                    )],
+                )
+            }
+
             // Traverse the statements within the `for loop` body scope.
             traverse_statements(body_scope, context, body)
         }

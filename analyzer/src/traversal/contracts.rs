@@ -1,6 +1,6 @@
 use crate::constants;
 use crate::context::{Context, ContractAttributes};
-use crate::errors::SemanticError;
+use crate::errors::{AlreadyDefined, SemanticError};
 use crate::namespace::events::EventDef;
 use crate::namespace::scopes::{ContractScope, ModuleScope, Scope, Shared};
 use crate::namespace::types::{Contract, FixedSize, Type};
@@ -44,7 +44,7 @@ pub fn contract_def(
 
         let contract_attributes = ContractAttributes::from(Rc::clone(&contract_scope));
 
-        contract_scope
+        if let Err(AlreadyDefined) = contract_scope
             .borrow()
             .module_scope()
             .borrow_mut()
@@ -54,7 +54,21 @@ pub fn contract_def(
                     name: name.kind.to_string(),
                     functions: contract_attributes.public_functions,
                 }),
-            )?;
+            )
+        {
+            context.fancy_error(
+                "a contract with the same name already exists",
+                // TODO: figure out how to include the previously defined contract
+                vec![Label::primary(
+                    stmt.span,
+                    format!("Conflicting definition of contract `{}`", name.kind),
+                )],
+                vec![format!(
+                    "Note: Give one of the `{}` contracts a different name",
+                    name.kind
+                )],
+            )
+        }
 
         return Ok(contract_scope);
     }
@@ -99,7 +113,23 @@ fn contract_field(
 ) -> Result<(), SemanticError> {
     let fe::Field { name, typ, .. } = &stmt.kind;
     let typ = types::type_desc(&Scope::Contract(Rc::clone(&scope)), context, &typ)?;
-    scope.borrow_mut().add_field(&name.kind, typ)
+
+    if let Err(AlreadyDefined) = scope.borrow_mut().add_field(&name.kind, typ) {
+        context.fancy_error(
+            "a contract field with the same name already exists",
+            // TODO: figure out how to include the previously defined field
+            vec![Label::primary(
+                stmt.span,
+                format!("Conflicting definition of field `{}`", name.kind),
+            )],
+            vec![format!(
+                "Note: Give one of the `{}` fields a different name",
+                name.kind
+            )],
+        )
+    }
+
+    Ok(())
 }
 
 fn event_def(
@@ -164,7 +194,22 @@ fn event_def(
 
         context.add_event(stmt, event.clone());
 
-        return scope.borrow_mut().add_event(name, event);
+        if let Err(AlreadyDefined) = scope.borrow_mut().add_event(name, event) {
+            context.fancy_error(
+                "an event with the same name already exists",
+                // TODO: figure out how to include the previously defined event
+                vec![Label::primary(
+                    stmt.span,
+                    format!("Conflicting definition of event `{}`", name),
+                )],
+                vec![format!(
+                    "Note: Give one of the `{}` events a different name",
+                    name
+                )],
+            )
+        }
+
+        return Ok(());
     }
 
     unreachable!()
