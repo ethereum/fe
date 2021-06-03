@@ -186,3 +186,5 @@ test_file! { strict_boolean_if_else }
 test_file! { struct_call_bad_args }
 test_file! { struct_call_without_kw_args }
 test_file! { non_pub_init }
+test_file! { abi_encode_u256 }
+test_file! { abi_encode_from_storage }

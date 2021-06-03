@@ -126,10 +126,11 @@ fn event_def(
         }
 
         // check if they are trying to index an array type
+        // todo clean all this up
         for index in indexed_fields.clone() {
             match fields[index].1.to_owned() {
                 FixedSize::Base(_) => {}
-                _ => unimplemented!("non-base type indexed event params"),
+                _ => context.not_yet_implemented("non-base type indexed event fields", stmt.span),
             }
         }
 

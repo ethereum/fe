@@ -20,7 +20,7 @@ pub fn struct_def(
         if let Type::Base(base_typ) = field_type {
             val.add_field(&name.kind, &FixedSize::Base(base_typ))?;
         } else {
-            todo!("Non-Base type fields aren't yet supported")
+            context.not_yet_implemented("non-base type struct fields", field.span)
         }
     }
     module_scope

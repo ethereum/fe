@@ -133,7 +133,6 @@ fn expr_call(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
                                         ),
                                         _ => panic!("invalid attributes"),
                                     },
-                                    builtins::ValueMethod::AbiEncodePacked => todo!(),
                                 }
                             }
                         };
@@ -383,7 +382,6 @@ fn expr_attribute(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
                     Err(_) => panic!("invalid `chain` attribute name"),
                 },
                 Ok(Object::Msg) => match MsgField::from_str(&attr.kind) {
-                    Ok(MsgField::Data) => todo!(),
                     Ok(MsgField::Sender) => expression! { caller() },
                     Ok(MsgField::Sig) => expression! {
                         and(

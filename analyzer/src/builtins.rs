@@ -6,7 +6,6 @@ pub enum ValueMethod {
     Clone,
     ToMem,
     AbiEncode,
-    AbiEncodePacked,
 }
 
 #[derive(Clone, Debug, PartialEq, EnumString, IntoStaticStr, Hash)]
@@ -51,7 +50,6 @@ pub enum ChainField {
 #[derive(Debug, PartialEq, EnumString)]
 #[strum(serialize_all = "snake_case")]
 pub enum MsgField {
-    Data,
     Sender,
     Sig,
     Value,

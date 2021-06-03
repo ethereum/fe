@@ -466,7 +466,6 @@ fn unary_op(op: &Token, operand: Node<Expr>) -> Node<Expr> {
     let astop = match op.kind {
         Tilde => UnaryOperator::Invert,
         Not => UnaryOperator::Not,
-        Plus => UnaryOperator::UAdd,
         Minus => UnaryOperator::USub,
         _ => panic!(),
     };
