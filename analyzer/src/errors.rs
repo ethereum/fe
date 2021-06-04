@@ -20,7 +20,6 @@ pub struct AnalyzerError {
 /// Errors for things that may arise in a valid Fe AST.
 #[derive(Debug, PartialEq)]
 pub enum ErrorKind {
-    NotCallable,
     NotSubscriptable,
     SignedExponentNotAllowed,
     TypeError,
@@ -72,14 +71,6 @@ impl SemanticError {
     pub fn type_error() -> Self {
         SemanticError {
             kind: ErrorKind::TypeError,
-            context: vec![],
-        }
-    }
-
-    /// Create a new error with kind `NotCallable`
-    pub fn not_callable() -> Self {
-        SemanticError {
-            kind: ErrorKind::NotCallable,
             context: vec![],
         }
     }

@@ -1185,7 +1185,18 @@ fn expr_call_type(
     let call_type = match &func.kind {
         fe::Expr::Name(name) => expr_name_call_type(scope, context, name, func.span, generic_args),
         fe::Expr::Attribute { .. } => expr_attribute_call_type(scope, context, func),
-        _ => Err(SemanticError::not_callable()),
+        _ => {
+            let expression = expr(scope, context, func, None)?;
+            context.fancy_error(
+                format!("the {} type is not callable", expression.typ),
+                vec![Label::primary(
+                    func.span,
+                    format!("this has type {}", expression.typ),
+                )],
+                vec![],
+            );
+            Err(SemanticError::fatal())
+        }
     }?;
 
     context.add_call(func, call_type.clone());
