@@ -151,7 +151,18 @@ pub fn value_expr(
     exp: &Node<fe::Expr>,
     expected_type: Option<&Type>,
 ) -> Result<ExpressionAttributes, SemanticError> {
-    let attributes = expr(Rc::clone(&scope), context, exp, expected_type)?.into_loaded()?;
+    let original_attributes = expr(Rc::clone(&scope), context, exp, expected_type)?;
+    let attributes = original_attributes.clone().into_loaded().map_err(|_| {
+        context.fancy_error(
+            "can't move value onto stack",
+            vec![Label::primary(exp.span, "Value to be moved")],
+            vec![format!(
+                "Note: Can't move `{}` types on the stack",
+                original_attributes.typ
+            )],
+        );
+        SemanticError::fatal()
+    })?;
 
     context.update_expression(exp, attributes.clone());
 
@@ -910,7 +921,20 @@ fn expr_call_value_attribute(
 
         if let Type::Contract(contract) = &value_attributes.typ {
             // We must ensure the expression is loaded onto the stack.
-            context.update_expression(value, value_attributes.clone().into_loaded()?);
+            let expression = value_attributes.clone().into_loaded().map_err(|_| {
+                // TODO: Add test code that triggers this
+                context.fancy_error(
+                    "can't move value onto stack",
+                    vec![Label::primary(value.span, "Value to be moved")],
+                    vec![format!(
+                        "Note: Can't move `{}` types on the stack",
+                        value_attributes.typ
+                    )],
+                );
+                SemanticError::fatal()
+            })?;
+
+            context.update_expression(value, expression);
             return expr_call_contract_attribute(
                 scope,
                 context,
