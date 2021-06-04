@@ -1,5 +1,5 @@
 use crate::builtins::GlobalMethod;
-use crate::errors::SemanticError;
+use crate::errors::CannotMove;
 use crate::namespace::events::EventDef;
 use crate::namespace::scopes::{ContractFunctionDef, ContractScope, ModuleScope, Shared};
 use crate::namespace::types::{Array, Contract, FixedSize, Struct, Tuple, Type};
@@ -154,11 +154,11 @@ impl ExpressionAttributes {
     }
 
     /// Adds a move to value, if it is in storage or memory.
-    pub fn into_loaded(mut self) -> Result<Self, SemanticError> {
+    pub fn into_loaded(mut self) -> Result<Self, CannotMove> {
         match self.typ {
             Type::Base(_) => {}
             Type::Contract(_) => {}
-            _ => return Err(SemanticError::cannot_move()),
+            _ => return Err(CannotMove),
         }
 
         if self.location != Location::Value {

@@ -7,6 +7,9 @@ use fe_parser::node::Span;
 /// Error to be returned from APIs that should reject duplicate definitions
 #[derive(Debug)]
 pub struct AlreadyDefined;
+/// Error indicating that a value can not move between memory and storage
+#[derive(Debug)]
+pub struct CannotMove;
 
 #[derive(Debug)]
 pub struct AnalyzerError {
@@ -17,7 +20,6 @@ pub struct AnalyzerError {
 /// Errors for things that may arise in a valid Fe AST.
 #[derive(Debug, PartialEq)]
 pub enum ErrorKind {
-    CannotMove,
     NotCallable,
     NotSubscriptable,
     SignedExponentNotAllowed,
@@ -70,14 +72,6 @@ impl SemanticError {
     pub fn type_error() -> Self {
         SemanticError {
             kind: ErrorKind::TypeError,
-            context: vec![],
-        }
-    }
-
-    /// Create a new error with kind `CannotMove`
-    pub fn cannot_move() -> Self {
-        SemanticError {
-            kind: ErrorKind::CannotMove,
             context: vec![],
         }
     }

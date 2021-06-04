@@ -156,6 +156,7 @@ test_file! { call_undefined_function_on_external_contract }
 test_file! { call_undefined_function_on_memory_struct }
 test_file! { call_undefined_function_on_storage_struct }
 test_file! { cannot_move }
+test_file! { cannot_move2 }
 test_file! { circular_dependency_create }
 test_file! { circular_dependency_create2 }
 test_file! { duplicate_arg_in_contract_method }
