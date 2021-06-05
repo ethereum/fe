@@ -1,7 +1,7 @@
 use super::functions::parse_fn_def;
 use super::types::{parse_event_def, parse_field, parse_opt_qualifier};
 
-use crate::ast::ModuleStmt;
+use crate::ast::ContractDef;
 use crate::grammar::functions::parse_single_word_stmt;
 use crate::node::Node;
 use crate::{ParseFailed, ParseResult, Parser, TokenKind};
@@ -15,7 +15,7 @@ use crate::{ParseFailed, ParseResult, Parser, TokenKind};
 /// Parse a contract definition.
 /// # Panics
 /// Panics if the next token isn't `contract`.
-pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
+pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<ContractDef>> {
     use TokenKind::*;
     let contract_tok = par.assert(Contract);
 
@@ -106,7 +106,7 @@ pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
 
     let span = header_span + fields.last() + defs.last();
     Ok(Node::new(
-        ModuleStmt::ContractDef {
+        ContractDef {
             name: Node::new(contract_name.text.to_string(), contract_name.span),
             fields,
             body: defs,

@@ -6,34 +6,51 @@ use vec1::Vec1;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Module {
-    pub body: Vec<Node<ModuleStmt>>,
+    pub body: Vec<ModuleStmt>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ModuleStmt {
-    Pragma {
-        version_requirement: Node<String>,
-    },
-    TypeDef {
-        name: Node<String>,
-        typ: Node<TypeDesc>,
-    },
-    SimpleImport {
+    Pragma(Node<Pragma>),
+    Import(Node<Import>),
+    TypeAlias(Node<TypeAlias>),
+    ContractDef(Node<ContractDef>),
+    StructDef(Node<StructDef>),
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct Pragma {
+    pub version_requirement: Node<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub enum Import {
+    Simple {
         names: Vec<Node<SimpleImportName>>,
     },
-    FromImport {
+    From {
         path: Node<FromImportPath>,
         names: Node<FromImportNames>,
     },
-    ContractDef {
-        name: Node<String>,
-        fields: Vec<Node<Field>>,
-        body: Vec<Node<ContractStmt>>,
-    },
-    StructDef {
-        name: Node<String>,
-        fields: Vec<Node<Field>>,
-    },
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct TypeAlias {
+    pub name: Node<String>,
+    pub typ: Node<TypeDesc>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct ContractDef {
+    pub name: Node<String>,
+    pub fields: Vec<Node<Field>>,
+    pub body: Vec<Node<ContractStmt>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct StructDef {
+    pub name: Node<String>,
+    pub fields: Vec<Node<Field>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -287,6 +304,18 @@ pub enum CompOperator {
     LtE,
     Gt,
     GtE,
+}
+
+impl Spanned for ModuleStmt {
+    fn span(&self) -> Span {
+        match self {
+            ModuleStmt::Pragma(inner) => inner.span,
+            ModuleStmt::Import(inner) => inner.span,
+            ModuleStmt::TypeAlias(inner) => inner.span,
+            ModuleStmt::ContractDef(inner) => inner.span,
+            ModuleStmt::StructDef(inner) => inner.span,
+        }
+    }
 }
 
 impl fmt::Display for BoolOperator {

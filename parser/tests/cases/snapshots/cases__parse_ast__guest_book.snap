@@ -6,8 +6,8 @@ expression: "ast_string(stringify!(guest_book), module::parse_module,\n         
 Node(
   kind: Module(
     body: [
-      Node(
-        kind: TypeDef(
+      TypeAlias(Node(
+        kind: TypeAlias(
           name: Node(
             kind: "BookMsg",
             span: Span(
@@ -38,8 +38,8 @@ Node(
           start: 1,
           end: 26,
         ),
-      ),
-      Node(
+      )),
+      ContractDef(Node(
         kind: ContractDef(
           name: Node(
             kind: "GuestBook",
@@ -413,11 +413,11 @@ Node(
           start: 28,
           end: 348,
         ),
-      ),
+      )),
     ],
   ),
   span: Span(
-    start: 1,
+    start: 0,
     end: 348,
   ),
 )

@@ -8,42 +8,39 @@ use fe_parser::ast as fe;
 use fe_parser::node::Node;
 
 /// Lowers a contract definition.
-pub fn contract_def(context: &mut Context, stmt: Node<fe::ModuleStmt>) -> Node<fe::ModuleStmt> {
-    if let fe::ModuleStmt::ContractDef { name, fields, body } = stmt.kind {
-        let lowered_body = body
-            .into_iter()
-            .map(|stmt| match stmt.kind {
-                fe::ContractStmt::EventDef { .. } => event_def(context, stmt),
-                fe::ContractStmt::FuncDef { .. } => functions::func_def(context, stmt),
-            })
-            .collect();
+pub fn contract_def(context: &mut Context, stmt: Node<fe::ContractDef>) -> Node<fe::ContractDef> {
+    let fe::ContractDef { name, fields, body } = stmt.kind;
+    let lowered_body = body
+        .into_iter()
+        .map(|stmt| match stmt.kind {
+            fe::ContractStmt::EventDef { .. } => event_def(context, stmt),
+            fe::ContractStmt::FuncDef { .. } => functions::func_def(context, stmt),
+        })
+        .collect();
 
-        let attributes = context.get_contract(stmt.id).expect("missing attributes");
+    let attributes = context.get_contract(stmt.id).expect("missing attributes");
 
-        let func_defs_from_list_expr = attributes
-            .list_expressions
-            .iter()
-            .map(|expr| list_expr_to_fn_def(expr).into_node())
-            .collect::<Vec<Node<fe::ContractStmt>>>();
+    let func_defs_from_list_expr = attributes
+        .list_expressions
+        .iter()
+        .map(|expr| list_expr_to_fn_def(expr).into_node())
+        .collect::<Vec<Node<fe::ContractStmt>>>();
 
-        let lowered_body = [lowered_body, func_defs_from_list_expr].concat();
+    let lowered_body = [lowered_body, func_defs_from_list_expr].concat();
 
-        let lowered_fields = fields
-            .into_iter()
-            .map(|field| contract_field(context, field))
-            .collect();
+    let lowered_fields = fields
+        .into_iter()
+        .map(|field| contract_field(context, field))
+        .collect();
 
-        return Node::new(
-            fe::ModuleStmt::ContractDef {
-                name,
-                fields: lowered_fields,
-                body: lowered_body,
-            },
-            stmt.span,
-        );
-    }
-
-    unreachable!()
+    Node::new(
+        fe::ContractDef {
+            name,
+            fields: lowered_fields,
+            body: lowered_body,
+        },
+        stmt.span,
+    )
 }
 
 fn contract_field(context: &mut Context, field: Node<fe::Field>) -> Node<fe::Field> {

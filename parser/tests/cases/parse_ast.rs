@@ -130,7 +130,7 @@ test_parse! { stmt_var_decl_name, functions::parse_stmt, "foo: u256" }
 test_parse! { stmt_var_decl_tuple, functions::parse_stmt, "(foo, bar): (u256, u256) = (10, 10)" }
 test_parse! { stmt_var_decl_tuples, functions::parse_stmt, "(a, (b, (c, d))): x" }
 
-test_parse! { type_def, types::parse_type_def, "type X = Map<address, u256>" }
+test_parse! { type_def, types::parse_type_alias, "type X = Map<address, u256>" }
 test_parse! { type_name, types::parse_type_desc, "MyType" }
 test_parse! { type_array, types::parse_type_desc, "address[25]" }
 test_parse! { type_3d, types::parse_type_desc, "u256[4][4][4]" }

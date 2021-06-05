@@ -77,6 +77,17 @@ where
     }
 }
 
+impl<'a, T> Add<&'a T> for Span
+where
+    T: Spanned,
+{
+    type Output = Self;
+
+    fn add(self, other: &'a T) -> Self {
+        self + other.span()
+    }
+}
+
 impl<T> AddAssign<T> for Span
 where
     Span: Add<T, Output = Self>,

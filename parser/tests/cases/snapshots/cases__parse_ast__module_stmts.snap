@@ -6,7 +6,7 @@ expression: "ast_string(stringify!(module_stmts), module::parse_module,\n       
 Node(
   kind: Module(
     body: [
-      Node(
+      Pragma(Node(
         kind: Pragma(
           version_requirement: Node(
             kind: "0.5.0",
@@ -20,9 +20,9 @@ Node(
           start: 1,
           end: 13,
         ),
-      ),
-      Node(
-        kind: SimpleImport(
+      )),
+      Import(Node(
+        kind: Simple(
           names: [
             Node(
               kind: SimpleImportName(
@@ -78,9 +78,9 @@ Node(
           start: 15,
           end: 44,
         ),
-      ),
-      Node(
-        kind: TypeDef(
+      )),
+      TypeAlias(Node(
+        kind: TypeAlias(
           name: Node(
             kind: "X",
             span: Span(
@@ -134,8 +134,8 @@ Node(
           start: 46,
           end: 67,
         ),
-      ),
-      Node(
+      )),
+      ContractDef(Node(
         kind: ContractDef(
           name: Node(
             kind: "A",
@@ -185,8 +185,8 @@ Node(
           start: 69,
           end: 102,
         ),
-      ),
-      Node(
+      )),
+      ContractDef(Node(
         kind: ContractDef(
           name: Node(
             kind: "B",
@@ -230,11 +230,11 @@ Node(
           start: 109,
           end: 133,
         ),
-      ),
+      )),
     ],
   ),
   span: Span(
-    start: 1,
+    start: 0,
     end: 133,
   ),
 )

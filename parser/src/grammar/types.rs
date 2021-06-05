@@ -1,4 +1,4 @@
-use crate::ast::{ContractStmt, EventField, Field, GenericArg, ModuleStmt, TypeDesc};
+use crate::ast::{ContractStmt, EventField, Field, GenericArg, StructDef, TypeAlias, TypeDesc};
 use crate::grammar::expressions::parse_expr;
 use crate::grammar::functions::parse_single_word_stmt;
 use crate::node::{Node, Span};
@@ -8,7 +8,7 @@ use vec1::Vec1;
 /// Parse a [`ModuleStmt::StructDef`].
 /// # Panics
 /// Panics if the next token isn't `struct`.
-pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
+pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<StructDef>> {
     use TokenKind::*;
 
     let struct_tok = par.assert(Struct);
@@ -42,7 +42,7 @@ pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     }
     let span = struct_tok.span + name.span + fields.last();
     Ok(Node::new(
-        ModuleStmt::StructDef {
+        StructDef {
             name: name.into(),
             fields,
         },
@@ -50,10 +50,10 @@ pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     ))
 }
 
-/// Parse a type definition, e.g. `type MyMap = Map<u8, address>`.
+/// Parse a type alias definition, e.g. `type MyMap = Map<u8, address>`.
 /// # Panics
 /// Panics if the next token isn't `type`.
-pub fn parse_type_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
+pub fn parse_type_alias(par: &mut Parser) -> ParseResult<Node<TypeAlias>> {
     let type_tok = par.assert(TokenKind::Type);
     let name = par.expect(TokenKind::Name, "failed to parse type declaration")?;
     par.expect_with_notes(TokenKind::Eq, "failed to parse type declaration", || {
@@ -66,7 +66,7 @@ pub fn parse_type_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     let typ = parse_type_desc(par)?;
     let span = type_tok.span + typ.span;
     Ok(Node::new(
-        ModuleStmt::TypeDef {
+        TypeAlias {
             name: name.into(),
             typ,
         },
