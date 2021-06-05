@@ -1,6 +1,5 @@
 pub use fe_common::{Span, Spanned};
 use serde::{Deserialize, Serialize};
-use std::ops::Add;
 use uuid::Uuid;
 
 #[derive(Debug, PartialEq, Copy, Clone, Hash, Eq, Default, PartialOrd, Ord)]
@@ -9,14 +8,6 @@ pub struct NodeId(Uuid);
 impl NodeId {
     pub fn create() -> Self {
         Self(Uuid::new_v4())
-    }
-}
-
-impl<T> Add<&Node<T>> for Span {
-    type Output = Self;
-
-    fn add(self, other: &Node<T>) -> Self {
-        self + other.span
     }
 }
 

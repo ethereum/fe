@@ -16,63 +16,55 @@ use std::rc::Rc;
 pub fn contract_def(
     module_scope: Shared<ModuleScope>,
     context: &mut Context,
-    stmt: &Node<fe::ModuleStmt>,
+    stmt: &Node<fe::ContractDef>,
 ) -> Result<Shared<ContractScope>, FatalError> {
-    if let fe::ModuleStmt::ContractDef {
-        name,
-        fields: _,
-        body,
-    } = &stmt.kind
-    {
-        let contract_scope = ContractScope::new(&name.kind, Rc::clone(&module_scope));
+    let fe::ContractDef { name, body, .. } = &stmt.kind;
+    let contract_scope = ContractScope::new(&name.kind, Rc::clone(&module_scope));
 
-        // Contract fields are evaluated in the next pass together with function bodies
-        // so that they can use other contract types that may only be defined after the
-        // current contract.
+    // Contract fields are evaluated in the next pass together with function bodies
+    // so that they can use other contract types that may only be defined after the
+    // current contract.
 
-        for stmt in body {
-            match &stmt.kind {
-                fe::ContractStmt::EventDef { .. } => {
-                    event_def(Rc::clone(&contract_scope), context, stmt)
-                }
-                fe::ContractStmt::FuncDef { .. } => {
-                    functions::func_def(Rc::clone(&contract_scope), context, stmt)
-                }
-            }?
-        }
-
-        let contract_attributes = ContractAttributes::from(Rc::clone(&contract_scope));
-
-        if let Err(AlreadyDefined) = contract_scope
-            .borrow()
-            .module_scope()
-            .borrow_mut()
-            .add_type_def(
-                &name.kind,
-                Type::Contract(Contract {
-                    name: name.kind.to_string(),
-                    functions: contract_attributes.public_functions,
-                }),
-            )
-        {
-            context.fancy_error(
-                "a contract with the same name already exists",
-                // TODO: figure out how to include the previously defined contract
-                vec![Label::primary(
-                    stmt.span,
-                    format!("Conflicting definition of contract `{}`", name.kind),
-                )],
-                vec![format!(
-                    "Note: Give one of the `{}` contracts a different name",
-                    name.kind
-                )],
-            )
-        }
-
-        return Ok(contract_scope);
+    for stmt in body {
+        match &stmt.kind {
+            fe::ContractStmt::EventDef { .. } => {
+                event_def(Rc::clone(&contract_scope), context, stmt)
+            }
+            fe::ContractStmt::FuncDef { .. } => {
+                functions::func_def(Rc::clone(&contract_scope), context, stmt)
+            }
+        }?
     }
 
-    unreachable!()
+    let contract_attributes = ContractAttributes::from(Rc::clone(&contract_scope));
+
+    if let Err(AlreadyDefined) = contract_scope
+        .borrow()
+        .module_scope()
+        .borrow_mut()
+        .add_type_def(
+            &name.kind,
+            Type::Contract(Contract {
+                name: name.kind.to_string(),
+                functions: contract_attributes.public_functions,
+            }),
+        )
+    {
+        context.fancy_error(
+            "a contract with the same name already exists",
+            // TODO: figure out how to include the previously defined contract
+            vec![Label::primary(
+                stmt.span,
+                format!("Conflicting definition of contract `{}`", name.kind),
+            )],
+            vec![format!(
+                "Note: Give one of the `{}` contracts a different name",
+                name.kind
+            )],
+        )
+    }
+
+    Ok(contract_scope)
 }
 
 /// Gather context information for fields and function bodies of contracts.
@@ -81,27 +73,23 @@ pub fn contract_def(
 pub fn contract_body(
     contract_scope: Shared<ContractScope>,
     context: &mut Context,
-    stmt: &Node<fe::ModuleStmt>,
+    stmt: &Node<fe::ContractDef>,
 ) -> Result<(), FatalError> {
-    if let fe::ModuleStmt::ContractDef { fields, body, .. } = &stmt.kind {
-        for field in fields {
-            contract_field(Rc::clone(&contract_scope), context, field)?;
-        }
-
-        for stmt in body {
-            if let fe::ContractStmt::FuncDef { .. } = &stmt.kind {
-                functions::func_body(Rc::clone(&contract_scope), context, stmt)?
-            };
-        }
-
-        let contract_attributes = ContractAttributes::from(Rc::clone(&contract_scope));
-
-        context.add_contract(stmt, contract_attributes);
-
-        return Ok(());
+    let fe::ContractDef { fields, body, .. } = &stmt.kind;
+    for field in fields {
+        contract_field(Rc::clone(&contract_scope), context, field)?;
     }
 
-    unreachable!()
+    for stmt in body {
+        if let fe::ContractStmt::FuncDef { .. } = &stmt.kind {
+            functions::func_body(Rc::clone(&contract_scope), context, stmt)?
+        };
+    }
+
+    let contract_attributes = ContractAttributes::from(Rc::clone(&contract_scope));
+
+    context.add_contract(stmt, contract_attributes);
+    Ok(())
 }
 
 fn contract_field(

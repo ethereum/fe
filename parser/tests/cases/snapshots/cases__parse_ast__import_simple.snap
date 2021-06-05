@@ -4,7 +4,7 @@ expression: "ast_string(stringify!(import_simple), module::parse_simple_import,\
 
 ---
 Node(
-  kind: SimpleImport(
+  kind: Simple(
     names: [
       Node(
         kind: SimpleImportName(

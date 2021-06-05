@@ -11,9 +11,12 @@ pub fn module(context: &Context, module: &fe::Module) -> Result<ModuleAbis, Comp
         .body
         .iter()
         .try_fold(ModuleAbis::new(), |mut abis, stmt| {
-            if let fe::ModuleStmt::ContractDef { name, body, .. } = &stmt.kind {
+            if let fe::ModuleStmt::ContractDef(contract) = &stmt {
                 if abis
-                    .insert(name.kind.to_string(), contract_def(context, body)?)
+                    .insert(
+                        contract.kind.name.kind.to_string(),
+                        contract_def(context, &contract.kind.body)?,
+                    )
                     .is_some()
                 {
                     return Err(CompileError::static_str("duplicate contract definition"));

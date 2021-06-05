@@ -379,7 +379,7 @@ impl Context {
     /// # Panics
     ///
     /// Panics if an entry already exists for the node id.
-    pub fn add_contract(&mut self, node: &Node<fe::ModuleStmt>, attributes: ContractAttributes) {
+    pub fn add_contract(&mut self, node: &Node<fe::ContractDef>, attributes: ContractAttributes) {
         self.add_node(node);
         expect_none(
             self.contracts.insert(node.id, attributes),
