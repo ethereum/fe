@@ -3,7 +3,10 @@ source: tests/src/compile_errors.rs
 expression: "error_string(&path, &src)"
 
 ---
+error: Invalid call to `doesnt_exist`
+  ┌─ fixtures/compile_errors/call_undefined_function_on_memory_struct.fe:7:12
+  │
+7 │     thingy.doesnt_exist()
+  │            ^^^^^^^^^^^^ undefined function
 
 
-UndefinedValue on line 7
-[31mthingy.doesnt_exist()[0m

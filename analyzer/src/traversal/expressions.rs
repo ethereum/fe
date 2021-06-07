@@ -387,25 +387,44 @@ fn expr_attribute(
                 Location::Value,
             ))
         };
-        let undefined_value_err = Err(SemanticError::undefined_value());
+        let fatal_err = Err(SemanticError::fatal());
 
         // If the value is a name, check if it is a builtin object and attribute.
         if let fe::Expr::Name(name) = &value.kind {
             match Object::from_str(name) {
-                Ok(Object::Self_) => return expr_attribute_self(scope, attr),
+                Ok(Object::Self_) => return expr_attribute_self(scope, context, attr),
                 Ok(Object::Block) => {
                     return match BlockField::from_str(&attr.kind) {
                         Ok(BlockField::Coinbase) => base_type(Base::Address),
                         Ok(BlockField::Difficulty) => base_type(U256),
                         Ok(BlockField::Number) => base_type(U256),
                         Ok(BlockField::Timestamp) => base_type(U256),
-                        Err(_) => undefined_value_err,
+                        Err(_) => {
+                            context.fancy_error(
+                                "Not a block field",
+                                vec![
+                                    Label::primary(
+                                        attr.span,
+                                        "",
+                                    ),
+                                ],
+                                vec!["Note: Only `coinbase`, `difficulty`, `number` and `timestamp` can be accessed on `block`.".into()],
+                            );
+                            fatal_err
+                        }
                     }
                 }
                 Ok(Object::Chain) => {
                     return match ChainField::from_str(&attr.kind) {
                         Ok(ChainField::Id) => base_type(U256),
-                        Err(_) => undefined_value_err,
+                        Err(_) => {
+                            context.fancy_error(
+                                "Not a chain field",
+                                vec![Label::primary(attr.span, "")],
+                                vec!["Note: Only `id` can be accessed on `chain`.".into()],
+                            );
+                            fatal_err
+                        }
                     }
                 }
                 Ok(Object::Msg) => {
@@ -416,14 +435,36 @@ fn expr_attribute(
                             inner: Base::Byte,
                         }),
                         Ok(MsgField::Value) => base_type(U256),
-                        Err(_) => undefined_value_err,
+                        Err(_) => {
+                            context.fancy_error(
+                                "Not a `msg` field",
+                                vec![
+                                    Label::primary(
+                                        attr.span,
+                                        "",
+                                    ),
+                                ],
+                                vec!["Note: Only `sender`, `sig` and `value` can be accessed on `msg`.".into()],
+                            );
+                            fatal_err
+                        }
                     }
                 }
                 Ok(Object::Tx) => {
                     return match TxField::from_str(&attr.kind) {
                         Ok(TxField::GasPrice) => base_type(U256),
                         Ok(TxField::Origin) => base_type(Base::Address),
-                        Err(_) => undefined_value_err,
+                        Err(_) => {
+                            context.fancy_error(
+                                "Not a `tx` field",
+                                vec![Label::primary(attr.span, "")],
+                                vec![
+                                    "Note: Only `gas_price` and `origin` can be accessed on `tx`."
+                                        .into(),
+                                ],
+                            );
+                            fatal_err
+                        }
                     }
                 }
                 Err(_) => {}
@@ -443,7 +484,15 @@ fn expr_attribute(
                 if let Some(typ) = struct_.get_field_type(&attr.kind) {
                     Ok(ExpressionAttributes::new(typ.to_owned().into(), location))
                 } else {
-                    undefined_value_err
+                    context.fancy_error(
+                        "Invalid attempt to access struct field",
+                        vec![Label::primary(
+                            attr.span,
+                            format!("Not a valid field on the {} struct", struct_.name),
+                        )],
+                        vec![],
+                    );
+                    fatal_err
                 }
             }
             ExpressionAttributes {
@@ -451,14 +500,41 @@ fn expr_attribute(
                 location,
                 ..
             } => {
-                let item_index = tuple_item_index(&attr.kind)?;
+                let item_index = match tuple_item_index(&attr.kind) {
+                    Some(index) => index,
+                    None => {
+                        context.fancy_error(
+                            "Invalid attempt to access tuple field",
+                            vec![
+                                Label::primary(
+                                    attr.span,
+                                    "Invalid attempt",
+                                )
+                            ],
+                            vec!["Note: Tuple values are accessed via `itemN` properties such as `item0` or `item1`".into()],
+                        );
+                        return fatal_err;
+                    }
+                };
+
                 if let Some(typ) = tuple.items.get(item_index) {
                     Ok(ExpressionAttributes::new(typ.to_owned().into(), location))
                 } else {
-                    undefined_value_err
+                    context.fancy_error(
+                        "Invalid attempt to access tuple field",
+                        vec![Label::primary(
+                            attr.span,
+                            format!("Invalid attempt at index {}", item_index),
+                        )],
+                        vec![format!(
+                            "Note: The highest possible field for this tuple is `item{}`",
+                            tuple.items.len() - 1
+                        )],
+                    );
+                    fatal_err
                 }
             }
-            _ => undefined_value_err,
+            _ => fatal_err,
         };
     }
 
@@ -466,18 +542,17 @@ fn expr_attribute(
 }
 
 /// Pull the item index from the attribute string (e.g. "item4" -> "4").
-fn tuple_item_index(item: &str) -> Result<usize, SemanticError> {
+fn tuple_item_index(item: &str) -> Option<usize> {
     if item.len() < 5 || &item[..4] != "item" {
-        Err(SemanticError::undefined_value())
+        None
     } else {
-        item[4..]
-            .parse::<usize>()
-            .map_err(|_| SemanticError::undefined_value())
+        item[4..].parse::<usize>().ok()
     }
 }
 
 fn expr_attribute_self(
     scope: Shared<BlockScope>,
+    context: &mut Context,
     attr: &Node<String>,
 ) -> Result<ExpressionAttributes, SemanticError> {
     if let Ok(builtins::SelfField::Address) = builtins::SelfField::from_str(&attr.kind) {
@@ -494,7 +569,14 @@ fn expr_attribute_self(
                 nonce: Some(field.nonce),
             },
         )),
-        None => Err(SemanticError::undefined_value()),
+        None => {
+            context.fancy_error(
+                "Invalid attempt to access contract field",
+                vec![Label::primary(attr.span, "Not a valid contract field")],
+                vec![],
+            );
+            Err(SemanticError::fatal())
+        }
     }
 }
 
@@ -860,7 +942,7 @@ fn expr_call_type_constructor(
                 Location::Value,
             ))
         }
-        _ => Err(SemanticError::undefined_value()),
+        _ => Err(SemanticError::fatal()),
     }
 }
 
@@ -906,7 +988,12 @@ fn expr_call_self_attribute(
             return_location,
         ))
     } else {
-        Err(SemanticError::undefined_value())
+        context.fancy_error(
+            "Call to undefined function",
+            vec![Label::primary(name_span, "Called undefined function")],
+            vec![],
+        );
+        Err(SemanticError::fatal())
     }
 }
 
@@ -948,10 +1035,16 @@ fn expr_call_value_attribute(
         // for now all of these function expect 0 arguments
         validate_arg_count(context, &attr.kind, attr.span, args, 0);
 
-        return match ValueMethod::from_str(&attr.kind)
-            .map_err(|_| SemanticError::undefined_value())?
-        {
-            ValueMethod::Clone => {
+        return match ValueMethod::from_str(&attr.kind) {
+            Err(_) => {
+                context.fancy_error(
+                    format!("Invalid call to `{}`", &attr.kind),
+                    vec![Label::primary(attr.span, "undefined function")],
+                    vec![],
+                );
+                return Err(SemanticError::fatal());
+            }
+            Ok(ValueMethod::Clone) => {
                 match value_attributes.location {
                     Location::Storage { .. } => {
                         context.fancy_error(
@@ -977,7 +1070,7 @@ fn expr_call_value_attribute(
                 }
                 Ok(value_attributes.into_cloned())
             }
-            ValueMethod::ToMem => {
+            Ok(ValueMethod::ToMem) => {
                 match value_attributes.location {
                     Location::Storage { .. } => {}
                     Location::Value => {
@@ -1009,7 +1102,7 @@ fn expr_call_value_attribute(
                 }
                 Ok(value_attributes.into_cloned())
             }
-            ValueMethod::AbiEncode => match &value_attributes.typ {
+            Ok(ValueMethod::AbiEncode) => match &value_attributes.typ {
                 Type::Struct(struct_) => {
                     if value_attributes.final_location() != Location::Memory {
                         context.fancy_error(
@@ -1091,7 +1184,7 @@ fn expr_call_type_attribute(
             vec![format!("Note: Consider using a dedicated factory contract to create instances of `{}`", contract_name)]);
     };
 
-    match (typ, ContractTypeMethod::from_str(func_name)) {
+    match (typ.clone(), ContractTypeMethod::from_str(func_name)) {
         (Type::Contract(contract), Ok(ContractTypeMethod::Create2)) => {
             validate_arg_count(context, func_name, name_span, args, 2);
 
@@ -1139,7 +1232,14 @@ fn expr_call_type_attribute(
                 Err(SemanticError::type_error())
             }
         }
-        _ => Err(SemanticError::undefined_value()),
+        _ => {
+            context.fancy_error(
+                format!("No function `{}` exists on type `{}`", func_name, &typ),
+                vec![Label::primary(name_span, "undefined function")],
+                vec![],
+            );
+            Err(SemanticError::fatal())
+        }
     }
 }
 
@@ -1172,7 +1272,15 @@ fn expr_call_contract_attribute(
             Location::assign_location(&return_type),
         ))
     } else {
-        Err(SemanticError::undefined_value())
+        context.fancy_error(
+            format!(
+                "No function `{}` exists on contract `{}`",
+                func_name, contract.name
+            ),
+            vec![Label::primary(name_span, "undefined function")],
+            vec![],
+        );
+        Err(SemanticError::fatal())
     }
 }
 
@@ -1272,14 +1380,20 @@ fn expr_name_call_type(
 
 fn expr_attribute_call_type(
     scope: Shared<BlockScope>,
-    _context: &mut Context,
+    context: &mut Context,
     exp: &Node<fe::Expr>,
 ) -> Result<CallType, SemanticError> {
     if let fe::Expr::Attribute { value, attr } = &exp.kind {
         if let fe::Expr::Name(name) = &value.kind {
             match Object::from_str(&name) {
                 Ok(Object::Block) | Ok(Object::Chain) | Ok(Object::Msg) | Ok(Object::Tx) => {
-                    return Err(SemanticError::undefined_value())
+                    context.fancy_error(
+                        "illegal call on builtin object",
+                        vec![Label::primary(exp.span, "illegal call")],
+                        vec![],
+                    );
+
+                    return Err(SemanticError::fatal());
                 }
                 Ok(Object::Self_) => {
                     return Ok(CallType::SelfAttribute {
