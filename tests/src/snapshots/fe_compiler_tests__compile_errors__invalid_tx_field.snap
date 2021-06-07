@@ -1,0 +1,14 @@
+---
+source: tests/src/compile_errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: Not a `tx` field
+  ┌─ fixtures/compile_errors/invalid_tx_field.fe:4:8
+  │
+4 │     tx.foo
+  │        ^^^
+  │
+  = Note: Only `gas_price` and `origin` can be accessed on `tx`.
+
+

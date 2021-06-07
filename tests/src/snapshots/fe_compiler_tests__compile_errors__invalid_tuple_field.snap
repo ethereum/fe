@@ -1,0 +1,14 @@
+---
+source: tests/src/compile_errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: Invalid attempt to access tuple field
+  ┌─ fixtures/compile_errors/invalid_tuple_field.fe:5:14
+  │
+5 │     self.val.item5
+  │              ^^^^^ Invalid attempt at index 5
+  │
+  = Note: The highest possible field for this tuple is `item1`
+
+

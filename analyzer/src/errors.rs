@@ -23,7 +23,6 @@ pub enum ErrorKind {
     NotSubscriptable,
     SignedExponentNotAllowed,
     TypeError,
-    UndefinedValue,
     Fatal,
 }
 
@@ -55,14 +54,6 @@ impl SemanticError {
     pub fn signed_exponent_not_allowed() -> Self {
         SemanticError {
             kind: ErrorKind::SignedExponentNotAllowed,
-            context: vec![],
-        }
-    }
-
-    /// Create a new error with kind `UndefinedValue`
-    pub fn undefined_value() -> Self {
-        SemanticError {
-            kind: ErrorKind::UndefinedValue,
             context: vec![],
         }
     }

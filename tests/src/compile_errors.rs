@@ -151,6 +151,7 @@ test_stmt! { unexpected_return, "return 1" }
 
 test_file! { bad_tuple_attr1 }
 test_file! { bad_tuple_attr2 }
+test_file! { call_builtin_object }
 test_file! { call_event_with_wrong_types }
 test_file! { call_undefined_function_on_external_contract }
 test_file! { call_undefined_function_on_memory_struct }
@@ -174,6 +175,13 @@ test_file! { external_call_type_error }
 test_file! { external_call_wrong_number_of_params }
 test_file! { indexed_event }
 test_file! { invalid_compiler_version }
+test_file! { invalid_block_field }
+test_file! { invalid_chain_field }
+test_file! { invalid_contract_field }
+test_file! { invalid_msg_field }
+test_file! { invalid_struct_field }
+test_file! { invalid_tuple_field }
+test_file! { invalid_tx_field }
 test_file! { mismatch_return_type }
 test_file! { missing_return }
 test_file! { missing_return_in_else }
