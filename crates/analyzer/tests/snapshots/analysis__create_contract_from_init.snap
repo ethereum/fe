@@ -60,7 +60,7 @@ note:
   ┌─ features/create_contract_from_init.fe:9:9
   │
 9 │         self.foo_addr = address(Foo.create(0))
-  │         ^^^^^^^^^^^^^ attributes hash: 10540907752302236140
+  │         ^^^^^^^^^^^^^ attributes hash: 16723143785832074028
   │
   = ExpressionAttributes {
         typ: Base(
@@ -122,7 +122,7 @@ note:
   ┌─ features/create_contract_from_init.fe:9:25
   │
 9 │         self.foo_addr = address(Foo.create(0))
-  │                         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
+  │                         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16366719240912622931
   │
   = ExpressionAttributes {
         typ: Base(
@@ -136,7 +136,7 @@ note:
    ┌─ features/create_contract_from_init.fe:12:16
    │
 12 │         return self.foo_addr
-   │                ^^^^^^^^^^^^^ attributes hash: 10848859084443309747
+   │                ^^^^^^^^^^^^^ attributes hash: 5525835038398638360
    │
    = ExpressionAttributes {
          typ: Base(
@@ -175,7 +175,7 @@ note:
   │  
 8 │ ╭     pub def __init__():
 9 │ │         self.foo_addr = address(Foo.create(0))
-  │ ╰──────────────────────────────────────────────^ attributes hash: 3035129065019296448
+  │ ╰──────────────────────────────────────────────^ attributes hash: 4851327320612207202
   │  
   = FunctionAttributes {
         is_public: true,
@@ -191,7 +191,7 @@ note:
    │  
 11 │ ╭     pub def get_foo_addr() -> address:
 12 │ │         return self.foo_addr
-   │ ╰────────────────────────────^ attributes hash: 17930139203183863417
+   │ ╰────────────────────────────^ attributes hash: 13172892524760494112
    │  
    = FunctionAttributes {
          is_public: true,
@@ -208,7 +208,7 @@ note:
 1 │ ╭ contract Foo:
 2 │ │     pub def get_my_num() -> u256:
 3 │ │         return 42
-  │ ╰─────────────────^ attributes hash: 11401818108321754687
+  │ ╰─────────────────^ attributes hash: 5262455869627751372
   │  
   = ContractAttributes {
         public_functions: [
@@ -253,7 +253,7 @@ note:
    · │
 11 │ │     pub def get_foo_addr() -> address:
 12 │ │         return self.foo_addr
-   │ ╰────────────────────────────^ attributes hash: 11258106293181764517
+   │ ╰────────────────────────────^ attributes hash: 3294677135837609114
    │  
    = ContractAttributes {
          public_functions: [
@@ -301,7 +301,7 @@ note:
   ┌─ features/create_contract_from_init.fe:9:25
   │
 9 │         self.foo_addr = address(Foo.create(0))
-  │                         ^^^^^^^ attributes hash: 6114858510168753394
+  │                         ^^^^^^^ attributes hash: 12543456546113081273
   │
   = TypeConstructor {
         typ: Base(
@@ -352,7 +352,7 @@ note:
    ┌─ features/create_contract_from_init.fe:11:31
    │
 11 │     pub def get_foo_addr() -> address:
-   │                               ^^^^^^^ attributes hash: 574436082528610497
+   │                               ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -362,7 +362,7 @@ note:
   ┌─ features/create_contract_from_init.fe:6:15
   │
 6 │     foo_addr: address
-  │               ^^^^^^^ attributes hash: 574436082528610497
+  │               ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,

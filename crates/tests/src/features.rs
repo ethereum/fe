@@ -159,7 +159,7 @@ fn test_assert() {
     case("return_identity_u8.fe", &[uint_token(42)], uint_token(42)),
     case("return_u128_cast.fe", &[], uint_token(42)),
     case("return_i128_cast.fe", &[], int_token(-3)),
-    case("return_msg_sig.fe", &[], bytes32_token("febb0f7e")),
+    case("return_msg_sig.fe", &[], uint_token(4273672062)),
     case("return_sum_list_expression_1.fe", &[], uint_token(210)),
     case("return_sum_list_expression_2.fe", &[], uint_token(210)),
     // binary operators
@@ -1000,7 +1000,7 @@ fn structs() {
             0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
         ];
-        let token = ethabi::Token::FixedBytes(ethabi::FixedBytes::from(encoded_house));
+        let token = ethabi::Token::Bytes(ethabi::Bytes::from(encoded_house));
         harness.test_function(&mut executor, "encode_house", &[], Some(&token));
 
         harness.test_function(
@@ -1023,9 +1023,7 @@ fn keccak() {
         harness.test_function(
             &mut executor,
             "return_hash_from_u256",
-            &[ethabi::Token::FixedBytes(
-                U256::from(1).to_be_bytes().to_vec(),
-            )],
+            &[ethabi::Token::Bytes(U256::from(1).to_be_bytes().to_vec())],
             Some(&uint_token_from_dec_str(
                 "80084422859880547211683076133703299733277748156566366325829078699459944778998",
             )),
@@ -1034,9 +1032,7 @@ fn keccak() {
         harness.test_function(
             &mut executor,
             "return_hash_from_u256",
-            &[ethabi::Token::FixedBytes(
-                U256::from(1).to_be_bytes().to_vec(),
-            )],
+            &[ethabi::Token::Bytes(U256::from(1).to_be_bytes().to_vec())],
             Some(&ethabi::Token::Uint(
                 keccak::full_as_bytes(&U256::from(1).to_be_bytes()).into(),
             )),
@@ -1045,7 +1041,7 @@ fn keccak() {
         harness.test_function(
             &mut executor,
             "return_hash_from_u8",
-            &[ethabi::Token::FixedBytes([1].into())],
+            &[ethabi::Token::Bytes([1].into())],
             Some(&ethabi::Token::Uint(
                 keccak::full_as_bytes(&1u8.to_be_bytes()).into(),
             )),
@@ -1054,7 +1050,7 @@ fn keccak() {
         harness.test_function(
             &mut executor,
             "return_hash_from_u8",
-            &[ethabi::Token::FixedBytes([0].into())],
+            &[ethabi::Token::Bytes([0].into())],
             Some(&ethabi::Token::Uint(
                 keccak::full_as_bytes(&0u8.to_be_bytes()).into(),
             )),

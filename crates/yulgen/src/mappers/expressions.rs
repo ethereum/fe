@@ -134,7 +134,7 @@ fn expr_call(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
                                     builtins::ValueMethod::Clone => expr(context, value),
                                     builtins::ValueMethod::AbiEncode => match typ {
                                         Type::Struct(struct_) => abi_operations::encode(
-                                            vec![struct_],
+                                            &[struct_],
                                             vec![expr(context, value)],
                                         ),
                                         _ => panic!("invalid attributes"),
@@ -393,12 +393,7 @@ fn expr_attribute(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expressio
                 },
                 Ok(Object::Msg) => match MsgField::from_str(&attr.kind) {
                     Ok(MsgField::Sender) => expression! { caller() },
-                    Ok(MsgField::Sig) => expression! {
-                        and(
-                            [ expression! { calldataload(0) } ],
-                            [ expression! { shl(224, 0xffffffff) } ]
-                        )
-                    },
+                    Ok(MsgField::Sig) => expression! { cloadn(0, 4) },
                     Ok(MsgField::Value) => expression! { callvalue() },
                     Err(_) => panic!("invalid `msg` attribute name"),
                 },

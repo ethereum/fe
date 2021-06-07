@@ -498,7 +498,7 @@ note:
    │  
 11 │ ╭     pub def write_num(x: u256):
 12 │ │         self.num = x
-   │ ╰────────────────────^ attributes hash: 3870046753883905095
+   │ ╰────────────────────^ attributes hash: 10442373825505759864
    │  
    = FunctionAttributes {
          is_public: true,
@@ -541,7 +541,7 @@ note:
    │  
 17 │ ╭     pub def write_nums(x: u256[42]):
 18 │ │         self.nums = x
-   │ ╰─────────────────────^ attributes hash: 3486766203781743725
+   │ ╰─────────────────────^ attributes hash: 14368160525802890560
    │  
    = FunctionAttributes {
          is_public: true,
@@ -590,7 +590,7 @@ note:
    │  
 23 │ ╭     pub def write_str(x: String<26>):
 24 │ │         self.str = x
-   │ ╰────────────────────^ attributes hash: 3276279393402660932
+   │ ╰────────────────────^ attributes hash: 5638147536751457923
    │  
    = FunctionAttributes {
          is_public: true,
@@ -637,7 +637,7 @@ note:
 32 │ │             nums=self.nums.to_mem(),
 33 │ │             str=self.str.to_mem()
 34 │ │         )
-   │ ╰─────────^ attributes hash: 4747163906894849288
+   │ ╰─────────^ attributes hash: 12116774247922624788
    │  
    = FunctionAttributes {
          is_public: true,
@@ -658,7 +658,7 @@ note:
    · │
 33 │ │             str=self.str.to_mem()
 34 │ │         )
-   │ ╰─────────^ attributes hash: 17206214854182202311
+   │ ╰─────────^ attributes hash: 17342133087963067778
    │  
    = ContractAttributes {
          public_functions: [

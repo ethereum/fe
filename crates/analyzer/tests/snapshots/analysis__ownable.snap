@@ -50,7 +50,7 @@ note:
   ┌─ features/ownable.fe:9:5
   │
 9 │     self._owner = msg.sender
-  │     ^^^^^^^^^^^ attributes hash: 10540907752302236140
+  │     ^^^^^^^^^^^ attributes hash: 16723143785832074028
   │
   = ExpressionAttributes {
         typ: Base(
@@ -68,7 +68,7 @@ note:
   ┌─ features/ownable.fe:9:19
   │
 9 │     self._owner = msg.sender
-  │                   ^^^^^^^^^^ attributes hash: 513065555763557710
+  │                   ^^^^^^^^^^ attributes hash: 16366719240912622931
   │
   = ExpressionAttributes {
         typ: Base(
@@ -82,7 +82,7 @@ note:
    ┌─ features/ownable.fe:12:12
    │
 12 │     return self._owner
-   │            ^^^^^^^^^^^ attributes hash: 10848859084443309747
+   │            ^^^^^^^^^^^ attributes hash: 5525835038398638360
    │
    = ExpressionAttributes {
          typ: Base(
@@ -102,7 +102,7 @@ note:
    ┌─ features/ownable.fe:15:12
    │
 15 │     assert msg.sender == self._owner
-   │            ^^^^^^^^^^ attributes hash: 513065555763557710
+   │            ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -116,7 +116,7 @@ note:
    ┌─ features/ownable.fe:15:26
    │
 15 │     assert msg.sender == self._owner
-   │                          ^^^^^^^^^^^ attributes hash: 10848859084443309747
+   │                          ^^^^^^^^^^^ attributes hash: 5525835038398638360
    │
    = ExpressionAttributes {
          typ: Base(
@@ -150,7 +150,7 @@ note:
    ┌─ features/ownable.fe:16:5
    │
 16 │     self._owner = address(0)
-   │     ^^^^^^^^^^^ attributes hash: 10540907752302236140
+   │     ^^^^^^^^^^^ attributes hash: 16723143785832074028
    │
    = ExpressionAttributes {
          typ: Base(
@@ -184,7 +184,7 @@ note:
    ┌─ features/ownable.fe:16:19
    │
 16 │     self._owner = address(0)
-   │                   ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                   ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -198,7 +198,7 @@ note:
    ┌─ features/ownable.fe:17:45
    │
 17 │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner=address(0))
-   │                                             ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                                             ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -228,7 +228,7 @@ note:
    ┌─ features/ownable.fe:17:66
    │
 17 │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner=address(0))
-   │                                                                  ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                                                                  ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -242,7 +242,7 @@ note:
    ┌─ features/ownable.fe:20:12
    │
 20 │     assert msg.sender == self._owner
-   │            ^^^^^^^^^^ attributes hash: 513065555763557710
+   │            ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -256,7 +256,7 @@ note:
    ┌─ features/ownable.fe:20:26
    │
 20 │     assert msg.sender == self._owner
-   │                          ^^^^^^^^^^^ attributes hash: 10848859084443309747
+   │                          ^^^^^^^^^^^ attributes hash: 5525835038398638360
    │
    = ExpressionAttributes {
          typ: Base(
@@ -290,7 +290,7 @@ note:
    ┌─ features/ownable.fe:21:12
    │
 21 │     assert newOwner != address(0)
-   │            ^^^^^^^^ attributes hash: 513065555763557710
+   │            ^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -320,7 +320,7 @@ note:
    ┌─ features/ownable.fe:21:24
    │
 21 │     assert newOwner != address(0)
-   │                        ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                        ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -348,7 +348,7 @@ note:
    ┌─ features/ownable.fe:22:5
    │
 22 │     self._owner = newOwner
-   │     ^^^^^^^^^^^ attributes hash: 10540907752302236140
+   │     ^^^^^^^^^^^ attributes hash: 16723143785832074028
    │
    = ExpressionAttributes {
          typ: Base(
@@ -366,7 +366,7 @@ note:
    ┌─ features/ownable.fe:22:19
    │
 22 │     self._owner = newOwner
-   │                   ^^^^^^^^ attributes hash: 513065555763557710
+   │                   ^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -380,7 +380,7 @@ note:
    ┌─ features/ownable.fe:23:45
    │
 23 │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner)
-   │                                             ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                                             ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -394,7 +394,7 @@ note:
    ┌─ features/ownable.fe:23:57
    │
 23 │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner)
-   │                                                         ^^^^^^^^ attributes hash: 513065555763557710
+   │                                                         ^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -408,7 +408,7 @@ note:
    ┌─ features/ownable.fe:17:5
    │
 17 │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner=address(0))
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8065277106552702156
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17743267462147238438
    │
    = EventDef {
          name: "OwnershipTransferred",
@@ -437,7 +437,7 @@ note:
    ┌─ features/ownable.fe:23:5
    │
 23 │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner)
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8065277106552702156
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17743267462147238438
    │
    = EventDef {
          name: "OwnershipTransferred",
@@ -467,7 +467,7 @@ note:
   │  
 8 │ ╭   pub def __init__():
 9 │ │     self._owner = msg.sender
-  │ ╰────────────────────────────^ attributes hash: 3035129065019296448
+  │ ╰────────────────────────────^ attributes hash: 4851327320612207202
   │  
   = FunctionAttributes {
         is_public: true,
@@ -483,7 +483,7 @@ note:
    │  
 11 │ ╭   pub def owner() -> address:
 12 │ │     return self._owner
-   │ ╰──────────────────────^ attributes hash: 7919471258211456482
+   │ ╰──────────────────────^ attributes hash: 9513050714927430504
    │  
    = FunctionAttributes {
          is_public: true,
@@ -501,7 +501,7 @@ note:
 15 │ │     assert msg.sender == self._owner
 16 │ │     self._owner = address(0)
 17 │ │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner=address(0))
-   │ ╰────────────────────────────────────────────────────────────────────────────^ attributes hash: 10317366400091768963
+   │ ╰────────────────────────────────────────────────────────────────────────────^ attributes hash: 9805969198655372079
    │  
    = FunctionAttributes {
          is_public: true,
@@ -520,7 +520,7 @@ note:
 21 │ │     assert newOwner != address(0)
 22 │ │     self._owner = newOwner
 23 │ │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner)
-   │ ╰─────────────────────────────────────────────────────────────────^ attributes hash: 6796830737236095585
+   │ ╰─────────────────────────────────────────────────────────────────^ attributes hash: 5667634051954006499
    │  
    = FunctionAttributes {
          is_public: true,
@@ -548,7 +548,7 @@ note:
    · │
 22 │ │     self._owner = newOwner
 23 │ │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner)
-   │ ╰─────────────────────────────────────────────────────────────────^ attributes hash: 17669221761082887319
+   │ ╰─────────────────────────────────────────────────────────────────^ attributes hash: 622369100534895508
    │  
    = ContractAttributes {
          public_functions: [
@@ -626,7 +626,7 @@ note:
    ┌─ features/ownable.fe:16:19
    │
 16 │     self._owner = address(0)
-   │                   ^^^^^^^ attributes hash: 6114858510168753394
+   │                   ^^^^^^^ attributes hash: 12543456546113081273
    │
    = TypeConstructor {
          typ: Base(
@@ -638,7 +638,7 @@ note:
    ┌─ features/ownable.fe:17:66
    │
 17 │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner=address(0))
-   │                                                                  ^^^^^^^ attributes hash: 6114858510168753394
+   │                                                                  ^^^^^^^ attributes hash: 12543456546113081273
    │
    = TypeConstructor {
          typ: Base(
@@ -650,7 +650,7 @@ note:
    ┌─ features/ownable.fe:21:24
    │
 21 │     assert newOwner != address(0)
-   │                        ^^^^^^^ attributes hash: 6114858510168753394
+   │                        ^^^^^^^ attributes hash: 12543456546113081273
    │
    = TypeConstructor {
          typ: Base(
@@ -664,7 +664,7 @@ note:
 4 │ ╭   event OwnershipTransferred:
 5 │ │     idx previousOwner: address
 6 │ │     idx newOwner: address
-  │ ╰─────────────────────────^ attributes hash: 8065277106552702156
+  │ ╰─────────────────────────^ attributes hash: 17743267462147238438
   │  
   = EventDef {
         name: "OwnershipTransferred",
@@ -693,7 +693,7 @@ note:
   ┌─ features/ownable.fe:5:24
   │
 5 │     idx previousOwner: address
-  │                        ^^^^^^^ attributes hash: 574436082528610497
+  │                        ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,
@@ -703,7 +703,7 @@ note:
   ┌─ features/ownable.fe:6:19
   │
 6 │     idx newOwner: address
-  │                   ^^^^^^^ attributes hash: 574436082528610497
+  │                   ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,
@@ -713,7 +713,7 @@ note:
    ┌─ features/ownable.fe:11:22
    │
 11 │   pub def owner() -> address:
-   │                      ^^^^^^^ attributes hash: 574436082528610497
+   │                      ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -723,7 +723,7 @@ note:
    ┌─ features/ownable.fe:19:39
    │
 19 │   pub def transferOwnership(newOwner: address):
-   │                                       ^^^^^^^ attributes hash: 574436082528610497
+   │                                       ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -733,7 +733,7 @@ note:
   ┌─ features/ownable.fe:2:11
   │
 2 │   _owner: address
-  │           ^^^^^^^ attributes hash: 574436082528610497
+  │           ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,

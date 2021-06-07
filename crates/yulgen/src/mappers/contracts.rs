@@ -68,9 +68,7 @@ pub fn contract_def(
             block: yul::Block {
                 statements: statements! {
                     [user_functions...]
-                        [runtime_functions...]
-                    // we must return, otherwise we'll enter into other objects
-                        (return(0, 0))
+                    [runtime_functions...]
                 },
             },
         },

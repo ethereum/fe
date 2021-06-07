@@ -43,7 +43,9 @@ ModuleAttributes {
                         return_type: Array(
                             Array {
                                 size: 100,
-                                inner: Byte,
+                                inner: Numeric(
+                                    U8,
+                                ),
                             },
                         ),
                     },
@@ -109,13 +111,13 @@ ModuleAttributes {
                     },
                     FunctionAttributes {
                         is_public: true,
-                        name: "get_my_u8s",
+                        name: "get_my_u16s",
                         params: [],
                         return_type: Array(
                             Array {
                                 size: 255,
                                 inner: Numeric(
-                                    U8,
+                                    U16,
                                 ),
                             },
                         ),
@@ -241,7 +243,9 @@ ModuleAttributes {
                                 Array(
                                     Array {
                                         size: 100,
-                                        inner: Byte,
+                                        inner: Numeric(
+                                            U8,
+                                        ),
                                     },
                                 ),
                             ),
@@ -286,15 +290,15 @@ ModuleAttributes {
                     },
                     FunctionAttributes {
                         is_public: true,
-                        name: "set_my_u8s",
+                        name: "set_my_u16s",
                         params: [
                             (
-                                "my_u8s",
+                                "my_u16s",
                                 Array(
                                     Array {
                                         size: 255,
                                         inner: Numeric(
-                                            U8,
+                                            U16,
                                         ),
                                     },
                                 ),
@@ -349,7 +353,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:24:9
    │
 24 │         self.my_addrs = my_addrs
-   │         ^^^^^^^^^^^^^ attributes hash: 9556682290913303484
+   │         ^^^^^^^^^^^^^ attributes hash: 10382033997144387695
    │
    = ExpressionAttributes {
          typ: Array(
@@ -370,7 +374,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:24:25
    │
 24 │         self.my_addrs = my_addrs
-   │                         ^^^^^^^^ attributes hash: 9740078941645877256
+   │                         ^^^^^^^^ attributes hash: 5482395804594219089
    │
    = ExpressionAttributes {
          typ: Array(
@@ -387,7 +391,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:27:16
    │
 27 │         return self.my_addrs.to_mem()
-   │                ^^^^^^^^^^^^^ attributes hash: 9556682290913303484
+   │                ^^^^^^^^^^^^^ attributes hash: 10382033997144387695
    │
    = ExpressionAttributes {
          typ: Array(
@@ -408,7 +412,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:27:16
    │
 27 │         return self.my_addrs.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14222027602690501828
+   │                ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13325422889757874384
    │
    = ExpressionAttributes {
          typ: Array(
@@ -566,15 +570,15 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:42:9
    │
-42 │         self.my_u8s = my_u8s
-   │         ^^^^^^^^^^^ attributes hash: 14452085088266868200
+42 │         self.my_u16s = my_u16s
+   │         ^^^^^^^^^^^^ attributes hash: 17663154659675933749
    │
    = ExpressionAttributes {
          typ: Array(
              Array {
                  size: 255,
                  inner: Numeric(
-                     U8,
+                     U16,
                  ),
              },
          ),
@@ -587,17 +591,17 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:42:23
+   ┌─ stress/abi_encoding_stress.fe:42:24
    │
-42 │         self.my_u8s = my_u8s
-   │                       ^^^^^^ attributes hash: 16129286949851221894
+42 │         self.my_u16s = my_u16s
+   │                        ^^^^^^^ attributes hash: 11161597200868441893
    │
    = ExpressionAttributes {
          typ: Array(
              Array {
                  size: 255,
                  inner: Numeric(
-                     U8,
+                     U16,
                  ),
              },
          ),
@@ -608,15 +612,15 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:45:16
    │
-45 │         return self.my_u8s.to_mem()
-   │                ^^^^^^^^^^^ attributes hash: 14452085088266868200
+45 │         return self.my_u16s.to_mem()
+   │                ^^^^^^^^^^^^ attributes hash: 17663154659675933749
    │
    = ExpressionAttributes {
          typ: Array(
              Array {
                  size: 255,
                  inner: Numeric(
-                     U8,
+                     U16,
                  ),
              },
          ),
@@ -631,15 +635,15 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:45:16
    │
-45 │         return self.my_u8s.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 3855584261660153860
+45 │         return self.my_u16s.to_mem()
+   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8574438854382779579
    │
    = ExpressionAttributes {
          typ: Array(
              Array {
                  size: 255,
                  inner: Numeric(
-                     U8,
+                     U16,
                  ),
              },
          ),
@@ -709,13 +713,15 @@ note:
    ┌─ stress/abi_encoding_stress.fe:54:9
    │
 54 │         self.my_bytes = my_bytes
-   │         ^^^^^^^^^^^^^ attributes hash: 7833827351076939737
+   │         ^^^^^^^^^^^^^ attributes hash: 9395896937976048107
    │
    = ExpressionAttributes {
          typ: Array(
              Array {
                  size: 100,
-                 inner: Byte,
+                 inner: Numeric(
+                     U8,
+                 ),
              },
          ),
          location: Storage {
@@ -730,13 +736,15 @@ note:
    ┌─ stress/abi_encoding_stress.fe:54:25
    │
 54 │         self.my_bytes = my_bytes
-   │                         ^^^^^^^^ attributes hash: 6578844474441717363
+   │                         ^^^^^^^^ attributes hash: 1049948881837837287
    │
    = ExpressionAttributes {
          typ: Array(
              Array {
                  size: 100,
-                 inner: Byte,
+                 inner: Numeric(
+                     U8,
+                 ),
              },
          ),
          location: Memory,
@@ -747,13 +755,15 @@ note:
    ┌─ stress/abi_encoding_stress.fe:57:16
    │
 57 │         return self.my_bytes.to_mem()
-   │                ^^^^^^^^^^^^^ attributes hash: 7833827351076939737
+   │                ^^^^^^^^^^^^^ attributes hash: 9395896937976048107
    │
    = ExpressionAttributes {
          typ: Array(
              Array {
                  size: 100,
-                 inner: Byte,
+                 inner: Numeric(
+                     U8,
+                 ),
              },
          ),
          location: Storage {
@@ -768,13 +778,15 @@ note:
    ┌─ stress/abi_encoding_stress.fe:57:16
    │
 57 │         return self.my_bytes.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12051565540558389281
+   │                ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7056116585361174256
    │
    = ExpressionAttributes {
          typ: Array(
              Array {
                  size: 100,
-                 inner: Byte,
+                 inner: Numeric(
+                     U8,
+                 ),
              },
          ),
          location: Storage {
@@ -869,7 +881,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:64:21
    │
 64 │             my_addr=address(123456)
-   │                     ^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
+   │                     ^^^^^^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -889,7 +901,7 @@ note:
 63 │ │             my_bool=true,
 64 │ │             my_addr=address(123456)
 65 │ │         )
-   │ ╰─────────^ attributes hash: 14310246943193162873
+   │ ╰─────────^ attributes hash: 15468432750474967995
    │  
    = ExpressionAttributes {
          typ: Struct(
@@ -935,7 +947,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:68:9
    │
 68 │         my_struct.my_num = 12341234
-   │         ^^^^^^^^^ attributes hash: 14310246943193162873
+   │         ^^^^^^^^^ attributes hash: 15468432750474967995
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -1013,7 +1025,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:69:9
    │
 69 │         my_struct.my_num2 = u8(42)
-   │         ^^^^^^^^^ attributes hash: 14310246943193162873
+   │         ^^^^^^^^^ attributes hash: 15468432750474967995
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -1107,7 +1119,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:70:9
    │
 70 │         my_struct.my_bool = false
-   │         ^^^^^^^^^ attributes hash: 14310246943193162873
+   │         ^^^^^^^^^ attributes hash: 15468432750474967995
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -1181,7 +1193,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:71:9
    │
 71 │         my_struct.my_addr = address(9999)
-   │         ^^^^^^^^^ attributes hash: 14310246943193162873
+   │         ^^^^^^^^^ attributes hash: 15468432750474967995
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -1227,7 +1239,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:71:9
    │
 71 │         my_struct.my_addr = address(9999)
-   │         ^^^^^^^^^^^^^^^^^ attributes hash: 16010665103940642096
+   │         ^^^^^^^^^^^^^^^^^ attributes hash: 9951382994231729648
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1257,7 +1269,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:71:29
    │
 71 │         my_struct.my_addr = address(9999)
-   │                             ^^^^^^^^^^^^^ attributes hash: 513065555763557710
+   │                             ^^^^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1271,7 +1283,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:72:16
    │
 72 │         return my_struct
-   │                ^^^^^^^^^ attributes hash: 14310246943193162873
+   │                ^^^^^^^^^ attributes hash: 15468432750474967995
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -1317,7 +1329,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:76:22
    │
 76 │             my_addrs=self.my_addrs.to_mem(),
-   │                      ^^^^^^^^^^^^^ attributes hash: 9556682290913303484
+   │                      ^^^^^^^^^^^^^ attributes hash: 10382033997144387695
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1338,7 +1350,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:76:22
    │
 76 │             my_addrs=self.my_addrs.to_mem(),
-   │                      ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14222027602690501828
+   │                      ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13325422889757874384
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1422,17 +1434,17 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:79:20
+   ┌─ stress/abi_encoding_stress.fe:79:21
    │
-79 │             my_u8s=self.my_u8s.to_mem(),
-   │                    ^^^^^^^^^^^ attributes hash: 14452085088266868200
+79 │             my_u16s=self.my_u16s.to_mem(),
+   │                     ^^^^^^^^^^^^ attributes hash: 17663154659675933749
    │
    = ExpressionAttributes {
          typ: Array(
              Array {
                  size: 255,
                  inner: Numeric(
-                     U8,
+                     U16,
                  ),
              },
          ),
@@ -1445,17 +1457,17 @@ note:
      }
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:79:20
+   ┌─ stress/abi_encoding_stress.fe:79:21
    │
-79 │             my_u8s=self.my_u8s.to_mem(),
-   │                    ^^^^^^^^^^^^^^^^^^^^ attributes hash: 3855584261660153860
+79 │             my_u16s=self.my_u16s.to_mem(),
+   │                     ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8574438854382779579
    │
    = ExpressionAttributes {
          typ: Array(
              Array {
                  size: 255,
                  inner: Numeric(
-                     U8,
+                     U16,
                  ),
              },
          ),
@@ -1493,13 +1505,15 @@ note:
    ┌─ stress/abi_encoding_stress.fe:81:22
    │
 81 │             my_bytes=self.my_bytes.to_mem()
-   │                      ^^^^^^^^^^^^^ attributes hash: 7833827351076939737
+   │                      ^^^^^^^^^^^^^ attributes hash: 9395896937976048107
    │
    = ExpressionAttributes {
          typ: Array(
              Array {
                  size: 100,
-                 inner: Byte,
+                 inner: Numeric(
+                     U8,
+                 ),
              },
          ),
          location: Storage {
@@ -1514,13 +1528,15 @@ note:
    ┌─ stress/abi_encoding_stress.fe:81:22
    │
 81 │             my_bytes=self.my_bytes.to_mem()
-   │                      ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12051565540558389281
+   │                      ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7056116585361174256
    │
    = ExpressionAttributes {
          typ: Array(
              Array {
                  size: 100,
-                 inner: Byte,
+                 inner: Numeric(
+                     U8,
+                 ),
              },
          ),
          location: Storage {
@@ -1543,11 +1559,11 @@ note:
    · │
 81 │ │             my_bytes=self.my_bytes.to_mem()
 82 │ │         )
-   │ ╰─────────^ attributes hash: 229795011819765305
+   │ ╰─────────^ attributes hash: 12045518562209920550
    │  
    = EventDef {
          name: "MyEvent",
-         topic: "0x5291dba7533bac99b9fabd83c9c340b948738e6c3f0a73f61ff521c7b1a30b39",
+         topic: "0xcac88c5748a42fc8d9baf196f981a3571f79726e9c579d4268b8b1155eb48f47",
          fields: [
              (
                  "my_addrs",
@@ -1575,12 +1591,12 @@ note:
                  ),
              ),
              (
-                 "my_u8s",
+                 "my_u16s",
                  Array(
                      Array {
                          size: 255,
                          inner: Numeric(
-                             U8,
+                             U16,
                          ),
                      },
                  ),
@@ -1596,7 +1612,9 @@ note:
                  Array(
                      Array {
                          size: 100,
-                         inner: Byte,
+                         inner: Numeric(
+                             U8,
+                         ),
                      },
                  ),
              ),
@@ -1609,7 +1627,7 @@ note:
    │  
 23 │ ╭     pub def set_my_addrs(my_addrs: address[5]):
 24 │ │         self.my_addrs = my_addrs
-   │ ╰────────────────────────────────^ attributes hash: 14701522943662665464
+   │ ╰────────────────────────────────^ attributes hash: 7691120414811764389
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1635,7 +1653,7 @@ note:
    │  
 26 │ ╭     pub def get_my_addrs() -> address[5]:
 27 │ │         return self.my_addrs.to_mem()
-   │ ╰─────────────────────────────────────^ attributes hash: 17465637972402510441
+   │ ╰─────────────────────────────────────^ attributes hash: 1359287435307305545
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1654,7 +1672,7 @@ note:
    │  
 29 │ ╭     pub def set_my_u128(my_u128: u128):
 30 │ │         self.my_u128 = my_u128
-   │ ╰──────────────────────────────^ attributes hash: 10635070491814674598
+   │ ╰──────────────────────────────^ attributes hash: 11158656996687638027
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1697,7 +1715,7 @@ note:
    │  
 35 │ ╭     pub def set_my_string(my_string: String<10>):
 36 │ │         self.my_string = my_string
-   │ ╰──────────────────────────────────^ attributes hash: 15141386370952016427
+   │ ╰──────────────────────────────────^ attributes hash: 4692728853600965584
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1738,21 +1756,21 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:41:5
    │  
-41 │ ╭     pub def set_my_u8s(my_u8s: u8[255]):
-42 │ │         self.my_u8s = my_u8s
-   │ ╰────────────────────────────^ attributes hash: 3951353961439842676
+41 │ ╭     pub def set_my_u16s(my_u16s: u16[255]):
+42 │ │         self.my_u16s = my_u16s
+   │ ╰──────────────────────────────^ attributes hash: 13893384016191907628
    │  
    = FunctionAttributes {
          is_public: true,
-         name: "set_my_u8s",
+         name: "set_my_u16s",
          params: [
              (
-                 "my_u8s",
+                 "my_u16s",
                  Array(
                      Array {
                          size: 255,
                          inner: Numeric(
-                             U8,
+                             U16,
                          ),
                      },
                  ),
@@ -1766,19 +1784,19 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:44:5
    │  
-44 │ ╭     pub def get_my_u8s() -> u8[255]:
-45 │ │         return self.my_u8s.to_mem()
-   │ ╰───────────────────────────────────^ attributes hash: 15843274676537272674
+44 │ ╭     pub def get_my_u16s() -> u16[255]:
+45 │ │         return self.my_u16s.to_mem()
+   │ ╰────────────────────────────────────^ attributes hash: 1192576253771683432
    │  
    = FunctionAttributes {
          is_public: true,
-         name: "get_my_u8s",
+         name: "get_my_u16s",
          params: [],
          return_type: Array(
              Array {
                  size: 255,
                  inner: Numeric(
-                     U8,
+                     U16,
                  ),
              },
          ),
@@ -1789,7 +1807,7 @@ note:
    │  
 47 │ ╭     pub def set_my_bool(my_bool: bool):
 48 │ │         self.my_bool = my_bool
-   │ ╰──────────────────────────────^ attributes hash: 9951927489494877708
+   │ ╰──────────────────────────────^ attributes hash: 8659823120065861693
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1826,9 +1844,9 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:53:5
    │  
-53 │ ╭     pub def set_my_bytes(my_bytes: bytes[100]):
+53 │ ╭     pub def set_my_bytes(my_bytes: u8[100]):
 54 │ │         self.my_bytes = my_bytes
-   │ ╰────────────────────────────────^ attributes hash: 1603819576134687581
+   │ ╰────────────────────────────────^ attributes hash: 6008990854532809473
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1839,7 +1857,9 @@ note:
                  Array(
                      Array {
                          size: 100,
-                         inner: Byte,
+                         inner: Numeric(
+                             U8,
+                         ),
                      },
                  ),
              ),
@@ -1852,9 +1872,9 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:56:5
    │  
-56 │ ╭     pub def get_my_bytes() -> bytes[100]:
+56 │ ╭     pub def get_my_bytes() -> u8[100]:
 57 │ │         return self.my_bytes.to_mem()
-   │ ╰─────────────────────────────────────^ attributes hash: 2383713642884421628
+   │ ╰─────────────────────────────────────^ attributes hash: 14963641192730894379
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1863,7 +1883,9 @@ note:
          return_type: Array(
              Array {
                  size: 100,
-                 inner: Byte,
+                 inner: Numeric(
+                     U8,
+                 ),
              },
          ),
      }
@@ -1878,7 +1900,7 @@ note:
 63 │ │             my_bool=true,
 64 │ │             my_addr=address(123456)
 65 │ │         )
-   │ ╰─────────^ attributes hash: 16782190728805286135
+   │ ╰─────────^ attributes hash: 2740071883700160944
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1930,7 +1952,7 @@ note:
 70 │ │         my_struct.my_bool = false
 71 │ │         my_struct.my_addr = address(9999)
 72 │ │         return my_struct
-   │ ╰────────────────────────^ attributes hash: 3294894870123873559
+   │ ╰────────────────────────^ attributes hash: 6449978803396160030
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2022,7 +2044,7 @@ note:
    · │
 81 │ │             my_bytes=self.my_bytes.to_mem()
 82 │ │         )
-   │ ╰─────────^ attributes hash: 10533351548551667725
+   │ ╰─────────^ attributes hash: 11962324298072924216
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2043,7 +2065,7 @@ note:
    · │
 81 │ │             my_bytes=self.my_bytes.to_mem()
 82 │ │         )
-   │ ╰─────────^ attributes hash: 424456335303037920
+   │ ╰─────────^ attributes hash: 1245491618511738007
    │  
    = ContractAttributes {
          public_functions: [
@@ -2081,7 +2103,9 @@ note:
                  return_type: Array(
                      Array {
                          size: 100,
-                         inner: Byte,
+                         inner: Numeric(
+                             U8,
+                         ),
                      },
                  ),
              },
@@ -2147,13 +2171,13 @@ note:
              },
              FunctionAttributes {
                  is_public: true,
-                 name: "get_my_u8s",
+                 name: "get_my_u16s",
                  params: [],
                  return_type: Array(
                      Array {
                          size: 255,
                          inner: Numeric(
-                             U8,
+                             U16,
                          ),
                      },
                  ),
@@ -2279,7 +2303,9 @@ note:
                          Array(
                              Array {
                                  size: 100,
-                                 inner: Byte,
+                                 inner: Numeric(
+                                     U8,
+                                 ),
                              },
                          ),
                      ),
@@ -2324,15 +2350,15 @@ note:
              },
              FunctionAttributes {
                  is_public: true,
-                 name: "set_my_u8s",
+                 name: "set_my_u16s",
                  params: [
                      (
-                         "my_u8s",
+                         "my_u16s",
                          Array(
                              Array {
                                  size: 255,
                                  inner: Numeric(
-                                     U8,
+                                     U16,
                                  ),
                              },
                          ),
@@ -2347,7 +2373,7 @@ note:
          events: [
              EventDef {
                  name: "MyEvent",
-                 topic: "0x5291dba7533bac99b9fabd83c9c340b948738e6c3f0a73f61ff521c7b1a30b39",
+                 topic: "0xcac88c5748a42fc8d9baf196f981a3571f79726e9c579d4268b8b1155eb48f47",
                  fields: [
                      (
                          "my_addrs",
@@ -2375,12 +2401,12 @@ note:
                          ),
                      ),
                      (
-                         "my_u8s",
+                         "my_u16s",
                          Array(
                              Array {
                                  size: 255,
                                  inner: Numeric(
-                                     U8,
+                                     U16,
                                  ),
                              },
                          ),
@@ -2396,7 +2422,9 @@ note:
                          Array(
                              Array {
                                  size: 100,
-                                 inner: Byte,
+                                 inner: Numeric(
+                                     U8,
+                                 ),
                              },
                          ),
                      ),
@@ -2461,8 +2489,8 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:45:16
    │
-45 │         return self.my_u8s.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+45 │         return self.my_u16s.to_mem()
+   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
    │
    = ValueAttribute
 
@@ -2478,7 +2506,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:60:16
    │
 60 │         return MyStruct(
-   │                ^^^^^^^^ attributes hash: 1887544806731584819
+   │                ^^^^^^^^ attributes hash: 15920791982837982248
    │
    = TypeConstructor {
          typ: Struct(
@@ -2536,7 +2564,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:64:21
    │
 64 │             my_addr=address(123456)
-   │                     ^^^^^^^ attributes hash: 6114858510168753394
+   │                     ^^^^^^^ attributes hash: 12543456546113081273
    │
    = TypeConstructor {
          typ: Base(
@@ -2562,7 +2590,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:71:29
    │
 71 │         my_struct.my_addr = address(9999)
-   │                             ^^^^^^^ attributes hash: 6114858510168753394
+   │                             ^^^^^^^ attributes hash: 12543456546113081273
    │
    = TypeConstructor {
          typ: Base(
@@ -2587,10 +2615,10 @@ note:
    = ValueAttribute
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:79:20
+   ┌─ stress/abi_encoding_stress.fe:79:21
    │
-79 │             my_u8s=self.my_u8s.to_mem(),
-   │                    ^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+79 │             my_u16s=self.my_u16s.to_mem(),
+   │                     ^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
    │
    = ValueAttribute
 
@@ -2609,14 +2637,14 @@ note:
 16 │ │         my_addrs: address[5]
 17 │ │         my_u128: u128
 18 │ │         my_string: String<10>
-19 │ │         my_u8s: u8[255]
+19 │ │         my_u16s: u16[255]
 20 │ │         my_bool: bool
-21 │ │         my_bytes: bytes[100]
-   │ ╰────────────────────────────^ attributes hash: 229795011819765305
+21 │ │         my_bytes: u8[100]
+   │ ╰─────────────────────────^ attributes hash: 12045518562209920550
    │  
    = EventDef {
          name: "MyEvent",
-         topic: "0x5291dba7533bac99b9fabd83c9c340b948738e6c3f0a73f61ff521c7b1a30b39",
+         topic: "0xcac88c5748a42fc8d9baf196f981a3571f79726e9c579d4268b8b1155eb48f47",
          fields: [
              (
                  "my_addrs",
@@ -2644,12 +2672,12 @@ note:
                  ),
              ),
              (
-                 "my_u8s",
+                 "my_u16s",
                  Array(
                      Array {
                          size: 255,
                          inner: Numeric(
-                             U8,
+                             U16,
                          ),
                      },
                  ),
@@ -2665,7 +2693,9 @@ note:
                  Array(
                      Array {
                          size: 100,
-                         inner: Byte,
+                         inner: Numeric(
+                             U8,
+                         ),
                      },
                  ),
              ),
@@ -2711,7 +2741,7 @@ note:
   ┌─ stress/abi_encoding_stress.fe:5:14
   │
 5 │     my_addr: address
-  │              ^^^^^^^ attributes hash: 574436082528610497
+  │              ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,
@@ -2721,7 +2751,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:16:19
    │
 16 │         my_addrs: address[5]
-   │                   ^^^^^^^ attributes hash: 574436082528610497
+   │                   ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -2731,7 +2761,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:16:19
    │
 16 │         my_addrs: address[5]
-   │                   ^^^^^^^^^^ attributes hash: 14952089586677068254
+   │                   ^^^^^^^^^^ attributes hash: 8018526834227667332
    │
    = Array(
          Array {
@@ -2765,28 +2795,28 @@ note:
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:19:17
+   ┌─ stress/abi_encoding_stress.fe:19:18
    │
-19 │         my_u8s: u8[255]
-   │                 ^^ attributes hash: 1872326638020472004
+19 │         my_u16s: u16[255]
+   │                  ^^^ attributes hash: 547894393873242964
    │
    = Base(
          Numeric(
-             U8,
+             U16,
          ),
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:19:17
+   ┌─ stress/abi_encoding_stress.fe:19:18
    │
-19 │         my_u8s: u8[255]
-   │                 ^^^^^^^ attributes hash: 539441492437887696
+19 │         my_u16s: u16[255]
+   │                  ^^^^^^^^ attributes hash: 14875306470317127363
    │
    = Array(
          Array {
              size: 255,
              inner: Numeric(
-                 U8,
+                 U16,
              ),
          },
      )
@@ -2804,23 +2834,27 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:21:19
    │
-21 │         my_bytes: bytes[100]
-   │                   ^^^^^ attributes hash: 16931239362436195516
+21 │         my_bytes: u8[100]
+   │                   ^^ attributes hash: 1872326638020472004
    │
    = Base(
-         Byte,
+         Numeric(
+             U8,
+         ),
      )
 
 note: 
    ┌─ stress/abi_encoding_stress.fe:21:19
    │
-21 │         my_bytes: bytes[100]
-   │                   ^^^^^^^^^^ attributes hash: 5134157185158150929
+21 │         my_bytes: u8[100]
+   │                   ^^^^^^^ attributes hash: 3287218553536941062
    │
    = Array(
          Array {
              size: 100,
-             inner: Byte,
+             inner: Numeric(
+                 U8,
+             ),
          },
      )
 
@@ -2828,7 +2862,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:23:36
    │
 23 │     pub def set_my_addrs(my_addrs: address[5]):
-   │                                    ^^^^^^^ attributes hash: 574436082528610497
+   │                                    ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -2838,7 +2872,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:23:36
    │
 23 │     pub def set_my_addrs(my_addrs: address[5]):
-   │                                    ^^^^^^^^^^ attributes hash: 14952089586677068254
+   │                                    ^^^^^^^^^^ attributes hash: 8018526834227667332
    │
    = Array(
          Array {
@@ -2851,7 +2885,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:26:31
    │
 26 │     pub def get_my_addrs() -> address[5]:
-   │                               ^^^^^^^ attributes hash: 574436082528610497
+   │                               ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -2861,7 +2895,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:26:31
    │
 26 │     pub def get_my_addrs() -> address[5]:
-   │                               ^^^^^^^^^^ attributes hash: 14952089586677068254
+   │                               ^^^^^^^^^^ attributes hash: 8018526834227667332
    │
    = Array(
          Array {
@@ -2919,55 +2953,55 @@ note:
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:41:32
+   ┌─ stress/abi_encoding_stress.fe:41:34
    │
-41 │     pub def set_my_u8s(my_u8s: u8[255]):
-   │                                ^^ attributes hash: 1872326638020472004
+41 │     pub def set_my_u16s(my_u16s: u16[255]):
+   │                                  ^^^ attributes hash: 547894393873242964
    │
    = Base(
          Numeric(
-             U8,
+             U16,
          ),
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:41:32
+   ┌─ stress/abi_encoding_stress.fe:41:34
    │
-41 │     pub def set_my_u8s(my_u8s: u8[255]):
-   │                                ^^^^^^^ attributes hash: 539441492437887696
+41 │     pub def set_my_u16s(my_u16s: u16[255]):
+   │                                  ^^^^^^^^ attributes hash: 14875306470317127363
    │
    = Array(
          Array {
              size: 255,
              inner: Numeric(
-                 U8,
+                 U16,
              ),
          },
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:44:29
+   ┌─ stress/abi_encoding_stress.fe:44:30
    │
-44 │     pub def get_my_u8s() -> u8[255]:
-   │                             ^^ attributes hash: 1872326638020472004
+44 │     pub def get_my_u16s() -> u16[255]:
+   │                              ^^^ attributes hash: 547894393873242964
    │
    = Base(
          Numeric(
-             U8,
+             U16,
          ),
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:44:29
+   ┌─ stress/abi_encoding_stress.fe:44:30
    │
-44 │     pub def get_my_u8s() -> u8[255]:
-   │                             ^^^^^^^ attributes hash: 539441492437887696
+44 │     pub def get_my_u16s() -> u16[255]:
+   │                              ^^^^^^^^ attributes hash: 14875306470317127363
    │
    = Array(
          Array {
              size: 255,
              inner: Numeric(
-                 U8,
+                 U16,
              ),
          },
      )
@@ -2995,46 +3029,54 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:53:36
    │
-53 │     pub def set_my_bytes(my_bytes: bytes[100]):
-   │                                    ^^^^^ attributes hash: 16931239362436195516
+53 │     pub def set_my_bytes(my_bytes: u8[100]):
+   │                                    ^^ attributes hash: 1872326638020472004
    │
    = Base(
-         Byte,
+         Numeric(
+             U8,
+         ),
      )
 
 note: 
    ┌─ stress/abi_encoding_stress.fe:53:36
    │
-53 │     pub def set_my_bytes(my_bytes: bytes[100]):
-   │                                    ^^^^^^^^^^ attributes hash: 5134157185158150929
+53 │     pub def set_my_bytes(my_bytes: u8[100]):
+   │                                    ^^^^^^^ attributes hash: 3287218553536941062
    │
    = Array(
          Array {
              size: 100,
-             inner: Byte,
+             inner: Numeric(
+                 U8,
+             ),
          },
      )
 
 note: 
    ┌─ stress/abi_encoding_stress.fe:56:31
    │
-56 │     pub def get_my_bytes() -> bytes[100]:
-   │                               ^^^^^ attributes hash: 16931239362436195516
+56 │     pub def get_my_bytes() -> u8[100]:
+   │                               ^^ attributes hash: 1872326638020472004
    │
    = Base(
-         Byte,
+         Numeric(
+             U8,
+         ),
      )
 
 note: 
    ┌─ stress/abi_encoding_stress.fe:56:31
    │
-56 │     pub def get_my_bytes() -> bytes[100]:
-   │                               ^^^^^^^^^^ attributes hash: 5134157185158150929
+56 │     pub def get_my_bytes() -> u8[100]:
+   │                               ^^^^^^^ attributes hash: 3287218553536941062
    │
    = Array(
          Array {
              size: 100,
-             inner: Byte,
+             inner: Numeric(
+                 U8,
+             ),
          },
      )
 
@@ -3042,7 +3084,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:59:32
    │
 59 │     pub def get_my_struct() -> MyStruct:
-   │                                ^^^^^^^^ attributes hash: 16989165584754515703
+   │                                ^^^^^^^^ attributes hash: 16430676452298735095
    │
    = Struct(
          Struct {
@@ -3084,7 +3126,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:67:38
    │
 67 │     pub def mod_my_struct(my_struct: MyStruct) -> MyStruct:
-   │                                      ^^^^^^^^ attributes hash: 16989165584754515703
+   │                                      ^^^^^^^^ attributes hash: 16430676452298735095
    │
    = Struct(
          Struct {
@@ -3126,7 +3168,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:67:51
    │
 67 │     pub def mod_my_struct(my_struct: MyStruct) -> MyStruct:
-   │                                                   ^^^^^^^^ attributes hash: 16989165584754515703
+   │                                                   ^^^^^^^^ attributes hash: 16430676452298735095
    │
    = Struct(
          Struct {
@@ -3168,7 +3210,7 @@ note:
   ┌─ stress/abi_encoding_stress.fe:8:15
   │
 8 │     my_addrs: address[5]
-  │               ^^^^^^^ attributes hash: 574436082528610497
+  │               ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,
@@ -3178,7 +3220,7 @@ note:
   ┌─ stress/abi_encoding_stress.fe:8:15
   │
 8 │     my_addrs: address[5]
-  │               ^^^^^^^^^^ attributes hash: 14952089586677068254
+  │               ^^^^^^^^^^ attributes hash: 8018526834227667332
   │
   = Array(
         Array {
@@ -3212,28 +3254,28 @@ note:
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:11:13
+   ┌─ stress/abi_encoding_stress.fe:11:14
    │
-11 │     my_u8s: u8[255]
-   │             ^^ attributes hash: 1872326638020472004
+11 │     my_u16s: u16[255]
+   │              ^^^ attributes hash: 547894393873242964
    │
    = Base(
          Numeric(
-             U8,
+             U16,
          ),
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:11:13
+   ┌─ stress/abi_encoding_stress.fe:11:14
    │
-11 │     my_u8s: u8[255]
-   │             ^^^^^^^ attributes hash: 539441492437887696
+11 │     my_u16s: u16[255]
+   │              ^^^^^^^^ attributes hash: 14875306470317127363
    │
    = Array(
          Array {
              size: 255,
              inner: Numeric(
-                 U8,
+                 U16,
              ),
          },
      )
@@ -3251,23 +3293,27 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:13:15
    │
-13 │     my_bytes: bytes[100]
-   │               ^^^^^ attributes hash: 16931239362436195516
+13 │     my_bytes: u8[100]
+   │               ^^ attributes hash: 1872326638020472004
    │
    = Base(
-         Byte,
+         Numeric(
+             U8,
+         ),
      )
 
 note: 
    ┌─ stress/abi_encoding_stress.fe:13:15
    │
-13 │     my_bytes: bytes[100]
-   │               ^^^^^^^^^^ attributes hash: 5134157185158150929
+13 │     my_bytes: u8[100]
+   │               ^^^^^^^ attributes hash: 3287218553536941062
    │
    = Array(
          Array {
              size: 100,
-             inner: Byte,
+             inner: Numeric(
+                 U8,
+             ),
          },
      )
 

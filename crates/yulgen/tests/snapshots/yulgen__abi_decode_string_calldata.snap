@@ -1,9 +1,0 @@
----
-source: crates/yulgen/tests/yulgen.rs
-expression: "abi::decode(FeString{max_size: 100,}, AbiDecodeLocation::Calldata)"
-
----
-function abi_decode_string_100_calldata(start_ptr, offset) -> decoded_ptr {
-    let head_ptr := add(start_ptr, offset)
-    decoded_ptr := ccopym(add(start_ptr, calldataload(head_ptr)), add(mul(calldataload(add(start_ptr, calldataload(head_ptr))), 1), 32))
-}

@@ -112,7 +112,7 @@ fn abi_encoding_stress() {
         let my_addrs = address_array_token(&["a", "b", "c", "d", "e"]);
         let my_u128 = uint_token(42);
         let my_string = string_token("my string");
-        let my_u8s = u256_array_token(&(0..255).collect::<Vec<_>>());
+        let my_u16s = u256_array_token(&(0..255).collect::<Vec<_>>());
         let my_bool = bool_token(true);
         let my_bytes = bytes_token(
             iter::repeat("ten bytes.")
@@ -130,8 +130,8 @@ fn abi_encoding_stress() {
         harness.test_function(&mut executor, "set_my_string", &[my_string.clone()], None);
         harness.test_function(&mut executor, "get_my_string", &[], Some(&my_string));
 
-        harness.test_function(&mut executor, "set_my_u8s", &[my_u8s.clone()], None);
-        harness.test_function(&mut executor, "get_my_u8s", &[], Some(&my_u8s));
+        harness.test_function(&mut executor, "set_my_u16s", &[my_u16s.clone()], None);
+        harness.test_function(&mut executor, "get_my_u16s", &[], Some(&my_u16s));
 
         harness.test_function(&mut executor, "set_my_bool", &[my_bool.clone()], None);
         harness.test_function(&mut executor, "get_my_bool", &[], Some(&my_bool));
@@ -165,7 +165,7 @@ fn abi_encoding_stress() {
             executor,
             &[(
                 "MyEvent",
-                &[my_addrs, my_u128, my_string, my_u8s, my_bool, my_bytes],
+                &[my_addrs, my_u128, my_string, my_u16s, my_bool, my_bytes],
             )],
         );
     });
@@ -180,7 +180,7 @@ fn tuple_stress() {
         let my_bool = bool_token(true);
         let my_address = address_token("42");
         let my_tuple = tuple_token(&[my_num.clone(), my_bool.clone(), my_address.clone()]);
-        let my_tuple_encoded = ethabi::Token::FixedBytes(vec![
+        let my_tuple_encoded = ethabi::Token::Bytes(vec![
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 26, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

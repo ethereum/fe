@@ -442,7 +442,7 @@ note:
    ┌─ demos/uniswap.fe:64:9
    │
 64 │         self.factory = msg.sender
-   │         ^^^^^^^^^^^^ attributes hash: 11826275286750049608
+   │         ^^^^^^^^^^^^ attributes hash: 8938156005076863125
    │
    = ExpressionAttributes {
          typ: Base(
@@ -460,7 +460,7 @@ note:
    ┌─ demos/uniswap.fe:64:24
    │
 64 │         self.factory = msg.sender
-   │                        ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                        ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -474,7 +474,7 @@ note:
    ┌─ demos/uniswap.fe:67:16
    │
 67 │         return self.factory
-   │                ^^^^^^^^^^^^ attributes hash: 1881084778906563551
+   │                ^^^^^^^^^^^^ attributes hash: 10795788383055974872
    │
    = ExpressionAttributes {
          typ: Base(
@@ -494,7 +494,7 @@ note:
    ┌─ demos/uniswap.fe:70:16
    │
 70 │         return self.token0
-   │                ^^^^^^^^^^^ attributes hash: 14860769425885644190
+   │                ^^^^^^^^^^^ attributes hash: 14552118647532869459
    │
    = ExpressionAttributes {
          typ: Base(
@@ -514,7 +514,7 @@ note:
    ┌─ demos/uniswap.fe:73:16
    │
 73 │         return self.token1
-   │                ^^^^^^^^^^^ attributes hash: 6731119893502442855
+   │                ^^^^^^^^^^^ attributes hash: 6763598575633575517
    │
    = ExpressionAttributes {
          typ: Base(
@@ -608,7 +608,7 @@ note:
    ┌─ demos/uniswap.fe:77:9
    │
 77 │         self.balances[to] = self.balances[to] + value
-   │         ^^^^^^^^^^^^^ attributes hash: 3083590660514624733
+   │         ^^^^^^^^^^^^^ attributes hash: 16295847970515239570
    │
    = ExpressionAttributes {
          typ: Map(
@@ -633,7 +633,7 @@ note:
    ┌─ demos/uniswap.fe:77:23
    │
 77 │         self.balances[to] = self.balances[to] + value
-   │                       ^^ attributes hash: 513065555763557710
+   │                       ^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -665,7 +665,7 @@ note:
    ┌─ demos/uniswap.fe:77:29
    │
 77 │         self.balances[to] = self.balances[to] + value
-   │                             ^^^^^^^^^^^^^ attributes hash: 3083590660514624733
+   │                             ^^^^^^^^^^^^^ attributes hash: 16295847970515239570
    │
    = ExpressionAttributes {
          typ: Map(
@@ -690,7 +690,7 @@ note:
    ┌─ demos/uniswap.fe:77:43
    │
 77 │         self.balances[to] = self.balances[to] + value
-   │                                           ^^ attributes hash: 513065555763557710
+   │                                           ^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -772,7 +772,7 @@ note:
    ┌─ demos/uniswap.fe:78:28
    │
 78 │         emit Transfer(from=address(0), to, value)
-   │                            ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                            ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -786,7 +786,7 @@ note:
    ┌─ demos/uniswap.fe:78:40
    │
 78 │         emit Transfer(from=address(0), to, value)
-   │                                        ^^ attributes hash: 513065555763557710
+   │                                        ^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -816,7 +816,7 @@ note:
    ┌─ demos/uniswap.fe:81:9
    │
 81 │         self.balances[from] = self.balances[from] - value
-   │         ^^^^^^^^^^^^^ attributes hash: 3083590660514624733
+   │         ^^^^^^^^^^^^^ attributes hash: 16295847970515239570
    │
    = ExpressionAttributes {
          typ: Map(
@@ -841,7 +841,7 @@ note:
    ┌─ demos/uniswap.fe:81:23
    │
 81 │         self.balances[from] = self.balances[from] - value
-   │                       ^^^^ attributes hash: 513065555763557710
+   │                       ^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -873,7 +873,7 @@ note:
    ┌─ demos/uniswap.fe:81:31
    │
 81 │         self.balances[from] = self.balances[from] - value
-   │                               ^^^^^^^^^^^^^ attributes hash: 3083590660514624733
+   │                               ^^^^^^^^^^^^^ attributes hash: 16295847970515239570
    │
    = ExpressionAttributes {
          typ: Map(
@@ -898,7 +898,7 @@ note:
    ┌─ demos/uniswap.fe:81:45
    │
 81 │         self.balances[from] = self.balances[from] - value
-   │                                             ^^^^ attributes hash: 513065555763557710
+   │                                             ^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1038,7 +1038,7 @@ note:
    ┌─ demos/uniswap.fe:83:23
    │
 83 │         emit Transfer(from, to=address(0), value)
-   │                       ^^^^ attributes hash: 513065555763557710
+   │                       ^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1068,7 +1068,7 @@ note:
    ┌─ demos/uniswap.fe:83:32
    │
 83 │         emit Transfer(from, to=address(0), value)
-   │                                ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                                ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1098,7 +1098,7 @@ note:
    ┌─ demos/uniswap.fe:86:9
    │
 86 │         self.allowances[owner][spender] = value
-   │         ^^^^^^^^^^^^^^^ attributes hash: 1809596235975120774
+   │         ^^^^^^^^^^^^^^^ attributes hash: 2459692748288327725
    │
    = ExpressionAttributes {
          typ: Map(
@@ -1128,7 +1128,7 @@ note:
    ┌─ demos/uniswap.fe:86:25
    │
 86 │         self.allowances[owner][spender] = value
-   │                         ^^^^^ attributes hash: 513065555763557710
+   │                         ^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1142,7 +1142,7 @@ note:
    ┌─ demos/uniswap.fe:86:9
    │
 86 │         self.allowances[owner][spender] = value
-   │         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8054157001498380852
+   │         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2951433597334534045
    │
    = ExpressionAttributes {
          typ: Map(
@@ -1165,7 +1165,7 @@ note:
    ┌─ demos/uniswap.fe:86:32
    │
 86 │         self.allowances[owner][spender] = value
-   │                                ^^^^^^^ attributes hash: 513065555763557710
+   │                                ^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1213,7 +1213,7 @@ note:
    ┌─ demos/uniswap.fe:87:23
    │
 87 │         emit Approval(owner, spender, value)
-   │                       ^^^^^ attributes hash: 513065555763557710
+   │                       ^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1227,7 +1227,7 @@ note:
    ┌─ demos/uniswap.fe:87:30
    │
 87 │         emit Approval(owner, spender, value)
-   │                              ^^^^^^^ attributes hash: 513065555763557710
+   │                              ^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1257,7 +1257,7 @@ note:
    ┌─ demos/uniswap.fe:90:9
    │
 90 │         self.balances[from] = self.balances[from] - value
-   │         ^^^^^^^^^^^^^ attributes hash: 3083590660514624733
+   │         ^^^^^^^^^^^^^ attributes hash: 16295847970515239570
    │
    = ExpressionAttributes {
          typ: Map(
@@ -1282,7 +1282,7 @@ note:
    ┌─ demos/uniswap.fe:90:23
    │
 90 │         self.balances[from] = self.balances[from] - value
-   │                       ^^^^ attributes hash: 513065555763557710
+   │                       ^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1314,7 +1314,7 @@ note:
    ┌─ demos/uniswap.fe:90:31
    │
 90 │         self.balances[from] = self.balances[from] - value
-   │                               ^^^^^^^^^^^^^ attributes hash: 3083590660514624733
+   │                               ^^^^^^^^^^^^^ attributes hash: 16295847970515239570
    │
    = ExpressionAttributes {
          typ: Map(
@@ -1339,7 +1339,7 @@ note:
    ┌─ demos/uniswap.fe:90:45
    │
 90 │         self.balances[from] = self.balances[from] - value
-   │                                             ^^^^ attributes hash: 513065555763557710
+   │                                             ^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1405,7 +1405,7 @@ note:
    ┌─ demos/uniswap.fe:91:9
    │
 91 │         self.balances[to] = self.balances[to] + value
-   │         ^^^^^^^^^^^^^ attributes hash: 3083590660514624733
+   │         ^^^^^^^^^^^^^ attributes hash: 16295847970515239570
    │
    = ExpressionAttributes {
          typ: Map(
@@ -1430,7 +1430,7 @@ note:
    ┌─ demos/uniswap.fe:91:23
    │
 91 │         self.balances[to] = self.balances[to] + value
-   │                       ^^ attributes hash: 513065555763557710
+   │                       ^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1462,7 +1462,7 @@ note:
    ┌─ demos/uniswap.fe:91:29
    │
 91 │         self.balances[to] = self.balances[to] + value
-   │                             ^^^^^^^^^^^^^ attributes hash: 3083590660514624733
+   │                             ^^^^^^^^^^^^^ attributes hash: 16295847970515239570
    │
    = ExpressionAttributes {
          typ: Map(
@@ -1487,7 +1487,7 @@ note:
    ┌─ demos/uniswap.fe:91:43
    │
 91 │         self.balances[to] = self.balances[to] + value
-   │                                           ^^ attributes hash: 513065555763557710
+   │                                           ^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1553,7 +1553,7 @@ note:
    ┌─ demos/uniswap.fe:92:23
    │
 92 │         emit Transfer(from, to, value)
-   │                       ^^^^ attributes hash: 513065555763557710
+   │                       ^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1567,7 +1567,7 @@ note:
    ┌─ demos/uniswap.fe:92:29
    │
 92 │         emit Transfer(from, to, value)
-   │                             ^^ attributes hash: 513065555763557710
+   │                             ^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1597,7 +1597,7 @@ note:
    ┌─ demos/uniswap.fe:95:23
    │
 95 │         self._approve(msg.sender, spender, value)
-   │                       ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                       ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1611,7 +1611,7 @@ note:
    ┌─ demos/uniswap.fe:95:35
    │
 95 │         self._approve(msg.sender, spender, value)
-   │                                   ^^^^^^^ attributes hash: 513065555763557710
+   │                                   ^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1641,7 +1641,7 @@ note:
    ┌─ demos/uniswap.fe:95:9
    │
 95 │         self._approve(msg.sender, spender, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1669,7 +1669,7 @@ note:
    ┌─ demos/uniswap.fe:99:24
    │
 99 │         self._transfer(msg.sender, to, value)
-   │                        ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                        ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1683,7 +1683,7 @@ note:
    ┌─ demos/uniswap.fe:99:36
    │
 99 │         self._transfer(msg.sender, to, value)
-   │                                    ^^ attributes hash: 513065555763557710
+   │                                    ^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1713,7 +1713,7 @@ note:
    ┌─ demos/uniswap.fe:99:9
    │
 99 │         self._transfer(msg.sender, to, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1741,7 +1741,7 @@ note:
     ┌─ demos/uniswap.fe:103:16
     │
 103 │         assert self.allowances[from][msg.sender] >= value
-    │                ^^^^^^^^^^^^^^^ attributes hash: 1809596235975120774
+    │                ^^^^^^^^^^^^^^^ attributes hash: 2459692748288327725
     │
     = ExpressionAttributes {
           typ: Map(
@@ -1771,7 +1771,7 @@ note:
     ┌─ demos/uniswap.fe:103:32
     │
 103 │         assert self.allowances[from][msg.sender] >= value
-    │                                ^^^^ attributes hash: 513065555763557710
+    │                                ^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -1785,7 +1785,7 @@ note:
     ┌─ demos/uniswap.fe:103:16
     │
 103 │         assert self.allowances[from][msg.sender] >= value
-    │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8054157001498380852
+    │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2951433597334534045
     │
     = ExpressionAttributes {
           typ: Map(
@@ -1808,7 +1808,7 @@ note:
     ┌─ demos/uniswap.fe:103:38
     │
 103 │         assert self.allowances[from][msg.sender] >= value
-    │                                      ^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                      ^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -1872,7 +1872,7 @@ note:
     ┌─ demos/uniswap.fe:105:9
     │
 105 │         self.allowances[from][msg.sender] = self.allowances[from][msg.sender] - value
-    │         ^^^^^^^^^^^^^^^ attributes hash: 1809596235975120774
+    │         ^^^^^^^^^^^^^^^ attributes hash: 2459692748288327725
     │
     = ExpressionAttributes {
           typ: Map(
@@ -1902,7 +1902,7 @@ note:
     ┌─ demos/uniswap.fe:105:25
     │
 105 │         self.allowances[from][msg.sender] = self.allowances[from][msg.sender] - value
-    │                         ^^^^ attributes hash: 513065555763557710
+    │                         ^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -1916,7 +1916,7 @@ note:
     ┌─ demos/uniswap.fe:105:9
     │
 105 │         self.allowances[from][msg.sender] = self.allowances[from][msg.sender] - value
-    │         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8054157001498380852
+    │         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2951433597334534045
     │
     = ExpressionAttributes {
           typ: Map(
@@ -1939,7 +1939,7 @@ note:
     ┌─ demos/uniswap.fe:105:31
     │
 105 │         self.allowances[from][msg.sender] = self.allowances[from][msg.sender] - value
-    │                               ^^^^^^^^^^ attributes hash: 513065555763557710
+    │                               ^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -1971,7 +1971,7 @@ note:
     ┌─ demos/uniswap.fe:105:45
     │
 105 │         self.allowances[from][msg.sender] = self.allowances[from][msg.sender] - value
-    │                                             ^^^^^^^^^^^^^^^ attributes hash: 1809596235975120774
+    │                                             ^^^^^^^^^^^^^^^ attributes hash: 2459692748288327725
     │
     = ExpressionAttributes {
           typ: Map(
@@ -2001,7 +2001,7 @@ note:
     ┌─ demos/uniswap.fe:105:61
     │
 105 │         self.allowances[from][msg.sender] = self.allowances[from][msg.sender] - value
-    │                                                             ^^^^ attributes hash: 513065555763557710
+    │                                                             ^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -2015,7 +2015,7 @@ note:
     ┌─ demos/uniswap.fe:105:45
     │
 105 │         self.allowances[from][msg.sender] = self.allowances[from][msg.sender] - value
-    │                                             ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8054157001498380852
+    │                                             ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2951433597334534045
     │
     = ExpressionAttributes {
           typ: Map(
@@ -2038,7 +2038,7 @@ note:
     ┌─ demos/uniswap.fe:105:67
     │
 105 │         self.allowances[from][msg.sender] = self.allowances[from][msg.sender] - value
-    │                                                                   ^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                                                   ^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -2104,7 +2104,7 @@ note:
     ┌─ demos/uniswap.fe:106:24
     │
 106 │         self._transfer(from, to, value)
-    │                        ^^^^ attributes hash: 513065555763557710
+    │                        ^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -2118,7 +2118,7 @@ note:
     ┌─ demos/uniswap.fe:106:30
     │
 106 │         self._transfer(from, to, value)
-    │                              ^^ attributes hash: 513065555763557710
+    │                              ^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -2148,7 +2148,7 @@ note:
     ┌─ demos/uniswap.fe:106:9
     │
 106 │         self._transfer(from, to, value)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
     │
     = ExpressionAttributes {
           typ: Base(
@@ -2176,7 +2176,7 @@ note:
     ┌─ demos/uniswap.fe:110:16
     │
 110 │         return self.balances[account]
-    │                ^^^^^^^^^^^^^ attributes hash: 3083590660514624733
+    │                ^^^^^^^^^^^^^ attributes hash: 16295847970515239570
     │
     = ExpressionAttributes {
           typ: Map(
@@ -2201,7 +2201,7 @@ note:
     ┌─ demos/uniswap.fe:110:30
     │
 110 │         return self.balances[account]
-    │                              ^^^^^^^ attributes hash: 513065555763557710
+    │                              ^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -2333,7 +2333,7 @@ note:
     ┌─ demos/uniswap.fe:118:16
     │
 118 │         assert msg.sender == self.factory, "UniswapV2: FORBIDDEN"
-    │                ^^^^^^^^^^ attributes hash: 513065555763557710
+    │                ^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -2347,7 +2347,7 @@ note:
     ┌─ demos/uniswap.fe:118:30
     │
 118 │         assert msg.sender == self.factory, "UniswapV2: FORBIDDEN"
-    │                              ^^^^^^^^^^^^ attributes hash: 1881084778906563551
+    │                              ^^^^^^^^^^^^ attributes hash: 10795788383055974872
     │
     = ExpressionAttributes {
           typ: Base(
@@ -2397,7 +2397,7 @@ note:
     ┌─ demos/uniswap.fe:119:9
     │
 119 │         self.token0 = token0
-    │         ^^^^^^^^^^^ attributes hash: 5552237573299024074
+    │         ^^^^^^^^^^^ attributes hash: 12997734020307326034
     │
     = ExpressionAttributes {
           typ: Base(
@@ -2415,7 +2415,7 @@ note:
     ┌─ demos/uniswap.fe:119:23
     │
 119 │         self.token0 = token0
-    │                       ^^^^^^ attributes hash: 513065555763557710
+    │                       ^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -2429,7 +2429,7 @@ note:
     ┌─ demos/uniswap.fe:120:9
     │
 120 │         self.token1 = token1
-    │         ^^^^^^^^^^^ attributes hash: 17289371398955052870
+    │         ^^^^^^^^^^^ attributes hash: 8272856372219896833
     │
     = ExpressionAttributes {
           typ: Base(
@@ -2447,7 +2447,7 @@ note:
     ┌─ demos/uniswap.fe:120:23
     │
 120 │         self.token1 = token1
-    │                       ^^^^^^ attributes hash: 513065555763557710
+    │                       ^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3189,7 +3189,7 @@ note:
     ┌─ demos/uniswap.fe:140:44
     │
 140 │         fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                                            ^^^^^^^^^^^^ attributes hash: 1881084778906563551
+    │                                            ^^^^^^^^^^^^ attributes hash: 10795788383055974872
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3209,7 +3209,7 @@ note:
     ┌─ demos/uniswap.fe:140:27
     │
 140 │         fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 3186366198341923168
+    │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2682470432657360711
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -3304,7 +3304,7 @@ note:
     ┌─ demos/uniswap.fe:140:27
     │
 140 │         fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3318,7 +3318,7 @@ note:
     ┌─ demos/uniswap.fe:141:24
     │
 141 │         fee_on: bool = fee_to != address(0)
-    │                        ^^^^^^ attributes hash: 513065555763557710
+    │                        ^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3348,7 +3348,7 @@ note:
     ┌─ demos/uniswap.fe:141:34
     │
 141 │         fee_on: bool = fee_to != address(0)
-    │                                  ^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                  ^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3860,7 +3860,7 @@ note:
     ┌─ demos/uniswap.fe:152:36
     │
 152 │                         self._mint(fee_to, liquidity)
-    │                                    ^^^^^^ attributes hash: 513065555763557710
+    │                                    ^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3890,7 +3890,7 @@ note:
     ┌─ demos/uniswap.fe:152:25
     │
 152 │                         self._mint(fee_to, liquidity)
-    │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+    │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4060,7 +4060,7 @@ note:
     ┌─ demos/uniswap.fe:163:32
     │
 163 │         balance0: u256 = ERC20(self.token0).balanceOf(self.address)
-    │                                ^^^^^^^^^^^ attributes hash: 14860769425885644190
+    │                                ^^^^^^^^^^^ attributes hash: 14552118647532869459
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4080,7 +4080,7 @@ note:
     ┌─ demos/uniswap.fe:163:26
     │
 163 │         balance0: u256 = ERC20(self.token0).balanceOf(self.address)
-    │                          ^^^^^^^^^^^^^^^^^^ attributes hash: 15391172439059254871
+    │                          ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -4138,7 +4138,7 @@ note:
     ┌─ demos/uniswap.fe:163:55
     │
 163 │         balance0: u256 = ERC20(self.token0).balanceOf(self.address)
-    │                                                       ^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                                       ^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4168,7 +4168,7 @@ note:
     ┌─ demos/uniswap.fe:164:32
     │
 164 │         balance1: u256 = ERC20(self.token1).balanceOf(self.address)
-    │                                ^^^^^^^^^^^ attributes hash: 6731119893502442855
+    │                                ^^^^^^^^^^^ attributes hash: 6763598575633575517
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4188,7 +4188,7 @@ note:
     ┌─ demos/uniswap.fe:164:26
     │
 164 │         balance1: u256 = ERC20(self.token1).balanceOf(self.address)
-    │                          ^^^^^^^^^^^^^^^^^^ attributes hash: 15391172439059254871
+    │                          ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -4246,7 +4246,7 @@ note:
     ┌─ demos/uniswap.fe:164:55
     │
 164 │         balance1: u256 = ERC20(self.token1).balanceOf(self.address)
-    │                                                       ^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                                       ^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4642,7 +4642,7 @@ note:
     ┌─ demos/uniswap.fe:173:24
     │
 173 │             self._mint(address(0), MINIMUM_LIQUIDITY) # permanently lock the first MINIMUM_LIQUIDITY tokens
-    │                        ^^^^^^^^^^ attributes hash: 513065555763557710
+    │                        ^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4672,7 +4672,7 @@ note:
     ┌─ demos/uniswap.fe:173:13
     │
 173 │             self._mint(address(0), MINIMUM_LIQUIDITY) # permanently lock the first MINIMUM_LIQUIDITY tokens
-    │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+    │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4940,7 +4940,7 @@ note:
     ┌─ demos/uniswap.fe:179:20
     │
 179 │         self._mint(to, liquidity)
-    │                    ^^ attributes hash: 513065555763557710
+    │                    ^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4970,7 +4970,7 @@ note:
     ┌─ demos/uniswap.fe:179:9
     │
 179 │         self._mint(to, liquidity)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5048,7 +5048,7 @@ note:
     ┌─ demos/uniswap.fe:180:9
     │
 180 │         self._update(balance0, balance1, reserve0, reserve1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5144,7 +5144,7 @@ note:
     ┌─ demos/uniswap.fe:185:26
     │
 185 │         emit Mint(sender=msg.sender, amount0, amount1)
-    │                          ^^^^^^^^^^ attributes hash: 513065555763557710
+    │                          ^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5250,7 +5250,7 @@ note:
     ┌─ demos/uniswap.fe:192:31
     │
 192 │         token0: ERC20 = ERC20(self.token0)
-    │                               ^^^^^^^^^^^ attributes hash: 14860769425885644190
+    │                               ^^^^^^^^^^^ attributes hash: 14552118647532869459
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5270,7 +5270,7 @@ note:
     ┌─ demos/uniswap.fe:192:25
     │
 192 │         token0: ERC20 = ERC20(self.token0)
-    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 15391172439059254871
+    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -5328,7 +5328,7 @@ note:
     ┌─ demos/uniswap.fe:193:31
     │
 193 │         token1: ERC20 = ERC20(self.token1)
-    │                               ^^^^^^^^^^^ attributes hash: 6731119893502442855
+    │                               ^^^^^^^^^^^ attributes hash: 6763598575633575517
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5348,7 +5348,7 @@ note:
     ┌─ demos/uniswap.fe:193:25
     │
 193 │         token1: ERC20 = ERC20(self.token1)
-    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 15391172439059254871
+    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -5406,7 +5406,7 @@ note:
     ┌─ demos/uniswap.fe:194:26
     │
 194 │         balance0: u256 = token0.balanceOf(self.address)
-    │                          ^^^^^^ attributes hash: 15391172439059254871
+    │                          ^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -5464,7 +5464,7 @@ note:
     ┌─ demos/uniswap.fe:194:43
     │
 194 │         balance0: u256 = token0.balanceOf(self.address)
-    │                                           ^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                           ^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5494,7 +5494,7 @@ note:
     ┌─ demos/uniswap.fe:195:26
     │
 195 │         balance1: u256 = token1.balanceOf(self.address)
-    │                          ^^^^^^ attributes hash: 15391172439059254871
+    │                          ^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -5552,7 +5552,7 @@ note:
     ┌─ demos/uniswap.fe:195:43
     │
 195 │         balance1: u256 = token1.balanceOf(self.address)
-    │                                           ^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                           ^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5582,7 +5582,7 @@ note:
     ┌─ demos/uniswap.fe:196:27
     │
 196 │         liquidity: u256 = self.balances[self.address]
-    │                           ^^^^^^^^^^^^^ attributes hash: 3083590660514624733
+    │                           ^^^^^^^^^^^^^ attributes hash: 16295847970515239570
     │
     = ExpressionAttributes {
           typ: Map(
@@ -5607,7 +5607,7 @@ note:
     ┌─ demos/uniswap.fe:196:41
     │
 196 │         liquidity: u256 = self.balances[self.address]
-    │                                         ^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                         ^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5991,7 +5991,7 @@ note:
     ┌─ demos/uniswap.fe:203:20
     │
 203 │         self._burn(self.address, liquidity)
-    │                    ^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                    ^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6021,7 +6021,7 @@ note:
     ┌─ demos/uniswap.fe:203:9
     │
 203 │         self._burn(self.address, liquidity)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6035,7 +6035,7 @@ note:
     ┌─ demos/uniswap.fe:204:9
     │
 204 │         token0.transfer(to, amount0)
-    │         ^^^^^^ attributes hash: 15391172439059254871
+    │         ^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -6093,7 +6093,7 @@ note:
     ┌─ demos/uniswap.fe:204:25
     │
 204 │         token0.transfer(to, amount0)
-    │                         ^^ attributes hash: 513065555763557710
+    │                         ^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6137,7 +6137,7 @@ note:
     ┌─ demos/uniswap.fe:205:9
     │
 205 │         token1.transfer(to, amount1)
-    │         ^^^^^^ attributes hash: 15391172439059254871
+    │         ^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -6195,7 +6195,7 @@ note:
     ┌─ demos/uniswap.fe:205:25
     │
 205 │         token1.transfer(to, amount1)
-    │                         ^^ attributes hash: 513065555763557710
+    │                         ^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6255,7 +6255,7 @@ note:
     ┌─ demos/uniswap.fe:206:20
     │
 206 │         balance0 = token0.balanceOf(self.address)
-    │                    ^^^^^^ attributes hash: 15391172439059254871
+    │                    ^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -6313,7 +6313,7 @@ note:
     ┌─ demos/uniswap.fe:206:37
     │
 206 │         balance0 = token0.balanceOf(self.address)
-    │                                     ^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                     ^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6359,7 +6359,7 @@ note:
     ┌─ demos/uniswap.fe:207:20
     │
 207 │         balance1 = token1.balanceOf(self.address)
-    │                    ^^^^^^ attributes hash: 15391172439059254871
+    │                    ^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -6417,7 +6417,7 @@ note:
     ┌─ demos/uniswap.fe:207:37
     │
 207 │         balance1 = token1.balanceOf(self.address)
-    │                                     ^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                     ^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6511,7 +6511,7 @@ note:
     ┌─ demos/uniswap.fe:209:9
     │
 209 │         self._update(balance0, balance1, reserve0, reserve1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6607,7 +6607,7 @@ note:
     ┌─ demos/uniswap.fe:214:26
     │
 214 │         emit Burn(sender=msg.sender, amount0, amount1, to)
-    │                          ^^^^^^^^^^ attributes hash: 513065555763557710
+    │                          ^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6653,7 +6653,7 @@ note:
     ┌─ demos/uniswap.fe:214:56
     │
 214 │         emit Burn(sender=msg.sender, amount0, amount1, to)
-    │                                                        ^^ attributes hash: 513065555763557710
+    │                                                        ^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7014,7 +7014,7 @@ note:
     ┌─ demos/uniswap.fe:226:31
     │
 226 │         token0: ERC20 = ERC20(self.token0)
-    │                               ^^^^^^^^^^^ attributes hash: 14860769425885644190
+    │                               ^^^^^^^^^^^ attributes hash: 14552118647532869459
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7034,7 +7034,7 @@ note:
     ┌─ demos/uniswap.fe:226:25
     │
 226 │         token0: ERC20 = ERC20(self.token0)
-    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 15391172439059254871
+    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -7092,7 +7092,7 @@ note:
     ┌─ demos/uniswap.fe:227:31
     │
 227 │         token1: ERC20 = ERC20(self.token1)
-    │                               ^^^^^^^^^^^ attributes hash: 6731119893502442855
+    │                               ^^^^^^^^^^^ attributes hash: 6763598575633575517
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7112,7 +7112,7 @@ note:
     ┌─ demos/uniswap.fe:227:25
     │
 227 │         token1: ERC20 = ERC20(self.token1)
-    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 15391172439059254871
+    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -7170,7 +7170,7 @@ note:
     ┌─ demos/uniswap.fe:230:16
     │
 230 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
-    │                ^^ attributes hash: 513065555763557710
+    │                ^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7184,7 +7184,7 @@ note:
     ┌─ demos/uniswap.fe:230:30
     │
 230 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
-    │                              ^^^^^^ attributes hash: 15391172439059254871
+    │                              ^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -7242,7 +7242,7 @@ note:
     ┌─ demos/uniswap.fe:230:22
     │
 230 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
-    │                      ^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                      ^^^^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7270,7 +7270,7 @@ note:
     ┌─ demos/uniswap.fe:230:42
     │
 230 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
-    │                                          ^^ attributes hash: 513065555763557710
+    │                                          ^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7284,7 +7284,7 @@ note:
     ┌─ demos/uniswap.fe:230:56
     │
 230 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
-    │                                                        ^^^^^^ attributes hash: 15391172439059254871
+    │                                                        ^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -7342,7 +7342,7 @@ note:
     ┌─ demos/uniswap.fe:230:48
     │
 230 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
-    │                                                ^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                                ^^^^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7446,7 +7446,7 @@ note:
     ┌─ demos/uniswap.fe:233:13
     │
 233 │             token0.transfer(to, amount0_out) # optimistically transfer tokens
-    │             ^^^^^^ attributes hash: 15391172439059254871
+    │             ^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -7504,7 +7504,7 @@ note:
     ┌─ demos/uniswap.fe:233:29
     │
 233 │             token0.transfer(to, amount0_out) # optimistically transfer tokens
-    │                             ^^ attributes hash: 513065555763557710
+    │                             ^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7594,7 +7594,7 @@ note:
     ┌─ demos/uniswap.fe:235:13
     │
 235 │             token1.transfer(to, amount1_out) # optimistically transfer tokens
-    │             ^^^^^^ attributes hash: 15391172439059254871
+    │             ^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -7652,7 +7652,7 @@ note:
     ┌─ demos/uniswap.fe:235:29
     │
 235 │             token1.transfer(to, amount1_out) # optimistically transfer tokens
-    │                             ^^ attributes hash: 513065555763557710
+    │                             ^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7696,7 +7696,7 @@ note:
     ┌─ demos/uniswap.fe:240:26
     │
 240 │         balance0: u256 = token0.balanceOf(self.address)
-    │                          ^^^^^^ attributes hash: 15391172439059254871
+    │                          ^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -7754,7 +7754,7 @@ note:
     ┌─ demos/uniswap.fe:240:43
     │
 240 │         balance0: u256 = token0.balanceOf(self.address)
-    │                                           ^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                           ^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7784,7 +7784,7 @@ note:
     ┌─ demos/uniswap.fe:241:26
     │
 241 │         balance1: u256 = token1.balanceOf(self.address)
-    │                          ^^^^^^ attributes hash: 15391172439059254871
+    │                          ^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -7842,7 +7842,7 @@ note:
     ┌─ demos/uniswap.fe:241:43
     │
 241 │         balance1: u256 = token1.balanceOf(self.address)
-    │                                           ^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                           ^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8820,7 +8820,7 @@ note:
     ┌─ demos/uniswap.fe:253:9
     │
 253 │         self._update(balance0, balance1, reserve0, reserve1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8834,7 +8834,7 @@ note:
     ┌─ demos/uniswap.fe:254:26
     │
 254 │         emit Swap(sender=msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
-    │                          ^^^^^^^^^^ attributes hash: 513065555763557710
+    │                          ^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8912,7 +8912,7 @@ note:
     ┌─ demos/uniswap.fe:254:88
     │
 254 │         emit Swap(sender=msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
-    │                                                                                        ^^ attributes hash: 513065555763557710
+    │                                                                                        ^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8926,7 +8926,7 @@ note:
     ┌─ demos/uniswap.fe:258:31
     │
 258 │         token0: ERC20 = ERC20(self.token0) # gas savings
-    │                               ^^^^^^^^^^^ attributes hash: 14860769425885644190
+    │                               ^^^^^^^^^^^ attributes hash: 14552118647532869459
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8946,7 +8946,7 @@ note:
     ┌─ demos/uniswap.fe:258:25
     │
 258 │         token0: ERC20 = ERC20(self.token0) # gas savings
-    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 15391172439059254871
+    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -9004,7 +9004,7 @@ note:
     ┌─ demos/uniswap.fe:259:31
     │
 259 │         token1: ERC20 = ERC20(self.token1) # gas savings
-    │                               ^^^^^^^^^^^ attributes hash: 6731119893502442855
+    │                               ^^^^^^^^^^^ attributes hash: 6763598575633575517
     │
     = ExpressionAttributes {
           typ: Base(
@@ -9024,7 +9024,7 @@ note:
     ┌─ demos/uniswap.fe:259:25
     │
 259 │         token1: ERC20 = ERC20(self.token1) # gas savings
-    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 15391172439059254871
+    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -9082,7 +9082,7 @@ note:
     ┌─ demos/uniswap.fe:261:9
     │
 261 │         token0.transfer(to, token0.balanceOf(self.address) - self.reserve0)
-    │         ^^^^^^ attributes hash: 15391172439059254871
+    │         ^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -9140,7 +9140,7 @@ note:
     ┌─ demos/uniswap.fe:261:25
     │
 261 │         token0.transfer(to, token0.balanceOf(self.address) - self.reserve0)
-    │                         ^^ attributes hash: 513065555763557710
+    │                         ^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -9154,7 +9154,7 @@ note:
     ┌─ demos/uniswap.fe:261:29
     │
 261 │         token0.transfer(to, token0.balanceOf(self.address) - self.reserve0)
-    │                             ^^^^^^ attributes hash: 15391172439059254871
+    │                             ^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -9212,7 +9212,7 @@ note:
     ┌─ demos/uniswap.fe:261:46
     │
 261 │         token0.transfer(to, token0.balanceOf(self.address) - self.reserve0)
-    │                                              ^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                              ^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -9294,7 +9294,7 @@ note:
     ┌─ demos/uniswap.fe:262:9
     │
 262 │         token1.transfer(to, token1.balanceOf(self.address) - self.reserve1)
-    │         ^^^^^^ attributes hash: 15391172439059254871
+    │         ^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -9352,7 +9352,7 @@ note:
     ┌─ demos/uniswap.fe:262:25
     │
 262 │         token1.transfer(to, token1.balanceOf(self.address) - self.reserve1)
-    │                         ^^ attributes hash: 513065555763557710
+    │                         ^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -9366,7 +9366,7 @@ note:
     ┌─ demos/uniswap.fe:262:29
     │
 262 │         token1.transfer(to, token1.balanceOf(self.address) - self.reserve1)
-    │                             ^^^^^^ attributes hash: 15391172439059254871
+    │                             ^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -9424,7 +9424,7 @@ note:
     ┌─ demos/uniswap.fe:262:46
     │
 262 │         token1.transfer(to, token1.balanceOf(self.address) - self.reserve1)
-    │                                              ^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                              ^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -9506,7 +9506,7 @@ note:
     ┌─ demos/uniswap.fe:266:31
     │
 266 │         token0: ERC20 = ERC20(self.token0)
-    │                               ^^^^^^^^^^^ attributes hash: 14860769425885644190
+    │                               ^^^^^^^^^^^ attributes hash: 14552118647532869459
     │
     = ExpressionAttributes {
           typ: Base(
@@ -9526,7 +9526,7 @@ note:
     ┌─ demos/uniswap.fe:266:25
     │
 266 │         token0: ERC20 = ERC20(self.token0)
-    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 15391172439059254871
+    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -9584,7 +9584,7 @@ note:
     ┌─ demos/uniswap.fe:267:31
     │
 267 │         token1: ERC20 = ERC20(self.token1)
-    │                               ^^^^^^^^^^^ attributes hash: 6731119893502442855
+    │                               ^^^^^^^^^^^ attributes hash: 6763598575633575517
     │
     = ExpressionAttributes {
           typ: Base(
@@ -9604,7 +9604,7 @@ note:
     ┌─ demos/uniswap.fe:267:25
     │
 267 │         token1: ERC20 = ERC20(self.token1)
-    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 15391172439059254871
+    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -9662,7 +9662,7 @@ note:
     ┌─ demos/uniswap.fe:268:22
     │
 268 │         self._update(token0.balanceOf(self.address), token1.balanceOf(self.address), self.reserve0, self.reserve1)
-    │                      ^^^^^^ attributes hash: 15391172439059254871
+    │                      ^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -9720,7 +9720,7 @@ note:
     ┌─ demos/uniswap.fe:268:39
     │
 268 │         self._update(token0.balanceOf(self.address), token1.balanceOf(self.address), self.reserve0, self.reserve1)
-    │                                       ^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                       ^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -9750,7 +9750,7 @@ note:
     ┌─ demos/uniswap.fe:268:54
     │
 268 │         self._update(token0.balanceOf(self.address), token1.balanceOf(self.address), self.reserve0, self.reserve1)
-    │                                                      ^^^^^^ attributes hash: 15391172439059254871
+    │                                                      ^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -9808,7 +9808,7 @@ note:
     ┌─ demos/uniswap.fe:268:71
     │
 268 │         self._update(token0.balanceOf(self.address), token1.balanceOf(self.address), self.reserve0, self.reserve1)
-    │                                                                       ^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                                                       ^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -9882,7 +9882,7 @@ note:
     ┌─ demos/uniswap.fe:268:9
     │
 268 │         self._update(token0.balanceOf(self.address), token1.balanceOf(self.address), self.reserve0, self.reserve1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10448,7 +10448,7 @@ note:
     ┌─ demos/uniswap.fe:301:8
     │
 301 │        self.fee_to_setter = fee_to_setter
-    │        ^^^^^^^^^^^^^^^^^^ attributes hash: 12849796163907826875
+    │        ^^^^^^^^^^^^^^^^^^ attributes hash: 16203061776323068697
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10466,7 +10466,7 @@ note:
     ┌─ demos/uniswap.fe:301:29
     │
 301 │        self.fee_to_setter = fee_to_setter
-    │                             ^^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                             ^^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10480,7 +10480,7 @@ note:
     ┌─ demos/uniswap.fe:304:16
     │
 304 │         return self.fee_to
-    │                ^^^^^^^^^^^ attributes hash: 10848859084443309747
+    │                ^^^^^^^^^^^ attributes hash: 5525835038398638360
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10500,7 +10500,7 @@ note:
     ┌─ demos/uniswap.fe:307:16
     │
 307 │         return self.fee_to_setter
-    │                ^^^^^^^^^^^^^^^^^^ attributes hash: 7358142947426974590
+    │                ^^^^^^^^^^^^^^^^^^ attributes hash: 12120622129777346908
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10542,7 +10542,7 @@ note:
     ┌─ demos/uniswap.fe:313:16
     │
 313 │         assert token_a != token_b, "UniswapV2: IDENTICAL_ADDRESSES"
-    │                ^^^^^^^ attributes hash: 513065555763557710
+    │                ^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10556,7 +10556,7 @@ note:
     ┌─ demos/uniswap.fe:313:27
     │
 313 │         assert token_a != token_b, "UniswapV2: IDENTICAL_ADDRESSES"
-    │                           ^^^^^^^ attributes hash: 513065555763557710
+    │                           ^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10600,7 +10600,7 @@ note:
     ┌─ demos/uniswap.fe:315:38
     │
 315 │         token0: address = token_a if token_a < token_b else token_b
-    │                                      ^^^^^^^ attributes hash: 513065555763557710
+    │                                      ^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10614,7 +10614,7 @@ note:
     ┌─ demos/uniswap.fe:315:48
     │
 315 │         token0: address = token_a if token_a < token_b else token_b
-    │                                                ^^^^^^^ attributes hash: 513065555763557710
+    │                                                ^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10642,7 +10642,7 @@ note:
     ┌─ demos/uniswap.fe:315:27
     │
 315 │         token0: address = token_a if token_a < token_b else token_b
-    │                           ^^^^^^^ attributes hash: 513065555763557710
+    │                           ^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10656,7 +10656,7 @@ note:
     ┌─ demos/uniswap.fe:315:61
     │
 315 │         token0: address = token_a if token_a < token_b else token_b
-    │                                                             ^^^^^^^ attributes hash: 513065555763557710
+    │                                                             ^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10670,7 +10670,7 @@ note:
     ┌─ demos/uniswap.fe:315:27
     │
 315 │         token0: address = token_a if token_a < token_b else token_b
-    │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10684,7 +10684,7 @@ note:
     ┌─ demos/uniswap.fe:316:38
     │
 316 │         token1: address = token_a if token_a > token_b else token_b
-    │                                      ^^^^^^^ attributes hash: 513065555763557710
+    │                                      ^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10698,7 +10698,7 @@ note:
     ┌─ demos/uniswap.fe:316:48
     │
 316 │         token1: address = token_a if token_a > token_b else token_b
-    │                                                ^^^^^^^ attributes hash: 513065555763557710
+    │                                                ^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10726,7 +10726,7 @@ note:
     ┌─ demos/uniswap.fe:316:27
     │
 316 │         token1: address = token_a if token_a > token_b else token_b
-    │                           ^^^^^^^ attributes hash: 513065555763557710
+    │                           ^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10740,7 +10740,7 @@ note:
     ┌─ demos/uniswap.fe:316:61
     │
 316 │         token1: address = token_a if token_a > token_b else token_b
-    │                                                             ^^^^^^^ attributes hash: 513065555763557710
+    │                                                             ^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10754,7 +10754,7 @@ note:
     ┌─ demos/uniswap.fe:316:27
     │
 316 │         token1: address = token_a if token_a > token_b else token_b
-    │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10768,7 +10768,7 @@ note:
     ┌─ demos/uniswap.fe:317:16
     │
 317 │         assert token0 != address(0), "UniswapV2: ZERO_ADDRESS"
-    │                ^^^^^^ attributes hash: 513065555763557710
+    │                ^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10798,7 +10798,7 @@ note:
     ┌─ demos/uniswap.fe:317:26
     │
 317 │         assert token0 != address(0), "UniswapV2: ZERO_ADDRESS"
-    │                          ^^^^^^^^^^ attributes hash: 513065555763557710
+    │                          ^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10842,7 +10842,7 @@ note:
     ┌─ demos/uniswap.fe:318:16
     │
 318 │         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
-    │                ^^^^^^^^^^ attributes hash: 11208056528891524698
+    │                ^^^^^^^^^^ attributes hash: 194402102010982084
     │
     = ExpressionAttributes {
           typ: Map(
@@ -10870,7 +10870,7 @@ note:
     ┌─ demos/uniswap.fe:318:27
     │
 318 │         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
-    │                           ^^^^^^ attributes hash: 513065555763557710
+    │                           ^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10884,7 +10884,7 @@ note:
     ┌─ demos/uniswap.fe:318:16
     │
 318 │         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
-    │                ^^^^^^^^^^^^^^^^^^ attributes hash: 5158137549479364413
+    │                ^^^^^^^^^^^^^^^^^^ attributes hash: 18262714205352727235
     │
     = ExpressionAttributes {
           typ: Map(
@@ -10905,7 +10905,7 @@ note:
     ┌─ demos/uniswap.fe:318:35
     │
 318 │         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
-    │                                   ^^^^^^ attributes hash: 513065555763557710
+    │                                   ^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10919,7 +10919,7 @@ note:
     ┌─ demos/uniswap.fe:318:16
     │
 318 │         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
-    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15587646813440843004
+    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4019208676761915907
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10953,7 +10953,7 @@ note:
     ┌─ demos/uniswap.fe:318:46
     │
 318 │         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
-    │                                              ^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                              ^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10997,7 +10997,7 @@ note:
     ┌─ demos/uniswap.fe:320:33
     │
 320 │         salt: u256 = keccak256((token0, token1).abi_encode())
-    │                                 ^^^^^^ attributes hash: 513065555763557710
+    │                                 ^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -11011,7 +11011,7 @@ note:
     ┌─ demos/uniswap.fe:320:41
     │
 320 │         salt: u256 = keccak256((token0, token1).abi_encode())
-    │                                         ^^^^^^ attributes hash: 513065555763557710
+    │                                         ^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -11025,7 +11025,7 @@ note:
     ┌─ demos/uniswap.fe:320:32
     │
 320 │         salt: u256 = keccak256((token0, token1).abi_encode())
-    │                                ^^^^^^^^^^^^^^^^ attributes hash: 12154508927005617222
+    │                                ^^^^^^^^^^^^^^^^ attributes hash: 9028867466715729072
     │
     = ExpressionAttributes {
           typ: Tuple(
@@ -11048,13 +11048,15 @@ note:
     ┌─ demos/uniswap.fe:320:32
     │
 320 │         salt: u256 = keccak256((token0, token1).abi_encode())
-    │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1242487606555163061
+    │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14154226366475970246
     │
     = ExpressionAttributes {
           typ: Array(
               Array {
                   size: 64,
-                  inner: Byte,
+                  inner: Numeric(
+                      U8,
+                  ),
               },
           ),
           location: Memory,
@@ -11113,7 +11115,7 @@ note:
     ┌─ demos/uniswap.fe:321:31
     │
 321 │         pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
-    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1132705859373981687
+    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14208569303922594645
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -11393,7 +11395,7 @@ note:
     ┌─ demos/uniswap.fe:322:9
     │
 322 │         pair.initialize(token0, token1)
-    │         ^^^^ attributes hash: 1132705859373981687
+    │         ^^^^ attributes hash: 14208569303922594645
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -11673,7 +11675,7 @@ note:
     ┌─ demos/uniswap.fe:322:25
     │
 322 │         pair.initialize(token0, token1)
-    │                         ^^^^^^ attributes hash: 513065555763557710
+    │                         ^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -11687,7 +11689,7 @@ note:
     ┌─ demos/uniswap.fe:322:33
     │
 322 │         pair.initialize(token0, token1)
-    │                                 ^^^^^^ attributes hash: 513065555763557710
+    │                                 ^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -11701,7 +11703,7 @@ note:
     ┌─ demos/uniswap.fe:322:9
     │
 322 │         pair.initialize(token0, token1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
     │
     = ExpressionAttributes {
           typ: Base(
@@ -11715,7 +11717,7 @@ note:
     ┌─ demos/uniswap.fe:324:9
     │
 324 │         self.pairs[token0][token1] = address(pair)
-    │         ^^^^^^^^^^ attributes hash: 11208056528891524698
+    │         ^^^^^^^^^^ attributes hash: 194402102010982084
     │
     = ExpressionAttributes {
           typ: Map(
@@ -11743,7 +11745,7 @@ note:
     ┌─ demos/uniswap.fe:324:20
     │
 324 │         self.pairs[token0][token1] = address(pair)
-    │                    ^^^^^^ attributes hash: 513065555763557710
+    │                    ^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -11757,7 +11759,7 @@ note:
     ┌─ demos/uniswap.fe:324:9
     │
 324 │         self.pairs[token0][token1] = address(pair)
-    │         ^^^^^^^^^^^^^^^^^^ attributes hash: 5158137549479364413
+    │         ^^^^^^^^^^^^^^^^^^ attributes hash: 18262714205352727235
     │
     = ExpressionAttributes {
           typ: Map(
@@ -11778,7 +11780,7 @@ note:
     ┌─ demos/uniswap.fe:324:28
     │
 324 │         self.pairs[token0][token1] = address(pair)
-    │                            ^^^^^^ attributes hash: 513065555763557710
+    │                            ^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -11792,7 +11794,7 @@ note:
     ┌─ demos/uniswap.fe:324:9
     │
 324 │         self.pairs[token0][token1] = address(pair)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6699478349033884648
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8009838028523452008
     │
     = ExpressionAttributes {
           typ: Base(
@@ -11808,7 +11810,7 @@ note:
     ┌─ demos/uniswap.fe:324:46
     │
 324 │         self.pairs[token0][token1] = address(pair)
-    │                                              ^^^^ attributes hash: 1132705859373981687
+    │                                              ^^^^ attributes hash: 14208569303922594645
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -12088,7 +12090,7 @@ note:
     ┌─ demos/uniswap.fe:324:38
     │
 324 │         self.pairs[token0][token1] = address(pair)
-    │                                      ^^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                      ^^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -12102,7 +12104,7 @@ note:
     ┌─ demos/uniswap.fe:325:9
     │
 325 │         self.pairs[token1][token0] = address(pair)
-    │         ^^^^^^^^^^ attributes hash: 11208056528891524698
+    │         ^^^^^^^^^^ attributes hash: 194402102010982084
     │
     = ExpressionAttributes {
           typ: Map(
@@ -12130,7 +12132,7 @@ note:
     ┌─ demos/uniswap.fe:325:20
     │
 325 │         self.pairs[token1][token0] = address(pair)
-    │                    ^^^^^^ attributes hash: 513065555763557710
+    │                    ^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -12144,7 +12146,7 @@ note:
     ┌─ demos/uniswap.fe:325:9
     │
 325 │         self.pairs[token1][token0] = address(pair)
-    │         ^^^^^^^^^^^^^^^^^^ attributes hash: 5158137549479364413
+    │         ^^^^^^^^^^^^^^^^^^ attributes hash: 18262714205352727235
     │
     = ExpressionAttributes {
           typ: Map(
@@ -12165,7 +12167,7 @@ note:
     ┌─ demos/uniswap.fe:325:28
     │
 325 │         self.pairs[token1][token0] = address(pair)
-    │                            ^^^^^^ attributes hash: 513065555763557710
+    │                            ^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -12179,7 +12181,7 @@ note:
     ┌─ demos/uniswap.fe:325:9
     │
 325 │         self.pairs[token1][token0] = address(pair)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6699478349033884648
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8009838028523452008
     │
     = ExpressionAttributes {
           typ: Base(
@@ -12195,7 +12197,7 @@ note:
     ┌─ demos/uniswap.fe:325:46
     │
 325 │         self.pairs[token1][token0] = address(pair)
-    │                                              ^^^^ attributes hash: 1132705859373981687
+    │                                              ^^^^ attributes hash: 14208569303922594645
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -12475,7 +12477,7 @@ note:
     ┌─ demos/uniswap.fe:325:38
     │
 325 │         self.pairs[token1][token0] = address(pair)
-    │                                      ^^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                      ^^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -12489,7 +12491,7 @@ note:
     ┌─ demos/uniswap.fe:326:9
     │
 326 │         self.all_pairs[self.pair_counter] = address(pair)
-    │         ^^^^^^^^^^^^^^ attributes hash: 15431735148747822932
+    │         ^^^^^^^^^^^^^^ attributes hash: 355564434041687591
     │
     = ExpressionAttributes {
           typ: Array(
@@ -12532,7 +12534,7 @@ note:
     ┌─ demos/uniswap.fe:326:9
     │
 326 │         self.all_pairs[self.pair_counter] = address(pair)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6699478349033884648
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8009838028523452008
     │
     = ExpressionAttributes {
           typ: Base(
@@ -12548,7 +12550,7 @@ note:
     ┌─ demos/uniswap.fe:326:53
     │
 326 │         self.all_pairs[self.pair_counter] = address(pair)
-    │                                                     ^^^^ attributes hash: 1132705859373981687
+    │                                                     ^^^^ attributes hash: 14208569303922594645
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -12828,7 +12830,7 @@ note:
     ┌─ demos/uniswap.fe:326:45
     │
 326 │         self.all_pairs[self.pair_counter] = address(pair)
-    │                                             ^^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                             ^^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -12916,7 +12918,7 @@ note:
     ┌─ demos/uniswap.fe:329:26
     │
 329 │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
-    │                          ^^^^^^ attributes hash: 513065555763557710
+    │                          ^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -12930,7 +12932,7 @@ note:
     ┌─ demos/uniswap.fe:329:34
     │
 329 │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
-    │                                  ^^^^^^ attributes hash: 513065555763557710
+    │                                  ^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -12944,7 +12946,7 @@ note:
     ┌─ demos/uniswap.fe:329:55
     │
 329 │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
-    │                                                       ^^^^ attributes hash: 1132705859373981687
+    │                                                       ^^^^ attributes hash: 14208569303922594645
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -13224,7 +13226,7 @@ note:
     ┌─ demos/uniswap.fe:329:47
     │
 329 │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
-    │                                               ^^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                                               ^^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -13260,7 +13262,7 @@ note:
     ┌─ demos/uniswap.fe:330:24
     │
 330 │         return address(pair)
-    │                        ^^^^ attributes hash: 1132705859373981687
+    │                        ^^^^ attributes hash: 14208569303922594645
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -13540,7 +13542,7 @@ note:
     ┌─ demos/uniswap.fe:330:16
     │
 330 │         return address(pair)
-    │                ^^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                ^^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -13554,7 +13556,7 @@ note:
     ┌─ demos/uniswap.fe:333:16
     │
 333 │         assert msg.sender == self.fee_to_setter, "UniswapV2: FORBIDDEN"
-    │                ^^^^^^^^^^ attributes hash: 513065555763557710
+    │                ^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -13568,7 +13570,7 @@ note:
     ┌─ demos/uniswap.fe:333:30
     │
 333 │         assert msg.sender == self.fee_to_setter, "UniswapV2: FORBIDDEN"
-    │                              ^^^^^^^^^^^^^^^^^^ attributes hash: 7358142947426974590
+    │                              ^^^^^^^^^^^^^^^^^^ attributes hash: 12120622129777346908
     │
     = ExpressionAttributes {
           typ: Base(
@@ -13618,7 +13620,7 @@ note:
     ┌─ demos/uniswap.fe:334:9
     │
 334 │         self.fee_to = fee_to
-    │         ^^^^^^^^^^^ attributes hash: 10540907752302236140
+    │         ^^^^^^^^^^^ attributes hash: 16723143785832074028
     │
     = ExpressionAttributes {
           typ: Base(
@@ -13636,7 +13638,7 @@ note:
     ┌─ demos/uniswap.fe:334:23
     │
 334 │         self.fee_to = fee_to
-    │                       ^^^^^^ attributes hash: 513065555763557710
+    │                       ^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -13650,7 +13652,7 @@ note:
     ┌─ demos/uniswap.fe:337:16
     │
 337 │         assert msg.sender == fee_to_setter, "UniswapV2: FORBIDDEN"
-    │                ^^^^^^^^^^ attributes hash: 513065555763557710
+    │                ^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -13664,7 +13666,7 @@ note:
     ┌─ demos/uniswap.fe:337:30
     │
 337 │         assert msg.sender == fee_to_setter, "UniswapV2: FORBIDDEN"
-    │                              ^^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                              ^^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -13708,7 +13710,7 @@ note:
     ┌─ demos/uniswap.fe:338:9
     │
 338 │         self.fee_to_setter = fee_to_setter
-    │         ^^^^^^^^^^^^^^^^^^ attributes hash: 12849796163907826875
+    │         ^^^^^^^^^^^^^^^^^^ attributes hash: 16203061776323068697
     │
     = ExpressionAttributes {
           typ: Base(
@@ -13726,7 +13728,7 @@ note:
     ┌─ demos/uniswap.fe:338:30
     │
 338 │         self.fee_to_setter = fee_to_setter
-    │                              ^^^^^^^^^^^^^ attributes hash: 513065555763557710
+    │                              ^^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -13740,7 +13742,7 @@ note:
    ┌─ demos/uniswap.fe:78:9
    │
 78 │         emit Transfer(from=address(0), to, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15998888495671832844
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14259868357080556433
    │
    = EventDef {
          name: "Transfer",
@@ -13777,7 +13779,7 @@ note:
    ┌─ demos/uniswap.fe:83:9
    │
 83 │         emit Transfer(from, to=address(0), value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15998888495671832844
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14259868357080556433
    │
    = EventDef {
          name: "Transfer",
@@ -13814,7 +13816,7 @@ note:
    ┌─ demos/uniswap.fe:87:9
    │
 87 │         emit Approval(owner, spender, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13897255059570952921
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12352882478287260175
    │
    = EventDef {
          name: "Approval",
@@ -13851,7 +13853,7 @@ note:
    ┌─ demos/uniswap.fe:92:9
    │
 92 │         emit Transfer(from, to, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15998888495671832844
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14259868357080556433
    │
    = EventDef {
          name: "Transfer",
@@ -13918,7 +13920,7 @@ note:
     ┌─ demos/uniswap.fe:185:9
     │
 185 │         emit Mint(sender=msg.sender, amount0, amount1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1636288424141028296
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9058465688566707361
     │
     = EventDef {
           name: "Mint",
@@ -13956,7 +13958,7 @@ note:
     ┌─ demos/uniswap.fe:214:9
     │
 214 │         emit Burn(sender=msg.sender, amount0, amount1, to)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16979320078494421415
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1280462049573609831
     │
     = EventDef {
           name: "Burn",
@@ -14001,7 +14003,7 @@ note:
     ┌─ demos/uniswap.fe:254:9
     │
 254 │         emit Swap(sender=msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4739631867462849257
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2167961788879960747
     │
     = EventDef {
           name: "Swap",
@@ -14062,7 +14064,7 @@ note:
     ┌─ demos/uniswap.fe:329:9
     │
 329 │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11987103913122517646
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5067192272343524553
     │
     = EventDef {
           name: "PairCreated",
@@ -14106,7 +14108,7 @@ note:
   │  
 2 │ ╭     pub def balanceOf(account: address) -> u256:
 3 │ │         return 0
-  │ ╰────────────────^ attributes hash: 11298556184345312488
+  │ ╰────────────────^ attributes hash: 15911996938892051175
   │  
   = FunctionAttributes {
         is_public: true,
@@ -14131,7 +14133,7 @@ note:
   │  
 5 │ ╭     pub def transfer(recipient: address, amount: u256) -> bool:
 6 │ │         return false
-  │ ╰────────────────────^ attributes hash: 14813506046617246739
+  │ ╰────────────────────^ attributes hash: 9653288498871824824
   │  
   = FunctionAttributes {
         is_public: true,
@@ -14162,7 +14164,7 @@ note:
    │  
 63 │ ╭     pub def __init__():
 64 │ │         self.factory = msg.sender
-   │ ╰─────────────────────────────────^ attributes hash: 3035129065019296448
+   │ ╰─────────────────────────────────^ attributes hash: 4851327320612207202
    │  
    = FunctionAttributes {
          is_public: true,
@@ -14178,7 +14180,7 @@ note:
    │  
 66 │ ╭     pub def factory() -> address:
 67 │ │         return self.factory
-   │ ╰───────────────────────────^ attributes hash: 17716801732990701387
+   │ ╰───────────────────────────^ attributes hash: 9447335393173090265
    │  
    = FunctionAttributes {
          is_public: true,
@@ -14194,7 +14196,7 @@ note:
    │  
 69 │ ╭     pub def token0() -> address:
 70 │ │         return self.token0
-   │ ╰──────────────────────────^ attributes hash: 16345843692569013420
+   │ ╰──────────────────────────^ attributes hash: 11859527097501243787
    │  
    = FunctionAttributes {
          is_public: true,
@@ -14210,7 +14212,7 @@ note:
    │  
 72 │ ╭     pub def token1() -> address:
 73 │ │         return self.token1
-   │ ╰──────────────────────────^ attributes hash: 8079697792020514414
+   │ ╰──────────────────────────^ attributes hash: 4056672522575484947
    │  
    = FunctionAttributes {
          is_public: true,
@@ -14228,7 +14230,7 @@ note:
 76 │ │         self.total_supply = self.total_supply + value
 77 │ │         self.balances[to] = self.balances[to] + value
 78 │ │         emit Transfer(from=address(0), to, value)
-   │ ╰─────────────────────────────────────────────────^ attributes hash: 15443469740899698302
+   │ ╰─────────────────────────────────────────────────^ attributes hash: 2953745827243037450
    │  
    = FunctionAttributes {
          is_public: false,
@@ -14261,7 +14263,7 @@ note:
 81 │ │         self.balances[from] = self.balances[from] - value
 82 │ │         self.total_supply = self.total_supply - value
 83 │ │         emit Transfer(from, to=address(0), value)
-   │ ╰─────────────────────────────────────────────────^ attributes hash: 17962913940352130665
+   │ ╰─────────────────────────────────────────────────^ attributes hash: 332197202700447752
    │  
    = FunctionAttributes {
          is_public: false,
@@ -14293,7 +14295,7 @@ note:
 85 │ ╭     def _approve(owner: address, spender: address, value: u256):
 86 │ │         self.allowances[owner][spender] = value
 87 │ │         emit Approval(owner, spender, value)
-   │ ╰────────────────────────────────────────────^ attributes hash: 422334171292144355
+   │ ╰────────────────────────────────────────────^ attributes hash: 15561797380107913570
    │  
    = FunctionAttributes {
          is_public: false,
@@ -14332,7 +14334,7 @@ note:
 90 │ │         self.balances[from] = self.balances[from] - value
 91 │ │         self.balances[to] = self.balances[to] + value
 92 │ │         emit Transfer(from, to, value)
-   │ ╰──────────────────────────────────────^ attributes hash: 13745782628834436029
+   │ ╰──────────────────────────────────────^ attributes hash: 1540508690721096892
    │  
    = FunctionAttributes {
          is_public: false,
@@ -14370,7 +14372,7 @@ note:
 94 │ ╭     pub def approve(spender: address, value: u256) -> bool:
 95 │ │         self._approve(msg.sender, spender, value)
 96 │ │         return true
-   │ ╰───────────────────^ attributes hash: 1774558567315485250
+   │ ╰───────────────────^ attributes hash: 5933255474942187139
    │  
    = FunctionAttributes {
          is_public: true,
@@ -14402,7 +14404,7 @@ note:
  98 │ ╭     pub def transfer(to: address, value: u256) -> bool:
  99 │ │         self._transfer(msg.sender, to, value)
 100 │ │         return true
-    │ ╰───────────────────^ attributes hash: 6735008103872958596
+    │ ╰───────────────────^ attributes hash: 2733573763697343698
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14437,7 +14439,7 @@ note:
 105 │ │         self.allowances[from][msg.sender] = self.allowances[from][msg.sender] - value
 106 │ │         self._transfer(from, to, value)
 107 │ │         return true
-    │ ╰───────────────────^ attributes hash: 7366051091399132231
+    │ ╰───────────────────^ attributes hash: 16384577412662593239
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14474,7 +14476,7 @@ note:
     │  
 109 │ ╭     pub def balanceOf(account: address) -> u256:
 110 │ │         return self.balances[account]
-    │ ╰─────────────────────────────────────^ attributes hash: 11298556184345312488
+    │ ╰─────────────────────────────────────^ attributes hash: 15911996938892051175
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14536,7 +14538,7 @@ note:
 118 │ │         assert msg.sender == self.factory, "UniswapV2: FORBIDDEN"
 119 │ │         self.token0 = token0
 120 │ │         self.token1 = token1
-    │ ╰────────────────────────────^ attributes hash: 6029898335230722584
+    │ ╰────────────────────────────^ attributes hash: 3324157535678972093
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14570,7 +14572,7 @@ note:
     · │
 135 │ │         self.block_timestamp_last = block_timestamp
 136 │ │         emit Sync(reserve0=self.reserve0, reserve1=self.reserve1)
-    │ ╰─────────────────────────────────────────────────────────────────^ attributes hash: 7299884525502940162
+    │ ╰─────────────────────────────────────────────────────────────────^ attributes hash: 4787505294855824421
     │  
     = FunctionAttributes {
           is_public: false,
@@ -14662,7 +14664,7 @@ note:
     · │
 185 │ │         emit Mint(sender=msg.sender, amount0, amount1)
 186 │ │         return liquidity
-    │ ╰────────────────────────^ attributes hash: 9020577417301809812
+    │ ╰────────────────────────^ attributes hash: 269271926222426095
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14692,7 +14694,7 @@ note:
     · │
 214 │ │         emit Burn(sender=msg.sender, amount0, amount1, to)
 215 │ │         return (amount0, amount1)
-    │ ╰─────────────────────────────────^ attributes hash: 8651519123401558066
+    │ ╰─────────────────────────────────^ attributes hash: 14843396503010525260
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14733,7 +14735,7 @@ note:
     · │
 253 │ │         self._update(balance0, balance1, reserve0, reserve1)
 254 │ │         emit Swap(sender=msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
-    │ ╰──────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 13894903424287666132
+    │ ╰──────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 12074497064764269383
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14776,7 +14778,7 @@ note:
 260 │ │ 
 261 │ │         token0.transfer(to, token0.balanceOf(self.address) - self.reserve0)
 262 │ │         token1.transfer(to, token1.balanceOf(self.address) - self.reserve1)
-    │ ╰───────────────────────────────────────────────────────────────────────────^ attributes hash: 5235908045540984219
+    │ ╰───────────────────────────────────────────────────────────────────────────^ attributes hash: 11030290903169053934
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14801,7 +14803,7 @@ note:
 266 │ │         token0: ERC20 = ERC20(self.token0)
 267 │ │         token1: ERC20 = ERC20(self.token1)
 268 │ │         self._update(token0.balanceOf(self.address), token1.balanceOf(self.address), self.reserve0, self.reserve1)
-    │ ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 5850979630449604761
+    │ ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 3209711833240093660
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14884,7 +14886,7 @@ note:
     │  
 300 │ ╭     pub def __init__(fee_to_setter: address):
 301 │ │        self.fee_to_setter = fee_to_setter
-    │ ╰─────────────────────────────────────────^ attributes hash: 12436435812329240313
+    │ ╰─────────────────────────────────────────^ attributes hash: 8830941118447387471
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14907,7 +14909,7 @@ note:
     │  
 303 │ ╭     pub def fee_to() -> address:
 304 │ │         return self.fee_to
-    │ ╰──────────────────────────^ attributes hash: 5306470341284015157
+    │ ╰──────────────────────────^ attributes hash: 15364721221188021712
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14923,7 +14925,7 @@ note:
     │  
 306 │ ╭     pub def fee_to_setter() -> address:
 307 │ │         return self.fee_to_setter
-    │ ╰─────────────────────────────────^ attributes hash: 5838056168261015249
+    │ ╰─────────────────────────────────^ attributes hash: 14224486619095155290
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14962,7 +14964,7 @@ note:
     · │
 329 │ │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
 330 │ │         return address(pair)
-    │ ╰────────────────────────────^ attributes hash: 10544195126543983127
+    │ ╰────────────────────────────^ attributes hash: 10513545558382100957
     │  
     = FunctionAttributes {
           is_public: true,
@@ -14992,7 +14994,7 @@ note:
 332 │ ╭     pub def set_fee_to(fee_to: address):
 333 │ │         assert msg.sender == self.fee_to_setter, "UniswapV2: FORBIDDEN"
 334 │ │         self.fee_to = fee_to
-    │ ╰────────────────────────────^ attributes hash: 13957803856706170765
+    │ ╰────────────────────────────^ attributes hash: 6799065346698348110
     │  
     = FunctionAttributes {
           is_public: true,
@@ -15016,7 +15018,7 @@ note:
 336 │ ╭     pub def set_fee_to_setter(fee_to_setter: address):
 337 │ │         assert msg.sender == fee_to_setter, "UniswapV2: FORBIDDEN"
 338 │ │         self.fee_to_setter = fee_to_setter
-    │ ╰──────────────────────────────────────────^ attributes hash: 4180541968382977460
+    │ ╰──────────────────────────────────────────^ attributes hash: 7807212369369767383
     │  
     = FunctionAttributes {
           is_public: true,
@@ -15062,7 +15064,7 @@ note:
     ┌─ demos/uniswap.fe:140:9
     │
 140 │         fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 574436082528610497
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -15296,7 +15298,7 @@ note:
     ┌─ demos/uniswap.fe:192:9
     │
 192 │         token0: ERC20 = ERC20(self.token0)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6833678550085583974
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
     │
     = Contract(
           Contract {
@@ -15350,7 +15352,7 @@ note:
     ┌─ demos/uniswap.fe:193:9
     │
 193 │         token1: ERC20 = ERC20(self.token1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6833678550085583974
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
     │
     = Contract(
           Contract {
@@ -15510,7 +15512,7 @@ note:
     ┌─ demos/uniswap.fe:226:9
     │
 226 │         token0: ERC20 = ERC20(self.token0)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6833678550085583974
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
     │
     = Contract(
           Contract {
@@ -15564,7 +15566,7 @@ note:
     ┌─ demos/uniswap.fe:227:9
     │
 227 │         token1: ERC20 = ERC20(self.token1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6833678550085583974
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
     │
     = Contract(
           Contract {
@@ -15690,7 +15692,7 @@ note:
     ┌─ demos/uniswap.fe:258:9
     │
 258 │         token0: ERC20 = ERC20(self.token0) # gas savings
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6833678550085583974
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
     │
     = Contract(
           Contract {
@@ -15744,7 +15746,7 @@ note:
     ┌─ demos/uniswap.fe:259:9
     │
 259 │         token1: ERC20 = ERC20(self.token1) # gas savings
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6833678550085583974
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
     │
     = Contract(
           Contract {
@@ -15798,7 +15800,7 @@ note:
     ┌─ demos/uniswap.fe:266:9
     │
 266 │         token0: ERC20 = ERC20(self.token0)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6833678550085583974
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
     │
     = Contract(
           Contract {
@@ -15852,7 +15854,7 @@ note:
     ┌─ demos/uniswap.fe:267:9
     │
 267 │         token1: ERC20 = ERC20(self.token1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6833678550085583974
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
     │
     = Contract(
           Contract {
@@ -15930,7 +15932,7 @@ note:
     ┌─ demos/uniswap.fe:315:9
     │
 315 │         token0: address = token_a if token_a < token_b else token_b
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 574436082528610497
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -15940,7 +15942,7 @@ note:
     ┌─ demos/uniswap.fe:316:9
     │
 316 │         token1: address = token_a if token_a > token_b else token_b
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 574436082528610497
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -15962,7 +15964,7 @@ note:
     ┌─ demos/uniswap.fe:321:9
     │
 321 │         pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7884733282109801466
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13101972698481963745
     │
     = Contract(
           Contract {
@@ -16243,7 +16245,7 @@ note:
 4 │ │ 
 5 │ │     pub def transfer(recipient: address, amount: u256) -> bool:
 6 │ │         return false
-  │ ╰────────────────────^ attributes hash: 9114548470230238367
+  │ ╰────────────────────^ attributes hash: 2993297590244156486
   │  
   = ContractAttributes {
         public_functions: [
@@ -16654,7 +16656,7 @@ note:
     · │
 282 │ │     def min(x: u256, y: u256) -> u256:
 283 │ │         return x if x < y else y
-    │ ╰────────────────────────────────^ attributes hash: 16662072184245108604
+    │ ╰────────────────────────────────^ attributes hash: 3746175112106825402
     │  
     = ContractAttributes {
           public_functions: [
@@ -17281,7 +17283,7 @@ note:
     · │
 337 │ │         assert msg.sender == fee_to_setter, "UniswapV2: FORBIDDEN"
 338 │ │         self.fee_to_setter = fee_to_setter
-    │ ╰──────────────────────────────────────────^ attributes hash: 13298094751066559288
+    │ ╰──────────────────────────────────────────^ attributes hash: 3169643952300724461
     │  
     = ContractAttributes {
           public_functions: [
@@ -17739,7 +17741,7 @@ note:
    ┌─ demos/uniswap.fe:78:28
    │
 78 │         emit Transfer(from=address(0), to, value)
-   │                            ^^^^^^^ attributes hash: 6114858510168753394
+   │                            ^^^^^^^ attributes hash: 12543456546113081273
    │
    = TypeConstructor {
          typ: Base(
@@ -17751,7 +17753,7 @@ note:
    ┌─ demos/uniswap.fe:83:32
    │
 83 │         emit Transfer(from, to=address(0), value)
-   │                                ^^^^^^^ attributes hash: 6114858510168753394
+   │                                ^^^^^^^ attributes hash: 12543456546113081273
    │
    = TypeConstructor {
          typ: Base(
@@ -17801,7 +17803,7 @@ note:
     ┌─ demos/uniswap.fe:140:27
     │
 140 │         fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                           ^^^^^^^^^^^^^^^^ attributes hash: 8456606813876647095
+    │                           ^^^^^^^^^^^^^^^^ attributes hash: 16400890784664137154
     │
     = TypeConstructor {
           typ: Contract(
@@ -17894,7 +17896,7 @@ note:
     ┌─ demos/uniswap.fe:141:34
     │
 141 │         fee_on: bool = fee_to != address(0)
-    │                                  ^^^^^^^ attributes hash: 6114858510168753394
+    │                                  ^^^^^^^ attributes hash: 12543456546113081273
     │
     = TypeConstructor {
           typ: Base(
@@ -17944,7 +17946,7 @@ note:
     ┌─ demos/uniswap.fe:163:26
     │
 163 │         balance0: u256 = ERC20(self.token0).balanceOf(self.address)
-    │                          ^^^^^ attributes hash: 14881443455684417754
+    │                          ^^^^^ attributes hash: 17643750814894473408
     │
     = TypeConstructor {
           typ: Contract(
@@ -18008,7 +18010,7 @@ note:
     ┌─ demos/uniswap.fe:164:26
     │
 164 │         balance1: u256 = ERC20(self.token1).balanceOf(self.address)
-    │                          ^^^^^ attributes hash: 14881443455684417754
+    │                          ^^^^^ attributes hash: 17643750814894473408
     │
     = TypeConstructor {
           typ: Contract(
@@ -18094,7 +18096,7 @@ note:
     ┌─ demos/uniswap.fe:173:24
     │
 173 │             self._mint(address(0), MINIMUM_LIQUIDITY) # permanently lock the first MINIMUM_LIQUIDITY tokens
-    │                        ^^^^^^^ attributes hash: 6114858510168753394
+    │                        ^^^^^^^ attributes hash: 12543456546113081273
     │
     = TypeConstructor {
           typ: Base(
@@ -18136,7 +18138,7 @@ note:
     ┌─ demos/uniswap.fe:192:25
     │
 192 │         token0: ERC20 = ERC20(self.token0)
-    │                         ^^^^^ attributes hash: 14881443455684417754
+    │                         ^^^^^ attributes hash: 17643750814894473408
     │
     = TypeConstructor {
           typ: Contract(
@@ -18192,7 +18194,7 @@ note:
     ┌─ demos/uniswap.fe:193:25
     │
 193 │         token1: ERC20 = ERC20(self.token1)
-    │                         ^^^^^ attributes hash: 14881443455684417754
+    │                         ^^^^^ attributes hash: 17643750814894473408
     │
     = TypeConstructor {
           typ: Contract(
@@ -18326,7 +18328,7 @@ note:
     ┌─ demos/uniswap.fe:226:25
     │
 226 │         token0: ERC20 = ERC20(self.token0)
-    │                         ^^^^^ attributes hash: 14881443455684417754
+    │                         ^^^^^ attributes hash: 17643750814894473408
     │
     = TypeConstructor {
           typ: Contract(
@@ -18382,7 +18384,7 @@ note:
     ┌─ demos/uniswap.fe:227:25
     │
 227 │         token1: ERC20 = ERC20(self.token1)
-    │                         ^^^^^ attributes hash: 14881443455684417754
+    │                         ^^^^^ attributes hash: 17643750814894473408
     │
     = TypeConstructor {
           typ: Contract(
@@ -18438,7 +18440,7 @@ note:
     ┌─ demos/uniswap.fe:230:22
     │
 230 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
-    │                      ^^^^^^^ attributes hash: 6114858510168753394
+    │                      ^^^^^^^ attributes hash: 12543456546113081273
     │
     = TypeConstructor {
           typ: Base(
@@ -18450,7 +18452,7 @@ note:
     ┌─ demos/uniswap.fe:230:48
     │
 230 │         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
-    │                                                ^^^^^^^ attributes hash: 6114858510168753394
+    │                                                ^^^^^^^ attributes hash: 12543456546113081273
     │
     = TypeConstructor {
           typ: Base(
@@ -18504,7 +18506,7 @@ note:
     ┌─ demos/uniswap.fe:258:25
     │
 258 │         token0: ERC20 = ERC20(self.token0) # gas savings
-    │                         ^^^^^ attributes hash: 14881443455684417754
+    │                         ^^^^^ attributes hash: 17643750814894473408
     │
     = TypeConstructor {
           typ: Contract(
@@ -18560,7 +18562,7 @@ note:
     ┌─ demos/uniswap.fe:259:25
     │
 259 │         token1: ERC20 = ERC20(self.token1) # gas savings
-    │                         ^^^^^ attributes hash: 14881443455684417754
+    │                         ^^^^^ attributes hash: 17643750814894473408
     │
     = TypeConstructor {
           typ: Contract(
@@ -18648,7 +18650,7 @@ note:
     ┌─ demos/uniswap.fe:266:25
     │
 266 │         token0: ERC20 = ERC20(self.token0)
-    │                         ^^^^^ attributes hash: 14881443455684417754
+    │                         ^^^^^ attributes hash: 17643750814894473408
     │
     = TypeConstructor {
           typ: Contract(
@@ -18704,7 +18706,7 @@ note:
     ┌─ demos/uniswap.fe:267:25
     │
 267 │         token1: ERC20 = ERC20(self.token1)
-    │                         ^^^^^ attributes hash: 14881443455684417754
+    │                         ^^^^^ attributes hash: 17643750814894473408
     │
     = TypeConstructor {
           typ: Contract(
@@ -18786,7 +18788,7 @@ note:
     ┌─ demos/uniswap.fe:317:26
     │
 317 │         assert token0 != address(0), "UniswapV2: ZERO_ADDRESS"
-    │                          ^^^^^^^ attributes hash: 6114858510168753394
+    │                          ^^^^^^^ attributes hash: 12543456546113081273
     │
     = TypeConstructor {
           typ: Base(
@@ -18798,7 +18800,7 @@ note:
     ┌─ demos/uniswap.fe:318:46
     │
 318 │         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
-    │                                              ^^^^^^^ attributes hash: 6114858510168753394
+    │                                              ^^^^^^^ attributes hash: 12543456546113081273
     │
     = TypeConstructor {
           typ: Base(
@@ -18828,7 +18830,7 @@ note:
     ┌─ demos/uniswap.fe:321:31
     │
 321 │         pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
-    │                               ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6272831764403363833
+    │                               ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6121931892408705938
     │
     = TypeAttribute {
           typ: Contract(
@@ -19115,7 +19117,7 @@ note:
     ┌─ demos/uniswap.fe:324:38
     │
 324 │         self.pairs[token0][token1] = address(pair)
-    │                                      ^^^^^^^ attributes hash: 6114858510168753394
+    │                                      ^^^^^^^ attributes hash: 12543456546113081273
     │
     = TypeConstructor {
           typ: Base(
@@ -19127,7 +19129,7 @@ note:
     ┌─ demos/uniswap.fe:325:38
     │
 325 │         self.pairs[token1][token0] = address(pair)
-    │                                      ^^^^^^^ attributes hash: 6114858510168753394
+    │                                      ^^^^^^^ attributes hash: 12543456546113081273
     │
     = TypeConstructor {
           typ: Base(
@@ -19139,7 +19141,7 @@ note:
     ┌─ demos/uniswap.fe:326:45
     │
 326 │         self.all_pairs[self.pair_counter] = address(pair)
-    │                                             ^^^^^^^ attributes hash: 6114858510168753394
+    │                                             ^^^^^^^ attributes hash: 12543456546113081273
     │
     = TypeConstructor {
           typ: Base(
@@ -19151,7 +19153,7 @@ note:
     ┌─ demos/uniswap.fe:329:47
     │
 329 │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
-    │                                               ^^^^^^^ attributes hash: 6114858510168753394
+    │                                               ^^^^^^^ attributes hash: 12543456546113081273
     │
     = TypeConstructor {
           typ: Base(
@@ -19163,7 +19165,7 @@ note:
     ┌─ demos/uniswap.fe:330:16
     │
 330 │         return address(pair)
-    │                ^^^^^^^ attributes hash: 6114858510168753394
+    │                ^^^^^^^ attributes hash: 12543456546113081273
     │
     = TypeConstructor {
           typ: Base(
@@ -19178,7 +19180,7 @@ note:
 31 │ │         idx owner: address
 32 │ │         idx spender: address
 33 │ │         value: u256
-   │ ╰───────────────────^ attributes hash: 13897255059570952921
+   │ ╰───────────────────^ attributes hash: 12352882478287260175
    │  
    = EventDef {
          name: "Approval",
@@ -19218,7 +19220,7 @@ note:
 36 │ │         idx from: address
 37 │ │         idx to: address
 38 │ │         value: u256
-   │ ╰───────────────────^ attributes hash: 15998888495671832844
+   │ ╰───────────────────^ attributes hash: 14259868357080556433
    │  
    = EventDef {
          name: "Transfer",
@@ -19258,7 +19260,7 @@ note:
 41 │ │         idx sender: address
 42 │ │         amount0: u256
 43 │ │         amount1: u256
-   │ ╰─────────────────────^ attributes hash: 1636288424141028296
+   │ ╰─────────────────────^ attributes hash: 9058465688566707361
    │  
    = EventDef {
          name: "Mint",
@@ -19300,7 +19302,7 @@ note:
 47 │ │         amount0: u256
 48 │ │         amount1: u256
 49 │ │         idx to: address
-   │ ╰───────────────────────^ attributes hash: 16979320078494421415
+   │ ╰───────────────────────^ attributes hash: 1280462049573609831
    │  
    = EventDef {
          name: "Burn",
@@ -19351,7 +19353,7 @@ note:
 55 │ │         amount0_out: u256
 56 │ │         amount1_out: u256
 57 │ │         idx to: address
-   │ ╰───────────────────────^ attributes hash: 4739631867462849257
+   │ ╰───────────────────────^ attributes hash: 2167961788879960747
    │  
    = EventDef {
          name: "Swap",
@@ -19448,7 +19450,7 @@ note:
 296 │ │         idx token1: address
 297 │ │         pair: address
 298 │ │         index: u256
-    │ ╰───────────────────^ attributes hash: 11987103913122517646
+    │ ╰───────────────────^ attributes hash: 5067192272343524553
     │  
     = EventDef {
           name: "PairCreated",
@@ -19491,7 +19493,7 @@ note:
   ┌─ demos/uniswap.fe:2:32
   │
 2 │     pub def balanceOf(account: address) -> u256:
-  │                                ^^^^^^^ attributes hash: 574436082528610497
+  │                                ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,
@@ -19513,7 +19515,7 @@ note:
   ┌─ demos/uniswap.fe:5:33
   │
 5 │     pub def transfer(recipient: address, amount: u256) -> bool:
-  │                                 ^^^^^^^ attributes hash: 574436082528610497
+  │                                 ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,
@@ -19545,7 +19547,7 @@ note:
    ┌─ demos/uniswap.fe:31:20
    │
 31 │         idx owner: address
-   │                    ^^^^^^^ attributes hash: 574436082528610497
+   │                    ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -19555,7 +19557,7 @@ note:
    ┌─ demos/uniswap.fe:32:22
    │
 32 │         idx spender: address
-   │                      ^^^^^^^ attributes hash: 574436082528610497
+   │                      ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -19577,7 +19579,7 @@ note:
    ┌─ demos/uniswap.fe:36:19
    │
 36 │         idx from: address
-   │                   ^^^^^^^ attributes hash: 574436082528610497
+   │                   ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -19587,7 +19589,7 @@ note:
    ┌─ demos/uniswap.fe:37:17
    │
 37 │         idx to: address
-   │                 ^^^^^^^ attributes hash: 574436082528610497
+   │                 ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -19609,7 +19611,7 @@ note:
    ┌─ demos/uniswap.fe:41:21
    │
 41 │         idx sender: address
-   │                     ^^^^^^^ attributes hash: 574436082528610497
+   │                     ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -19643,7 +19645,7 @@ note:
    ┌─ demos/uniswap.fe:46:21
    │
 46 │         idx sender: address
-   │                     ^^^^^^^ attributes hash: 574436082528610497
+   │                     ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -19677,7 +19679,7 @@ note:
    ┌─ demos/uniswap.fe:49:17
    │
 49 │         idx to: address
-   │                 ^^^^^^^ attributes hash: 574436082528610497
+   │                 ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -19687,7 +19689,7 @@ note:
    ┌─ demos/uniswap.fe:52:21
    │
 52 │         idx sender: address
-   │                     ^^^^^^^ attributes hash: 574436082528610497
+   │                     ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -19745,7 +19747,7 @@ note:
    ┌─ demos/uniswap.fe:57:17
    │
 57 │         idx to: address
-   │                 ^^^^^^^ attributes hash: 574436082528610497
+   │                 ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -19779,7 +19781,7 @@ note:
    ┌─ demos/uniswap.fe:66:26
    │
 66 │     pub def factory() -> address:
-   │                          ^^^^^^^ attributes hash: 574436082528610497
+   │                          ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -19789,7 +19791,7 @@ note:
    ┌─ demos/uniswap.fe:69:25
    │
 69 │     pub def token0() -> address:
-   │                         ^^^^^^^ attributes hash: 574436082528610497
+   │                         ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -19799,7 +19801,7 @@ note:
    ┌─ demos/uniswap.fe:72:25
    │
 72 │     pub def token1() -> address:
-   │                         ^^^^^^^ attributes hash: 574436082528610497
+   │                         ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -19809,7 +19811,7 @@ note:
    ┌─ demos/uniswap.fe:75:19
    │
 75 │     def _mint(to: address, value: u256):
-   │                   ^^^^^^^ attributes hash: 574436082528610497
+   │                   ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -19831,7 +19833,7 @@ note:
    ┌─ demos/uniswap.fe:80:21
    │
 80 │     def _burn(from: address, value: u256):
-   │                     ^^^^^^^ attributes hash: 574436082528610497
+   │                     ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -19853,7 +19855,7 @@ note:
    ┌─ demos/uniswap.fe:85:25
    │
 85 │     def _approve(owner: address, spender: address, value: u256):
-   │                         ^^^^^^^ attributes hash: 574436082528610497
+   │                         ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -19863,7 +19865,7 @@ note:
    ┌─ demos/uniswap.fe:85:43
    │
 85 │     def _approve(owner: address, spender: address, value: u256):
-   │                                           ^^^^^^^ attributes hash: 574436082528610497
+   │                                           ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -19885,7 +19887,7 @@ note:
    ┌─ demos/uniswap.fe:89:25
    │
 89 │     def _transfer(from: address, to: address, value: u256):
-   │                         ^^^^^^^ attributes hash: 574436082528610497
+   │                         ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -19895,7 +19897,7 @@ note:
    ┌─ demos/uniswap.fe:89:38
    │
 89 │     def _transfer(from: address, to: address, value: u256):
-   │                                      ^^^^^^^ attributes hash: 574436082528610497
+   │                                      ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -19917,7 +19919,7 @@ note:
    ┌─ demos/uniswap.fe:94:30
    │
 94 │     pub def approve(spender: address, value: u256) -> bool:
-   │                              ^^^^^^^ attributes hash: 574436082528610497
+   │                              ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -19949,7 +19951,7 @@ note:
    ┌─ demos/uniswap.fe:98:26
    │
 98 │     pub def transfer(to: address, value: u256) -> bool:
-   │                          ^^^^^^^ attributes hash: 574436082528610497
+   │                          ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -19981,7 +19983,7 @@ note:
     ┌─ demos/uniswap.fe:102:32
     │
 102 │     pub def transferFrom(from: address, to: address, value: u256) -> bool:
-    │                                ^^^^^^^ attributes hash: 574436082528610497
+    │                                ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -19991,7 +19993,7 @@ note:
     ┌─ demos/uniswap.fe:102:45
     │
 102 │     pub def transferFrom(from: address, to: address, value: u256) -> bool:
-    │                                             ^^^^^^^ attributes hash: 574436082528610497
+    │                                             ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -20023,7 +20025,7 @@ note:
     ┌─ demos/uniswap.fe:109:32
     │
 109 │     pub def balanceOf(account: address) -> u256:
-    │                                ^^^^^^^ attributes hash: 574436082528610497
+    │                                ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -20109,7 +20111,7 @@ note:
     ┌─ demos/uniswap.fe:116:32
     │
 116 │     pub def initialize(token0: address, token1: address):
-    │                                ^^^^^^^ attributes hash: 574436082528610497
+    │                                ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -20119,7 +20121,7 @@ note:
     ┌─ demos/uniswap.fe:116:49
     │
 116 │     pub def initialize(token0: address, token1: address):
-    │                                                 ^^^^^^^ attributes hash: 574436082528610497
+    │                                                 ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -20211,7 +20213,7 @@ note:
     ┌─ demos/uniswap.fe:159:22
     │
 159 │     pub def mint(to: address) -> u256:
-    │                      ^^^^^^^ attributes hash: 574436082528610497
+    │                      ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -20233,7 +20235,7 @@ note:
     ┌─ demos/uniswap.fe:189:22
     │
 189 │     pub def burn(to: address) -> (u256, u256):
-    │                      ^^^^^^^ attributes hash: 574436082528610497
+    │                      ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -20314,7 +20316,7 @@ note:
     ┌─ demos/uniswap.fe:220:60
     │
 220 │     pub def swap(amount0_out: u256, amount1_out: u256, to: address):
-    │                                                            ^^^^^^^ attributes hash: 574436082528610497
+    │                                                            ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -20324,7 +20326,7 @@ note:
     ┌─ demos/uniswap.fe:257:22
     │
 257 │     pub def skim(to: address):
-    │                      ^^^^^^^ attributes hash: 574436082528610497
+    │                      ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -20394,7 +20396,7 @@ note:
     ┌─ demos/uniswap.fe:295:21
     │
 295 │         idx token0: address
-    │                     ^^^^^^^ attributes hash: 574436082528610497
+    │                     ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -20404,7 +20406,7 @@ note:
     ┌─ demos/uniswap.fe:296:21
     │
 296 │         idx token1: address
-    │                     ^^^^^^^ attributes hash: 574436082528610497
+    │                     ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -20414,7 +20416,7 @@ note:
     ┌─ demos/uniswap.fe:297:15
     │
 297 │         pair: address
-    │               ^^^^^^^ attributes hash: 574436082528610497
+    │               ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -20436,7 +20438,7 @@ note:
     ┌─ demos/uniswap.fe:300:37
     │
 300 │     pub def __init__(fee_to_setter: address):
-    │                                     ^^^^^^^ attributes hash: 574436082528610497
+    │                                     ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -20446,7 +20448,7 @@ note:
     ┌─ demos/uniswap.fe:303:25
     │
 303 │     pub def fee_to() -> address:
-    │                         ^^^^^^^ attributes hash: 574436082528610497
+    │                         ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -20456,7 +20458,7 @@ note:
     ┌─ demos/uniswap.fe:306:32
     │
 306 │     pub def fee_to_setter() -> address:
-    │                                ^^^^^^^ attributes hash: 574436082528610497
+    │                                ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -20478,7 +20480,7 @@ note:
     ┌─ demos/uniswap.fe:312:34
     │
 312 │     pub def create_pair(token_a: address, token_b: address) -> address:
-    │                                  ^^^^^^^ attributes hash: 574436082528610497
+    │                                  ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -20488,7 +20490,7 @@ note:
     ┌─ demos/uniswap.fe:312:52
     │
 312 │     pub def create_pair(token_a: address, token_b: address) -> address:
-    │                                                    ^^^^^^^ attributes hash: 574436082528610497
+    │                                                    ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -20498,7 +20500,7 @@ note:
     ┌─ demos/uniswap.fe:312:64
     │
 312 │     pub def create_pair(token_a: address, token_b: address) -> address:
-    │                                                                ^^^^^^^ attributes hash: 574436082528610497
+    │                                                                ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -20508,7 +20510,7 @@ note:
     ┌─ demos/uniswap.fe:332:32
     │
 332 │     pub def set_fee_to(fee_to: address):
-    │                                ^^^^^^^ attributes hash: 574436082528610497
+    │                                ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -20518,7 +20520,7 @@ note:
     ┌─ demos/uniswap.fe:336:46
     │
 336 │     pub def set_fee_to_setter(fee_to_setter: address):
-    │                                              ^^^^^^^ attributes hash: 574436082528610497
+    │                                              ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -20528,7 +20530,7 @@ note:
    ┌─ demos/uniswap.fe:12:19
    │
 12 │     balances: Map<address, u256>
-   │                   ^^^^^^^ attributes hash: 574436082528610497
+   │                   ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -20550,7 +20552,7 @@ note:
    ┌─ demos/uniswap.fe:12:15
    │
 12 │     balances: Map<address, u256>
-   │               ^^^^^^^^^^^^^^^^^^ attributes hash: 6830914040603267556
+   │               ^^^^^^^^^^^^^^^^^^ attributes hash: 4896103645274849570
    │
    = Map(
          Map {
@@ -20567,7 +20569,7 @@ note:
    ┌─ demos/uniswap.fe:13:21
    │
 13 │     allowances: Map<address, Map<address, u256>>
-   │                     ^^^^^^^ attributes hash: 574436082528610497
+   │                     ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -20577,7 +20579,7 @@ note:
    ┌─ demos/uniswap.fe:13:34
    │
 13 │     allowances: Map<address, Map<address, u256>>
-   │                                  ^^^^^^^ attributes hash: 574436082528610497
+   │                                  ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -20599,7 +20601,7 @@ note:
    ┌─ demos/uniswap.fe:13:30
    │
 13 │     allowances: Map<address, Map<address, u256>>
-   │                              ^^^^^^^^^^^^^^^^^^ attributes hash: 6830914040603267556
+   │                              ^^^^^^^^^^^^^^^^^^ attributes hash: 4896103645274849570
    │
    = Map(
          Map {
@@ -20616,7 +20618,7 @@ note:
    ┌─ demos/uniswap.fe:13:17
    │
 13 │     allowances: Map<address, Map<address, u256>>
-   │                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 652293232820874660
+   │                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17290724986880152566
    │
    = Map(
          Map {
@@ -20650,7 +20652,7 @@ note:
    ┌─ demos/uniswap.fe:16:17
    │
 16 │     nonces: Map<address, u256>
-   │                 ^^^^^^^ attributes hash: 574436082528610497
+   │                 ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -20672,7 +20674,7 @@ note:
    ┌─ demos/uniswap.fe:16:13
    │
 16 │     nonces: Map<address, u256>
-   │             ^^^^^^^^^^^^^^^^^^ attributes hash: 6830914040603267556
+   │             ^^^^^^^^^^^^^^^^^^ attributes hash: 4896103645274849570
    │
    = Map(
          Map {
@@ -20689,7 +20691,7 @@ note:
    ┌─ demos/uniswap.fe:18:14
    │
 18 │     factory: address
-   │              ^^^^^^^ attributes hash: 574436082528610497
+   │              ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -20699,7 +20701,7 @@ note:
    ┌─ demos/uniswap.fe:19:13
    │
 19 │     token0: address
-   │             ^^^^^^^ attributes hash: 574436082528610497
+   │             ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -20709,7 +20711,7 @@ note:
    ┌─ demos/uniswap.fe:20:13
    │
 20 │     token1: address
-   │             ^^^^^^^ attributes hash: 574436082528610497
+   │             ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -20815,7 +20817,7 @@ note:
     ┌─ demos/uniswap.fe:140:17
     │
 140 │         fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                 ^^^^^^^ attributes hash: 574436082528610497
+    │                 ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -21049,7 +21051,7 @@ note:
     ┌─ demos/uniswap.fe:192:17
     │
 192 │         token0: ERC20 = ERC20(self.token0)
-    │                 ^^^^^ attributes hash: 13561015768581174399
+    │                 ^^^^^ attributes hash: 3621211662183276994
     │
     = Contract(
           Contract {
@@ -21103,7 +21105,7 @@ note:
     ┌─ demos/uniswap.fe:193:17
     │
 193 │         token1: ERC20 = ERC20(self.token1)
-    │                 ^^^^^ attributes hash: 13561015768581174399
+    │                 ^^^^^ attributes hash: 3621211662183276994
     │
     = Contract(
           Contract {
@@ -21263,7 +21265,7 @@ note:
     ┌─ demos/uniswap.fe:226:17
     │
 226 │         token0: ERC20 = ERC20(self.token0)
-    │                 ^^^^^ attributes hash: 13561015768581174399
+    │                 ^^^^^ attributes hash: 3621211662183276994
     │
     = Contract(
           Contract {
@@ -21317,7 +21319,7 @@ note:
     ┌─ demos/uniswap.fe:227:17
     │
 227 │         token1: ERC20 = ERC20(self.token1)
-    │                 ^^^^^ attributes hash: 13561015768581174399
+    │                 ^^^^^ attributes hash: 3621211662183276994
     │
     = Contract(
           Contract {
@@ -21443,7 +21445,7 @@ note:
     ┌─ demos/uniswap.fe:258:17
     │
 258 │         token0: ERC20 = ERC20(self.token0) # gas savings
-    │                 ^^^^^ attributes hash: 13561015768581174399
+    │                 ^^^^^ attributes hash: 3621211662183276994
     │
     = Contract(
           Contract {
@@ -21497,7 +21499,7 @@ note:
     ┌─ demos/uniswap.fe:259:17
     │
 259 │         token1: ERC20 = ERC20(self.token1) # gas savings
-    │                 ^^^^^ attributes hash: 13561015768581174399
+    │                 ^^^^^ attributes hash: 3621211662183276994
     │
     = Contract(
           Contract {
@@ -21551,7 +21553,7 @@ note:
     ┌─ demos/uniswap.fe:266:17
     │
 266 │         token0: ERC20 = ERC20(self.token0)
-    │                 ^^^^^ attributes hash: 13561015768581174399
+    │                 ^^^^^ attributes hash: 3621211662183276994
     │
     = Contract(
           Contract {
@@ -21605,7 +21607,7 @@ note:
     ┌─ demos/uniswap.fe:267:17
     │
 267 │         token1: ERC20 = ERC20(self.token1)
-    │                 ^^^^^ attributes hash: 13561015768581174399
+    │                 ^^^^^ attributes hash: 3621211662183276994
     │
     = Contract(
           Contract {
@@ -21683,7 +21685,7 @@ note:
     ┌─ demos/uniswap.fe:286:13
     │
 286 │     fee_to: address
-    │             ^^^^^^^ attributes hash: 574436082528610497
+    │             ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -21693,7 +21695,7 @@ note:
     ┌─ demos/uniswap.fe:287:20
     │
 287 │     fee_to_setter: address
-    │                    ^^^^^^^ attributes hash: 574436082528610497
+    │                    ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -21703,7 +21705,7 @@ note:
     ┌─ demos/uniswap.fe:289:16
     │
 289 │     pairs: Map<address, Map<address, address>>
-    │                ^^^^^^^ attributes hash: 574436082528610497
+    │                ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -21713,7 +21715,7 @@ note:
     ┌─ demos/uniswap.fe:289:29
     │
 289 │     pairs: Map<address, Map<address, address>>
-    │                             ^^^^^^^ attributes hash: 574436082528610497
+    │                             ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -21723,7 +21725,7 @@ note:
     ┌─ demos/uniswap.fe:289:38
     │
 289 │     pairs: Map<address, Map<address, address>>
-    │                                      ^^^^^^^ attributes hash: 574436082528610497
+    │                                      ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -21733,7 +21735,7 @@ note:
     ┌─ demos/uniswap.fe:289:25
     │
 289 │     pairs: Map<address, Map<address, address>>
-    │                         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4628772786735305773
+    │                         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 194598166021287998
     │
     = Map(
           Map {
@@ -21748,7 +21750,7 @@ note:
     ┌─ demos/uniswap.fe:289:12
     │
 289 │     pairs: Map<address, Map<address, address>>
-    │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8166731215027904440
+    │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8921983822569067218
     │
     = Map(
           Map {
@@ -21768,7 +21770,7 @@ note:
     ┌─ demos/uniswap.fe:291:16
     │
 291 │     all_pairs: address[100]
-    │                ^^^^^^^ attributes hash: 574436082528610497
+    │                ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -21778,7 +21780,7 @@ note:
     ┌─ demos/uniswap.fe:291:16
     │
 291 │     all_pairs: address[100]
-    │                ^^^^^^^^^^^^ attributes hash: 2018560596960185058
+    │                ^^^^^^^^^^^^ attributes hash: 5134157185158150929
     │
     = Array(
           Array {
@@ -21803,7 +21805,7 @@ note:
     ┌─ demos/uniswap.fe:315:17
     │
 315 │         token0: address = token_a if token_a < token_b else token_b
-    │                 ^^^^^^^ attributes hash: 574436082528610497
+    │                 ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -21813,7 +21815,7 @@ note:
     ┌─ demos/uniswap.fe:316:17
     │
 316 │         token1: address = token_a if token_a > token_b else token_b
-    │                 ^^^^^^^ attributes hash: 574436082528610497
+    │                 ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -21835,7 +21837,7 @@ note:
     ┌─ demos/uniswap.fe:321:15
     │
 321 │         pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
-    │               ^^^^^^^^^^^^^ attributes hash: 8065529683655712314
+    │               ^^^^^^^^^^^^^ attributes hash: 8136175709061532011
     │
     = Contract(
           Contract {

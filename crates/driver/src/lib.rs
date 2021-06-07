@@ -1,6 +1,8 @@
 use fe_common::diagnostics::Diagnostic;
 use fe_common::files::SourceFileId;
 use fe_parser::parse_file;
+#[cfg(feature = "solc-backend")]
+use serde_json::Value;
 use std::collections::HashMap;
 
 /// The artifacts of a compiled module.
@@ -68,8 +70,20 @@ pub fn compile(
     let bytecode_contracts = if _with_bytecode {
         match fe_yulc::compile(yul_contracts.clone(), _optimize) {
             Err(error) => {
-                eprintln!("Error: {}", error.0);
-                panic!("Yul compilation failed.")
+                for error in serde_json::from_str::<Value>(&error.0)
+                    .expect("unable to deserialize json output")["errors"]
+                    .as_array()
+                    .expect("errors not an array")
+                {
+                    eprintln!(
+                        "Error: {}",
+                        error["formattedMessage"]
+                            .as_str()
+                            .expect("error value not a string")
+                            .replace("\\\n", "\n")
+                    )
+                }
+                panic!("Yul compilation failed with the above errors")
             }
             Ok(contracts) => contracts,
         }

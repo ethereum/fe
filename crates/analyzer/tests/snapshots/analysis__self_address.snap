@@ -27,7 +27,7 @@ note:
   ┌─ features/self_address.fe:3:16
   │
 3 │         return self.address
-  │                ^^^^^^^^^^^^ attributes hash: 513065555763557710
+  │                ^^^^^^^^^^^^ attributes hash: 16366719240912622931
   │
   = ExpressionAttributes {
         typ: Base(
@@ -42,7 +42,7 @@ note:
   │  
 2 │ ╭     pub def my_address() -> address:
 3 │ │         return self.address
-  │ ╰───────────────────────────^ attributes hash: 9990363011312656955
+  │ ╰───────────────────────────^ attributes hash: 10558899903288945513
   │  
   = FunctionAttributes {
         is_public: true,
@@ -59,7 +59,7 @@ note:
 1 │ ╭ contract Foo:
 2 │ │     pub def my_address() -> address:
 3 │ │         return self.address
-  │ ╰───────────────────────────^ attributes hash: 9053473018950550582
+  │ ╰───────────────────────────^ attributes hash: 3414694148293448985
   │  
   = ContractAttributes {
         public_functions: [
@@ -82,7 +82,7 @@ note:
   ┌─ features/self_address.fe:2:29
   │
 2 │     pub def my_address() -> address:
-  │                             ^^^^^^^ attributes hash: 574436082528610497
+  │                             ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,

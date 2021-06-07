@@ -1,3 +1,0 @@
-contract Foo:
-  pub def bar():
-    (42,).abi_encode()

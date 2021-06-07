@@ -569,6 +569,7 @@ dependencies = [
  "fe-parser",
  "fe-yulc",
  "fe-yulgen",
+ "serde_json",
 ]
 
 [[package]]
@@ -1780,7 +1781,7 @@ dependencies = [
 [[package]]
 name = "yultsur"
 version = "0.1.0"
-source = "git+https://github.com/g-r-a-n-t/yultsur#eafe76a06c0075d0755584875796f647fb724c91"
+source = "git+https://github.com/g-r-a-n-t/yultsur#ae854702e90b2c70e5c19961167f2b6f2aff32d2"
 dependencies = [
  "indenter",
 ]

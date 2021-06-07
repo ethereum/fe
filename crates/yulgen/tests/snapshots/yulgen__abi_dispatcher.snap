@@ -1,0 +1,20 @@
+---
+source: crates/yulgen/tests/yulgen.rs
+expression: "abi_dispatcher::dispatcher(&function_attributes())"
+
+---
+switch cloadn(0, 4)
+case 0x9476f922 {
+    let return_val := $$hello_world()
+    let encode_start := abi_encode_string_42(return_val)
+    let encode_size := add(64, ceil32(mload(return_val)))
+    return(encode_start, encode_size)
+}
+case 0x771602f7 {
+    let call_val_0, call_val_1 := abi_decode_data_uint256_uint256_calldata(4, calldatasize())
+    let return_val := $$add(call_val_0, call_val_1)
+    let encode_start := abi_encode_uint256(return_val)
+    let encode_size := add(32, 0)
+    return(encode_start, encode_size)
+}
+default { return(0, 0) }

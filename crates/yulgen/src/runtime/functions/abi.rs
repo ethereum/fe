@@ -1,9 +1,7 @@
-use crate::names;
-use crate::operations::data as data_operations;
-use crate::utils;
-use fe_analyzer::namespace::types::{
-    AbiArraySize, AbiDecodeLocation, AbiEncoding, AbiType, AbiUintSize,
-};
+use crate::names::abi as abi_names;
+use crate::operations::abi as abi_operations;
+use crate::utils::ceil_32;
+use fe_analyzer::namespace::types::{AbiDecodeLocation, AbiEncoding, AbiType};
 use yultsur::*;
 
 /// Return all abi runtime functions
@@ -18,120 +16,260 @@ pub fn all() -> Vec<yul::Statement> {
 /// Creates a batch of encoding function for the given type arrays.
 ///
 /// It sorts the functions and removes duplicates.
-pub fn batch_encode<T: AbiEncoding + Ord>(mut batch: Vec<Vec<T>>) -> Vec<yul::Statement> {
-    batch.sort();
-    batch.dedup();
-
-    batch.into_iter().map(encode).collect()
+pub fn batch_encode<T: AbiEncoding>(batch: Vec<Vec<T>>) -> Vec<yul::Statement> {
+    let mut yul_functions: Vec<_> = batch.into_iter().map(encode).collect();
+    yul_functions.sort();
+    yul_functions.dedup();
+    yul_functions
 }
 
 /// Creates a batch of decoding function for the given types and decode
 /// locations.
 ///
 /// It sorts the functions and removes duplicates.
-pub fn batch_decode<T: AbiEncoding + Ord>(
-    mut batch: Vec<(T, AbiDecodeLocation)>,
+pub fn batch_decode<T: AbiEncoding + Clone>(
+    data_batch: Vec<(Vec<T>, AbiDecodeLocation)>,
 ) -> Vec<yul::Statement> {
-    batch.sort();
-    batch.dedup();
+    let component_batch = data_batch
+        .iter()
+        .fold(vec![], |mut accum, (types, location)| {
+            for typ in types.to_owned() {
+                accum.push((typ, *location));
+            }
+            accum
+        });
 
-    batch
+    let data_functions: Vec<_> = data_batch
         .into_iter()
-        .map(|(types, location)| decode(types, location))
-        .collect()
+        .map(|(types, location)| decode_data(&types, location))
+        .collect();
+    let component_functions: Vec<_> = component_batch
+        .into_iter()
+        .map(|(typ, location)| decode_component(&typ, location))
+        .collect();
+
+    let mut yul_functions: Vec<_> = [data_functions, component_functions].concat();
+    yul_functions.sort();
+    yul_functions.dedup();
+    yul_functions
 }
 
-/// Generates an encoding function for any set of type parameters.
-pub fn encode<T: AbiEncoding>(types: Vec<T>) -> yul::Statement {
-    // the name of the function we're generating
-    let func_name = names::encode_name(&types);
+/// Creates a function that decodes ABI encoded data.
+pub fn decode_data<T: AbiEncoding>(types: &[T], location: AbiDecodeLocation) -> yul::Statement {
+    let func_name = abi_names::decode_data(&types, location);
 
-    // create a vector of identifiers and a vector of tuples, which contain
-    // expressions that correspond to the identifiers.
-    //
-    // The identifier vector is injected into the parameter section of our
-    // encoding function and the expressions are used to reference the parameters
-    // while encoding.
-    let (params, typed_params): (Vec<_>, Vec<_>) = types
+    // Create corresponding "val_" and "offset_" names and associate each one
+    // with a component type.
+    let typed_names: Vec<(&T, String, String)> = types
         .iter()
         .enumerate()
         .map(|(i, typ)| {
-            let ident = identifier! { (format!("val_{}", i)) };
-            let expr = identifier_expression! { [ident.clone()] };
-            (ident, (expr, typ))
+            let val = format!("val_{}", i);
+            let offset = format!("offset_{}", i);
+            (typ, val, offset)
         })
-        .unzip();
+        .collect();
 
-    // get the size of the static section
-    let (_, static_size) = utils::abi_head_offsets(&types);
-    let static_size = literal_expression! { (static_size) };
+    // Map the return val names to identifiers.
+    let return_vals: Vec<_> = typed_names
+        .iter()
+        .map(|(_, val_name, _)| identifier! { (val_name) })
+        .collect();
 
-    // we need to keep track of the dynamic section size to properly encode
-    // dynamically-sized array headers.
-    let mut dyn_sizes = vec![];
-    // we also keep a separate vector of dynamically-sized arrays, which we
-    // encode after finishing the static section.
-    let mut dyn_array_params = vec![];
+    // Create declaration statements for each offset.
+    let offset_decls: Vec<_> = {
+        let mut curr_offset = 0;
+        typed_names
+            .iter()
+            .map(|(typ, _, offset_name)| {
+                let offset_ident = identifier! { (offset_name) };
+                let offset = literal_expression! { (curr_offset) };
+                let offset_decl = statement! { let [offset_ident] := [offset] };
+                curr_offset += typ.abi_type().head_size();
+                offset_decl
+            })
+            .collect()
+    };
 
-    // map the typed params to encoding statements for headers and statically-sized
-    // values
-    let static_encode_stmts = typed_params
-        .into_iter()
-        .map(|(param, typ)| match typ.abi_type() {
-            AbiType::Array {
-                inner,
-                size: AbiArraySize::Static { size },
-            } => encode_static_array(param, *inner, size),
-            AbiType::Array {
-                inner,
-                size: AbiArraySize::Dynamic,
-            } => {
-                let dyn_offset =
-                    expression! { add([static_size.clone()], [data_operations::sum(dyn_sizes.clone())]) };
-                let inner = *inner;
-                dyn_sizes.push(dyn_array_data_size(param.clone(), inner.clone()));
-                dyn_array_params.push((param, inner));
-                encode_uint(dyn_offset)
-            }
-            AbiType::Tuple { elems } => encode_tuple(param, elems),
-            AbiType::Uint { .. } => encode_uint(param),
+    // Call the component decoding functions for each offset value.
+    let decode_stmts: Vec<_> = typed_names
+        .iter()
+        .map(|(typ, val_name, offset_name)| {
+            let val_ident = identifier! { (val_name) };
+            let decode_expr = abi_operations::decode_component(
+                typ.abi_type(),
+                expression! { head_start },
+                identifier_expression! { (offset_name) },
+                location,
+            );
+            statement! { [val_ident] := [decode_expr] }
         })
-        .collect::<Vec<_>>();
-
-    // map the dynamically-sized arrays to encoding statemnts
-    let dyn_encode_stmts = dyn_array_params
-        .into_iter()
-        .map(|(param, inner)| encode_dyn_array(param, inner))
-        .collect::<Vec<_>>();
+        .collect();
 
     function_definition! {
-        function [func_name]([params...]) -> ptr {
-            (ptr := avail())
-            [static_encode_stmts...]
-            [dyn_encode_stmts...]
-        }
+         function [func_name](head_start, data_end) -> [return_vals...] {
+            [offset_decls...]
+            [decode_stmts...]
+         }
     }
 }
 
-/// Generates a decoding function for a single type parameter in either
-/// calldata or memory.
-pub fn decode<T: AbiEncoding>(typ: T, location: AbiDecodeLocation) -> yul::Statement {
-    let func_name = names::decode_name(&typ, location.clone());
+/// Creates a function that decodes a single component in ABI encoded data.
+pub fn decode_component<T: AbiEncoding>(typ: &T, location: AbiDecodeLocation) -> yul::Statement {
+    match typ.abi_type() {
+        AbiType::StaticArray { inner, size } => {
+            decode_component_static_array(*inner, size, location)
+        }
+        AbiType::Tuple { components: elems } => decode_component_tuple(&elems, location),
+        AbiType::Uint { size } => decode_component_uint(size, location),
+        AbiType::Int { size } => decode_component_int(size, location),
+        AbiType::Bool => decode_component_bool(location),
+        AbiType::Address => decode_component_address(location),
+        AbiType::String { max_size } => decode_component_string(max_size, location),
+        AbiType::Bytes { size } => decode_component_bytes(size, location),
+    }
+}
 
-    let decode_expr = match typ.abi_type() {
-        AbiType::Uint { .. } => decode_uint(location),
-        AbiType::Array { inner, size } => match size {
-            AbiArraySize::Static { size } => decode_static_array(*inner, size, location),
-            AbiArraySize::Dynamic => decode_dyn_array(*inner, location),
-        },
-        AbiType::Tuple { elems } => decode_tuple(elems, location),
+pub fn decode_component_uint(size: usize, location: AbiDecodeLocation) -> yul::Statement {
+    let func_name = abi_names::decode_component_uint(size, location);
+    let decode_expr = load_word(expression! { ptr }, location);
+
+    function_definition! {
+         function [func_name](head_start, offset) -> return_val {
+            (let ptr := add(head_start, offset))
+            (return_val := [decode_expr])
+         }
+    }
+}
+
+pub fn decode_component_int(size: usize, location: AbiDecodeLocation) -> yul::Statement {
+    let func_name = abi_names::decode_component_int(size, location);
+    let decode_expr = load_word(expression! { ptr }, location);
+
+    function_definition! {
+         function [func_name](head_start, offset) -> return_val {
+            (let ptr := add(head_start, offset))
+            (return_val := [decode_expr])
+         }
+    }
+}
+
+pub fn decode_component_bool(location: AbiDecodeLocation) -> yul::Statement {
+    let func_name = abi_names::decode_component_bool(location);
+    let decode_expr = load_word(expression! { ptr }, location);
+
+    function_definition! {
+         function [func_name](head_start, offset) -> return_val {
+            (let ptr := add(head_start, offset))
+            (return_val := [decode_expr])
+         }
+    }
+}
+
+pub fn decode_component_address(location: AbiDecodeLocation) -> yul::Statement {
+    let func_name = abi_names::decode_component_address(location);
+    let decode_expr = load_word(expression! { ptr }, location);
+
+    function_definition! {
+         function [func_name](head_start, offset) -> return_val {
+            (let ptr := add(head_start, offset))
+            (return_val := [decode_expr])
+         }
+    }
+}
+
+pub fn decode_component_static_array(
+    inner: AbiType,
+    array_size: usize,
+    location: AbiDecodeLocation,
+) -> yul::Statement {
+    let func_name = abi_names::decode_component_static_array(&inner, array_size, location);
+
+    let decode_expr = match inner.packed_size() {
+        32 => {
+            let data_size = literal_expression! { (32 * array_size) };
+            copy_data(expression! { ptr }, data_size, location)
+        }
+        inner_size => abi_operations::pack(
+            expression! { ptr },
+            literal_expression! { (array_size) },
+            literal_expression! { (inner_size) },
+            location,
+        ),
     };
 
     function_definition! {
-         function [func_name](start_ptr, offset) -> decoded_ptr {
-            (let head_ptr := add(start_ptr, offset))
-            (decoded_ptr := [decode_expr])
+         function [func_name](head_start, offset) -> return_val {
+            (let ptr := add(head_start, offset))
+            (return_val := [decode_expr])
          }
+    }
+}
+
+pub fn decode_component_tuple(elems: &[AbiType], location: AbiDecodeLocation) -> yul::Statement {
+    let func_name = abi_names::decode_component_tuple(elems, location);
+    let tuple_size = literal_expression! { (elems.len() * 32) };
+    let decode_expr = copy_data(expression! { ptr }, tuple_size, location);
+
+    function_definition! {
+         function [func_name](head_start, offset) -> return_val {
+            (let ptr := add(head_start, offset))
+            (return_val := [decode_expr])
+         }
+    }
+}
+
+pub fn decode_component_bytes(size: usize, location: AbiDecodeLocation) -> yul::Statement {
+    let func_name = abi_names::decode_component_bytes(size, location);
+
+    function_definition! {
+         function [func_name](head_start, head_offset) -> return_val {
+            (let head_ptr := add(head_start, head_offset))
+            (let data_start_offset := [load_word(expression! { head_ptr }, location)])
+            (let data_start := add(32, (add(head_start, data_start_offset))))
+            (let data_size := [literal_expression! { (size) }])
+            (return_val := [copy_data(
+                expression! { data_start },
+                expression! { data_size },
+                location
+            )])
+         }
+    }
+}
+
+pub fn decode_component_string(max_size: usize, location: AbiDecodeLocation) -> yul::Statement {
+    let func_name = abi_names::decode_component_string(max_size, location);
+
+    function_definition! {
+         function [func_name](head_start, head_offset) -> return_val {
+            (let head_ptr := add(head_start, head_offset))
+            (let data_start_offset := [load_word(expression! { head_ptr }, location)])
+            (let data_start := add(head_start, data_start_offset))
+            (let data_size := add(32, [load_word(expression! { data_start }, location)]))
+            (return_val := [copy_data(
+                expression! { data_start },
+                expression! { data_size },
+                location
+            )])
+         }
+    }
+}
+
+fn load_word(ptr: yul::Expression, location: AbiDecodeLocation) -> yul::Expression {
+    match location {
+        AbiDecodeLocation::Memory => expression! { mload([ptr]) },
+        AbiDecodeLocation::Calldata => expression! { calldataload([ptr]) },
+    }
+}
+
+fn copy_data(
+    ptr: yul::Expression,
+    size: yul::Expression,
+    location: AbiDecodeLocation,
+) -> yul::Expression {
+    match location {
+        AbiDecodeLocation::Memory => expression! { mcopym([ptr], [size]) },
+        AbiDecodeLocation::Calldata => expression! { ccopym([ptr], [size]) },
     }
 }
 
@@ -175,17 +313,48 @@ pub fn pack(location: AbiDecodeLocation) -> yul::Statement {
     }
 }
 
-fn dyn_array_data_size(val: yul::Expression, inner: AbiType) -> yul::Expression {
-    match inner {
-        AbiType::Array { .. } => todo!(),
-        AbiType::Tuple { .. } => todo!(),
-        AbiType::Uint {
-            size: AbiUintSize { padded_size, .. },
-        } => {
-            let inner_padded_size = literal_expression! { (padded_size) };
-            let array_size = expression! { mload([val]) };
-            let elements_size = expression! { mul([array_size], [inner_padded_size]) };
-            expression! { add(32, (ceil32([elements_size]))) }
+/// Generates an encoding function for any set of type parameters.
+pub fn encode<T: AbiEncoding>(types: Vec<T>) -> yul::Statement {
+    let func_name = abi_names::encode(&types);
+
+    // Create names for each of the values we're encoding.
+    let (param_idents, param_exprs) = abi_names::vals("encode", types.len());
+    let typed_params: Vec<_> = types.iter().zip(param_exprs).collect();
+
+    // Encode the head section of each component.
+    let head_encode_stmts: Vec<_> = typed_params
+        .clone()
+        .into_iter()
+        .map(|(typ, param)| match typ.abi_type() {
+            AbiType::StaticArray { inner, size } => encode_static_array(param, *inner, size),
+            AbiType::Tuple { components } => encode_tuple(param, components),
+            AbiType::Uint { .. } => encode_uint(param),
+            AbiType::Int { .. } => encode_uint(param),
+            AbiType::Bool => encode_uint(param),
+            AbiType::Address => encode_uint(param),
+            AbiType::String { .. } => encode_string_head(param),
+            AbiType::Bytes { size } => encode_bytes_head(size),
+        })
+        .collect();
+
+    // Encode the data section of each component with dynamically-sized data.
+    let data_encode_stmts: Vec<_> = typed_params
+        .into_iter()
+        .filter_map(|(typ, param)| match typ.abi_type() {
+            AbiType::String { .. } => Some(encode_string_data(param)),
+            AbiType::Bytes { size } => Some(encode_bytes_data(size, param)),
+            _ => None,
+        })
+        .collect();
+
+    function_definition! {
+        function [func_name]([param_idents...]) -> return_ptr {
+            // Set the return to the available memory address.
+            (return_ptr := avail())
+            // The data section begins at the end of the head.
+            (let data_offset := [abi_operations::encode_head_size(&types)])
+            [head_encode_stmts...]
+            [data_encode_stmts...]
         }
     }
 }
@@ -197,163 +366,53 @@ fn encode_tuple(val: yul::Expression, elems: Vec<AbiType>) -> yul::Statement {
 }
 
 fn encode_uint(val: yul::Expression) -> yul::Statement {
-    statement! { pop((alloc_mstoren([val], 32))) }
+    block_statement! {
+        (let ptr := alloc(32))
+        (mstore(ptr, [val]))
+    }
 }
 
-fn encode_dyn_array(val: yul::Expression, inner: AbiType) -> yul::Statement {
-    let array_size = expression! { mload([val.clone()]) };
-    let array_start = expression! { add([val], 32) };
+fn encode_string_head(ptr: yul::Expression) -> yul::Statement {
     block_statement! {
-        [encode_uint(array_size.clone())]
-        [encode_array(array_start, inner, array_size)]
+        (mstore((alloc(32)), data_offset))
+        (let num_bytes := mload([ptr]))
+        (let data_size := ceil32((add(32, num_bytes))))
+        (data_offset := add(data_offset, data_size))
+    }
+}
+
+fn encode_string_data(ptr: yul::Expression) -> yul::Statement {
+    block_statement! {
+        (let num_bytes := mload([ptr.clone()]))
+        (let data_size := add(32, num_bytes))
+        (let remainder := sub((ceil32(data_size)), data_size))
+        (pop((mcopym([ptr], data_size))))
+        (pop((alloc(remainder))))
+    }
+}
+
+fn encode_bytes_head(size: usize) -> yul::Statement {
+    block_statement! {
+        (mstore((alloc(32)), data_offset))
+        (let data_size := [literal_expression! { (ceil_32(32 + size)) }])
+        (data_offset := add(data_offset, data_size))
+    }
+}
+
+fn encode_bytes_data(size: usize, ptr: yul::Expression) -> yul::Statement {
+    block_statement! {
+        (let num_bytes := [literal_expression! { (size) }])
+        (let remainder := [literal_expression! { (ceil_32(size) - size) }])
+        (mstore((alloc(32)), num_bytes))
+        (pop((mcopym([ptr], num_bytes))))
+        (pop((alloc(remainder))))
     }
 }
 
 fn encode_static_array(val: yul::Expression, inner: AbiType, size: usize) -> yul::Statement {
-    let array_size = literal_expression! { (size) };
-    encode_array(val, inner, array_size)
-}
-
-fn encode_array(
-    val: yul::Expression,
-    inner: AbiType,
-    array_size: yul::Expression,
-) -> yul::Statement {
-    match inner {
-        AbiType::Array { .. } => todo!("encoding of nested arrays"),
-        AbiType::Tuple { .. } => todo!("encoding of nested tuples"),
-        AbiType::Uint {
-            size:
-                AbiUintSize {
-                    data_size,
-                    padded_size,
-                },
-        } => {
-            let inner_data_size = literal_expression! { (data_size) };
-
-            if data_size == padded_size {
-                // there's no need to unpack if the inner element has no padding
-                let array_data_size = expression! {
-                    mul([array_size], [inner_data_size])
-                };
-                let right_padding = expression! {
-                    sub((ceil32(array_data_size)), array_data_size)
-                };
-
-                block_statement! {
-                    (let array_data_size := [array_data_size])
-                    (pop((mcopym([val], array_data_size))))
-                    (pop((alloc([right_padding]))))
-                }
-            } else {
-                statement! { abi_unpack([val], [array_size], [inner_data_size]) }
-            }
-        }
-    }
-}
-
-fn decode_uint(location: AbiDecodeLocation) -> yul::Expression {
-    match location {
-        AbiDecodeLocation::Memory => expression! { mload(head_ptr) },
-        AbiDecodeLocation::Calldata => expression! { calldataload(head_ptr) },
-    }
-}
-
-fn decode_dyn_array(inner: AbiType, location: AbiDecodeLocation) -> yul::Expression {
-    let load = match location {
-        AbiDecodeLocation::Calldata => {
-            identifier! { calldataload }
-        }
-        AbiDecodeLocation::Memory => {
-            identifier! { mload }
-        }
-    };
-
-    let encoding_start = expression! { add(start_ptr, ([load.clone()](head_ptr))) };
-    let array_size = expression! { [load]([encoding_start.clone()]) };
-
-    match inner {
-        AbiType::Array { .. } => todo!("decoding of nested arrays"),
-        AbiType::Tuple { .. } => todo!("decoding of nested tuples"),
-        AbiType::Uint {
-            size:
-                AbiUintSize {
-                    padded_size,
-                    data_size,
-                },
-        } => {
-            let inner_data_size = literal_expression! { (data_size) };
-
-            if padded_size == data_size {
-                match location {
-                    AbiDecodeLocation::Calldata => {
-                        let array_data_size = expression! { mul([array_size], [inner_data_size]) };
-                        expression! { ccopym([encoding_start], (add([array_data_size], 32))) }
-                    }
-                    AbiDecodeLocation::Memory => {
-                        expression! { [encoding_start] }
-                    }
-                }
-            } else {
-                unimplemented!("packing of dynamically sized arrays")
-            }
-        }
-    }
-}
-
-fn decode_static_array(
-    inner: AbiType,
-    size: usize,
-    location: AbiDecodeLocation,
-) -> yul::Expression {
-    let array_size = literal_expression! { (size) };
-    let array_start = identifier_expression! { head_ptr };
-
-    match inner {
-        AbiType::Array { .. } => todo!("decoding of nested arrays"),
-        AbiType::Tuple { .. } => todo!("decoding of nested tuples"),
-        AbiType::Uint {
-            size:
-                AbiUintSize {
-                    padded_size,
-                    data_size,
-                },
-        } => {
-            let inner_data_size = literal_expression! { (data_size) };
-
-            if padded_size == data_size {
-                match location {
-                    // need to include the length
-                    AbiDecodeLocation::Calldata => {
-                        let array_data_size = expression! { mul([array_size], [inner_data_size]) };
-                        expression! { ccopym([array_start], [array_data_size]) }
-                    }
-                    AbiDecodeLocation::Memory => array_start,
-                }
-            } else {
-                match location {
-                    AbiDecodeLocation::Calldata => {
-                        expression! {
-                            abi_pack_calldata([array_start], [array_size], [inner_data_size])
-                        }
-                    }
-                    AbiDecodeLocation::Memory => {
-                        expression! {
-                            abi_pack_mem([array_start], [array_size], [inner_data_size])
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-fn decode_tuple(elems: Vec<AbiType>, location: AbiDecodeLocation) -> yul::Expression {
-    let tuple_size = elems.len() * 32;
-    let tuple_size = literal_expression! { (tuple_size) };
-
-    match location {
-        AbiDecodeLocation::Memory => expression! { head_ptr },
-        AbiDecodeLocation::Calldata => expression! { ccopym(head_ptr, [tuple_size]) },
-    }
+    abi_operations::unpack(
+        val,
+        literal_expression! { (size) },
+        literal_expression! { (inner.packed_size()) },
+    )
 }

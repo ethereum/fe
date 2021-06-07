@@ -47,7 +47,6 @@ pub fn base_type_name(typ: &Base) -> String {
             Integer::I8 => "i8",
         },
         Base::Bool => "bool",
-        Base::Byte => unimplemented!("byte should be removed"),
         Base::Address => "address",
         Base::Unit => "unit",
     }

@@ -130,7 +130,7 @@ note:
    ┌─ features/strings.fe:12:37
    │
 12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │                                     ^ attributes hash: 513065555763557710
+   │                                     ^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -256,7 +256,7 @@ note:
    ┌─ features/strings.fe:12:9
    │
 12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15379609340024909078
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16267969184929269854
    │
    = EventDef {
          name: "MyEvent",
@@ -325,7 +325,7 @@ note:
    │  
 11 │ ╭     pub def __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
 12 │ │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │ ╰─────────────────────────────────────────────────────────────────────────────────^ attributes hash: 13981111020481275043
+   │ ╰─────────────────────────────────────────────────────────────────────────────────^ attributes hash: 566449339878557725
    │  
    = FunctionAttributes {
          is_public: true,
@@ -456,7 +456,7 @@ note:
    · │
 20 │ │     pub def return_casted_static_string() -> String<100>:
 21 │ │         return String<100>("foo")
-   │ ╰─────────────────────────────────^ attributes hash: 4345389285039061508
+   │ ╰─────────────────────────────────^ attributes hash: 1435241777224980025
    │  
    = ContractAttributes {
          public_functions: [
@@ -662,7 +662,7 @@ note:
   · │
 8 │ │         s4: String<13>
 9 │ │         s5: String<100>
-  │ ╰───────────────────────^ attributes hash: 15379609340024909078
+  │ ╰───────────────────────^ attributes hash: 16267969184929269854
   │  
   = EventDef {
         name: "MyEvent",
@@ -778,7 +778,7 @@ note:
   ┌─ features/strings.fe:7:12
   │
 7 │         a: address
-  │            ^^^^^^^ attributes hash: 574436082528610497
+  │            ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,
@@ -824,7 +824,7 @@ note:
    ┌─ features/strings.fe:11:41
    │
 11 │     pub def __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
-   │                                         ^^^^^^^ attributes hash: 574436082528610497
+   │                                         ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,

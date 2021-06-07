@@ -1,4 +1,4 @@
-use crate::names;
+use crate::names::abi as abi_names;
 use crate::operations::abi as abi_operations;
 use fe_abi::utils as abi_utils;
 use fe_analyzer::context::FunctionAttributes;
@@ -6,18 +6,19 @@ use fe_analyzer::namespace::types::{AbiDecodeLocation, AbiEncoding, FixedSize};
 use yultsur::*;
 
 /// Builds a switch statement that dispatches calls to the contract.
-pub fn dispatcher(attributes: Vec<FunctionAttributes>) -> yul::Statement {
+pub fn dispatcher(attributes: &[FunctionAttributes]) -> yul::Statement {
     let arms = attributes
         .iter()
         .map(|arm| dispatch_arm(arm.to_owned()))
         .collect::<Vec<_>>();
 
     if arms.is_empty() {
-        return statement! { pop(0) };
+        statement! { return(0, 0) }
     } else {
         switch! {
             switch (cloadn(0, 4))
             [arms...]
+            (default { (return(0, 0)) })
         }
     }
 }
@@ -25,30 +26,52 @@ pub fn dispatcher(attributes: Vec<FunctionAttributes>) -> yul::Statement {
 fn dispatch_arm(attributes: FunctionAttributes) -> yul::Case {
     let selector = selector(&attributes.name, &attributes.param_types());
 
-    if !attributes.return_type.is_unit() {
-        let selection = selection(&attributes.name, &attributes.param_types());
-        let return_data = abi_operations::encode(
-            vec![attributes.return_type.clone()],
-            vec![expression! { raw_return }],
-        );
+    let (param_idents, param_exprs) = abi_names::vals("call", attributes.params.len());
 
-        let return_size = abi_operations::encode_size(
-            vec![attributes.return_type],
-            vec![expression! { raw_return }],
-        );
-
-        let selection_with_return = statement! { return([return_data], [return_size]) };
-
-        return case! {
-            case [selector] {
-                (let raw_return := [selection])
-                ([selection_with_return])
-            }
-        };
+    // If there are no params, we create an empty vector.
+    let maybe_decode_params = if attributes.params.is_empty() {
+        statements! {}
     } else {
-        // The return value of the selected statement muse be popped since all user defined function return a value.
-        let selection = selection_as_pop_statement(&attributes.name, &attributes.param_types());
-        case! { case [selector] { [selection] } }
+        let decode_expr = abi_operations::decode_data(
+            &attributes.param_types(),
+            expression! { 4 },
+            expression! { calldatasize() },
+            AbiDecodeLocation::Calldata,
+        );
+        statements! { (let [param_idents...] := [decode_expr]) }
+    };
+
+    // If the function returns a unit value, we call the function and return
+    // nothing. Otherwise, we encode the value and return it.
+    let call_and_maybe_encode_return = {
+        let name = identifier! { (format!("$${}", attributes.name)) };
+        let call = expression! { [name]([param_exprs...]) };
+        if attributes.return_type.is_unit() {
+            statements! {
+                (pop([call]))
+                (return(0, 0))
+            }
+        } else {
+            let encode = abi_operations::encode(
+                &[attributes.return_type.clone()],
+                expressions! { return_val },
+            );
+            let encode_size =
+                abi_operations::encode_size(&[attributes.return_type], expressions! { return_val });
+            statements! {
+                (let return_val := [call])
+                (let encode_start := [encode])
+                (let encode_size := [encode_size])
+                (return(encode_start, encode_size))
+            }
+        }
+    };
+
+    case! {
+        case [selector] {
+            [maybe_decode_params...]
+            [call_and_maybe_encode_return...]
+        }
     }
 }
 
@@ -58,23 +81,7 @@ fn selector(name: &str, params: &[FixedSize]) -> yul::Literal {
         .map(|param| param.abi_selector_name())
         .collect::<Vec<String>>();
 
-    literal! {(abi_utils::func_selector(name, &params))}
-}
-
-fn selection(name: &str, params: &[FixedSize]) -> yul::Expression {
-    let decoded_params = abi_operations::decode(
-        params.to_owned(),
-        literal_expression! { 4 },
-        AbiDecodeLocation::Calldata,
-    );
-
-    let name = names::func_name(&name);
-
-    expression! { [name]([decoded_params...]) }
-}
-
-fn selection_as_pop_statement(name: &str, params: &[FixedSize]) -> yul::Statement {
-    yul::Statement::Expression(expression! { pop([selection(name, params)]) })
+    literal! { (abi_utils::func_selector(name, &params)) }
 }
 
 #[cfg(test)]

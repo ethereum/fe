@@ -123,7 +123,7 @@ note:
   ┌─ features/nested_map.fe:6:16
   │
 6 │         return self.bar[a][b]
-  │                ^^^^^^^^ attributes hash: 3680935976198301303
+  │                ^^^^^^^^ attributes hash: 7959608891243693911
   │
   = ExpressionAttributes {
         typ: Map(
@@ -153,7 +153,7 @@ note:
   ┌─ features/nested_map.fe:6:25
   │
 6 │         return self.bar[a][b]
-  │                         ^ attributes hash: 513065555763557710
+  │                         ^ attributes hash: 16366719240912622931
   │
   = ExpressionAttributes {
         typ: Base(
@@ -167,7 +167,7 @@ note:
   ┌─ features/nested_map.fe:6:16
   │
 6 │         return self.bar[a][b]
-  │                ^^^^^^^^^^^ attributes hash: 8054157001498380852
+  │                ^^^^^^^^^^^ attributes hash: 2951433597334534045
   │
   = ExpressionAttributes {
         typ: Map(
@@ -190,7 +190,7 @@ note:
   ┌─ features/nested_map.fe:6:28
   │
 6 │         return self.bar[a][b]
-  │                            ^ attributes hash: 513065555763557710
+  │                            ^ attributes hash: 16366719240912622931
   │
   = ExpressionAttributes {
         typ: Base(
@@ -224,7 +224,7 @@ note:
   ┌─ features/nested_map.fe:9:9
   │
 9 │         self.bar[a][b] = value
-  │         ^^^^^^^^ attributes hash: 3680935976198301303
+  │         ^^^^^^^^ attributes hash: 7959608891243693911
   │
   = ExpressionAttributes {
         typ: Map(
@@ -254,7 +254,7 @@ note:
   ┌─ features/nested_map.fe:9:18
   │
 9 │         self.bar[a][b] = value
-  │                  ^ attributes hash: 513065555763557710
+  │                  ^ attributes hash: 16366719240912622931
   │
   = ExpressionAttributes {
         typ: Base(
@@ -268,7 +268,7 @@ note:
   ┌─ features/nested_map.fe:9:9
   │
 9 │         self.bar[a][b] = value
-  │         ^^^^^^^^^^^ attributes hash: 8054157001498380852
+  │         ^^^^^^^^^^^ attributes hash: 2951433597334534045
   │
   = ExpressionAttributes {
         typ: Map(
@@ -291,7 +291,7 @@ note:
   ┌─ features/nested_map.fe:9:21
   │
 9 │         self.bar[a][b] = value
-  │                     ^ attributes hash: 513065555763557710
+  │                     ^ attributes hash: 16366719240912622931
   │
   = ExpressionAttributes {
         typ: Base(
@@ -339,7 +339,7 @@ note:
    ┌─ features/nested_map.fe:12:16
    │
 12 │         return self.baz[a][b]
-   │                ^^^^^^^^ attributes hash: 1673856998485272969
+   │                ^^^^^^^^ attributes hash: 8375710835095470646
    │
    = ExpressionAttributes {
          typ: Map(
@@ -369,7 +369,7 @@ note:
    ┌─ features/nested_map.fe:12:25
    │
 12 │         return self.baz[a][b]
-   │                         ^ attributes hash: 513065555763557710
+   │                         ^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -440,7 +440,7 @@ note:
    ┌─ features/nested_map.fe:15:9
    │
 15 │         self.baz[a][b] = value
-   │         ^^^^^^^^ attributes hash: 1673856998485272969
+   │         ^^^^^^^^ attributes hash: 8375710835095470646
    │
    = ExpressionAttributes {
          typ: Map(
@@ -470,7 +470,7 @@ note:
    ┌─ features/nested_map.fe:15:18
    │
 15 │         self.baz[a][b] = value
-   │                  ^ attributes hash: 513065555763557710
+   │                  ^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -554,7 +554,7 @@ note:
   │  
 5 │ ╭     pub def read_bar(a: address, b: address) -> u256:
 6 │ │         return self.bar[a][b]
-  │ ╰─────────────────────────────^ attributes hash: 9777413049058059805
+  │ ╰─────────────────────────────^ attributes hash: 6163182241596817520
   │  
   = FunctionAttributes {
         is_public: true,
@@ -585,7 +585,7 @@ note:
   │  
 8 │ ╭     pub def write_bar(a: address, b: address, value: u256):
 9 │ │         self.bar[a][b] = value
-  │ ╰──────────────────────────────^ attributes hash: 13446813489566530654
+  │ ╰──────────────────────────────^ attributes hash: 18292229817270022878
   │  
   = FunctionAttributes {
         is_public: true,
@@ -622,7 +622,7 @@ note:
    │  
 11 │ ╭     pub def read_baz(a: address, b: u256) -> bool:
 12 │ │         return self.baz[a][b]
-   │ ╰─────────────────────────────^ attributes hash: 12790708019623037348
+   │ ╰─────────────────────────────^ attributes hash: 18402120054476271146
    │  
    = FunctionAttributes {
          is_public: true,
@@ -653,7 +653,7 @@ note:
    │  
 14 │ ╭     pub def write_baz(a: address, b: u256, value: bool):
 15 │ │         self.baz[a][b] = value
-   │ ╰──────────────────────────────^ attributes hash: 5578425926724194078
+   │ ╰──────────────────────────────^ attributes hash: 14219781058743963528
    │  
    = FunctionAttributes {
          is_public: true,
@@ -695,7 +695,7 @@ note:
    · │
 14 │ │     pub def write_baz(a: address, b: u256, value: bool):
 15 │ │         self.baz[a][b] = value
-   │ ╰──────────────────────────────^ attributes hash: 13752101938961302585
+   │ ╰──────────────────────────────^ attributes hash: 13797500687679633762
    │  
    = ContractAttributes {
          public_functions: [
@@ -814,7 +814,7 @@ note:
   ┌─ features/nested_map.fe:5:25
   │
 5 │     pub def read_bar(a: address, b: address) -> u256:
-  │                         ^^^^^^^ attributes hash: 574436082528610497
+  │                         ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,
@@ -824,7 +824,7 @@ note:
   ┌─ features/nested_map.fe:5:37
   │
 5 │     pub def read_bar(a: address, b: address) -> u256:
-  │                                     ^^^^^^^ attributes hash: 574436082528610497
+  │                                     ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,
@@ -846,7 +846,7 @@ note:
   ┌─ features/nested_map.fe:8:26
   │
 8 │     pub def write_bar(a: address, b: address, value: u256):
-  │                          ^^^^^^^ attributes hash: 574436082528610497
+  │                          ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,
@@ -856,7 +856,7 @@ note:
   ┌─ features/nested_map.fe:8:38
   │
 8 │     pub def write_bar(a: address, b: address, value: u256):
-  │                                      ^^^^^^^ attributes hash: 574436082528610497
+  │                                      ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,
@@ -878,7 +878,7 @@ note:
    ┌─ features/nested_map.fe:11:25
    │
 11 │     pub def read_baz(a: address, b: u256) -> bool:
-   │                         ^^^^^^^ attributes hash: 574436082528610497
+   │                         ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -910,7 +910,7 @@ note:
    ┌─ features/nested_map.fe:14:26
    │
 14 │     pub def write_baz(a: address, b: u256, value: bool):
-   │                          ^^^^^^^ attributes hash: 574436082528610497
+   │                          ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -942,7 +942,7 @@ note:
   ┌─ features/nested_map.fe:2:14
   │
 2 │     bar: Map<address, Map<address, u256>>
-  │              ^^^^^^^ attributes hash: 574436082528610497
+  │              ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,
@@ -952,7 +952,7 @@ note:
   ┌─ features/nested_map.fe:2:27
   │
 2 │     bar: Map<address, Map<address, u256>>
-  │                           ^^^^^^^ attributes hash: 574436082528610497
+  │                           ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,
@@ -974,7 +974,7 @@ note:
   ┌─ features/nested_map.fe:2:23
   │
 2 │     bar: Map<address, Map<address, u256>>
-  │                       ^^^^^^^^^^^^^^^^^^ attributes hash: 6830914040603267556
+  │                       ^^^^^^^^^^^^^^^^^^ attributes hash: 4896103645274849570
   │
   = Map(
         Map {
@@ -991,7 +991,7 @@ note:
   ┌─ features/nested_map.fe:2:10
   │
 2 │     bar: Map<address, Map<address, u256>>
-  │          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 652293232820874660
+  │          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17290724986880152566
   │
   = Map(
         Map {
@@ -1013,7 +1013,7 @@ note:
   ┌─ features/nested_map.fe:3:14
   │
 3 │     baz: Map<address, Map<u256, bool>>
-  │              ^^^^^^^ attributes hash: 574436082528610497
+  │              ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,
@@ -1062,7 +1062,7 @@ note:
   ┌─ features/nested_map.fe:3:10
   │
 3 │     baz: Map<address, Map<u256, bool>>
-  │          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12802517836116757582
+  │          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17567138784499988290
   │
   = Map(
         Map {

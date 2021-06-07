@@ -33,7 +33,6 @@ pub fn type_desc(
             "i16" => Type::Base(Numeric(I16)),
             "i8" => Type::Base(Numeric(I8)),
             "bool" => Type::Base(Bool),
-            "bytes" => Type::Base(Byte),
             "address" => Type::Base(Address),
             base => {
                 if let Some(typ) = scope.module_scope().borrow().type_defs.get(base) {

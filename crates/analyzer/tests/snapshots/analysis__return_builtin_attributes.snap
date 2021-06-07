@@ -103,7 +103,7 @@ note:
   ┌─ features/return_builtin_attributes.fe:3:16
   │
 3 │         return block.coinbase
-  │                ^^^^^^^^^^^^^^ attributes hash: 513065555763557710
+  │                ^^^^^^^^^^^^^^ attributes hash: 16366719240912622931
   │
   = ExpressionAttributes {
         typ: Base(
@@ -181,7 +181,7 @@ note:
    ┌─ features/return_builtin_attributes.fe:18:16
    │
 18 │         return msg.sender
-   │                ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -211,7 +211,7 @@ note:
    ┌─ features/return_builtin_attributes.fe:24:16
    │
 24 │         return tx.origin
-   │                ^^^^^^^^^ attributes hash: 513065555763557710
+   │                ^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -242,7 +242,7 @@ note:
   │  
 2 │ ╭     pub def coinbase() -> address:
 3 │ │         return block.coinbase
-  │ ╰─────────────────────────────^ attributes hash: 12397519043026993572
+  │ ╰─────────────────────────────^ attributes hash: 1050560848340726692
   │  
   = FunctionAttributes {
         is_public: true,
@@ -330,7 +330,7 @@ note:
    │  
 17 │ ╭     pub def sender() -> address:
 18 │ │         return msg.sender
-   │ ╰─────────────────────────^ attributes hash: 1359345374899323188
+   │ ╰─────────────────────────^ attributes hash: 9931189698931507850
    │  
    = FunctionAttributes {
          is_public: true,
@@ -364,7 +364,7 @@ note:
    │  
 23 │ ╭     pub def origin() -> address:
 24 │ │         return tx.origin
-   │ ╰────────────────────────^ attributes hash: 7617031651227520347
+   │ ╰────────────────────────^ attributes hash: 16124623633659635689
    │  
    = FunctionAttributes {
          is_public: true,
@@ -403,7 +403,7 @@ note:
    · │
 26 │ │     pub def gas_price() -> u256:
 27 │ │         return tx.gas_price
-   │ ╰───────────────────────────^ attributes hash: 6040907524015687009
+   │ ╰───────────────────────────^ attributes hash: 9161051799665042003
    │  
    = ContractAttributes {
          public_functions: [
@@ -502,7 +502,7 @@ note:
   ┌─ features/return_builtin_attributes.fe:2:27
   │
 2 │     pub def coinbase() -> address:
-  │                           ^^^^^^^ attributes hash: 574436082528610497
+  │                           ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,
@@ -560,7 +560,7 @@ note:
    ┌─ features/return_builtin_attributes.fe:17:25
    │
 17 │     pub def sender() -> address:
-   │                         ^^^^^^^ attributes hash: 574436082528610497
+   │                         ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -582,7 +582,7 @@ note:
    ┌─ features/return_builtin_attributes.fe:23:25
    │
 23 │     pub def origin() -> address:
-   │                         ^^^^^^^ attributes hash: 574436082528610497
+   │                         ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
