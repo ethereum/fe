@@ -485,11 +485,11 @@ fn expr_attribute(
                     Ok(ExpressionAttributes::new(typ.to_owned().into(), location))
                 } else {
                     context.fancy_error(
-                        "Invalid attempt to access struct field",
-                        vec![Label::primary(
-                            attr.span,
-                            format!("Not a valid field on the {} struct", struct_.name),
-                        )],
+                        format!(
+                            "No field `{}` exists on struct `{}`",
+                            &attr.kind, struct_.name
+                        ),
+                        vec![Label::primary(attr.span, "undefined field")],
                         vec![],
                     );
                     fatal_err
@@ -504,11 +504,11 @@ fn expr_attribute(
                     Some(index) => index,
                     None => {
                         context.fancy_error(
-                            "Invalid attempt to access tuple field",
+                            format!("No field `{}` exists on this tuple", &attr.kind),
                             vec![
                                 Label::primary(
                                     attr.span,
-                                    "Invalid attempt",
+                                    "undefined field",
                                 )
                             ],
                             vec!["Note: Tuple values are accessed via `itemN` properties such as `item0` or `item1`".into()],
@@ -521,11 +521,8 @@ fn expr_attribute(
                     Ok(ExpressionAttributes::new(typ.to_owned().into(), location))
                 } else {
                     context.fancy_error(
-                        "Invalid attempt to access tuple field",
-                        vec![Label::primary(
-                            attr.span,
-                            format!("Invalid attempt at index {}", item_index),
-                        )],
+                        format!("No field `item{}` exists on this tuple", item_index),
+                        vec![Label::primary(attr.span, "unknown field")],
                         vec![format!(
                             "Note: The highest possible field for this tuple is `item{}`",
                             tuple.items.len() - 1
@@ -571,8 +568,8 @@ fn expr_attribute_self(
         )),
         None => {
             context.fancy_error(
-                "Invalid attempt to access contract field",
-                vec![Label::primary(attr.span, "Not a valid contract field")],
+                format!("No field `{}` exists on this contract", &attr.kind),
+                vec![Label::primary(attr.span, "undefined field")],
                 vec![],
             );
             Err(SemanticError::fatal())
@@ -989,8 +986,8 @@ fn expr_call_self_attribute(
         ))
     } else {
         context.fancy_error(
-            "Call to undefined function",
-            vec![Label::primary(name_span, "Called undefined function")],
+            format!("no function `{}` exists this contract", func_name),
+            vec![Label::primary(name_span, "undefined function")],
             vec![],
         );
         Err(SemanticError::fatal())
@@ -1038,7 +1035,10 @@ fn expr_call_value_attribute(
         return match ValueMethod::from_str(&attr.kind) {
             Err(_) => {
                 context.fancy_error(
-                    format!("Invalid call to `{}`", &attr.kind),
+                    format!(
+                        "No function `{}` exists on type `{}`",
+                        &attr.kind, &value_attributes.typ
+                    ),
                     vec![Label::primary(attr.span, "undefined function")],
                     vec![],
                 );
@@ -1388,8 +1388,8 @@ fn expr_attribute_call_type(
             match Object::from_str(&name) {
                 Ok(Object::Block) | Ok(Object::Chain) | Ok(Object::Msg) | Ok(Object::Tx) => {
                     context.fancy_error(
-                        "illegal call on builtin object",
-                        vec![Label::primary(exp.span, "illegal call")],
+                        format!("no function `{}` exists on builtin `{}`", &attr.kind, &name),
+                        vec![Label::primary(exp.span, "undefined function")],
                         vec![],
                     );
 

@@ -3,11 +3,11 @@ source: tests/src/compile_errors.rs
 expression: "error_string(&path, &src)"
 
 ---
-error: Invalid attempt to access tuple field
+error: No field `iteo0` exists on this tuple
   ┌─ fixtures/compile_errors/bad_tuple_attr1.fe:6:27
   │
 6 │         self.my_sto_tuple.iteo0
-  │                           ^^^^^ Invalid attempt
+  │                           ^^^^^ undefined field
   │
   = Note: Tuple values are accessed via `itemN` properties such as `item0` or `item1`
 
