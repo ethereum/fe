@@ -3,10 +3,10 @@ source: tests/src/compile_errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: Call to undefined function
+error: no function `doesnt_exist` exists this contract
   ┌─ [snippet]:3:3
   │
 3 │   self.doesnt_exist()
-  │   ^^^^^^^^^^^^^^^^^ Called undefined function
+  │   ^^^^^^^^^^^^^^^^^ undefined function
 
 

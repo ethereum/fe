@@ -3,10 +3,10 @@ source: tests/src/compile_errors.rs
 expression: "error_string(&path, &src)"
 
 ---
-error: Invalid attempt to access contract field
+error: No field `bar` exists on this contract
   ┌─ fixtures/compile_errors/invalid_contract_field.fe:5:10
   │
 5 │     self.bar
-  │          ^^^ Not a valid contract field
+  │          ^^^ undefined field
 
 
