@@ -1,5 +1,6 @@
 //! Tests for contracts that should cause compile errors
 
+use fe_analyzer::errors::AnalyzerError;
 use fe_common::diagnostics::{diagnostics_string, print_diagnostics};
 use fe_common::files::FileStore;
 use insta::assert_snapshot;
@@ -16,13 +17,9 @@ fn error_string(path: &str, src: &str) -> String {
             panic!("parsing failed");
         }
     };
-    let err = fe_analyzer::analyze(&fe_module, id).unwrap_err();
+    let AnalyzerError(diagnostics) = fe_analyzer::analyze(&fe_module, id).unwrap_err();
 
-    let mut errstr = diagnostics_string(&err.diagnostics, &files);
-    if let Some(classic) = err.classic {
-        errstr.push_str(&format!("\n\n{}", classic.format_user(&src)));
-    }
-    errstr
+    diagnostics_string(&diagnostics, &files)
 }
 
 macro_rules! assert_snapshot_wasm {
@@ -152,7 +149,12 @@ test_stmt! { unexpected_return, "return 1" }
 test_file! { bad_tuple_attr1 }
 test_file! { bad_tuple_attr2 }
 test_file! { call_builtin_object }
+test_file! { call_address_with_wrong_type }
+test_file! { call_create_with_wrong_type }
+test_file! { call_create2_with_wrong_type }
 test_file! { call_event_with_wrong_types }
+test_file! { call_keccak_without_parameter }
+test_file! { call_keccak_with_wrong_type }
 test_file! { call_undefined_function_on_external_contract }
 test_file! { call_undefined_function_on_memory_struct }
 test_file! { call_undefined_function_on_storage_struct }
@@ -178,6 +180,7 @@ test_file! { invalid_compiler_version }
 test_file! { invalid_block_field }
 test_file! { invalid_chain_field }
 test_file! { invalid_contract_field }
+test_file! { invalid_generic_string }
 test_file! { invalid_msg_field }
 test_file! { invalid_struct_field }
 test_file! { invalid_tuple_field }

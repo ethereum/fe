@@ -126,14 +126,8 @@ fn analysis(fixture: &str) {
     };
     match fe_analyzer::analyze(&fe_module, id) {
         Ok(context) => assert_snapshot!(build_snapshot(fixture, &src, &context)),
-        Err(AnalyzerError {
-            diagnostics,
-            classic,
-        }) => {
+        Err(AnalyzerError(diagnostics)) => {
             print_diagnostics(&diagnostics, &files);
-            if let Some(err) = classic {
-                eprintln!("Analyzer error: {}", err.format_user(&src));
-            }
             panic!("analysis failed");
         }
     }

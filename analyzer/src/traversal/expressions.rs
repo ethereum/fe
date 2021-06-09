@@ -1,15 +1,14 @@
-use crate::builtins;
 use crate::context::{CallType, Context, ExpressionAttributes, Location};
-use crate::errors::SemanticError;
+use crate::errors::{FatalError, IndexingError, TypeError};
 use crate::namespace::scopes::{BlockScope, ContractFunctionDef, Shared};
 use crate::namespace::types::{
     Array, Base, Contract, FeString, FixedSize, Integer, Struct, Tuple, Type, TypeDowncast, U256,
 };
 use crate::operations;
-use crate::traversal::utils::types_to_fixed_sizes;
+use crate::traversal::utils::{add_bin_operations_errors, types_to_fixed_sizes};
 
-use builtins::{
-    BlockField, ChainField, ContractTypeMethod, GlobalMethod, MsgField, Object, TxField,
+use crate::builtins::{
+    BlockField, ChainField, ContractTypeMethod, GlobalMethod, MsgField, Object, SelfField, TxField,
     ValueMethod,
 };
 use fe_common::numeric;
@@ -19,7 +18,7 @@ use fe_parser::ast as fe;
 use fe_parser::ast::UnaryOperator;
 use fe_parser::node::Node;
 use num_bigint::BigInt;
-use std::convert::TryInto;
+use std::convert::TryFrom;
 use std::rc::Rc;
 use std::str::FromStr;
 use vec1::Vec1;
@@ -30,7 +29,7 @@ pub fn expr(
     context: &mut Context,
     exp: &Node<fe::Expr>,
     expected_type: Option<&Type>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     let attributes = match &exp.kind {
         fe::Expr::Name(_) => expr_name(scope, context, exp, expected_type),
         fe::Expr::Num(_) => Ok(expr_num(context, exp, expected_type.as_int())),
@@ -49,8 +48,7 @@ pub fn expr(
         fe::Expr::Tuple { .. } => expr_tuple(scope, context, exp, expected_type.as_tuple()),
         fe::Expr::Str(_) => expr_str(scope, exp),
         fe::Expr::Unit => Ok(ExpressionAttributes::new(Type::unit(), Location::Value)),
-    }
-    .map_err(|error| error.with_context(exp.span))?;
+    }?;
 
     context.add_expression(exp, attributes.clone());
 
@@ -62,7 +60,7 @@ pub fn expr_list(
     context: &mut Context,
     elts: &[Node<fe::Expr>],
     expected_type: Option<&Array>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     if elts.is_empty() {
         return Ok(ExpressionAttributes {
             typ: Type::Array(Array {
@@ -100,7 +98,7 @@ pub fn expr_list(
                         first_attr.typ
                     ),
                 );
-                return Err(SemanticError::fatal());
+                return Err(FatalError);
             }
         };
 
@@ -150,7 +148,7 @@ pub fn value_expr(
     context: &mut Context,
     exp: &Node<fe::Expr>,
     expected_type: Option<&Type>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     let original_attributes = expr(Rc::clone(&scope), context, exp, expected_type)?;
     let attributes = original_attributes.clone().into_loaded().map_err(|_| {
         context.fancy_error(
@@ -161,7 +159,7 @@ pub fn value_expr(
                 original_attributes.typ
             )],
         );
-        SemanticError::fatal()
+        FatalError
     })?;
 
     context.update_expression(exp, attributes.clone());
@@ -177,7 +175,7 @@ pub fn assignable_expr(
     context: &mut Context,
     exp: &Node<fe::Expr>,
     expected_type: Option<&Type>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     use Type::*;
 
     let mut attributes = expr(Rc::clone(&scope), context, exp, expected_type)?;
@@ -205,7 +203,7 @@ pub fn assignable_expr(
                 exp.span,
                 "this type can only be used in a contract field",
             );
-            return Err(SemanticError::fatal());
+            return Err(FatalError);
         }
     };
     context.update_expression(exp, attributes.clone());
@@ -218,7 +216,7 @@ fn expr_tuple(
     context: &mut Context,
     exp: &Node<fe::Expr>,
     expected_type: Option<&Tuple>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Tuple { elts } = &exp.kind {
         let types = elts
             .iter()
@@ -231,8 +229,21 @@ fn expr_tuple(
                     .map(|attributes| attributes.typ)
             })
             .collect::<Result<Vec<_>, _>>()?;
+
+        let tuple_types = match types_to_fixed_sizes(&types) {
+            Err(TypeError) => {
+                context.error(
+                    "variable size types can not be part of tuples",
+                    exp.span,
+                    "",
+                );
+                return Err(FatalError);
+            }
+            Ok(val) => val,
+        };
+
         let tuple = Tuple {
-            items: Vec1::try_from_vec(types_to_fixed_sizes(&types)?).expect("tuple is empty"),
+            items: Vec1::try_from_vec(tuple_types).expect("tuple is empty"),
         };
 
         scope
@@ -256,7 +267,7 @@ fn expr_name(
     context: &mut Context,
     exp: &Node<fe::Expr>,
     expected_type: Option<&Type>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Name(name) = &exp.kind {
         return match scope.borrow().get_variable_def(name) {
             Some(FixedSize::Base(base)) => {
@@ -289,11 +300,25 @@ fn expr_name(
                     "undefined",
                 );
                 match expected_type {
-                    Some(typ) => Ok(ExpressionAttributes::new(
-                        typ.clone(),
-                        Location::assign_location(&typ.clone().try_into()?),
-                    )),
-                    None => Err(SemanticError::fatal()),
+                    Some(typ) => {
+                        let fixed_size = match FixedSize::try_from(typ.clone()) {
+                            Err(TypeError) => {
+                                context.error(
+                                    format!("Expected type with fixed size but got `{}`", typ),
+                                    exp.span,
+                                    "wrong type",
+                                );
+                                return Err(FatalError);
+                            }
+                            Ok(val) => val,
+                        };
+
+                        Ok(ExpressionAttributes::new(
+                            typ.clone(),
+                            Location::assign_location(&fixed_size),
+                        ))
+                    }
+                    None => Err(FatalError),
                 }
             }
         };
@@ -305,13 +330,13 @@ fn expr_name(
 fn expr_str(
     scope: Shared<BlockScope>,
     exp: &Node<fe::Expr>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Str(string) = &exp.kind {
         scope
             .borrow()
             .contract_scope()
             .borrow_mut()
-            .add_string(&string)?;
+            .add_string(&string);
 
         return Ok(ExpressionAttributes::new(
             Type::String(FeString {
@@ -324,7 +349,7 @@ fn expr_str(
     unreachable!()
 }
 
-fn expr_bool(exp: &Node<fe::Expr>) -> Result<ExpressionAttributes, SemanticError> {
+fn expr_bool(exp: &Node<fe::Expr>) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Bool(_) = &exp.kind {
         return Ok(ExpressionAttributes::new(
             Type::Base(Base::Bool),
@@ -354,13 +379,36 @@ fn expr_subscript(
     scope: Shared<BlockScope>,
     context: &mut Context,
     exp: &Node<fe::Expr>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Subscript { value, index } = &exp.kind {
         let value_attributes = expr(Rc::clone(&scope), context, value, None)?;
         let index_attributes = value_expr(scope, context, index, None)?;
 
         // performs type checking
-        let typ = operations::index(value_attributes.typ.clone(), index_attributes.typ)?;
+        let typ =
+            match operations::index(value_attributes.typ.clone(), index_attributes.typ.clone()) {
+                Err(IndexingError::NotSubscriptable) => {
+                    context.fancy_error(
+                        format!("`{}` type is not subscriptable", value_attributes.typ),
+                        vec![Label::primary(value.span, "unsubscriptable type")],
+                        vec!["Note: Only arrays and maps are subscriptable".into()],
+                    );
+                    return Err(FatalError);
+                }
+                Err(IndexingError::WrongIndexType) => {
+                    context.fancy_error(
+                        format!(
+                            "can not subscript {} with type {}",
+                            value_attributes.typ, index_attributes.typ
+                        ),
+                        vec![Label::primary(index.span, "wrong index type")],
+                        vec![],
+                    );
+                    return Err(FatalError);
+                }
+                Ok(val) => val,
+            };
+
         let location = match value_attributes.location {
             Location::Storage { .. } => Location::Storage { nonce: None },
             Location::Memory => Location::Memory,
@@ -378,7 +426,7 @@ fn expr_attribute(
     scope: Shared<BlockScope>,
     context: &mut Context,
     exp: &Node<fe::Expr>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Attribute { value, attr } = &exp.kind {
         let base_type = |typ| Ok(ExpressionAttributes::new(Type::Base(typ), Location::Value));
         let array_type = |array| {
@@ -387,7 +435,7 @@ fn expr_attribute(
                 Location::Value,
             ))
         };
-        let fatal_err = Err(SemanticError::fatal());
+        let fatal_err = Err(FatalError);
 
         // If the value is a name, check if it is a builtin object and attribute.
         if let fe::Expr::Name(name) = &value.kind {
@@ -551,8 +599,8 @@ fn expr_attribute_self(
     scope: Shared<BlockScope>,
     context: &mut Context,
     attr: &Node<String>,
-) -> Result<ExpressionAttributes, SemanticError> {
-    if let Ok(builtins::SelfField::Address) = builtins::SelfField::from_str(&attr.kind) {
+) -> Result<ExpressionAttributes, FatalError> {
+    if let Ok(SelfField::Address) = SelfField::from_str(&attr.kind) {
         return Ok(ExpressionAttributes::new(
             Type::Base(Base::Address),
             Location::Value,
@@ -572,7 +620,7 @@ fn expr_attribute_self(
                 vec![Label::primary(attr.span, "undefined field")],
                 vec![],
             );
-            Err(SemanticError::fatal())
+            Err(FatalError)
         }
     }
 }
@@ -582,16 +630,21 @@ fn expr_bin_operation(
     context: &mut Context,
     exp: &Node<fe::Expr>,
     expected_type: Option<Integer>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::BinOperation { left, op, right } = &exp.kind {
         let expected = expected_type.map(Type::int);
         let left_attributes = value_expr(Rc::clone(&scope), context, left, expected.as_ref())?;
         let right_attributes = value_expr(Rc::clone(&scope), context, right, expected.as_ref())?;
 
-        return Ok(ExpressionAttributes::new(
-            operations::bin(&left_attributes.typ, &op.kind, &right_attributes.typ)?,
-            Location::Value,
-        ));
+        let typ = match operations::bin(&left_attributes.typ, &op.kind, &right_attributes.typ) {
+            Err(err) => {
+                add_bin_operations_errors(context, left, right, err);
+                return Err(FatalError);
+            }
+            Ok(val) => val,
+        };
+
+        return Ok(ExpressionAttributes::new(typ, Location::Value));
     }
 
     unreachable!()
@@ -602,7 +655,7 @@ fn expr_unary_operation(
     context: &mut Context,
     exp: &Node<fe::Expr>,
     expected_type: Option<&Type>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::UnaryOperation { op, operand } = &exp.kind {
         let operand_attributes = value_expr(Rc::clone(&scope), context, operand, None)?;
 
@@ -660,7 +713,7 @@ fn expr_call(
     scope: Shared<BlockScope>,
     context: &mut Context,
     exp: &Node<fe::Expr>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Call {
         func,
         generic_args,
@@ -693,21 +746,36 @@ fn expr_call_builtin_function(
     typ: GlobalMethod,
     name_span: Span,
     args: &Node<Vec<Node<fe::CallArg>>>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     let argument_attributes = expr_call_args(Rc::clone(&scope), context, args)?;
     match typ {
         GlobalMethod::Keccak256 => {
             validate_arg_count(context, typ.into(), name_span, args, 1);
             validate_arg_labels(context, args, &[None]);
 
+            // We only need to return with a FatalError here because the error is already reported
+            // as part of a different check on function arguments.
+            let arg_typ = argument_attributes
+                .first()
+                .map(|attr| &attr.typ)
+                .ok_or(FatalError)?;
+
             if !matches!(
-                argument_attributes.first().map(|attr| &attr.typ),
-                Some(Type::Array(Array {
+                arg_typ,
+                Type::Array(Array {
                     inner: Base::Byte,
                     ..
-                }))
+                })
             ) {
-                return Err(SemanticError::type_error());
+                context.fancy_error(
+                    format!(
+                        "`{}` can not be used as a parameter to `keccak(..)`",
+                        arg_typ
+                    ),
+                    vec![Label::primary(args.span, "wrong type")],
+                    vec!["Note: keccak(..) expects a byte array as parameter".into()],
+                );
+                return Err(FatalError);
             }
             Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value))
         }
@@ -821,7 +889,7 @@ pub fn validate_arg_types(
     name: &str,
     args: &Node<Vec<Node<fe::CallArg>>>,
     params: &[(String, FixedSize)],
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     for ((label, param_type), arg) in params.iter().zip(args.kind.iter()) {
         let val_attrs = assignable_expr(
             Rc::clone(&scope),
@@ -848,7 +916,7 @@ pub fn validate_named_args(
     name_span: Span,
     args: &Node<Vec<Node<fe::CallArg>>>,
     params: &[(String, FixedSize)],
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     validate_arg_count(context, name, name_span, args, params.len());
     validate_arg_labels(
         context,
@@ -868,7 +936,7 @@ fn expr_call_struct_constructor(
     name_span: Span,
     typ: Struct,
     args: &Node<Vec<Node<fe::CallArg>>>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     validate_named_args(
         Rc::clone(&scope),
         context,
@@ -890,7 +958,7 @@ fn expr_call_type_constructor(
     name_span: Span,
     typ: Type,
     args: &Node<Vec<Node<fe::CallArg>>>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     if let Type::Struct(struct_type) = typ {
         return expr_call_struct_constructor(scope, context, name_span, struct_type, args);
     }
@@ -931,7 +999,14 @@ fn expr_call_type_constructor(
                     Type::Contract(_)
                     | Type::Base(Base::Numeric(_))
                     | Type::Base(Base::Address) => {}
-                    _ => return Err(SemanticError::type_error()),
+                    _ => {
+                        context.fancy_error(
+                            format!("`{}` can not be used as a parameter to `address(..)`", arg_attr.typ),
+                            vec![Label::primary(arg.span, "wrong type")],
+                            vec!["Note: address(..) expects a parameter of a contract type, numeric or address".into()],
+                        );
+                        return Err(FatalError);
+                    }
                 }
             };
             Ok(ExpressionAttributes::new(
@@ -939,7 +1014,7 @@ fn expr_call_type_constructor(
                 Location::Value,
             ))
         }
-        _ => Err(SemanticError::fatal()),
+        _ => Err(FatalError),
     }
 }
 
@@ -947,7 +1022,7 @@ fn expr_call_args(
     scope: Shared<BlockScope>,
     context: &mut Context,
     args: &Node<Vec<Node<fe::CallArg>>>,
-) -> Result<Vec<ExpressionAttributes>, SemanticError> {
+) -> Result<Vec<ExpressionAttributes>, FatalError> {
     args.kind
         .iter()
         .map(|arg| assignable_expr(Rc::clone(&scope), context, &arg.kind.value, None))
@@ -960,7 +1035,7 @@ fn expr_call_self_attribute(
     func_name: &str,
     name_span: Span,
     args: &Node<Vec<Node<fe::CallArg>>>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     let called_func = scope
         .borrow()
         .contract_scope()
@@ -990,7 +1065,7 @@ fn expr_call_self_attribute(
             vec![Label::primary(name_span, "undefined function")],
             vec![],
         );
-        Err(SemanticError::fatal())
+        Err(FatalError)
     }
 }
 
@@ -999,7 +1074,7 @@ fn expr_call_value_attribute(
     context: &mut Context,
     func: &Node<fe::Expr>,
     args: &Node<Vec<Node<fe::CallArg>>>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Attribute { value, attr } = &func.kind {
         let value_attributes = expr(Rc::clone(&scope), context, &value, None)?;
 
@@ -1015,7 +1090,7 @@ fn expr_call_value_attribute(
                         value_attributes.typ
                     )],
                 );
-                SemanticError::fatal()
+                FatalError
             })?;
 
             context.update_expression(value, expression);
@@ -1042,7 +1117,7 @@ fn expr_call_value_attribute(
                     vec![Label::primary(attr.span, "undefined function")],
                     vec![],
                 );
-                return Err(SemanticError::fatal());
+                return Err(FatalError);
             }
             Ok(ValueMethod::Clone) => {
                 match value_attributes.location {
@@ -1173,7 +1248,7 @@ fn expr_call_type_attribute(
     func_name: &str,
     name_span: Span,
     args: &Node<Vec<Node<fe::CallArg>>>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     let arg_attributes = expr_call_args(Rc::clone(&scope), context, args)?;
     let contract_name = scope.borrow().contract_scope().borrow().name.clone();
 
@@ -1207,7 +1282,12 @@ fn expr_call_type_attribute(
                     Location::Value,
                 ))
             } else {
-                Err(SemanticError::type_error())
+                context.fancy_error(
+                    "function `create2` expects numeric parameters",
+                    vec![Label::primary(args.span, "invalid argument")],
+                    vec![],
+                );
+                Err(FatalError)
             }
         }
         (Type::Contract(contract), Ok(ContractTypeMethod::Create)) => {
@@ -1229,7 +1309,12 @@ fn expr_call_type_attribute(
                     Location::Value,
                 ))
             } else {
-                Err(SemanticError::type_error())
+                context.fancy_error(
+                    "function `create` expects numeric parameter",
+                    vec![Label::primary(args.span, "invalid argument")],
+                    vec![],
+                );
+                Err(FatalError)
             }
         }
         _ => {
@@ -1238,7 +1323,7 @@ fn expr_call_type_attribute(
                 vec![Label::primary(name_span, "undefined function")],
                 vec![],
             );
-            Err(SemanticError::fatal())
+            Err(FatalError)
         }
     }
 }
@@ -1250,7 +1335,7 @@ fn expr_call_contract_attribute(
     func_name: &str,
     name_span: Span,
     args: &Node<Vec<Node<fe::CallArg>>>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     if let Some(function) = contract
         .functions
         .iter()
@@ -1280,7 +1365,7 @@ fn expr_call_contract_attribute(
             vec![Label::primary(name_span, "undefined function")],
             vec![],
         );
-        Err(SemanticError::fatal())
+        Err(FatalError)
     }
 }
 
@@ -1289,7 +1374,7 @@ fn expr_call_type(
     context: &mut Context,
     func: &Node<fe::Expr>,
     generic_args: Option<&Node<Vec<fe::GenericArg>>>,
-) -> Result<CallType, SemanticError> {
+) -> Result<CallType, FatalError> {
     let call_type = match &func.kind {
         fe::Expr::Name(name) => expr_name_call_type(scope, context, name, func.span, generic_args),
         fe::Expr::Attribute { .. } => expr_attribute_call_type(scope, context, func),
@@ -1303,7 +1388,7 @@ fn expr_call_type(
                 )],
                 vec![],
             );
-            Err(SemanticError::fatal())
+            Err(FatalError)
         }
     }?;
 
@@ -1317,7 +1402,7 @@ fn expr_name_call_type(
     name: &str,
     name_span: Span,
     generic_args: Option<&Node<Vec<fe::GenericArg>>>,
-) -> Result<CallType, SemanticError> {
+) -> Result<CallType, FatalError> {
     match (name, generic_args) {
         ("keccak256", _) => Ok(CallType::BuiltinFunction {
             func: GlobalMethod::Keccak256,
@@ -1365,14 +1450,14 @@ fn expr_name_call_type(
             [fe::GenericArg::Int(len)] => Ok(CallType::TypeConstructor {
                 typ: Type::String(FeString { max_size: len.kind }),
             }),
-            _ => Err(SemanticError::type_error()),
+            _ => Err(FatalError),
         },
         (value, _) => {
             if let Some(typ) = scope.borrow().get_module_type_def(value) {
                 Ok(CallType::TypeConstructor { typ })
             } else {
                 context.error("undefined function", name_span, "undefined");
-                Err(SemanticError::fatal())
+                Err(FatalError)
             }
         }
     }
@@ -1382,7 +1467,7 @@ fn expr_attribute_call_type(
     scope: Shared<BlockScope>,
     context: &mut Context,
     exp: &Node<fe::Expr>,
-) -> Result<CallType, SemanticError> {
+) -> Result<CallType, FatalError> {
     if let fe::Expr::Attribute { value, attr } = &exp.kind {
         if let fe::Expr::Name(name) = &value.kind {
             match Object::from_str(&name) {
@@ -1393,7 +1478,7 @@ fn expr_attribute_call_type(
                         vec![],
                     );
 
-                    return Err(SemanticError::fatal());
+                    return Err(FatalError);
                 }
                 Ok(Object::Self_) => {
                     return Ok(CallType::SelfAttribute {
@@ -1466,7 +1551,7 @@ fn expr_comp_operation(
     scope: Shared<BlockScope>,
     context: &mut Context,
     exp: &Node<fe::Expr>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::CompOperation { left, op, right } = &exp.kind {
         // comparison operands should be moved to the stack
         let left_attr = value_expr(Rc::clone(&scope), context, left, None)?;
@@ -1500,7 +1585,7 @@ fn expr_ternary(
     scope: Shared<BlockScope>,
     context: &mut Context,
     exp: &Node<fe::Expr>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Ternary {
         if_expr,
         test,
@@ -1558,7 +1643,7 @@ fn expr_bool_operation(
     scope: Shared<BlockScope>,
     context: &mut Context,
     exp: &Node<fe::Expr>,
-) -> Result<ExpressionAttributes, SemanticError> {
+) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::BoolOperation { left, op, right } = &exp.kind {
         for operand in &[left, right] {
             let attributes = value_expr(Rc::clone(&scope), context, operand, None)?;

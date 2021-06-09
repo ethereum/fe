@@ -3,7 +3,10 @@ source: tests/src/compile_errors.rs
 expression: "error_string(&path, &src)"
 
 ---
+error: The types for this operation must be equal
+  ┌─ fixtures/compile_errors/return_addition_with_mixed_types.fe:3:16
+  │
+3 │         return x + y
+  │                ^   ^
 
 
-TypeError on line 3
-return [31mx + y[0m

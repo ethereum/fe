@@ -1,4 +1,4 @@
-use crate::errors::{AlreadyDefined, SemanticError};
+use crate::errors::{AlreadyDefined, FatalError};
 use crate::namespace::scopes::{ModuleScope, Scope, Shared};
 use crate::traversal::{contracts, structs, types};
 use crate::Context;
@@ -9,7 +9,7 @@ use semver::{Version, VersionReq};
 use std::rc::Rc;
 
 /// Gather context information for a module and check for type errors.
-pub fn module(context: &mut Context, module: &fe::Module) -> Result<(), SemanticError> {
+pub fn module(context: &mut Context, module: &fe::Module) -> Result<(), FatalError> {
     let scope = ModuleScope::new();
 
     let mut contracts = vec![];
@@ -52,7 +52,7 @@ fn type_def(
     context: &mut Context,
     scope: Shared<ModuleScope>,
     stmt: &Node<fe::ModuleStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::ModuleStmt::TypeDef { name, typ } = &stmt.kind {
         let typ = types::type_desc(&Scope::Module(Rc::clone(&scope)), context, &typ)?;
 
