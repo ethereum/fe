@@ -1,4 +1,4 @@
-use crate::errors::SemanticError;
+use crate::errors::{BinaryOperationError, IndexingError};
 use crate::namespace::types::{Array, Base, Map, Type, U256};
 
 use fe_parser::ast as fe;
@@ -6,36 +6,36 @@ use fe_parser::ast as fe;
 /// Finds the type of an index operation and checks types.
 ///
 /// e.g. `foo[42]`
-pub fn index(value: Type, index: Type) -> Result<Type, SemanticError> {
+pub fn index(value: Type, index: Type) -> Result<Type, IndexingError> {
     match value {
         Type::Array(array) => index_array(array, index),
         Type::Map(map) => index_map(map, index),
-        Type::Base(_) => Err(SemanticError::not_subscriptable()),
-        Type::Tuple(_) => Err(SemanticError::not_subscriptable()),
-        Type::String(_) => Err(SemanticError::not_subscriptable()),
-        Type::Contract(_) => Err(SemanticError::not_subscriptable()),
-        Type::Struct(_) => Err(SemanticError::not_subscriptable()),
+        Type::Base(_) => Err(IndexingError::NotSubscriptable),
+        Type::Tuple(_) => Err(IndexingError::NotSubscriptable),
+        Type::String(_) => Err(IndexingError::NotSubscriptable),
+        Type::Contract(_) => Err(IndexingError::NotSubscriptable),
+        Type::Struct(_) => Err(IndexingError::NotSubscriptable),
     }
 }
 
-fn index_array(array: Array, index: Type) -> Result<Type, SemanticError> {
+fn index_array(array: Array, index: Type) -> Result<Type, IndexingError> {
     if index != Type::Base(U256) {
-        return Err(SemanticError::type_error());
+        return Err(IndexingError::WrongIndexType);
     }
 
     Ok(Type::Base(array.inner))
 }
 
-fn index_map(map: Map, index: Type) -> Result<Type, SemanticError> {
+fn index_map(map: Map, index: Type) -> Result<Type, IndexingError> {
     if index != Type::Base(map.key) {
-        return Err(SemanticError::type_error());
+        return Err(IndexingError::WrongIndexType);
     }
 
     Ok(*map.value)
 }
 
 /// Finds the type of a binary operation and checks types.
-pub fn bin(left: &Type, op: &fe::BinOperator, right: &Type) -> Result<Type, SemanticError> {
+pub fn bin(left: &Type, op: &fe::BinOperator, right: &Type) -> Result<Type, BinaryOperationError> {
     match op {
         fe::BinOperator::Add
         | fe::BinOperator::Sub
@@ -50,7 +50,7 @@ pub fn bin(left: &Type, op: &fe::BinOperator, right: &Type) -> Result<Type, Sema
     }
 }
 
-fn bin_arithmetic(left: &Type, right: &Type) -> Result<Type, SemanticError> {
+fn bin_arithmetic(left: &Type, right: &Type) -> Result<Type, BinaryOperationError> {
     if let (Type::Base(Base::Numeric(left)), Type::Base(Base::Numeric(right))) = (left, right) {
         if left == right {
             // For now, we require that the types be numeric and equal. In the future, we
@@ -64,14 +64,14 @@ fn bin_arithmetic(left: &Type, right: &Type) -> Result<Type, SemanticError> {
             Ok(Type::Base(Base::Numeric(left.to_owned())))
         } else {
             // The types are not equal. Again, there is no need to be this strict.
-            Err(SemanticError::type_error())
+            Err(BinaryOperationError::TypesNotEqual)
         }
     } else {
-        Err(SemanticError::type_error())
+        Err(BinaryOperationError::TypesNotNumeric)
     }
 }
 
-fn bin_pow(left: &Type, right: &Type) -> Result<Type, SemanticError> {
+fn bin_pow(left: &Type, right: &Type) -> Result<Type, BinaryOperationError> {
     if let (Type::Base(Base::Numeric(left)), Type::Base(Base::Numeric(right))) = (left, right) {
         // The exponent is not allowed to be a signed integer. To allow calculations
         // such as -2 ** 3 we allow the right hand side to be an unsigned integer
@@ -80,46 +80,46 @@ fn bin_pow(left: &Type, right: &Type) -> Result<Type, SemanticError> {
         // but not i16 ** u32). The type of the result will be the type of the left
         // side and under/overflow checks are based on that type.
         if right.is_signed() {
-            Err(SemanticError::signed_exponent_not_allowed())
+            Err(BinaryOperationError::RightIsSigned)
         } else if left.can_hold(&right) {
             Ok(Type::Base(Base::Numeric(left.to_owned())))
         } else {
-            Err(SemanticError::type_error())
+            Err(BinaryOperationError::RightTooLarge)
         }
     } else {
-        Err(SemanticError::type_error())
+        Err(BinaryOperationError::TypesNotNumeric)
     }
 }
 
-fn bin_bit_shift(left: &Type, right: &Type) -> Result<Type, SemanticError> {
+fn bin_bit_shift(left: &Type, right: &Type) -> Result<Type, BinaryOperationError> {
     if let (Type::Base(Base::Numeric(left)), Type::Base(Base::Numeric(right))) = (left, right) {
         // The right side must be unsigned.
         if !right.is_signed() {
             Ok(Type::Base(Base::Numeric(left.to_owned())))
         } else {
-            Err(SemanticError::type_error())
+            Err(BinaryOperationError::RightIsSigned)
         }
     } else {
-        Err(SemanticError::type_error())
+        Err(BinaryOperationError::TypesNotNumeric)
     }
 }
 
-fn bin_bit(left: &Type, right: &Type) -> Result<Type, SemanticError> {
+fn bin_bit(left: &Type, right: &Type) -> Result<Type, BinaryOperationError> {
     if let (Type::Base(Base::Numeric(left)), Type::Base(Base::Numeric(right))) = (left, right) {
         // We require that both numbers be unsigned and equal in size.
         if !left.is_signed() && left == right {
             Ok(Type::Base(Base::Numeric(left.to_owned())))
         } else {
-            Err(SemanticError::type_error())
+            Err(BinaryOperationError::NotEqualAndUnsigned)
         }
     } else {
-        Err(SemanticError::type_error())
+        Err(BinaryOperationError::TypesNotNumeric)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::errors::ErrorKind;
+    use crate::errors::IndexingError;
     use crate::namespace::types::{Array, Base, Map, Type, U256};
     use crate::operations;
     use rstest::rstest;
@@ -159,6 +159,6 @@ mod tests {
     )]
     fn type_error_index(value: Type, index: Type) {
         let actual = operations::index(value, index).expect_err("didn't fail");
-        assert_eq!(actual.kind, ErrorKind::TypeError)
+        assert_eq!(actual, IndexingError::WrongIndexType)
     }
 }

@@ -1,8 +1,9 @@
 use crate::context::{Context, ExpressionAttributes, FunctionAttributes, Label, Location};
-use crate::errors::{AlreadyDefined, SemanticError};
+use crate::errors::{AlreadyDefined, FatalError};
 use crate::namespace::scopes::{BlockScope, BlockScopeType, ContractScope, Scope, Shared};
 use crate::namespace::types::{Base, FixedSize, Type};
 use crate::traversal::{assignments, declarations, expressions, types};
+
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use std::rc::Rc;
@@ -13,7 +14,7 @@ pub fn func_def(
     contract_scope: Shared<ContractScope>,
     context: &mut Context,
     def: &Node<fe::ContractStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::ContractStmt::FuncDef {
         is_pub,
         name,
@@ -115,7 +116,7 @@ pub fn func_body(
     contract_scope: Shared<ContractScope>,
     context: &mut Context,
     def: &Node<fe::ContractStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::ContractStmt::FuncDef {
         is_pub: _,
         name,
@@ -165,7 +166,7 @@ fn traverse_statements(
     scope: Shared<BlockScope>,
     context: &mut Context,
     body: &[Node<fe::FuncStmt>],
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     for stmt in body.iter() {
         func_stmt(Rc::clone(&scope), context, stmt)?
     }
@@ -199,7 +200,7 @@ fn func_def_arg(
     scope: Shared<BlockScope>,
     context: &mut Context,
     arg: &Node<fe::FuncDefArg>,
-) -> Result<(String, FixedSize), SemanticError> {
+) -> Result<(String, FixedSize), FatalError> {
     let fe::FuncDefArg { name, typ } = &arg.kind;
     let typ = types::type_desc_fixed_size(&Scope::Block(Rc::clone(&scope)), context, &typ)?;
 
@@ -228,7 +229,7 @@ fn func_stmt(
     scope: Shared<BlockScope>,
     context: &mut Context,
     stmt: &Node<fe::FuncStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     use fe::FuncStmt::*;
     match &stmt.kind {
         Return { .. } => func_return(scope, context, stmt),
@@ -248,14 +249,13 @@ fn func_stmt(
             Ok(())
         }
     }
-    .map_err(|error| error.with_context(stmt.span))
 }
 
 fn for_loop(
     scope: Shared<BlockScope>,
     context: &mut Context,
     stmt: &Node<fe::FuncStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     match &stmt.kind {
         fe::FuncStmt::For { target, iter, body } => {
             // Create the for loop body scope.
@@ -272,7 +272,7 @@ fn for_loop(
                     "array",
                     iter_type,
                 );
-                return Err(SemanticError::fatal());
+                return Err(FatalError);
             };
             if let Err(AlreadyDefined) = body_scope.borrow_mut().add_var(&target.kind, target_type)
             {
@@ -320,7 +320,7 @@ fn if_statement(
     scope: Shared<BlockScope>,
     context: &mut Context,
     stmt: &Node<fe::FuncStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     match &stmt.kind {
         fe::FuncStmt::If {
             test,
@@ -353,7 +353,7 @@ fn while_loop(
     scope: Shared<BlockScope>,
     context: &mut Context,
     stmt: &Node<fe::FuncStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     match &stmt.kind {
         fe::FuncStmt::While { test, body } => {
             let test_type = expressions::expr(Rc::clone(&scope), context, &test, None)?.typ;
@@ -378,7 +378,7 @@ fn expr(
     scope: Shared<BlockScope>,
     context: &mut Context,
     stmt: &Node<fe::FuncStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::FuncStmt::Expr { value } = &stmt.kind {
         let _attributes = expressions::expr(scope, context, value, None)?;
     }
@@ -390,7 +390,7 @@ fn emit(
     scope: Shared<BlockScope>,
     context: &mut Context,
     stmt: &Node<fe::FuncStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::FuncStmt::Emit { name, args } = &stmt.kind {
         if let Some(event) = scope.borrow().contract_event_def(&name.kind) {
             context.add_emit(stmt, event.clone());
@@ -420,7 +420,7 @@ fn assert(
     scope: Shared<BlockScope>,
     context: &mut Context,
     stmt: &Node<fe::FuncStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::FuncStmt::Assert { test, msg } = &stmt.kind {
         let test_type = expressions::expr(Rc::clone(&scope), context, &test, None)?.typ;
         if test_type != Type::Base(Base::Bool) {
@@ -453,7 +453,7 @@ fn func_return(
     scope: Shared<BlockScope>,
     context: &mut Context,
     stmt: &Node<fe::FuncStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::FuncStmt::Return { value } = &stmt.kind {
         let host_func_def = scope
             .borrow()
@@ -470,7 +470,14 @@ fn func_return(
         };
 
         if attributes.typ != expected_type {
-            return Err(SemanticError::type_error());
+            context.error(
+                format!(
+                    "expected function to return `{}` but was `{}`",
+                    expected_type, attributes.typ
+                ),
+                stmt.span,
+                "",
+            );
         }
 
         return Ok(());

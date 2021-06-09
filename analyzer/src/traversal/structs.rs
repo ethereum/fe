@@ -2,7 +2,7 @@ use fe_common::diagnostics::Label;
 use fe_parser::ast as fe;
 use fe_parser::{ast::Field, node::Node};
 
-use crate::errors::{AlreadyDefined, SemanticError};
+use crate::errors::{AlreadyDefined, FatalError};
 use crate::namespace::scopes::{ModuleScope, Scope, Shared};
 use crate::namespace::types::{FixedSize, Struct, Type};
 use crate::traversal::types::type_desc;
@@ -13,7 +13,7 @@ pub fn struct_def(
     context: &mut Context,
     module_scope: Shared<ModuleScope>,
     stmt: &Node<fe::ModuleStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::ModuleStmt::StructDef { name, fields } = &stmt.kind {
         let mut val = Struct::new(&name.kind);
         for field in fields {

@@ -1,4 +1,4 @@
-use crate::errors::{AlreadyDefined, SemanticError};
+use crate::errors::{AlreadyDefined, TypeError};
 use std::convert::TryFrom;
 use std::fmt;
 
@@ -380,16 +380,16 @@ impl From<Base> for FixedSize {
 }
 
 impl TryFrom<Type> for FixedSize {
-    type Error = SemanticError;
+    type Error = TypeError;
 
-    fn try_from(value: Type) -> Result<Self, SemanticError> {
+    fn try_from(value: Type) -> Result<Self, TypeError> {
         match value {
             Type::Array(array) => Ok(FixedSize::Array(array)),
             Type::Base(base) => Ok(FixedSize::Base(base)),
             Type::Tuple(tuple) => Ok(FixedSize::Tuple(tuple)),
             Type::String(string) => Ok(FixedSize::String(string)),
             Type::Struct(val) => Ok(FixedSize::Struct(val)),
-            Type::Map(_) => Err(SemanticError::type_error()),
+            Type::Map(_) => Err(TypeError),
             Type::Contract(contract) => Ok(FixedSize::Contract(contract)),
         }
     }

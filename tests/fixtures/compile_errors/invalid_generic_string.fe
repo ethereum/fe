@@ -1,0 +1,2 @@
+contract Foo:
+  val: String<foo>

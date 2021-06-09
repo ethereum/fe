@@ -1,0 +1,7 @@
+contract Bar:
+    pass
+
+contract Foo:
+
+    pub def foo():
+        Bar.create2(true, 1)

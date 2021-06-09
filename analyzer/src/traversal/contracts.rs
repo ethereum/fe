@@ -1,6 +1,6 @@
 use crate::constants;
 use crate::context::{Context, ContractAttributes};
-use crate::errors::{AlreadyDefined, SemanticError};
+use crate::errors::{AlreadyDefined, FatalError};
 use crate::namespace::events::EventDef;
 use crate::namespace::scopes::{ContractScope, ModuleScope, Scope, Shared};
 use crate::namespace::types::{Contract, FixedSize, Type};
@@ -17,7 +17,7 @@ pub fn contract_def(
     module_scope: Shared<ModuleScope>,
     context: &mut Context,
     stmt: &Node<fe::ModuleStmt>,
-) -> Result<Shared<ContractScope>, SemanticError> {
+) -> Result<Shared<ContractScope>, FatalError> {
     if let fe::ModuleStmt::ContractDef {
         name,
         fields: _,
@@ -38,8 +38,7 @@ pub fn contract_def(
                 fe::ContractStmt::FuncDef { .. } => {
                     functions::func_def(Rc::clone(&contract_scope), context, stmt)
                 }
-            }
-            .map_err(|error| error.with_context(stmt.span))?;
+            }?
         }
 
         let contract_attributes = ContractAttributes::from(Rc::clone(&contract_scope));
@@ -83,7 +82,7 @@ pub fn contract_body(
     contract_scope: Shared<ContractScope>,
     context: &mut Context,
     stmt: &Node<fe::ModuleStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::ModuleStmt::ContractDef { fields, body, .. } = &stmt.kind {
         for field in fields {
             contract_field(Rc::clone(&contract_scope), context, field)?;
@@ -91,8 +90,7 @@ pub fn contract_body(
 
         for stmt in body {
             if let fe::ContractStmt::FuncDef { .. } = &stmt.kind {
-                functions::func_body(Rc::clone(&contract_scope), context, stmt)
-                    .map_err(|error| error.with_context(stmt.span))?;
+                functions::func_body(Rc::clone(&contract_scope), context, stmt)?
             };
         }
 
@@ -110,7 +108,7 @@ fn contract_field(
     scope: Shared<ContractScope>,
     context: &mut Context,
     stmt: &Node<fe::Field>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     let fe::Field { name, typ, .. } = &stmt.kind;
     let typ = types::type_desc(&Scope::Contract(Rc::clone(&scope)), context, &typ)?;
 
@@ -136,7 +134,7 @@ fn event_def(
     scope: Shared<ContractScope>,
     context: &mut Context,
     stmt: &Node<fe::ContractStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::ContractStmt::EventDef { name, fields } = &stmt.kind {
         let name = &name.kind;
 
@@ -219,7 +217,7 @@ fn event_field(
     scope: Shared<ContractScope>,
     context: &mut Context,
     field: &Node<fe::EventField>,
-) -> Result<(bool, (String, FixedSize)), SemanticError> {
+) -> Result<(bool, (String, FixedSize)), FatalError> {
     let fe::EventField { is_idx, name, typ } = &field.kind;
     Ok((
         *is_idx,

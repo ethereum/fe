@@ -1,8 +1,9 @@
 use crate::context::Context;
-use crate::errors::SemanticError;
+use crate::errors::{FatalError, TypeError};
 use crate::namespace::scopes::Scope;
 use crate::namespace::types::{Array, Base, FeString, FixedSize, Integer, Map, Tuple, Type};
 use crate::traversal::expressions::validate_arg_count;
+use fe_common::diagnostics::Label;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use std::convert::TryFrom;
@@ -13,7 +14,7 @@ pub fn type_desc(
     scope: &Scope,
     context: &mut Context,
     desc: &Node<fe::TypeDesc>,
-) -> Result<Type, SemanticError> {
+) -> Result<Type, FatalError> {
     use Base::*;
     use Integer::*;
 
@@ -43,7 +44,7 @@ pub fn type_desc(
                         desc.span,
                         "this type name has not been defined",
                     );
-                    return Err(SemanticError::fatal());
+                    return Err(FatalError);
                 }
             }
         },
@@ -59,14 +60,14 @@ pub fn type_desc(
                     typ.span,
                     "can't be stored in an array",
                 );
-                return Err(SemanticError::fatal());
+                return Err(FatalError);
             }
         }
         fe::TypeDesc::Generic { base, args } => match base.kind.as_str() {
             "Map" => {
                 validate_arg_count(context, &base.kind, base.span, &args, 2);
                 if args.kind.len() < 2 {
-                    return Err(SemanticError::fatal());
+                    return Err(FatalError);
                 }
                 match &args.kind[..2] {
                     [fe::GenericArg::TypeDesc(from), fe::GenericArg::TypeDesc(to)] => {
@@ -82,7 +83,7 @@ pub fn type_desc(
                                 from.span,
                                 "this can't be used as a map key",
                             );
-                            return Err(SemanticError::fatal());
+                            return Err(FatalError);
                         }
                     }
                     _ => {
@@ -95,13 +96,20 @@ pub fn type_desc(
                                 );
                             }
                         }
-                        return Err(SemanticError::fatal());
+                        return Err(FatalError);
                     }
                 }
             }
             "String" => match &args.kind[..] {
                 [fe::GenericArg::Int(len)] => Type::String(FeString { max_size: len.kind }),
-                _ => return Err(SemanticError::type_error()),
+                _ => {
+                    context.fancy_error(
+                        "Numeric generic type parameter expected",
+                        vec![Label::primary(args.span, "invalid type parameter")],
+                        vec!["Example: String<100>".into()],
+                    );
+                    return Err(FatalError);
+                }
             },
             _ => {
                 context.error(
@@ -109,7 +117,7 @@ pub fn type_desc(
                     base.span,
                     "this type name has not been defined",
                 );
-                return Err(SemanticError::fatal());
+                return Err(FatalError);
             }
         },
         fe::TypeDesc::Tuple { items } => Type::Tuple(Tuple {
@@ -140,6 +148,12 @@ pub fn type_desc_fixed_size(
     scope: &Scope,
     context: &mut Context,
     desc: &Node<fe::TypeDesc>,
-) -> Result<FixedSize, SemanticError> {
-    FixedSize::try_from(type_desc(scope, context, desc)?)
+) -> Result<FixedSize, FatalError> {
+    match FixedSize::try_from(type_desc(scope, context, desc)?) {
+        Err(TypeError) => {
+            context.error("Expected a value with a fixed size", desc.span, "");
+            Err(FatalError)
+        }
+        Ok(val) => Ok(val),
+    }
 }

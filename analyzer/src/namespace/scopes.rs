@@ -1,4 +1,4 @@
-use crate::errors::{AlreadyDefined, SemanticError};
+use crate::errors::AlreadyDefined;
 use crate::namespace::events::EventDef;
 use crate::namespace::types::{Array, FixedSize, Tuple, Type};
 use std::cell::RefCell;
@@ -201,9 +201,8 @@ impl ContractScope {
     }
 
     /// Add a static string definition to the scope.
-    pub fn add_string(&mut self, value: &str) -> Result<(), SemanticError> {
+    pub fn add_string(&mut self, value: &str) {
         self.string_defs.insert(value.to_owned());
-        Ok(())
     }
 
     /// Add the name of another contract that has been created within this

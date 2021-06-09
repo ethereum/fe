@@ -21,7 +21,6 @@ fn analyze(module: &fe::Module, id: SourceFileId, files: &FileStore) -> Context 
     match fe_analyzer::analyze(&module, id) {
         Ok(context) => context,
         Err(AnalyzerError {
-            classic,
             diagnostics,
         }) => {
             print_diagnostics(&diagnostics, &files);

@@ -1,4 +1,4 @@
-use crate::errors::{AlreadyDefined, SemanticError};
+use crate::errors::{AlreadyDefined, FatalError};
 use crate::namespace::scopes::{BlockScope, Scope, Shared};
 use crate::namespace::types::FixedSize;
 use crate::traversal::{expressions, types};
@@ -13,7 +13,7 @@ pub fn var_decl(
     scope: Shared<BlockScope>,
     context: &mut Context,
     stmt: &Node<fe::FuncStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::FuncStmt::VarDecl { target, typ, value } = &stmt.kind {
         let declared_type =
             types::type_desc_fixed_size(&Scope::Block(Rc::clone(&scope)), context, &typ)?;
@@ -50,7 +50,7 @@ fn add_var(
     scope: &Shared<BlockScope>,
     target: &Node<fe::VarDeclTarget>,
     typ: FixedSize,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     match (&target.kind, typ) {
         (fe::VarDeclTarget::Name(name), typ) => {
             if let Err(AlreadyDefined) = scope.borrow_mut().add_var(&name, typ) {
@@ -72,13 +72,13 @@ fn add_var(
         (fe::VarDeclTarget::Tuple(items), FixedSize::Tuple(items_ty)) => {
             let items_ty = items_ty.items;
             if items.len() != items_ty.as_vec().len() {
-                return Err(SemanticError::type_error());
+                return Err(FatalError);
             }
             for (item, item_ty) in items.iter().zip(items_ty.into_iter()) {
                 add_var(context, scope, item, item_ty)?;
             }
             Ok(())
         }
-        _ => Err(SemanticError::type_error()),
+        _ => Err(FatalError),
     }
 }
