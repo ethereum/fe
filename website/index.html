@@ -196,27 +196,27 @@
 
                       </div>
                       <code class="language-python flex-auto relative block text-white pt-4 pb-4 px-4 overflow-auto">
-
-# We can define type aliases using the `type` keyword
-type BookMsg = bytes[100]
-
 # The `contract` keyword defines a new contract type
 contract GuestBook:
-    pub guest_book: map&lt;address, BookMsg&gt;
+    # Strings are generic over a constant number
+    # that restricts its maximum size
+    messages: Map&lt;address, String&lt;100&gt;&gt;
 
     # Events can be defined on contract or module level
     event Signed:
-        book_msg: BookMsg
+        book_msg: String&lt;100&gt;
 
-    pub def sign(book_msg: BookMsg):
+    pub def sign(book_msg: String&lt;100&gt;):
         # All storage access is explicit using `self.&lt;some-key&gt;`
-        self.guest_book[msg.sender] = book_msg
+        self.messages[msg.sender] = book_msg
 
         # Emit the `Signed` event
         emit Signed(book_msg=book_msg)
 
-    pub def get_msg(addr: address) -> BookMsg:
-        return self.guest_book[addr].to_mem()
+    pub def get_msg(addr: address) -> String&lt;100&gt;:
+        # Copying data from storage to memory
+        # has to be done explicitly via `to_mem()`
+        return self.messages[addr].to_mem()
 </code>
                     </pre>
                   </div>
