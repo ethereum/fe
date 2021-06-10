@@ -3,7 +3,7 @@ authors = ["SatyamAgrawal <satyam0499@gmail.com>"]
 edition = "2018"
 license = "Apache-2.0"
 name = "fe-compiler-tests"
-version = "0.4.0-alpha"
+version = "0.6.0-alpha"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -13,10 +13,10 @@ fe-compiler = {path = "../compiler"}
 ethabi = "12.0"
 evm = "0.18"
 evm-runtime = "0.18"
-fe-analyzer = {path = "../analyzer", version = "^0.5.0-alpha"}
-fe-common = {path = "../common", version = "^0.5.0-alpha"}
+fe-analyzer = {path = "../analyzer", version = "^0.6.0-alpha"}
+fe-common = {path = "../common", version = "^0.6.0-alpha"}
 fe-compiler-test-utils = {path = "../test-utils" }
-fe-parser = {path = "../parser", version = "^0.5.0-alpha"}
+fe-parser = {path = "../parser", version = "^0.6.0-alpha"}
 hex = "0.4"
 primitive-types = {version = "0.7", default-features = false, features = ["rlp"]}
 rand = "0.7.3"
