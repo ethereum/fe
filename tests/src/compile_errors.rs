@@ -182,6 +182,7 @@ test_file! { invalid_chain_field }
 test_file! { invalid_contract_field }
 test_file! { invalid_generic_string }
 test_file! { invalid_msg_field }
+test_file! { invalid_string_field }
 test_file! { invalid_struct_field }
 test_file! { invalid_tuple_field }
 test_file! { invalid_tx_field }

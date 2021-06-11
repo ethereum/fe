@@ -521,7 +521,8 @@ fn expr_attribute(
 
         // We attempt to analyze the value as an expression. If this is successful, we
         // build a new set of attributes from the value attributes.
-        return match expr(scope, context, value, None)? {
+        let expression_attributes = expr(Rc::clone(&scope), context, value, None)?;
+        return match expression_attributes {
             // If the value is a struct, we return the type of the attribute. The location stays the
             // same and can be memory or storage.
             ExpressionAttributes {
@@ -579,7 +580,17 @@ fn expr_attribute(
                     fatal_err
                 }
             }
-            _ => fatal_err,
+            _ => {
+                context.fancy_error(
+                    format!(
+                        "No field `{}` exists on type {}",
+                        &attr.kind, expression_attributes.typ
+                    ),
+                    vec![Label::primary(attr.span, "unknown field")],
+                    vec![],
+                );
+                fatal_err
+            }
         };
     }
 
