@@ -23,7 +23,7 @@ error: incorrect type for `MyEvent` argument `val_1`
   ┌─ fixtures/compile_errors/call_event_with_wrong_types.fe:7:22
   │
 7 │         emit MyEvent("foo", 1000)
-  │                      ^^^^^ this has type `string<3>`; expected type `string<100>`
+  │                      ^^^^^ this has type `String<3>`; expected type `String<100>`
 
 error: literal out of range for `u8`
   ┌─ fixtures/compile_errors/call_event_with_wrong_types.fe:7:29
