@@ -152,14 +152,18 @@ pub fn main() {
         .arg(
             Arg::with_name("optimize")
                 .long("optimize")
-                .help("Enables the Yul optimizer`"),
+                .help("Enables the Yul optimizer`")
+                .possible_values(&["true", "false"])
+                .default_value("true")
+                .use_delimiter(false)
+                .takes_value(true),
         )
         .get_matches();
 
     let input_file = matches.value_of("input").unwrap();
     let output_dir = matches.value_of("output-dir").unwrap();
     let overwrite = matches.is_present("overwrite");
-    let optimize = matches.is_present("optimize");
+    let optimize = matches.value_of("optimize")==Some("true");
     let targets =
         values_t!(matches.values_of("emit"), CompilationTarget).unwrap_or_else(|e| e.exit());
     let with_bytecode = targets.contains(&CompilationTarget::Bytecode);
