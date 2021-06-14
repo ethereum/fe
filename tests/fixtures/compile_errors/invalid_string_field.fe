@@ -1,0 +1,4 @@
+contract Foo:
+
+  pub def foo():
+    "".does_not_exist
