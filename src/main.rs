@@ -92,8 +92,6 @@ use std::path::Path;
 
 use clap::{arg_enum, values_t, App, Arg};
 
-mod _utils;
-use crate::_utils::pretty_curly_print;
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::files::FileStore;
 use fe_compiler::errors::{install_compiler_panic_hook, AnalyzerError, ErrorKind};
@@ -260,7 +258,7 @@ fn write_compiled_module(
             let file_name = format!("{}_ir.yul", &name);
             write_output(
                 &contract_output_dir.join(file_name),
-                &pretty_curly_print(&contract.yul, 4),
+                &contract.yul,
             )?;
         }
 

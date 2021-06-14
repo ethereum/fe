@@ -974,6 +974,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "indenter"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce23b50ad8242c51a442f3ff322d56b02f08852c77e4c0b4d3fd684abc89c683"
+
+[[package]]
 name = "insta"
 version = "1.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2206,4 +2212,7 @@ dependencies = [
 [[package]]
 name = "yultsur"
 version = "0.1.0"
-source = "git+https://github.com/g-r-a-n-t/yultsur#6a7c162339cf615b2b2289d84b8bcfe57ffebf55"
+source = "git+https://github.com/g-r-a-n-t/yultsur#eafe76a06c0075d0755584875796f647fb724c91"
+dependencies = [
+ "indenter",
+]
