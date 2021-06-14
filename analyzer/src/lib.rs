@@ -5,13 +5,14 @@
 //! that can be used to query contextual information attributed to AST nodes.
 
 pub mod builtins;
+pub mod constants;
 pub mod context;
 pub mod errors;
 pub mod namespace;
 mod operations;
 mod traversal;
 
-use crate::errors::{AnalyzerError, ErrorKind};
+use crate::errors::{AnalyzerError, FatalError};
 use context::Context;
 use fe_common::files::SourceFileId;
 use fe_parser::ast as fe;
@@ -27,20 +28,15 @@ pub fn analyze(module: &fe::Module, file_id: SourceFileId) -> Result<Context, An
             if context.diagnostics.is_empty() {
                 Ok(context)
             } else {
-                Err(AnalyzerError {
-                    diagnostics: context.diagnostics,
-                    classic: None,
-                })
+                Err(AnalyzerError(context.diagnostics))
             }
         }
-        Err(err) => Err(AnalyzerError {
-            diagnostics: context.diagnostics,
-            classic: if err.kind == ErrorKind::Fatal {
-                None
-            } else {
-                Some(err)
-            },
-        }),
+        Err(FatalError) => {
+            if context.diagnostics.is_empty() {
+                panic!("Expected at least one error")
+            }
+            Err(AnalyzerError(context.diagnostics))
+        }
     }
 }
 

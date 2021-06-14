@@ -1,9 +1,12 @@
+use crate::constants;
 use crate::context::{Context, ContractAttributes};
-use crate::errors::SemanticError;
+use crate::errors::{AlreadyDefined, FatalError};
 use crate::namespace::events::EventDef;
 use crate::namespace::scopes::{ContractScope, ModuleScope, Scope, Shared};
 use crate::namespace::types::{Contract, FixedSize, Type};
 use crate::traversal::{functions, types};
+use fe_common::diagnostics::Label;
+use fe_common::utils::humanize::pluralize_conditionally;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use std::rc::Rc;
@@ -14,7 +17,7 @@ pub fn contract_def(
     module_scope: Shared<ModuleScope>,
     context: &mut Context,
     stmt: &Node<fe::ModuleStmt>,
-) -> Result<Shared<ContractScope>, SemanticError> {
+) -> Result<Shared<ContractScope>, FatalError> {
     if let fe::ModuleStmt::ContractDef {
         name,
         fields: _,
@@ -35,13 +38,12 @@ pub fn contract_def(
                 fe::ContractStmt::FuncDef { .. } => {
                     functions::func_def(Rc::clone(&contract_scope), context, stmt)
                 }
-            }
-            .map_err(|error| error.with_context(stmt.span))?;
+            }?
         }
 
         let contract_attributes = ContractAttributes::from(Rc::clone(&contract_scope));
 
-        contract_scope
+        if let Err(AlreadyDefined) = contract_scope
             .borrow()
             .module_scope()
             .borrow_mut()
@@ -51,7 +53,21 @@ pub fn contract_def(
                     name: name.kind.to_string(),
                     functions: contract_attributes.public_functions,
                 }),
-            )?;
+            )
+        {
+            context.fancy_error(
+                "a contract with the same name already exists",
+                // TODO: figure out how to include the previously defined contract
+                vec![Label::primary(
+                    stmt.span,
+                    format!("Conflicting definition of contract `{}`", name.kind),
+                )],
+                vec![format!(
+                    "Note: Give one of the `{}` contracts a different name",
+                    name.kind
+                )],
+            )
+        }
 
         return Ok(contract_scope);
     }
@@ -66,7 +82,7 @@ pub fn contract_body(
     contract_scope: Shared<ContractScope>,
     context: &mut Context,
     stmt: &Node<fe::ModuleStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::ModuleStmt::ContractDef { fields, body, .. } = &stmt.kind {
         for field in fields {
             contract_field(Rc::clone(&contract_scope), context, field)?;
@@ -74,8 +90,7 @@ pub fn contract_body(
 
         for stmt in body {
             if let fe::ContractStmt::FuncDef { .. } = &stmt.kind {
-                functions::func_body(Rc::clone(&contract_scope), context, stmt)
-                    .map_err(|error| error.with_context(stmt.span))?;
+                functions::func_body(Rc::clone(&contract_scope), context, stmt)?
             };
         }
 
@@ -93,21 +108,37 @@ fn contract_field(
     scope: Shared<ContractScope>,
     context: &mut Context,
     stmt: &Node<fe::Field>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     let fe::Field { name, typ, .. } = &stmt.kind;
     let typ = types::type_desc(&Scope::Contract(Rc::clone(&scope)), context, &typ)?;
-    scope.borrow_mut().add_field(&name.kind, typ)
+
+    if let Err(AlreadyDefined) = scope.borrow_mut().add_field(&name.kind, typ) {
+        context.fancy_error(
+            "a contract field with the same name already exists",
+            // TODO: figure out how to include the previously defined field
+            vec![Label::primary(
+                stmt.span,
+                format!("Conflicting definition of field `{}`", name.kind),
+            )],
+            vec![format!(
+                "Note: Give one of the `{}` fields a different name",
+                name.kind
+            )],
+        )
+    }
+
+    Ok(())
 }
 
 fn event_def(
     scope: Shared<ContractScope>,
     context: &mut Context,
     stmt: &Node<fe::ContractStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::ContractStmt::EventDef { name, fields } = &stmt.kind {
         let name = &name.kind;
 
-        let (is_indexed_bools, fields): (Vec<bool>, Vec<(String, FixedSize)>) = fields
+        let (is_indexed_bools, all_fields): (Vec<bool>, Vec<(String, FixedSize)>) = fields
             .iter()
             .map(|field| event_field(Rc::clone(&scope), context, field))
             .collect::<Result<Vec<_>, _>>()?
@@ -121,24 +152,62 @@ fn event_def(
             .map(|(index, _)| index)
             .collect::<Vec<_>>();
 
-        if indexed_fields.len() > 3 {
-            return Err(SemanticError::more_than_three_indexed_params());
+        if indexed_fields.len() > constants::MAX_INDEXED_EVENT_FIELDS {
+            let excess_count = indexed_fields.len() - constants::MAX_INDEXED_EVENT_FIELDS;
+
+            let labels = fields
+                .iter()
+                .enumerate()
+                .filter_map(|(idx, field)| {
+                    if indexed_fields.contains(&idx) {
+                        Some(field)
+                    } else {
+                        None
+                    }
+                })
+                .map(|field| Label::primary(field.span, "Indexed field"))
+                .collect();
+
+            context.fancy_error(
+                "More than three indexed fields.",
+                labels,
+                vec![format!(
+                    "Note: Remove the `idx` keyword from at least {} {}.",
+                    excess_count,
+                    pluralize_conditionally("field", excess_count)
+                )],
+            );
         }
 
         // check if they are trying to index an array type
         // todo clean all this up
         for index in indexed_fields.clone() {
-            match fields[index].1.to_owned() {
+            match all_fields[index].1.to_owned() {
                 FixedSize::Base(_) => {}
                 _ => context.not_yet_implemented("non-base type indexed event fields", stmt.span),
             }
         }
 
-        let event = EventDef::new(name, fields, indexed_fields);
+        let event = EventDef::new(name, all_fields, indexed_fields);
 
         context.add_event(stmt, event.clone());
 
-        return scope.borrow_mut().add_event(name, event);
+        if let Err(AlreadyDefined) = scope.borrow_mut().add_event(name, event) {
+            context.fancy_error(
+                "an event with the same name already exists",
+                // TODO: figure out how to include the previously defined event
+                vec![Label::primary(
+                    stmt.span,
+                    format!("Conflicting definition of event `{}`", name),
+                )],
+                vec![format!(
+                    "Note: Give one of the `{}` events a different name",
+                    name
+                )],
+            )
+        }
+
+        return Ok(());
     }
 
     unreachable!()
@@ -148,7 +217,7 @@ fn event_field(
     scope: Shared<ContractScope>,
     context: &mut Context,
     field: &Node<fe::EventField>,
-) -> Result<(bool, (String, FixedSize)), SemanticError> {
+) -> Result<(bool, (String, FixedSize)), FatalError> {
     let fe::EventField { is_idx, name, typ } = &field.kind;
     Ok((
         *is_idx,

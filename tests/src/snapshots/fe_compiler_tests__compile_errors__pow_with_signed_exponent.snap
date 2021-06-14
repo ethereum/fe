@@ -3,7 +3,10 @@ source: tests/src/compile_errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
+error: The right hand side of this operation must be unsigned
+  ┌─ [snippet]:5:11
+  │
+5 │   base ** exp
+  │           ^^^ incompatible signed numeric
 
 
-SignedExponentNotAllowed on line 5
-[31mbase ** exp[0m

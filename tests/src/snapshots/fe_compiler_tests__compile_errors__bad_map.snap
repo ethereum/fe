@@ -11,8 +11,10 @@ error: `Map` expects 2 arguments, but 3 were provided
   │      │            
   │      expects 2 arguments
 
+error: Expected a value with a fixed size
+  ┌─ [snippet]:3:6
+  │
+3 │   x: Map<u8, u8, u8>
+  │      ^^^^^^^^^^^^^^^
 
 
-TypeError on line 3
-pub def f():
-  [31mx: Map<u8, u8, u8>[0m

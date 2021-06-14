@@ -1,4 +1,4 @@
-use crate::errors::SemanticError;
+use crate::errors::{AlreadyDefined, TypeError};
 use std::convert::TryFrom;
 use std::fmt;
 
@@ -203,9 +203,9 @@ impl Struct {
     }
 
     /// Add a field to the struct
-    pub fn add_field(&mut self, name: &str, value: &FixedSize) -> Result<(), SemanticError> {
+    pub fn add_field(&mut self, name: &str, value: &FixedSize) -> Result<(), AlreadyDefined> {
         if self.fields.iter().any(|(fname, _)| fname == name) {
-            Err(SemanticError::already_defined())
+            Err(AlreadyDefined)
         } else {
             self.fields.push((name.to_string(), value.clone()));
             Ok(())
@@ -380,16 +380,16 @@ impl From<Base> for FixedSize {
 }
 
 impl TryFrom<Type> for FixedSize {
-    type Error = SemanticError;
+    type Error = TypeError;
 
-    fn try_from(value: Type) -> Result<Self, SemanticError> {
+    fn try_from(value: Type) -> Result<Self, TypeError> {
         match value {
             Type::Array(array) => Ok(FixedSize::Array(array)),
             Type::Base(base) => Ok(FixedSize::Base(base)),
             Type::Tuple(tuple) => Ok(FixedSize::Tuple(tuple)),
             Type::String(string) => Ok(FixedSize::String(string)),
             Type::Struct(val) => Ok(FixedSize::Struct(val)),
-            Type::Map(_) => Err(SemanticError::type_error()),
+            Type::Map(_) => Err(TypeError),
             Type::Contract(contract) => Ok(FixedSize::Contract(contract)),
         }
     }
@@ -876,7 +876,7 @@ impl fmt::Display for Tuple {
 
 impl fmt::Display for FeString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "string<{}>", self.max_size)
+        write!(f, "String<{}>", self.max_size)
     }
 }
 

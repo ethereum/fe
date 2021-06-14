@@ -3,7 +3,10 @@ source: tests/src/compile_errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
+error: no function `doesnt_exist` exists this contract
+  ┌─ [snippet]:3:3
+  │
+3 │   self.doesnt_exist()
+  │   ^^^^^^^^^^^^^^^^^ undefined function
 
 
-UndefinedValue on line 3
-[31mself.doesnt_exist()[0m

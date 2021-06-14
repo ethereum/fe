@@ -7,6 +7,6 @@ error: incorrect type for `bar` argument `a`
   ┌─ fixtures/compile_errors/external_call_type_error.fe:7:29
   │
 7 │         Foo(address(0)).bar("hello world")
-  │                             ^^^^^^^^^^^^^ this has type `string<11>`; expected type `u256`
+  │                             ^^^^^^^^^^^^^ this has type `String<11>`; expected type `u256`
 
 

@@ -1,8 +1,9 @@
 use crate::context::{Context, ExpressionAttributes, FunctionAttributes, Label, Location};
-use crate::errors::SemanticError;
+use crate::errors::{AlreadyDefined, FatalError};
 use crate::namespace::scopes::{BlockScope, BlockScopeType, ContractScope, Scope, Shared};
 use crate::namespace::types::{Base, FixedSize, Type};
 use crate::traversal::{assignments, declarations, expressions, types};
+
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use std::rc::Rc;
@@ -13,7 +14,7 @@ pub fn func_def(
     contract_scope: Shared<ContractScope>,
     context: &mut Context,
     def: &Node<fe::ContractStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::ContractStmt::FuncDef {
         is_pub,
         name,
@@ -77,19 +78,32 @@ pub fn func_def(
             }
         }
 
-        let attributes: FunctionAttributes = contract_scope
-            .borrow_mut()
-            .add_function(
-                name,
-                is_pub,
-                params,
-                return_type,
-                Rc::clone(&function_scope),
-            )?
-            .to_owned()
-            .into();
-
-        context.add_function(def, attributes);
+        match contract_scope.borrow_mut().add_function(
+            name,
+            is_pub,
+            params,
+            return_type,
+            Rc::clone(&function_scope),
+        ) {
+            Err(AlreadyDefined) => {
+                context.fancy_error(
+                    "a function with the same name already exists",
+                    // TODO: figure out how to include the previously defined function
+                    vec![Label::primary(
+                        def.span,
+                        format!("Conflicting definition of contract `{}`", name),
+                    )],
+                    vec![format!(
+                        "Note: Give one of the `{}` functions a different name",
+                        name
+                    )],
+                )
+            }
+            Ok(val) => {
+                let attributes: FunctionAttributes = val.to_owned().into();
+                context.add_function(def, attributes);
+            }
+        }
 
         Ok(())
     } else {
@@ -102,7 +116,7 @@ pub fn func_body(
     contract_scope: Shared<ContractScope>,
     context: &mut Context,
     def: &Node<fe::ContractStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::ContractStmt::FuncDef {
         is_pub: _,
         name,
@@ -152,7 +166,7 @@ fn traverse_statements(
     scope: Shared<BlockScope>,
     context: &mut Context,
     body: &[Node<fe::FuncStmt>],
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     for stmt in body.iter() {
         func_stmt(Rc::clone(&scope), context, stmt)?
     }
@@ -186,10 +200,28 @@ fn func_def_arg(
     scope: Shared<BlockScope>,
     context: &mut Context,
     arg: &Node<fe::FuncDefArg>,
-) -> Result<(String, FixedSize), SemanticError> {
+) -> Result<(String, FixedSize), FatalError> {
     let fe::FuncDefArg { name, typ } = &arg.kind;
     let typ = types::type_desc_fixed_size(&Scope::Block(Rc::clone(&scope)), context, &typ)?;
-    scope.borrow_mut().add_var(&name.kind, typ.clone())?;
+
+    if let Err(AlreadyDefined) = scope.borrow_mut().add_var(&name.kind, typ.clone()) {
+        context.fancy_error(
+            "a function argument with the same name already exists",
+            // TODO: figure out how to include the previously defined arg
+            vec![Label::primary(
+                arg.span,
+                format!(
+                    "Conflicting definition of function argument `{}`",
+                    name.kind
+                ),
+            )],
+            vec![format!(
+                "Note: Give one of the `{}` function arguments a different name",
+                name.kind
+            )],
+        )
+    }
+
     Ok((name.kind.to_string(), typ))
 }
 
@@ -197,7 +229,7 @@ fn func_stmt(
     scope: Shared<BlockScope>,
     context: &mut Context,
     stmt: &Node<fe::FuncStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     use fe::FuncStmt::*;
     match &stmt.kind {
         Return { .. } => func_return(scope, context, stmt),
@@ -217,14 +249,13 @@ fn func_stmt(
             Ok(())
         }
     }
-    .map_err(|error| error.with_context(stmt.span))
 }
 
 fn for_loop(
     scope: Shared<BlockScope>,
     context: &mut Context,
     stmt: &Node<fe::FuncStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     match &stmt.kind {
         fe::FuncStmt::For { target, iter, body } => {
             // Create the for loop body scope.
@@ -241,9 +272,24 @@ fn for_loop(
                     "array",
                     iter_type,
                 );
-                return Err(SemanticError::fatal());
+                return Err(FatalError);
             };
-            body_scope.borrow_mut().add_var(&target.kind, target_type)?;
+            if let Err(AlreadyDefined) = body_scope.borrow_mut().add_var(&target.kind, target_type)
+            {
+                context.fancy_error(
+                    "a variable with the same name already exists in this scope",
+                    // TODO: figure out how to include the previously defined var
+                    vec![Label::primary(
+                        stmt.span,
+                        format!("Conflicting definition of `{}` variables", &target.kind),
+                    )],
+                    vec![format!(
+                        "Note: Give one of the `{}` variables a different name",
+                        &target.kind
+                    )],
+                )
+            }
+
             // Traverse the statements within the `for loop` body scope.
             traverse_statements(body_scope, context, body)
         }
@@ -274,7 +320,7 @@ fn if_statement(
     scope: Shared<BlockScope>,
     context: &mut Context,
     stmt: &Node<fe::FuncStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     match &stmt.kind {
         fe::FuncStmt::If {
             test,
@@ -307,7 +353,7 @@ fn while_loop(
     scope: Shared<BlockScope>,
     context: &mut Context,
     stmt: &Node<fe::FuncStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     match &stmt.kind {
         fe::FuncStmt::While { test, body } => {
             let test_type = expressions::expr(Rc::clone(&scope), context, &test, None)?.typ;
@@ -332,7 +378,7 @@ fn expr(
     scope: Shared<BlockScope>,
     context: &mut Context,
     stmt: &Node<fe::FuncStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::FuncStmt::Expr { value } = &stmt.kind {
         let _attributes = expressions::expr(scope, context, value, None)?;
     }
@@ -344,7 +390,7 @@ fn emit(
     scope: Shared<BlockScope>,
     context: &mut Context,
     stmt: &Node<fe::FuncStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::FuncStmt::Emit { name, args } = &stmt.kind {
         if let Some(event) = scope.borrow().contract_event_def(&name.kind) {
             context.add_emit(stmt, event.clone());
@@ -374,7 +420,7 @@ fn assert(
     scope: Shared<BlockScope>,
     context: &mut Context,
     stmt: &Node<fe::FuncStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::FuncStmt::Assert { test, msg } = &stmt.kind {
         let test_type = expressions::expr(Rc::clone(&scope), context, &test, None)?.typ;
         if test_type != Type::Base(Base::Bool) {
@@ -407,7 +453,7 @@ fn func_return(
     scope: Shared<BlockScope>,
     context: &mut Context,
     stmt: &Node<fe::FuncStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::FuncStmt::Return { value } = &stmt.kind {
         let host_func_def = scope
             .borrow()
@@ -424,7 +470,14 @@ fn func_return(
         };
 
         if attributes.typ != expected_type {
-            return Err(SemanticError::type_error());
+            context.error(
+                format!(
+                    "expected function to return `{}` but was `{}`",
+                    expected_type, attributes.typ
+                ),
+                stmt.span,
+                "",
+            );
         }
 
         return Ok(());

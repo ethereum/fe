@@ -1,0 +1,8 @@
+struct Bar:
+  id: u256
+
+contract Foo:
+  val: Bar
+
+  pub def foo():
+    self.val.foo

@@ -3,7 +3,10 @@ source: tests/src/compile_errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
+error: The right hand side of this operation must fit into the left
+  ┌─ [snippet]:5:11
+  │
+5 │   base ** exp
+  │           ^^^ size too large
 
 
-TypeError on line 5
-[31mbase ** exp[0m

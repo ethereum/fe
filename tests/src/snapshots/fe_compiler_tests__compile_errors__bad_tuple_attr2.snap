@@ -3,7 +3,12 @@ source: tests/src/compile_errors.rs
 expression: "error_string(&path, &src)"
 
 ---
+error: No field `m` exists on this tuple
+  ┌─ fixtures/compile_errors/bad_tuple_attr2.fe:6:27
+  │
+6 │         self.my_sto_tuple.m
+  │                           ^ undefined field
+  │
+  = Note: Tuple values are accessed via `itemN` properties such as `item0` or `item1`
 
 
-UndefinedValue on line 6
-[31mself.my_sto_tuple.m[0m

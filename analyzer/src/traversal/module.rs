@@ -1,4 +1,4 @@
-use crate::errors::SemanticError;
+use crate::errors::{AlreadyDefined, FatalError};
 use crate::namespace::scopes::{ModuleScope, Scope, Shared};
 use crate::traversal::{contracts, structs, types};
 use crate::Context;
@@ -9,7 +9,7 @@ use semver::{Version, VersionReq};
 use std::rc::Rc;
 
 /// Gather context information for a module and check for type errors.
-pub fn module(context: &mut Context, module: &fe::Module) -> Result<(), SemanticError> {
+pub fn module(context: &mut Context, module: &fe::Module) -> Result<(), FatalError> {
     let scope = ModuleScope::new();
 
     let mut contracts = vec![];
@@ -18,8 +18,8 @@ pub fn module(context: &mut Context, module: &fe::Module) -> Result<(), Semantic
         match &stmt.kind {
             fe::ModuleStmt::TypeDef { .. } => type_def(context, Rc::clone(&scope), stmt)?,
             fe::ModuleStmt::Pragma { .. } => pragma_stmt(context, stmt),
-            fe::ModuleStmt::StructDef { name, fields } => {
-                structs::struct_def(context, Rc::clone(&scope), &name.kind, fields)?
+            fe::ModuleStmt::StructDef { .. } => {
+                structs::struct_def(context, Rc::clone(&scope), stmt)?
             }
             fe::ModuleStmt::ContractDef { .. } => {
                 // Collect contract statements and the scope that we create for them. After we
@@ -52,10 +52,25 @@ fn type_def(
     context: &mut Context,
     scope: Shared<ModuleScope>,
     stmt: &Node<fe::ModuleStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::ModuleStmt::TypeDef { name, typ } = &stmt.kind {
         let typ = types::type_desc(&Scope::Module(Rc::clone(&scope)), context, &typ)?;
-        scope.borrow_mut().add_type_def(&name.kind, typ)?;
+
+        if let Err(AlreadyDefined) = scope.borrow_mut().add_type_def(&name.kind, typ) {
+            context.fancy_error(
+                "a type definition with the same name already exists",
+                // TODO: figure out how to include the previously defined definition
+                vec![Label::primary(
+                    stmt.span,
+                    format!("Conflicting definition of `{}`", name.kind),
+                )],
+                vec![format!(
+                    "Note: Give one of the `{}` definitions a different name",
+                    name.kind
+                )],
+            )
+        }
+
         return Ok(());
     }
 

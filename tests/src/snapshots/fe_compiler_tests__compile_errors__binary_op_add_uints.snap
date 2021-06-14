@@ -3,7 +3,10 @@ source: tests/src/compile_errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
+error: The types for this operation must be equal
+  ┌─ [snippet]:5:3
+  │
+5 │   a + b
+  │   ^   ^
 
 
-TypeError on line 5
-[31ma + b[0m

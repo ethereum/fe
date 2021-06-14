@@ -1,0 +1,12 @@
+---
+source: tests/src/compile_errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: no function `foo` exists on builtin `block`
+  ┌─ fixtures/compile_errors/call_builtin_object.fe:4:5
+  │
+4 │     block.foo()
+  │     ^^^^^^^^^ undefined function
+
+

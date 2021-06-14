@@ -3,8 +3,10 @@ source: tests/src/compile_errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
+error: expected function to return `()` but was `u256`
+  ┌─ [snippet]:3:3
+  │
+3 │   return 1
+  │   ^^^^^^^^
 
 
-TypeError on line 3
-pub def f():
-  [31mreturn 1[0m

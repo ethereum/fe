@@ -22,8 +22,6 @@ Examine the generated release notes and if needed perform and commit any manual 
 
 ### Generate the release
 
-**Prerequisite**: Make sure the central repository is configured as `upstream`, **not** `origin`.
-
 Run `make release version=<version>`.
 
 Example:
@@ -31,6 +29,15 @@ Example:
 ```
 make release version=0.2.0-alpha
 ```
+
+This will also run the tests again as the last step because some of them may need to be adjusted because of the changed version number.
+
+### Tag and push the release
+
+**Prerequisite**: Make sure the central repository is configured as `upstream`, **not** `origin`.
+
+After the tests were adjusted run `make push-tag` to create the tag and push it to Github.
+
 
 ### Manually edit the release on GitHub
 

@@ -181,14 +181,8 @@ pub fn main() {
             for err in error.errors {
                 match err {
                     ErrorKind::Str(err) => eprintln!("Compiler error: {}", err),
-                    ErrorKind::Analyzer(AnalyzerError {
-                        diagnostics,
-                        classic,
-                    }) => {
+                    ErrorKind::Analyzer(AnalyzerError(diagnostics)) => {
                         print_diagnostics(&diagnostics, &files);
-                        if let Some(err) = classic {
-                            eprintln!("Analyzer error: {}", err.format_user(&content));
-                        }
                     }
                     ErrorKind::Parser(diags) => print_diagnostics(&diags, &files),
                 }

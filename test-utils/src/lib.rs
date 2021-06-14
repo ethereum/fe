@@ -192,18 +192,12 @@ pub fn read_fixture(path: &str) -> (String, SourceFileId) {
         .unwrap_or_else(|_| panic!("unable to read fixture file: {}", path))
 }
 
-fn print_compiler_errors(error: CompileError, src: &str, files: &FileStore) {
+fn print_compiler_errors(error: CompileError, files: &FileStore) {
     for err in error.errors {
         match err {
             ErrorKind::Str(err) => eprintln!("Compiler error: {}", err),
-            ErrorKind::Analyzer(AnalyzerError {
-                diagnostics,
-                classic,
-            }) => {
+            ErrorKind::Analyzer(AnalyzerError(diagnostics)) => {
                 print_diagnostics(&diagnostics, &files);
-                if let Some(err) = classic {
-                    eprintln!("Analyzer error: {}", err.format_user(&src))
-                }
             }
             ErrorKind::Parser(diags) => print_diagnostics(&diags, &files),
         }
@@ -225,7 +219,7 @@ pub fn deploy_contract(
     let compiled_module = match compiler::compile(&src, id, true, true) {
         Ok(module) => module,
         Err(error) => {
-            print_compiler_errors(error, &src, &files);
+            print_compiler_errors(error, &files);
             panic!("failed to compile module: {}", fixture)
         }
     };

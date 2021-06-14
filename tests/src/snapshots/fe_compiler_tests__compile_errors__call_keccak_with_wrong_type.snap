@@ -1,0 +1,14 @@
+---
+source: tests/src/compile_errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: `bool` can not be used as a parameter to `keccak(..)`
+  ┌─ fixtures/compile_errors/call_keccak_with_wrong_type.fe:7:17
+  │
+7 │        keccak256(true)
+  │                 ^^^^^^ wrong type
+  │
+  = Note: keccak(..) expects a byte array as parameter
+
+

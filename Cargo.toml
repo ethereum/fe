@@ -8,7 +8,7 @@ license = "Apache-2.0"
 name = "fe"
 readme = "README.md"
 repository = "https://github.com/ethereum/fe"
-version = "0.5.0-alpha"
+version = "0.6.1-alpha"
 
 [workspace]
 members = [".", "parser", "compiler", "tests"]
@@ -18,10 +18,10 @@ solc-backend = ["fe-compiler/solc-backend", "fe-compiler-tests/solc-backend"]
 
 [dependencies]
 clap = "2.33.3"
-fe-common = {path = "common", version = "^0.5.0-alpha"}
-fe-compiler = {path = "compiler", version = "^0.5.0-alpha"}
-fe-compiler-tests = {path = "tests", version = "^0.4.0-alpha"}
-fe-parser = {path = "parser", version = "^0.5.0-alpha"}
+fe-common = {path = "common", version = "^0.6.1-alpha"}
+fe-compiler = {path = "compiler", version = "^0.6.1-alpha"}
+fe-compiler-tests = {path = "tests", version = "^0.6.1-alpha"}
+fe-parser = {path = "parser", version = "^0.6.1-alpha"}
 
 [dev-dependencies]
 cargo-release = "0.13.9"

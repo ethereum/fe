@@ -1,8 +1,9 @@
 use crate::context::{Context, Location};
-use crate::errors::SemanticError;
+use crate::errors::FatalError;
 use crate::namespace::scopes::{BlockScope, Shared};
 use crate::operations;
 use crate::traversal::expressions;
+use crate::traversal::utils::add_bin_operations_errors;
 use fe_common::diagnostics::Label;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
@@ -15,7 +16,7 @@ pub fn assign(
     scope: Shared<BlockScope>,
     context: &mut Context,
     stmt: &Node<fe::FuncStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::FuncStmt::Assign { target, value } = &stmt.kind {
         let target_attributes = expressions::expr(Rc::clone(&scope), context, target, None)?;
 
@@ -71,10 +72,7 @@ pub fn assign(
     unreachable!()
 }
 
-pub fn check_assign_target(
-    context: &mut Context,
-    expr: &Node<fe::Expr>,
-) -> Result<(), SemanticError> {
+pub fn check_assign_target(context: &mut Context, expr: &Node<fe::Expr>) -> Result<(), FatalError> {
     use fe::Expr::*;
     match &expr.kind {
         Attribute { .. } => Ok(()),
@@ -90,7 +88,7 @@ pub fn check_assign_target(
             context.fancy_error("invalid assignment target",
                                              vec![Label::primary(expr.span, "")],
                                              vec!["The left side of an assignment can be a variable name, attribute, subscript, or tuple.".into()]);
-            Err(SemanticError::fatal())
+            Err(FatalError)
         }
     }
 }
@@ -100,13 +98,15 @@ pub fn aug_assign(
     scope: Shared<BlockScope>,
     context: &mut Context,
     stmt: &Node<fe::FuncStmt>,
-) -> Result<(), SemanticError> {
+) -> Result<(), FatalError> {
     if let fe::FuncStmt::AugAssign { target, op, value } = &stmt.kind {
         let target_attributes = expressions::expr(Rc::clone(&scope), context, target, None)?;
         let value_attributes =
             expressions::expr(scope, context, value, Some(&target_attributes.typ))?;
 
-        operations::bin(&target_attributes.typ, &op.kind, &value_attributes.typ)?;
+        if let Err(err) = operations::bin(&target_attributes.typ, &op.kind, &value_attributes.typ) {
+            add_bin_operations_errors(context, target, value, err);
+        }
         return Ok(());
     }
 

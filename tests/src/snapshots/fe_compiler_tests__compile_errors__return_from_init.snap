@@ -12,8 +12,10 @@ error: `__init__` function has incorrect return type
   = Hint: Remove the return type specification.
   = Example: `pub def __init__():`
 
+error: expected function to return `()` but was `u256`
+  ┌─ fixtures/compile_errors/return_from_init.fe:3:9
+  │
+3 │         return 0
+  │         ^^^^^^^^
 
 
-TypeError on line 3
-pub def __init__() -> i32:
-        [31mreturn 0[0m

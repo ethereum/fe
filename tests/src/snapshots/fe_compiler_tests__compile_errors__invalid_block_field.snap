@@ -1,0 +1,14 @@
+---
+source: tests/src/compile_errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: Not a block field
+  ┌─ fixtures/compile_errors/invalid_block_field.fe:4:11
+  │
+4 │     block.foo
+  │           ^^^
+  │
+  = Note: Only `coinbase`, `difficulty`, `number` and `timestamp` can be accessed on `block`.
+
+

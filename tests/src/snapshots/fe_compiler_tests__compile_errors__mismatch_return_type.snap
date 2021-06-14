@@ -3,8 +3,10 @@ source: tests/src/compile_errors.rs
 expression: "error_string(&path, &src)"
 
 ---
+error: expected function to return `address` but was `u256`
+  ┌─ fixtures/compile_errors/mismatch_return_type.fe:4:9
+  │
+4 │         return 1
+  │         ^^^^^^^^
 
 
-TypeError on line 4
-pub def bar() -> address:
-        [31mreturn 1[0m

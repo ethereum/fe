@@ -3,7 +3,10 @@ source: tests/src/compile_errors.rs
 expression: "error_string(&path, &src)"
 
 ---
+error: No function `doesnt_exist` exists on type `Something`
+  ┌─ fixtures/compile_errors/call_undefined_function_on_storage_struct.fe:8:17
+  │
+8 │     self.thingy.doesnt_exist()
+  │                 ^^^^^^^^^^^^ undefined function
 
 
-UndefinedValue on line 8
-[31mself.thingy.doesnt_exist()[0m

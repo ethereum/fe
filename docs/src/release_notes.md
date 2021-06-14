@@ -12,6 +12,81 @@ Fe is moving fast. Read up on all the latest improvements.
 **WARNING: All Fe releases are alpha releases and only meant to share the development progress with developers and enthusiasts. It is NOT yet ready for production usage.**
 
 [//]: # (towncrier release notes start)
+## 0.6.0-alpha "Feldspar" (2021-06-10)
+
+
+### Features
+
+
+- Support for `pragma` statement
+
+  Example: `pragma ^0.1.0` ([#361](https://github.com/ethereum/fe/issues/361))
+- Add support for tuple destructuring
+
+  Example:
+
+  ```
+  my_tuple: (u256, bool) = (42, true)
+  (x, y): (u256, bool) = my_tuple
+  ```
+  ([#376](https://github.com/ethereum/fe/issues/376))
+- 1. Call expression can now accept generic arguments
+  2. Replace `stringN` to `String<N>`
+
+  Example:
+
+  ```
+  s: String<10> = String<10>("HI")
+  ```
+  ([#379](https://github.com/ethereum/fe/issues/379))
+- - Many analyzer errors now include helpful messages and underlined code.
+  - Event and struct constructor arguments must now be labeled and in the order specified in the definition.
+  - The analyzer now verifies that the left-hand side of an assignment is actually assignable. ([#398](https://github.com/ethereum/fe/issues/398))
+- Types of integer literal are now inferred, rather than defaulting to `u256`.
+
+  ```
+  contract C:
+
+    def f(x: u8) -> u16:
+      y: u8 = 100   # had to use u8(100) before
+      z: i8 = -129  # "literal out of range" error
+
+      return 1000   # had to use `return u16(1000)` before
+
+    def g():
+      self.f(50)
+  ```
+
+  Similar inference is done for empty array literals. Previously, empty array
+  literals caused a compiler crash, because the array element type couldn't
+  be determined.
+  ```
+  contract C:
+    def f(xs: u8[10]):
+      pass
+
+    def g():
+      self.f([])
+  ```
+  (Note that array length mismatch is still a type error, so this code won't
+  actually compile.) ([#429](https://github.com/ethereum/fe/issues/429))
+- The Map type name is now capitalized. Example:
+
+  ```
+  contract GuestBook:
+      guests: Map<address, String<100>>
+  ```
+  ([#431](https://github.com/ethereum/fe/issues/431))
+- Convert all remaining errors to use the new advanced error reporting system ([#432](https://github.com/ethereum/fe/issues/432))
+- Analyzer throws an error if `__init__` is not public. ([#435](https://github.com/ethereum/fe/issues/435))
+
+
+### Internal Changes - for Fe Contributors
+
+
+- Refactored front-end "not implemented" errors into analyzer errors and removed questionable variants. Any panic is now considered to be a bug. ([#437](https://github.com/ethereum/fe/issues/437))
+
+
 ## 0.5.0-alpha (2021-05-27)
 
 

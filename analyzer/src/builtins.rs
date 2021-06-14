@@ -14,7 +14,7 @@ pub enum GlobalMethod {
     Keccak256,
 }
 
-#[derive(Debug, PartialEq, EnumString)]
+#[derive(strum::ToString, Debug, PartialEq, EnumString)]
 #[strum(serialize_all = "snake_case")]
 pub enum ContractTypeMethod {
     Create,

@@ -1,4 +1,4 @@
-use crate::errors::SemanticError;
+use crate::errors::AlreadyDefined;
 use crate::namespace::events::EventDef;
 use crate::namespace::types::{Array, FixedSize, Tuple, Type};
 use std::cell::RefCell;
@@ -94,9 +94,9 @@ impl ModuleScope {
     }
 
     /// Add a type definiton to the scope
-    pub fn add_type_def(&mut self, name: &str, typ: Type) -> Result<(), SemanticError> {
+    pub fn add_type_def(&mut self, name: &str, typ: Type) -> Result<(), AlreadyDefined> {
         match self.type_defs.entry(name.to_owned()) {
-            Entry::Occupied(_) => Err(SemanticError::already_defined()),
+            Entry::Occupied(_) => Err(AlreadyDefined),
             Entry::Vacant(entry) => Ok(entry.insert(typ)).map(|_| ()),
         }
     }
@@ -154,9 +154,9 @@ impl ContractScope {
     }
 
     /// Add a contract field definition to the scope.
-    pub fn add_field(&mut self, name: &str, typ: Type) -> Result<(), SemanticError> {
+    pub fn add_field(&mut self, name: &str, typ: Type) -> Result<(), AlreadyDefined> {
         match self.field_defs.entry(name.to_owned()) {
-            Entry::Occupied(_) => Err(SemanticError::already_defined()),
+            Entry::Occupied(_) => Err(AlreadyDefined),
             Entry::Vacant(e) => {
                 e.insert(ContractFieldDef {
                     nonce: self.num_fields,
@@ -176,9 +176,9 @@ impl ContractScope {
         params: Vec<(String, FixedSize)>,
         return_type: FixedSize,
         scope: Shared<BlockScope>,
-    ) -> Result<&ContractFunctionDef, SemanticError> {
+    ) -> Result<&ContractFunctionDef, AlreadyDefined> {
         match self.function_defs.entry(name.to_owned()) {
-            Entry::Occupied(_) => Err(SemanticError::already_defined()),
+            Entry::Occupied(_) => Err(AlreadyDefined),
             Entry::Vacant(entry) => Ok(entry.insert(ContractFunctionDef {
                 is_public,
                 name: name.to_string(),
@@ -190,9 +190,9 @@ impl ContractScope {
     }
 
     /// Add an event definition to the scope.
-    pub fn add_event(&mut self, name: &str, event: EventDef) -> Result<(), SemanticError> {
+    pub fn add_event(&mut self, name: &str, event: EventDef) -> Result<(), AlreadyDefined> {
         match self.event_defs.entry(name.to_owned()) {
-            Entry::Occupied(_) => Err(SemanticError::already_defined()),
+            Entry::Occupied(_) => Err(AlreadyDefined),
             Entry::Vacant(e) => {
                 e.insert(event);
                 Ok(())
@@ -201,9 +201,8 @@ impl ContractScope {
     }
 
     /// Add a static string definition to the scope.
-    pub fn add_string(&mut self, value: &str) -> Result<(), SemanticError> {
+    pub fn add_string(&mut self, value: &str) {
         self.string_defs.insert(value.to_owned());
-        Ok(())
     }
 
     /// Add the name of another contract that has been created within this
@@ -312,12 +311,12 @@ impl BlockScope {
     }
 
     /// Add a variable to the block scope.
-    pub fn add_var(&mut self, name: &str, typ: FixedSize) -> Result<(), SemanticError> {
+    pub fn add_var(&mut self, name: &str, typ: FixedSize) -> Result<(), AlreadyDefined> {
         if self.get_variable_def(name).is_some() {
-            return Err(SemanticError::already_defined());
+            return Err(AlreadyDefined);
         }
         match self.variable_defs.entry(name.to_owned()) {
-            Entry::Occupied(_) => Err(SemanticError::already_defined()),
+            Entry::Occupied(_) => Err(AlreadyDefined),
             Entry::Vacant(e) => {
                 e.insert(typ);
                 Ok(())

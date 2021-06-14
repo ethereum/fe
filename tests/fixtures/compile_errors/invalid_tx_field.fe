@@ -1,0 +1,4 @@
+contract Foo:
+
+  pub def foo():
+    tx.foo
