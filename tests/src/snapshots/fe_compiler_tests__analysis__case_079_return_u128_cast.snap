@@ -1,5 +1,5 @@
 ---
-source: analyzer/tests/analysis.rs
+source: tests/src/analysis.rs
 expression: "build_snapshot(fixture, &src, &context)"
 
 ---

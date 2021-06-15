@@ -42,7 +42,7 @@ pub fn batch_decode<T: AbiEncoding + Ord>(
 }
 
 /// Generates an encoding function for any set of type parameters.
-fn encode<T: AbiEncoding>(types: Vec<T>) -> yul::Statement {
+pub fn encode<T: AbiEncoding>(types: Vec<T>) -> yul::Statement {
     // the name of the function we're generating
     let func_name = names::encode_name(&types);
 
@@ -115,7 +115,7 @@ fn encode<T: AbiEncoding>(types: Vec<T>) -> yul::Statement {
 
 /// Generates a decoding function for a single type parameter in either
 /// calldata or memory.
-fn decode<T: AbiEncoding>(typ: T, location: AbiDecodeLocation) -> yul::Statement {
+pub fn decode<T: AbiEncoding>(typ: T, location: AbiDecodeLocation) -> yul::Statement {
     let func_name = names::decode_name(&typ, location.clone());
 
     let decode_expr = match typ.abi_type() {
@@ -355,43 +355,5 @@ fn decode_tuple(elems: Vec<AbiType>, location: AbiDecodeLocation) -> yul::Expres
     match location {
         AbiDecodeLocation::Memory => expression! { head_ptr },
         AbiDecodeLocation::Calldata => expression! { ccopym(head_ptr, [tuple_size]) },
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::yul::runtime::functions::abi::{decode, encode};
-    use fe_analyzer::namespace::types::{AbiDecodeLocation, Base, FeString, U256};
-
-    #[test]
-    fn test_encode() {
-        assert_eq!(
-            encode(vec![U256, Base::Address]).to_string(),
-            "function abi_encode_u256_address(val_0, val_1) -> ptr { ptr := avail() pop(alloc_mstoren(val_0, 32)) pop(alloc_mstoren(val_1, 32)) }"
-        )
-    }
-
-    #[test]
-    fn test_decode_string_mem() {
-        assert_eq!(
-            decode(FeString { max_size: 100 }, AbiDecodeLocation::Memory).to_string(),
-            "function abi_decode_string_100_mem(start_ptr, offset) -> decoded_ptr { let head_ptr := add(start_ptr, offset) decoded_ptr := add(start_ptr, mload(head_ptr)) }"
-        )
-    }
-
-    #[test]
-    fn test_decode_string_calldata() {
-        assert_eq!(
-            decode(FeString { max_size: 100 }, AbiDecodeLocation::Calldata).to_string(),
-            "function abi_decode_string_100_calldata(start_ptr, offset) -> decoded_ptr { let head_ptr := add(start_ptr, offset) decoded_ptr := ccopym(add(start_ptr, calldataload(head_ptr)), add(mul(calldataload(add(start_ptr, calldataload(head_ptr))), 1), 32)) }"
-        )
-    }
-
-    #[test]
-    fn test_decode_u256_mem() {
-        assert_eq!(
-            decode(U256, AbiDecodeLocation::Memory).to_string(),
-            "function abi_decode_u256_mem(start_ptr, offset) -> decoded_ptr { let head_ptr := add(start_ptr, offset) decoded_ptr := mload(head_ptr) }"
-        )
     }
 }

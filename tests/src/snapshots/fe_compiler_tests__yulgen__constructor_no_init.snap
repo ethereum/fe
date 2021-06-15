@@ -1,0 +1,10 @@
+---
+source: tests/src/yulgen.rs
+expression: "constructor::build()"
+
+---
+code {
+    let size := datasize("runtime")
+    datacopy(0, dataoffset("runtime"), size)
+    return(0, size)
+}
