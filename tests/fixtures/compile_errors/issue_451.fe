@@ -1,0 +1,5 @@
+contract o
+    pub def bar(x:u256,y:u256)->bool
+     return
+    pub def bar:
+     s
