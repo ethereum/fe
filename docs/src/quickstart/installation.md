@@ -34,8 +34,7 @@ FLAGS:
 OPTIONS:
     -e, --emit <emit>                Comma separated compile targets e.g. -e=bytecode,yul [default: abi,bytecode]
                                      [possible values: abi, bytecode, ast, tokens, yul, loweredAst]
-        --optimize <optimize>        Whether the Yul optimizer should be used or not e.g. --optimize=false
-        [default: true]
+        --optimize <optimize>        Whether the Yul optimizer should be used or not e.g. --optimize=false [default: true]
     -o, --output-dir <output-dir>    The directory to store the compiler output e.g /tmp/output [default: output]
 
 ARGS:
