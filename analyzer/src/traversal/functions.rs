@@ -91,13 +91,14 @@ pub fn func_def(
                     // TODO: figure out how to include the previously defined function
                     vec![Label::primary(
                         def.span,
-                        format!("Conflicting definition of contract `{}`", name),
+                        format!("Conflicting definition of function `{}`", name),
                     )],
                     vec![format!(
                         "Note: Give one of the `{}` functions a different name",
                         name
                     )],
-                )
+                );
+                return Err(FatalError);
             }
             Ok(val) => {
                 let attributes: FunctionAttributes = val.to_owned().into();

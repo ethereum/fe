@@ -4,11 +4,11 @@ expression: "error_string(&path, &src)"
 
 ---
 error: a function with the same name already exists
-  ┌─ fixtures/compile_errors/duplicate_method_in_contract.fe:6:5
+  ┌─ fixtures/compile_errors/issue_451.fe:4:5
   │  
-6 │ ╭     pub def bar():
-7 │ │         pass
-  │ ╰────────────^ Conflicting definition of function `bar`
+4 │ ╭     pub def bar:
+5 │ │      s
+  │ ╰──────^ Conflicting definition of function `bar`
   │  
   = Note: Give one of the `bar` functions a different name
 
