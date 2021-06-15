@@ -4,7 +4,7 @@ use crate::types::{FeModuleAst, NamedYulContracts};
 use fe_analyzer::context::Context;
 
 pub mod constants;
-mod constructor;
+pub mod constructor;
 mod mappers;
 mod names;
 mod operations;

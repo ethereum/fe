@@ -250,10 +250,7 @@ fn write_compiled_module(
 
         if targets.contains(&CompilationTarget::Yul) {
             let file_name = format!("{}_ir.yul", &name);
-            write_output(
-                &contract_output_dir.join(file_name),
-                &contract.yul,
-            )?;
+            write_output(&contract_output_dir.join(file_name), &contract.yul)?;
         }
 
         #[cfg(feature = "solc-backend")]

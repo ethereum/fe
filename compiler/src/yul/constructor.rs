@@ -70,11 +70,3 @@ fn deployment() -> Vec<yul::Statement> {
         (return(0, size))
     }
 }
-
-#[test]
-fn test_constructor_without_func() {
-    assert_eq!(
-        build().to_string(),
-        r#"code { let size := datasize("runtime") datacopy(0, dataoffset("runtime"), size) return(0, size) }"#,
-    )
-}

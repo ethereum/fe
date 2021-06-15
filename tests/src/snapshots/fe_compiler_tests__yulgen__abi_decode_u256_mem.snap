@@ -1,0 +1,9 @@
+---
+source: tests/src/yulgen.rs
+expression: "abi::decode(U256, AbiDecodeLocation::Memory)"
+
+---
+function abi_decode_u256_mem(start_ptr, offset) -> decoded_ptr {
+    let head_ptr := add(start_ptr, offset)
+    decoded_ptr := mload(head_ptr)
+}

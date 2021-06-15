@@ -1,0 +1,9 @@
+---
+source: tests/src/yulgen.rs
+expression: "abi::decode(FeString{max_size: 100,}, AbiDecodeLocation::Memory)"
+
+---
+function abi_decode_string_100_mem(start_ptr, offset) -> decoded_ptr {
+    let head_ptr := add(start_ptr, offset)
+    decoded_ptr := add(start_ptr, mload(head_ptr))
+}

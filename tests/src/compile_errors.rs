@@ -22,20 +22,6 @@ fn error_string(path: &str, src: &str) -> String {
     diagnostics_string(&diagnostics, &files)
 }
 
-macro_rules! assert_snapshot_wasm {
-    ($module:ident, $name:ident, $actual:expr) => {
-        let snap = include_str!(concat!(
-            "snapshots/fe_compiler_tests__",
-            stringify!($module),
-            "__",
-            stringify!($name),
-            ".snap"
-        ));
-        let (_, expected) = snap.rsplit_once("---\n").unwrap();
-        pretty_assertions::assert_eq!($actual.trim(), expected.trim());
-    };
-}
-
 macro_rules! test_file {
     ($name:ident) => {
         #[test]
