@@ -35,6 +35,8 @@ mod demo_uniswap;
 #[cfg(test)]
 mod features;
 #[cfg(test)]
+mod lowering;
+#[cfg(test)]
 mod runtime;
 #[cfg(test)]
 mod solidity;

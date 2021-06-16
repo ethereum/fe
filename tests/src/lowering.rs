@@ -13,18 +13,16 @@ use fe_common::utils::ron::{to_ron_string_pretty, Diff};
 
 fn lower_file(src: &str, id: SourceFileId, files: &FileStore) -> fe::Module {
     let fe_module = parse_file(src, id, files);
-    let context = analyze(&fe_module, id, files);
-    lowering::lower(&context, fe_module)
+    let mut context = analyze(&fe_module, id, files);
+    lowering::lower(&mut context, fe_module)
 }
 
 fn analyze(module: &fe::Module, id: SourceFileId, files: &FileStore) -> Context {
     match fe_analyzer::analyze(&module, id) {
         Ok(context) => context,
-        Err(AnalyzerError {
-            diagnostics,
-        }) => {
+        Err(AnalyzerError(diagnostics)) => {
             print_diagnostics(&diagnostics, &files);
-            panic!("analyzer error {:?}", classic);
+            panic!("analysis failed");
         }
     }
 }
@@ -57,13 +55,10 @@ fn replace_spans(input: String) -> String {
 fn test_lowering(fixture: &str) {
     let mut files = FileStore::new();
     let (src, src_id) = files
-        .load_file(&format!("tests/cases/lowering/fixtures/{}.fe", fixture))
+        .load_file(&format!("fixtures/lowering/{}.fe", fixture))
         .expect("unable to src read fixture file");
     let (expected_lowered, el_id) = files
-        .load_file(&format!(
-            "tests/cases/lowering/fixtures/{}_lowered.fe",
-            fixture
-        ))
+        .load_file(&format!("fixtures/lowering/{}_lowered.fe", fixture))
         .expect("unable to read lowered fixture file");
 
     let expected_lowered_ast = parse_file(&expected_lowered, el_id, &files);
