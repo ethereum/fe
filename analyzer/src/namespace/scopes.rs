@@ -425,53 +425,26 @@ mod tests {
         let module_scope = ModuleScope::new();
         let contract_scope = ContractScope::new("", module_scope);
         let block_scope_1 = BlockScope::from_contract_scope("", Rc::clone(&contract_scope));
-        assert_eq!(
-            true,
-            block_scope_1
-                .borrow()
-                .inherits_type(BlockScopeType::Function)
-        );
-        assert_eq!(
-            false,
-            block_scope_1.borrow().inherits_type(BlockScopeType::IfElse)
-        );
-        assert_eq!(
-            false,
-            block_scope_1.borrow().inherits_type(BlockScopeType::Loop)
-        );
+        assert!(block_scope_1
+            .borrow()
+            .inherits_type(BlockScopeType::Function));
+        assert!(!block_scope_1.borrow().inherits_type(BlockScopeType::IfElse));
+        assert!(!block_scope_1.borrow().inherits_type(BlockScopeType::Loop));
 
         let block_scope_2 =
             BlockScope::from_block_scope(BlockScopeType::IfElse, Rc::clone(&block_scope_1));
-        assert_eq!(
-            true,
-            block_scope_2
-                .borrow()
-                .inherits_type(BlockScopeType::Function)
-        );
-        assert_eq!(
-            true,
-            block_scope_2.borrow().inherits_type(BlockScopeType::IfElse)
-        );
-        assert_eq!(
-            false,
-            block_scope_2.borrow().inherits_type(BlockScopeType::Loop)
-        );
+        assert!(block_scope_2
+            .borrow()
+            .inherits_type(BlockScopeType::Function));
+        assert!(block_scope_2.borrow().inherits_type(BlockScopeType::IfElse));
+        assert!(!block_scope_2.borrow().inherits_type(BlockScopeType::Loop));
 
         let block_scope_3 =
             BlockScope::from_block_scope(BlockScopeType::Loop, Rc::clone(&block_scope_2));
-        assert_eq!(
-            true,
-            block_scope_3
-                .borrow()
-                .inherits_type(BlockScopeType::Function)
-        );
-        assert_eq!(
-            true,
-            block_scope_3.borrow().inherits_type(BlockScopeType::IfElse)
-        );
-        assert_eq!(
-            true,
-            block_scope_3.borrow().inherits_type(BlockScopeType::Loop)
-        );
+        assert!(block_scope_3
+            .borrow()
+            .inherits_type(BlockScopeType::Function));
+        assert!(block_scope_3.borrow().inherits_type(BlockScopeType::IfElse));
+        assert!(block_scope_3.borrow().inherits_type(BlockScopeType::Loop));
     }
 }

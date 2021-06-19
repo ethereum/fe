@@ -33,7 +33,7 @@ pub fn fixed_size_type_desc(typ: &FixedSize) -> fe::TypeDesc {
         },
         FixedSize::Array(array) => fe::TypeDesc::Array {
             dimension: array.size,
-            typ: fixed_size_type_desc(&array.inner.clone().into()).into_boxed_node(),
+            typ: fixed_size_type_desc(&array.inner.into()).into_boxed_node(),
         },
         FixedSize::Tuple(_) => todo!(),
         FixedSize::String(_) => todo!(),
