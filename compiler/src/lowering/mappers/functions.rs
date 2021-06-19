@@ -8,60 +8,56 @@ use fe_parser::ast as fe;
 use fe_parser::node::Node;
 
 /// Lowers a function definition.
-pub fn func_def(context: &mut Context, def: Node<fe::ContractStmt>) -> Node<fe::ContractStmt> {
-    if let fe::ContractStmt::FuncDef {
+pub fn func_def(context: &mut Context, def: Node<fe::FuncDef>) -> Node<fe::FuncDef> {
+    let fe::FuncDef {
         is_pub,
         name,
         args,
         return_type,
         body,
-    } = def.kind
-    {
-        // The return type is lowered if it exists. If there is no return type, we set it to the unit type.
-        let lowered_return_type = return_type
-            .map(|return_type| types::type_desc(context, return_type))
-            .unwrap_or_else(|| names::fixed_size_type_desc(&FixedSize::unit()).into_node());
+    } = def.kind;
+    // The return type is lowered if it exists. If there is no return type, we set it to the unit type.
+    let lowered_return_type = return_type
+        .map(|return_type| types::type_desc(context, return_type))
+        .unwrap_or_else(|| names::fixed_size_type_desc(&FixedSize::unit()).into_node());
 
-        let lowered_body = {
-            let mut lowered_body = multiple_stmts(context, body);
-            let attributes = context.get_function(def.id).expect("missing attributes");
-            // append `return ()` to the body if there is no return
-            if attributes.return_type.is_unit() && !is_last_statement_return(&lowered_body) {
-                lowered_body.push(
-                    fe::FuncStmt::Return {
-                        value: Some(fe::Expr::Unit.into_node()),
-                    }
-                    .into_node(),
-                );
-            }
-            lowered_body
-        };
+    let lowered_body = {
+        let mut lowered_body = multiple_stmts(context, body);
+        let attributes = context.get_function(def.id).expect("missing attributes");
+        // append `return ()` to the body if there is no return
+        if attributes.return_type.is_unit() && !is_last_statement_return(&lowered_body) {
+            lowered_body.push(
+                fe::FuncStmt::Return {
+                    value: Some(fe::Expr::Unit.into_node()),
+                }
+                .into_node(),
+            );
+        }
+        lowered_body
+    };
 
-        let lowered_args = args
-            .into_iter()
-            .map(|arg| {
-                Node::new(
-                    fe::FuncDefArg {
-                        name: arg.kind.name,
-                        typ: types::type_desc(context, arg.kind.typ),
-                    },
-                    arg.span,
-                )
-            })
-            .collect();
+    let lowered_args = args
+        .into_iter()
+        .map(|arg| {
+            Node::new(
+                fe::FuncDefArg {
+                    name: arg.kind.name,
+                    typ: types::type_desc(context, arg.kind.typ),
+                },
+                arg.span,
+            )
+        })
+        .collect();
 
-        let lowered_function = fe::ContractStmt::FuncDef {
-            is_pub,
-            name,
-            args: lowered_args,
-            return_type: Some(lowered_return_type),
-            body: lowered_body,
-        };
+    let lowered_function = fe::FuncDef {
+        is_pub,
+        name,
+        args: lowered_args,
+        return_type: Some(lowered_return_type),
+        body: lowered_body,
+    };
 
-        Node::new(lowered_function, def.span)
-    } else {
-        unreachable!()
-    }
+    Node::new(lowered_function, def.span)
 }
 
 fn func_stmt(context: &mut Context, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::FuncStmt>> {

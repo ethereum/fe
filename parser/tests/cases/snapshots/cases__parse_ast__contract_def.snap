@@ -128,7 +128,7 @@ Node(
       ),
     ],
     body: [
-      Node(
+      Function(Node(
         kind: FuncDef(
           is_pub: true,
           name: Node(
@@ -170,8 +170,8 @@ Node(
           start: 73,
           end: 107,
         ),
-      ),
-      Node(
+      )),
+      Event(Node(
         kind: EventDef(
           name: Node(
             kind: "Bar",
@@ -212,7 +212,7 @@ Node(
           start: 110,
           end: 142,
         ),
-      ),
+      )),
     ],
   ),
   span: Span(

@@ -1,7 +1,7 @@
 use super::functions::parse_fn_def;
 use super::types::{parse_event_def, parse_field, parse_opt_qualifier};
 
-use crate::ast::ContractDef;
+use crate::ast::{ContractDef, ContractStmt};
 use crate::grammar::functions::parse_single_word_stmt;
 use crate::node::Node;
 use crate::{ParseFailed, ParseResult, Parser, TokenKind};
@@ -70,7 +70,7 @@ pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<ContractDef>> {
                         "`const` qualifier can't be used with function definitions",
                     );
                 }
-                defs.push(parse_fn_def(par, pub_qual)?);
+                defs.push(ContractStmt::Function(parse_fn_def(par, pub_qual)?));
             }
             Some(TokenKind::Event) => {
                 if let Some(span) = pub_qual {
@@ -82,7 +82,7 @@ pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<ContractDef>> {
                         "`const` qualifier can't be used with event definitions",
                     );
                 }
-                defs.push(parse_event_def(par)?);
+                defs.push(ContractStmt::Event(parse_event_def(par)?));
             }
             Some(Pass) => {
                 parse_single_word_stmt(par)?;

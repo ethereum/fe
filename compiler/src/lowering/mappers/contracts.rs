@@ -12,9 +12,11 @@ pub fn contract_def(context: &mut Context, stmt: Node<fe::ContractDef>) -> Node<
     let fe::ContractDef { name, fields, body } = stmt.kind;
     let lowered_body = body
         .into_iter()
-        .map(|stmt| match stmt.kind {
-            fe::ContractStmt::EventDef { .. } => event_def(context, stmt),
-            fe::ContractStmt::FuncDef { .. } => functions::func_def(context, stmt),
+        .map(|stmt| match stmt {
+            fe::ContractStmt::Event(def) => fe::ContractStmt::Event(event_def(context, def)),
+            fe::ContractStmt::Function(def) => {
+                fe::ContractStmt::Function(functions::func_def(context, def))
+            }
         })
         .collect();
 
@@ -23,8 +25,8 @@ pub fn contract_def(context: &mut Context, stmt: Node<fe::ContractDef>) -> Node<
     let func_defs_from_list_expr = attributes
         .list_expressions
         .iter()
-        .map(|expr| list_expr_to_fn_def(expr).into_node())
-        .collect::<Vec<Node<fe::ContractStmt>>>();
+        .map(|expr| fe::ContractStmt::Function(list_expr_to_fn_def(expr).into_node()))
+        .collect::<Vec<fe::ContractStmt>>();
 
     let lowered_body = [lowered_body, func_defs_from_list_expr].concat();
 
@@ -56,35 +58,32 @@ fn contract_field(context: &mut Context, field: Node<fe::Field>) -> Node<fe::Fie
     )
 }
 
-fn event_def(context: &mut Context, stmt: Node<fe::ContractStmt>) -> Node<fe::ContractStmt> {
-    if let fe::ContractStmt::EventDef { name, fields } = stmt.kind {
-        let lowered_fields = fields
-            .into_iter()
-            .map(|field| {
-                Node::new(
-                    fe::EventField {
-                        is_idx: field.kind.is_idx,
-                        name: field.kind.name,
-                        typ: types::type_desc(context, field.kind.typ),
-                    },
-                    field.span,
-                )
-            })
-            .collect();
+fn event_def(context: &mut Context, stmt: Node<fe::EventDef>) -> Node<fe::EventDef> {
+    let fe::EventDef { name, fields } = stmt.kind;
+    let lowered_fields = fields
+        .into_iter()
+        .map(|field| {
+            Node::new(
+                fe::EventField {
+                    is_idx: field.kind.is_idx,
+                    name: field.kind.name,
+                    typ: types::type_desc(context, field.kind.typ),
+                },
+                field.span,
+            )
+        })
+        .collect();
 
-        return Node::new(
-            fe::ContractStmt::EventDef {
-                name,
-                fields: lowered_fields,
-            },
-            stmt.span,
-        );
-    }
-
-    unreachable!()
+    return Node::new(
+        fe::EventDef {
+            name,
+            fields: lowered_fields,
+        },
+        stmt.span,
+    );
 }
 
-fn list_expr_to_fn_def(array: &Array) -> fe::ContractStmt {
+fn list_expr_to_fn_def(array: &Array) -> fe::FuncDef {
     // Built the AST nodes for the function arguments
     let args = (0..array.size)
         .map(|index| {
@@ -130,7 +129,7 @@ fn list_expr_to_fn_def(array: &Array) -> fe::ContractStmt {
         Some(names::fixed_size_type_desc(&FixedSize::Array(array.clone())).into_node());
 
     // Put it all together in one AST node that holds the entire function definition
-    fe::ContractStmt::FuncDef {
+    fe::FuncDef {
         is_pub: false,
         name: names::list_expr_generator_fn_name(array).into_node(),
         args,

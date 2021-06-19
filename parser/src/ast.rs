@@ -44,7 +44,7 @@ pub struct TypeAlias {
 pub struct ContractDef {
     pub name: Node<String>,
     pub fields: Vec<Node<Field>>,
-    pub body: Vec<Node<ContractStmt>>,
+    pub body: Vec<ContractStmt>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -127,17 +127,23 @@ pub struct Field {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ContractStmt {
-    EventDef {
-        name: Node<String>,
-        fields: Vec<Node<EventField>>,
-    },
-    FuncDef {
-        is_pub: bool,
-        name: Node<String>,
-        args: Vec<Node<FuncDefArg>>,
-        return_type: Option<Node<TypeDesc>>,
-        body: Vec<Node<FuncStmt>>,
-    },
+    Event(Node<EventDef>),
+    Function(Node<FuncDef>),
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct EventDef {
+    pub name: Node<String>,
+    pub fields: Vec<Node<EventField>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct FuncDef {
+    pub is_pub: bool,
+    pub name: Node<String>,
+    pub args: Vec<Node<FuncDefArg>>,
+    pub return_type: Option<Node<TypeDesc>>,
+    pub body: Vec<Node<FuncStmt>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -314,6 +320,15 @@ impl Spanned for ModuleStmt {
             ModuleStmt::TypeAlias(inner) => inner.span,
             ModuleStmt::ContractDef(inner) => inner.span,
             ModuleStmt::StructDef(inner) => inner.span,
+        }
+    }
+}
+
+impl Spanned for ContractStmt {
+    fn span(&self) -> Span {
+        match self {
+            ContractStmt::Event(inner) => inner.span,
+            ContractStmt::Function(inner) => inner.span,
         }
     }
 }

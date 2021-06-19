@@ -1,4 +1,4 @@
-use crate::ast::{ContractStmt, EventField, Field, GenericArg, StructDef, TypeAlias, TypeDesc};
+use crate::ast::{EventDef, EventField, Field, GenericArg, StructDef, TypeAlias, TypeDesc};
 use crate::grammar::expressions::parse_expr;
 use crate::grammar::functions::parse_single_word_stmt;
 use crate::node::{Node, Span};
@@ -77,7 +77,7 @@ pub fn parse_type_alias(par: &mut Parser) -> ParseResult<Node<TypeAlias>> {
 /// Parse an event definition.
 /// # Panics
 /// Panics if the next token isn't `event`.
-pub fn parse_event_def(par: &mut Parser) -> ParseResult<Node<ContractStmt>> {
+pub fn parse_event_def(par: &mut Parser) -> ParseResult<Node<EventDef>> {
     use TokenKind::*;
 
     let event_tok = par.assert(Event);
@@ -107,7 +107,7 @@ pub fn parse_event_def(par: &mut Parser) -> ParseResult<Node<ContractStmt>> {
     }
     let span = event_tok.span + name.span + fields.last();
     Ok(Node::new(
-        ContractStmt::EventDef {
+        EventDef {
             name: name.into(),
             fields,
         },
