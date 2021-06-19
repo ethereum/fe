@@ -8,8 +8,8 @@ use fe_parser::ast as fe;
 use fe_parser::node::Node;
 
 /// Lowers a function definition.
-pub fn func_def(context: &mut Context, def: Node<fe::FuncDef>) -> Node<fe::FuncDef> {
-    let fe::FuncDef {
+pub fn func_def(context: &mut Context, def: Node<fe::Function>) -> Node<fe::Function> {
+    let fe::Function {
         is_pub,
         name,
         args,
@@ -40,7 +40,7 @@ pub fn func_def(context: &mut Context, def: Node<fe::FuncDef>) -> Node<fe::FuncD
         .into_iter()
         .map(|arg| {
             Node::new(
-                fe::FuncDefArg {
+                fe::FunctionArg {
                     name: arg.kind.name,
                     typ: types::type_desc(context, arg.kind.typ),
                 },
@@ -49,7 +49,7 @@ pub fn func_def(context: &mut Context, def: Node<fe::FuncDef>) -> Node<fe::FuncD
         })
         .collect();
 
-    let lowered_function = fe::FuncDef {
+    let lowered_function = fe::Function {
         is_pub,
         name,
         args: lowered_args,

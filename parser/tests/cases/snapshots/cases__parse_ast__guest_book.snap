@@ -39,8 +39,8 @@ Node(
           end: 26,
         ),
       )),
-      ContractDef(Node(
-        kind: ContractDef(
+      Contract(Node(
+        kind: Contract(
           name: Node(
             kind: "GuestBook",
             span: Span(
@@ -111,7 +111,7 @@ Node(
           ],
           body: [
             Event(Node(
-              kind: EventDef(
+              kind: Event(
                 name: Node(
                   kind: "Signed",
                   span: Span(
@@ -153,7 +153,7 @@ Node(
               ),
             )),
             Function(Node(
-              kind: FuncDef(
+              kind: Function(
                 is_pub: true,
                 name: Node(
                   kind: "sign",
@@ -164,7 +164,7 @@ Node(
                 ),
                 args: [
                   Node(
-                    kind: FuncDefArg(
+                    kind: FunctionArg(
                       name: Node(
                         kind: "book_msg",
                         span: Span(
@@ -310,7 +310,7 @@ Node(
               ),
             )),
             Function(Node(
-              kind: FuncDef(
+              kind: Function(
                 is_pub: true,
                 name: Node(
                   kind: "get_msg",
@@ -321,7 +321,7 @@ Node(
                 ),
                 args: [
                   Node(
-                    kind: FuncDefArg(
+                    kind: FunctionArg(
                       name: Node(
                         kind: "addr",
                         span: Span(

@@ -1,7 +1,7 @@
 use super::functions::parse_fn_def;
 use super::types::{parse_event_def, parse_field, parse_opt_qualifier};
 
-use crate::ast::{ContractDef, ContractStmt};
+use crate::ast::{Contract, ContractStmt};
 use crate::grammar::functions::parse_single_word_stmt;
 use crate::node::Node;
 use crate::{ParseFailed, ParseResult, Parser, TokenKind};
@@ -15,9 +15,8 @@ use crate::{ParseFailed, ParseResult, Parser, TokenKind};
 /// Parse a contract definition.
 /// # Panics
 /// Panics if the next token isn't `contract`.
-pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<ContractDef>> {
-    use TokenKind::*;
-    let contract_tok = par.assert(Contract);
+pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<Contract>> {
+    let contract_tok = par.assert(TokenKind::Contract);
 
     // contract Foo:
     //   x: Map<address, u256>
@@ -33,7 +32,7 @@ pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<ContractDef>> {
     //
 
     let contract_name = par.expect_with_notes(
-        Name,
+        TokenKind::Name,
         "failed to parse contract definition",
         || vec!["Note: `contract` must be followed by a name, which must start with a letter and contain only letters, numbers, or underscores".into()],
     )?;
@@ -47,7 +46,7 @@ pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<ContractDef>> {
     loop {
         let mut pub_qual = parse_opt_qualifier(par, TokenKind::Pub);
         let const_qual = parse_opt_qualifier(par, TokenKind::Const);
-        if pub_qual.is_none() && const_qual.is_some() && par.peek() == Some(Pub) {
+        if pub_qual.is_none() && const_qual.is_some() && par.peek() == Some(TokenKind::Pub) {
             pub_qual = parse_opt_qualifier(par, TokenKind::Pub);
             par.error(
                 pub_qual.unwrap() + const_qual,
@@ -84,7 +83,7 @@ pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<ContractDef>> {
                 }
                 defs.push(ContractStmt::Event(parse_event_def(par)?));
             }
-            Some(Pass) => {
+            Some(TokenKind::Pass) => {
                 parse_single_word_stmt(par)?;
             }
             Some(TokenKind::Dedent) => {
@@ -106,7 +105,7 @@ pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<ContractDef>> {
 
     let span = header_span + fields.last() + defs.last();
     Ok(Node::new(
-        ContractDef {
+        Contract {
             name: Node::new(contract_name.text.to_string(), contract_name.span),
             fields,
             body: defs,

@@ -1,5 +1,5 @@
 use fe_common::diagnostics::Label;
-use fe_parser::ast::{Field, StructDef};
+use fe_parser::ast as fe;
 use fe_parser::node::Node;
 
 use crate::errors::{AlreadyDefined, FatalError};
@@ -12,19 +12,19 @@ use std::rc::Rc;
 pub fn struct_def(
     context: &mut Context,
     module_scope: Shared<ModuleScope>,
-    struct_def: &Node<StructDef>,
+    struct_def: &Node<fe::Struct>,
 ) -> Result<(), FatalError> {
-    let StructDef { name, fields } = &struct_def.kind;
+    let fe::Struct { name, fields } = &struct_def.kind;
     let mut val = Struct::new(&name.kind);
     for field in fields {
-        let Field { name, typ, .. } = &field.kind;
+        let fe::Field { name, typ, .. } = &field.kind;
         let field_type = type_desc(&Scope::Module(Rc::clone(&module_scope)), context, typ)?;
         if let Type::Base(base_typ) = field_type {
             if let Err(AlreadyDefined) = val.add_field(&name.kind, &FixedSize::Base(base_typ)) {
                 let first_definition = fields
                     .iter()
                     .find(|val| {
-                        let Field {
+                        let fe::Field {
                             name: inner_name, ..
                         } = &val.kind;
                         inner_name.kind == name.kind && val.span != field.span

@@ -1,16 +1,15 @@
-use crate::ast::{EventDef, EventField, Field, GenericArg, StructDef, TypeAlias, TypeDesc};
+use crate::ast::{self, EventField, Field, GenericArg, TypeAlias, TypeDesc};
 use crate::grammar::expressions::parse_expr;
 use crate::grammar::functions::parse_single_word_stmt;
 use crate::node::{Node, Span};
 use crate::{ParseFailed, ParseResult, Parser, TokenKind};
 use vec1::Vec1;
 
-/// Parse a [`ModuleStmt::StructDef`].
+/// Parse a [`ModuleStmt::Struct`].
 /// # Panics
 /// Panics if the next token isn't `struct`.
-pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<StructDef>> {
+pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ast::Struct>> {
     use TokenKind::*;
-
     let struct_tok = par.assert(Struct);
     let name = par.expect_with_notes(Name, "failed to parse struct definition", || {
         vec!["Note: a struct name must start with a letter or underscore, and contain letters, numbers, or underscores".into()]
@@ -21,8 +20,8 @@ pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<StructDef>> {
     loop {
         match par.peek() {
             Some(Name) | Some(Pub) | Some(Const) => {
-                let pub_qual = parse_opt_qualifier(par, TokenKind::Pub);
-                let const_qual = parse_opt_qualifier(par, TokenKind::Const);
+                let pub_qual = parse_opt_qualifier(par, Pub);
+                let const_qual = parse_opt_qualifier(par, Const);
                 fields.push(parse_field(par, pub_qual, const_qual)?);
             }
             Some(Dedent) => {
@@ -42,7 +41,7 @@ pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<StructDef>> {
     }
     let span = struct_tok.span + name.span + fields.last();
     Ok(Node::new(
-        StructDef {
+        ast::Struct {
             name: name.into(),
             fields,
         },
@@ -77,7 +76,7 @@ pub fn parse_type_alias(par: &mut Parser) -> ParseResult<Node<TypeAlias>> {
 /// Parse an event definition.
 /// # Panics
 /// Panics if the next token isn't `event`.
-pub fn parse_event_def(par: &mut Parser) -> ParseResult<Node<EventDef>> {
+pub fn parse_event_def(par: &mut Parser) -> ParseResult<Node<ast::Event>> {
     use TokenKind::*;
 
     let event_tok = par.assert(Event);
@@ -107,7 +106,7 @@ pub fn parse_event_def(par: &mut Parser) -> ParseResult<Node<EventDef>> {
     }
     let span = event_tok.span + name.span + fields.last();
     Ok(Node::new(
-        EventDef {
+        ast::Event {
             name: name.into(),
             fields,
         },

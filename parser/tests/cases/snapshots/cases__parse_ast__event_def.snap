@@ -4,7 +4,7 @@ expression: "ast_string(stringify!(event_def), types::parse_event_def,\n        
 
 ---
 Node(
-  kind: EventDef(
+  kind: Event(
     name: Node(
       kind: "Foo",
       span: Span(

@@ -15,7 +15,7 @@ pub fn module(context: &Context, module: &fe::Module) -> YulContracts {
             match &stmt {
                 fe::ModuleStmt::Pragma(_) => {}
                 fe::ModuleStmt::TypeAlias(_) => {}
-                fe::ModuleStmt::ContractDef(def) => {
+                fe::ModuleStmt::Contract(def) => {
                     // Map the set of created contract names to their Yul objects so they can be
                     // included in the Yul contract that deploys them.
                     let created_contracts = context
@@ -35,7 +35,7 @@ pub fn module(context: &Context, module: &fe::Module) -> YulContracts {
                         panic!("duplicate contract definition");
                     }
                 }
-                fe::ModuleStmt::StructDef(_) => {}
+                fe::ModuleStmt::Struct(_) => {}
                 fe::ModuleStmt::Import(_) => unimplemented!(),
             }
 

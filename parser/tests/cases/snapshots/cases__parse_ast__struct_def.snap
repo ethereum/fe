@@ -4,7 +4,7 @@ expression: "ast_string(stringify!(struct_def), types::parse_struct_def,\n      
 
 ---
 Node(
-  kind: StructDef(
+  kind: Struct(
     name: Node(
       kind: "S",
       span: Span(

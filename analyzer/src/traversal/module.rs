@@ -18,10 +18,10 @@ pub fn module(context: &mut Context, module: &fe::Module) -> Result<(), FatalErr
         match &stmt {
             fe::ModuleStmt::TypeAlias(inner) => type_alias(context, Rc::clone(&scope), inner)?,
             fe::ModuleStmt::Pragma(inner) => pragma_stmt(context, inner),
-            fe::ModuleStmt::StructDef(inner) => {
+            fe::ModuleStmt::Struct(inner) => {
                 structs::struct_def(context, Rc::clone(&scope), inner)?
             }
-            fe::ModuleStmt::ContractDef(inner) => {
+            fe::ModuleStmt::Contract(inner) => {
                 // Collect contract statements and the scope that we create for them. After we
                 // have walked all contracts once, we walk over them again for a
                 // more detailed inspection.

@@ -343,7 +343,7 @@ impl Context {
     /// # Panics
     ///
     /// Panics if an entry already exists for the node id.
-    pub fn add_function(&mut self, node: &Node<fe::FuncDef>, attributes: FunctionAttributes) {
+    pub fn add_function(&mut self, node: &Node<fe::Function>, attributes: FunctionAttributes) {
         self.add_node(node);
         expect_none(
             self.functions.insert(node.id, attributes),
@@ -379,7 +379,7 @@ impl Context {
     /// # Panics
     ///
     /// Panics if an entry already exists for the node id.
-    pub fn add_contract(&mut self, node: &Node<fe::ContractDef>, attributes: ContractAttributes) {
+    pub fn add_contract(&mut self, node: &Node<fe::Contract>, attributes: ContractAttributes) {
         self.add_node(node);
         expect_none(
             self.contracts.insert(node.id, attributes),
@@ -415,7 +415,7 @@ impl Context {
     /// # Panics
     ///
     /// Panics if an entry already exists for the node id.
-    pub fn add_event(&mut self, node: &Node<fe::EventDef>, event: EventDef) {
+    pub fn add_event(&mut self, node: &Node<fe::Event>, event: EventDef) {
         self.add_node(node);
         expect_none(
             self.events.insert(node.id, event),
