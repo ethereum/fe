@@ -8,8 +8,8 @@ use fe_parser::ast as fe;
 use fe_parser::node::Node;
 
 /// Lowers a contract definition.
-pub fn contract_def(context: &mut Context, stmt: Node<fe::ContractDef>) -> Node<fe::ContractDef> {
-    let fe::ContractDef { name, fields, body } = stmt.kind;
+pub fn contract_def(context: &mut Context, stmt: Node<fe::Contract>) -> Node<fe::Contract> {
+    let fe::Contract { name, fields, body } = stmt.kind;
     let lowered_body = body
         .into_iter()
         .map(|stmt| match stmt {
@@ -36,7 +36,7 @@ pub fn contract_def(context: &mut Context, stmt: Node<fe::ContractDef>) -> Node<
         .collect();
 
     Node::new(
-        fe::ContractDef {
+        fe::Contract {
             name,
             fields: lowered_fields,
             body: lowered_body,
@@ -58,8 +58,8 @@ fn contract_field(context: &mut Context, field: Node<fe::Field>) -> Node<fe::Fie
     )
 }
 
-fn event_def(context: &mut Context, stmt: Node<fe::EventDef>) -> Node<fe::EventDef> {
-    let fe::EventDef { name, fields } = stmt.kind;
+fn event_def(context: &mut Context, stmt: Node<fe::Event>) -> Node<fe::Event> {
+    let fe::Event { name, fields } = stmt.kind;
     let lowered_fields = fields
         .into_iter()
         .map(|field| {
@@ -75,7 +75,7 @@ fn event_def(context: &mut Context, stmt: Node<fe::EventDef>) -> Node<fe::EventD
         .collect();
 
     return Node::new(
-        fe::EventDef {
+        fe::Event {
             name,
             fields: lowered_fields,
         },
@@ -83,11 +83,11 @@ fn event_def(context: &mut Context, stmt: Node<fe::EventDef>) -> Node<fe::EventD
     );
 }
 
-fn list_expr_to_fn_def(array: &Array) -> fe::FuncDef {
+fn list_expr_to_fn_def(array: &Array) -> fe::Function {
     // Built the AST nodes for the function arguments
     let args = (0..array.size)
         .map(|index| {
-            fe::FuncDefArg {
+            fe::FunctionArg {
                 name: format!("val{}", index).into_node(),
                 typ: names::fixed_size_type_desc(&FixedSize::Base(array.inner)).into_node(),
             }
@@ -129,7 +129,7 @@ fn list_expr_to_fn_def(array: &Array) -> fe::FuncDef {
         Some(names::fixed_size_type_desc(&FixedSize::Array(array.clone())).into_node());
 
     // Put it all together in one AST node that holds the entire function definition
-    fe::FuncDef {
+    fe::Function {
         is_pub: false,
         name: names::list_expr_generator_fn_name(array).into_node(),
         args,

@@ -18,8 +18,8 @@ pub fn multiple_func_stmt(
 }
 
 /// Builds a Yul function definition from a Fe function definition.
-pub fn func_def(context: &Context, def: &Node<fe::FuncDef>) -> yul::Statement {
-    let fe::FuncDef {
+pub fn func_def(context: &Context, def: &Node<fe::Function>) -> yul::Statement {
+    let fe::Function {
         name, args, body, ..
     } = &def.kind;
     let function_name = names::func_name(&name.kind);
@@ -34,7 +34,7 @@ pub fn func_def(context: &Context, def: &Node<fe::FuncDef>) -> yul::Statement {
     }
 }
 
-fn func_def_arg(arg: &Node<fe::FuncDefArg>) -> yul::Identifier {
+fn func_def_arg(arg: &Node<fe::FunctionArg>) -> yul::Identifier {
     let name = &arg.kind.name.kind;
 
     names::var_name(name)

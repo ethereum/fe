@@ -13,9 +13,9 @@ use std::rc::Rc;
 pub fn func_def(
     contract_scope: Shared<ContractScope>,
     context: &mut Context,
-    def: &Node<fe::FuncDef>,
+    def: &Node<fe::Function>,
 ) -> Result<(), FatalError> {
-    let fe::FuncDef {
+    let fe::Function {
         is_pub,
         name,
         args,
@@ -109,9 +109,9 @@ pub fn func_def(
 pub fn func_body(
     contract_scope: Shared<ContractScope>,
     context: &mut Context,
-    def: &Node<fe::FuncDef>,
+    def: &Node<fe::Function>,
 ) -> Result<(), FatalError> {
-    let fe::FuncDef {
+    let fe::Function {
         is_pub: _,
         name,
         body,
@@ -189,9 +189,9 @@ fn all_paths_return_or_revert(block: &[Node<fe::FuncStmt>]) -> bool {
 fn func_def_arg(
     scope: Shared<BlockScope>,
     context: &mut Context,
-    arg: &Node<fe::FuncDefArg>,
+    arg: &Node<fe::FunctionArg>,
 ) -> Result<(String, FixedSize), FatalError> {
-    let fe::FuncDefArg { name, typ } = &arg.kind;
+    let fe::FunctionArg { name, typ } = &arg.kind;
     let typ = types::type_desc_fixed_size(&Scope::Block(Rc::clone(&scope)), context, &typ)?;
 
     if let Err(AlreadyDefined) = scope.borrow_mut().add_var(&name.kind, typ.clone()) {

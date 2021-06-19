@@ -4,7 +4,7 @@ expression: "ast_string(stringify!(empty_contract_def), contracts::parse_contrac
 
 ---
 Node(
-  kind: ContractDef(
+  kind: Contract(
     name: Node(
       kind: "Foo",
       span: Span(

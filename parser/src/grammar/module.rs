@@ -32,8 +32,8 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
     let stmt = match par.peek_or_err()? {
         TokenKind::Pragma => ModuleStmt::Pragma(parse_pragma(par)?),
         TokenKind::Import => ModuleStmt::Import(parse_simple_import(par)?),
-        TokenKind::Contract => ModuleStmt::ContractDef(parse_contract_def(par)?),
-        TokenKind::Struct => ModuleStmt::StructDef(parse_struct_def(par)?),
+        TokenKind::Contract => ModuleStmt::Contract(parse_contract_def(par)?),
+        TokenKind::Struct => ModuleStmt::Struct(parse_struct_def(par)?),
         TokenKind::Type => ModuleStmt::TypeAlias(parse_type_alias(par)?),
 
         // Let these be parse errors for now:

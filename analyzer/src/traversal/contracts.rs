@@ -16,9 +16,9 @@ use std::rc::Rc;
 pub fn contract_def(
     module_scope: Shared<ModuleScope>,
     context: &mut Context,
-    stmt: &Node<fe::ContractDef>,
+    stmt: &Node<fe::Contract>,
 ) -> Result<Shared<ContractScope>, FatalError> {
-    let fe::ContractDef { name, body, .. } = &stmt.kind;
+    let fe::Contract { name, body, .. } = &stmt.kind;
     let contract_scope = ContractScope::new(&name.kind, Rc::clone(&module_scope));
 
     // Contract fields are evaluated in the next pass together with function bodies
@@ -71,9 +71,9 @@ pub fn contract_def(
 pub fn contract_body(
     contract_scope: Shared<ContractScope>,
     context: &mut Context,
-    stmt: &Node<fe::ContractDef>,
+    stmt: &Node<fe::Contract>,
 ) -> Result<(), FatalError> {
-    let fe::ContractDef { fields, body, .. } = &stmt.kind;
+    let fe::Contract { fields, body, .. } = &stmt.kind;
     for field in fields {
         contract_field(Rc::clone(&contract_scope), context, field)?;
     }
@@ -119,9 +119,9 @@ fn contract_field(
 fn event_def(
     scope: Shared<ContractScope>,
     context: &mut Context,
-    stmt: &Node<fe::EventDef>,
+    stmt: &Node<fe::Event>,
 ) -> Result<(), FatalError> {
-    let fe::EventDef { name, fields } = &stmt.kind;
+    let fe::Event { name, fields } = &stmt.kind;
     let name = &name.kind;
 
     let (is_indexed_bools, all_fields): (Vec<bool>, Vec<(String, FixedSize)>) = fields

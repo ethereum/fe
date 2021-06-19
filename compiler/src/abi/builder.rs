@@ -10,7 +10,7 @@ pub fn module(context: &Context, module: &fe::Module) -> Result<ModuleAbis, Comp
         .body
         .iter()
         .try_fold(ModuleAbis::new(), |mut abis, stmt| {
-            if let fe::ModuleStmt::ContractDef(contract) = &stmt {
+            if let fe::ModuleStmt::Contract(contract) = &stmt {
                 if abis
                     .insert(
                         contract.kind.name.kind.to_string(),

@@ -14,8 +14,8 @@ pub enum ModuleStmt {
     Pragma(Node<Pragma>),
     Import(Node<Import>),
     TypeAlias(Node<TypeAlias>),
-    ContractDef(Node<ContractDef>),
-    StructDef(Node<StructDef>),
+    Contract(Node<Contract>),
+    Struct(Node<Struct>),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -41,14 +41,14 @@ pub struct TypeAlias {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct ContractDef {
+pub struct Contract {
     pub name: Node<String>,
     pub fields: Vec<Node<Field>>,
     pub body: Vec<ContractStmt>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct StructDef {
+pub struct Struct {
     pub name: Node<String>,
     pub fields: Vec<Node<Field>>,
 }
@@ -127,21 +127,21 @@ pub struct Field {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ContractStmt {
-    Event(Node<EventDef>),
-    Function(Node<FuncDef>),
+    Event(Node<Event>),
+    Function(Node<Function>),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct EventDef {
+pub struct Event {
     pub name: Node<String>,
     pub fields: Vec<Node<EventField>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct FuncDef {
+pub struct Function {
     pub is_pub: bool,
     pub name: Node<String>,
-    pub args: Vec<Node<FuncDefArg>>,
+    pub args: Vec<Node<FunctionArg>>,
     pub return_type: Option<Node<TypeDesc>>,
     pub body: Vec<Node<FuncStmt>>,
 }
@@ -154,7 +154,7 @@ pub struct EventField {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct FuncDefArg {
+pub struct FunctionArg {
     pub name: Node<String>,
     pub typ: Node<TypeDesc>,
 }
@@ -318,8 +318,8 @@ impl Spanned for ModuleStmt {
             ModuleStmt::Pragma(inner) => inner.span,
             ModuleStmt::Import(inner) => inner.span,
             ModuleStmt::TypeAlias(inner) => inner.span,
-            ModuleStmt::ContractDef(inner) => inner.span,
-            ModuleStmt::StructDef(inner) => inner.span,
+            ModuleStmt::Contract(inner) => inner.span,
+            ModuleStmt::Struct(inner) => inner.span,
         }
     }
 }

@@ -135,8 +135,8 @@ Node(
           end: 67,
         ),
       )),
-      ContractDef(Node(
-        kind: ContractDef(
+      Contract(Node(
+        kind: Contract(
           name: Node(
             kind: "A",
             span: Span(
@@ -186,8 +186,8 @@ Node(
           end: 102,
         ),
       )),
-      ContractDef(Node(
-        kind: ContractDef(
+      Contract(Node(
+        kind: Contract(
           name: Node(
             kind: "B",
             span: Span(

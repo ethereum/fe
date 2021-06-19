@@ -10,10 +10,10 @@ use yultsur::*;
 /// Builds a Yul object from a Fe contract.
 pub fn contract_def(
     context: &Context,
-    stmt: &Node<fe::ContractDef>,
+    stmt: &Node<fe::Contract>,
     created_contracts: Vec<yul::Object>,
 ) -> yul::Object {
-    let fe::ContractDef { name, body, .. } = &stmt.kind;
+    let fe::Contract { name, body, .. } = &stmt.kind;
     let contract_name = &name.kind;
     let mut init_function = None;
     let mut user_functions = vec![];
