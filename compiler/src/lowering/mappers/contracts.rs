@@ -74,13 +74,13 @@ fn event_def(context: &mut Context, stmt: Node<fe::Event>) -> Node<fe::Event> {
         })
         .collect();
 
-    return Node::new(
+    Node::new(
         fe::Event {
             name,
             fields: lowered_fields,
         },
         stmt.span,
-    );
+    )
 }
 
 fn list_expr_to_fn_def(array: &Array) -> fe::Function {
