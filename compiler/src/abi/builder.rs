@@ -3,7 +3,6 @@ use crate::errors::CompileError;
 use fe_analyzer::context::Context;
 use fe_analyzer::namespace::types::AbiEncoding;
 use fe_parser::ast as fe;
-use fe_parser::node::Node;
 
 /// Parse a map of contract ABIs from the input `module`.
 pub fn module(context: &Context, module: &fe::Module) -> Result<ModuleAbis, CompileError> {
@@ -27,25 +26,20 @@ pub fn module(context: &Context, module: &fe::Module) -> Result<ModuleAbis, Comp
         })
 }
 
-fn contract_def(
-    context: &Context,
-    body: &[Node<fe::ContractStmt>],
-) -> Result<Contract, CompileError> {
+fn contract_def(context: &Context, body: &[fe::ContractStmt]) -> Result<Contract, CompileError> {
     body.iter().try_fold(Contract::new(), |mut contract, stmt| {
-        match &stmt.kind {
-            fe::ContractStmt::FuncDef { .. } => {
+        match &stmt {
+            fe::ContractStmt::Function(def) => {
                 let attributes = context
-                    .get_function(stmt)
+                    .get_function(def)
                     .expect("missing function attributes");
 
                 if attributes.is_public {
                     contract.functions.push(attributes.to_owned().into())
                 }
             }
-            fe::ContractStmt::EventDef { .. } => {
-                let attributes = context
-                    .get_event(stmt)
-                    .expect("missing function attributes");
+            fe::ContractStmt::Event(def) => {
+                let attributes = context.get_event(def).expect("missing function attributes");
 
                 let event = Event {
                     name: attributes.name.to_owned(),

@@ -20,14 +20,19 @@ pub fn contract_def(
 
     // map user defined functions
     for stmt in body.iter() {
-        if let (Some(attributes), fe::ContractStmt::FuncDef { name, .. }) =
-            (context.get_function(stmt), &stmt.kind)
-        {
-            if name.kind == "__init__" {
-                init_function = Some((functions::func_def(context, stmt), attributes.param_types()))
-            } else {
-                user_functions.push(functions::func_def(context, stmt))
+        match stmt {
+            fe::ContractStmt::Function(def) => {
+                let attributes = context
+                    .get_function(def)
+                    .expect("missing function attributes");
+                if def.kind.name.kind == "__init__" {
+                    init_function =
+                        Some((functions::func_def(context, def), attributes.param_types()))
+                } else {
+                    user_functions.push(functions::func_def(context, def))
+                }
             }
+            fe::ContractStmt::Event(_) => {}
         }
     }
 

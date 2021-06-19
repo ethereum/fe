@@ -1,7 +1,7 @@
 use super::expressions::{parse_call_args, parse_expr};
 use super::types::parse_type_desc;
 
-use crate::ast::{BinOperator, ContractStmt, Expr, FuncDefArg, FuncStmt, VarDeclTarget};
+use crate::ast::{BinOperator, Expr, FuncDef, FuncDefArg, FuncStmt, VarDeclTarget};
 use crate::lexer::TokenKind;
 use crate::node::{Node, Span};
 use crate::{Label, ParseFailed, ParseResult, Parser};
@@ -11,7 +11,7 @@ use crate::{Label, ParseFailed, ParseResult, Parser};
 ///
 /// # Panics
 /// Panics if the next token isn't `def`.
-pub fn parse_fn_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Node<ContractStmt>> {
+pub fn parse_fn_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Node<FuncDef>> {
     let def_tok = par.assert(TokenKind::Def);
     let name = par.expect(TokenKind::Name, "failed to parse function definition")?;
     let mut span = def_tok.span + pub_qual + name.span;
@@ -68,7 +68,7 @@ pub fn parse_fn_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Nod
     let body = parse_block_stmts(par)?;
     span += body.last();
     Ok(Node::new(
-        ContractStmt::FuncDef {
+        FuncDef {
             is_pub: pub_qual.is_some(),
             name: name.into(),
             args,

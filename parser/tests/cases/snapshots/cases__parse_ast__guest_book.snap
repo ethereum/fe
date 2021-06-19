@@ -110,7 +110,7 @@ Node(
             ),
           ],
           body: [
-            Node(
+            Event(Node(
               kind: EventDef(
                 name: Node(
                   kind: "Signed",
@@ -151,8 +151,8 @@ Node(
                 start: 95,
                 end: 138,
               ),
-            ),
-            Node(
+            )),
+            Function(Node(
               kind: FuncDef(
                 is_pub: true,
                 name: Node(
@@ -308,8 +308,8 @@ Node(
                 start: 144,
                 end: 263,
               ),
-            ),
-            Node(
+            )),
+            Function(Node(
               kind: FuncDef(
                 is_pub: true,
                 name: Node(
@@ -406,7 +406,7 @@ Node(
                 start: 269,
                 end: 348,
               ),
-            ),
+            )),
           ],
         ),
         span: Span(

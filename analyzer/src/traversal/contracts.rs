@@ -26,12 +26,10 @@ pub fn contract_def(
     // current contract.
 
     for stmt in body {
-        match &stmt.kind {
-            fe::ContractStmt::EventDef { .. } => {
-                event_def(Rc::clone(&contract_scope), context, stmt)
-            }
-            fe::ContractStmt::FuncDef { .. } => {
-                functions::func_def(Rc::clone(&contract_scope), context, stmt)
+        match &stmt {
+            fe::ContractStmt::Event(def) => event_def(Rc::clone(&contract_scope), context, def),
+            fe::ContractStmt::Function(def) => {
+                functions::func_def(Rc::clone(&contract_scope), context, def)
             }
         }?
     }
@@ -81,8 +79,8 @@ pub fn contract_body(
     }
 
     for stmt in body {
-        if let fe::ContractStmt::FuncDef { .. } = &stmt.kind {
-            functions::func_body(Rc::clone(&contract_scope), context, stmt)?
+        if let fe::ContractStmt::Function(def) = &stmt {
+            functions::func_body(Rc::clone(&contract_scope), context, def)?
         };
     }
 
@@ -121,84 +119,81 @@ fn contract_field(
 fn event_def(
     scope: Shared<ContractScope>,
     context: &mut Context,
-    stmt: &Node<fe::ContractStmt>,
+    stmt: &Node<fe::EventDef>,
 ) -> Result<(), FatalError> {
-    if let fe::ContractStmt::EventDef { name, fields } = &stmt.kind {
-        let name = &name.kind;
+    let fe::EventDef { name, fields } = &stmt.kind;
+    let name = &name.kind;
 
-        let (is_indexed_bools, all_fields): (Vec<bool>, Vec<(String, FixedSize)>) = fields
+    let (is_indexed_bools, all_fields): (Vec<bool>, Vec<(String, FixedSize)>) = fields
+        .iter()
+        .map(|field| event_field(Rc::clone(&scope), context, field))
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .unzip();
+
+    let indexed_fields = is_indexed_bools
+        .into_iter()
+        .enumerate()
+        .filter(|(_, is_indexed)| *is_indexed)
+        .map(|(index, _)| index)
+        .collect::<Vec<_>>();
+
+    if indexed_fields.len() > constants::MAX_INDEXED_EVENT_FIELDS {
+        let excess_count = indexed_fields.len() - constants::MAX_INDEXED_EVENT_FIELDS;
+
+        let labels = fields
             .iter()
-            .map(|field| event_field(Rc::clone(&scope), context, field))
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .unzip();
-
-        let indexed_fields = is_indexed_bools
-            .into_iter()
             .enumerate()
-            .filter(|(_, is_indexed)| *is_indexed)
-            .map(|(index, _)| index)
-            .collect::<Vec<_>>();
+            .filter_map(|(idx, field)| {
+                if indexed_fields.contains(&idx) {
+                    Some(field)
+                } else {
+                    None
+                }
+            })
+            .map(|field| Label::primary(field.span, "Indexed field"))
+            .collect();
 
-        if indexed_fields.len() > constants::MAX_INDEXED_EVENT_FIELDS {
-            let excess_count = indexed_fields.len() - constants::MAX_INDEXED_EVENT_FIELDS;
-
-            let labels = fields
-                .iter()
-                .enumerate()
-                .filter_map(|(idx, field)| {
-                    if indexed_fields.contains(&idx) {
-                        Some(field)
-                    } else {
-                        None
-                    }
-                })
-                .map(|field| Label::primary(field.span, "Indexed field"))
-                .collect();
-
-            context.fancy_error(
-                "More than three indexed fields.",
-                labels,
-                vec![format!(
-                    "Note: Remove the `idx` keyword from at least {} {}.",
-                    excess_count,
-                    pluralize_conditionally("field", excess_count)
-                )],
-            );
-        }
-
-        // check if they are trying to index an array type
-        // todo clean all this up
-        for index in indexed_fields.clone() {
-            match all_fields[index].1.to_owned() {
-                FixedSize::Base(_) => {}
-                _ => context.not_yet_implemented("non-base type indexed event fields", stmt.span),
-            }
-        }
-
-        let event = EventDef::new(name, all_fields, indexed_fields);
-
-        context.add_event(stmt, event.clone());
-
-        if let Err(AlreadyDefined) = scope.borrow_mut().add_event(name, event) {
-            context.fancy_error(
-                "an event with the same name already exists",
-                // TODO: figure out how to include the previously defined event
-                vec![Label::primary(
-                    stmt.span,
-                    format!("Conflicting definition of event `{}`", name),
-                )],
-                vec![format!(
-                    "Note: Give one of the `{}` events a different name",
-                    name
-                )],
-            )
-        }
-
-        return Ok(());
+        context.fancy_error(
+            "More than three indexed fields.",
+            labels,
+            vec![format!(
+                "Note: Remove the `idx` keyword from at least {} {}.",
+                excess_count,
+                pluralize_conditionally("field", excess_count)
+            )],
+        );
     }
 
-    unreachable!()
+    // check if they are trying to index an array type
+    // todo clean all this up
+    for index in indexed_fields.clone() {
+        match all_fields[index].1.to_owned() {
+            FixedSize::Base(_) => {}
+            _ => context.not_yet_implemented("non-base type indexed event fields", stmt.span),
+        }
+    }
+
+    let event = EventDef::new(name, all_fields, indexed_fields);
+
+    context.add_event(stmt, event.clone());
+
+    if let Err(AlreadyDefined) = scope.borrow_mut().add_event(name, event) {
+        context.fancy_error(
+            "an event with the same name already exists",
+            // TODO: figure out how to include the previously defined event
+            vec![Label::primary(
+                stmt.span,
+                format!("Conflicting definition of event `{}`", name),
+            )],
+            vec![format!(
+                "Note: Give one of the `{}` events a different name",
+                name
+            )],
+        )
+    }
+
+    Ok(())
 }
 
 fn event_field(
