@@ -1,0 +1,10 @@
+struct tuple_u256_address_:
+    item0: u256
+    item1: address
+
+contract Foo:
+    tuples: tuple_u256_address_[10]
+
+    pub def bar(x: u256) -> u256:
+        self.tuples[0] = tuple_u256_address_(item0 = x, item1 = address(x))
+        return self.tuples[0].item0

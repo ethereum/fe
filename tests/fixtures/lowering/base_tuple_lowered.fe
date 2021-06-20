@@ -1,26 +1,26 @@
-struct tuple_u256_bool:
+struct tuple_bool_address_:
+    item0: bool
+    item1: address
+
+struct tuple_bool_bool_:
+    item0: bool
+    item1: bool
+
+struct tuple_address_address_:
+    item0: address
+    item1: address
+
+struct tuple_u256_bool_:
     item0: u256
     item1: bool
 
-struct tuple_u256_bool_u8_address:
+struct tuple_u256_bool_u8_address_:
     item0: u256
     item1: bool
     item2: u8
     item3: address
 
-struct tuple_bool_bool:
-    item0: bool
-    item1: bool
-
-struct tuple_bool_address:
-    item0: bool
-    item1: address
-
-struct tuple_address_address:
-    item0: address
-    item1: address
-
-struct tuple_address_address_u16_i32_bool:
+struct tuple_address_address_u16_i32_bool_:
     item0: address
     item1: address
     item2: u16
@@ -28,17 +28,17 @@ struct tuple_address_address_u16_i32_bool:
     item4: bool
 
 contract Foo:
-    my_tuple_field: tuple_bool_address
+    my_tuple_field: tuple_bool_address_
 
     event MyEvent:
-        my_tuple: tuple_bool_bool
-        my_other_tuple: tuple_address_address
+        my_tuple: tuple_bool_bool_
+        my_other_tuple: tuple_address_address_
 
-    pub def bar(my_num: u256, my_bool: bool) -> tuple_u256_bool:
-        return tuple_u256_bool(item0=my_num, item1=my_bool)
+    pub def bar(my_num: u256, my_bool: bool) -> tuple_u256_bool_:
+        return tuple_u256_bool_(item0=my_num, item1=my_bool)
 
-    pub def baz() -> tuple_u256_bool_u8_address:
-        return tuple_u256_bool_u8_address(
+    pub def baz() -> tuple_u256_bool_u8_address_:
+        return tuple_u256_bool_u8_address_(
             item0=999999,
             item1=false,
             item2=u8(42),
@@ -46,7 +46,7 @@ contract Foo:
         )
 
     pub def bing() -> ():
-        foo: tuple_address_address_u16_i32_bool = tuple_address_address_u16_i32_bool(
+        foo: tuple_address_address_u16_i32_bool_ = tuple_address_address_u16_i32_bool_(
             item0=address(0),
             item1=address(0),
             item2=u16(0),
@@ -56,9 +56,9 @@ contract Foo:
         return ()
 
     pub def bop(
-        my_tuple1: tuple_u256_bool,
-        my_tuple2: tuple_u256_bool_u8_address,
-        my_tuple3: tuple_address_address_u16_i32_bool
+        my_tuple1: tuple_u256_bool_,
+        my_tuple2: tuple_u256_bool_u8_address_,
+        my_tuple3: tuple_address_address_u16_i32_bool_,
     ) -> ():
         pass
         return ()
@@ -66,7 +66,7 @@ contract Foo:
 
     pub def food() -> ():
         emit MyEvent(
-            my_tuple=tuple_bool_bool(item0=false, item1=true),
-            my_other_tuple=tuple_address_address(item0=address(0), item1=address(1))
+            my_tuple=tuple_bool_bool_(item0=false, item1=true),
+            my_other_tuple=tuple_address_address_(item0=address(0), item1=address(1))
         )
         return ()

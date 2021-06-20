@@ -290,36 +290,54 @@ pub trait TypeDowncast {
     fn as_int(&self) -> Option<Integer>;
 }
 
-impl TypeDowncast for Option<&Type> {
+impl TypeDowncast for Type {
     fn as_array(&self) -> Option<&Array> {
         match self {
-            Some(Type::Array(inner)) => Some(inner),
+            Type::Array(inner) => Some(inner),
             _ => None,
         }
     }
     fn as_tuple(&self) -> Option<&Tuple> {
         match self {
-            Some(Type::Tuple(inner)) => Some(inner),
+            Type::Tuple(inner) => Some(inner),
             _ => None,
         }
     }
     fn as_string(&self) -> Option<&FeString> {
         match self {
-            Some(Type::String(inner)) => Some(inner),
+            Type::String(inner) => Some(inner),
             _ => None,
         }
     }
     fn as_map(&self) -> Option<&Map> {
         match self {
-            Some(Type::Map(inner)) => Some(inner),
+            Type::Map(inner) => Some(inner),
             _ => None,
         }
     }
     fn as_int(&self) -> Option<Integer> {
         match self {
-            Some(Type::Base(Base::Numeric(int))) => Some(*int),
+            Type::Base(Base::Numeric(int)) => Some(*int),
             _ => None,
         }
+    }
+}
+
+impl TypeDowncast for Option<&Type> {
+    fn as_array(&self) -> Option<&Array> {
+        self.and_then(|t| t.as_array())
+    }
+    fn as_tuple(&self) -> Option<&Tuple> {
+        self.and_then(|t| t.as_tuple())
+    }
+    fn as_string(&self) -> Option<&FeString> {
+        self.and_then(|t| t.as_string())
+    }
+    fn as_map(&self) -> Option<&Map> {
+        self.and_then(|t| t.as_map())
+    }
+    fn as_int(&self) -> Option<Integer> {
+        self.and_then(|t| t.as_int())
     }
 }
 
@@ -774,7 +792,12 @@ impl SafeNames for Tuple {
             .collect::<Vec<String>>();
         let joined_names = field_names.join("_");
 
-        format!("tuple_{}", joined_names)
+        // The trailing `_` denotes the end of the tuple, to differentiate between
+        // different tuple nestings. Eg
+        // (A, (B, C), D) => tuple_A_tuple_B_C__D_
+        // (A, (B, C, D)) => tuple_A_tuple_B_C_D__
+        // Conceptually, each paren and comma is replaced with an underscore.
+        format!("tuple_{}_", joined_names)
     }
 }
 

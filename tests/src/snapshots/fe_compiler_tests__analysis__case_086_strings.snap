@@ -60,7 +60,6 @@ ModuleAttributes {
             },
         ),
     },
-    tuples_used: {},
 }
 
 note: 
@@ -621,7 +620,6 @@ note:
                  indexed_fields: [],
              },
          ],
-         list_expressions: {},
          string_literals: {
              "The quick brown fox jumps over the lazy dog",
              "foo",

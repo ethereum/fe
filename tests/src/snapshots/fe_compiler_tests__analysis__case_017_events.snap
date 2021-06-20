@@ -81,7 +81,6 @@ ModuleAttributes {
             },
         ),
     },
-    tuples_used: {},
 }
 
 note: 
@@ -782,7 +781,6 @@ note:
                  ],
              },
          ],
-         list_expressions: {},
          string_literals: {},
          structs: [],
          external_contracts: [],

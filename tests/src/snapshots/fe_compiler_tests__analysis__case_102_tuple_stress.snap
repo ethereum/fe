@@ -260,37 +260,6 @@ ModuleAttributes {
             },
         ),
     },
-    tuples_used: {
-        Tuple {
-            items: [
-                Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-                Base(
-                    Numeric(
-                        I32,
-                    ),
-                ),
-            ],
-        },
-        Tuple {
-            items: [
-                Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-                Base(
-                    Bool,
-                ),
-                Base(
-                    Address,
-                ),
-            ],
-        },
-    },
 }
 
 note: 
@@ -1886,7 +1855,6 @@ note:
                  indexed_fields: [],
              },
          ],
-         list_expressions: {},
          string_literals: {},
          structs: [],
          external_contracts: [],

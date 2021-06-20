@@ -1,9 +1,7 @@
+use crate::lowering::context::Context;
 use crate::lowering::mappers::expressions;
 use crate::lowering::mappers::types;
-use crate::lowering::names;
 use crate::lowering::utils::ZeroSpanNode;
-use fe_analyzer::context::Context;
-use fe_analyzer::namespace::types::FixedSize;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 
@@ -19,13 +17,14 @@ pub fn func_def(context: &mut Context, def: Node<fe::Function>) -> Node<fe::Func
     // The return type is lowered if it exists. If there is no return type, we set it to the unit type.
     let lowered_return_type = return_type
         .map(|return_type| types::type_desc(context, return_type))
-        .unwrap_or_else(|| names::fixed_size_type_desc(&FixedSize::unit()).into_node());
+        .unwrap_or_else(|| fe::TypeDesc::Unit.into_node());
 
     let lowered_body = {
         let mut lowered_body = multiple_stmts(context, body);
-        let attributes = context.get_function(def.id).expect("missing attributes");
         // append `return ()` to the body if there is no return
-        if attributes.return_type.is_unit() && !is_last_statement_return(&lowered_body) {
+        if lowered_return_type.kind == fe::TypeDesc::Unit
+            && !is_last_statement_return(&lowered_body)
+        {
             lowered_body.push(
                 fe::FuncStmt::Return {
                     value: Some(fe::Expr::Unit.into_node()),
@@ -201,7 +200,7 @@ fn lower_tuple_destructuring(
     span: fe_common::Span,
 ) -> Vec<fe::FuncStmt> {
     let mut stmts = vec![];
-    let tmp_tuple = context.make_unique_name("tmp_tuple");
+    let tmp_tuple = context.module.make_unique_name("tmp_tuple");
     stmts.push(fe::FuncStmt::VarDecl {
         target: Node::new(fe::VarDeclTarget::Name(tmp_tuple.clone()), span),
         typ: types::type_desc(context, typ.clone()),
