@@ -1,3 +1,5 @@
-contract Foo:
-  pub def bar():
-    (42,).abi_encode()
+contract o:
+ pub def d(a:u256,b:u256)->u256:
+        a-a&=b
+        my_array:u256[0]
+        return my_array[7]
