@@ -17,14 +17,6 @@ pub fn type_desc(context: &mut Context, desc: Node<TypeDesc>) -> Node<TypeDesc> 
                 .as_tuple()
                 .expect("expected tuple type");
 
-            // (u8, (u8, u8)) should become
-            // struct __Tuple1:
-            //   item0: u8
-            //   item1: u8
-            // struct __Tuple2:
-            //   item0: u8
-            //   item1: __Tuple1
-
             for item in items.into_iter() {
                 type_desc(context, item);
             }

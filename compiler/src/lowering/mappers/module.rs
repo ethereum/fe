@@ -1,5 +1,5 @@
 use crate::lowering::context::{Context, ModuleContext};
-use crate::lowering::mappers::contracts;
+use crate::lowering::mappers::{contracts, types};
 use crate::lowering::names;
 use crate::lowering::utils::ZeroSpanNode;
 use fe_analyzer::context::Context as AnalyzerContext;
@@ -16,13 +16,19 @@ pub fn module(analysis: &AnalyzerContext, module: fe::Module) -> fe::Module {
         .into_iter()
         .map(|stmt| match stmt {
             fe::ModuleStmt::Pragma(_) => stmt,
-            fe::ModuleStmt::TypeAlias(_) => stmt, // XXX lower tuples?
+            fe::ModuleStmt::TypeAlias(inner) => fe::ModuleStmt::TypeAlias(Node::new(
+                fe::TypeAlias {
+                    name: inner.kind.name,
+                    typ: types::type_desc(&mut Context::new(&mut module_context), inner.kind.typ),
+                },
+                inner.span,
+            )),
             fe::ModuleStmt::Struct(_) => stmt,
             fe::ModuleStmt::Import(_) => stmt,
-            fe::ModuleStmt::Contract(inner) => {
-                let mut context = Context::new(&mut module_context);
-                fe::ModuleStmt::Contract(contracts::contract_def(&mut context, inner))
-            }
+            fe::ModuleStmt::Contract(inner) => fe::ModuleStmt::Contract(contracts::contract_def(
+                &mut Context::new(&mut module_context),
+                inner,
+            )),
         })
         .collect::<Vec<_>>();
 

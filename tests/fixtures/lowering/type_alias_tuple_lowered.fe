@@ -1,0 +1,8 @@
+struct tuple_u8_address_:
+    item0: u8
+    item1: address
+
+type Tup = tuple_u8_address_
+
+contract Foo:
+    tup: Tup

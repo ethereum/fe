@@ -52,7 +52,7 @@ pub struct ContractAttributes {
     pub init_function: Option<FunctionAttributes>,
     /// Events that have been defined by the user.
     pub events: Vec<EventDef>,
-    /// List expressions that the contract uses
+    /// Static strings that the contract defines
     pub string_literals: BTreeSet<String>,
     /// Structs that have been defined by the user
     pub structs: Vec<Struct>,

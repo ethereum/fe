@@ -52,7 +52,8 @@ fn replace_spans(input: String) -> String {
     case("init"),
     case("custom_empty_type"),
     case("nested_tuple"),
-    case("map_tuple")
+    case("map_tuple"),
+    case("type_alias_tuple")
 //    case("array_tuple") // TODO: analysis fails on "arrays can only hold primitive types"
 )]
 fn test_lowering(fixture: &str) {
