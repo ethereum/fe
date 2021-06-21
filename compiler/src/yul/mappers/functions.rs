@@ -18,27 +18,23 @@ pub fn multiple_func_stmt(
 }
 
 /// Builds a Yul function definition from a Fe function definition.
-pub fn func_def(context: &Context, def: &Node<fe::ContractStmt>) -> yul::Statement {
-    if let fe::ContractStmt::FuncDef {
+pub fn func_def(context: &Context, def: &Node<fe::Function>) -> yul::Statement {
+    let fe::Function {
         name, args, body, ..
-    } = &def.kind
-    {
-        let function_name = names::func_name(&name.kind);
-        let param_names = args.iter().map(|arg| func_def_arg(arg)).collect::<Vec<_>>();
-        let function_statements = multiple_func_stmt(context, body);
+    } = &def.kind;
+    let function_name = names::func_name(&name.kind);
+    let param_names = args.iter().map(|arg| func_def_arg(arg)).collect::<Vec<_>>();
+    let function_statements = multiple_func_stmt(context, body);
 
-        // all user-defined functions are given a return value during lowering
-        function_definition! {
-            function [function_name]([param_names...]) -> return_val {
-                [function_statements...]
-            }
+    // all user-defined functions are given a return value during lowering
+    function_definition! {
+        function [function_name]([param_names...]) -> return_val {
+            [function_statements...]
         }
-    } else {
-        unreachable!()
     }
 }
 
-fn func_def_arg(arg: &Node<fe::FuncDefArg>) -> yul::Identifier {
+fn func_def_arg(arg: &Node<fe::FunctionArg>) -> yul::Identifier {
     let name = &arg.kind.name.kind;
 
     names::var_name(name)

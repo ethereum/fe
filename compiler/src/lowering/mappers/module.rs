@@ -11,13 +11,14 @@ pub fn module(context: &mut Context, module: fe::Module) -> fe::Module {
     let lowered_body = module
         .body
         .into_iter()
-        .map(|stmt| match &stmt.kind {
-            fe::ModuleStmt::Pragma { .. } => stmt,
-            fe::ModuleStmt::TypeDef { .. } => stmt,
-            fe::ModuleStmt::StructDef { .. } => stmt,
-            fe::ModuleStmt::FromImport { .. } => stmt,
-            fe::ModuleStmt::SimpleImport { .. } => stmt,
-            fe::ModuleStmt::ContractDef { .. } => contracts::contract_def(context, stmt),
+        .map(|stmt| match stmt {
+            fe::ModuleStmt::Pragma(_) => stmt,
+            fe::ModuleStmt::TypeAlias(_) => stmt,
+            fe::ModuleStmt::Struct(_) => stmt,
+            fe::ModuleStmt::Import(_) => stmt,
+            fe::ModuleStmt::Contract(inner) => {
+                fe::ModuleStmt::Contract(contracts::contract_def(context, inner))
+            }
         })
         .collect::<Vec<_>>();
 
@@ -26,15 +27,15 @@ pub fn module(context: &mut Context, module: fe::Module) -> fe::Module {
     let struct_defs_from_tuples = attributes
         .tuples_used
         .iter()
-        .map(|tuple| Node::new(tuple_to_struct_def(tuple), Span::zero()))
-        .collect::<Vec<Node<fe::ModuleStmt>>>();
+        .map(|tuple| fe::ModuleStmt::Struct(Node::new(tuple_to_struct_def(tuple), Span::zero())))
+        .collect::<Vec<fe::ModuleStmt>>();
 
     fe::Module {
         body: [struct_defs_from_tuples, lowered_body].concat(),
     }
 }
 
-fn tuple_to_struct_def(tuple: &Tuple) -> fe::ModuleStmt {
+fn tuple_to_struct_def(tuple: &Tuple) -> fe::Struct {
     let fields = tuple
         .items
         .iter()
@@ -47,7 +48,7 @@ fn tuple_to_struct_def(tuple: &Tuple) -> fe::ModuleStmt {
         })
         .collect();
 
-    fe::ModuleStmt::StructDef {
+    fe::Struct {
         name: Node::new(names::tuple_struct_string(tuple), Span::zero()),
         fields,
     }

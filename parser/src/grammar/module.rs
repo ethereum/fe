@@ -1,6 +1,6 @@
 use super::contracts::parse_contract_def;
-use super::types::{parse_struct_def, parse_type_def};
-use crate::ast::{Module, ModuleStmt, SimpleImportName};
+use super::types::{parse_struct_def, parse_type_alias};
+use crate::ast::{Import, Module, ModuleStmt, Pragma, SimpleImportName};
 use crate::node::{Node, Span};
 use crate::{Label, ParseFailed, ParseResult, Parser, TokenKind};
 
@@ -23,25 +23,22 @@ pub fn parse_module(par: &mut Parser) -> ParseResult<Node<Module>> {
             }
         }
     }
-    let span = if body.is_empty() {
-        Span::zero()
-    } else {
-        body.first().unwrap().span + body.last()
-    };
-
+    let span = Span::zero() + body.first() + body.last();
     Ok(Node::new(Module { body }, span))
 }
 
 /// Parse a [`ModuleStmt`].
-pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
-    match par.peek_or_err()? {
-        TokenKind::Pragma => parse_pragma(par),
-        TokenKind::Import => parse_simple_import(par),
-        TokenKind::Name if par.peeked_text() == "from" => parse_from_import(par),
-        TokenKind::Contract => parse_contract_def(par),
-        TokenKind::Struct => parse_struct_def(par),
-        TokenKind::Type => parse_type_def(par),
-        TokenKind::Event => todo!("module-level event def"),
+pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
+    let stmt = match par.peek_or_err()? {
+        TokenKind::Pragma => ModuleStmt::Pragma(parse_pragma(par)?),
+        TokenKind::Import => ModuleStmt::Import(parse_simple_import(par)?),
+        TokenKind::Contract => ModuleStmt::Contract(parse_contract_def(par)?),
+        TokenKind::Struct => ModuleStmt::Struct(parse_struct_def(par)?),
+        TokenKind::Type => ModuleStmt::TypeAlias(parse_type_alias(par)?),
+
+        // Let these be parse errors for now:
+        // TokenKind::Event => todo!("module-level event def"),
+        // TokenKind::Name if par.peeked_text() == "from" => parse_from_import(par),
         _ => {
             let tok = par.next()?;
             par.unexpected_token_error(
@@ -49,9 +46,10 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
                 "failed to parse module",
                 vec!["Note: expected import, contract, struct, type, or event".into()],
             );
-            Err(ParseFailed)
+            return Err(ParseFailed);
         }
-    }
+    };
+    Ok(stmt)
 }
 
 /// Parse an `import` statement. This does not yet support paths, just module
@@ -59,7 +57,7 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
 /// [`parse_from_import`].
 /// # Panics
 /// Panics if the next token isn't `import`.
-pub fn parse_simple_import(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
+pub fn parse_simple_import(par: &mut Parser) -> ParseResult<Node<Import>> {
     let import_tok = par.assert(TokenKind::Import);
 
     // TODO: only handles `import foo, bar as baz`
@@ -106,20 +104,20 @@ pub fn parse_simple_import(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     }
 
     let span = import_tok.span + names.last();
-    Ok(Node::new(ModuleStmt::SimpleImport { names }, span))
+    Ok(Node::new(Import::Simple { names }, span))
 }
 
 /// Parse a `from x import y` style import statement.
 /// # Panics
 /// Always panics. Unimplemented.
-pub fn parse_from_import(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
+pub fn parse_from_import(par: &mut Parser) -> ParseResult<Node<Import>> {
     let tok = par.assert(TokenKind::Name);
     assert_eq!(tok.text, "from");
     todo!("parse from .. import (not supported in rest of compiler yet)")
 }
 
 /// Parse a `pragma <version-requirement>` statement.
-pub fn parse_pragma(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
+pub fn parse_pragma(par: &mut Parser) -> ParseResult<Node<Pragma>> {
     let tok = par.assert(TokenKind::Pragma);
     assert_eq!(tok.text, "pragma");
 
@@ -150,7 +148,7 @@ pub fn parse_pragma(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
 
     match VersionReq::parse(&version_string) {
         Ok(_) => Ok(Node::new(
-            ModuleStmt::Pragma {
+            Pragma {
                 version_requirement: Node::new(version_string, version_requirement_span),
             },
             tok.span + version_requirement_span,

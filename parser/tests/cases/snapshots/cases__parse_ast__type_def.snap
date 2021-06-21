@@ -4,7 +4,7 @@ expression: "ast_string(stringify!(type_def), types::parse_type_def,\n          
 
 ---
 Node(
-  kind: TypeDef(
+  kind: TypeAlias(
     name: Node(
       kind: "X",
       span: Span(

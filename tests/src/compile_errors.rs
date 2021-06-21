@@ -22,20 +22,6 @@ fn error_string(path: &str, src: &str) -> String {
     diagnostics_string(&diagnostics, &files)
 }
 
-macro_rules! assert_snapshot_wasm {
-    ($module:ident, $name:ident, $actual:expr) => {
-        let snap = include_str!(concat!(
-            "snapshots/fe_compiler_tests__",
-            stringify!($module),
-            "__",
-            stringify!($name),
-            ".snap"
-        ));
-        let (_, expected) = snap.rsplit_once("---\n").unwrap();
-        pretty_assertions::assert_eq!($actual.trim(), expected.trim());
-    };
-}
-
 macro_rules! test_file {
     ($name:ident) => {
         #[test]
@@ -182,9 +168,11 @@ test_file! { invalid_chain_field }
 test_file! { invalid_contract_field }
 test_file! { invalid_generic_string }
 test_file! { invalid_msg_field }
+test_file! { invalid_string_field }
 test_file! { invalid_struct_field }
 test_file! { invalid_tuple_field }
 test_file! { invalid_tx_field }
+test_file! { issue_451 }
 test_file! { mismatch_return_type }
 test_file! { missing_return }
 test_file! { missing_return_in_else }

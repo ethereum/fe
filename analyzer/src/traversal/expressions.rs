@@ -521,7 +521,8 @@ fn expr_attribute(
 
         // We attempt to analyze the value as an expression. If this is successful, we
         // build a new set of attributes from the value attributes.
-        return match expr(scope, context, value, None)? {
+        let expression_attributes = expr(Rc::clone(&scope), context, value, None)?;
+        return match expression_attributes {
             // If the value is a struct, we return the type of the attribute. The location stays the
             // same and can be memory or storage.
             ExpressionAttributes {
@@ -579,7 +580,17 @@ fn expr_attribute(
                     fatal_err
                 }
             }
-            _ => fatal_err,
+            _ => {
+                context.fancy_error(
+                    format!(
+                        "No field `{}` exists on type {}",
+                        &attr.kind, expression_attributes.typ
+                    ),
+                    vec![Label::primary(attr.span, "unknown field")],
+                    vec![],
+                );
+                fatal_err
+            }
         };
     }
 
@@ -775,7 +786,6 @@ fn expr_call_builtin_function(
                     vec![Label::primary(args.span, "wrong type")],
                     vec!["Note: keccak(..) expects a byte array as parameter".into()],
                 );
-                return Err(FatalError);
             }
             Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value))
         }
@@ -1005,7 +1015,6 @@ fn expr_call_type_constructor(
                             vec![Label::primary(arg.span, "wrong type")],
                             vec!["Note: address(..) expects a parameter of a contract type, numeric or address".into()],
                         );
-                        return Err(FatalError);
                     }
                 }
             };
@@ -1276,19 +1285,17 @@ fn expr_call_type_attribute(
                     .contract_scope()
                     .borrow_mut()
                     .add_created_contract(&contract.name);
-
-                Ok(ExpressionAttributes::new(
-                    Type::Contract(contract),
-                    Location::Value,
-                ))
             } else {
                 context.fancy_error(
                     "function `create2` expects numeric parameters",
                     vec![Label::primary(args.span, "invalid argument")],
                     vec![],
                 );
-                Err(FatalError)
             }
+            Ok(ExpressionAttributes::new(
+                Type::Contract(contract),
+                Location::Value,
+            ))
         }
         (Type::Contract(contract), Ok(ContractTypeMethod::Create)) => {
             validate_arg_count(context, func_name, name_span, args, 1);
@@ -1303,19 +1310,18 @@ fn expr_call_type_attribute(
                     .contract_scope()
                     .borrow_mut()
                     .add_created_contract(&contract.name);
-
-                Ok(ExpressionAttributes::new(
-                    Type::Contract(contract),
-                    Location::Value,
-                ))
             } else {
                 context.fancy_error(
                     "function `create` expects numeric parameter",
                     vec![Label::primary(args.span, "invalid argument")],
                     vec![],
                 );
-                Err(FatalError)
             }
+
+            Ok(ExpressionAttributes::new(
+                Type::Contract(contract),
+                Location::Value,
+            ))
         }
         _ => {
             context.fancy_error(

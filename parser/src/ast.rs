@@ -6,34 +6,51 @@ use vec1::Vec1;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Module {
-    pub body: Vec<Node<ModuleStmt>>,
+    pub body: Vec<ModuleStmt>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ModuleStmt {
-    Pragma {
-        version_requirement: Node<String>,
-    },
-    TypeDef {
-        name: Node<String>,
-        typ: Node<TypeDesc>,
-    },
-    SimpleImport {
+    Pragma(Node<Pragma>),
+    Import(Node<Import>),
+    TypeAlias(Node<TypeAlias>),
+    Contract(Node<Contract>),
+    Struct(Node<Struct>),
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct Pragma {
+    pub version_requirement: Node<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub enum Import {
+    Simple {
         names: Vec<Node<SimpleImportName>>,
     },
-    FromImport {
+    From {
         path: Node<FromImportPath>,
         names: Node<FromImportNames>,
     },
-    ContractDef {
-        name: Node<String>,
-        fields: Vec<Node<Field>>,
-        body: Vec<Node<ContractStmt>>,
-    },
-    StructDef {
-        name: Node<String>,
-        fields: Vec<Node<Field>>,
-    },
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct TypeAlias {
+    pub name: Node<String>,
+    pub typ: Node<TypeDesc>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct Contract {
+    pub name: Node<String>,
+    pub fields: Vec<Node<Field>>,
+    pub body: Vec<ContractStmt>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct Struct {
+    pub name: Node<String>,
+    pub fields: Vec<Node<Field>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -110,17 +127,23 @@ pub struct Field {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum ContractStmt {
-    EventDef {
-        name: Node<String>,
-        fields: Vec<Node<EventField>>,
-    },
-    FuncDef {
-        is_pub: bool,
-        name: Node<String>,
-        args: Vec<Node<FuncDefArg>>,
-        return_type: Option<Node<TypeDesc>>,
-        body: Vec<Node<FuncStmt>>,
-    },
+    Event(Node<Event>),
+    Function(Node<Function>),
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct Event {
+    pub name: Node<String>,
+    pub fields: Vec<Node<EventField>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct Function {
+    pub is_pub: bool,
+    pub name: Node<String>,
+    pub args: Vec<Node<FunctionArg>>,
+    pub return_type: Option<Node<TypeDesc>>,
+    pub body: Vec<Node<FuncStmt>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -131,7 +154,7 @@ pub struct EventField {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct FuncDefArg {
+pub struct FunctionArg {
     pub name: Node<String>,
     pub typ: Node<TypeDesc>,
 }
@@ -287,6 +310,27 @@ pub enum CompOperator {
     LtE,
     Gt,
     GtE,
+}
+
+impl Spanned for ModuleStmt {
+    fn span(&self) -> Span {
+        match self {
+            ModuleStmt::Pragma(inner) => inner.span,
+            ModuleStmt::Import(inner) => inner.span,
+            ModuleStmt::TypeAlias(inner) => inner.span,
+            ModuleStmt::Contract(inner) => inner.span,
+            ModuleStmt::Struct(inner) => inner.span,
+        }
+    }
+}
+
+impl Spanned for ContractStmt {
+    fn span(&self) -> Span {
+        match self {
+            ContractStmt::Event(inner) => inner.span,
+            ContractStmt::Function(inner) => inner.span,
+        }
+    }
 }
 
 impl fmt::Display for BoolOperator {

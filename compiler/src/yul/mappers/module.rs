@@ -12,29 +12,31 @@ pub fn module(context: &Context, module: &fe::Module) -> YulContracts {
         .body
         .iter()
         .fold(YulContracts::new(), |mut contracts, stmt| {
-            match &stmt.kind {
-                fe::ModuleStmt::Pragma { .. } => {}
-                fe::ModuleStmt::TypeDef { .. } => {}
-                fe::ModuleStmt::ContractDef { name, .. } => {
+            match &stmt {
+                fe::ModuleStmt::Pragma(_) => {}
+                fe::ModuleStmt::TypeAlias(_) => {}
+                fe::ModuleStmt::Contract(def) => {
                     // Map the set of created contract names to their Yul objects so they can be
                     // included in the Yul contract that deploys them.
                     let created_contracts = context
-                        .get_contract(stmt)
+                        .get_contract(def)
                         .expect("invalid attributes")
                         .created_contracts
                         .iter()
                         .map(|contract_name| contracts[contract_name].clone())
                         .collect::<Vec<_>>();
 
-                    let contract = contracts::contract_def(context, stmt, created_contracts);
+                    let contract = contracts::contract_def(context, def, created_contracts);
 
-                    if contracts.insert(name.kind.clone(), contract).is_some() {
+                    if contracts
+                        .insert(def.kind.name.kind.clone(), contract)
+                        .is_some()
+                    {
                         panic!("duplicate contract definition");
                     }
                 }
-                fe::ModuleStmt::StructDef { .. } => {}
-                fe::ModuleStmt::FromImport { .. } => unimplemented!(),
-                fe::ModuleStmt::SimpleImport { .. } => unimplemented!(),
+                fe::ModuleStmt::Struct(_) => {}
+                fe::ModuleStmt::Import(_) => unimplemented!(),
             }
 
             contracts

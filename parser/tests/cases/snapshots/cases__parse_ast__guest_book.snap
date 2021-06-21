@@ -6,8 +6,8 @@ expression: "ast_string(stringify!(guest_book), module::parse_module,\n         
 Node(
   kind: Module(
     body: [
-      Node(
-        kind: TypeDef(
+      TypeAlias(Node(
+        kind: TypeAlias(
           name: Node(
             kind: "BookMsg",
             span: Span(
@@ -38,9 +38,9 @@ Node(
           start: 1,
           end: 26,
         ),
-      ),
-      Node(
-        kind: ContractDef(
+      )),
+      Contract(Node(
+        kind: Contract(
           name: Node(
             kind: "GuestBook",
             span: Span(
@@ -110,8 +110,8 @@ Node(
             ),
           ],
           body: [
-            Node(
-              kind: EventDef(
+            Event(Node(
+              kind: Event(
                 name: Node(
                   kind: "Signed",
                   span: Span(
@@ -151,9 +151,9 @@ Node(
                 start: 95,
                 end: 138,
               ),
-            ),
-            Node(
-              kind: FuncDef(
+            )),
+            Function(Node(
+              kind: Function(
                 is_pub: true,
                 name: Node(
                   kind: "sign",
@@ -164,7 +164,7 @@ Node(
                 ),
                 args: [
                   Node(
-                    kind: FuncDefArg(
+                    kind: FunctionArg(
                       name: Node(
                         kind: "book_msg",
                         span: Span(
@@ -308,9 +308,9 @@ Node(
                 start: 144,
                 end: 263,
               ),
-            ),
-            Node(
-              kind: FuncDef(
+            )),
+            Function(Node(
+              kind: Function(
                 is_pub: true,
                 name: Node(
                   kind: "get_msg",
@@ -321,7 +321,7 @@ Node(
                 ),
                 args: [
                   Node(
-                    kind: FuncDefArg(
+                    kind: FunctionArg(
                       name: Node(
                         kind: "addr",
                         span: Span(
@@ -406,18 +406,18 @@ Node(
                 start: 269,
                 end: 348,
               ),
-            ),
+            )),
           ],
         ),
         span: Span(
           start: 28,
           end: 348,
         ),
-      ),
+      )),
     ],
   ),
   span: Span(
-    start: 1,
+    start: 0,
     end: 348,
   ),
 )

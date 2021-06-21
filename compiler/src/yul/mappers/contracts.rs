@@ -10,73 +10,76 @@ use yultsur::*;
 /// Builds a Yul object from a Fe contract.
 pub fn contract_def(
     context: &Context,
-    stmt: &Node<fe::ModuleStmt>,
+    stmt: &Node<fe::Contract>,
     created_contracts: Vec<yul::Object>,
 ) -> yul::Object {
-    if let fe::ModuleStmt::ContractDef { name, body, .. } = &stmt.kind {
-        let contract_name = &name.kind;
-        let mut init_function = None;
-        let mut user_functions = vec![];
+    let fe::Contract { name, body, .. } = &stmt.kind;
+    let contract_name = &name.kind;
+    let mut init_function = None;
+    let mut user_functions = vec![];
 
-        // map user defined functions
-        for stmt in body.iter() {
-            if let (Some(attributes), fe::ContractStmt::FuncDef { name, .. }) =
-                (context.get_function(stmt), &stmt.kind)
-            {
-                if name.kind == "__init__" {
+    // map user defined functions
+    for stmt in body.iter() {
+        match stmt {
+            fe::ContractStmt::Function(def) => {
+                let attributes = context
+                    .get_function(def)
+                    .expect("missing function attributes");
+                if def.kind.name.kind == "__init__" {
                     init_function =
-                        Some((functions::func_def(context, stmt), attributes.param_types()))
+                        Some((functions::func_def(context, def), attributes.param_types()))
                 } else {
-                    user_functions.push(functions::func_def(context, stmt))
+                    user_functions.push(functions::func_def(context, def))
                 }
             }
+            fe::ContractStmt::Event(_) => {}
         }
+    }
 
-        // build the set of functions needed during runtime
-        let runtime_functions = runtime::build_with_abi_dispatcher(context, stmt);
+    // build the set of functions needed during runtime
+    let runtime_functions = runtime::build_with_abi_dispatcher(context, stmt);
 
-        // build data objects for static strings (also for constants in the future)
-        let data = if let Some(attributes) = context.get_contract(stmt) {
-            attributes
-                .string_literals
-                .clone()
-                .into_iter()
-                .map(|val| yul::Data {
-                    name: keccak::full(val.as_bytes()),
-                    value: val,
-                })
-                .collect::<Vec<_>>()
-        } else {
-            vec![]
-        };
+    // build data objects for static strings (also for constants in the future)
+    let data = if let Some(attributes) = context.get_contract(stmt) {
+        attributes
+            .string_literals
+            .clone()
+            .into_iter()
+            .map(|val| yul::Data {
+                name: keccak::full(val.as_bytes()),
+                value: val,
+            })
+            .collect::<Vec<_>>()
+    } else {
+        vec![]
+    };
 
-        // create the runtime object
-        let runtime_object = yul::Object {
-            name: identifier! { runtime },
-            code: yul::Code {
-                block: yul::Block {
-                    statements: statements! {
-                        [user_functions...]
+    // create the runtime object
+    let runtime_object = yul::Object {
+        name: identifier! { runtime },
+        code: yul::Code {
+            block: yul::Block {
+                statements: statements! {
+                    [user_functions...]
                         [runtime_functions...]
-                        // we must return, otherwise we'll enter into other objects
+                    // we must return, otherwise we'll enter into other objects
                         (return(0, 0))
-                    },
                 },
             },
-            objects: created_contracts.clone(),
-            // We can't reach to data objects in the "contract" hierachy so in order to have
-            // the data objects available in both places we have to put them in both places.
-            data: data.clone(),
-        };
+        },
+        objects: created_contracts.clone(),
+        // We can't reach to data objects in the "contract" hierachy so in order to have
+        // the data objects available in both places we have to put them in both places.
+        data: data.clone(),
+    };
 
-        // Build the code and and objects fields for the constructor object.
-        //
-        // If there is an `__init__` function defined, we must include everything that
-        // is in the runtime object in the constructor object too. This is so
-        // user-defined functions can be called from `__init__`.
-        let (constructor_code, constructor_objects) = if let Some((init_func, init_params)) =
-            init_function
-        {
+    // Build the code and and objects fields for the constructor object.
+    //
+    // If there is an `__init__` function defined, we must include everything that
+    // is in the runtime object in the constructor object too. This is so
+    // user-defined functions can be called from `__init__`.
+    let (constructor_code, constructor_objects) =
+        if let Some((init_func, init_params)) = init_function {
             let init_runtime_functions = [runtime::build(context, stmt), user_functions].concat();
             let constructor_code = constructor::build_with_init(
                 contract_name,
@@ -95,14 +98,11 @@ pub fn contract_def(
             (constructor_code, vec![runtime_object])
         };
 
-        // We return the contract initialization object.
-        return yul::Object {
-            name: identifier! { (contract_name) },
-            code: constructor_code,
-            objects: constructor_objects,
-            data,
-        };
+    // We return the contract initialization object.
+    yul::Object {
+        name: identifier! { (contract_name) },
+        code: constructor_code,
+        objects: constructor_objects,
+        data,
     }
-
-    unreachable!()
 }

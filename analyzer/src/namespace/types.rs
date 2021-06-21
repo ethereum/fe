@@ -876,7 +876,7 @@ impl fmt::Display for Tuple {
 
 impl fmt::Display for FeString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "string<{}>", self.max_size)
+        write!(f, "String<{}>", self.max_size)
     }
 }
 

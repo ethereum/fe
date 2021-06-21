@@ -1,16 +1,15 @@
-use crate::ast::{ContractStmt, EventField, Field, GenericArg, ModuleStmt, TypeDesc};
+use crate::ast::{self, EventField, Field, GenericArg, TypeAlias, TypeDesc};
 use crate::grammar::expressions::parse_expr;
 use crate::grammar::functions::parse_single_word_stmt;
 use crate::node::{Node, Span};
 use crate::{ParseFailed, ParseResult, Parser, TokenKind};
 use vec1::Vec1;
 
-/// Parse a [`ModuleStmt::StructDef`].
+/// Parse a [`ModuleStmt::Struct`].
 /// # Panics
 /// Panics if the next token isn't `struct`.
-pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
+pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ast::Struct>> {
     use TokenKind::*;
-
     let struct_tok = par.assert(Struct);
     let name = par.expect_with_notes(Name, "failed to parse struct definition", || {
         vec!["Note: a struct name must start with a letter or underscore, and contain letters, numbers, or underscores".into()]
@@ -21,8 +20,8 @@ pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     loop {
         match par.peek() {
             Some(Name) | Some(Pub) | Some(Const) => {
-                let pub_qual = parse_opt_qualifier(par, TokenKind::Pub);
-                let const_qual = parse_opt_qualifier(par, TokenKind::Const);
+                let pub_qual = parse_opt_qualifier(par, Pub);
+                let const_qual = parse_opt_qualifier(par, Const);
                 fields.push(parse_field(par, pub_qual, const_qual)?);
             }
             Some(Dedent) => {
@@ -42,7 +41,7 @@ pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     }
     let span = struct_tok.span + name.span + fields.last();
     Ok(Node::new(
-        ModuleStmt::StructDef {
+        ast::Struct {
             name: name.into(),
             fields,
         },
@@ -50,10 +49,10 @@ pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     ))
 }
 
-/// Parse a type definition, e.g. `type MyMap = Map<u8, address>`.
+/// Parse a type alias definition, e.g. `type MyMap = Map<u8, address>`.
 /// # Panics
 /// Panics if the next token isn't `type`.
-pub fn parse_type_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
+pub fn parse_type_alias(par: &mut Parser) -> ParseResult<Node<TypeAlias>> {
     let type_tok = par.assert(TokenKind::Type);
     let name = par.expect(TokenKind::Name, "failed to parse type declaration")?;
     par.expect_with_notes(TokenKind::Eq, "failed to parse type declaration", || {
@@ -66,7 +65,7 @@ pub fn parse_type_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
     let typ = parse_type_desc(par)?;
     let span = type_tok.span + typ.span;
     Ok(Node::new(
-        ModuleStmt::TypeDef {
+        TypeAlias {
             name: name.into(),
             typ,
         },
@@ -77,7 +76,7 @@ pub fn parse_type_def(par: &mut Parser) -> ParseResult<Node<ModuleStmt>> {
 /// Parse an event definition.
 /// # Panics
 /// Panics if the next token isn't `event`.
-pub fn parse_event_def(par: &mut Parser) -> ParseResult<Node<ContractStmt>> {
+pub fn parse_event_def(par: &mut Parser) -> ParseResult<Node<ast::Event>> {
     use TokenKind::*;
 
     let event_tok = par.assert(Event);
@@ -107,7 +106,7 @@ pub fn parse_event_def(par: &mut Parser) -> ParseResult<Node<ContractStmt>> {
     }
     let span = event_tok.span + name.span + fields.last();
     Ok(Node::new(
-        ContractStmt::EventDef {
+        ast::Event {
             name: name.into(),
             fields,
         },

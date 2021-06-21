@@ -4,7 +4,7 @@ expression: "ast_string(stringify!(contract_def), contracts::parse_contract_def,
 
 ---
 Node(
-  kind: ContractDef(
+  kind: Contract(
     name: Node(
       kind: "Foo",
       span: Span(
@@ -128,8 +128,8 @@ Node(
       ),
     ],
     body: [
-      Node(
-        kind: FuncDef(
+      Function(Node(
+        kind: Function(
           is_pub: true,
           name: Node(
             kind: "foo",
@@ -170,9 +170,9 @@ Node(
           start: 73,
           end: 107,
         ),
-      ),
-      Node(
-        kind: EventDef(
+      )),
+      Event(Node(
+        kind: Event(
           name: Node(
             kind: "Bar",
             span: Span(
@@ -212,7 +212,7 @@ Node(
           start: 110,
           end: 142,
         ),
-      ),
+      )),
     ],
   ),
   span: Span(

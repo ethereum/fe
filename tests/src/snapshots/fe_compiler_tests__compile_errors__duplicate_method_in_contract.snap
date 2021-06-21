@@ -8,7 +8,7 @@ error: a function with the same name already exists
   │  
 6 │ ╭     pub def bar():
 7 │ │         pass
-  │ ╰────────────^ Conflicting definition of contract `bar`
+  │ ╰────────────^ Conflicting definition of function `bar`
   │  
   = Note: Give one of the `bar` functions a different name
 
