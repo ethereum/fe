@@ -100,6 +100,7 @@ pub fn aug_assign(
     stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), FatalError> {
     if let fe::FuncStmt::AugAssign { target, op, value } = &stmt.kind {
+        check_assign_target(context, target)?;
         let target_attributes = expressions::expr(Rc::clone(&scope), context, target, None)?;
         let value_attributes =
             expressions::expr(scope, context, value, Some(&target_attributes.typ))?;
