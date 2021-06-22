@@ -962,12 +962,6 @@ fn checked_arithmetic() {
                 &[config.i_min.clone(), int_token(-2)],
             );
 
-            // signed: min_value * 1 works
-            if config.size == 256 {
-                // rust-evm has a bug with SDIV(256_min, 1). It returns 0 causing this test to
-                // fail. See: https://github.com/ethereum/fe/issues/285
-                continue;
-            }
             harness.test_function(
                 &mut executor,
                 &format!("mul_i{}", config.size),
