@@ -72,7 +72,7 @@ fn uniswap_contracts() {
 
         // Set the pair address for convenience.
         let pair_harness = load_contract(
-            pair_address.clone().to_address().expect("not an address"),
+            pair_address.clone().into_address().expect("not an address"),
             "fixtures/demos/uniswap.fe",
             "UniswapV2Pair",
         );
@@ -158,7 +158,7 @@ fn uniswap_contracts() {
         /* BOB PERFORMS A SWAP */
 
         // Set Bob as the token1 caller, this is so Bob can perform a swap.
-        token1_harness.set_caller(bob.clone().to_address().unwrap());
+        token1_harness.set_caller(bob.clone().into_address().unwrap());
 
         // Bob sends 1000 smallest units of token1 to the pair for swapping.
         // token1 is twice as valuable as token0, so we should expect to receive roughly
