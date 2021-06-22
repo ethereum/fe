@@ -13,4 +13,5 @@ contract Foo:
       return self.ti1.amount
    
    pub def get_some_string() -> String<100>:
+      self.set_item()
       return self.ti1.content.to_mem()

@@ -1193,6 +1193,20 @@ fn create_contract_from_init() {
     })
 }
 
+#[test]
+fn struct_with_string() {
+    with_executor(&|mut executor| {
+        let string_harness = deploy_contract(&mut executor, "struct_with_string.fe", "Foo", &[]);
+
+        string_harness.test_function(
+            &mut executor,
+            "get_some_string",
+            &[],
+            Some(&string_token("Fooooo")),
+        );
+    })
+}
+
 #[rstest(
     fixture_file,
     contract_name,
