@@ -12,7 +12,6 @@ ModuleAttributes {
             },
         ),
     },
-    tuples_used: {},
 }
 
 note: 
@@ -26,7 +25,6 @@ note:
         public_functions: [],
         init_function: None,
         events: [],
-        list_expressions: {},
         string_literals: {},
         structs: [],
         external_contracts: [],

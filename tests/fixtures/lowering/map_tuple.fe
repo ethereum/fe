@@ -1,6 +1,6 @@
 contract Foo:
-    tuples: Map<u256, (address, u256)>
+    tuples: Map<u256, (address, (u256, u8))>
 
     pub def bar(x: u256) -> u256:
-        self.tuples[0] = (address(100), x)
-        return self.tuples[0].item1
+        self.tuples[0] = (address(100), (x, 5))
+        return self.tuples[0].item1.item0

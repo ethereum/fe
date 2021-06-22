@@ -126,13 +126,6 @@ pub fn expr_list(
         size: elts.len(),
         inner: inner_type,
     };
-
-    scope
-        .borrow()
-        .contract_scope()
-        .borrow_mut()
-        .add_used_list_expression(array_typ.clone());
-
     Ok(ExpressionAttributes {
         typ: Type::Array(array_typ),
         location: Location::Memory,
@@ -245,14 +238,6 @@ fn expr_tuple(
         let tuple = Tuple {
             items: Vec1::try_from_vec(tuple_types).expect("tuple is empty"),
         };
-
-        scope
-            .borrow()
-            .module_scope()
-            .borrow_mut()
-            .tuples_used
-            .insert(tuple.clone());
-
         Ok(ExpressionAttributes::new(
             Type::Tuple(tuple),
             Location::Memory,

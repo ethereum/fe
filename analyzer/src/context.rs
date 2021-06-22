@@ -2,7 +2,7 @@ use crate::builtins::GlobalMethod;
 use crate::errors::CannotMove;
 use crate::namespace::events::EventDef;
 use crate::namespace::scopes::{ContractFunctionDef, ContractScope, ModuleScope, Shared};
-use crate::namespace::types::{Array, Contract, FixedSize, Struct, Tuple, Type};
+use crate::namespace::types::{Contract, FixedSize, Struct, Type};
 pub use fe_common::diagnostics::Label;
 use fe_common::diagnostics::{Diagnostic, Severity};
 use fe_common::files::SourceFileId;
@@ -52,8 +52,6 @@ pub struct ContractAttributes {
     pub init_function: Option<FunctionAttributes>,
     /// Events that have been defined by the user.
     pub events: Vec<EventDef>,
-    /// List expressions that the contract uses
-    pub list_expressions: BTreeSet<Array>,
     /// Static strings that the contract defines
     pub string_literals: BTreeSet<String>,
     /// Structs that have been defined by the user
@@ -121,7 +119,6 @@ impl From<Shared<ContractScope>> for ContractAttributes {
                 .values()
                 .map(|event| event.to_owned())
                 .collect::<Vec<EventDef>>(),
-            list_expressions: scope.borrow().list_expressions.clone(),
             string_literals: scope.borrow().string_defs.clone(),
             structs,
             external_contracts,
@@ -224,17 +221,12 @@ impl From<ContractFunctionDef> for FunctionAttributes {
 pub struct ModuleAttributes {
     /// Type definitions in a module.
     pub type_defs: BTreeMap<String, Type>,
-    /// Tuples that were used inside of a module.
-    ///
-    /// BTreeSet is used for ordering, this way items are retrieved in the same order every time.
-    pub tuples_used: BTreeSet<Tuple>,
 }
 
 impl From<Shared<ModuleScope>> for ModuleAttributes {
     fn from(scope: Shared<ModuleScope>) -> Self {
         Self {
             type_defs: scope.borrow().type_defs.clone(),
-            tuples_used: scope.borrow().tuples_used.clone(),
         }
     }
 }

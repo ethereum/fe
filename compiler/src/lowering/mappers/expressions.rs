@@ -1,8 +1,8 @@
+use crate::lowering::context::Context;
 use crate::lowering::names::{list_expr_generator_fn_name, tuple_struct_name};
 use crate::lowering::utils::ZeroSpanNode;
 use fe_analyzer::builtins::Object;
-use fe_analyzer::context::Context;
-use fe_analyzer::namespace::types::Type;
+use fe_analyzer::namespace::types::{Type, TypeDowncast};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 
@@ -102,45 +102,56 @@ pub fn call_args(
 }
 
 fn expr_tuple(context: &mut Context, exp: Node<fe::Expr>) -> fe::Expr {
-    let attributes = context.get_expression(&exp).expect("missing attributes");
+    let typ = context
+        .module
+        .analysis
+        .get_expression(&exp)
+        .expect("missing attributes")
+        .typ
+        .as_tuple()
+        .expect("expected tuple type");
 
-    if let Type::Tuple(tuple) = &attributes.typ {
-        let name = tuple_struct_name(tuple);
+    context.module.tuples.insert(typ.clone());
+    let elts = match exp.kind {
+        fe::Expr::Tuple { elts } => elts,
+        _ => unreachable!(),
+    };
 
-        if let fe::Expr::Tuple { elts } = exp.kind {
-            // map the tuple args to named args
-            let args = Node::new(
-                elts.into_iter()
-                    .enumerate()
-                    .map(|(index, elt)| {
-                        Node::new(
-                            fe::CallArg {
-                                label: Some(Node::new(format!("item{}", index), elt.span)),
-                                value: elt.clone(),
-                            },
-                            elt.span,
-                        )
-                    })
-                    .collect(),
-                exp.span,
-            );
+    // map the tuple args to named args
+    let args = Node::new(
+        elts.into_iter()
+            .enumerate()
+            .map(|(index, elt)| {
+                let span = elt.span;
+                Node::new(
+                    fe::CallArg {
+                        label: Some(Node::new(format!("item{}", index), span)),
+                        value: expr(context, elt),
+                    },
+                    span,
+                )
+            })
+            .collect(),
+        exp.span,
+    );
 
-            // create type constructor call for the lowered tuple
-            return fe::Expr::Call {
-                func: Box::new(Node::new(name, exp.span)),
-                generic_args: None,
-                args,
-            };
-        }
+    // create type constructor call for the lowered tuple
+    fe::Expr::Call {
+        func: Box::new(Node::new(fe::Expr::Name(tuple_struct_name(typ)), exp.span)),
+        generic_args: None,
+        args,
     }
-
-    unreachable!()
 }
 
 fn expr_list(context: &mut Context, exp: Node<fe::Expr>) -> fe::Expr {
-    let attributes = context.get_expression(&exp).expect("missing attributes");
+    let attributes = context
+        .module
+        .analysis
+        .get_expression(&exp)
+        .expect("missing attributes");
 
     if let Type::Array(array) = &attributes.typ {
+        context.list_expressions.insert(array.clone());
         let fn_name = list_expr_generator_fn_name(array);
 
         if let fe::Expr::List { elts } = exp.kind {

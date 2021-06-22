@@ -1,15 +1,20 @@
-use fe_analyzer::context::Context;
-use fe_analyzer::namespace::types::{Array, FixedSize};
-
+use crate::lowering::context::Context;
 use crate::lowering::mappers::{functions, types};
 use crate::lowering::names;
 use crate::lowering::utils::ZeroSpanNode;
+use fe_analyzer::namespace::types::{Array, FixedSize};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 
 /// Lowers a contract definition.
 pub fn contract_def(context: &mut Context, stmt: Node<fe::Contract>) -> Node<fe::Contract> {
     let fe::Contract { name, fields, body } = stmt.kind;
+
+    let lowered_fields = fields
+        .into_iter()
+        .map(|field| contract_field(context, field))
+        .collect();
+
     let lowered_body = body
         .into_iter()
         .map(|stmt| match stmt {
@@ -20,26 +25,17 @@ pub fn contract_def(context: &mut Context, stmt: Node<fe::Contract>) -> Node<fe:
         })
         .collect();
 
-    let attributes = context.get_contract(stmt.id).expect("missing attributes");
-
-    let func_defs_from_list_expr = attributes
+    let func_defs_from_list_expr = context
         .list_expressions
         .iter()
         .map(|expr| fe::ContractStmt::Function(list_expr_to_fn_def(expr).into_node()))
         .collect::<Vec<fe::ContractStmt>>();
 
-    let lowered_body = [lowered_body, func_defs_from_list_expr].concat();
-
-    let lowered_fields = fields
-        .into_iter()
-        .map(|field| contract_field(context, field))
-        .collect();
-
     Node::new(
         fe::Contract {
             name,
             fields: lowered_fields,
-            body: lowered_body,
+            body: [lowered_body, func_defs_from_list_expr].concat(),
         },
         stmt.span,
     )
