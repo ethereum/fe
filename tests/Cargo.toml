@@ -10,15 +10,15 @@ version = "0.6.1-alpha"
 [dependencies]
 fe-compiler = {path = "../compiler"}
 # This fork contains the shorthand macros and some other necessary updates.
-ethabi = "12.0"
-evm = "0.18"
-evm-runtime = "0.18"
+ethabi = "14.0"
+evm = "0.26.0"
+evm-runtime = "0.26.0"
 fe-analyzer = {path = "../analyzer", version = "^0.6.1-alpha"}
 fe-common = {path = "../common", version = "^0.6.1-alpha"}
 fe-compiler-test-utils = {path = "../test-utils" }
 fe-parser = {path = "../parser", version = "^0.6.1-alpha"}
 hex = "0.4"
-primitive-types = {version = "0.7", default-features = false, features = ["rlp"]}
+primitive-types = {version = "0.9", default-features = false, features = ["rlp"]}
 rand = "0.7.3"
 regex = "1.1.0"
 rstest = "0.6.4"

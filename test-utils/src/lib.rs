@@ -25,7 +25,13 @@ impl ToBeBytes for U256 {
 }
 
 #[allow(dead_code)]
-pub type Executor<'a> = evm::executor::StackExecutor<'a, 'a, evm::backend::MemoryBackend<'a>>;
+pub type Backend<'a> = evm::backend::MemoryBackend<'a>;
+
+#[allow(dead_code)]
+pub type StackState<'a> = evm::executor::MemoryStackState<'a, 'a, Backend<'a>>;
+
+#[allow(dead_code)]
+pub type Executor<'a> = evm::executor::StackExecutor<'a, StackState<'a>>;
 
 #[allow(dead_code)]
 pub const DEFAULT_CALLER: &str = "1000000000000000000000000000000000000001";
@@ -116,6 +122,7 @@ impl ContractHarness {
     // Executor must be passed by value to get emitted events.
     pub fn events_emitted(&self, executor: Executor, events: &[(&str, &[ethabi::Token])]) {
         let raw_logs = executor
+            .into_state()
             .deconstruct()
             .1
             .into_iter()
@@ -175,9 +182,13 @@ pub fn with_executor(test: &dyn Fn(Executor)) {
 }
 
 #[allow(dead_code)]
-pub fn with_executor_backend(backend: evm::backend::MemoryBackend, test: &dyn Fn(Executor)) {
+pub fn with_executor_backend(backend: Backend, test: &dyn Fn(Executor)) {
     let config = evm::Config::istanbul();
-    let executor = evm::executor::StackExecutor::new(&backend, usize::max_value(), &config);
+    let stack_state = StackState::new(
+        evm::executor::StackSubstateMetadata::new(u64::MAX, &config),
+        &backend,
+    );
+    let executor = Executor::new(stack_state, &config);
 
     test(executor)
 }
