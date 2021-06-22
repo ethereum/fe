@@ -3,6 +3,7 @@ use fe_common::diagnostics::print_diagnostics;
 use fe_common::files::FileStore;
 use fe_driver as driver;
 use fe_yulgen::runtime::functions;
+use fe_common::utils::keccak;
 use primitive_types::{H160, H256, U256};
 use std::collections::BTreeMap;
 use std::str::FromStr;
@@ -189,6 +190,20 @@ pub fn with_executor_backend(backend: Backend, test: &dyn Fn(Executor)) {
     test(executor)
 }
 
+pub fn validate_revert(
+    capture: evm::Capture<(evm::ExitReason, Vec<u8>), std::convert::Infallible>,
+    expected_data: &[u8],
+) {
+    if let evm::Capture::Exit((evm::ExitReason::Revert(_), output)) = capture {
+        assert_eq!(
+            format!("0x{}", hex::encode(&output)),
+            format!("0x{}", hex::encode(expected_data))
+        );
+    } else {
+        panic!("failed")
+    };
+}
+
 #[allow(dead_code)]
 #[cfg(feature = "solc-backend")]
 pub fn deploy_contract(
@@ -242,24 +257,46 @@ pub fn deploy_solidity_contract(
 
 #[allow(dead_code)]
 pub fn encode_error_reason(reason: &str) -> Vec<u8> {
-    // Function selector for Error(string)
-    const SELECTOR: &str = "08c379a0";
-    // Data offset
-    const DATA_OFFSET: &str = "0000000000000000000000000000000000000000000000000000000000000020";
+    encode_error("Error(string)", &[string_token(reason)])
+}
 
-    // Length of the string padded to 32 bit hex
-    let string_len = format!("{:0>64x}", reason.len());
+#[allow(dead_code)]
+pub fn encode_error(selector: &str, input: &[ethabi::Token]) -> Vec<u8> {
+    let mut data = String::new();
+    for param in input {
+        let encoded = match param {
+            ethabi::Token::Uint(val) => format!("{:0>64}", format!("{:x}", val)),
+            ethabi::Token::Int(val) => format!("{:0>64}", format!("{:x}", val)),
+            ethabi::Token::Bool(val) => format!("{:0>64x}", *val as i32),
+            ethabi::Token::String(val) => {
+                const DATA_OFFSET: &str =
+                    "0000000000000000000000000000000000000000000000000000000000000020";
 
-    let mut string_bytes = reason.as_bytes().to_vec();
-    while string_bytes.len() % 32 != 0 {
-        string_bytes.push(0)
+                // Length of the string padded to 32 bit hex
+                let string_len = format!("{:0>64x}", val.len());
+
+                let mut string_bytes = val.as_bytes().to_vec();
+                while string_bytes.len() % 32 != 0 {
+                    string_bytes.push(0)
+                }
+                // The bytes of the string itself, right padded to consume a multiple of 32
+                // bytes
+                let string_bytes = hex::encode(&string_bytes);
+
+                format!("{}{}{}", DATA_OFFSET, string_len, string_bytes)
+            }
+            _ => todo!("Other ABI types not supported yet"),
+        };
+        data.push_str(&encoded);
     }
-    // The bytes of the string itself, right padded to consume a multiple of 32
-    // bytes
-    let string_bytes = hex::encode(&string_bytes);
 
-    let all = format!("{}{}{}{}", SELECTOR, DATA_OFFSET, string_len, string_bytes);
+    let all = format!("{}{}", get_function_selector(selector), data);
     hex::decode(&all).unwrap_or_else(|_| panic!("No valid hex: {}", &all))
+}
+
+fn get_function_selector(signature: &str) -> String {
+    // Function selector (e.g first 4 bytes of keccak("Error(string)")
+    hex::encode(&keccak::full_as_bytes(signature.as_bytes())[..4])
 }
 
 fn _deploy_contract(
@@ -352,7 +389,21 @@ pub fn compile_solidity_contract(
         .to_string()
         .replace("\"", "");
 
-    let abi = output["contracts"]["input.sol"][name]["abi"].to_string();
+    let abi = if let serde_json::Value::Array(data) = &output["contracts"]["input.sol"][name]["abi"]
+    {
+        data.iter()
+            .cloned()
+            .filter(|val| {
+                // ethabi doesn't yet support error types so we just filter them out for now
+                // https://github.com/rust-ethereum/ethabi/issues/225
+                val["type"] != "error"
+            })
+            .collect::<Vec<_>>()
+    } else {
+        vec![]
+    };
+
+    let abi = serde_json::Value::Array(abi).to_string();
 
     if [&bytecode, &abi].iter().any(|val| val == &"null") {
         return Err(SolidityCompileError(vec![serde_json::Value::String(

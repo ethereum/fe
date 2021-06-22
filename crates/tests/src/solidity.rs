@@ -9,26 +9,45 @@ use fe_compiler_test_utils::*;
 #[rstest(
     method,
     reason,
-    case("revert_me", "Not enough Ether provided."),
+    case("revert_me", encode_error_reason("Not enough Ether provided.")),
     case(
         "revert_with_long_string",
-        "A muuuuuch longer reason string that consumes multiple words"
+        encode_error_reason("A muuuuuch longer reason string that consumes multiple words")
     ),
-    case("revert_with_empty_string", "")
+    case("revert_with_empty_string", encode_error_reason("")),
+    case(
+        "revert_with_string_error",
+        encode_error("StringError(string)", &[string_token("Not enough Ether provided.")])
+    ),
+    case(
+        "revert_with_u256_error",
+        encode_error("U256Error(uint256)", &[uint_token(100)])
+    ),
+    case(
+        "revert_with_i256_error",
+        encode_error("I256Error(int256)", &[int_token(-100)])
+    ),
+    case(
+        "revert_with_u8_error",
+        encode_error("U8Error(uint8)", &[uint_token(100)])
+    ),
+    case(
+        "revert_with_two_u256_error",
+        encode_error("TwoU256Error(uint256,uint256)", &[uint_token(100), uint_token(100)])
+    ),
+    case(
+        "revert_with_struct_error",
+        encode_error("StructError((uint256,int256,bool))", &[uint_token(100), int_token(-100), bool_token(true)])
+    ),
 )]
-fn test_revert_string_reason(method: &str, reason: &str) {
+fn test_revert_errors(method: &str, reason: Vec<u8>) {
     with_executor(&|mut executor| {
         let harness =
             deploy_solidity_contract(&mut executor, "solidity/revert_test.sol", "Foo", &[]);
 
         let exit = harness.capture_call(&mut executor, method, &[]);
 
-        let expected_reason = format!("0x{}", hex::encode(encode_error_reason(reason)));
-        if let evm::Capture::Exit((evm::ExitReason::Revert(_), output)) = exit {
-            assert_eq!(format!("0x{}", hex::encode(&output)), expected_reason);
-        } else {
-            panic!("failed")
-        };
+        validate_revert(exit, &reason);
     })
 }
 
