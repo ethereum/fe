@@ -2404,7 +2404,6 @@ note:
                  indexed_fields: [],
              },
          ],
-         string_literals: {},
          structs: [
              Struct {
                  name: "MyStruct",

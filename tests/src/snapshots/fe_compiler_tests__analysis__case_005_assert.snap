@@ -337,7 +337,7 @@ note:
   · │
 8 │ │     pub def revert_with(baz: u256, reason: String<1000>):
 9 │ │         assert baz > 5, reason
-  │ ╰──────────────────────────────^ attributes hash: 3230845884331180109
+  │ ╰──────────────────────────────^ attributes hash: 7910349604985706298
   │  
   = ContractAttributes {
         public_functions: [
@@ -403,9 +403,6 @@ note:
         ],
         init_function: None,
         events: [],
-        string_literals: {
-            "Must be greater than five",
-        },
         structs: [],
         external_contracts: [],
         created_contracts: {},

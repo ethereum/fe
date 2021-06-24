@@ -1,6 +1,7 @@
 use crate::yul::mappers::expressions;
 use crate::yul::operations::data as data_operations;
-use fe_analyzer::context::{Context, Location};
+use crate::yul::Context;
+use fe_analyzer::context::Location;
 use fe_analyzer::namespace::types::FixedSize;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
@@ -8,14 +9,14 @@ use std::convert::TryFrom;
 use yultsur::*;
 
 /// Builds a Yul statement from a Fe assignment.
-pub fn assign(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
+pub fn assign(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     if let fe::FuncStmt::Assign { target, value } = &stmt.kind {
         if let (Some(target_attributes), Some(value_attributes)) = (
-            context.get_expression(target),
-            context.get_expression(value),
+            context.analysis.get_expression(target),
+            context.analysis.get_expression(value),
         ) {
-            let target = expressions::expr(&context, target);
-            let value = expressions::expr(&context, value);
+            let target = expressions::expr(context, target);
+            let value = expressions::expr(context, value);
 
             let typ =
                 FixedSize::try_from(target_attributes.typ.to_owned()).expect("invalid attributes");

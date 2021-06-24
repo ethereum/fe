@@ -46,7 +46,7 @@ pub fn expr(
         fe::Expr::Call { .. } => expr_call(scope, context, exp),
         fe::Expr::List { elts } => expr_list(scope, context, elts, expected_type.as_array()),
         fe::Expr::Tuple { .. } => expr_tuple(scope, context, exp, expected_type.as_tuple()),
-        fe::Expr::Str(_) => expr_str(scope, exp),
+        fe::Expr::Str(_) => expr_str(exp),
         fe::Expr::Unit => Ok(ExpressionAttributes::new(Type::unit(), Location::Value)),
     }?;
 
@@ -312,17 +312,8 @@ fn expr_name(
     unreachable!()
 }
 
-fn expr_str(
-    scope: Shared<BlockScope>,
-    exp: &Node<fe::Expr>,
-) -> Result<ExpressionAttributes, FatalError> {
+fn expr_str(exp: &Node<fe::Expr>) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Str(string) = &exp.kind {
-        scope
-            .borrow()
-            .contract_scope()
-            .borrow_mut()
-            .add_string(&string);
-
         return Ok(ExpressionAttributes::new(
             Type::String(FeString {
                 max_size: string.len(),

@@ -1,12 +1,12 @@
-use crate::yul::names;
 use crate::yul::operations::{
     abi as abi_operations, contracts as contract_operations, data as data_operations,
     structs as struct_operations,
 };
+use crate::yul::{names, Context};
 use builtins::{BlockField, ChainField, MsgField, Object, TxField};
 use fe_analyzer::builtins;
 use fe_analyzer::builtins::{ContractTypeMethod, GlobalMethod};
-use fe_analyzer::context::{CallType, Context, Location};
+use fe_analyzer::context::{CallType, Location};
 use fe_analyzer::namespace::types::{Base, FeSized, FixedSize, Type};
 use fe_common::numeric;
 use fe_common::utils::keccak;
@@ -18,35 +18,38 @@ use std::str::FromStr;
 use yultsur::*;
 
 /// Builds a Yul expression from a Fe expression.
-pub fn expr(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
-    if let Some(attributes) = context.get_expression(exp) {
-        let expression = match &exp.kind {
-            fe::Expr::Name(_) => expr_name(exp),
-            fe::Expr::Num(_) => expr_num(exp),
-            fe::Expr::Bool(_) => expr_bool(exp),
-            fe::Expr::Subscript { .. } => expr_subscript(context, exp),
-            fe::Expr::Attribute { .. } => expr_attribute(context, exp),
-            fe::Expr::Ternary { .. } => expr_ternary(context, exp),
-            fe::Expr::BoolOperation { .. } => expr_bool_operation(context, exp),
-            fe::Expr::BinOperation { .. } => expr_bin_operation(context, exp),
-            fe::Expr::UnaryOperation { .. } => expr_unary_operation(context, exp),
-            fe::Expr::CompOperation { .. } => expr_comp_operation(context, exp),
-            fe::Expr::Call { .. } => expr_call(context, exp),
-            fe::Expr::List { .. } => panic!("list expressions should be lowered"),
-            fe::Expr::Tuple { .. } => panic!("tuple expressions should be lowered"),
-            fe::Expr::Str(_) => expr_str(exp),
-            fe::Expr::Unit => expression! { 0x0 },
-        };
-
-        match (
-            attributes.location.to_owned(),
-            attributes.move_location.to_owned(),
-        ) {
-            (from, Some(to)) => move_expression(expression, attributes.typ.to_owned(), from, to),
-            (_, None) => expression,
+pub fn expr(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
+    let expression = match &exp.kind {
+        fe::Expr::Name(_) => expr_name(exp),
+        fe::Expr::Num(_) => expr_num(exp),
+        fe::Expr::Bool(_) => expr_bool(exp),
+        fe::Expr::Subscript { .. } => expr_subscript(context, exp),
+        fe::Expr::Attribute { .. } => expr_attribute(context, exp),
+        fe::Expr::Ternary { .. } => expr_ternary(context, exp),
+        fe::Expr::BoolOperation { .. } => expr_bool_operation(context, exp),
+        fe::Expr::BinOperation { .. } => expr_bin_operation(context, exp),
+        fe::Expr::UnaryOperation { .. } => expr_unary_operation(context, exp),
+        fe::Expr::CompOperation { .. } => expr_comp_operation(context, exp),
+        fe::Expr::Call { .. } => expr_call(context, exp),
+        fe::Expr::List { .. } => panic!("list expressions should be lowered"),
+        fe::Expr::Tuple { .. } => panic!("tuple expressions should be lowered"),
+        fe::Expr::Str(val) => {
+            context.string_literals.insert(val.clone());
+            expr_str(exp)
         }
-    } else {
-        panic!("missing expression attributes for {:?}", exp)
+        fe::Expr::Unit => expression! { 0x0 },
+    };
+
+    let attributes = context
+        .analysis
+        .get_expression(exp)
+        .expect("missing expression attributes");
+    match (
+        attributes.location.to_owned(),
+        attributes.move_location.to_owned(),
+    ) {
+        (from, Some(to)) => move_expression(expression, attributes.typ.to_owned(), from, to),
+        (_, None) => expression,
     }
 }
 
@@ -67,14 +70,14 @@ fn move_expression(
     }
 }
 
-fn expr_call(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
+fn expr_call(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Call {
         args,
         generic_args: _,
         func,
     } = &exp.kind
     {
-        if let Some(call_type) = context.get_call(func) {
+        if let Some(call_type) = context.analysis.get_call(func) {
             let yul_args: Vec<yul::Expression> = args
                 .kind
                 .iter()
@@ -86,6 +89,7 @@ fn expr_call(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
                     GlobalMethod::Keccak256 => {
                         let first_arg = &args.kind.first().expect("Missing argument").kind.value;
                         let attributes = context
+                            .analysis
                             .get_expression(first_arg)
                             .expect("missing attributes");
                         let size =
@@ -107,8 +111,10 @@ fn expr_call(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
                 }
                 CallType::ValueAttribute => {
                     if let fe::Expr::Attribute { value, attr } = &func.kind {
-                        let value_attributes =
-                            context.get_expression(value).expect("invalid attributes");
+                        let value_attributes = context
+                            .analysis
+                            .get_expression(value)
+                            .expect("invalid attributes");
 
                         return match (value_attributes.typ.to_owned(), &attr.kind) {
                             (Type::Contract(contract), func_name) => contract_operations::call(
@@ -166,12 +172,13 @@ fn expr_call(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
     unreachable!()
 }
 
-pub fn expr_comp_operation(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
+pub fn expr_comp_operation(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::CompOperation { left, op, right } = &exp.kind {
         let yul_left = expr(context, left);
         let yul_right = expr(context, right);
 
         let typ = &context
+            .analysis
             .get_expression(left)
             .expect("Missing `left` expression in context")
             .typ;
@@ -201,12 +208,13 @@ pub fn expr_comp_operation(context: &Context, exp: &Node<fe::Expr>) -> yul::Expr
     unreachable!()
 }
 
-pub fn expr_bin_operation(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
+pub fn expr_bin_operation(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::BinOperation { left, op, right } = &exp.kind {
         let yul_left = expr(context, left);
         let yul_right = expr(context, right);
 
         let typ = &context
+            .analysis
             .get_expression(left)
             .expect("Missing `left` expression in context")
             .typ;
@@ -262,7 +270,7 @@ pub fn expr_bin_operation(context: &Context, exp: &Node<fe::Expr>) -> yul::Expre
     unreachable!()
 }
 
-pub fn expr_unary_operation(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
+pub fn expr_unary_operation(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::UnaryOperation { op, operand } = &exp.kind {
         let yul_operand = expr(context, operand);
 
@@ -331,9 +339,9 @@ fn expr_str(exp: &Node<fe::Expr>) -> yul::Expression {
     unreachable!()
 }
 
-fn expr_subscript(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
+fn expr_subscript(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Subscript { value, index } = &exp.kind {
-        if let Some(value_attributes) = context.get_expression(value) {
+        if let Some(value_attributes) = context.analysis.get_expression(value) {
             let value = expr(context, value);
             let index = expr(context, index);
 
@@ -350,7 +358,7 @@ fn expr_subscript(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
     unreachable!()
 }
 
-fn expr_attribute(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
+fn expr_attribute(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Attribute { value, attr } = &exp.kind {
         // If the given value has expression attributes, we handle it as an expression
         // by first mapping the value and then performing the expected operation
@@ -358,7 +366,7 @@ fn expr_attribute(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
         //
         // If the given value does not have expression attributes, we assume it is a
         // builtin object and map it as such.
-        return if let Some(attributes) = context.get_expression(value) {
+        return if let Some(attributes) = context.analysis.get_expression(value) {
             let value = expr(context, value);
 
             match &attributes.typ {
@@ -405,14 +413,14 @@ fn expr_attribute(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
     unreachable!()
 }
 
-fn expr_attribute_self(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
+fn expr_attribute_self(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Attribute { attr, .. } = &exp.kind {
         if let Ok(builtins::SelfField::Address) = builtins::SelfField::from_str(&attr.kind) {
             return expression! { address() };
         }
     }
 
-    if let Some(attributes) = context.get_expression(exp) {
+    if let Some(attributes) = context.analysis.get_expression(exp) {
         let nonce = if let Location::Storage { nonce: Some(nonce) } = attributes.location {
             nonce
         } else {
@@ -438,7 +446,7 @@ pub fn nonce_to_ptr(nonce: usize) -> yul::Expression {
     literal_expression! { (ptr) }
 }
 
-fn expr_ternary(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
+fn expr_ternary(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Ternary {
         if_expr,
         test,
@@ -454,7 +462,7 @@ fn expr_ternary(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
     unreachable!()
 }
 
-fn expr_bool_operation(context: &Context, exp: &Node<fe::Expr>) -> yul::Expression {
+fn expr_bool_operation(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::BoolOperation { left, op, right } = &exp.kind {
         let yul_left = expr(context, left);
         let yul_right = expr(context, right);
@@ -478,7 +486,7 @@ mod tests {
     use fe_parser as parser;
     use rstest::rstest;
 
-    fn map(context: &Context, src: &str) -> String {
+    fn map(context: &mut Context, src: &str) -> String {
         let tokens = parser::get_parse_tokens(src).expect("Couldn't parse expression");
         let expression = &parser::parsers::expr(&tokens[..])
             .expect("Couldn't build expression AST")

@@ -224,7 +224,6 @@ note:
         ],
         init_function: None,
         events: [],
-        string_literals: {},
         structs: [],
         external_contracts: [
             Contract {
@@ -266,7 +265,6 @@ note:
         ],
         init_function: None,
         events: [],
-        string_literals: {},
         structs: [],
         external_contracts: [
             Contract {

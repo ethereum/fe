@@ -37,7 +37,6 @@ pub struct ContractScope {
     pub event_defs: BTreeMap<String, EventDef>,
     pub field_defs: BTreeMap<String, ContractFieldDef>,
     pub function_defs: BTreeMap<String, ContractFunctionDef>,
-    pub string_defs: BTreeSet<String>,
     pub created_contracts: BTreeSet<String>,
     num_fields: usize,
 }
@@ -114,7 +113,6 @@ impl ContractScope {
             function_defs: BTreeMap::new(),
             event_defs: BTreeMap::new(),
             field_defs: BTreeMap::new(),
-            string_defs: BTreeSet::new(),
             interface: vec![],
             created_contracts: BTreeSet::new(),
             num_fields: 0,
@@ -191,11 +189,6 @@ impl ContractScope {
                 Ok(())
             }
         }
-    }
-
-    /// Add a static string definition to the scope.
-    pub fn add_string(&mut self, value: &str) {
-        self.string_defs.insert(value.to_owned());
     }
 
     /// Add the name of another contract that has been created within this

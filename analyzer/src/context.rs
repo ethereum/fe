@@ -52,8 +52,6 @@ pub struct ContractAttributes {
     pub init_function: Option<FunctionAttributes>,
     /// Events that have been defined by the user.
     pub events: Vec<EventDef>,
-    /// Static strings that the contract defines
-    pub string_literals: BTreeSet<String>,
     /// Structs that have been defined by the user
     pub structs: Vec<Struct>,
     /// External contracts that may be called from within this contract.
@@ -119,7 +117,6 @@ impl From<Shared<ContractScope>> for ContractAttributes {
                 .values()
                 .map(|event| event.to_owned())
                 .collect::<Vec<EventDef>>(),
-            string_literals: scope.borrow().string_defs.clone(),
             structs,
             external_contracts,
             created_contracts: scope.borrow().created_contracts.to_owned(),

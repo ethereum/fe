@@ -1,5 +1,5 @@
 use crate::yul::mappers::contracts;
-use fe_analyzer::context::Context;
+use crate::yul::AnalyzerContext;
 use fe_parser::ast as fe;
 use std::collections::HashMap;
 use yultsur::yul;
@@ -7,7 +7,7 @@ use yultsur::yul;
 pub type YulContracts = HashMap<String, yul::Object>;
 
 /// Builds a vector of Yul contracts from a Fe module.
-pub fn module(context: &Context, module: &fe::Module) -> YulContracts {
+pub fn module(analysis: &AnalyzerContext, module: &fe::Module) -> YulContracts {
     module
         .body
         .iter()
@@ -18,7 +18,7 @@ pub fn module(context: &Context, module: &fe::Module) -> YulContracts {
                 fe::ModuleStmt::Contract(def) => {
                     // Map the set of created contract names to their Yul objects so they can be
                     // included in the Yul contract that deploys them.
-                    let created_contracts = context
+                    let created_contracts = analysis
                         .get_contract(def)
                         .expect("invalid attributes")
                         .created_contracts
@@ -26,7 +26,7 @@ pub fn module(context: &Context, module: &fe::Module) -> YulContracts {
                         .map(|contract_name| contracts[contract_name].clone())
                         .collect::<Vec<_>>();
 
-                    let contract = contracts::contract_def(context, def, created_contracts);
+                    let contract = contracts::contract_def(analysis, def, created_contracts);
 
                     if contracts
                         .insert(def.kind.name.kind.clone(), contract)

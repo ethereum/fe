@@ -16290,7 +16290,6 @@ note:
         ],
         init_function: None,
         events: [],
-        string_literals: {},
         structs: [],
         external_contracts: [
             Contract {
@@ -16656,7 +16655,7 @@ note:
     · │
 282 │ │     def min(x: u256, y: u256) -> u256:
 283 │ │         return x if x < y else y
-    │ ╰────────────────────────────────^ attributes hash: 1073470112117261301
+    │ ╰────────────────────────────────^ attributes hash: 16662072184245108604
     │  
     = ContractAttributes {
           public_functions: [
@@ -17141,16 +17140,6 @@ note:
                   ],
               },
           ],
-          string_literals: {
-              "UniswapV2: FORBIDDEN",
-              "UniswapV2: INSUFFICIENT_INPUT_AMOUNT",
-              "UniswapV2: INSUFFICIENT_LIQUIDITY",
-              "UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED",
-              "UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED",
-              "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT",
-              "UniswapV2: INVALID_TO",
-              "UniswapV2: K",
-          },
           structs: [],
           external_contracts: [
               Contract {
@@ -17294,7 +17283,7 @@ note:
     · │
 337 │ │         assert msg.sender == fee_to_setter, "UniswapV2: FORBIDDEN"
 338 │ │         self.fee_to_setter = fee_to_setter
-    │ ╰──────────────────────────────────────────^ attributes hash: 6112704229203799669
+    │ ╰──────────────────────────────────────────^ attributes hash: 16613142782390074906
     │  
     = ContractAttributes {
           public_functions: [
@@ -17431,12 +17420,6 @@ note:
                   ],
               },
           ],
-          string_literals: {
-              "UniswapV2: FORBIDDEN",
-              "UniswapV2: IDENTICAL_ADDRESSES",
-              "UniswapV2: PAIR_EXISTS",
-              "UniswapV2: ZERO_ADDRESS",
-          },
           structs: [],
           external_contracts: [
               Contract {

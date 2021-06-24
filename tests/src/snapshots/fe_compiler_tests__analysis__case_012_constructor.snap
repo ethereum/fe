@@ -301,7 +301,6 @@ note:
             },
         ),
         events: [],
-        string_literals: {},
         structs: [],
         external_contracts: [],
         created_contracts: {},
