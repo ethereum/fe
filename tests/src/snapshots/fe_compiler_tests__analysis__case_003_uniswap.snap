@@ -16642,7 +16642,6 @@ note:
                 ],
             },
         ],
-        created_contracts: {},
     }
 
 note: 
@@ -17270,7 +17269,6 @@ note:
                   ],
               },
           ],
-          created_contracts: {},
       }
 
 note: 
@@ -17283,7 +17281,7 @@ note:
     · │
 337 │ │         assert msg.sender == fee_to_setter, "UniswapV2: FORBIDDEN"
 338 │ │         self.fee_to_setter = fee_to_setter
-    │ ╰──────────────────────────────────────────^ attributes hash: 16613142782390074906
+    │ ╰──────────────────────────────────────────^ attributes hash: 13298094751066559288
     │  
     = ContractAttributes {
           public_functions: [
@@ -17735,9 +17733,6 @@ note:
                   ],
               },
           ],
-          created_contracts: {
-              "UniswapV2Pair",
-          },
       }
 
 note: 

@@ -5,8 +5,11 @@ use indexmap::IndexSet;
 pub struct Context<'a> {
     pub analysis: &'a AnalyzerContext,
 
-    /// String literals used in the contrat
+    /// String literals used in the contract
     pub string_literals: IndexSet<String>,
+
+    /// Names of contracts that have been created inside of this contract.
+    pub created_contracts: IndexSet<String>,
 }
 
 impl<'a> Context<'a> {
@@ -14,6 +17,7 @@ impl<'a> Context<'a> {
         Self {
             analysis,
             string_literals: IndexSet::new(),
+            created_contracts: IndexSet::new(),
         }
     }
 }

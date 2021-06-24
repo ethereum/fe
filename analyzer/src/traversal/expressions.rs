@@ -1252,16 +1252,10 @@ fn expr_call_type_attribute(
                 report_circular_dependency(context, ContractTypeMethod::Create2.to_string());
             }
 
-            if matches!(
+            if !matches!(
                 (&arg_attributes[0].typ, &arg_attributes[1].typ),
                 (Type::Base(Base::Numeric(_)), Type::Base(Base::Numeric(_)))
             ) {
-                scope
-                    .borrow()
-                    .contract_scope()
-                    .borrow_mut()
-                    .add_created_contract(&contract.name);
-            } else {
                 context.fancy_error(
                     "function `create2` expects numeric parameters",
                     vec![Label::primary(args.span, "invalid argument")],
@@ -1280,13 +1274,7 @@ fn expr_call_type_attribute(
                 report_circular_dependency(context, ContractTypeMethod::Create.to_string());
             }
 
-            if matches!(&arg_attributes[0].typ, Type::Base(Base::Numeric(_))) {
-                scope
-                    .borrow()
-                    .contract_scope()
-                    .borrow_mut()
-                    .add_created_contract(&contract.name);
-            } else {
+            if !matches!(&arg_attributes[0].typ, Type::Base(Base::Numeric(_))) {
                 context.fancy_error(
                     "function `create` expects numeric parameter",
                     vec![Label::primary(args.span, "invalid argument")],

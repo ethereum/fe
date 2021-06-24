@@ -6,13 +6,14 @@ use fe_analyzer::context::Context as AnalyzerContext;
 use fe_common::utils::keccak;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
+use std::collections::HashMap;
 use yultsur::*;
 
 /// Builds a Yul object from a Fe contract.
 pub fn contract_def(
     analysis: &AnalyzerContext,
     stmt: &Node<fe::Contract>,
-    created_contracts: Vec<yul::Object>,
+    contracts: &HashMap<String, yul::Object>,
 ) -> yul::Object {
     let fe::Contract { name, body, .. } = &stmt.kind;
     let contract_name = &name.kind;
@@ -51,6 +52,14 @@ pub fn contract_def(
             name: keccak::full(val.as_bytes()),
             value: val,
         })
+        .collect::<Vec<_>>();
+
+    // Map the set of created contract names to their Yul objects so they can be
+    // included in the Yul contract that deploys them.
+    let created_contracts = context
+        .created_contracts
+        .iter()
+        .map(|contract_name| contracts[contract_name].clone())
         .collect::<Vec<_>>();
 
     // create the runtime object

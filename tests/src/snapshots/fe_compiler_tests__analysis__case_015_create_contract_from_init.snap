@@ -241,7 +241,6 @@ note:
                 ],
             },
         ],
-        created_contracts: {},
     }
 
 note: 
@@ -254,7 +253,7 @@ note:
    · │
 11 │ │     pub def get_foo_addr() -> address:
 12 │ │         return self.foo_addr
-   │ ╰────────────────────────────^ attributes hash: 17693993461359681760
+   │ ╰────────────────────────────^ attributes hash: 11258106293181764517
    │  
    = ContractAttributes {
          public_functions: [
@@ -296,9 +295,6 @@ note:
                  ],
              },
          ],
-         created_contracts: {
-             "Foo",
-         },
      }
 
 note: 

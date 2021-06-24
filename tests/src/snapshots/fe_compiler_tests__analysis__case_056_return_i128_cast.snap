@@ -116,7 +116,6 @@ note:
         events: [],
         structs: [],
         external_contracts: [],
-        created_contracts: {},
     }
 
 note: 

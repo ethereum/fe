@@ -3,7 +3,7 @@ use crate::namespace::events::EventDef;
 use crate::namespace::types::{FixedSize, Type};
 use std::cell::RefCell;
 use std::collections::btree_map::Entry;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::rc::Rc;
 
 pub type Shared<T> = Rc<RefCell<T>>;
@@ -37,7 +37,6 @@ pub struct ContractScope {
     pub event_defs: BTreeMap<String, EventDef>,
     pub field_defs: BTreeMap<String, ContractFieldDef>,
     pub function_defs: BTreeMap<String, ContractFunctionDef>,
-    pub created_contracts: BTreeSet<String>,
     num_fields: usize,
 }
 
@@ -114,7 +113,6 @@ impl ContractScope {
             event_defs: BTreeMap::new(),
             field_defs: BTreeMap::new(),
             interface: vec![],
-            created_contracts: BTreeSet::new(),
             num_fields: 0,
         }))
     }
@@ -189,12 +187,6 @@ impl ContractScope {
                 Ok(())
             }
         }
-    }
-
-    /// Add the name of another contract that has been created within this
-    /// contract.
-    pub fn add_created_contract(&mut self, name: &str) {
-        self.created_contracts.insert(name.to_owned());
     }
 }
 

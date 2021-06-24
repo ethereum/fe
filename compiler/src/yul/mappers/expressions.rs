@@ -153,6 +153,7 @@ fn expr_call(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
                             .expect("invalid attributes"),
                     ) {
                         (Type::Contract(contract), ContractTypeMethod::Create2) => {
+                            context.created_contracts.insert(contract.name.clone());
                             contract_operations::create2(
                                 &contract,
                                 yul_args[0].to_owned(),
@@ -160,6 +161,7 @@ fn expr_call(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
                             )
                         }
                         (Type::Contract(contract), ContractTypeMethod::Create) => {
+                            context.created_contracts.insert(contract.name.clone());
                             contract_operations::create(&contract, yul_args[0].to_owned())
                         }
                         _ => panic!("invalid attributes"),

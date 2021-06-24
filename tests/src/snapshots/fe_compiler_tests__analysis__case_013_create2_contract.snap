@@ -257,7 +257,6 @@ note:
                 ],
             },
         ],
-        created_contracts: {},
     }
 
 note: 
@@ -268,7 +267,7 @@ note:
 7 │ │         # value and salt
 8 │ │         foo: Foo = Foo.create2(0, 52)
 9 │ │         return address(foo)
-  │ ╰───────────────────────────^ attributes hash: 6058629679001745727
+  │ ╰───────────────────────────^ attributes hash: 11718874792159837218
   │  
   = ContractAttributes {
         public_functions: [
@@ -301,9 +300,6 @@ note:
                 ],
             },
         ],
-        created_contracts: {
-            "Foo",
-        },
     }
 
 note: 

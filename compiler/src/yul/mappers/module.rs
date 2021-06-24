@@ -16,17 +16,7 @@ pub fn module(analysis: &AnalyzerContext, module: &fe::Module) -> YulContracts {
                 fe::ModuleStmt::Pragma(_) => {}
                 fe::ModuleStmt::TypeAlias(_) => {}
                 fe::ModuleStmt::Contract(def) => {
-                    // Map the set of created contract names to their Yul objects so they can be
-                    // included in the Yul contract that deploys them.
-                    let created_contracts = analysis
-                        .get_contract(def)
-                        .expect("invalid attributes")
-                        .created_contracts
-                        .iter()
-                        .map(|contract_name| contracts[contract_name].clone())
-                        .collect::<Vec<_>>();
-
-                    let contract = contracts::contract_def(analysis, def, created_contracts);
+                    let contract = contracts::contract_def(analysis, def, &contracts);
 
                     if contracts
                         .insert(def.kind.name.kind.clone(), contract)
