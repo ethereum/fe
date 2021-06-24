@@ -1214,6 +1214,16 @@ fn nested_struct() {
     })
 }
 
+#[test]
+fn nested_tuple() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "nested_tuple.fe", "Foo", &[]);
+
+        harness.test_function(&mut executor, "bar", &[], Some(&uint_token(1)));
+        harness.test_function(&mut executor, "bar2", &[], Some(&uint_token(2)));
+    })
+}
+
 #[rstest(
     fixture_file,
     contract_name,

@@ -118,8 +118,7 @@ pub fn struct_def(
                 }
             }
             Type::Tuple(tuple_typ) => {
-                if let Err(AlreadyDefined) =
-                    val.add_field(&name.kind, &FixedSize::Tuple(tuple_typ))
+                if let Err(AlreadyDefined) = val.add_field(&name.kind, &FixedSize::Tuple(tuple_typ))
                 {
                     let first_definition = fields
                         .iter()

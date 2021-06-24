@@ -1,3 +1,8 @@
 contract Foo:
-    pub def bar(my_num: u256) -> (u256, (u256, u256)):
-        return (my_num, (my_num, my_num))
+    tup: (u256, (u256, u256))
+    pub def bar() -> u256:
+        self.tup= (1, (2, 3))
+        return self.tup.item0
+    pub def bar2() -> u256:
+        self.tup= (1, (2, 3))
+        return self.tup.item1.item0
