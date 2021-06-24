@@ -1,0 +1,3 @@
+contract Foo:
+    pub def bar(my_num: u256) -> (u256, (u256, u256)):
+        return (my_num, (my_num, my_num))
