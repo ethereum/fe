@@ -11,7 +11,7 @@ use fe_parser::ast as fe;
 use fe_parser::node::{Node, NodeId};
 
 use std::cell::RefCell;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 use std::rc::Rc;
@@ -52,14 +52,10 @@ pub struct ContractAttributes {
     pub init_function: Option<FunctionAttributes>,
     /// Events that have been defined by the user.
     pub events: Vec<EventDef>,
-    /// Static strings that the contract defines
-    pub string_literals: BTreeSet<String>,
     /// Structs that have been defined by the user
     pub structs: Vec<Struct>,
     /// External contracts that may be called from within this contract.
     pub external_contracts: Vec<Contract>,
-    /// Names of contracts that have been created inside of this contract.
-    pub created_contracts: BTreeSet<String>,
 }
 
 impl From<Shared<ContractScope>> for ContractAttributes {
@@ -119,10 +115,8 @@ impl From<Shared<ContractScope>> for ContractAttributes {
                 .values()
                 .map(|event| event.to_owned())
                 .collect::<Vec<EventDef>>(),
-            string_literals: scope.borrow().string_defs.clone(),
             structs,
             external_contracts,
-            created_contracts: scope.borrow().created_contracts.to_owned(),
         }
     }
 }

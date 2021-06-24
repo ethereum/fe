@@ -781,10 +781,8 @@ note:
                  ],
              },
          ],
-         string_literals: {},
          structs: [],
          external_contracts: [],
-         created_contracts: {},
      }
 
 note: 

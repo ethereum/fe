@@ -2404,7 +2404,6 @@ note:
                  indexed_fields: [],
              },
          ],
-         string_literals: {},
          structs: [
              Struct {
                  name: "MyStruct",
@@ -2441,7 +2440,6 @@ note:
              },
          ],
          external_contracts: [],
-         created_contracts: {},
      }
 
 note: 

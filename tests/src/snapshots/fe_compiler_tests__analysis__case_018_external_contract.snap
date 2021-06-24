@@ -1443,7 +1443,6 @@ note:
                  indexed_fields: [],
              },
          ],
-         string_literals: {},
          structs: [],
          external_contracts: [
              Contract {
@@ -1528,7 +1527,6 @@ note:
                  ],
              },
          ],
-         created_contracts: {},
      }
 
 note: 
@@ -1624,7 +1622,6 @@ note:
          ],
          init_function: None,
          events: [],
-         string_literals: {},
          structs: [],
          external_contracts: [
              Contract {
@@ -1697,7 +1694,6 @@ note:
                  ],
              },
          ],
-         created_contracts: {},
      }
 
 note: 

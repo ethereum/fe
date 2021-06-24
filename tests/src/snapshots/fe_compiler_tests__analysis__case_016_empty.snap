@@ -25,10 +25,8 @@ note:
         public_functions: [],
         init_function: None,
         events: [],
-        string_literals: {},
         structs: [],
         external_contracts: [],
-        created_contracts: {},
     }
 
 note: 

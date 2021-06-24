@@ -4715,7 +4715,6 @@ note:
          ],
          init_function: None,
          events: [],
-         string_literals: {},
          structs: [
              Struct {
                  name: "House",
@@ -4754,7 +4753,6 @@ note:
              },
          ],
          external_contracts: [],
-         created_contracts: {},
      }
 
 note: 

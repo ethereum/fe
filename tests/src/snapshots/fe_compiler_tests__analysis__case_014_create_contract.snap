@@ -224,7 +224,6 @@ note:
         ],
         init_function: None,
         events: [],
-        string_literals: {},
         structs: [],
         external_contracts: [
             Contract {
@@ -241,7 +240,6 @@ note:
                 ],
             },
         ],
-        created_contracts: {},
     }
 
 note: 
@@ -251,7 +249,7 @@ note:
 6 │ │     pub def create_foo() -> address:
 7 │ │         foo: Foo = Foo.create(0)
 8 │ │         return address(foo)
-  │ ╰───────────────────────────^ attributes hash: 16172122424065765611
+  │ ╰───────────────────────────^ attributes hash: 1619027558401104719
   │  
   = ContractAttributes {
         public_functions: [
@@ -266,7 +264,6 @@ note:
         ],
         init_function: None,
         events: [],
-        string_literals: {},
         structs: [],
         external_contracts: [
             Contract {
@@ -285,9 +282,6 @@ note:
                 ],
             },
         ],
-        created_contracts: {
-            "Foo",
-        },
     }
 
 note: 

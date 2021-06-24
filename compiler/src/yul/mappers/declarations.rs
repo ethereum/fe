@@ -1,14 +1,16 @@
 use crate::yul::mappers::expressions;
-use crate::yul::names;
-use fe_analyzer::context::Context;
+use crate::yul::{names, Context};
 use fe_analyzer::namespace::types::{FeSized, FixedSize};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use yultsur::*;
 
 /// Builds a Yul statement from a Fe variable declaration
-pub fn var_decl(context: &Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
-    let decl_type = context.get_declaration(stmt).expect("missing attributes");
+pub fn var_decl(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
+    let decl_type = context
+        .analysis
+        .get_declaration(stmt)
+        .expect("missing attributes");
 
     if let fe::FuncStmt::VarDecl { target, value, .. } = &stmt.kind {
         let target = names::var_name(var_decl_name(&target.kind));

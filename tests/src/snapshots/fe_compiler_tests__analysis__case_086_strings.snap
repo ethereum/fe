@@ -456,7 +456,7 @@ note:
    · │
 20 │ │     pub def return_casted_static_string() -> String<100>:
 21 │ │         return String<100>("foo")
-   │ ╰─────────────────────────────────^ attributes hash: 16268845723743637357
+   │ ╰─────────────────────────────────^ attributes hash: 4345389285039061508
    │  
    = ContractAttributes {
          public_functions: [
@@ -620,14 +620,8 @@ note:
                  indexed_fields: [],
              },
          ],
-         string_literals: {
-             "The quick brown fox jumps over the lazy dog",
-             "foo",
-             "static string",
-         },
          structs: [],
          external_contracts: [],
-         created_contracts: {},
      }
 
 note: 
