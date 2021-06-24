@@ -22,7 +22,7 @@ fn guest_book() {
                 .as_str(),
         );
 
-        harness.caller = sender.clone().to_address().unwrap();
+        harness.caller = sender.clone().into_address().unwrap();
 
         harness.test_function(&mut executor, "sign", &[bytes.clone()], None);
 

@@ -49,7 +49,7 @@ fn evm_sanity() {
         let address = H160::zero();
         let amount = U256::from(1000);
 
-        executor.deposit(address, amount);
+        executor.state_mut().deposit(address, amount);
         assert_eq!(executor.balance(address), amount);
     })
 }
@@ -366,56 +366,55 @@ fn return_builtin_attributes() {
 
     let vicinity = evm::backend::MemoryVicinity {
         gas_price: U256::from(gas_price),
-        origin: origin.clone().to_address().unwrap(),
+        origin: origin.clone().into_address().unwrap(),
         chain_id: U256::from(chain_id),
         block_hashes: Vec::new(),
         block_number: U256::from(block_number),
-        block_coinbase: block_coinbase.clone().to_address().unwrap(),
+        block_coinbase: block_coinbase.clone().into_address().unwrap(),
         block_timestamp: U256::from(block_timestamp),
         block_difficulty: U256::from(block_difficulty),
         block_gas_limit: primitive_types::U256::MAX,
     };
 
-    with_executor_backend(
-        evm::backend::MemoryBackend::new(&vicinity, BTreeMap::new()),
-        &|mut executor| {
-            let mut harness =
-                deploy_contract(&mut executor, "return_builtin_attributes.fe", "Foo", &[]);
-            let sender = address_token("1234000000000000000000000000000000005678");
-            harness.caller = sender.clone().to_address().unwrap();
-            let value = 55555;
-            harness.value = U256::from(value);
-            harness.test_function(&mut executor, "coinbase", &[], Some(&block_coinbase));
-            harness.test_function(
-                &mut executor,
-                "difficulty",
-                &[],
-                Some(&uint_token(block_difficulty)),
-            );
-            harness.test_function(
-                &mut executor,
-                "number",
-                &[],
-                Some(&uint_token(block_number)),
-            );
-            harness.test_function(
-                &mut executor,
-                "timestamp",
-                &[],
-                Some(&uint_token(block_timestamp)),
-            );
-            harness.test_function(&mut executor, "chainid", &[], Some(&uint_token(chain_id)));
-            harness.test_function(&mut executor, "sender", &[], Some(&sender));
-            harness.test_function(&mut executor, "value", &[], Some(&uint_token(value)));
-            harness.test_function(&mut executor, "origin", &[], Some(&origin));
-            harness.test_function(
-                &mut executor,
-                "gas_price",
-                &[],
-                Some(&uint_token(gas_price)),
-            );
-        },
-    )
+    let backend = evm::backend::MemoryBackend::new(&vicinity, BTreeMap::new());
+
+    with_executor_backend(backend, &|mut executor| {
+        let mut harness =
+            deploy_contract(&mut executor, "return_builtin_attributes.fe", "Foo", &[]);
+        let sender = address_token("1234000000000000000000000000000000005678");
+        harness.caller = sender.clone().into_address().unwrap();
+        let value = 55555;
+        harness.value = U256::from(value);
+        harness.test_function(&mut executor, "coinbase", &[], Some(&block_coinbase));
+        harness.test_function(
+            &mut executor,
+            "difficulty",
+            &[],
+            Some(&uint_token(block_difficulty)),
+        );
+        harness.test_function(
+            &mut executor,
+            "number",
+            &[],
+            Some(&uint_token(block_number)),
+        );
+        harness.test_function(
+            &mut executor,
+            "timestamp",
+            &[],
+            Some(&uint_token(block_timestamp)),
+        );
+        harness.test_function(&mut executor, "chainid", &[], Some(&uint_token(chain_id)));
+        harness.test_function(&mut executor, "sender", &[], Some(&sender));
+        harness.test_function(&mut executor, "value", &[], Some(&uint_token(value)));
+        harness.test_function(&mut executor, "origin", &[], Some(&origin));
+        harness.test_function(
+            &mut executor,
+            "gas_price",
+            &[],
+            Some(&uint_token(gas_price)),
+        );
+    })
 }
 
 #[test]
@@ -963,12 +962,6 @@ fn checked_arithmetic() {
                 &[config.i_min.clone(), int_token(-2)],
             );
 
-            // signed: min_value * 1 works
-            if config.size == 256 {
-                // rust-evm has a bug with SDIV(256_min, 1). It returns 0 causing this test to
-                // fail. See: https://github.com/ethereum/fe/issues/285
-                continue;
-            }
             harness.test_function(
                 &mut executor,
                 &format!("mul_i{}", config.size),
@@ -1144,7 +1137,7 @@ fn create2_contract() {
         let foo_address = factory_harness
             .call_function(&mut executor, "create2_foo", &[])
             .expect("factory did not return an address")
-            .to_address()
+            .into_address()
             .expect("not an address");
 
         let foo_harness = load_contract(foo_address, "create2_contract.fe", "Foo");
@@ -1162,7 +1155,7 @@ fn create_contract() {
         let foo_address = factory_harness
             .call_function(&mut executor, "create_foo", &[])
             .expect("factory did not return an address")
-            .to_address()
+            .into_address()
             .expect("not an address");
 
         let foo_harness = load_contract(foo_address, "create_contract.fe", "Foo");
@@ -1184,7 +1177,7 @@ fn create_contract_from_init() {
         let foo_address = factory_harness
             .call_function(&mut executor, "get_foo_addr", &[])
             .expect("factory did not return an address")
-            .to_address()
+            .into_address()
             .expect("not an address");
 
         let foo_harness = load_contract(foo_address, "create_contract_from_init.fe", "Foo");

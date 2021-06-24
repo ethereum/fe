@@ -133,13 +133,6 @@ pub fn type_desc(
     };
 
     context.add_type_desc(desc, typ.clone());
-    if let Type::Tuple(tuple) = &typ {
-        scope
-            .module_scope()
-            .borrow_mut()
-            .tuples_used
-            .insert(tuple.to_owned());
-    }
     Ok(typ)
 }
 

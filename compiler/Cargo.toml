@@ -20,7 +20,7 @@ serde = "1.0"
 hex = "0.4"
 # This fork contains the shorthand macros and some other necessary updates.
 yultsur = { git = "https://github.com/g-r-a-n-t/yultsur"}
-ethabi = "12.0"
+ethabi = "14.0"
 # Optional
 # This fork supports concurrent compilation, which is required for Rust tests.
 solc = { git = "https://github.com/g-r-a-n-t/solc-rust", optional = true }
@@ -28,11 +28,12 @@ maplit = "1.0.2"
 once_cell = "1.5.2"
 vec1 = "1.8.0"
 num-bigint = "0.3.1"
+indexmap = "1.6.2"
 
 [dev-dependencies]
 evm-runtime = "0.18"
-evm = "0.18"
-primitive-types = { version = "0.7", default-features = false, features = ["rlp"] }
+evm = "0.26.0"
+primitive-types = { version = "0.9", default-features = false, features = ["rlp"] }
 rand = "0.7.3"
 rstest = "0.6.4"
 regex="1.1.0"

@@ -7,13 +7,13 @@ version = "0.6.1-alpha"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ethabi = "12.0"
-evm = "0.18"
-evm-runtime = "0.18"
+ethabi = "14.0"
+evm = "0.26.0"
+evm-runtime = "0.26.0"
 fe-common = {path = "../common", version = "^0.6.1-alpha"}
 fe-compiler = {path = "../compiler", version = "^0.6.1-alpha"}
 hex = "0.4"
-primitive-types = {version = "0.7", default-features = false, features = ["rlp"]}
+primitive-types = {version = "0.9", default-features = false, features = ["rlp"]}
 serde_json = "1.0.64"
 solc = {git = "https://github.com/g-r-a-n-t/solc-rust", optional = true}
 stringreader = "0.1"

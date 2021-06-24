@@ -35,9 +35,9 @@ pub fn compile(
     }
 
     // analyze source code
-    let mut context = match fe_analyzer::analyze(&fe_module, file_id) {
+    let analysis = match fe_analyzer::analyze(&fe_module, file_id) {
         Ok(_) if !errors.is_empty() => return Err(CompileError { errors }),
-        Ok(context) => context,
+        Ok(analysis) => analysis,
         Err(err) => {
             errors.push(ErrorKind::Analyzer(err));
             return Err(CompileError { errors });
@@ -45,17 +45,17 @@ pub fn compile(
     };
 
     // build abi
-    let json_abis = abi::build(&context, &fe_module)?;
+    let json_abis = abi::build(&analysis, &fe_module)?;
 
     // lower the AST
-    let lowered_fe_module = lowering::lower(&mut context, fe_module.clone());
+    let lowered_fe_module = lowering::lower(&analysis, fe_module.clone());
 
     // analyze the lowered AST
-    let context =
+    let analysis =
         fe_analyzer::analyze(&lowered_fe_module, file_id).expect("failed to analyze lowered AST");
 
     // compile to yul
-    let yul_contracts = yul::compile(&context, &lowered_fe_module);
+    let yul_contracts = yul::compile(&analysis, &lowered_fe_module);
 
     // compile to bytecode if required
     #[cfg(feature = "solc-backend")]

@@ -108,7 +108,6 @@ ModuleAttributes {
             },
         ),
     },
-    tuples_used: {},
 }
 
 note: 
@@ -796,7 +795,6 @@ note:
                  indexed_fields: [],
              },
          ],
-         list_expressions: {},
          string_literals: {},
          structs: [],
          external_contracts: [],

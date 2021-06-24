@@ -1,38 +1,59 @@
+use crate::lowering::context::Context;
 use crate::lowering::names;
-use fe_analyzer::context::Context;
-use fe_analyzer::namespace::types::Type;
-use fe_common::Spanned;
-use fe_parser::ast as fe;
+use fe_analyzer::namespace::types::TypeDowncast;
+use fe_parser::ast::{GenericArg, TypeDesc};
 use fe_parser::node::Node;
 
-pub fn type_desc(context: &mut Context, desc: Node<fe::TypeDesc>) -> Node<fe::TypeDesc> {
-    let typ = context.get_type_desc(&desc).expect("missing attributes");
+pub fn type_desc(context: &mut Context, desc: Node<TypeDesc>) -> Node<TypeDesc> {
+    match desc.kind {
+        TypeDesc::Unit | TypeDesc::Base { .. } => desc,
 
-    match typ {
-        Type::Tuple(tuple) => Node::new(names::tuple_struct_type_desc(tuple), desc.span),
-        Type::Map(map) => match &*map.value {
-            Type::Tuple(tuple) => {
-                if let fe::TypeDesc::Generic { base, args } = desc.kind {
-                    let new_args = vec![
-                        args.kind[0].clone(),
-                        fe::GenericArg::TypeDesc(Node::new(
-                            names::tuple_struct_type_desc(&tuple),
-                            args.kind[1].span(),
-                        )),
-                    ];
-                    Node::new(
-                        fe::TypeDesc::Generic {
-                            base,
-                            args: Node::new(new_args, args.span),
-                        },
-                        desc.span,
-                    )
-                } else {
-                    unreachable!()
-                }
+        TypeDesc::Tuple { items } => {
+            let typ = context
+                .module
+                .analysis
+                .get_type_desc(desc.id)
+                .expect("missing type desc type")
+                .as_tuple()
+                .expect("expected tuple type");
+
+            for item in items.into_iter() {
+                type_desc(context, item);
             }
-            _ => desc,
-        },
-        _ => desc,
+            context.module.tuples.insert(typ.clone());
+            Node::new(
+                TypeDesc::Base {
+                    base: names::tuple_struct_name(typ),
+                },
+                desc.span,
+            )
+        }
+
+        TypeDesc::Array { typ, dimension } => Node::new(
+            TypeDesc::Array {
+                typ: Box::new(type_desc(context, *typ)),
+                dimension,
+            },
+            desc.span,
+        ),
+
+        TypeDesc::Generic { base, args } => Node::new(
+            TypeDesc::Generic {
+                base,
+                args: Node::new(
+                    args.kind
+                        .into_iter()
+                        .map(|arg| match arg {
+                            GenericArg::Int(_) => arg,
+                            GenericArg::TypeDesc(node) => {
+                                GenericArg::TypeDesc(type_desc(context, node))
+                            }
+                        })
+                        .collect(),
+                    args.span,
+                ),
+            },
+            desc.span,
+        ),
     }
 }

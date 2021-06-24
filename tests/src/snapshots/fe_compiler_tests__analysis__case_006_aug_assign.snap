@@ -364,7 +364,6 @@ ModuleAttributes {
             },
         ),
     },
-    tuples_used: {},
 }
 
 note: 
@@ -2030,7 +2029,6 @@ note:
          ],
          init_function: None,
          events: [],
-         list_expressions: {},
          string_literals: {},
          structs: [],
          external_contracts: [],
