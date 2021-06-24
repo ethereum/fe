@@ -1,8 +1,7 @@
 use crate::yul::constructor;
 use crate::yul::mappers::functions;
 use crate::yul::runtime;
-use crate::yul::Context;
-use fe_analyzer::context::Context as AnalyzerContext;
+use crate::yul::{AnalyzerContext, Context};
 use fe_common::utils::keccak;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
@@ -42,15 +41,15 @@ pub fn contract_def(
     }
 
     // build the set of functions needed during runtime
-    let runtime_functions = runtime::build_with_abi_dispatcher(analysis, stmt);
+    let runtime_functions = runtime::build_with_abi_dispatcher(&context, stmt);
 
     // build data objects for static strings (also for constants in the future)
     let data = context
         .string_literals
-        .into_iter()
+        .iter()
         .map(|val| yul::Data {
             name: keccak::full(val.as_bytes()),
-            value: val,
+            value: val.clone(),
         })
         .collect::<Vec<_>>();
 
@@ -88,7 +87,7 @@ pub fn contract_def(
     // user-defined functions can be called from `__init__`.
     let (constructor_code, constructor_objects) =
         if let Some((init_func, init_params)) = init_function {
-            let init_runtime_functions = [runtime::build(analysis, stmt), user_functions].concat();
+            let init_runtime_functions = [runtime::build(&context, stmt), user_functions].concat();
             let constructor_code = constructor::build_with_init(
                 contract_name,
                 init_func,

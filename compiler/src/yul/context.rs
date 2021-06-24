@@ -1,4 +1,4 @@
-use fe_analyzer::context::Context as AnalyzerContext;
+use crate::yul::AnalyzerContext;
 use indexmap::IndexSet;
 
 // This is contract context, but it's used all over so it has a short name.

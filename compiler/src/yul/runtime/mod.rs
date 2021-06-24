@@ -1,7 +1,7 @@
 mod abi_dispatcher;
 pub mod functions;
-
-use fe_analyzer::context::{Context, FunctionAttributes};
+use crate::yul::Context;
+use fe_analyzer::context::FunctionAttributes;
 use fe_analyzer::namespace::types::{AbiDecodeLocation, Contract, FixedSize};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
@@ -9,7 +9,7 @@ use yultsur::*;
 
 /// Builds the set of function statements that are needed during runtime.
 pub fn build(context: &Context, contract: &Node<fe::Contract>) -> Vec<yul::Statement> {
-    if let Some(attributes) = context.get_contract(contract) {
+    if let Some(attributes) = context.analysis.get_contract(contract) {
         let std = functions::std();
 
         let external_functions =
@@ -120,7 +120,7 @@ pub fn build_with_abi_dispatcher(
     context: &Context,
     contract: &Node<fe::Contract>,
 ) -> Vec<yul::Statement> {
-    if let Some(attributes) = context.get_contract(contract) {
+    if let Some(attributes) = context.analysis.get_contract(contract) {
         let mut runtime = build(context, contract);
         runtime.push(abi_dispatcher::dispatcher(
             attributes.public_functions.to_owned(),
