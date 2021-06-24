@@ -84,6 +84,72 @@ pub fn struct_def(
                     )
                 }
             }
+            Type::Struct(struct_typ) => {
+                if let Err(AlreadyDefined) =
+                    val.add_field(&name.kind, &FixedSize::Struct(struct_typ))
+                {
+                    let first_definition = fields
+                        .iter()
+                        .find(|val| {
+                            let fe::Field {
+                                name: inner_name, ..
+                            } = &val.kind;
+                            inner_name.kind == name.kind && val.span != field.span
+                        })
+                        .expect("Missing field");
+
+                    context.fancy_error(
+                        "a struct field with the same name already exists",
+                        vec![
+                            Label::primary(
+                                first_definition.span,
+                                format!("First definition of field `{}`", name.kind),
+                            ),
+                            Label::primary(
+                                field.span,
+                                format!("Conflicting definition of field `{}`", name.kind),
+                            ),
+                        ],
+                        vec![format!(
+                            "Note: Give one of the `{}` fields a different name",
+                            name.kind
+                        )],
+                    )
+                }
+            }
+            Type::Tuple(tuple_typ) => {
+                if let Err(AlreadyDefined) =
+                    val.add_field(&name.kind, &FixedSize::Tuple(tuple_typ))
+                {
+                    let first_definition = fields
+                        .iter()
+                        .find(|val| {
+                            let fe::Field {
+                                name: inner_name, ..
+                            } = &val.kind;
+                            inner_name.kind == name.kind && val.span != field.span
+                        })
+                        .expect("Missing field");
+
+                    context.fancy_error(
+                        "a struct field with the same name already exists",
+                        vec![
+                            Label::primary(
+                                first_definition.span,
+                                format!("First definition of field `{}`", name.kind),
+                            ),
+                            Label::primary(
+                                field.span,
+                                format!("Conflicting definition of field `{}`", name.kind),
+                            ),
+                        ],
+                        vec![format!(
+                            "Note: Give one of the `{}` fields a different name",
+                            name.kind
+                        )],
+                    )
+                }
+            }
             _ => context.not_yet_implemented("non-base type struct fields", field.span),
         }
     }

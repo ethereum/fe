@@ -1,2 +1,8 @@
-contract Foo:
+struct tt1:
     content: String<100>
+
+struct tt2:
+    subtt3: tt1
+
+contract Foo2:
+   tt4: tt2

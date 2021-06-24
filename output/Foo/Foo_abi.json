@@ -1,0 +1,19 @@
+[
+  {
+    "name": "set_item",
+    "type": "function",
+    "inputs": [],
+    "outputs": []
+  },
+  {
+    "name": "get_some_string",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string"
+      }
+    ]
+  }
+]

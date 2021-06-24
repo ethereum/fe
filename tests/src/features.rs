@@ -1207,6 +1207,20 @@ fn struct_with_string() {
     })
 }
 
+#[test]
+fn nested_struct() {
+    with_executor(&|mut executor| {
+        let string_harness = deploy_contract(&mut executor, "nested_struct.fe", "Foo", &[]);
+
+        string_harness.test_function(
+            &mut executor,
+            "get_some_string",
+            &[],
+            Some(&string_token("Fooooo")),
+        );
+    })
+}
+
 #[rstest(
     fixture_file,
     contract_name,
