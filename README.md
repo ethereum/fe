@@ -84,4 +84,12 @@ The most advanced example that we can provide at this point is an implementation
 - Chat: [Discord](https://discord.gg/ywpkAXFjZH)
 
 
-License: Apache-2.0
+## License
+
+The Fe implementation is split into several crates. Crates that depend on the
+solidity compiler (directly or indirectly) are licensed GPL-3.0-or-later. This
+includes the `fe` CLI tool, compiler "back end" (yulgen, yulc), driver, tests,
+and test-utils.
+
+The remaining crates are licensed Apache-2.0. This includes the compiler
+"front end" (parser, analyzer, lowering), abi, and common.

@@ -3,8 +3,8 @@ authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2018"
 name = "fe-compiler-test-utils"
 version = "0.6.1-alpha"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "GPL-3.0-or-later"
+repository = "https://github.com/ethereum/fe"
 
 [dependencies]
 ethabi = "14.0"
