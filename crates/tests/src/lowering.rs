@@ -1,6 +1,5 @@
 use fe_analyzer::context::Context;
 use fe_analyzer::errors::AnalyzerError;
-use fe_compiler::lowering;
 use fe_parser::ast as fe;
 use regex::Regex;
 
@@ -14,7 +13,7 @@ use fe_common::utils::ron::{to_ron_string_pretty, Diff};
 fn lower_file(src: &str, id: SourceFileId, files: &FileStore) -> fe::Module {
     let fe_module = parse_file(src, id, files);
     let context = analyze(&fe_module, id, files);
-    lowering::lower(&context, fe_module)
+    fe_lowering::lower(&context, fe_module)
 }
 
 fn analyze(module: &fe::Module, id: SourceFileId, files: &FileStore) -> Context {

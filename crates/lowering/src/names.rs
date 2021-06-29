@@ -1,4 +1,4 @@
-use crate::lowering::utils::ZeroSpanNode;
+use crate::utils::ZeroSpanNode;
 use fe_analyzer::namespace::types::{Array, Base, FixedSize, Integer, SafeNames, Tuple};
 use fe_parser::ast as fe;
 

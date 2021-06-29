@@ -1,6 +1,6 @@
-use crate::lowering::context::Context;
-use crate::lowering::names::{list_expr_generator_fn_name, tuple_struct_name};
-use crate::lowering::utils::ZeroSpanNode;
+use crate::context::Context;
+use crate::names::{list_expr_generator_fn_name, tuple_struct_name};
+use crate::utils::ZeroSpanNode;
 use fe_analyzer::builtins::Object;
 use fe_analyzer::namespace::types::{Type, TypeDowncast};
 use fe_parser::ast as fe;

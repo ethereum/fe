@@ -1,7 +1,7 @@
-use crate::lowering::context::Context;
-use crate::lowering::mappers::expressions;
-use crate::lowering::mappers::types;
-use crate::lowering::utils::ZeroSpanNode;
+use crate::context::Context;
+use crate::mappers::expressions;
+use crate::mappers::types;
+use crate::utils::ZeroSpanNode;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 

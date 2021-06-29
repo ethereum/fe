@@ -11,7 +11,8 @@ repository = "https://github.com/ethereum/fe"
 solc-backend = ["fe-compiler/solc-backend"]
 
 [dependencies]
+fe-analyzer = {path = "../analyzer", version = "^0.6.1-alpha"}
 fe-common = {path = "../common", version = "^0.6.1-alpha"}
 fe-compiler = {path = "../compiler", version = "^0.6.1-alpha"}
+fe-lowering = {path = "../lowering", version = "^0.6.1-alpha"}
 fe-parser = {path = "../parser", version = "^0.6.1-alpha"}
-fe-analyzer = {path = "../analyzer", version = "^0.6.1-alpha"}

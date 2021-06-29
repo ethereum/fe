@@ -1,7 +1,7 @@
 use fe_common::files::SourceFileId;
 use fe_compiler::errors::{CompileError, ErrorKind};
 use fe_compiler::types::{CompiledContract, CompiledModule, NamedContracts};
-use fe_compiler::{abi, lowering, yul};
+use fe_compiler::{abi, yul};
 use fe_parser::parse_file;
 
 /// Compiles the given Fe source code to all targets.
@@ -40,7 +40,7 @@ pub fn compile(
     let json_abis = abi::build(&analysis, &fe_module)?;
 
     // lower the AST
-    let lowered_fe_module = lowering::lower(&analysis, fe_module.clone());
+    let lowered_fe_module = fe_lowering::lower(&analysis, fe_module.clone());
 
     // analyze the lowered AST
     let analysis =

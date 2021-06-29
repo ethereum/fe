@@ -1,5 +1,5 @@
-use crate::lowering::context::Context;
-use crate::lowering::names;
+use crate::context::Context;
+use crate::names;
 use fe_analyzer::namespace::types::TypeDowncast;
 use fe_parser::ast::{GenericArg, TypeDesc};
 use fe_parser::node::Node;

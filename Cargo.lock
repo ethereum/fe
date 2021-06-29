@@ -776,6 +776,7 @@ dependencies = [
  "fe-common",
  "fe-compiler",
  "fe-compiler-test-utils",
+ "fe-lowering",
  "fe-parser",
  "hex",
  "insta",
@@ -796,7 +797,18 @@ dependencies = [
  "fe-analyzer",
  "fe-common",
  "fe-compiler",
+ "fe-lowering",
  "fe-parser",
+]
+
+[[package]]
+name = "fe-lowering"
+version = "0.6.1-alpha"
+dependencies = [
+ "fe-analyzer",
+ "fe-common",
+ "fe-parser",
+ "indexmap",
 ]
 
 [[package]]

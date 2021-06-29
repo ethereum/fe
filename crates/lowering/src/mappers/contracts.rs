@@ -1,7 +1,7 @@
-use crate::lowering::context::Context;
-use crate::lowering::mappers::{functions, types};
-use crate::lowering::names;
-use crate::lowering::utils::ZeroSpanNode;
+use crate::context::Context;
+use crate::mappers::{functions, types};
+use crate::names;
+use crate::utils::ZeroSpanNode;
 use fe_analyzer::namespace::types::{Array, FixedSize};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;

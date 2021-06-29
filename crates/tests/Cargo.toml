@@ -16,6 +16,7 @@ evm-runtime = "0.26.0"
 fe-analyzer = {path = "../analyzer", version = "^0.6.1-alpha"}
 fe-common = {path = "../common", version = "^0.6.1-alpha"}
 fe-compiler-test-utils = {path = "../test-utils" }
+fe-lowering = {path = "../lowering", version = "^0.6.1-alpha"}
 fe-parser = {path = "../parser", version = "^0.6.1-alpha"}
 hex = "0.4"
 primitive-types = {version = "0.9", default-features = false, features = ["rlp"]}

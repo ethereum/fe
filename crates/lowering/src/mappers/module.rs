@@ -1,7 +1,7 @@
-use crate::lowering::context::{Context, ModuleContext};
-use crate::lowering::mappers::{contracts, types};
-use crate::lowering::names;
-use crate::lowering::utils::ZeroSpanNode;
+use crate::context::{Context, ModuleContext};
+use crate::mappers::{contracts, types};
+use crate::names;
+use crate::utils::ZeroSpanNode;
 use fe_analyzer::context::Context as AnalyzerContext;
 use fe_analyzer::namespace::types::{Base, FixedSize, Tuple};
 use fe_parser::ast as fe;
