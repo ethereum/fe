@@ -10,7 +10,10 @@ macro_rules! test_yulgen {
         #[wasm_bindgen_test]
         fn $name() {
             if cfg!(target_arch = "wasm32") {
-                assert_snapshot_wasm!(yulgen, $name, $func.to_string());
+                fe_common::assert_snapshot_wasm!(
+                    concat!("snapshots/yulgen__", stringify!($name), ".snap"),
+                    $func.to_string()
+                );
             } else {
                 assert_display_snapshot!($func);
             }

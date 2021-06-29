@@ -808,9 +808,13 @@ dependencies = [
  "fe-common",
  "fe-lowering",
  "fe-parser",
+ "fe-test-files",
  "indexmap",
+ "insta",
  "maplit",
  "num-bigint 0.4.0",
+ "pretty_assertions",
+ "wasm-bindgen-test",
  "yultsur",
 ]
 

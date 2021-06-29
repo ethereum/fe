@@ -18,3 +18,9 @@ num-bigint = "0.4.0"
 
 # This fork contains the shorthand macros and some other necessary updates.
 yultsur = { git = "https://github.com/g-r-a-n-t/yultsur"}
+
+[dev-dependencies]
+insta = "1.7.1"
+test-files = {path = "../test-files", package = "fe-test-files" }
+wasm-bindgen-test = "0.3"
+pretty_assertions = "0.7.2"

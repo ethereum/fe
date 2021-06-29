@@ -1,5 +1,5 @@
 ---
-source: tests/src/yulgen.rs
+source: crates/yulgen/tests/yulgen.rs
 expression: "abi::encode(vec![U256, Base :: Address])"
 
 ---

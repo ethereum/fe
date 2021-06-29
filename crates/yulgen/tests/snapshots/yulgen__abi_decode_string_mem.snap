@@ -1,5 +1,5 @@
 ---
-source: tests/src/yulgen.rs
+source: crates/yulgen/tests/yulgen.rs
 expression: "abi::decode(FeString{max_size: 100,}, AbiDecodeLocation::Memory)"
 
 ---
