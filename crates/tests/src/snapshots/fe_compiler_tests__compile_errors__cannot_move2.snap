@@ -4,7 +4,7 @@ expression: "error_string(&path, &src)"
 
 ---
 error: can't move value onto stack
-  ┌─ fixtures/compile_errors/cannot_move2.fe:6:18
+  ┌─ compile_errors/cannot_move2.fe:6:18
   │
 6 │     c:u256[20] = x + y
   │                  ^ Value to be moved

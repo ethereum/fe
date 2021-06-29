@@ -4,7 +4,7 @@ expression: "error_string(&path, &src)"
 
 ---
 error: an event with the same name already exists
-  ┌─ fixtures/compile_errors/duplicate_event_in_contract.fe:5:5
+  ┌─ compile_errors/duplicate_event_in_contract.fe:5:5
   │  
 5 │ ╭     event MyEvent:
 6 │ │         idx addr1: address

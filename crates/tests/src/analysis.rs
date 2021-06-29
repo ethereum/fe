@@ -116,7 +116,8 @@ use std::hash::{Hash, Hasher};
 )]
 fn analysis(fixture: &str) {
     let mut files = FileStore::new();
-    let (src, id) = files.load_file(&format!("fixtures/{}", fixture)).unwrap();
+    let src = test_files::fixture(fixture);
+    let id = files.add_file(fixture, src);
     let fe_module = match fe_parser::parse_file(&src, id) {
         Ok((module, _)) => module,
         Err(diags) => {

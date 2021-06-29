@@ -4,7 +4,7 @@ expression: "error_string(&path, &src)"
 
 ---
 error: `Foo` expects 3 arguments, but 4 were provided
-  ┌─ fixtures/compile_errors/emit_bad_args.fe:8:10
+  ┌─ compile_errors/emit_bad_args.fe:8:10
   │
 8 │     emit Foo((1, 2), z=10, y=true, x=5)
   │          ^^^ ------  ----  ------  --- supplied 4 arguments
@@ -12,7 +12,7 @@ error: `Foo` expects 3 arguments, but 4 were provided
   │          expects 3 arguments
 
 error: missing argument label
-  ┌─ fixtures/compile_errors/emit_bad_args.fe:8:14
+  ┌─ compile_errors/emit_bad_args.fe:8:14
   │
 8 │     emit Foo((1, 2), z=10, y=true, x=5)
   │              ^ add `x=` here
@@ -20,7 +20,7 @@ error: missing argument label
   = Note: this label is optional if the argument is a variable named `x`.
 
 error: argument label mismatch
-  ┌─ fixtures/compile_errors/emit_bad_args.fe:8:22
+  ┌─ compile_errors/emit_bad_args.fe:8:22
   │
 8 │     emit Foo((1, 2), z=10, y=true, x=5)
   │                      ^ expected `y`
@@ -28,7 +28,7 @@ error: argument label mismatch
   = Note: arguments must be provided in order.
 
 error: argument label mismatch
-  ┌─ fixtures/compile_errors/emit_bad_args.fe:8:28
+  ┌─ compile_errors/emit_bad_args.fe:8:28
   │
 8 │     emit Foo((1, 2), z=10, y=true, x=5)
   │                            ^ expected `z`
@@ -36,7 +36,7 @@ error: argument label mismatch
   = Note: arguments must be provided in order.
 
 error: incorrect type for `Foo` argument `x`
-  ┌─ fixtures/compile_errors/emit_bad_args.fe:8:14
+  ┌─ compile_errors/emit_bad_args.fe:8:14
   │
 8 │     emit Foo((1, 2), z=10, y=true, x=5)
   │              ^^^^^^ this has type `(u256, u256)`; expected type `address`

@@ -4,7 +4,7 @@ expression: "error_string(&path, &src)"
 
 ---
 error: No function `doesnt_exist` exists on contract `Foo`
-  ┌─ fixtures/compile_errors/call_undefined_function_on_external_contract.fe:7:21
+  ┌─ compile_errors/call_undefined_function_on_external_contract.fe:7:21
   │
 7 │     Foo(address(0)).doesnt_exist()
   │                     ^^^^^^^^^^^^ undefined function

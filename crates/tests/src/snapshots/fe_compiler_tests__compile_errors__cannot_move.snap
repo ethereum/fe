@@ -4,7 +4,7 @@ expression: "error_string(&path, &src)"
 
 ---
 error: value must be copied to memory
-  ┌─ fixtures/compile_errors/cannot_move.fe:5:16
+  ┌─ compile_errors/cannot_move.fe:5:16
   │
 5 │         return self.data
   │                ^^^^^^^^^ this value is in storage

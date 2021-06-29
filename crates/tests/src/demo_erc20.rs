@@ -10,7 +10,7 @@ fn erc20_token() {
 
         let mut harness = deploy_contract(
             &mut executor,
-            "fixtures/demos/erc20_token.fe",
+            "demos/erc20_token.fe",
             "ERC20",
             &[token_name.clone(), token_symbol.clone()],
         );

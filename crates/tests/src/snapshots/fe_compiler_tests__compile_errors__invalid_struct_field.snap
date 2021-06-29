@@ -4,7 +4,7 @@ expression: "error_string(&path, &src)"
 
 ---
 error: No field `foo` exists on struct `Bar`
-  ┌─ fixtures/compile_errors/invalid_struct_field.fe:8:14
+  ┌─ compile_errors/invalid_struct_field.fe:8:14
   │
 8 │     self.val.foo
   │              ^^^ undefined field

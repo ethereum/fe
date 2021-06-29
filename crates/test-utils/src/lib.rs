@@ -1,11 +1,10 @@
 use evm_runtime::{ExitReason, Handler};
-use fe_common::files::{FileStore, SourceFileId};
+use fe_common::diagnostics::print_diagnostics;
+use fe_common::files::FileStore;
 use fe_driver as driver;
 use fe_yulgen::runtime::functions;
 use primitive_types::{H160, H256, U256};
 use std::collections::BTreeMap;
-use std::fs;
-use std::path::Path;
 use std::str::FromStr;
 use yultsur::*;
 
@@ -190,16 +189,6 @@ pub fn with_executor_backend(backend: Backend, test: &dyn Fn(Executor)) {
     test(executor)
 }
 
-pub fn read_fixture(path: &str) -> (String, SourceFileId) {
-    let file_path = Path::new(path);
-    let absolute_path = fs::canonicalize(file_path)
-        .unwrap_or_else(|_| panic!("unable to find the file at: {:?}", file_path));
-    let mut files = FileStore::new();
-    files
-        .load_file(absolute_path.to_str().unwrap())
-        .unwrap_or_else(|_| panic!("unable to read fixture file: {}", path))
-}
-
 #[allow(dead_code)]
 #[cfg(feature = "solc-backend")]
 pub fn deploy_contract(
@@ -208,10 +197,9 @@ pub fn deploy_contract(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
+    let src = test_files::fixture(fixture);
     let mut files = FileStore::new();
-    let (src, id) = files
-        .load_file(&fixture)
-        .expect("unable to read fixture file");
+    let id = files.add_file(fixture, src);
 
     let compiled_module = match driver::compile(&src, id, true, true) {
         Ok(module) => module,
@@ -242,8 +230,7 @@ pub fn deploy_solidity_contract(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    let src = fs::read_to_string(&fixture)
-        .expect("unable to read fixture file")
+    let src = test_files::fixture(fixture)
         .replace("\n", "")
         .replace("\"", "\\\"");
 
@@ -378,8 +365,16 @@ pub fn compile_solidity_contract(
 
 #[allow(dead_code)]
 pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
-    let (src, id) = read_fixture(&fixture);
-    let compiled_module = driver::compile(&src, id, true, true).expect("failed to compile module");
+    let mut files = FileStore::new();
+    let src = test_files::fixture(fixture);
+    let id = files.add_file(fixture, src);
+    let compiled_module = match driver::compile(&src, id, true, true) {
+        Ok(module) => module,
+        Err(err) => {
+            print_diagnostics(&err.0, &files);
+            panic!("failed to compile fixture: {}", fixture);
+        }
+    };
     let compiled_contract = compiled_module
         .contracts
         .get(contract_name)

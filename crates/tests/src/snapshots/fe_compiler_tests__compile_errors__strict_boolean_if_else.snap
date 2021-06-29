@@ -4,7 +4,7 @@ expression: "error_string(&path, &src)"
 
 ---
 error: `if` statement condition is not bool
-  ┌─ fixtures/compile_errors/strict_boolean_if_else.fe:3:12
+  ┌─ compile_errors/strict_boolean_if_else.fe:3:12
   │
 3 │         if val:
   │            ^^^ this has type `u256`; expected type `bool`

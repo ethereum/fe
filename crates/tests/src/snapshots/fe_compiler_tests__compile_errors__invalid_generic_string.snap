@@ -4,7 +4,7 @@ expression: "error_string(&path, &src)"
 
 ---
 error: Numeric generic type parameter expected
-  ┌─ fixtures/compile_errors/invalid_generic_string.fe:2:14
+  ┌─ compile_errors/invalid_generic_string.fe:2:14
   │
 2 │   val: String<foo>
   │              ^^^^^ invalid type parameter

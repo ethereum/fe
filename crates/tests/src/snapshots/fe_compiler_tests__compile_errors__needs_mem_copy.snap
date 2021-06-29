@@ -4,7 +4,7 @@ expression: "error_string(&path, &src)"
 
 ---
 error: location mismatch
-  ┌─ fixtures/compile_errors/needs_mem_copy.fe:5:9
+  ┌─ compile_errors/needs_mem_copy.fe:5:9
   │
 5 │         my_array = self.my_sto_array
   │         ^^^^^^^^   ----------------- this value is located in storage
@@ -15,7 +15,7 @@ error: location mismatch
   = Example: `self.my_array.to_mem()`
 
 error: value must be copied to memory
-  ┌─ fixtures/compile_errors/needs_mem_copy.fe:8:16
+  ┌─ compile_errors/needs_mem_copy.fe:8:16
   │
 8 │         return self.my_sto_array
   │                ^^^^^^^^^^^^^^^^^ this value is in storage

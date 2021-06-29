@@ -4,7 +4,7 @@ expression: "error_string(&path, &src)"
 
 ---
 error: No field `does_not_exist` exists on type String<0>
-  ┌─ fixtures/compile_errors/invalid_string_field.fe:4:8
+  ┌─ compile_errors/invalid_string_field.fe:4:8
   │
 4 │     "".does_not_exist
   │        ^^^^^^^^^^^^^^ unknown field

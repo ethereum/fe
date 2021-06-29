@@ -27,12 +27,8 @@ macro_rules! test_file {
         #[test]
         #[wasm_bindgen_test]
         fn $name() {
-            let path = concat!("fixtures/compile_errors/", stringify!($name), ".fe");
-            let src = include_str!(concat!(
-                "../fixtures/compile_errors/",
-                stringify!($name),
-                ".fe"
-            ));
+            let path = concat!("compile_errors/", stringify!($name), ".fe");
+            let src = test_files::fixture(path);
             if cfg!(target_arch = "wasm32") {
                 assert_snapshot_wasm!(compile_errors, $name, error_string(&path, &src));
             } else {

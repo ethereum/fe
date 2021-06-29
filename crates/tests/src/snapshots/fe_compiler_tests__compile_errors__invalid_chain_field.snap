@@ -4,7 +4,7 @@ expression: "error_string(&path, &src)"
 
 ---
 error: Not a chain field
-  ┌─ fixtures/compile_errors/invalid_chain_field.fe:4:11
+  ┌─ compile_errors/invalid_chain_field.fe:4:11
   │
 4 │     chain.foo
   │           ^^^

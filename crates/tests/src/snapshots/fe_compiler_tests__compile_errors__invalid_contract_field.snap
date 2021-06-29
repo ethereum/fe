@@ -4,7 +4,7 @@ expression: "error_string(&path, &src)"
 
 ---
 error: No field `bar` exists on this contract
-  ┌─ fixtures/compile_errors/invalid_contract_field.fe:5:10
+  ┌─ compile_errors/invalid_contract_field.fe:5:10
   │
 5 │     self.bar
   │          ^^^ undefined field

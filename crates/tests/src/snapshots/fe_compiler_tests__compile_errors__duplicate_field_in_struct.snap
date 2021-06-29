@@ -4,7 +4,7 @@ expression: "error_string(&path, &src)"
 
 ---
 error: a struct field with the same name already exists
-  ┌─ fixtures/compile_errors/duplicate_field_in_struct.fe:2:5
+  ┌─ compile_errors/duplicate_field_in_struct.fe:2:5
   │
 2 │     foo: u8
   │     ^^^^^^^ First definition of field `foo`

@@ -21,7 +21,7 @@ fn uniswap_contracts() {
         // Create the token0 contract.
         let token0_harness = deploy_contract(
             &mut executor,
-            "fixtures/demos/erc20_token.fe",
+            "demos/erc20_token.fe",
             "ERC20",
             &[token0_name, token0_symbol],
         );
@@ -29,7 +29,7 @@ fn uniswap_contracts() {
         // Create the token1 contract.
         let mut token1_harness = deploy_contract(
             &mut executor,
-            "fixtures/demos/erc20_token.fe",
+            "demos/erc20_token.fe",
             "ERC20",
             &[token1_name, token1_symbol],
         );
@@ -53,7 +53,7 @@ fn uniswap_contracts() {
         // test.
         let factory_harness = deploy_contract(
             &mut executor,
-            "fixtures/demos/uniswap.fe",
+            "demos/uniswap.fe",
             "UniswapV2Factory",
             &[address_token("0")],
         );
@@ -73,7 +73,7 @@ fn uniswap_contracts() {
         // Set the pair address for convenience.
         let pair_harness = load_contract(
             pair_address.clone().into_address().expect("not an address"),
-            "fixtures/demos/uniswap.fe",
+            "demos/uniswap.fe",
             "UniswapV2Pair",
         );
 

@@ -18,6 +18,7 @@ fe-lowering = {path = "../lowering", version = "^0.6.1-alpha"}
 fe-parser = {path = "../parser", version = "^0.6.1-alpha"}
 fe-yulgen = {path = "../yulgen", version = "^0.6.1-alpha"}
 fe-yulc = {path = "../yulc", version = "^0.6.1-alpha", features = ["solc-backend"], optional = true}
+test-files = {path = "../test-files", package = "fe-test-files" }
 hex = "0.4"
 primitive-types = {version = "0.9", default-features = false, features = ["rlp"]}
 rand = "0.7.3"

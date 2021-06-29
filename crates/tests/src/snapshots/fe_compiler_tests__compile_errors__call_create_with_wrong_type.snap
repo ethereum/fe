@@ -4,7 +4,7 @@ expression: "error_string(&path, &src)"
 
 ---
 error: function `create` expects numeric parameter
-  ┌─ fixtures/compile_errors/call_create_with_wrong_type.fe:7:19
+  ┌─ compile_errors/call_create_with_wrong_type.fe:7:19
   │
 7 │         Bar.create(true)
   │                   ^^^^^^ invalid argument

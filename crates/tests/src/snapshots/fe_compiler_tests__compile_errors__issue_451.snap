@@ -4,7 +4,7 @@ expression: "error_string(&path, &src)"
 
 ---
 error: a function with the same name already exists
-  ┌─ fixtures/compile_errors/issue_451.fe:4:5
+  ┌─ compile_errors/issue_451.fe:4:5
   │  
 4 │ ╭     pub def bar:
 5 │ │      s

@@ -4,7 +4,7 @@ expression: "error_string(&path, &src)"
 
 ---
 error: `<` operands must have the same type
-  ┌─ fixtures/compile_errors/return_lt_mixed_types.fe:3:16
+  ┌─ compile_errors/return_lt_mixed_types.fe:3:16
   │
 3 │         return x < y
   │                ^   - this has incompatible type `u256`

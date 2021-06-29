@@ -4,7 +4,7 @@ expression: "error_string(&path, &src)"
 
 ---
 error: `bool` can not be used as a parameter to `address(..)`
-  ┌─ fixtures/compile_errors/call_address_with_wrong_type.fe:3:17
+  ┌─ compile_errors/call_address_with_wrong_type.fe:3:17
   │
 3 │         address(true)
   │                 ^^^^ wrong type

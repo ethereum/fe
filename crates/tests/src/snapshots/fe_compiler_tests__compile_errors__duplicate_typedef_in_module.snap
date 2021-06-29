@@ -4,7 +4,7 @@ expression: "error_string(&path, &src)"
 
 ---
 error: a type definition with the same name already exists
-  ┌─ fixtures/compile_errors/duplicate_typedef_in_module.fe:4:1
+  ┌─ compile_errors/duplicate_typedef_in_module.fe:4:1
   │
 4 │ type bar = u8
   │ ^^^^^^^^^^^^^ Conflicting definition of `bar`

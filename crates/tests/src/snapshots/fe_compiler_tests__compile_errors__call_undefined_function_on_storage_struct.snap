@@ -4,7 +4,7 @@ expression: "error_string(&path, &src)"
 
 ---
 error: No function `doesnt_exist` exists on type `Something`
-  ┌─ fixtures/compile_errors/call_undefined_function_on_storage_struct.fe:8:17
+  ┌─ compile_errors/call_undefined_function_on_storage_struct.fe:8:17
   │
 8 │     self.thingy.doesnt_exist()
   │                 ^^^^^^^^^^^^ undefined function

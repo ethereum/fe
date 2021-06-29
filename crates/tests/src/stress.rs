@@ -13,7 +13,7 @@ pub fn deploy_contract(
 ) -> ContractHarness {
     fe_compiler_test_utils::deploy_contract(
         executor,
-        &format!("fixtures/stress/{}", fixture),
+        &format!("stress/{}", fixture),
         contract_name,
         init_params,
     )

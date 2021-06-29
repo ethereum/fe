@@ -2,7 +2,6 @@ use fe_analyzer::context::Context;
 use fe_analyzer::errors::AnalyzerError;
 use fe_parser::ast as fe;
 use regex::Regex;
-
 use rstest::rstest;
 
 use fe_common::assert_strings_eq;
@@ -57,12 +56,14 @@ fn replace_spans(input: String) -> String {
 )]
 fn test_lowering(fixture: &str) {
     let mut files = FileStore::new();
-    let (src, src_id) = files
-        .load_file(&format!("fixtures/lowering/{}.fe", fixture))
-        .expect("unable to src read fixture file");
-    let (expected_lowered, el_id) = files
-        .load_file(&format!("fixtures/lowering/{}_lowered.fe", fixture))
-        .expect("unable to read lowered fixture file");
+
+    let path = format!("lowering/{}.fe", fixture);
+    let src = test_files::fixture(&path);
+    let src_id = files.add_file(src, &path);
+
+    let path = format!("lowering/{}_lowered.fe", fixture);
+    let expected_lowered = test_files::fixture(&path);
+    let el_id = files.add_file(&path, expected_lowered);
 
     let expected_lowered_ast = parse_file(&expected_lowered, el_id, &files);
     let actual_lowered_ast = lower_file(&src, src_id, &files);
