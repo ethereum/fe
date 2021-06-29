@@ -1,0 +1,12 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: undefined generic type
+  ┌─ [snippet]:3:6
+  │
+3 │   x: foobar<u256> = 10
+  │      ^^^^^^ this type name has not been defined
+
+

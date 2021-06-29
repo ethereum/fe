@@ -1,0 +1,17 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: a contract with the same name already exists
+  ┌─ compile_errors/duplicate_contract_in_module.fe:6:1
+  │  
+6 │ ╭ contract Foo:
+7 │ │ 
+8 │ │     pub def bar():
+9 │ │         pass
+  │ ╰────────────^ Conflicting definition of contract `Foo`
+  │  
+  = Note: Give one of the `Foo` contracts a different name
+
+

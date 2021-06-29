@@ -1,0 +1,12 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: binary op `and` operands must have type `bool`
+  ┌─ [snippet]:3:3
+  │
+3 │   10 and true
+  │   ^^ this has type `u256`; expected `bool`
+
+

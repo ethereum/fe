@@ -1,0 +1,12 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: expected function to return `address` but was `u256`
+  ┌─ compile_errors/mismatch_return_type.fe:4:9
+  │
+4 │         return 1
+  │         ^^^^^^^^
+
+

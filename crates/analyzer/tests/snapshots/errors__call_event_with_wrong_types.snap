@@ -1,0 +1,34 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: missing argument label
+  ┌─ compile_errors/call_event_with_wrong_types.fe:7:22
+  │
+7 │         emit MyEvent("foo", 1000)
+  │                      ^ add `val_1=` here
+  │
+  = Note: this label is optional if the argument is a variable named `val_1`.
+
+error: missing argument label
+  ┌─ compile_errors/call_event_with_wrong_types.fe:7:29
+  │
+7 │         emit MyEvent("foo", 1000)
+  │                             ^ add `val_2=` here
+  │
+  = Note: this label is optional if the argument is a variable named `val_2`.
+
+error: incorrect type for `MyEvent` argument `val_1`
+  ┌─ compile_errors/call_event_with_wrong_types.fe:7:22
+  │
+7 │         emit MyEvent("foo", 1000)
+  │                      ^^^^^ this has type `String<3>`; expected type `String<100>`
+
+error: literal out of range for `u8`
+  ┌─ compile_errors/call_event_with_wrong_types.fe:7:29
+  │
+7 │         emit MyEvent("foo", 1000)
+  │                             ^^^^ does not fit into type `u8`
+
+

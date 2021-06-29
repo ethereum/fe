@@ -41,30 +41,14 @@ where
     }
 }
 
-// TODO: remove this when tests are moved into 'tests' module
-macro_rules! assert_snapshot_wasm {
-    ($module:ident, $name:ident, $actual:expr) => {
-        let snap = include_str!(concat!(
-            "snapshots/cases__",
-            stringify!($module),
-            "__",
-            stringify!($name),
-            ".snap"
-        ));
-        let (_, expected) = snap.rsplit_once("---\n").unwrap();
-        pretty_assertions::assert_eq!($actual.trim(), expected.trim());
-    };
-}
-
 macro_rules! test_parse {
     ($name:ident, $parse_fn:expr, $src:expr) => {
         #[test]
         #[wasm_bindgen_test]
         fn $name() {
             if cfg!(target_arch = "wasm32") {
-                assert_snapshot_wasm!(
-                    parse_ast,
-                    $name,
+                fe_common::assert_snapshot_wasm!(
+                    concat!("snapshots/cases__parse_ast__", stringify!($name), ".snap"),
                     ast_string(stringify!($name), $parse_fn, $src)
                 );
             } else {

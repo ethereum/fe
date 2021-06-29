@@ -1,0 +1,12 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: `continue` outside of a loop
+  ┌─ [snippet]:4:5
+  │
+4 │     continue
+  │     ^^^^^^^^ cannot `continue` outside of a `for` or `while` loop
+
+

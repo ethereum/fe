@@ -1,0 +1,12 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: The types for this operation must be numeric
+  ┌─ [snippet]:5:3
+  │
+5 │   a += b
+  │   ^    ^
+
+

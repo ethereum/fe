@@ -665,14 +665,17 @@ dependencies = [
  "ansi_term 0.12.1",
  "fe-common",
  "fe-parser",
+ "fe-test-files",
  "hex",
  "insta",
  "num-bigint 0.3.2",
  "num-traits",
+ "pretty_assertions",
  "rstest",
  "semver 1.0.0",
  "strum",
  "vec1",
+ "wasm-bindgen-test",
 ]
 
 [[package]]
