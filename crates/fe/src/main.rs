@@ -94,7 +94,7 @@ use clap::{arg_enum, values_t, App, Arg};
 
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::files::FileStore;
-use fe_compiler::errors::{install_compiler_panic_hook, AnalyzerError, ErrorKind};
+use fe_common::panic::install_panic_hook;
 use fe_driver::CompiledModule;
 
 const DEFAULT_OUTPUT_DIR_NAME: &str = "output";
@@ -113,7 +113,7 @@ arg_enum! {
 }
 
 pub fn main() {
-    install_compiler_panic_hook();
+    install_panic_hook();
 
     let matches = App::new("Fe")
         .version(VERSION)
@@ -182,15 +182,7 @@ pub fn main() {
         Ok(module) => module,
         Err(error) => {
             eprintln!("Unable to compile {}.", input_file);
-            for err in error.errors {
-                match err {
-                    ErrorKind::Str(err) => eprintln!("Compiler error: {}", err),
-                    ErrorKind::Analyzer(AnalyzerError(diagnostics)) => {
-                        print_diagnostics(&diagnostics, &files);
-                    }
-                    ErrorKind::Parser(diags) => print_diagnostics(&diags, &files),
-                }
-            }
+            print_diagnostics(&error.0, &files);
             std::process::exit(1)
         }
     };

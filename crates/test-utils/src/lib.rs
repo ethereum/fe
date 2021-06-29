@@ -1,9 +1,5 @@
-#![cfg(feature = "solc-backend")]
-use compiler::errors::{AnalyzerError, CompileError, ErrorKind};
 use evm_runtime::{ExitReason, Handler};
-use fe_common::diagnostics::print_diagnostics;
 use fe_common::files::{FileStore, SourceFileId};
-use fe_compiler as compiler;
 use fe_driver as driver;
 use fe_yulgen::runtime::functions;
 use primitive_types::{H160, H256, U256};
@@ -204,19 +200,8 @@ pub fn read_fixture(path: &str) -> (String, SourceFileId) {
         .unwrap_or_else(|_| panic!("unable to read fixture file: {}", path))
 }
 
-fn print_compiler_errors(error: CompileError, files: &FileStore) {
-    for err in error.errors {
-        match err {
-            ErrorKind::Str(err) => eprintln!("Compiler error: {}", err),
-            ErrorKind::Analyzer(AnalyzerError(diagnostics)) => {
-                print_diagnostics(&diagnostics, &files);
-            }
-            ErrorKind::Parser(diags) => print_diagnostics(&diags, &files),
-        }
-    }
-}
-
 #[allow(dead_code)]
+#[cfg(feature = "solc-backend")]
 pub fn deploy_contract(
     executor: &mut Executor,
     fixture: &str,
@@ -231,7 +216,7 @@ pub fn deploy_contract(
     let compiled_module = match driver::compile(&src, id, true, true) {
         Ok(module) => module,
         Err(error) => {
-            print_compiler_errors(error, &files);
+            fe_common::diagnostics::print_diagnostics(&error.0, &files);
             panic!("failed to compile module: {}", fixture)
         }
     };
@@ -250,6 +235,7 @@ pub fn deploy_contract(
 }
 
 #[allow(dead_code)]
+#[cfg(feature = "solc-backend")]
 pub fn deploy_solidity_contract(
     executor: &mut Executor,
     fixture: &str,
@@ -329,6 +315,7 @@ impl std::fmt::Display for SolidityCompileError {
 
 impl std::error::Error for SolidityCompileError {}
 
+#[cfg(feature = "solc-backend")]
 pub fn compile_solidity_contract(
     name: &str,
     solidity_src: &str,
@@ -462,6 +449,7 @@ impl Runtime {
         }
     }
 
+    #[cfg(feature = "solc-backend")]
     pub fn execute(&self, executor: &mut Executor) -> ExecutionOutput {
         let (exit_reason, data) = execute_runtime_functions(executor, &self);
         ExecutionOutput::new(exit_reason, data)
@@ -508,9 +496,10 @@ impl ExecutionOutput {
     }
 }
 
+#[cfg(feature = "solc-backend")]
 fn execute_runtime_functions(executor: &mut Executor, runtime: &Runtime) -> (ExitReason, Vec<u8>) {
     let yul_code = runtime.to_yul().to_string().replace("\"", "\\\"");
-    let bytecode = compiler::evm::compile_single_contract("Contract", yul_code, false)
+    let bytecode = fe_yulc::compile_single_contract("Contract", yul_code, false)
         .expect("failed to compile Yul");
     let bytecode = hex::decode(&bytecode).expect("failed to decode bytecode");
 

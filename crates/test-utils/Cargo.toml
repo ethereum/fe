@@ -11,9 +11,9 @@ ethabi = "14.0"
 evm = "0.26.0"
 evm-runtime = "0.26.0"
 fe-common = {path = "../common", version = "^0.6.1-alpha"}
-fe-compiler = {path = "../compiler", version = "^0.6.1-alpha"}
 fe-driver = {path = "../driver", version = "^0.6.1-alpha"}
 fe-yulgen = {path = "../yulgen", version = "^0.6.1-alpha"}
+fe-yulc = {path = "../yulc", version = "^0.6.1-alpha", optional = true, features = ["solc-backend"]}
 hex = "0.4"
 primitive-types = {version = "0.9", default-features = false, features = ["rlp"]}
 serde_json = "1.0.64"
@@ -22,4 +22,4 @@ stringreader = "0.1"
 yultsur = {git = "https://github.com/g-r-a-n-t/yultsur"}
 
 [features]
-solc-backend = ["fe-compiler/solc-backend", "solc"]
+solc-backend = ["fe-yulc", "solc"]

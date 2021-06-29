@@ -1,6 +1,6 @@
-use fe_abi::utils as abi_utils;
 use crate::names;
 use crate::operations::abi as abi_operations;
+use fe_abi::utils as abi_utils;
 use fe_analyzer::namespace::types::Contract;
 use fe_analyzer::namespace::types::{AbiDecodeLocation, AbiEncoding};
 use yultsur::*;

@@ -8,13 +8,13 @@ repository = "https://github.com/ethereum/fe"
 
 [features]
 # Includes the solidity compiler for Yul -> bytecode compilation.
-solc-backend = ["fe-compiler/solc-backend"]
+solc-backend = ["fe-yulc"]
 
 [dependencies]
 fe-abi = {path = "../abi", version = "^0.6.1-alpha"}
 fe-analyzer = {path = "../analyzer", version = "^0.6.1-alpha"}
 fe-common = {path = "../common", version = "^0.6.1-alpha"}
-fe-compiler = {path = "../compiler", version = "^0.6.1-alpha"}
 fe-lowering = {path = "../lowering", version = "^0.6.1-alpha"}
 fe-parser = {path = "../parser", version = "^0.6.1-alpha"}
 fe-yulgen = {path = "../yulgen", version = "^0.6.1-alpha"}
+fe-yulc = {path = "../yulc", version = "^0.6.1-alpha", features = ["solc-backend"], optional = true}

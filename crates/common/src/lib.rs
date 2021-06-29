@@ -4,3 +4,4 @@ pub mod numeric;
 mod span;
 pub mod utils;
 pub use span::{Span, Spanned};
+pub mod panic;

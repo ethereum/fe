@@ -1,5 +1,5 @@
+use fe_common::diagnostics::Diagnostic;
 use fe_common::files::SourceFileId;
-use fe_compiler::errors::{CompileError, ErrorKind};
 use fe_parser::parse_file;
 use std::collections::HashMap;
 
@@ -18,6 +18,9 @@ pub struct CompiledContract {
     pub bytecode: String,
 }
 
+#[derive(Debug)]
+pub struct CompileError(pub Vec<Diagnostic>);
+
 /// Compiles the given Fe source code to all targets.
 ///
 /// If `with_bytecode` is set to false, the compiler will skip the final Yul ->
@@ -32,23 +35,20 @@ pub fn compile(
 
     let mut errors = vec![];
 
-    let (fe_module, parser_diagnostics) =
-        parse_file(src, file_id).map_err(|diags| CompileError {
-            errors: vec![ErrorKind::Parser(diags)],
-        })?;
-    if !parser_diagnostics.is_empty() {
-        errors.push(ErrorKind::Parser(parser_diagnostics));
-    }
+    let (fe_module, parser_diagnostics) = parse_file(src, file_id).map_err(CompileError)?;
+    errors.extend(parser_diagnostics.into_iter());
 
     // analyze source code
     let analysis = match fe_analyzer::analyze(&fe_module, file_id) {
-        Ok(_) if !errors.is_empty() => return Err(CompileError { errors }),
+        Ok(_) if !errors.is_empty() => return Err(CompileError(errors)),
         Ok(analysis) => analysis,
         Err(err) => {
-            errors.push(ErrorKind::Analyzer(err));
-            return Err(CompileError { errors });
+            errors.extend(err.0.into_iter());
+            return Err(CompileError(errors));
         }
     };
+
+    assert!(errors.is_empty());
 
     // build abi
     let json_abis = fe_abi::build(&analysis, &fe_module).expect("failed to generate abi");
@@ -66,12 +66,9 @@ pub fn compile(
     // compile to bytecode if required
     #[cfg(feature = "solc-backend")]
     let bytecode_contracts = if _with_bytecode {
-        match fe_compiler::evm::compile(yul_contracts.clone(), _optimize) {
+        match fe_yulc::compile(yul_contracts.clone(), _optimize) {
             Err(error) => {
-                match &error.errors[0] {
-                    ErrorKind::Str(string) => eprintln!("Error: {}", string),
-                    err => eprintln!("Error: {:?}", err),
-                }
+                eprintln!("Error: {}", error.0);
                 panic!("Yul compilation failed.")
             }
             Ok(contracts) => contracts,
@@ -100,13 +97,9 @@ pub fn compile(
         })
         .collect::<HashMap<_, _>>();
 
-    if errors.is_empty() {
-        Ok(CompiledModule {
-            src_ast: format!("{:#?}", fe_module),
-            lowered_ast: format!("{:#?}", lowered_fe_module),
-            contracts,
-        })
-    } else {
-        Err(CompileError { errors })
-    }
+    Ok(CompiledModule {
+        src_ast: format!("{:#?}", fe_module),
+        lowered_ast: format!("{:#?}", lowered_fe_module),
+        contracts,
+    })
 }
