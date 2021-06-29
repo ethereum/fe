@@ -1,0 +1,848 @@
+---
+source: crates/analyzer/tests/analysis.rs
+expression: "build_snapshot(\"features/return_u256_from_called_fn_with_args.fe\", &src,\n               &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "bar",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "cem",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "foo",
+                        params: [
+                            (
+                                "val1",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "val2",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "val3",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "val4",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "val5",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+}
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:4:16
+  │
+4 │         return val1 + val2 + val3 + val4 + val5
+  │                ^^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:4:23
+  │
+4 │         return val1 + val2 + val3 + val4 + val5
+  │                       ^^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:4:16
+  │
+4 │         return val1 + val2 + val3 + val4 + val5
+  │                ^^^^^^^^^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:4:30
+  │
+4 │         return val1 + val2 + val3 + val4 + val5
+  │                              ^^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:4:16
+  │
+4 │         return val1 + val2 + val3 + val4 + val5
+  │                ^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:4:37
+  │
+4 │         return val1 + val2 + val3 + val4 + val5
+  │                                     ^^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:4:16
+  │
+4 │         return val1 + val2 + val3 + val4 + val5
+  │                ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:4:44
+  │
+4 │         return val1 + val2 + val3 + val4 + val5
+  │                                            ^^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:4:16
+  │
+4 │         return val1 + val2 + val3 + val4 + val5
+  │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:7:16
+  │
+7 │         return 100
+  │                ^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+   ┌─ features/return_u256_from_called_fn_with_args.fe:10:9
+   │
+10 │         self.baz[0] = 43
+   │         ^^^^^^^^ attributes hash: 11084999791471164417
+   │
+   = ExpressionAttributes {
+         typ: Map(
+             Map {
+                 key: Numeric(
+                     U256,
+                 ),
+                 value: Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/return_u256_from_called_fn_with_args.fe:10:18
+   │
+10 │         self.baz[0] = 43
+   │                  ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/return_u256_from_called_fn_with_args.fe:10:9
+   │
+10 │         self.baz[0] = 43
+   │         ^^^^^^^^^^^ attributes hash: 5973407925075462624
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Storage {
+             nonce: None,
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/return_u256_from_called_fn_with_args.fe:10:23
+   │
+10 │         self.baz[0] = 43
+   │                       ^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:25
+   │
+11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
+   │                         ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:28
+   │
+11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
+   │                            ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:31
+   │
+11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
+   │                               ^^^^^^^^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:43
+   │
+11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
+   │                                           ^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:48
+   │
+11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
+   │                                                ^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:43
+   │
+11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
+   │                                           ^^^^^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:52
+   │
+11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
+   │                                                    ^^^^^^^^ attributes hash: 11084999791471164417
+   │
+   = ExpressionAttributes {
+         typ: Map(
+             Map {
+                 key: Numeric(
+                     U256,
+                 ),
+                 value: Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:61
+   │
+11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
+   │                                                             ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:52
+   │
+11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
+   │                                                    ^^^^^^^^^^^ attributes hash: 9781479072077703403
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Storage {
+             nonce: None,
+         },
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:16
+   │
+11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:3:5
+  │  
+3 │ ╭     pub def foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
+4 │ │         return val1 + val2 + val3 + val4 + val5
+  │ ╰───────────────────────────────────────────────^ attributes hash: 14705819381450559046
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "foo",
+        params: [
+            (
+                "val1",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+            (
+                "val2",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+            (
+                "val3",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+            (
+                "val4",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+            (
+                "val5",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+        ],
+        return_type: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:6:5
+  │  
+6 │ ╭     pub def cem() -> u256:
+7 │ │         return 100
+  │ ╰──────────────────^ attributes hash: 8100959876739198343
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "cem",
+        params: [],
+        return_type: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+    }
+
+note: 
+   ┌─ features/return_u256_from_called_fn_with_args.fe:9:5
+   │  
+ 9 │ ╭     pub def bar() -> u256:
+10 │ │         self.baz[0] = 43
+11 │ │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
+   │ ╰───────────────────────────────────────────────────────────────^ attributes hash: 2041944711719443549
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "bar",
+         params: [],
+         return_type: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/return_u256_from_called_fn_with_args.fe:1:1
+   │  
+ 1 │ ╭ contract Foo:
+ 2 │ │     baz: Map<u256, u256>
+ 3 │ │     pub def foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
+ 4 │ │         return val1 + val2 + val3 + val4 + val5
+   · │
+10 │ │         self.baz[0] = 43
+11 │ │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
+   │ ╰───────────────────────────────────────────────────────────────^ attributes hash: 6583022143072290939
+   │  
+   = ContractAttributes {
+         public_functions: [
+             FunctionAttributes {
+                 is_public: true,
+                 name: "bar",
+                 params: [],
+                 return_type: Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "cem",
+                 params: [],
+                 return_type: Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "foo",
+                 params: [
+                     (
+                         "val1",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "val2",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "val3",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "val4",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "val5",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             },
+         ],
+         init_function: None,
+         events: [],
+         structs: [],
+         external_contracts: [],
+     }
+
+note: 
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:16
+   │
+11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
+   │                ^^^^^^^^ attributes hash: 14265823366479253008
+   │
+   = SelfAttribute {
+         func_name: "foo",
+     }
+
+note: 
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:31
+   │
+11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
+   │                               ^^^^^^^^ attributes hash: 13025404395503592689
+   │
+   = SelfAttribute {
+         func_name: "cem",
+     }
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:3:23
+  │
+3 │     pub def foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
+  │                       ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:3:35
+  │
+3 │     pub def foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
+  │                                   ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:3:47
+  │
+3 │     pub def foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
+  │                                               ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:3:59
+  │
+3 │     pub def foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
+  │                                                           ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:3:71
+  │
+3 │     pub def foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
+  │                                                                       ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:3:80
+  │
+3 │     pub def foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
+  │                                                                                ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:6:22
+  │
+6 │     pub def cem() -> u256:
+  │                      ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:9:22
+  │
+9 │     pub def bar() -> u256:
+  │                      ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:2:14
+  │
+2 │     baz: Map<u256, u256>
+  │              ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:2:20
+  │
+2 │     baz: Map<u256, u256>
+  │                    ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:2:10
+  │
+2 │     baz: Map<u256, u256>
+  │          ^^^^^^^^^^^^^^^ attributes hash: 3210256860376722957
+  │
+  = Map(
+        Map {
+            key: Numeric(
+                U256,
+            ),
+            value: Base(
+                Numeric(
+                    U256,
+                ),
+            ),
+        },
+    )
+
+

@@ -1,0 +1,220 @@
+---
+source: crates/analyzer/tests/analysis.rs
+expression: "build_snapshot(\"features/if_statement_with_block_declaration.fe\", &src,\n               &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "bar",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+}
+
+note: 
+  ┌─ features/if_statement_with_block_declaration.fe:4:12
+  │
+4 │         if true:
+  │            ^^^^ attributes hash: 10866140763116710699
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Bool,
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/if_statement_with_block_declaration.fe:5:23
+  │
+5 │             y: u256 = 1
+  │                       ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/if_statement_with_block_declaration.fe:6:20
+  │
+6 │             return y
+  │                    ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/if_statement_with_block_declaration.fe:8:23
+  │
+8 │             y: u256 = 1
+  │                       ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/if_statement_with_block_declaration.fe:9:20
+  │
+9 │             return y
+  │                    ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/if_statement_with_block_declaration.fe:3:5
+  │  
+3 │ ╭     pub def bar() -> u256:
+4 │ │         if true:
+5 │ │             y: u256 = 1
+6 │ │             return y
+7 │ │         else:
+8 │ │             y: u256 = 1
+9 │ │             return y
+  │ ╰────────────────────^ attributes hash: 2041944711719443549
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "bar",
+        params: [],
+        return_type: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/if_statement_with_block_declaration.fe:5:13
+  │
+5 │             y: u256 = 1
+  │             ^^^^^^^^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/if_statement_with_block_declaration.fe:8:13
+  │
+8 │             y: u256 = 1
+  │             ^^^^^^^^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/if_statement_with_block_declaration.fe:1:1
+  │  
+1 │ ╭ contract Foo:
+2 │ │ 
+3 │ │     pub def bar() -> u256:
+4 │ │         if true:
+  · │
+8 │ │             y: u256 = 1
+9 │ │             return y
+  │ ╰────────────────────^ attributes hash: 16417315723405128961
+  │  
+  = ContractAttributes {
+        public_functions: [
+            FunctionAttributes {
+                is_public: true,
+                name: "bar",
+                params: [],
+                return_type: Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            },
+        ],
+        init_function: None,
+        events: [],
+        structs: [],
+        external_contracts: [],
+    }
+
+note: 
+  ┌─ features/if_statement_with_block_declaration.fe:3:22
+  │
+3 │     pub def bar() -> u256:
+  │                      ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/if_statement_with_block_declaration.fe:5:16
+  │
+5 │             y: u256 = 1
+  │                ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/if_statement_with_block_declaration.fe:8:16
+  │
+8 │             y: u256 = 1
+  │                ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+

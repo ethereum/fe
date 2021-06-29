@@ -1,0 +1,3274 @@
+---
+source: crates/analyzer/tests/analysis.rs
+expression: "build_snapshot(\"stress/abi_encoding_stress.fe\", &src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "emit_my_event",
+                        params: [],
+                        return_type: Base(
+                            Unit,
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "get_my_addrs",
+                        params: [],
+                        return_type: Array(
+                            Array {
+                                size: 5,
+                                inner: Address,
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "get_my_bool",
+                        params: [],
+                        return_type: Base(
+                            Bool,
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "get_my_bytes",
+                        params: [],
+                        return_type: Array(
+                            Array {
+                                size: 100,
+                                inner: Byte,
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "get_my_string",
+                        params: [],
+                        return_type: String(
+                            FeString {
+                                max_size: 10,
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "get_my_struct",
+                        params: [],
+                        return_type: Struct(
+                            Struct {
+                                name: "MyStruct",
+                                fields: [
+                                    (
+                                        "my_num",
+                                        Base(
+                                            Numeric(
+                                                U256,
+                                            ),
+                                        ),
+                                    ),
+                                    (
+                                        "my_num2",
+                                        Base(
+                                            Numeric(
+                                                U8,
+                                            ),
+                                        ),
+                                    ),
+                                    (
+                                        "my_bool",
+                                        Base(
+                                            Bool,
+                                        ),
+                                    ),
+                                    (
+                                        "my_addr",
+                                        Base(
+                                            Address,
+                                        ),
+                                    ),
+                                ],
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "get_my_u128",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U128,
+                            ),
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "get_my_u8s",
+                        params: [],
+                        return_type: Array(
+                            Array {
+                                size: 255,
+                                inner: Numeric(
+                                    U8,
+                                ),
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "mod_my_struct",
+                        params: [
+                            (
+                                "my_struct",
+                                Struct(
+                                    Struct {
+                                        name: "MyStruct",
+                                        fields: [
+                                            (
+                                                "my_num",
+                                                Base(
+                                                    Numeric(
+                                                        U256,
+                                                    ),
+                                                ),
+                                            ),
+                                            (
+                                                "my_num2",
+                                                Base(
+                                                    Numeric(
+                                                        U8,
+                                                    ),
+                                                ),
+                                            ),
+                                            (
+                                                "my_bool",
+                                                Base(
+                                                    Bool,
+                                                ),
+                                            ),
+                                            (
+                                                "my_addr",
+                                                Base(
+                                                    Address,
+                                                ),
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            ),
+                        ],
+                        return_type: Struct(
+                            Struct {
+                                name: "MyStruct",
+                                fields: [
+                                    (
+                                        "my_num",
+                                        Base(
+                                            Numeric(
+                                                U256,
+                                            ),
+                                        ),
+                                    ),
+                                    (
+                                        "my_num2",
+                                        Base(
+                                            Numeric(
+                                                U8,
+                                            ),
+                                        ),
+                                    ),
+                                    (
+                                        "my_bool",
+                                        Base(
+                                            Bool,
+                                        ),
+                                    ),
+                                    (
+                                        "my_addr",
+                                        Base(
+                                            Address,
+                                        ),
+                                    ),
+                                ],
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "set_my_addrs",
+                        params: [
+                            (
+                                "my_addrs",
+                                Array(
+                                    Array {
+                                        size: 5,
+                                        inner: Address,
+                                    },
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Unit,
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "set_my_bool",
+                        params: [
+                            (
+                                "my_bool",
+                                Base(
+                                    Bool,
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Unit,
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "set_my_bytes",
+                        params: [
+                            (
+                                "my_bytes",
+                                Array(
+                                    Array {
+                                        size: 100,
+                                        inner: Byte,
+                                    },
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Unit,
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "set_my_string",
+                        params: [
+                            (
+                                "my_string",
+                                String(
+                                    FeString {
+                                        max_size: 10,
+                                    },
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Unit,
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "set_my_u128",
+                        params: [
+                            (
+                                "my_u128",
+                                Base(
+                                    Numeric(
+                                        U128,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Unit,
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "set_my_u8s",
+                        params: [
+                            (
+                                "my_u8s",
+                                Array(
+                                    Array {
+                                        size: 255,
+                                        inner: Numeric(
+                                            U8,
+                                        ),
+                                    },
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Unit,
+                        ),
+                    },
+                ],
+            },
+        ),
+        "MyStruct": Struct(
+            Struct {
+                name: "MyStruct",
+                fields: [
+                    (
+                        "my_num",
+                        Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    ),
+                    (
+                        "my_num2",
+                        Base(
+                            Numeric(
+                                U8,
+                            ),
+                        ),
+                    ),
+                    (
+                        "my_bool",
+                        Base(
+                            Bool,
+                        ),
+                    ),
+                    (
+                        "my_addr",
+                        Base(
+                            Address,
+                        ),
+                    ),
+                ],
+            },
+        ),
+    },
+}
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:24:9
+   │
+24 │         self.my_addrs = my_addrs
+   │         ^^^^^^^^^^^^^ attributes hash: 9556682290913303484
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 5,
+                 inner: Address,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:24:25
+   │
+24 │         self.my_addrs = my_addrs
+   │                         ^^^^^^^^ attributes hash: 9740078941645877256
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 5,
+                 inner: Address,
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:27:16
+   │
+27 │         return self.my_addrs.to_mem()
+   │                ^^^^^^^^^^^^^ attributes hash: 9556682290913303484
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 5,
+                 inner: Address,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:27:16
+   │
+27 │         return self.my_addrs.to_mem()
+   │                ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14222027602690501828
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 5,
+                 inner: Address,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: Some(
+             Memory,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:30:9
+   │
+30 │         self.my_u128 = my_u128
+   │         ^^^^^^^^^^^^ attributes hash: 2703217136237546410
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U128,
+             ),
+         ),
+         location: Storage {
+             nonce: Some(
+                 1,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:30:24
+   │
+30 │         self.my_u128 = my_u128
+   │                        ^^^^^^^ attributes hash: 9341420026351674595
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U128,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:33:16
+   │
+33 │         return self.my_u128
+   │                ^^^^^^^^^^^^ attributes hash: 10067809958524075301
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U128,
+             ),
+         ),
+         location: Storage {
+             nonce: Some(
+                 1,
+             ),
+         },
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:36:9
+   │
+36 │         self.my_string = my_string
+   │         ^^^^^^^^^^^^^^ attributes hash: 9071218329936731305
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 10,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 2,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:36:26
+   │
+36 │         self.my_string = my_string
+   │                          ^^^^^^^^^ attributes hash: 14090036295577866461
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 10,
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:39:16
+   │
+39 │         return self.my_string.to_mem()
+   │                ^^^^^^^^^^^^^^ attributes hash: 9071218329936731305
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 10,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 2,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:39:16
+   │
+39 │         return self.my_string.to_mem()
+   │                ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 980173007631351881
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 10,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 2,
+             ),
+         },
+         move_location: Some(
+             Memory,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:42:9
+   │
+42 │         self.my_u8s = my_u8s
+   │         ^^^^^^^^^^^ attributes hash: 14452085088266868200
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 255,
+                 inner: Numeric(
+                     U8,
+                 ),
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 3,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:42:23
+   │
+42 │         self.my_u8s = my_u8s
+   │                       ^^^^^^ attributes hash: 16129286949851221894
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 255,
+                 inner: Numeric(
+                     U8,
+                 ),
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:45:16
+   │
+45 │         return self.my_u8s.to_mem()
+   │                ^^^^^^^^^^^ attributes hash: 14452085088266868200
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 255,
+                 inner: Numeric(
+                     U8,
+                 ),
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 3,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:45:16
+   │
+45 │         return self.my_u8s.to_mem()
+   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 3855584261660153860
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 255,
+                 inner: Numeric(
+                     U8,
+                 ),
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 3,
+             ),
+         },
+         move_location: Some(
+             Memory,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:48:9
+   │
+48 │         self.my_bool = my_bool
+   │         ^^^^^^^^^^^^ attributes hash: 14339445391907150991
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Storage {
+             nonce: Some(
+                 4,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:48:24
+   │
+48 │         self.my_bool = my_bool
+   │                        ^^^^^^^ attributes hash: 10866140763116710699
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:51:16
+   │
+51 │         return self.my_bool
+   │                ^^^^^^^^^^^^ attributes hash: 11793743503936840609
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Storage {
+             nonce: Some(
+                 4,
+             ),
+         },
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:54:9
+   │
+54 │         self.my_bytes = my_bytes
+   │         ^^^^^^^^^^^^^ attributes hash: 7833827351076939737
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 100,
+                 inner: Byte,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 5,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:54:25
+   │
+54 │         self.my_bytes = my_bytes
+   │                         ^^^^^^^^ attributes hash: 6578844474441717363
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 100,
+                 inner: Byte,
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:57:16
+   │
+57 │         return self.my_bytes.to_mem()
+   │                ^^^^^^^^^^^^^ attributes hash: 7833827351076939737
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 100,
+                 inner: Byte,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 5,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:57:16
+   │
+57 │         return self.my_bytes.to_mem()
+   │                ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12051565540558389281
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 100,
+                 inner: Byte,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 5,
+             ),
+         },
+         move_location: Some(
+             Memory,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:61:20
+   │
+61 │             my_num=42,
+   │                    ^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:62:24
+   │
+62 │             my_num2=u8(26),
+   │                        ^^ attributes hash: 6817314866882205962
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:62:21
+   │
+62 │             my_num2=u8(26),
+   │                     ^^^^^^ attributes hash: 6817314866882205962
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:63:21
+   │
+63 │             my_bool=true,
+   │                     ^^^^ attributes hash: 10866140763116710699
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:64:29
+   │
+64 │             my_addr=address(123456)
+   │                             ^^^^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:64:21
+   │
+64 │             my_addr=address(123456)
+   │                     ^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Address,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:60:16
+   │  
+60 │           return MyStruct(
+   │ ╭────────────────^
+61 │ │             my_num=42,
+62 │ │             my_num2=u8(26),
+63 │ │             my_bool=true,
+64 │ │             my_addr=address(123456)
+65 │ │         )
+   │ ╰─────────^ attributes hash: 14310246943193162873
+   │  
+   = ExpressionAttributes {
+         typ: Struct(
+             Struct {
+                 name: "MyStruct",
+                 fields: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_num2",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_addr",
+                         Base(
+                             Address,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:68:9
+   │
+68 │         my_struct.my_num = 12341234
+   │         ^^^^^^^^^ attributes hash: 14310246943193162873
+   │
+   = ExpressionAttributes {
+         typ: Struct(
+             Struct {
+                 name: "MyStruct",
+                 fields: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_num2",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_addr",
+                         Base(
+                             Address,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:68:9
+   │
+68 │         my_struct.my_num = 12341234
+   │         ^^^^^^^^^^^^^^^^ attributes hash: 3617588353493611640
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:68:28
+   │
+68 │         my_struct.my_num = 12341234
+   │                            ^^^^^^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:69:9
+   │
+69 │         my_struct.my_num2 = u8(42)
+   │         ^^^^^^^^^ attributes hash: 14310246943193162873
+   │
+   = ExpressionAttributes {
+         typ: Struct(
+             Struct {
+                 name: "MyStruct",
+                 fields: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_num2",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_addr",
+                         Base(
+                             Address,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:69:9
+   │
+69 │         my_struct.my_num2 = u8(42)
+   │         ^^^^^^^^^^^^^^^^^ attributes hash: 9840844041956468502
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:69:32
+   │
+69 │         my_struct.my_num2 = u8(42)
+   │                                ^^ attributes hash: 6817314866882205962
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:69:29
+   │
+69 │         my_struct.my_num2 = u8(42)
+   │                             ^^^^^^ attributes hash: 6817314866882205962
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:70:9
+   │
+70 │         my_struct.my_bool = false
+   │         ^^^^^^^^^ attributes hash: 14310246943193162873
+   │
+   = ExpressionAttributes {
+         typ: Struct(
+             Struct {
+                 name: "MyStruct",
+                 fields: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_num2",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_addr",
+                         Base(
+                             Address,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:70:9
+   │
+70 │         my_struct.my_bool = false
+   │         ^^^^^^^^^^^^^^^^^ attributes hash: 11961557806308348850
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:70:29
+   │
+70 │         my_struct.my_bool = false
+   │                             ^^^^^ attributes hash: 10866140763116710699
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:71:9
+   │
+71 │         my_struct.my_addr = address(9999)
+   │         ^^^^^^^^^ attributes hash: 14310246943193162873
+   │
+   = ExpressionAttributes {
+         typ: Struct(
+             Struct {
+                 name: "MyStruct",
+                 fields: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_num2",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_addr",
+                         Base(
+                             Address,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:71:9
+   │
+71 │         my_struct.my_addr = address(9999)
+   │         ^^^^^^^^^^^^^^^^^ attributes hash: 16010665103940642096
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Address,
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:71:37
+   │
+71 │         my_struct.my_addr = address(9999)
+   │                                     ^^^^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:71:29
+   │
+71 │         my_struct.my_addr = address(9999)
+   │                             ^^^^^^^^^^^^^ attributes hash: 513065555763557710
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Address,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:72:16
+   │
+72 │         return my_struct
+   │                ^^^^^^^^^ attributes hash: 14310246943193162873
+   │
+   = ExpressionAttributes {
+         typ: Struct(
+             Struct {
+                 name: "MyStruct",
+                 fields: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_num2",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_addr",
+                         Base(
+                             Address,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:76:22
+   │
+76 │             my_addrs=self.my_addrs.to_mem(),
+   │                      ^^^^^^^^^^^^^ attributes hash: 9556682290913303484
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 5,
+                 inner: Address,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:76:22
+   │
+76 │             my_addrs=self.my_addrs.to_mem(),
+   │                      ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14222027602690501828
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 5,
+                 inner: Address,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: Some(
+             Memory,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:77:21
+   │
+77 │             my_u128=self.my_u128,
+   │                     ^^^^^^^^^^^^ attributes hash: 10067809958524075301
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U128,
+             ),
+         ),
+         location: Storage {
+             nonce: Some(
+                 1,
+             ),
+         },
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:78:23
+   │
+78 │             my_string=self.my_string.to_mem(),
+   │                       ^^^^^^^^^^^^^^ attributes hash: 9071218329936731305
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 10,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 2,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:78:23
+   │
+78 │             my_string=self.my_string.to_mem(),
+   │                       ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 980173007631351881
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 10,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 2,
+             ),
+         },
+         move_location: Some(
+             Memory,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:79:20
+   │
+79 │             my_u8s=self.my_u8s.to_mem(),
+   │                    ^^^^^^^^^^^ attributes hash: 14452085088266868200
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 255,
+                 inner: Numeric(
+                     U8,
+                 ),
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 3,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:79:20
+   │
+79 │             my_u8s=self.my_u8s.to_mem(),
+   │                    ^^^^^^^^^^^^^^^^^^^^ attributes hash: 3855584261660153860
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 255,
+                 inner: Numeric(
+                     U8,
+                 ),
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 3,
+             ),
+         },
+         move_location: Some(
+             Memory,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:80:21
+   │
+80 │             my_bool=self.my_bool,
+   │                     ^^^^^^^^^^^^ attributes hash: 11793743503936840609
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Storage {
+             nonce: Some(
+                 4,
+             ),
+         },
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:81:22
+   │
+81 │             my_bytes=self.my_bytes.to_mem()
+   │                      ^^^^^^^^^^^^^ attributes hash: 7833827351076939737
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 100,
+                 inner: Byte,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 5,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:81:22
+   │
+81 │             my_bytes=self.my_bytes.to_mem()
+   │                      ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12051565540558389281
+   │
+   = ExpressionAttributes {
+         typ: Array(
+             Array {
+                 size: 100,
+                 inner: Byte,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 5,
+             ),
+         },
+         move_location: Some(
+             Memory,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:75:9
+   │  
+75 │ ╭         emit MyEvent(
+76 │ │             my_addrs=self.my_addrs.to_mem(),
+77 │ │             my_u128=self.my_u128,
+78 │ │             my_string=self.my_string.to_mem(),
+   · │
+81 │ │             my_bytes=self.my_bytes.to_mem()
+82 │ │         )
+   │ ╰─────────^ attributes hash: 229795011819765305
+   │  
+   = EventDef {
+         name: "MyEvent",
+         topic: "0x5291dba7533bac99b9fabd83c9c340b948738e6c3f0a73f61ff521c7b1a30b39",
+         fields: [
+             (
+                 "my_addrs",
+                 Array(
+                     Array {
+                         size: 5,
+                         inner: Address,
+                     },
+                 ),
+             ),
+             (
+                 "my_u128",
+                 Base(
+                     Numeric(
+                         U128,
+                     ),
+                 ),
+             ),
+             (
+                 "my_string",
+                 String(
+                     FeString {
+                         max_size: 10,
+                     },
+                 ),
+             ),
+             (
+                 "my_u8s",
+                 Array(
+                     Array {
+                         size: 255,
+                         inner: Numeric(
+                             U8,
+                         ),
+                     },
+                 ),
+             ),
+             (
+                 "my_bool",
+                 Base(
+                     Bool,
+                 ),
+             ),
+             (
+                 "my_bytes",
+                 Array(
+                     Array {
+                         size: 100,
+                         inner: Byte,
+                     },
+                 ),
+             ),
+         ],
+         indexed_fields: [],
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:23:5
+   │  
+23 │ ╭     pub def set_my_addrs(my_addrs: address[5]):
+24 │ │         self.my_addrs = my_addrs
+   │ ╰────────────────────────────────^ attributes hash: 14701522943662665464
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "set_my_addrs",
+         params: [
+             (
+                 "my_addrs",
+                 Array(
+                     Array {
+                         size: 5,
+                         inner: Address,
+                     },
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Unit,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:26:5
+   │  
+26 │ ╭     pub def get_my_addrs() -> address[5]:
+27 │ │         return self.my_addrs.to_mem()
+   │ ╰─────────────────────────────────────^ attributes hash: 17465637972402510441
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "get_my_addrs",
+         params: [],
+         return_type: Array(
+             Array {
+                 size: 5,
+                 inner: Address,
+             },
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:29:5
+   │  
+29 │ ╭     pub def set_my_u128(my_u128: u128):
+30 │ │         self.my_u128 = my_u128
+   │ ╰──────────────────────────────^ attributes hash: 10635070491814674598
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "set_my_u128",
+         params: [
+             (
+                 "my_u128",
+                 Base(
+                     Numeric(
+                         U128,
+                     ),
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Unit,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:32:5
+   │  
+32 │ ╭     pub def get_my_u128() -> u128:
+33 │ │         return self.my_u128
+   │ ╰───────────────────────────^ attributes hash: 16058412060331016941
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "get_my_u128",
+         params: [],
+         return_type: Base(
+             Numeric(
+                 U128,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:35:5
+   │  
+35 │ ╭     pub def set_my_string(my_string: String<10>):
+36 │ │         self.my_string = my_string
+   │ ╰──────────────────────────────────^ attributes hash: 15141386370952016427
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "set_my_string",
+         params: [
+             (
+                 "my_string",
+                 String(
+                     FeString {
+                         max_size: 10,
+                     },
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Unit,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:38:5
+   │  
+38 │ ╭     pub def get_my_string() -> String<10>:
+39 │ │         return self.my_string.to_mem()
+   │ ╰──────────────────────────────────────^ attributes hash: 707398757101008385
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "get_my_string",
+         params: [],
+         return_type: String(
+             FeString {
+                 max_size: 10,
+             },
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:41:5
+   │  
+41 │ ╭     pub def set_my_u8s(my_u8s: u8[255]):
+42 │ │         self.my_u8s = my_u8s
+   │ ╰────────────────────────────^ attributes hash: 3951353961439842676
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "set_my_u8s",
+         params: [
+             (
+                 "my_u8s",
+                 Array(
+                     Array {
+                         size: 255,
+                         inner: Numeric(
+                             U8,
+                         ),
+                     },
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Unit,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:44:5
+   │  
+44 │ ╭     pub def get_my_u8s() -> u8[255]:
+45 │ │         return self.my_u8s.to_mem()
+   │ ╰───────────────────────────────────^ attributes hash: 15843274676537272674
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "get_my_u8s",
+         params: [],
+         return_type: Array(
+             Array {
+                 size: 255,
+                 inner: Numeric(
+                     U8,
+                 ),
+             },
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:47:5
+   │  
+47 │ ╭     pub def set_my_bool(my_bool: bool):
+48 │ │         self.my_bool = my_bool
+   │ ╰──────────────────────────────^ attributes hash: 9951927489494877708
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "set_my_bool",
+         params: [
+             (
+                 "my_bool",
+                 Base(
+                     Bool,
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Unit,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:50:5
+   │  
+50 │ ╭     pub def get_my_bool() -> bool:
+51 │ │         return self.my_bool
+   │ ╰───────────────────────────^ attributes hash: 402155180145147731
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "get_my_bool",
+         params: [],
+         return_type: Base(
+             Bool,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:53:5
+   │  
+53 │ ╭     pub def set_my_bytes(my_bytes: bytes[100]):
+54 │ │         self.my_bytes = my_bytes
+   │ ╰────────────────────────────────^ attributes hash: 1603819576134687581
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "set_my_bytes",
+         params: [
+             (
+                 "my_bytes",
+                 Array(
+                     Array {
+                         size: 100,
+                         inner: Byte,
+                     },
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Unit,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:56:5
+   │  
+56 │ ╭     pub def get_my_bytes() -> bytes[100]:
+57 │ │         return self.my_bytes.to_mem()
+   │ ╰─────────────────────────────────────^ attributes hash: 2383713642884421628
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "get_my_bytes",
+         params: [],
+         return_type: Array(
+             Array {
+                 size: 100,
+                 inner: Byte,
+             },
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:59:5
+   │  
+59 │ ╭     pub def get_my_struct() -> MyStruct:
+60 │ │         return MyStruct(
+61 │ │             my_num=42,
+62 │ │             my_num2=u8(26),
+63 │ │             my_bool=true,
+64 │ │             my_addr=address(123456)
+65 │ │         )
+   │ ╰─────────^ attributes hash: 16782190728805286135
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "get_my_struct",
+         params: [],
+         return_type: Struct(
+             Struct {
+                 name: "MyStruct",
+                 fields: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_num2",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_addr",
+                         Base(
+                             Address,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:67:5
+   │  
+67 │ ╭     pub def mod_my_struct(my_struct: MyStruct) -> MyStruct:
+68 │ │         my_struct.my_num = 12341234
+69 │ │         my_struct.my_num2 = u8(42)
+70 │ │         my_struct.my_bool = false
+71 │ │         my_struct.my_addr = address(9999)
+72 │ │         return my_struct
+   │ ╰────────────────────────^ attributes hash: 3294894870123873559
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "mod_my_struct",
+         params: [
+             (
+                 "my_struct",
+                 Struct(
+                     Struct {
+                         name: "MyStruct",
+                         fields: [
+                             (
+                                 "my_num",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "my_num2",
+                                 Base(
+                                     Numeric(
+                                         U8,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "my_bool",
+                                 Base(
+                                     Bool,
+                                 ),
+                             ),
+                             (
+                                 "my_addr",
+                                 Base(
+                                     Address,
+                                 ),
+                             ),
+                         ],
+                     },
+                 ),
+             ),
+         ],
+         return_type: Struct(
+             Struct {
+                 name: "MyStruct",
+                 fields: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_num2",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_addr",
+                         Base(
+                             Address,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:74:5
+   │  
+74 │ ╭     pub def emit_my_event():
+75 │ │         emit MyEvent(
+76 │ │             my_addrs=self.my_addrs.to_mem(),
+77 │ │             my_u128=self.my_u128,
+   · │
+81 │ │             my_bytes=self.my_bytes.to_mem()
+82 │ │         )
+   │ ╰─────────^ attributes hash: 10533351548551667725
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "emit_my_event",
+         params: [],
+         return_type: Base(
+             Unit,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:7:1
+   │  
+ 7 │ ╭ contract Foo:
+ 8 │ │     my_addrs: address[5]
+ 9 │ │     my_u128: u128
+10 │ │     my_string: String<10>
+   · │
+81 │ │             my_bytes=self.my_bytes.to_mem()
+82 │ │         )
+   │ ╰─────────^ attributes hash: 424456335303037920
+   │  
+   = ContractAttributes {
+         public_functions: [
+             FunctionAttributes {
+                 is_public: true,
+                 name: "emit_my_event",
+                 params: [],
+                 return_type: Base(
+                     Unit,
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "get_my_addrs",
+                 params: [],
+                 return_type: Array(
+                     Array {
+                         size: 5,
+                         inner: Address,
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "get_my_bool",
+                 params: [],
+                 return_type: Base(
+                     Bool,
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "get_my_bytes",
+                 params: [],
+                 return_type: Array(
+                     Array {
+                         size: 100,
+                         inner: Byte,
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "get_my_string",
+                 params: [],
+                 return_type: String(
+                     FeString {
+                         max_size: 10,
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "get_my_struct",
+                 params: [],
+                 return_type: Struct(
+                     Struct {
+                         name: "MyStruct",
+                         fields: [
+                             (
+                                 "my_num",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "my_num2",
+                                 Base(
+                                     Numeric(
+                                         U8,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "my_bool",
+                                 Base(
+                                     Bool,
+                                 ),
+                             ),
+                             (
+                                 "my_addr",
+                                 Base(
+                                     Address,
+                                 ),
+                             ),
+                         ],
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "get_my_u128",
+                 params: [],
+                 return_type: Base(
+                     Numeric(
+                         U128,
+                     ),
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "get_my_u8s",
+                 params: [],
+                 return_type: Array(
+                     Array {
+                         size: 255,
+                         inner: Numeric(
+                             U8,
+                         ),
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "mod_my_struct",
+                 params: [
+                     (
+                         "my_struct",
+                         Struct(
+                             Struct {
+                                 name: "MyStruct",
+                                 fields: [
+                                     (
+                                         "my_num",
+                                         Base(
+                                             Numeric(
+                                                 U256,
+                                             ),
+                                         ),
+                                     ),
+                                     (
+                                         "my_num2",
+                                         Base(
+                                             Numeric(
+                                                 U8,
+                                             ),
+                                         ),
+                                     ),
+                                     (
+                                         "my_bool",
+                                         Base(
+                                             Bool,
+                                         ),
+                                     ),
+                                     (
+                                         "my_addr",
+                                         Base(
+                                             Address,
+                                         ),
+                                     ),
+                                 ],
+                             },
+                         ),
+                     ),
+                 ],
+                 return_type: Struct(
+                     Struct {
+                         name: "MyStruct",
+                         fields: [
+                             (
+                                 "my_num",
+                                 Base(
+                                     Numeric(
+                                         U256,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "my_num2",
+                                 Base(
+                                     Numeric(
+                                         U8,
+                                     ),
+                                 ),
+                             ),
+                             (
+                                 "my_bool",
+                                 Base(
+                                     Bool,
+                                 ),
+                             ),
+                             (
+                                 "my_addr",
+                                 Base(
+                                     Address,
+                                 ),
+                             ),
+                         ],
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "set_my_addrs",
+                 params: [
+                     (
+                         "my_addrs",
+                         Array(
+                             Array {
+                                 size: 5,
+                                 inner: Address,
+                             },
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Unit,
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "set_my_bool",
+                 params: [
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Unit,
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "set_my_bytes",
+                 params: [
+                     (
+                         "my_bytes",
+                         Array(
+                             Array {
+                                 size: 100,
+                                 inner: Byte,
+                             },
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Unit,
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "set_my_string",
+                 params: [
+                     (
+                         "my_string",
+                         String(
+                             FeString {
+                                 max_size: 10,
+                             },
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Unit,
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "set_my_u128",
+                 params: [
+                     (
+                         "my_u128",
+                         Base(
+                             Numeric(
+                                 U128,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Unit,
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "set_my_u8s",
+                 params: [
+                     (
+                         "my_u8s",
+                         Array(
+                             Array {
+                                 size: 255,
+                                 inner: Numeric(
+                                     U8,
+                                 ),
+                             },
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Unit,
+                 ),
+             },
+         ],
+         init_function: None,
+         events: [
+             EventDef {
+                 name: "MyEvent",
+                 topic: "0x5291dba7533bac99b9fabd83c9c340b948738e6c3f0a73f61ff521c7b1a30b39",
+                 fields: [
+                     (
+                         "my_addrs",
+                         Array(
+                             Array {
+                                 size: 5,
+                                 inner: Address,
+                             },
+                         ),
+                     ),
+                     (
+                         "my_u128",
+                         Base(
+                             Numeric(
+                                 U128,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_string",
+                         String(
+                             FeString {
+                                 max_size: 10,
+                             },
+                         ),
+                     ),
+                     (
+                         "my_u8s",
+                         Array(
+                             Array {
+                                 size: 255,
+                                 inner: Numeric(
+                                     U8,
+                                 ),
+                             },
+                         ),
+                     ),
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_bytes",
+                         Array(
+                             Array {
+                                 size: 100,
+                                 inner: Byte,
+                             },
+                         ),
+                     ),
+                 ],
+                 indexed_fields: [],
+             },
+         ],
+         structs: [
+             Struct {
+                 name: "MyStruct",
+                 fields: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_num2",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_addr",
+                         Base(
+                             Address,
+                         ),
+                     ),
+                 ],
+             },
+         ],
+         external_contracts: [],
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:27:16
+   │
+27 │         return self.my_addrs.to_mem()
+   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │
+   = ValueAttribute
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:39:16
+   │
+39 │         return self.my_string.to_mem()
+   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │
+   = ValueAttribute
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:45:16
+   │
+45 │         return self.my_u8s.to_mem()
+   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │
+   = ValueAttribute
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:57:16
+   │
+57 │         return self.my_bytes.to_mem()
+   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │
+   = ValueAttribute
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:60:16
+   │
+60 │         return MyStruct(
+   │                ^^^^^^^^ attributes hash: 1887544806731584819
+   │
+   = TypeConstructor {
+         typ: Struct(
+             Struct {
+                 name: "MyStruct",
+                 fields: [
+                     (
+                         "my_num",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_num2",
+                         Base(
+                             Numeric(
+                                 U8,
+                             ),
+                         ),
+                     ),
+                     (
+                         "my_bool",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                     (
+                         "my_addr",
+                         Base(
+                             Address,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:62:21
+   │
+62 │             my_num2=u8(26),
+   │                     ^^ attributes hash: 7477807812820783771
+   │
+   = TypeConstructor {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:64:21
+   │
+64 │             my_addr=address(123456)
+   │                     ^^^^^^^ attributes hash: 6114858510168753394
+   │
+   = TypeConstructor {
+         typ: Base(
+             Address,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:69:29
+   │
+69 │         my_struct.my_num2 = u8(42)
+   │                             ^^ attributes hash: 7477807812820783771
+   │
+   = TypeConstructor {
+         typ: Base(
+             Numeric(
+                 U8,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:71:29
+   │
+71 │         my_struct.my_addr = address(9999)
+   │                             ^^^^^^^ attributes hash: 6114858510168753394
+   │
+   = TypeConstructor {
+         typ: Base(
+             Address,
+         ),
+     }
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:76:22
+   │
+76 │             my_addrs=self.my_addrs.to_mem(),
+   │                      ^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │
+   = ValueAttribute
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:78:23
+   │
+78 │             my_string=self.my_string.to_mem(),
+   │                       ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │
+   = ValueAttribute
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:79:20
+   │
+79 │             my_u8s=self.my_u8s.to_mem(),
+   │                    ^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │
+   = ValueAttribute
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:81:22
+   │
+81 │             my_bytes=self.my_bytes.to_mem()
+   │                      ^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │
+   = ValueAttribute
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:15:5
+   │  
+15 │ ╭     event MyEvent:
+16 │ │         my_addrs: address[5]
+17 │ │         my_u128: u128
+18 │ │         my_string: String<10>
+19 │ │         my_u8s: u8[255]
+20 │ │         my_bool: bool
+21 │ │         my_bytes: bytes[100]
+   │ ╰────────────────────────────^ attributes hash: 229795011819765305
+   │  
+   = EventDef {
+         name: "MyEvent",
+         topic: "0x5291dba7533bac99b9fabd83c9c340b948738e6c3f0a73f61ff521c7b1a30b39",
+         fields: [
+             (
+                 "my_addrs",
+                 Array(
+                     Array {
+                         size: 5,
+                         inner: Address,
+                     },
+                 ),
+             ),
+             (
+                 "my_u128",
+                 Base(
+                     Numeric(
+                         U128,
+                     ),
+                 ),
+             ),
+             (
+                 "my_string",
+                 String(
+                     FeString {
+                         max_size: 10,
+                     },
+                 ),
+             ),
+             (
+                 "my_u8s",
+                 Array(
+                     Array {
+                         size: 255,
+                         inner: Numeric(
+                             U8,
+                         ),
+                     },
+                 ),
+             ),
+             (
+                 "my_bool",
+                 Base(
+                     Bool,
+                 ),
+             ),
+             (
+                 "my_bytes",
+                 Array(
+                     Array {
+                         size: 100,
+                         inner: Byte,
+                     },
+                 ),
+             ),
+         ],
+         indexed_fields: [],
+     }
+
+note: 
+  ┌─ stress/abi_encoding_stress.fe:2:13
+  │
+2 │     my_num: u256
+  │             ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ stress/abi_encoding_stress.fe:3:14
+  │
+3 │     my_num2: u8
+  │              ^^ attributes hash: 1872326638020472004
+  │
+  = Base(
+        Numeric(
+            U8,
+        ),
+    )
+
+note: 
+  ┌─ stress/abi_encoding_stress.fe:4:14
+  │
+4 │     my_bool: bool
+  │              ^^^^ attributes hash: 8311861578736502650
+  │
+  = Base(
+        Bool,
+    )
+
+note: 
+  ┌─ stress/abi_encoding_stress.fe:5:14
+  │
+5 │     my_addr: address
+  │              ^^^^^^^ attributes hash: 574436082528610497
+  │
+  = Base(
+        Address,
+    )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:16:19
+   │
+16 │         my_addrs: address[5]
+   │                   ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:16:19
+   │
+16 │         my_addrs: address[5]
+   │                   ^^^^^^^^^^ attributes hash: 14952089586677068254
+   │
+   = Array(
+         Array {
+             size: 5,
+             inner: Address,
+         },
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:17:18
+   │
+17 │         my_u128: u128
+   │                  ^^^^ attributes hash: 14909107886776088983
+   │
+   = Base(
+         Numeric(
+             U128,
+         ),
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:18:20
+   │
+18 │         my_string: String<10>
+   │                    ^^^^^^^^^^ attributes hash: 3801988794903197532
+   │
+   = String(
+         FeString {
+             max_size: 10,
+         },
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:19:17
+   │
+19 │         my_u8s: u8[255]
+   │                 ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:19:17
+   │
+19 │         my_u8s: u8[255]
+   │                 ^^^^^^^ attributes hash: 539441492437887696
+   │
+   = Array(
+         Array {
+             size: 255,
+             inner: Numeric(
+                 U8,
+             ),
+         },
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:20:18
+   │
+20 │         my_bool: bool
+   │                  ^^^^ attributes hash: 8311861578736502650
+   │
+   = Base(
+         Bool,
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:21:19
+   │
+21 │         my_bytes: bytes[100]
+   │                   ^^^^^ attributes hash: 16931239362436195516
+   │
+   = Base(
+         Byte,
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:21:19
+   │
+21 │         my_bytes: bytes[100]
+   │                   ^^^^^^^^^^ attributes hash: 5134157185158150929
+   │
+   = Array(
+         Array {
+             size: 100,
+             inner: Byte,
+         },
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:23:36
+   │
+23 │     pub def set_my_addrs(my_addrs: address[5]):
+   │                                    ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:23:36
+   │
+23 │     pub def set_my_addrs(my_addrs: address[5]):
+   │                                    ^^^^^^^^^^ attributes hash: 14952089586677068254
+   │
+   = Array(
+         Array {
+             size: 5,
+             inner: Address,
+         },
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:26:31
+   │
+26 │     pub def get_my_addrs() -> address[5]:
+   │                               ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:26:31
+   │
+26 │     pub def get_my_addrs() -> address[5]:
+   │                               ^^^^^^^^^^ attributes hash: 14952089586677068254
+   │
+   = Array(
+         Array {
+             size: 5,
+             inner: Address,
+         },
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:29:34
+   │
+29 │     pub def set_my_u128(my_u128: u128):
+   │                                  ^^^^ attributes hash: 14909107886776088983
+   │
+   = Base(
+         Numeric(
+             U128,
+         ),
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:32:30
+   │
+32 │     pub def get_my_u128() -> u128:
+   │                              ^^^^ attributes hash: 14909107886776088983
+   │
+   = Base(
+         Numeric(
+             U128,
+         ),
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:35:38
+   │
+35 │     pub def set_my_string(my_string: String<10>):
+   │                                      ^^^^^^^^^^ attributes hash: 3801988794903197532
+   │
+   = String(
+         FeString {
+             max_size: 10,
+         },
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:38:32
+   │
+38 │     pub def get_my_string() -> String<10>:
+   │                                ^^^^^^^^^^ attributes hash: 3801988794903197532
+   │
+   = String(
+         FeString {
+             max_size: 10,
+         },
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:41:32
+   │
+41 │     pub def set_my_u8s(my_u8s: u8[255]):
+   │                                ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:41:32
+   │
+41 │     pub def set_my_u8s(my_u8s: u8[255]):
+   │                                ^^^^^^^ attributes hash: 539441492437887696
+   │
+   = Array(
+         Array {
+             size: 255,
+             inner: Numeric(
+                 U8,
+             ),
+         },
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:44:29
+   │
+44 │     pub def get_my_u8s() -> u8[255]:
+   │                             ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:44:29
+   │
+44 │     pub def get_my_u8s() -> u8[255]:
+   │                             ^^^^^^^ attributes hash: 539441492437887696
+   │
+   = Array(
+         Array {
+             size: 255,
+             inner: Numeric(
+                 U8,
+             ),
+         },
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:47:34
+   │
+47 │     pub def set_my_bool(my_bool: bool):
+   │                                  ^^^^ attributes hash: 8311861578736502650
+   │
+   = Base(
+         Bool,
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:50:30
+   │
+50 │     pub def get_my_bool() -> bool:
+   │                              ^^^^ attributes hash: 8311861578736502650
+   │
+   = Base(
+         Bool,
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:53:36
+   │
+53 │     pub def set_my_bytes(my_bytes: bytes[100]):
+   │                                    ^^^^^ attributes hash: 16931239362436195516
+   │
+   = Base(
+         Byte,
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:53:36
+   │
+53 │     pub def set_my_bytes(my_bytes: bytes[100]):
+   │                                    ^^^^^^^^^^ attributes hash: 5134157185158150929
+   │
+   = Array(
+         Array {
+             size: 100,
+             inner: Byte,
+         },
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:56:31
+   │
+56 │     pub def get_my_bytes() -> bytes[100]:
+   │                               ^^^^^ attributes hash: 16931239362436195516
+   │
+   = Base(
+         Byte,
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:56:31
+   │
+56 │     pub def get_my_bytes() -> bytes[100]:
+   │                               ^^^^^^^^^^ attributes hash: 5134157185158150929
+   │
+   = Array(
+         Array {
+             size: 100,
+             inner: Byte,
+         },
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:59:32
+   │
+59 │     pub def get_my_struct() -> MyStruct:
+   │                                ^^^^^^^^ attributes hash: 16989165584754515703
+   │
+   = Struct(
+         Struct {
+             name: "MyStruct",
+             fields: [
+                 (
+                     "my_num",
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 ),
+                 (
+                     "my_num2",
+                     Base(
+                         Numeric(
+                             U8,
+                         ),
+                     ),
+                 ),
+                 (
+                     "my_bool",
+                     Base(
+                         Bool,
+                     ),
+                 ),
+                 (
+                     "my_addr",
+                     Base(
+                         Address,
+                     ),
+                 ),
+             ],
+         },
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:67:38
+   │
+67 │     pub def mod_my_struct(my_struct: MyStruct) -> MyStruct:
+   │                                      ^^^^^^^^ attributes hash: 16989165584754515703
+   │
+   = Struct(
+         Struct {
+             name: "MyStruct",
+             fields: [
+                 (
+                     "my_num",
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 ),
+                 (
+                     "my_num2",
+                     Base(
+                         Numeric(
+                             U8,
+                         ),
+                     ),
+                 ),
+                 (
+                     "my_bool",
+                     Base(
+                         Bool,
+                     ),
+                 ),
+                 (
+                     "my_addr",
+                     Base(
+                         Address,
+                     ),
+                 ),
+             ],
+         },
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:67:51
+   │
+67 │     pub def mod_my_struct(my_struct: MyStruct) -> MyStruct:
+   │                                                   ^^^^^^^^ attributes hash: 16989165584754515703
+   │
+   = Struct(
+         Struct {
+             name: "MyStruct",
+             fields: [
+                 (
+                     "my_num",
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 ),
+                 (
+                     "my_num2",
+                     Base(
+                         Numeric(
+                             U8,
+                         ),
+                     ),
+                 ),
+                 (
+                     "my_bool",
+                     Base(
+                         Bool,
+                     ),
+                 ),
+                 (
+                     "my_addr",
+                     Base(
+                         Address,
+                     ),
+                 ),
+             ],
+         },
+     )
+
+note: 
+  ┌─ stress/abi_encoding_stress.fe:8:15
+  │
+8 │     my_addrs: address[5]
+  │               ^^^^^^^ attributes hash: 574436082528610497
+  │
+  = Base(
+        Address,
+    )
+
+note: 
+  ┌─ stress/abi_encoding_stress.fe:8:15
+  │
+8 │     my_addrs: address[5]
+  │               ^^^^^^^^^^ attributes hash: 14952089586677068254
+  │
+  = Array(
+        Array {
+            size: 5,
+            inner: Address,
+        },
+    )
+
+note: 
+  ┌─ stress/abi_encoding_stress.fe:9:14
+  │
+9 │     my_u128: u128
+  │              ^^^^ attributes hash: 14909107886776088983
+  │
+  = Base(
+        Numeric(
+            U128,
+        ),
+    )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:10:16
+   │
+10 │     my_string: String<10>
+   │                ^^^^^^^^^^ attributes hash: 3801988794903197532
+   │
+   = String(
+         FeString {
+             max_size: 10,
+         },
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:11:13
+   │
+11 │     my_u8s: u8[255]
+   │             ^^ attributes hash: 1872326638020472004
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:11:13
+   │
+11 │     my_u8s: u8[255]
+   │             ^^^^^^^ attributes hash: 539441492437887696
+   │
+   = Array(
+         Array {
+             size: 255,
+             inner: Numeric(
+                 U8,
+             ),
+         },
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:12:14
+   │
+12 │     my_bool: bool
+   │              ^^^^ attributes hash: 8311861578736502650
+   │
+   = Base(
+         Bool,
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:13:15
+   │
+13 │     my_bytes: bytes[100]
+   │               ^^^^^ attributes hash: 16931239362436195516
+   │
+   = Base(
+         Byte,
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:13:15
+   │
+13 │     my_bytes: bytes[100]
+   │               ^^^^^^^^^^ attributes hash: 5134157185158150929
+   │
+   = Array(
+         Array {
+             size: 100,
+             inner: Byte,
+         },
+     )
+
+

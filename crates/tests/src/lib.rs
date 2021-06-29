@@ -23,8 +23,6 @@ macro_rules! assert_snapshot_wasm {
 }
 
 #[cfg(test)]
-mod analysis;
-#[cfg(test)]
 mod demo_erc20;
 #[cfg(test)]
 mod demo_guestbook;

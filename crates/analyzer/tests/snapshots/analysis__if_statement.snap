@@ -1,0 +1,209 @@
+---
+source: crates/analyzer/tests/analysis.rs
+expression: "build_snapshot(\"features/if_statement.fe\", &src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "bar",
+                        params: [
+                            (
+                                "input",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+}
+
+note: 
+  ┌─ features/if_statement.fe:4:12
+  │
+4 │         if input > 5:
+  │            ^^^^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/if_statement.fe:4:20
+  │
+4 │         if input > 5:
+  │                    ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/if_statement.fe:4:12
+  │
+4 │         if input > 5:
+  │            ^^^^^^^^^ attributes hash: 10866140763116710699
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Bool,
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/if_statement.fe:5:20
+  │
+5 │             return 1
+  │                    ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/if_statement.fe:7:20
+  │
+7 │             return 0
+  │                    ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/if_statement.fe:3:5
+  │  
+3 │ ╭     pub def bar(input: u256) -> u256:
+4 │ │         if input > 5:
+5 │ │             return 1
+6 │ │         else:
+7 │ │             return 0
+  │ ╰────────────────────^ attributes hash: 7333905096283030004
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "bar",
+        params: [
+            (
+                "input",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+        ],
+        return_type: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/if_statement.fe:1:1
+  │  
+1 │ ╭ contract Foo:
+2 │ │ 
+3 │ │     pub def bar(input: u256) -> u256:
+4 │ │         if input > 5:
+5 │ │             return 1
+6 │ │         else:
+7 │ │             return 0
+  │ ╰────────────────────^ attributes hash: 600014852149833207
+  │  
+  = ContractAttributes {
+        public_functions: [
+            FunctionAttributes {
+                is_public: true,
+                name: "bar",
+                params: [
+                    (
+                        "input",
+                        Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    ),
+                ],
+                return_type: Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            },
+        ],
+        init_function: None,
+        events: [],
+        structs: [],
+        external_contracts: [],
+    }
+
+note: 
+  ┌─ features/if_statement.fe:3:24
+  │
+3 │     pub def bar(input: u256) -> u256:
+  │                        ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/if_statement.fe:3:33
+  │
+3 │     pub def bar(input: u256) -> u256:
+  │                                 ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+

@@ -1,0 +1,280 @@
+---
+source: crates/analyzer/tests/analysis.rs
+expression: "build_snapshot(\"features/return_array.fe\", &src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "bar",
+                        params: [
+                            (
+                                "x",
+                                Base(
+                                    Numeric(
+                                        U256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Array(
+                            Array {
+                                size: 5,
+                                inner: Numeric(
+                                    U256,
+                                ),
+                            },
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+}
+
+note: 
+  ┌─ features/return_array.fe:4:9
+  │
+4 │         my_array[3] = x
+  │         ^^^^^^^^ attributes hash: 9322500749845443226
+  │
+  = ExpressionAttributes {
+        typ: Array(
+            Array {
+                size: 5,
+                inner: Numeric(
+                    U256,
+                ),
+            },
+        ),
+        location: Memory,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/return_array.fe:4:18
+  │
+4 │         my_array[3] = x
+  │                  ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/return_array.fe:4:9
+  │
+4 │         my_array[3] = x
+  │         ^^^^^^^^^^^ attributes hash: 3617588353493611640
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Memory,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/return_array.fe:4:23
+  │
+4 │         my_array[3] = x
+  │                       ^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/return_array.fe:5:16
+  │
+5 │         return my_array
+  │                ^^^^^^^^ attributes hash: 9322500749845443226
+  │
+  = ExpressionAttributes {
+        typ: Array(
+            Array {
+                size: 5,
+                inner: Numeric(
+                    U256,
+                ),
+            },
+        ),
+        location: Memory,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/return_array.fe:2:5
+  │  
+2 │ ╭     pub def bar(x: u256) -> u256[5]:
+3 │ │         my_array: u256[5]
+4 │ │         my_array[3] = x
+5 │ │         return my_array
+  │ ╰───────────────────────^ attributes hash: 3941419229809522806
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "bar",
+        params: [
+            (
+                "x",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+        ],
+        return_type: Array(
+            Array {
+                size: 5,
+                inner: Numeric(
+                    U256,
+                ),
+            },
+        ),
+    }
+
+note: 
+  ┌─ features/return_array.fe:3:9
+  │
+3 │         my_array: u256[5]
+  │         ^^^^^^^^^^^^^^^^^ attributes hash: 12285037458725956106
+  │
+  = Array(
+        Array {
+            size: 5,
+            inner: Numeric(
+                U256,
+            ),
+        },
+    )
+
+note: 
+  ┌─ features/return_array.fe:1:1
+  │  
+1 │ ╭ contract Foo:
+2 │ │     pub def bar(x: u256) -> u256[5]:
+3 │ │         my_array: u256[5]
+4 │ │         my_array[3] = x
+5 │ │         return my_array
+  │ ╰───────────────────────^ attributes hash: 17525689165764501083
+  │  
+  = ContractAttributes {
+        public_functions: [
+            FunctionAttributes {
+                is_public: true,
+                name: "bar",
+                params: [
+                    (
+                        "x",
+                        Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    ),
+                ],
+                return_type: Array(
+                    Array {
+                        size: 5,
+                        inner: Numeric(
+                            U256,
+                        ),
+                    },
+                ),
+            },
+        ],
+        init_function: None,
+        events: [],
+        structs: [],
+        external_contracts: [],
+    }
+
+note: 
+  ┌─ features/return_array.fe:2:20
+  │
+2 │     pub def bar(x: u256) -> u256[5]:
+  │                    ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_array.fe:2:29
+  │
+2 │     pub def bar(x: u256) -> u256[5]:
+  │                             ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_array.fe:2:29
+  │
+2 │     pub def bar(x: u256) -> u256[5]:
+  │                             ^^^^^^^ attributes hash: 12285037458725956106
+  │
+  = Array(
+        Array {
+            size: 5,
+            inner: Numeric(
+                U256,
+            ),
+        },
+    )
+
+note: 
+  ┌─ features/return_array.fe:3:19
+  │
+3 │         my_array: u256[5]
+  │                   ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_array.fe:3:19
+  │
+3 │         my_array: u256[5]
+  │                   ^^^^^^^ attributes hash: 12285037458725956106
+  │
+  = Array(
+        Array {
+            size: 5,
+            inner: Numeric(
+                U256,
+            ),
+        },
+    )
+
+
