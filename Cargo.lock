@@ -712,7 +712,7 @@ dependencies = [
  "fe-parser",
  "hex",
  "insta",
- "num-bigint",
+ "num-bigint 0.3.2",
  "num-traits",
  "rstest",
  "semver 1.0.0",
@@ -744,10 +744,11 @@ dependencies = [
  "fe-analyzer",
  "fe-common",
  "fe-parser",
+ "fe-yulgen",
  "hex",
  "indexmap",
  "maplit",
- "num-bigint",
+ "num-bigint 0.3.2",
  "once_cell",
  "primitive-types 0.9.0",
  "rand 0.7.3",
@@ -757,7 +758,6 @@ dependencies = [
  "serde_json",
  "solc",
  "vec1",
- "yultsur",
 ]
 
 [[package]]
@@ -770,6 +770,7 @@ dependencies = [
  "fe-common",
  "fe-compiler",
  "fe-driver",
+ "fe-yulgen",
  "hex",
  "primitive-types 0.9.0",
  "serde_json",
@@ -791,6 +792,7 @@ dependencies = [
  "fe-compiler-test-utils",
  "fe-lowering",
  "fe-parser",
+ "fe-yulgen",
  "hex",
  "insta",
  "pretty_assertions",
@@ -813,6 +815,7 @@ dependencies = [
  "fe-compiler",
  "fe-lowering",
  "fe-parser",
+ "fe-yulgen",
 ]
 
 [[package]]
@@ -841,6 +844,21 @@ dependencies = [
  "vec1",
  "wasm-bindgen",
  "wasm-bindgen-test",
+]
+
+[[package]]
+name = "fe-yulgen"
+version = "0.6.1-alpha"
+dependencies = [
+ "fe-abi",
+ "fe-analyzer",
+ "fe-common",
+ "fe-lowering",
+ "fe-parser",
+ "indexmap",
+ "maplit",
+ "num-bigint 0.4.0",
+ "yultsur",
 ]
 
 [[package]]
@@ -1310,6 +1328,17 @@ name = "num-bigint"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d0a3d5e207573f948a9e5376662aa743a2ea13f7c50a554d7af443a73fbfeba"
+dependencies = [
+ "autocfg",
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
+name = "num-bigint"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4e0d047c1062aa51e256408c560894e5251f08925980e53cf1aa5bd00eec6512"
 dependencies = [
  "autocfg",
  "num-integer",

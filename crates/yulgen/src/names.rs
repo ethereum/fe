@@ -110,7 +110,7 @@ pub fn struct_getter_call(struct_name: &str, field_name: &str) -> yul::Identifie
 
 #[cfg(test)]
 mod tests {
-    use crate::yul::names::{decode_name, encode_name};
+    use crate::names::{decode_name, encode_name};
     use fe_analyzer::namespace::types::{
         AbiDecodeLocation, Array, Base, FeString, FixedSize, U256,
     };

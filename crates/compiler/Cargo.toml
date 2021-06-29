@@ -16,11 +16,10 @@ fe-abi = {path = "../abi", version = "^0.6.1-alpha"}
 fe-common = {path = "../common", version = "^0.6.1-alpha"}
 fe-parser = {path = "../parser", version = "^0.6.1-alpha"}
 fe-analyzer = {path = "../analyzer", version = "^0.6.1-alpha"}
+fe-yulgen = {path = "../yulgen", version = "^0.6.1-alpha"}
 serde_json = "1.0"
 serde = "1.0"
 hex = "0.4"
-# This fork contains the shorthand macros and some other necessary updates.
-yultsur = { git = "https://github.com/g-r-a-n-t/yultsur"}
 ethabi = "14.0"
 # Optional
 # This fork supports concurrent compilation, which is required for Rust tests.

@@ -1,7 +1,7 @@
 //! Tests for the Fe runtime
 
 #![cfg(feature = "solc-backend")]
-use fe_compiler::yul::runtime::functions;
+use fe_yulgen::runtime::functions;
 use rstest::rstest;
 use yultsur::*;
 

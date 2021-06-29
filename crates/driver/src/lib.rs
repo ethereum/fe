@@ -1,6 +1,5 @@
 use fe_common::files::SourceFileId;
 use fe_compiler::errors::{CompileError, ErrorKind};
-use fe_compiler::yul;
 use fe_parser::parse_file;
 use std::collections::HashMap;
 
@@ -62,7 +61,7 @@ pub fn compile(
         fe_analyzer::analyze(&lowered_fe_module, file_id).expect("failed to analyze lowered AST");
 
     // compile to yul
-    let yul_contracts = yul::compile(&analysis, &lowered_fe_module);
+    let yul_contracts = fe_yulgen::compile(&analysis, &lowered_fe_module);
 
     // compile to bytecode if required
     #[cfg(feature = "solc-backend")]

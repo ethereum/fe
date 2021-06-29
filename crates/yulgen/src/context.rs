@@ -1,4 +1,4 @@
-use crate::yul::AnalyzerContext;
+use crate::AnalyzerContext;
 use indexmap::IndexSet;
 
 // This is contract context, but it's used all over so it has a short name.

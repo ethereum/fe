@@ -1,6 +1,6 @@
-use crate::yul::names;
-use crate::yul::operations::data as data_operations;
-use crate::yul::utils;
+use crate::names;
+use crate::operations::data as data_operations;
+use crate::utils;
 use fe_analyzer::namespace::types::{
     AbiArraySize, AbiDecodeLocation, AbiEncoding, AbiType, AbiUintSize,
 };

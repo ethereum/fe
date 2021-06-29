@@ -1,4 +1,4 @@
-use crate::yul::names;
+use crate::names;
 use fe_analyzer::namespace::types::Struct;
 use yultsur::*;
 
@@ -18,7 +18,7 @@ pub fn get_attribute(
 
 #[cfg(test)]
 mod tests {
-    use crate::yul::operations::structs;
+    use crate::operations::structs;
     use fe_analyzer::namespace::types::{FixedSize, Struct};
     use yultsur::*;
 

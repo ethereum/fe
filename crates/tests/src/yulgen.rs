@@ -1,6 +1,6 @@
 use fe_analyzer::namespace::types::{AbiDecodeLocation, Base, FeString, FixedSize, Struct, U256};
-use fe_compiler::yul::constructor;
-use fe_compiler::yul::runtime::functions::{abi, structs};
+use fe_yulgen::constructor;
+use fe_yulgen::runtime::functions::{abi, structs};
 use insta::assert_display_snapshot;
 use wasm_bindgen_test::wasm_bindgen_test;
 

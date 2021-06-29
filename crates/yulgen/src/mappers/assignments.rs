@@ -1,6 +1,6 @@
-use crate::yul::mappers::expressions;
-use crate::yul::operations::data as data_operations;
-use crate::yul::Context;
+use crate::mappers::expressions;
+use crate::operations::data as data_operations;
+use crate::Context;
 use fe_analyzer::context::Location;
 use fe_analyzer::namespace::types::FixedSize;
 use fe_parser::ast as fe;
@@ -74,7 +74,7 @@ fn expr_as_ident(expr: yul::Expression) -> yul::Identifier {
 #[cfg(test)]
 #[cfg(feature = "fix-context-harness")]
 mod tests {
-    use crate::yul::mappers::assignments::assign;
+    use crate::mappers::assignments::assign;
     use fe_analyzer::namespace::types::{Array, Type, U256};
     use fe_analyzer::test_utils::ContextHarness;
     use fe_analyzer::{Context, ExpressionAttributes, Location};

@@ -1,20 +1,20 @@
 [package]
-name = "fe-driver"
+name = "fe-yulgen"
 version = "0.6.1-alpha"
 authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2018"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/ethereum/fe"
 
-[features]
-# Includes the solidity compiler for Yul -> bytecode compilation.
-solc-backend = ["fe-compiler/solc-backend"]
-
 [dependencies]
 fe-abi = {path = "../abi", version = "^0.6.1-alpha"}
 fe-analyzer = {path = "../analyzer", version = "^0.6.1-alpha"}
 fe-common = {path = "../common", version = "^0.6.1-alpha"}
-fe-compiler = {path = "../compiler", version = "^0.6.1-alpha"}
 fe-lowering = {path = "../lowering", version = "^0.6.1-alpha"}
 fe-parser = {path = "../parser", version = "^0.6.1-alpha"}
-fe-yulgen = {path = "../yulgen", version = "^0.6.1-alpha"}
+indexmap = "1.6.2"
+maplit = "1.0.2"
+num-bigint = "0.4.0"
+
+# This fork contains the shorthand macros and some other necessary updates.
+yultsur = { git = "https://github.com/g-r-a-n-t/yultsur"}

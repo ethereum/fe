@@ -1,6 +1,6 @@
 use fe_abi::utils as abi_utils;
-use crate::yul::names;
-use crate::yul::operations::abi as abi_operations;
+use crate::names;
+use crate::operations::abi as abi_operations;
 use fe_analyzer::context::FunctionAttributes;
 use fe_analyzer::namespace::types::{AbiDecodeLocation, AbiEncoding, FixedSize};
 use yultsur::*;
@@ -79,7 +79,7 @@ fn selection_as_pop_statement(name: &str, params: &[FixedSize]) -> yul::Statemen
 
 #[cfg(test)]
 mod tests {
-    use crate::yul::runtime::abi_dispatcher::selector;
+    use crate::runtime::abi_dispatcher::selector;
     use fe_analyzer::namespace::types::{FixedSize, U256};
 
     #[test]

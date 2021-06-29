@@ -1,4 +1,4 @@
-use crate::yul::operations::abi as abi_operations;
+use crate::operations::abi as abi_operations;
 use fe_analyzer::namespace::types::{AbiDecodeLocation, FixedSize};
 use yultsur::*;
 

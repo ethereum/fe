@@ -1,7 +1,7 @@
-use crate::yul::mappers::{assignments, declarations, expressions};
-use crate::yul::names;
-use crate::yul::operations::data as data_operations;
-use crate::yul::Context;
+use crate::mappers::{assignments, declarations, expressions};
+use crate::names;
+use crate::operations::data as data_operations;
+use crate::Context;
 use fe_analyzer::context::ExpressionAttributes;
 use fe_analyzer::namespace::types::{FeSized, Type};
 use fe_parser::ast as fe;

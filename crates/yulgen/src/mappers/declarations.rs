@@ -1,5 +1,5 @@
-use crate::yul::mappers::expressions;
-use crate::yul::{names, Context};
+use crate::mappers::expressions;
+use crate::{names, Context};
 use fe_analyzer::namespace::types::{FeSized, FixedSize};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
@@ -43,7 +43,7 @@ fn var_decl_name(target: &fe::VarDeclTarget) -> &str {
 #[cfg(test)]
 #[cfg(feature = "fix-context-harness")]
 mod tests {
-    use crate::yul::mappers::declarations::var_decl;
+    use crate::mappers::declarations::var_decl;
     use fe_analyzer::namespace::types::{Array, Base, FixedSize, Type, U256};
     use fe_analyzer::test_utils::ContextHarness;
     use fe_analyzer::{Context, ExpressionAttributes, Location};

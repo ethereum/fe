@@ -1,4 +1,4 @@
-use crate::yul::names;
+use crate::names;
 use fe_analyzer::namespace::types::{FeSized, Struct};
 use yultsur::*;
 

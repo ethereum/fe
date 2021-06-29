@@ -1,5 +1,5 @@
-use crate::yul::mappers::contracts;
-use crate::yul::AnalyzerContext;
+use crate::mappers::contracts;
+use crate::AnalyzerContext;
 use fe_parser::ast as fe;
 use std::collections::HashMap;
 use yultsur::yul;

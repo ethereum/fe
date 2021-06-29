@@ -41,7 +41,7 @@ pub fn ceil_32(n: usize) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use crate::yul::utils::abi_head_offsets;
+    use crate::utils::abi_head_offsets;
     use fe_analyzer::namespace::types::{Array, Base, FeString, FixedSize, U256};
 
     #[test]

@@ -1,6 +1,6 @@
 mod abi_dispatcher;
 pub mod functions;
-use crate::yul::Context;
+use crate::Context;
 use fe_analyzer::context::FunctionAttributes;
 use fe_analyzer::namespace::types::{AbiDecodeLocation, Contract, FixedSize};
 use fe_parser::ast as fe;

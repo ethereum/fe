@@ -1,5 +1,5 @@
-use crate::yul::constants::numeric_min_max;
-use crate::yul::names;
+use crate::constants::numeric_min_max;
+use crate::names;
 use fe_analyzer::namespace::types::Integer;
 use yultsur::*;
 
