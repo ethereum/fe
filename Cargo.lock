@@ -692,6 +692,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "fe-abi"
+version = "0.6.1-alpha"
+dependencies = [
+ "fe-analyzer",
+ "fe-common",
+ "fe-parser",
+ "indexmap",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "fe-analyzer"
 version = "0.6.1-alpha"
 dependencies = [
@@ -728,6 +740,7 @@ dependencies = [
  "ethabi",
  "evm",
  "evm-runtime 0.18.3",
+ "fe-abi",
  "fe-analyzer",
  "fe-common",
  "fe-parser",
@@ -794,6 +807,7 @@ dependencies = [
 name = "fe-driver"
 version = "0.6.1-alpha"
 dependencies = [
+ "fe-abi",
  "fe-analyzer",
  "fe-common",
  "fe-compiler",

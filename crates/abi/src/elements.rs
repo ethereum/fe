@@ -1,4 +1,4 @@
-use crate::errors::CompileError;
+use crate::errors::AbiError;
 use fe_analyzer::context::FunctionAttributes;
 use fe_analyzer::namespace::types::{AbiComponent, AbiEncoding};
 use serde::ser::SerializeSeq;
@@ -34,12 +34,12 @@ impl Contract {
 
 impl Contract {
     /// Serialize the contract into a valid JSON ABI.
-    pub fn json(&self, prettify: bool) -> Result<String, CompileError> {
+    pub fn json(&self, prettify: bool) -> Result<String, AbiError> {
         match prettify {
             true => serde_json::to_string_pretty(self),
             false => serde_json::to_string(self),
         }
-        .map_err(|_| CompileError::static_str("unable to serialize contract to json"))
+        .map_err(|_| AbiError::SerializationFailed)
     }
 }
 
@@ -234,9 +234,7 @@ impl From<FunctionAttributes> for Function {
 
 #[cfg(test)]
 mod tests {
-    use crate::abi::elements::{
-        Contract, Event, EventField, FuncInput, FuncOutput, FuncType, Function,
-    };
+    use crate::elements::{Contract, Event, EventField, FuncInput, FuncOutput, FuncType, Function};
 
     #[test]
     fn contract_json() {

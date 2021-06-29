@@ -1,8 +1,23 @@
 use fe_common::files::SourceFileId;
 use fe_compiler::errors::{CompileError, ErrorKind};
-use fe_compiler::types::{CompiledContract, CompiledModule, NamedContracts};
-use fe_compiler::{abi, yul};
+use fe_compiler::yul;
 use fe_parser::parse_file;
+use std::collections::HashMap;
+
+/// The artifacts of a compiled module.
+pub struct CompiledModule {
+    pub src_ast: String,
+    pub lowered_ast: String,
+    pub contracts: HashMap<String, CompiledContract>,
+}
+
+/// The artifacts of a compiled contract.
+pub struct CompiledContract {
+    pub json_abi: String,
+    pub yul: String,
+    #[cfg(feature = "solc-backend")]
+    pub bytecode: String,
+}
 
 /// Compiles the given Fe source code to all targets.
 ///
@@ -37,7 +52,7 @@ pub fn compile(
     };
 
     // build abi
-    let json_abis = abi::build(&analysis, &fe_module)?;
+    let json_abis = fe_abi::build(&analysis, &fe_module).expect("failed to generate abi");
 
     // lower the AST
     let lowered_fe_module = fe_lowering::lower(&analysis, fe_module.clone());
@@ -84,7 +99,7 @@ pub fn compile(
                 },
             )
         })
-        .collect::<NamedContracts>();
+        .collect::<HashMap<_, _>>();
 
     if errors.is_empty() {
         Ok(CompiledModule {

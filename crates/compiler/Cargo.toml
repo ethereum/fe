@@ -12,6 +12,7 @@ description = "Compiler lib for the Fe language."
 solc-backend = ["solc"]
 
 [dependencies]
+fe-abi = {path = "../abi", version = "^0.6.1-alpha"}
 fe-common = {path = "../common", version = "^0.6.1-alpha"}
 fe-parser = {path = "../parser", version = "^0.6.1-alpha"}
 fe-analyzer = {path = "../analyzer", version = "^0.6.1-alpha"}

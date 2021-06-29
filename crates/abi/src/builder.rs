@@ -1,24 +1,22 @@
-use crate::abi::elements::{Component, Contract, Event, EventField, ModuleAbis};
-use crate::errors::CompileError;
+use crate::elements::{Component, Contract, Event, EventField, ModuleAbis};
+use crate::errors::AbiError;
 use fe_analyzer::context::Context;
 use fe_analyzer::namespace::types::AbiEncoding;
 use fe_parser::ast as fe;
 
 /// Parse a map of contract ABIs from the input `module`.
-pub fn module(context: &Context, module: &fe::Module) -> Result<ModuleAbis, CompileError> {
+pub fn module(context: &Context, module: &fe::Module) -> Result<ModuleAbis, AbiError> {
     module
         .body
         .iter()
         .try_fold(ModuleAbis::new(), |mut abis, stmt| {
             if let fe::ModuleStmt::Contract(contract) = &stmt {
+                let name = &contract.kind.name.kind;
                 if abis
-                    .insert(
-                        contract.kind.name.kind.to_string(),
-                        contract_def(context, &contract.kind.body)?,
-                    )
+                    .insert(name.to_string(), contract_def(context, &contract.kind.body))
                     .is_some()
                 {
-                    return Err(CompileError::static_str("duplicate contract definition"));
+                    return Err(AbiError::DuplicateContractDefinition(name.to_string()));
                 }
             };
 
@@ -26,8 +24,8 @@ pub fn module(context: &Context, module: &fe::Module) -> Result<ModuleAbis, Comp
         })
 }
 
-fn contract_def(context: &Context, body: &[fe::ContractStmt]) -> Result<Contract, CompileError> {
-    body.iter().try_fold(Contract::new(), |mut contract, stmt| {
+fn contract_def(context: &Context, body: &[fe::ContractStmt]) -> Contract {
+    body.iter().fold(Contract::new(), |mut contract, stmt| {
         match &stmt {
             fe::ContractStmt::Function(def) => {
                 let attributes = context
@@ -66,13 +64,13 @@ fn contract_def(context: &Context, body: &[fe::ContractStmt]) -> Result<Contract
             }
         }
 
-        Ok(contract)
+        contract
     })
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::abi::builder;
+    use crate::builder;
     use fe_common::files::SourceFileId;
     use fe_parser::{grammar::module::parse_module, parse_code_chunk};
 

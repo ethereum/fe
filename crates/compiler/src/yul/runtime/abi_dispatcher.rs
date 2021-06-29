@@ -1,4 +1,4 @@
-use crate::abi::utils as abi_utils;
+use fe_abi::utils as abi_utils;
 use crate::yul::names;
 use crate::yul::operations::abi as abi_operations;
 use fe_analyzer::context::FunctionAttributes;
