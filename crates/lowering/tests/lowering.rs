@@ -1,13 +1,13 @@
 use fe_analyzer::context::Context;
 use fe_analyzer::errors::AnalyzerError;
-use fe_parser::ast as fe;
-use regex::Regex;
-use rstest::rstest;
-
 use fe_common::assert_strings_eq;
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::files::{FileStore, SourceFileId};
 use fe_common::utils::ron::{to_ron_string_pretty, Diff};
+use fe_parser::ast as fe;
+use regex::Regex;
+use rstest::rstest;
+use wasm_bindgen_test::wasm_bindgen_test;
 
 fn lower_file(src: &str, id: SourceFileId, files: &FileStore) -> fe::Module {
     let fe_module = parse_file(src, id, files);
@@ -54,6 +54,7 @@ fn replace_spans(input: String) -> String {
     case("type_alias_tuple")
 //    case("array_tuple") // TODO: analysis fails on "arrays can only hold primitive types"
 )]
+#[wasm_bindgen_test]
 fn test_lowering(fixture: &str) {
     let mut files = FileStore::new();
 

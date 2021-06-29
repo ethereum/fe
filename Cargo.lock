@@ -729,7 +729,6 @@ dependencies = [
  "pretty_assertions",
  "primitive-types",
  "rand 0.7.3",
- "regex",
  "rstest",
  "stringreader",
  "wasm-bindgen-test",
@@ -756,7 +755,11 @@ dependencies = [
  "fe-analyzer",
  "fe-common",
  "fe-parser",
+ "fe-test-files",
  "indexmap",
+ "regex",
+ "rstest",
+ "wasm-bindgen-test",
 ]
 
 [[package]]
