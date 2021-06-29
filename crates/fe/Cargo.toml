@@ -1,0 +1,23 @@
+[package]
+authors = ["David Sanders <david@ethereum.org>"]
+categories = ["cryptography::cryptocurrencies", "command-line-utilities", "development-tools"]
+description = "An implementation of the Fe smart contract language"
+edition = "2018"
+keywords = ["ethereum", "fe", "yul", "smart", "contract", "compiler"]
+license = "Apache-2.0"
+name = "fe"
+readme = "README.md"
+repository = "https://github.com/ethereum/fe"
+version = "0.6.1-alpha"
+
+[features]
+solc-backend = ["fe-compiler/solc-backend"]
+
+[dependencies]
+clap = "2.33.3"
+fe-common = {path = "../common", version = "^0.6.1-alpha"}
+fe-compiler = {path = "../compiler", version = "^0.6.1-alpha"}
+fe-parser = {path = "../parser", version = "^0.6.1-alpha"}
+
+[dev-dependencies]
+cargo-release = "0.13.9"
