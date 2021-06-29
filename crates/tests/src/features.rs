@@ -1231,7 +1231,7 @@ fn self_address() {
     case(2, "add_from_sto", 5, 7),
     case(2, "add_from_mem", 5, 7)
 )]
-fn aug_assign(target: usize, op: &str, value: usize, expected: usize) {
+fn aug_assign(target: u64, op: &str, value: u64, expected: u64) {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, "aug_assign.fe", "Foo", &[]);
         harness.test_function(

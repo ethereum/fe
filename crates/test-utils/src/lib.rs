@@ -519,7 +519,7 @@ fn execute_runtime_functions(executor: &mut Executor, runtime: &Runtime) -> (Exi
 }
 
 #[allow(dead_code)]
-pub fn uint_token(n: usize) -> ethabi::Token {
+pub fn uint_token(n: u64) -> ethabi::Token {
     ethabi::Token::Uint(U256::from(n))
 }
 
@@ -529,7 +529,7 @@ pub fn uint_token_from_dec_str(val: &str) -> ethabi::Token {
 }
 
 #[allow(dead_code)]
-pub fn int_token(val: isize) -> ethabi::Token {
+pub fn int_token(val: i64) -> ethabi::Token {
     ethabi::Token::Int(to_2s_complement(val))
 }
 
@@ -573,7 +573,7 @@ pub fn bytes32_token(val: &str) -> ethabi::Token {
 }
 
 #[allow(dead_code)]
-pub fn u256_array_token(v: &[usize]) -> ethabi::Token {
+pub fn u256_array_token(v: &[u64]) -> ethabi::Token {
     ethabi::Token::FixedArray(v.iter().map(|n| uint_token(*n)).collect())
 }
 
@@ -588,8 +588,8 @@ pub fn tuple_token(tokens: &[ethabi::Token]) -> ethabi::Token {
 }
 
 #[allow(dead_code)]
-pub fn to_2s_complement(val: isize) -> U256 {
-    // Since this API takes an `isize` we can be sure that the min and max values
+pub fn to_2s_complement(val: i64) -> U256 {
+    // Since this API takes an `i64` we can be sure that the min and max values
     // will never be above what fits the `I256` type which has the same capacity
     // as U256 but splits it so that one half covers numbers above 0 and the
     // other half covers the numbers below 0.
@@ -614,7 +614,7 @@ pub fn get_2s_complement_for_negative(assume_negative: U256) -> U256 {
 
 #[allow(dead_code)]
 pub struct NumericAbiTokenBounds {
-    pub size: usize,
+    pub size: u64,
     pub u_min: ethabi::Token,
     pub i_min: ethabi::Token,
     pub u_max: ethabi::Token,
