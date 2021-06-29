@@ -1,5 +1,5 @@
 [package]
-authors = ["SatyamAgrawal <satyam0499@gmail.com>"]
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2018"
 license = "Apache-2.0"
 name = "fe-compiler-tests"

@@ -1,5 +1,5 @@
 [package]
-authors = ["David Sanders <david@ethereum.org>"]
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 categories = ["cryptography::cryptocurrencies", "command-line-utilities", "development-tools"]
 description = "An implementation of the Fe smart contract language"
 edition = "2018"

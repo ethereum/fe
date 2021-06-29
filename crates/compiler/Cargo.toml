@@ -1,7 +1,7 @@
 [package]
 name = "fe-compiler"
 version = "0.6.1-alpha"
-authors = ["Grant Wuerker <gwuerker@gmail.com>"]
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2018"
 license = "Apache-2.0"
 repository = "https://github.com/ethereum/fe"

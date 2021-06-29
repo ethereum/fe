@@ -1,7 +1,7 @@
 [package]
 name = "fe-parser"
 version = "0.6.1-alpha"
-authors = ["David Sanders <david@ethereum.org>"]
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2018"
 license = "Apache-2.0"
 repository = "https://github.com/ethereum/fe"
