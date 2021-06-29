@@ -56,7 +56,7 @@ fn func_stmt(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement
         fe::FuncStmt::Pass => statement! { pop(0) },
         fe::FuncStmt::Break => break_statement(context, stmt),
         fe::FuncStmt::Continue => continue_statement(context, stmt),
-        fe::FuncStmt::Revert => revert(stmt),
+        fe::FuncStmt::Revert { .. } => revert(stmt),
     }
 }
 
@@ -119,7 +119,7 @@ fn expr(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
 }
 
 fn revert(stmt: &Node<fe::FuncStmt>) -> yul::Statement {
-    if let fe::FuncStmt::Revert = &stmt.kind {
+    if let fe::FuncStmt::Revert { .. } = &stmt.kind {
         return statement! { revert(0, 0) };
     }
 

@@ -233,7 +233,7 @@ fn func_stmt(
         Assert { .. } => assert(scope, context, stmt),
         Expr { .. } => expr(scope, context, stmt),
         Pass => Ok(()),
-        Revert => Ok(()),
+        Revert { .. } => Ok(()),
         Break | Continue => {
             loop_flow_statement(scope, context, stmt);
             Ok(())

@@ -111,7 +111,7 @@ fn func_stmt(context: &mut Context, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::Fu
         fe::FuncStmt::Pass => vec![stmt.kind],
         fe::FuncStmt::Break => vec![stmt.kind],
         fe::FuncStmt::Continue => vec![stmt.kind],
-        fe::FuncStmt::Revert => vec![stmt.kind],
+        fe::FuncStmt::Revert { .. } => vec![stmt.kind],
     };
     let span = stmt.span;
 

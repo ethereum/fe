@@ -105,7 +105,10 @@ test_parse! { stmt_emit2, functions::parse_stmt, "emit Foo(1, 2, x=y)" }
 test_parse! { stmt_return1, functions::parse_stmt, "return" }
 test_parse! { stmt_return2, functions::parse_stmt, "return x" }
 test_parse! { stmt_return3, functions::parse_stmt, "return not x" }
-test_parse! { stmt_revert, functions::parse_stmt, "revert" }
+test_parse! { stmt_revert1, functions::parse_stmt, "revert" }
+
+test_parse! { stmt_revert2, functions::parse_stmt, "revert something" }
+
 test_parse! { stmt_if, functions::parse_stmt, "if a:\n b" }
 test_parse! { stmt_if2, functions::parse_stmt, "if a:\n b \nelif c:\n d \nelif e: \n f \nelse:\n g" }
 test_parse! { stmt_while, functions::parse_stmt, "while a > 5:\n a -= 1" }

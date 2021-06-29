@@ -4,7 +4,9 @@ expression: "ast_string(stringify!(stmt_revert), functions::parse_stmt, \"revert
 
 ---
 Node(
-  kind: Revert,
+  kind: Revert(
+    error: None,
+  ),
   span: Span(
     start: 0,
     end: 6,

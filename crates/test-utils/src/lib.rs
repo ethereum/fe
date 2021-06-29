@@ -1,9 +1,9 @@
 use evm_runtime::{ExitReason, Handler};
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::files::FileStore;
+use fe_common::utils::keccak;
 use fe_driver as driver;
 use fe_yulgen::runtime::functions;
-use fe_common::utils::keccak;
 use primitive_types::{H160, H256, U256};
 use std::collections::BTreeMap;
 use std::str::FromStr;

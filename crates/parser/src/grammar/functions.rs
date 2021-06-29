@@ -186,7 +186,6 @@ pub fn parse_single_word_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
         TokenKind::Continue => FuncStmt::Continue,
         TokenKind::Break => FuncStmt::Break,
         TokenKind::Pass => FuncStmt::Pass,
-        TokenKind::Revert => FuncStmt::Revert,
         _ => panic!(),
     };
     Ok(Node::new(stmt, tok.span))
@@ -203,7 +202,8 @@ pub fn parse_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
         While => parse_while_stmt(par),
         Return => parse_return_stmt(par),
         Assert => parse_assert_stmt(par),
-        Continue | Break | Pass | Revert => parse_single_word_stmt(par),
+        Revert => parse_revert_stmt(par),
+        Continue | Break | Pass => parse_single_word_stmt(par),
         Emit => parse_emit_statement(par),
         _ => parse_expr_stmt(par),
     }
@@ -404,6 +404,21 @@ pub fn parse_assert_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     par.expect_newline("assert statement")?;
     let span = assert_tok.span + test.span + msg.as_ref();
     Ok(Node::new(FuncStmt::Assert { test, msg }, span))
+}
+
+/// Parse a `revert` statement.
+///
+/// # Panics
+/// Panics if the next token isn't `revert`.
+pub fn parse_revert_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
+    let revert_tok = par.assert(TokenKind::Revert);
+    let error = match par.peek() {
+        None | Some(TokenKind::Newline) => None,
+        Some(_) => Some(parse_expr(par)?),
+    };
+    par.expect_newline("revert statement")?;
+    let span = revert_tok.span + error.as_ref();
+    Ok(Node::new(FuncStmt::Revert { error }, span))
 }
 
 /// Parse an `emit` statement
