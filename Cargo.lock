@@ -687,6 +687,7 @@ dependencies = [
  "clap",
  "fe-common",
  "fe-compiler",
+ "fe-driver",
  "fe-parser",
 ]
 
@@ -755,6 +756,7 @@ dependencies = [
  "evm-runtime 0.26.0",
  "fe-common",
  "fe-compiler",
+ "fe-driver",
  "hex",
  "primitive-types 0.9.0",
  "serde_json",
@@ -785,6 +787,16 @@ dependencies = [
  "stringreader",
  "wasm-bindgen-test",
  "yultsur",
+]
+
+[[package]]
+name = "fe-driver"
+version = "0.6.1-alpha"
+dependencies = [
+ "fe-analyzer",
+ "fe-common",
+ "fe-compiler",
+ "fe-parser",
 ]
 
 [[package]]

@@ -5,6 +5,7 @@ use fe_common::diagnostics::print_diagnostics;
 use fe_common::files::{FileStore, SourceFileId};
 use fe_compiler as compiler;
 use fe_compiler::yul::runtime::functions;
+use fe_driver as driver;
 use primitive_types::{H160, H256, U256};
 use std::collections::BTreeMap;
 use std::fs;
@@ -227,7 +228,7 @@ pub fn deploy_contract(
         .load_file(&fixture)
         .expect("unable to read fixture file");
 
-    let compiled_module = match compiler::compile(&src, id, true, true) {
+    let compiled_module = match driver::compile(&src, id, true, true) {
         Ok(module) => module,
         Err(error) => {
             print_compiler_errors(error, &files);
@@ -391,8 +392,7 @@ pub fn compile_solidity_contract(
 #[allow(dead_code)]
 pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
     let (src, id) = read_fixture(&fixture);
-    let compiled_module =
-        compiler::compile(&src, id, true, true).expect("failed to compile module");
+    let compiled_module = driver::compile(&src, id, true, true).expect("failed to compile module");
     let compiled_contract = compiled_module
         .contracts
         .get(contract_name)

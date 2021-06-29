@@ -17,6 +17,7 @@ solc-backend = ["fe-compiler/solc-backend"]
 clap = "2.33.3"
 fe-common = {path = "../common", version = "^0.6.1-alpha"}
 fe-compiler = {path = "../compiler", version = "^0.6.1-alpha"}
+fe-driver = {path = "../driver", version = "^0.6.1-alpha"}
 fe-parser = {path = "../parser", version = "^0.6.1-alpha"}
 
 [dev-dependencies]

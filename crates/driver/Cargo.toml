@@ -1,0 +1,17 @@
+[package]
+name = "fe-driver"
+version = "0.6.1-alpha"
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
+edition = "2018"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/ethereum/fe"
+
+[features]
+# Includes the solidity compiler for Yul -> bytecode compilation.
+solc-backend = ["fe-compiler/solc-backend"]
+
+[dependencies]
+fe-common = {path = "../common", version = "^0.6.1-alpha"}
+fe-compiler = {path = "../compiler", version = "^0.6.1-alpha"}
+fe-parser = {path = "../parser", version = "^0.6.1-alpha"}
+fe-analyzer = {path = "../analyzer", version = "^0.6.1-alpha"}

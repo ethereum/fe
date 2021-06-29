@@ -178,7 +178,7 @@ pub fn main() {
     }
     let (content, id) = file.unwrap();
 
-    let compiled_module = match fe_compiler::compile(&content, id, with_bytecode, optimize) {
+    let compiled_module = match fe_driver::compile(&content, id, with_bytecode, optimize) {
         Ok(module) => module,
         Err(error) => {
             eprintln!("Unable to compile {}.", input_file);
