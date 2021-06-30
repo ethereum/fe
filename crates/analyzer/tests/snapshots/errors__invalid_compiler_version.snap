@@ -1,0 +1,14 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: The current compiler version 0.6.1-alpha doesn't match the specified requirement
+  ┌─ compile_errors/invalid_compiler_version.fe:1:8
+  │
+1 │ pragma <=0.1.0
+  │        ^^^^^^^ The specified version requirement
+  │
+  = Note: Use `pragma 0.6.1-alpha` to make the code compile
+
+

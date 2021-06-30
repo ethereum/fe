@@ -1,0 +1,131 @@
+---
+source: crates/analyzer/tests/analysis.rs
+expression: "build_snapshot(\"features/return_u128_cast.fe\", &src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "bar",
+                        params: [],
+                        return_type: Base(
+                            Numeric(
+                                U128,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+}
+
+note: 
+  ┌─ features/return_u128_cast.fe:3:21
+  │
+3 │         return u128(42)
+  │                     ^^ attributes hash: 9341420026351674595
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U128,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/return_u128_cast.fe:3:16
+  │
+3 │         return u128(42)
+  │                ^^^^^^^^ attributes hash: 9341420026351674595
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U128,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/return_u128_cast.fe:2:5
+  │  
+2 │ ╭     pub def bar() -> u128:
+3 │ │         return u128(42)
+  │ ╰───────────────────────^ attributes hash: 13068679910868584521
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "bar",
+        params: [],
+        return_type: Base(
+            Numeric(
+                U128,
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/return_u128_cast.fe:1:1
+  │  
+1 │ ╭ contract Foo:
+2 │ │     pub def bar() -> u128:
+3 │ │         return u128(42)
+  │ ╰───────────────────────^ attributes hash: 10459027998872172122
+  │  
+  = ContractAttributes {
+        public_functions: [
+            FunctionAttributes {
+                is_public: true,
+                name: "bar",
+                params: [],
+                return_type: Base(
+                    Numeric(
+                        U128,
+                    ),
+                ),
+            },
+        ],
+        init_function: None,
+        events: [],
+        structs: [],
+        external_contracts: [],
+    }
+
+note: 
+  ┌─ features/return_u128_cast.fe:3:16
+  │
+3 │         return u128(42)
+  │                ^^^^ attributes hash: 1275551073775359159
+  │
+  = TypeConstructor {
+        typ: Base(
+            Numeric(
+                U128,
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/return_u128_cast.fe:2:22
+  │
+2 │     pub def bar() -> u128:
+  │                      ^^^^ attributes hash: 14909107886776088983
+  │
+  = Base(
+        Numeric(
+            U128,
+        ),
+    )
+
+

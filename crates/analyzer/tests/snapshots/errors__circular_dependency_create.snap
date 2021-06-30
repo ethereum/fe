@@ -1,0 +1,14 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: `Foo.create(...)` called within `Foo` creates an illegal circular dependency
+  ┌─ compile_errors/circular_dependency_create.fe:3:20
+  │
+3 │         foo: Foo = Foo.create(0)
+  │                    ^^^^^^^^^^ Contract creation
+  │
+  = Note: Consider using a dedicated factory contract to create instances of `Foo`
+
+

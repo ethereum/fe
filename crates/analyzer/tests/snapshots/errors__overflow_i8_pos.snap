@@ -1,0 +1,12 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: literal out of range for `i8`
+  ┌─ [snippet]:3:11
+  │
+3 │   x: i8 = 128
+  │           ^^^ does not fit into type `i8`
+
+

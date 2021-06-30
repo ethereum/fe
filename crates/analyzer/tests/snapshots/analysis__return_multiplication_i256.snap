@@ -1,0 +1,208 @@
+---
+source: crates/analyzer/tests/analysis.rs
+expression: "build_snapshot(\"features/return_multiplication_i256.fe\", &src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "bar",
+                        params: [
+                            (
+                                "x",
+                                Base(
+                                    Numeric(
+                                        I256,
+                                    ),
+                                ),
+                            ),
+                            (
+                                "y",
+                                Base(
+                                    Numeric(
+                                        I256,
+                                    ),
+                                ),
+                            ),
+                        ],
+                        return_type: Base(
+                            Numeric(
+                                I256,
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+}
+
+note: 
+  ┌─ features/return_multiplication_i256.fe:3:16
+  │
+3 │         return x * y
+  │                ^ attributes hash: 17351186385905986417
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                I256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/return_multiplication_i256.fe:3:20
+  │
+3 │         return x * y
+  │                    ^ attributes hash: 17351186385905986417
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                I256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/return_multiplication_i256.fe:3:16
+  │
+3 │         return x * y
+  │                ^^^^^ attributes hash: 17351186385905986417
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                I256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/return_multiplication_i256.fe:2:5
+  │  
+2 │ ╭     pub def bar(x: i256, y: i256) -> i256:
+3 │ │         return x * y
+  │ ╰────────────────────^ attributes hash: 10391370878491779741
+  │  
+  = FunctionAttributes {
+        is_public: true,
+        name: "bar",
+        params: [
+            (
+                "x",
+                Base(
+                    Numeric(
+                        I256,
+                    ),
+                ),
+            ),
+            (
+                "y",
+                Base(
+                    Numeric(
+                        I256,
+                    ),
+                ),
+            ),
+        ],
+        return_type: Base(
+            Numeric(
+                I256,
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/return_multiplication_i256.fe:1:1
+  │  
+1 │ ╭ contract Foo:
+2 │ │     pub def bar(x: i256, y: i256) -> i256:
+3 │ │         return x * y
+  │ ╰────────────────────^ attributes hash: 758579549648349162
+  │  
+  = ContractAttributes {
+        public_functions: [
+            FunctionAttributes {
+                is_public: true,
+                name: "bar",
+                params: [
+                    (
+                        "x",
+                        Base(
+                            Numeric(
+                                I256,
+                            ),
+                        ),
+                    ),
+                    (
+                        "y",
+                        Base(
+                            Numeric(
+                                I256,
+                            ),
+                        ),
+                    ),
+                ],
+                return_type: Base(
+                    Numeric(
+                        I256,
+                    ),
+                ),
+            },
+        ],
+        init_function: None,
+        events: [],
+        structs: [],
+        external_contracts: [],
+    }
+
+note: 
+  ┌─ features/return_multiplication_i256.fe:2:20
+  │
+2 │     pub def bar(x: i256, y: i256) -> i256:
+  │                    ^^^^ attributes hash: 5923332062417896707
+  │
+  = Base(
+        Numeric(
+            I256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_multiplication_i256.fe:2:29
+  │
+2 │     pub def bar(x: i256, y: i256) -> i256:
+  │                             ^^^^ attributes hash: 5923332062417896707
+  │
+  = Base(
+        Numeric(
+            I256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_multiplication_i256.fe:2:38
+  │
+2 │     pub def bar(x: i256, y: i256) -> i256:
+  │                                      ^^^^ attributes hash: 5923332062417896707
+  │
+  = Base(
+        Numeric(
+            I256,
+        ),
+    )
+
+

@@ -1,0 +1,25 @@
+[package]
+name = "fe-yulgen"
+version = "0.6.1-alpha"
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
+edition = "2018"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/ethereum/fe"
+
+[dependencies]
+fe-abi = {path = "../abi", version = "^0.6.1-alpha"}
+fe-analyzer = {path = "../analyzer", version = "^0.6.1-alpha"}
+fe-common = {path = "../common", version = "^0.6.1-alpha"}
+fe-parser = {path = "../parser", version = "^0.6.1-alpha"}
+indexmap = "1.6.2"
+maplit = "1.0.2"
+num-bigint = "0.4.0"
+
+# This fork contains the shorthand macros and some other necessary updates.
+yultsur = { git = "https://github.com/g-r-a-n-t/yultsur"}
+
+[dev-dependencies]
+insta = "1.7.1"
+test-files = {path = "../test-files", package = "fe-test-files" }
+wasm-bindgen-test = "0.3"
+pretty_assertions = "0.7.2"

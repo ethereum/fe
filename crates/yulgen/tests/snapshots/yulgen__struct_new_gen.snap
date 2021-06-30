@@ -1,0 +1,11 @@
+---
+source: crates/yulgen/tests/yulgen.rs
+expression: "structs::generate_new_fn(&struct_bool_bool())"
+
+---
+function struct_Foo_new(bar, bar2) -> return_val {
+    return_val := alloc(32)
+    mstore(return_val, bar)
+    let bar2_ptr := alloc(32)
+    mstore(bar2_ptr, bar2)
+}

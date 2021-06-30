@@ -1,0 +1,24 @@
+[package]
+name = "fe-analyzer"
+version = "0.6.1-alpha"
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
+edition = "2018"
+license = "Apache-2.0"
+repository = "https://github.com/ethereum/fe"
+
+[dependencies]
+fe-common = {path = "../common", version = "^0.6.1-alpha"}
+fe-parser = {path = "../parser", version = "^0.6.1-alpha"}
+hex = "0.4"
+num-bigint = "0.3.1"
+num-traits = "0.2.14"
+strum = { version = "0.20.0", features = ["derive"] }
+vec1 = "1.8.0"
+semver = "1.0.0"
+
+[dev-dependencies]
+insta = "1.7.1"
+rstest = "0.6.4"
+test-files = {path = "../test-files", package = "fe-test-files" }
+wasm-bindgen-test = "0.3"
+pretty_assertions = "0.7.2"

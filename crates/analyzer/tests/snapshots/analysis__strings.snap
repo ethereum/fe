@@ -1,0 +1,929 @@
+---
+source: crates/analyzer/tests/analysis.rs
+expression: "build_snapshot(\"features/strings.fe\", &src, &context)"
+
+---
+ModuleAttributes {
+    type_defs: {
+        "Foo": Contract(
+            Contract {
+                name: "Foo",
+                functions: [
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "bar",
+                        params: [
+                            (
+                                "s1",
+                                String(
+                                    FeString {
+                                        max_size: 100,
+                                    },
+                                ),
+                            ),
+                            (
+                                "s2",
+                                String(
+                                    FeString {
+                                        max_size: 100,
+                                    },
+                                ),
+                            ),
+                        ],
+                        return_type: String(
+                            FeString {
+                                max_size: 100,
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "return_casted_static_string",
+                        params: [],
+                        return_type: String(
+                            FeString {
+                                max_size: 100,
+                            },
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "return_static_string",
+                        params: [],
+                        return_type: String(
+                            FeString {
+                                max_size: 43,
+                            },
+                        ),
+                    },
+                ],
+            },
+        ),
+    },
+}
+
+note: 
+   ┌─ features/strings.fe:12:22
+   │
+12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
+   │                      ^^ attributes hash: 10420235251610747606
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 26,
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/strings.fe:12:26
+   │
+12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
+   │                          ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/strings.fe:12:29
+   │
+12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
+   │                             ^^ attributes hash: 9569027785754553796
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 42,
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/strings.fe:12:33
+   │
+12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
+   │                                 ^^ attributes hash: 10521411858691425038
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 100,
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/strings.fe:12:37
+   │
+12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
+   │                                     ^ attributes hash: 513065555763557710
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Address,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/strings.fe:12:43
+   │
+12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
+   │                                           ^^^^^^^^^^^^^^^ attributes hash: 15184264815905725710
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 13,
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/strings.fe:12:75
+   │
+12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
+   │                                                                           ^^^^^ attributes hash: 16852372960864427970
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 3,
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/strings.fe:12:63
+   │
+12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
+   │                                                               ^^^^^^^^^^^^^^^^^^ attributes hash: 10521411858691425038
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 100,
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/strings.fe:15:16
+   │
+15 │         return s2
+   │                ^^ attributes hash: 10521411858691425038
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 100,
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/strings.fe:18:16
+   │
+18 │         return "The quick brown fox jumps over the lazy dog"
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 789892328184844625
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 43,
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/strings.fe:21:28
+   │
+21 │         return String<100>("foo")
+   │                            ^^^^^ attributes hash: 16852372960864427970
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 3,
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/strings.fe:21:16
+   │
+21 │         return String<100>("foo")
+   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 10521411858691425038
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 100,
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/strings.fe:12:9
+   │
+12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15379609340024909078
+   │
+   = EventDef {
+         name: "MyEvent",
+         topic: "0x3c1df123f6496961966c7a4f1c9f9d6931ad63ae890874ecf4470db31dfaed78",
+         fields: [
+             (
+                 "s2",
+                 String(
+                     FeString {
+                         max_size: 26,
+                     },
+                 ),
+             ),
+             (
+                 "u",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+             (
+                 "s1",
+                 String(
+                     FeString {
+                         max_size: 42,
+                     },
+                 ),
+             ),
+             (
+                 "s3",
+                 String(
+                     FeString {
+                         max_size: 100,
+                     },
+                 ),
+             ),
+             (
+                 "a",
+                 Base(
+                     Address,
+                 ),
+             ),
+             (
+                 "s4",
+                 String(
+                     FeString {
+                         max_size: 13,
+                     },
+                 ),
+             ),
+             (
+                 "s5",
+                 String(
+                     FeString {
+                         max_size: 100,
+                     },
+                 ),
+             ),
+         ],
+         indexed_fields: [],
+     }
+
+note: 
+   ┌─ features/strings.fe:11:5
+   │  
+11 │ ╭     pub def __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
+12 │ │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
+   │ ╰─────────────────────────────────────────────────────────────────────────────────^ attributes hash: 13981111020481275043
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "__init__",
+         params: [
+             (
+                 "s1",
+                 String(
+                     FeString {
+                         max_size: 42,
+                     },
+                 ),
+             ),
+             (
+                 "a",
+                 Base(
+                     Address,
+                 ),
+             ),
+             (
+                 "s2",
+                 String(
+                     FeString {
+                         max_size: 26,
+                     },
+                 ),
+             ),
+             (
+                 "u",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+             (
+                 "s3",
+                 String(
+                     FeString {
+                         max_size: 100,
+                     },
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Unit,
+         ),
+     }
+
+note: 
+   ┌─ features/strings.fe:14:5
+   │  
+14 │ ╭     pub def bar(s1: String<100>, s2: String<100>) -> String<100>:
+15 │ │         return s2
+   │ ╰─────────────────^ attributes hash: 1310249449051553929
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "bar",
+         params: [
+             (
+                 "s1",
+                 String(
+                     FeString {
+                         max_size: 100,
+                     },
+                 ),
+             ),
+             (
+                 "s2",
+                 String(
+                     FeString {
+                         max_size: 100,
+                     },
+                 ),
+             ),
+         ],
+         return_type: String(
+             FeString {
+                 max_size: 100,
+             },
+         ),
+     }
+
+note: 
+   ┌─ features/strings.fe:17:5
+   │  
+17 │ ╭     pub def return_static_string() -> String<43>:
+18 │ │         return "The quick brown fox jumps over the lazy dog"
+   │ ╰────────────────────────────────────────────────────────────^ attributes hash: 16959256329822525068
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "return_static_string",
+         params: [],
+         return_type: String(
+             FeString {
+                 max_size: 43,
+             },
+         ),
+     }
+
+note: 
+   ┌─ features/strings.fe:20:5
+   │  
+20 │ ╭     pub def return_casted_static_string() -> String<100>:
+21 │ │         return String<100>("foo")
+   │ ╰─────────────────────────────────^ attributes hash: 17563008375114963269
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "return_casted_static_string",
+         params: [],
+         return_type: String(
+             FeString {
+                 max_size: 100,
+             },
+         ),
+     }
+
+note: 
+   ┌─ features/strings.fe:1:1
+   │  
+ 1 │ ╭ contract Foo:
+ 2 │ │     event MyEvent:
+ 3 │ │         s2: String<26>
+ 4 │ │         u: u256
+   · │
+20 │ │     pub def return_casted_static_string() -> String<100>:
+21 │ │         return String<100>("foo")
+   │ ╰─────────────────────────────────^ attributes hash: 4345389285039061508
+   │  
+   = ContractAttributes {
+         public_functions: [
+             FunctionAttributes {
+                 is_public: true,
+                 name: "bar",
+                 params: [
+                     (
+                         "s1",
+                         String(
+                             FeString {
+                                 max_size: 100,
+                             },
+                         ),
+                     ),
+                     (
+                         "s2",
+                         String(
+                             FeString {
+                                 max_size: 100,
+                             },
+                         ),
+                     ),
+                 ],
+                 return_type: String(
+                     FeString {
+                         max_size: 100,
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "return_casted_static_string",
+                 params: [],
+                 return_type: String(
+                     FeString {
+                         max_size: 100,
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "return_static_string",
+                 params: [],
+                 return_type: String(
+                     FeString {
+                         max_size: 43,
+                     },
+                 ),
+             },
+         ],
+         init_function: Some(
+             FunctionAttributes {
+                 is_public: true,
+                 name: "__init__",
+                 params: [
+                     (
+                         "s1",
+                         String(
+                             FeString {
+                                 max_size: 42,
+                             },
+                         ),
+                     ),
+                     (
+                         "a",
+                         Base(
+                             Address,
+                         ),
+                     ),
+                     (
+                         "s2",
+                         String(
+                             FeString {
+                                 max_size: 26,
+                             },
+                         ),
+                     ),
+                     (
+                         "u",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "s3",
+                         String(
+                             FeString {
+                                 max_size: 100,
+                             },
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Unit,
+                 ),
+             },
+         ),
+         events: [
+             EventDef {
+                 name: "MyEvent",
+                 topic: "0x3c1df123f6496961966c7a4f1c9f9d6931ad63ae890874ecf4470db31dfaed78",
+                 fields: [
+                     (
+                         "s2",
+                         String(
+                             FeString {
+                                 max_size: 26,
+                             },
+                         ),
+                     ),
+                     (
+                         "u",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "s1",
+                         String(
+                             FeString {
+                                 max_size: 42,
+                             },
+                         ),
+                     ),
+                     (
+                         "s3",
+                         String(
+                             FeString {
+                                 max_size: 100,
+                             },
+                         ),
+                     ),
+                     (
+                         "a",
+                         Base(
+                             Address,
+                         ),
+                     ),
+                     (
+                         "s4",
+                         String(
+                             FeString {
+                                 max_size: 13,
+                             },
+                         ),
+                     ),
+                     (
+                         "s5",
+                         String(
+                             FeString {
+                                 max_size: 100,
+                             },
+                         ),
+                     ),
+                 ],
+                 indexed_fields: [],
+             },
+         ],
+         structs: [],
+         external_contracts: [],
+     }
+
+note: 
+   ┌─ features/strings.fe:12:63
+   │
+12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
+   │                                                               ^^^^^^ attributes hash: 7215139687200046467
+   │
+   = TypeConstructor {
+         typ: String(
+             FeString {
+                 max_size: 100,
+             },
+         ),
+     }
+
+note: 
+   ┌─ features/strings.fe:21:16
+   │
+21 │         return String<100>("foo")
+   │                ^^^^^^ attributes hash: 7215139687200046467
+   │
+   = TypeConstructor {
+         typ: String(
+             FeString {
+                 max_size: 100,
+             },
+         ),
+     }
+
+note: 
+  ┌─ features/strings.fe:2:5
+  │  
+2 │ ╭     event MyEvent:
+3 │ │         s2: String<26>
+4 │ │         u: u256
+5 │ │         s1: String<42>
+  · │
+8 │ │         s4: String<13>
+9 │ │         s5: String<100>
+  │ ╰───────────────────────^ attributes hash: 15379609340024909078
+  │  
+  = EventDef {
+        name: "MyEvent",
+        topic: "0x3c1df123f6496961966c7a4f1c9f9d6931ad63ae890874ecf4470db31dfaed78",
+        fields: [
+            (
+                "s2",
+                String(
+                    FeString {
+                        max_size: 26,
+                    },
+                ),
+            ),
+            (
+                "u",
+                Base(
+                    Numeric(
+                        U256,
+                    ),
+                ),
+            ),
+            (
+                "s1",
+                String(
+                    FeString {
+                        max_size: 42,
+                    },
+                ),
+            ),
+            (
+                "s3",
+                String(
+                    FeString {
+                        max_size: 100,
+                    },
+                ),
+            ),
+            (
+                "a",
+                Base(
+                    Address,
+                ),
+            ),
+            (
+                "s4",
+                String(
+                    FeString {
+                        max_size: 13,
+                    },
+                ),
+            ),
+            (
+                "s5",
+                String(
+                    FeString {
+                        max_size: 100,
+                    },
+                ),
+            ),
+        ],
+        indexed_fields: [],
+    }
+
+note: 
+  ┌─ features/strings.fe:3:13
+  │
+3 │         s2: String<26>
+  │             ^^^^^^^^^^ attributes hash: 14735093766067758717
+  │
+  = String(
+        FeString {
+            max_size: 26,
+        },
+    )
+
+note: 
+  ┌─ features/strings.fe:4:12
+  │
+4 │         u: u256
+  │            ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/strings.fe:5:13
+  │
+5 │         s1: String<42>
+  │             ^^^^^^^^^^ attributes hash: 12783265608664719061
+  │
+  = String(
+        FeString {
+            max_size: 42,
+        },
+    )
+
+note: 
+  ┌─ features/strings.fe:6:13
+  │
+6 │         s3: String<100>
+  │             ^^^^^^^^^^^ attributes hash: 17803113925034335199
+  │
+  = String(
+        FeString {
+            max_size: 100,
+        },
+    )
+
+note: 
+  ┌─ features/strings.fe:7:12
+  │
+7 │         a: address
+  │            ^^^^^^^ attributes hash: 574436082528610497
+  │
+  = Base(
+        Address,
+    )
+
+note: 
+  ┌─ features/strings.fe:8:13
+  │
+8 │         s4: String<13>
+  │             ^^^^^^^^^^ attributes hash: 2814527799845147426
+  │
+  = String(
+        FeString {
+            max_size: 13,
+        },
+    )
+
+note: 
+  ┌─ features/strings.fe:9:13
+  │
+9 │         s5: String<100>
+  │             ^^^^^^^^^^^ attributes hash: 17803113925034335199
+  │
+  = String(
+        FeString {
+            max_size: 100,
+        },
+    )
+
+note: 
+   ┌─ features/strings.fe:11:26
+   │
+11 │     pub def __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
+   │                          ^^^^^^^^^^ attributes hash: 12783265608664719061
+   │
+   = String(
+         FeString {
+             max_size: 42,
+         },
+     )
+
+note: 
+   ┌─ features/strings.fe:11:41
+   │
+11 │     pub def __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
+   │                                         ^^^^^^^ attributes hash: 574436082528610497
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ features/strings.fe:11:54
+   │
+11 │     pub def __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
+   │                                                      ^^^^^^^^^^ attributes hash: 14735093766067758717
+   │
+   = String(
+         FeString {
+             max_size: 26,
+         },
+     )
+
+note: 
+   ┌─ features/strings.fe:11:69
+   │
+11 │     pub def __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
+   │                                                                     ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/strings.fe:11:79
+   │
+11 │     pub def __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
+   │                                                                               ^^^^^^^^^^^ attributes hash: 17803113925034335199
+   │
+   = String(
+         FeString {
+             max_size: 100,
+         },
+     )
+
+note: 
+   ┌─ features/strings.fe:14:21
+   │
+14 │     pub def bar(s1: String<100>, s2: String<100>) -> String<100>:
+   │                     ^^^^^^^^^^^ attributes hash: 17803113925034335199
+   │
+   = String(
+         FeString {
+             max_size: 100,
+         },
+     )
+
+note: 
+   ┌─ features/strings.fe:14:38
+   │
+14 │     pub def bar(s1: String<100>, s2: String<100>) -> String<100>:
+   │                                      ^^^^^^^^^^^ attributes hash: 17803113925034335199
+   │
+   = String(
+         FeString {
+             max_size: 100,
+         },
+     )
+
+note: 
+   ┌─ features/strings.fe:14:54
+   │
+14 │     pub def bar(s1: String<100>, s2: String<100>) -> String<100>:
+   │                                                      ^^^^^^^^^^^ attributes hash: 17803113925034335199
+   │
+   = String(
+         FeString {
+             max_size: 100,
+         },
+     )
+
+note: 
+   ┌─ features/strings.fe:17:39
+   │
+17 │     pub def return_static_string() -> String<43>:
+   │                                       ^^^^^^^^^^ attributes hash: 13742609200355297158
+   │
+   = String(
+         FeString {
+             max_size: 43,
+         },
+     )
+
+note: 
+   ┌─ features/strings.fe:20:46
+   │
+20 │     pub def return_casted_static_string() -> String<100>:
+   │                                              ^^^^^^^^^^^ attributes hash: 17803113925034335199
+   │
+   = String(
+         FeString {
+             max_size: 100,
+         },
+     )
+
+

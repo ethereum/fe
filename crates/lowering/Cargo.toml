@@ -1,0 +1,19 @@
+[package]
+name = "fe-lowering"
+version = "0.6.1-alpha"
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
+edition = "2018"
+license = "Apache-2.0"
+repository = "https://github.com/ethereum/fe"
+
+[dependencies]
+fe-common = {path = "../common", version = "^0.6.1-alpha"}
+fe-parser = {path = "../parser", version = "^0.6.1-alpha"}
+fe-analyzer = {path = "../analyzer", version = "^0.6.1-alpha"}
+indexmap = "1.6.2"
+
+[dev-dependencies]
+rstest = "0.6.4"
+regex = "1.1.0"
+test-files = {path = "../test-files", package = "fe-test-files" }
+wasm-bindgen-test = "0.3"

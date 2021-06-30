@@ -1,0 +1,12 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: function `create2` expects numeric parameters
+  ┌─ compile_errors/call_create2_with_wrong_type.fe:7:20
+  │
+7 │         Bar.create2(true, 1)
+  │                    ^^^^^^^^^ invalid argument
+
+

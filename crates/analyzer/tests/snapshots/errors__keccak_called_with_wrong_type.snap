@@ -1,0 +1,28 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: `keccak256` expects 1 argument, but 2 were provided
+  ┌─ [snippet]:4:3
+  │
+4 │   keccak256(foo=x, 10)
+  │   ^^^^^^^^^ -----  -- supplied 2 arguments
+  │   │                 
+  │   expects 1 argument
+
+error: argument should not be labeled
+  ┌─ [snippet]:4:13
+  │
+4 │   keccak256(foo=x, 10)
+  │             ^^^ remove this label
+
+error: `u256[1]` can not be used as a parameter to `keccak(..)`
+  ┌─ [snippet]:4:12
+  │
+4 │   keccak256(foo=x, 10)
+  │            ^^^^^^^^^^^ wrong type
+  │
+  = Note: keccak(..) expects a byte array as parameter
+
+

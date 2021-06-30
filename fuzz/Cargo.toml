@@ -1,5 +1,5 @@
 [package]
-authors = ["The Fe Developers"]
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2018"
 name = "fe-fuzzer"
 publish = false
