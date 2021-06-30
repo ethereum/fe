@@ -9,7 +9,7 @@ build-website:
 	cp -r website/ target/
 
 	# Fill version marker with current version
-	sed -i "s/{{FE_VERSION}}/$$(cargo pkgid | cut -d# -f2 | cut -d: -f2)/g" target/website/index.html
+	sed -i "s/{{FE_VERSION}}/$$(cd crates/fe && cargo pkgid | cut -d# -f2 | cut -d: -f2)/g" target/website/index.html
 
 	# Generate the compiler API docs
 	cargo doc --no-deps --workspace
