@@ -9,7 +9,7 @@ build-website:
 	cp -r website/ target/
 
 	# Fill version marker with current version
-	sed -i "s/{{FE_VERSION}}/$$(cd crates/fe && cargo pkgid | cut -d# -f2 | cut -d: -f2)/g" target/website/index.html
+	sed -i "s/{{FE_VERSION}}/$$(cargo pkgid fe | cut -d# -f2 | cut -d: -f2)/g" target/website/index.html
 
 	# Generate the compiler API docs
 	cargo doc --no-deps --workspace
@@ -108,6 +108,6 @@ push-tag:
 	# Run `make release <version>` first
 	./newsfragments/validate_files.py is-empty
 	# Tag the release with the current version number
-	git tag "v$$(cargo pkgid | cut -d# -f2 | cut -d: -f2)"
+	git tag "v$$(cargo pkgid fe | cut -d# -f2 | cut -d: -f2)"
 	git push --tags upstream master
 
