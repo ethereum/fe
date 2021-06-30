@@ -397,6 +397,12 @@ impl From<Base> for FixedSize {
     }
 }
 
+impl From<FeString> for FixedSize {
+    fn from(value: FeString) -> Self {
+        FixedSize::String(value)
+    }
+}
+
 impl TryFrom<Type> for FixedSize {
     type Error = TypeError;
 
