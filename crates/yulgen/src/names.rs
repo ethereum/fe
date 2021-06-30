@@ -1,3 +1,4 @@
+use fe_abi::utils as abi_utils;
 use fe_analyzer::namespace::types::{AbiDecodeLocation, AbiEncoding, Integer};
 use yultsur::*;
 
@@ -57,6 +58,30 @@ pub fn func_name(name: &str) -> yul::Identifier {
 /// Generate a safe variable name for a user defined function
 pub fn var_name(name: &str) -> yul::Identifier {
     identifier! { (format!("${}", name)) }
+}
+
+/// Generate a revert function name for the name `Error` and a given set of types
+pub fn error_revert_name<T: AbiEncoding>(types: &[T]) -> yul::Identifier {
+    revert_name("Error", types)
+}
+
+/// Generates a revert function name for a given name and types
+pub fn revert_name<T: AbiEncoding>(name: &str, types: &[T]) -> yul::Identifier {
+    let type_names = types
+        .iter()
+        .map(|param| param.lower_snake())
+        .collect::<Vec<String>>();
+
+    let abi_names = types
+        .iter()
+        .map(|param| param.abi_selector_name())
+        .collect::<Vec<String>>();
+
+    let selector = abi_utils::func_selector(name, &abi_names);
+
+    let name = format!("revert_with_{}_{}", selector, &type_names.join("_"));
+
+    identifier! { (name) }
 }
 
 /// Generates an ABI encoding function name for a given set of types.

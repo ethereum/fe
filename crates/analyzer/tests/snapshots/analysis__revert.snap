@@ -5,6 +5,27 @@ expression: "build_snapshot(\"features/revert.fe\", &src, &context)"
 ---
 ModuleAttributes {
     type_defs: {
+        "Error": Struct(
+            Struct {
+                name: "Error",
+                fields: [
+                    (
+                        "msg",
+                        Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    ),
+                    (
+                        "val",
+                        Base(
+                            Bool,
+                        ),
+                    ),
+                ],
+            },
+        ),
         "Foo": Contract(
             Contract {
                 name: "Foo",
@@ -19,6 +40,43 @@ ModuleAttributes {
                             ),
                         ),
                     },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "revert_custom_error",
+                        params: [],
+                        return_type: Base(
+                            Unit,
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "revert_other_error",
+                        params: [],
+                        return_type: Base(
+                            Unit,
+                        ),
+                    },
+                ],
+            },
+        ),
+        "OtherError": Struct(
+            Struct {
+                name: "OtherError",
+                fields: [
+                    (
+                        "msg",
+                        Base(
+                            Numeric(
+                                U256,
+                            ),
+                        ),
+                    ),
+                    (
+                        "val",
+                        Base(
+                            Bool,
+                        ),
+                    ),
                 ],
             },
         ),
@@ -26,60 +84,379 @@ ModuleAttributes {
 }
 
 note: 
-  ┌─ features/revert.fe:2:5
-  │  
-2 │ ╭     pub def bar() -> u256:
-3 │ │         revert
-  │ ╰──────────────^ attributes hash: 2041944711719443549
-  │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "bar",
-        params: [],
-        return_type: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-    }
+   ┌─ features/revert.fe:14:26
+   │
+14 │         revert Error(msg=1, val=true)
+   │                          ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
 
 note: 
-  ┌─ features/revert.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │     pub def bar() -> u256:
-3 │ │         revert
-  │ ╰──────────────^ attributes hash: 16417315723405128961
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "bar",
-                params: [],
-                return_type: Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-            },
-        ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [],
-    }
+   ┌─ features/revert.fe:14:33
+   │
+14 │         revert Error(msg=1, val=true)
+   │                                 ^^^^ attributes hash: 10866140763116710699
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
 
 note: 
-  ┌─ features/revert.fe:2:22
+   ┌─ features/revert.fe:14:16
+   │
+14 │         revert Error(msg=1, val=true)
+   │                ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11364813338237787146
+   │
+   = ExpressionAttributes {
+         typ: Struct(
+             Struct {
+                 name: "Error",
+                 fields: [
+                     (
+                         "msg",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "val",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/revert.fe:17:31
+   │
+17 │         revert OtherError(msg=1, val=true)
+   │                               ^ attributes hash: 16797824492585953824
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/revert.fe:17:38
+   │
+17 │         revert OtherError(msg=1, val=true)
+   │                                      ^^^^ attributes hash: 10866140763116710699
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/revert.fe:17:16
+   │
+17 │         revert OtherError(msg=1, val=true)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14209897660967917692
+   │
+   = ExpressionAttributes {
+         typ: Struct(
+             Struct {
+                 name: "OtherError",
+                 fields: [
+                     (
+                         "msg",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "val",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/revert.fe:10:5
+   │  
+10 │ ╭     pub def bar() -> u256:
+11 │ │         revert
+   │ ╰──────────────^ attributes hash: 2041944711719443549
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "bar",
+         params: [],
+         return_type: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/revert.fe:13:5
+   │  
+13 │ ╭     pub def revert_custom_error():
+14 │ │         revert Error(msg=1, val=true)
+   │ ╰─────────────────────────────────────^ attributes hash: 12416044718721723673
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "revert_custom_error",
+         params: [],
+         return_type: Base(
+             Unit,
+         ),
+     }
+
+note: 
+   ┌─ features/revert.fe:16:5
+   │  
+16 │ ╭     pub def revert_other_error():
+17 │ │         revert OtherError(msg=1, val=true)
+   │ ╰──────────────────────────────────────────^ attributes hash: 2922949012455231953
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "revert_other_error",
+         params: [],
+         return_type: Base(
+             Unit,
+         ),
+     }
+
+note: 
+   ┌─ features/revert.fe:9:1
+   │  
+ 9 │ ╭ contract Foo:
+10 │ │     pub def bar() -> u256:
+11 │ │         revert
+12 │ │ 
+   · │
+16 │ │     pub def revert_other_error():
+17 │ │         revert OtherError(msg=1, val=true)
+   │ ╰──────────────────────────────────────────^ attributes hash: 5555419990939220415
+   │  
+   = ContractAttributes {
+         public_functions: [
+             FunctionAttributes {
+                 is_public: true,
+                 name: "bar",
+                 params: [],
+                 return_type: Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "revert_custom_error",
+                 params: [],
+                 return_type: Base(
+                     Unit,
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "revert_other_error",
+                 params: [],
+                 return_type: Base(
+                     Unit,
+                 ),
+             },
+         ],
+         init_function: None,
+         events: [],
+         structs: [
+             Struct {
+                 name: "Error",
+                 fields: [
+                     (
+                         "msg",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "val",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                 ],
+             },
+             Struct {
+                 name: "OtherError",
+                 fields: [
+                     (
+                         "msg",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "val",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                 ],
+             },
+         ],
+         external_contracts: [],
+     }
+
+note: 
+   ┌─ features/revert.fe:14:16
+   │
+14 │         revert Error(msg=1, val=true)
+   │                ^^^^^ attributes hash: 15710463956589891586
+   │
+   = TypeConstructor {
+         typ: Struct(
+             Struct {
+                 name: "Error",
+                 fields: [
+                     (
+                         "msg",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "val",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+     }
+
+note: 
+   ┌─ features/revert.fe:17:16
+   │
+17 │         revert OtherError(msg=1, val=true)
+   │                ^^^^^^^^^^ attributes hash: 9383899454640897483
+   │
+   = TypeConstructor {
+         typ: Struct(
+             Struct {
+                 name: "OtherError",
+                 fields: [
+                     (
+                         "msg",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "val",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+     }
+
+note: 
+  ┌─ features/revert.fe:2:10
   │
-2 │     pub def bar() -> u256:
-  │                      ^^^^ attributes hash: 17942395924573474124
+2 │     msg: u256
+  │          ^^^^ attributes hash: 17942395924573474124
   │
   = Base(
         Numeric(
             U256,
         ),
     )
+
+note: 
+  ┌─ features/revert.fe:3:10
+  │
+3 │     val: bool
+  │          ^^^^ attributes hash: 8311861578736502650
+  │
+  = Base(
+        Bool,
+    )
+
+note: 
+  ┌─ features/revert.fe:6:10
+  │
+6 │     msg: u256
+  │          ^^^^ attributes hash: 17942395924573474124
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/revert.fe:7:10
+  │
+7 │     val: bool
+  │          ^^^^ attributes hash: 8311861578736502650
+  │
+  = Base(
+        Bool,
+    )
+
+note: 
+   ┌─ features/revert.fe:10:22
+   │
+10 │     pub def bar() -> u256:
+   │                      ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
 
 

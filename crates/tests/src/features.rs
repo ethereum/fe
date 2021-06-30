@@ -60,7 +60,24 @@ fn test_revert() {
         assert!(matches!(
             exit,
             evm::Capture::Exit((evm::ExitReason::Revert(_), _))
-        ))
+        ));
+
+        let exit2 = harness.capture_call(&mut executor, "revert_custom_error", &[]);
+
+        validate_revert(
+            exit2,
+            &encode_error("Error(uint256,bool)", &[uint_token(1), bool_token(true)]),
+        );
+
+        let exit3 = harness.capture_call(&mut executor, "revert_other_error", &[]);
+
+        validate_revert(
+            exit3,
+            &encode_error(
+                "OtherError(uint256,bool)",
+                &[uint_token(1), bool_token(true)],
+            ),
+        );
     })
 }
 

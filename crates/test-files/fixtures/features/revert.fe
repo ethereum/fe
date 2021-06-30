@@ -1,3 +1,17 @@
+struct Error:
+    msg: u256
+    val: bool
+
+struct OtherError:
+    msg: u256
+    val: bool
+
 contract Foo:
     pub def bar() -> u256:
         revert
+
+    pub def revert_custom_error():
+        revert Error(msg=1, val=true)
+
+    pub def revert_other_error():
+        revert OtherError(msg=1, val=true)

@@ -2,11 +2,9 @@
 
 #![cfg(feature = "solc-backend")]
 use fe_yulgen::runtime::functions;
-use rstest::rstest;
 use yultsur::*;
 
 use fe_analyzer::namespace::types::{Base, FixedSize, Integer, Struct};
-use fe_common::utils::keccak;
 use fe_compiler_test_utils::*;
 
 macro_rules! assert_eq {
@@ -17,30 +15,6 @@ macro_rules! assert_eq {
             })
         }
     };
-}
-
-#[rstest(
-    reason,
-    case("foo"),
-    case("A very looooooooooooooong reason that consumes multiple words")
-)]
-fn test_revert_with_reason_string(reason: &str) {
-    let reason_id = format!(r#""{}""#, keccak::full(reason.as_bytes()));
-
-    with_executor(&|mut executor| {
-        Runtime::default()
-                .with_data(
-                    vec![yul::Data { name: keccak::full(reason.as_bytes()), value: reason.to_owned() }]
-                )
-                .with_test_statements(
-                statements! {
-                    (let reason := load_data_string((dataoffset([literal_expression! { (reason_id) }])), (datasize([literal_expression! { (reason_id) }]))))
-                    (revert_with_reason_string(reason))
-                })
-                .execute(&mut executor)
-                .expect_revert()
-                .expect_revert_reason(reason);
-    })
 }
 
 #[test]
