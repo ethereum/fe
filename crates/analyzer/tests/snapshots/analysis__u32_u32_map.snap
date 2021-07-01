@@ -63,7 +63,7 @@ note:
   ┌─ features/u32_u32_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^ attributes hash: 8776112976362401585
+  │                ^^^^^^^^ attributes hash: 12167518017963166890
   │
   = ExpressionAttributes {
         typ: Map(
@@ -90,7 +90,7 @@ note:
   ┌─ features/u32_u32_map.fe:5:25
   │
 5 │         return self.bar[key]
-  │                         ^^^ attributes hash: 5442387896079309831
+  │                         ^^^ attributes hash: 8114386917066957540
   │
   = ExpressionAttributes {
         typ: Base(
@@ -106,7 +106,7 @@ note:
   ┌─ features/u32_u32_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ attributes hash: 15300787439658747760
+  │                ^^^^^^^^^^^^^ attributes hash: 7219065259428030459
   │
   = ExpressionAttributes {
         typ: Base(
@@ -126,7 +126,7 @@ note:
   ┌─ features/u32_u32_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^ attributes hash: 8776112976362401585
+  │         ^^^^^^^^ attributes hash: 12167518017963166890
   │
   = ExpressionAttributes {
         typ: Map(
@@ -153,7 +153,7 @@ note:
   ┌─ features/u32_u32_map.fe:8:18
   │
 8 │         self.bar[key] = value
-  │                  ^^^ attributes hash: 5442387896079309831
+  │                  ^^^ attributes hash: 8114386917066957540
   │
   = ExpressionAttributes {
         typ: Base(
@@ -169,7 +169,7 @@ note:
   ┌─ features/u32_u32_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^^^^^^ attributes hash: 6929768164255228105
+  │         ^^^^^^^^^^^^^ attributes hash: 62827745150568456
   │
   = ExpressionAttributes {
         typ: Base(
@@ -187,7 +187,7 @@ note:
   ┌─ features/u32_u32_map.fe:8:25
   │
 8 │         self.bar[key] = value
-  │                         ^^^^^ attributes hash: 5442387896079309831
+  │                         ^^^^^ attributes hash: 8114386917066957540
   │
   = ExpressionAttributes {
         typ: Base(
@@ -204,7 +204,7 @@ note:
   │  
 4 │ ╭     pub def read_bar(key: u32) -> u32:
 5 │ │         return self.bar[key]
-  │ ╰────────────────────────────^ attributes hash: 16738705081189801938
+  │ ╰────────────────────────────^ attributes hash: 15291246158354106364
   │  
   = FunctionAttributes {
         is_public: true,
@@ -231,7 +231,7 @@ note:
   │  
 7 │ ╭     pub def write_bar(key: u32, value: u32):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 5884244337511816105
+  │ ╰─────────────────────────────^ attributes hash: 2175522536010991558
   │  
   = FunctionAttributes {
         is_public: true,
@@ -269,7 +269,7 @@ note:
   · │
 7 │ │     pub def write_bar(key: u32, value: u32):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 2868899247679842549
+  │ ╰─────────────────────────────^ attributes hash: 15844378283353356077
   │  
   = ContractAttributes {
         public_functions: [
@@ -328,7 +328,7 @@ note:
   ┌─ features/u32_u32_map.fe:4:27
   │
 4 │     pub def read_bar(key: u32) -> u32:
-  │                           ^^^ attributes hash: 11356073382633174465
+  │                           ^^^ attributes hash: 6988938628910073395
   │
   = Base(
         Numeric(
@@ -340,7 +340,7 @@ note:
   ┌─ features/u32_u32_map.fe:4:35
   │
 4 │     pub def read_bar(key: u32) -> u32:
-  │                                   ^^^ attributes hash: 11356073382633174465
+  │                                   ^^^ attributes hash: 6988938628910073395
   │
   = Base(
         Numeric(
@@ -352,7 +352,7 @@ note:
   ┌─ features/u32_u32_map.fe:7:28
   │
 7 │     pub def write_bar(key: u32, value: u32):
-  │                            ^^^ attributes hash: 11356073382633174465
+  │                            ^^^ attributes hash: 6988938628910073395
   │
   = Base(
         Numeric(
@@ -364,7 +364,7 @@ note:
   ┌─ features/u32_u32_map.fe:7:40
   │
 7 │     pub def write_bar(key: u32, value: u32):
-  │                                        ^^^ attributes hash: 11356073382633174465
+  │                                        ^^^ attributes hash: 6988938628910073395
   │
   = Base(
         Numeric(
@@ -376,7 +376,7 @@ note:
   ┌─ features/u32_u32_map.fe:2:18
   │
 2 │     pub bar: Map<u32, u32>
-  │                  ^^^ attributes hash: 11356073382633174465
+  │                  ^^^ attributes hash: 6988938628910073395
   │
   = Base(
         Numeric(
@@ -388,7 +388,7 @@ note:
   ┌─ features/u32_u32_map.fe:2:23
   │
 2 │     pub bar: Map<u32, u32>
-  │                       ^^^ attributes hash: 11356073382633174465
+  │                       ^^^ attributes hash: 6988938628910073395
   │
   = Base(
         Numeric(
@@ -400,7 +400,7 @@ note:
   ┌─ features/u32_u32_map.fe:2:14
   │
 2 │     pub bar: Map<u32, u32>
-  │              ^^^^^^^^^^^^^ attributes hash: 4291380678104481154
+  │              ^^^^^^^^^^^^^ attributes hash: 13674193641429483898
   │
   = Map(
         Map {

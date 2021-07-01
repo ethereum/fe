@@ -27,7 +27,7 @@ note:
   ┌─ features/return_bool_true.fe:3:16
   │
 3 │         return true
-  │                ^^^^ attributes hash: 10866140763116710699
+  │                ^^^^ attributes hash: 519621297275845584
   │
   = ExpressionAttributes {
         typ: Base(
@@ -42,7 +42,7 @@ note:
   │  
 2 │ ╭     pub def bar() -> bool:
 3 │ │         return true
-  │ ╰───────────────────^ attributes hash: 18095049223467442390
+  │ ╰───────────────────^ attributes hash: 188693131368690235
   │  
   = FunctionAttributes {
         is_public: true,
@@ -59,7 +59,7 @@ note:
 1 │ ╭ contract Foo:
 2 │ │     pub def bar() -> bool:
 3 │ │         return true
-  │ ╰───────────────────^ attributes hash: 8669656455121060528
+  │ ╰───────────────────^ attributes hash: 18133019889970139528
   │  
   = ContractAttributes {
         public_functions: [
@@ -82,7 +82,7 @@ note:
   ┌─ features/return_bool_true.fe:2:22
   │
 2 │     pub def bar() -> bool:
-  │                      ^^^^ attributes hash: 8311861578736502650
+  │                      ^^^^ attributes hash: 5425972608982369985
   │
   = Base(
         Bool,

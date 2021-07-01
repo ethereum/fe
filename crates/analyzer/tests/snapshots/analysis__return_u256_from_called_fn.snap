@@ -39,7 +39,7 @@ note:
   ┌─ features/return_u256_from_called_fn.fe:5:16
   │
 5 │         return self.foo()
-  │                ^^^^^^^^^^ attributes hash: 16797824492585953824
+  │                ^^^^^^^^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -55,7 +55,7 @@ note:
   ┌─ features/return_u256_from_called_fn.fe:8:16
   │
 8 │         return 42
-  │                ^^ attributes hash: 16797824492585953824
+  │                ^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -72,7 +72,7 @@ note:
   │  
 4 │ ╭     pub def bar() -> u256:
 5 │ │         return self.foo()
-  │ ╰─────────────────────────^ attributes hash: 2041944711719443549
+  │ ╰─────────────────────────^ attributes hash: 5931278080780939395
   │  
   = FunctionAttributes {
         is_public: true,
@@ -90,7 +90,7 @@ note:
   │  
 7 │ ╭     pub def foo() -> u256:
 8 │ │         return 42
-  │ ╰─────────────────^ attributes hash: 15216770869499965069
+  │ ╰─────────────────^ attributes hash: 11232535930816367115
   │  
   = FunctionAttributes {
         is_public: true,
@@ -113,7 +113,7 @@ note:
   · │
 7 │ │     pub def foo() -> u256:
 8 │ │         return 42
-  │ ╰─────────────────^ attributes hash: 7904533777120547138
+  │ ╰─────────────────^ attributes hash: 3955389950047773850
   │  
   = ContractAttributes {
         public_functions: [
@@ -148,7 +148,7 @@ note:
   ┌─ features/return_u256_from_called_fn.fe:5:16
   │
 5 │         return self.foo()
-  │                ^^^^^^^^ attributes hash: 14265823366479253008
+  │                ^^^^^^^^ attributes hash: 5290763145657400289
   │
   = SelfAttribute {
         func_name: "foo",
@@ -158,7 +158,7 @@ note:
   ┌─ features/return_u256_from_called_fn.fe:4:22
   │
 4 │     pub def bar() -> u256:
-  │                      ^^^^ attributes hash: 17942395924573474124
+  │                      ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -170,7 +170,7 @@ note:
   ┌─ features/return_u256_from_called_fn.fe:7:22
   │
 7 │     pub def foo() -> u256:
-  │                      ^^^^ attributes hash: 17942395924573474124
+  │                      ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(

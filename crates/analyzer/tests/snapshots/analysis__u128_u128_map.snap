@@ -63,7 +63,7 @@ note:
   ┌─ features/u128_u128_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^ attributes hash: 9877761955400331002
+  │                ^^^^^^^^ attributes hash: 3599868092882241902
   │
   = ExpressionAttributes {
         typ: Map(
@@ -90,7 +90,7 @@ note:
   ┌─ features/u128_u128_map.fe:5:25
   │
 5 │         return self.bar[key]
-  │                         ^^^ attributes hash: 9341420026351674595
+  │                         ^^^ attributes hash: 231358192590700262
   │
   = ExpressionAttributes {
         typ: Base(
@@ -106,7 +106,7 @@ note:
   ┌─ features/u128_u128_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ attributes hash: 18138722145076203151
+  │                ^^^^^^^^^^^^^ attributes hash: 4773355545736336866
   │
   = ExpressionAttributes {
         typ: Base(
@@ -126,7 +126,7 @@ note:
   ┌─ features/u128_u128_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^ attributes hash: 9877761955400331002
+  │         ^^^^^^^^ attributes hash: 3599868092882241902
   │
   = ExpressionAttributes {
         typ: Map(
@@ -153,7 +153,7 @@ note:
   ┌─ features/u128_u128_map.fe:8:18
   │
 8 │         self.bar[key] = value
-  │                  ^^^ attributes hash: 9341420026351674595
+  │                  ^^^ attributes hash: 231358192590700262
   │
   = ExpressionAttributes {
         typ: Base(
@@ -169,7 +169,7 @@ note:
   ┌─ features/u128_u128_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^^^^^^ attributes hash: 15885485563257690220
+  │         ^^^^^^^^^^^^^ attributes hash: 12624832649451867488
   │
   = ExpressionAttributes {
         typ: Base(
@@ -187,7 +187,7 @@ note:
   ┌─ features/u128_u128_map.fe:8:25
   │
 8 │         self.bar[key] = value
-  │                         ^^^^^ attributes hash: 9341420026351674595
+  │                         ^^^^^ attributes hash: 231358192590700262
   │
   = ExpressionAttributes {
         typ: Base(
@@ -204,7 +204,7 @@ note:
   │  
 4 │ ╭     pub def read_bar(key: u128) -> u128:
 5 │ │         return self.bar[key]
-  │ ╰────────────────────────────^ attributes hash: 15811419833843093695
+  │ ╰────────────────────────────^ attributes hash: 2198999376665281933
   │  
   = FunctionAttributes {
         is_public: true,
@@ -231,7 +231,7 @@ note:
   │  
 7 │ ╭     pub def write_bar(key: u128, value: u128):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 8519402554378368965
+  │ ╰─────────────────────────────^ attributes hash: 1223918627362086657
   │  
   = FunctionAttributes {
         is_public: true,
@@ -269,7 +269,7 @@ note:
   · │
 7 │ │     pub def write_bar(key: u128, value: u128):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 16423742240046695378
+  │ ╰─────────────────────────────^ attributes hash: 5524013194389757103
   │  
   = ContractAttributes {
         public_functions: [
@@ -328,7 +328,7 @@ note:
   ┌─ features/u128_u128_map.fe:4:27
   │
 4 │     pub def read_bar(key: u128) -> u128:
-  │                           ^^^^ attributes hash: 14909107886776088983
+  │                           ^^^^ attributes hash: 6162263163478414243
   │
   = Base(
         Numeric(
@@ -340,7 +340,7 @@ note:
   ┌─ features/u128_u128_map.fe:4:36
   │
 4 │     pub def read_bar(key: u128) -> u128:
-  │                                    ^^^^ attributes hash: 14909107886776088983
+  │                                    ^^^^ attributes hash: 6162263163478414243
   │
   = Base(
         Numeric(
@@ -352,7 +352,7 @@ note:
   ┌─ features/u128_u128_map.fe:7:28
   │
 7 │     pub def write_bar(key: u128, value: u128):
-  │                            ^^^^ attributes hash: 14909107886776088983
+  │                            ^^^^ attributes hash: 6162263163478414243
   │
   = Base(
         Numeric(
@@ -364,7 +364,7 @@ note:
   ┌─ features/u128_u128_map.fe:7:41
   │
 7 │     pub def write_bar(key: u128, value: u128):
-  │                                         ^^^^ attributes hash: 14909107886776088983
+  │                                         ^^^^ attributes hash: 6162263163478414243
   │
   = Base(
         Numeric(
@@ -376,7 +376,7 @@ note:
   ┌─ features/u128_u128_map.fe:2:18
   │
 2 │     pub bar: Map<u128, u128>
-  │                  ^^^^ attributes hash: 14909107886776088983
+  │                  ^^^^ attributes hash: 6162263163478414243
   │
   = Base(
         Numeric(
@@ -388,7 +388,7 @@ note:
   ┌─ features/u128_u128_map.fe:2:24
   │
 2 │     pub bar: Map<u128, u128>
-  │                        ^^^^ attributes hash: 14909107886776088983
+  │                        ^^^^ attributes hash: 6162263163478414243
   │
   = Base(
         Numeric(
@@ -400,7 +400,7 @@ note:
   ┌─ features/u128_u128_map.fe:2:14
   │
 2 │     pub bar: Map<u128, u128>
-  │              ^^^^^^^^^^^^^^^ attributes hash: 12491373951574090365
+  │              ^^^^^^^^^^^^^^^ attributes hash: 8420179897707835865
   │
   = Map(
         Map {

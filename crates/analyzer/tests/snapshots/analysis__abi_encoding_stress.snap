@@ -353,7 +353,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:24:9
    │
 24 │         self.my_addrs = my_addrs
-   │         ^^^^^^^^^^^^^ attributes hash: 10382033997144387695
+   │         ^^^^^^^^^^^^^ attributes hash: 11607497089418716601
    │
    = ExpressionAttributes {
          typ: Array(
@@ -374,7 +374,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:24:25
    │
 24 │         self.my_addrs = my_addrs
-   │                         ^^^^^^^^ attributes hash: 5482395804594219089
+   │                         ^^^^^^^^ attributes hash: 16604917977493905663
    │
    = ExpressionAttributes {
          typ: Array(
@@ -391,7 +391,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:27:16
    │
 27 │         return self.my_addrs.to_mem()
-   │                ^^^^^^^^^^^^^ attributes hash: 10382033997144387695
+   │                ^^^^^^^^^^^^^ attributes hash: 11607497089418716601
    │
    = ExpressionAttributes {
          typ: Array(
@@ -412,7 +412,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:27:16
    │
 27 │         return self.my_addrs.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13325422889757874384
+   │                ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16492730941442339659
    │
    = ExpressionAttributes {
          typ: Array(
@@ -435,7 +435,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:30:9
    │
 30 │         self.my_u128 = my_u128
-   │         ^^^^^^^^^^^^ attributes hash: 2703217136237546410
+   │         ^^^^^^^^^^^^ attributes hash: 7126347357801594539
    │
    = ExpressionAttributes {
          typ: Base(
@@ -455,7 +455,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:30:24
    │
 30 │         self.my_u128 = my_u128
-   │                        ^^^^^^^ attributes hash: 9341420026351674595
+   │                        ^^^^^^^ attributes hash: 231358192590700262
    │
    = ExpressionAttributes {
          typ: Base(
@@ -471,7 +471,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:33:16
    │
 33 │         return self.my_u128
-   │                ^^^^^^^^^^^^ attributes hash: 10067809958524075301
+   │                ^^^^^^^^^^^^ attributes hash: 14542661507614839047
    │
    = ExpressionAttributes {
          typ: Base(
@@ -493,7 +493,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:36:9
    │
 36 │         self.my_string = my_string
-   │         ^^^^^^^^^^^^^^ attributes hash: 9071218329936731305
+   │         ^^^^^^^^^^^^^^ attributes hash: 12578428879303421158
    │
    = ExpressionAttributes {
          typ: String(
@@ -513,7 +513,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:36:26
    │
 36 │         self.my_string = my_string
-   │                          ^^^^^^^^^ attributes hash: 14090036295577866461
+   │                          ^^^^^^^^^ attributes hash: 11864351757031661519
    │
    = ExpressionAttributes {
          typ: String(
@@ -529,7 +529,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:39:16
    │
 39 │         return self.my_string.to_mem()
-   │                ^^^^^^^^^^^^^^ attributes hash: 9071218329936731305
+   │                ^^^^^^^^^^^^^^ attributes hash: 12578428879303421158
    │
    = ExpressionAttributes {
          typ: String(
@@ -549,7 +549,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:39:16
    │
 39 │         return self.my_string.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 980173007631351881
+   │                ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 479567274386559793
    │
    = ExpressionAttributes {
          typ: String(
@@ -571,7 +571,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:42:9
    │
 42 │         self.my_u16s = my_u16s
-   │         ^^^^^^^^^^^^ attributes hash: 17663154659675933749
+   │         ^^^^^^^^^^^^ attributes hash: 3638136190345823764
    │
    = ExpressionAttributes {
          typ: Array(
@@ -594,7 +594,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:42:24
    │
 42 │         self.my_u16s = my_u16s
-   │                        ^^^^^^^ attributes hash: 11161597200868441893
+   │                        ^^^^^^^ attributes hash: 15174914052860705570
    │
    = ExpressionAttributes {
          typ: Array(
@@ -613,7 +613,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:45:16
    │
 45 │         return self.my_u16s.to_mem()
-   │                ^^^^^^^^^^^^ attributes hash: 17663154659675933749
+   │                ^^^^^^^^^^^^ attributes hash: 3638136190345823764
    │
    = ExpressionAttributes {
          typ: Array(
@@ -636,7 +636,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:45:16
    │
 45 │         return self.my_u16s.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8574438854382779579
+   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11370949935968145318
    │
    = ExpressionAttributes {
          typ: Array(
@@ -661,7 +661,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:48:9
    │
 48 │         self.my_bool = my_bool
-   │         ^^^^^^^^^^^^ attributes hash: 14339445391907150991
+   │         ^^^^^^^^^^^^ attributes hash: 518866742777649724
    │
    = ExpressionAttributes {
          typ: Base(
@@ -679,7 +679,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:48:24
    │
 48 │         self.my_bool = my_bool
-   │                        ^^^^^^^ attributes hash: 10866140763116710699
+   │                        ^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -693,7 +693,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:51:16
    │
 51 │         return self.my_bool
-   │                ^^^^^^^^^^^^ attributes hash: 11793743503936840609
+   │                ^^^^^^^^^^^^ attributes hash: 10335342584136832528
    │
    = ExpressionAttributes {
          typ: Base(
@@ -713,7 +713,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:54:9
    │
 54 │         self.my_bytes = my_bytes
-   │         ^^^^^^^^^^^^^ attributes hash: 9395896937976048107
+   │         ^^^^^^^^^^^^^ attributes hash: 9690820209598930829
    │
    = ExpressionAttributes {
          typ: Array(
@@ -736,7 +736,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:54:25
    │
 54 │         self.my_bytes = my_bytes
-   │                         ^^^^^^^^ attributes hash: 1049948881837837287
+   │                         ^^^^^^^^ attributes hash: 17662649307069018999
    │
    = ExpressionAttributes {
          typ: Array(
@@ -755,7 +755,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:57:16
    │
 57 │         return self.my_bytes.to_mem()
-   │                ^^^^^^^^^^^^^ attributes hash: 9395896937976048107
+   │                ^^^^^^^^^^^^^ attributes hash: 9690820209598930829
    │
    = ExpressionAttributes {
          typ: Array(
@@ -778,7 +778,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:57:16
    │
 57 │         return self.my_bytes.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7056116585361174256
+   │                ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 935098840617860160
    │
    = ExpressionAttributes {
          typ: Array(
@@ -803,7 +803,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:61:20
    │
 61 │             my_num=42,
-   │                    ^^ attributes hash: 16797824492585953824
+   │                    ^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -819,7 +819,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:62:24
    │
 62 │             my_num2=u8(26),
-   │                        ^^ attributes hash: 6817314866882205962
+   │                        ^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -835,7 +835,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:62:21
    │
 62 │             my_num2=u8(26),
-   │                     ^^^^^^ attributes hash: 6817314866882205962
+   │                     ^^^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -851,7 +851,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:63:21
    │
 63 │             my_bool=true,
-   │                     ^^^^ attributes hash: 10866140763116710699
+   │                     ^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -865,7 +865,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:64:29
    │
 64 │             my_addr=address(123456)
-   │                             ^^^^^^ attributes hash: 16797824492585953824
+   │                             ^^^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -881,7 +881,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:64:21
    │
 64 │             my_addr=address(123456)
-   │                     ^^^^^^^^^^^^^^^ attributes hash: 16366719240912622931
+   │                     ^^^^^^^^^^^^^^^ attributes hash: 16804606599831072828
    │
    = ExpressionAttributes {
          typ: Base(
@@ -901,7 +901,7 @@ note:
 63 │ │             my_bool=true,
 64 │ │             my_addr=address(123456)
 65 │ │         )
-   │ ╰─────────^ attributes hash: 15468432750474967995
+   │ ╰─────────^ attributes hash: 13901410001257111757
    │  
    = ExpressionAttributes {
          typ: Struct(
@@ -947,7 +947,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:68:9
    │
 68 │         my_struct.my_num = 12341234
-   │         ^^^^^^^^^ attributes hash: 15468432750474967995
+   │         ^^^^^^^^^ attributes hash: 13901410001257111757
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -993,7 +993,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:68:9
    │
 68 │         my_struct.my_num = 12341234
-   │         ^^^^^^^^^^^^^^^^ attributes hash: 3617588353493611640
+   │         ^^^^^^^^^^^^^^^^ attributes hash: 13245336599501214748
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1009,7 +1009,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:68:28
    │
 68 │         my_struct.my_num = 12341234
-   │                            ^^^^^^^^ attributes hash: 16797824492585953824
+   │                            ^^^^^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1025,7 +1025,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:69:9
    │
 69 │         my_struct.my_num2 = u8(42)
-   │         ^^^^^^^^^ attributes hash: 15468432750474967995
+   │         ^^^^^^^^^ attributes hash: 13901410001257111757
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -1071,7 +1071,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:69:9
    │
 69 │         my_struct.my_num2 = u8(42)
-   │         ^^^^^^^^^^^^^^^^^ attributes hash: 9840844041956468502
+   │         ^^^^^^^^^^^^^^^^^ attributes hash: 6931766909497394788
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1087,7 +1087,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:69:32
    │
 69 │         my_struct.my_num2 = u8(42)
-   │                                ^^ attributes hash: 6817314866882205962
+   │                                ^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1103,7 +1103,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:69:29
    │
 69 │         my_struct.my_num2 = u8(42)
-   │                             ^^^^^^ attributes hash: 6817314866882205962
+   │                             ^^^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1119,7 +1119,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:70:9
    │
 70 │         my_struct.my_bool = false
-   │         ^^^^^^^^^ attributes hash: 15468432750474967995
+   │         ^^^^^^^^^ attributes hash: 13901410001257111757
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -1165,7 +1165,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:70:9
    │
 70 │         my_struct.my_bool = false
-   │         ^^^^^^^^^^^^^^^^^ attributes hash: 11961557806308348850
+   │         ^^^^^^^^^^^^^^^^^ attributes hash: 9492448225675818972
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1179,7 +1179,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:70:29
    │
 70 │         my_struct.my_bool = false
-   │                             ^^^^^ attributes hash: 10866140763116710699
+   │                             ^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1193,7 +1193,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:71:9
    │
 71 │         my_struct.my_addr = address(9999)
-   │         ^^^^^^^^^ attributes hash: 15468432750474967995
+   │         ^^^^^^^^^ attributes hash: 13901410001257111757
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -1239,7 +1239,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:71:9
    │
 71 │         my_struct.my_addr = address(9999)
-   │         ^^^^^^^^^^^^^^^^^ attributes hash: 9951382994231729648
+   │         ^^^^^^^^^^^^^^^^^ attributes hash: 7265128456914983321
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1253,7 +1253,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:71:37
    │
 71 │         my_struct.my_addr = address(9999)
-   │                                     ^^^^ attributes hash: 16797824492585953824
+   │                                     ^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1269,7 +1269,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:71:29
    │
 71 │         my_struct.my_addr = address(9999)
-   │                             ^^^^^^^^^^^^^ attributes hash: 16366719240912622931
+   │                             ^^^^^^^^^^^^^ attributes hash: 16804606599831072828
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1283,7 +1283,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:72:16
    │
 72 │         return my_struct
-   │                ^^^^^^^^^ attributes hash: 15468432750474967995
+   │                ^^^^^^^^^ attributes hash: 13901410001257111757
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -1329,7 +1329,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:76:22
    │
 76 │             my_addrs=self.my_addrs.to_mem(),
-   │                      ^^^^^^^^^^^^^ attributes hash: 10382033997144387695
+   │                      ^^^^^^^^^^^^^ attributes hash: 11607497089418716601
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1350,7 +1350,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:76:22
    │
 76 │             my_addrs=self.my_addrs.to_mem(),
-   │                      ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13325422889757874384
+   │                      ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16492730941442339659
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1373,7 +1373,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:77:21
    │
 77 │             my_u128=self.my_u128,
-   │                     ^^^^^^^^^^^^ attributes hash: 10067809958524075301
+   │                     ^^^^^^^^^^^^ attributes hash: 14542661507614839047
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1395,7 +1395,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:78:23
    │
 78 │             my_string=self.my_string.to_mem(),
-   │                       ^^^^^^^^^^^^^^ attributes hash: 9071218329936731305
+   │                       ^^^^^^^^^^^^^^ attributes hash: 12578428879303421158
    │
    = ExpressionAttributes {
          typ: String(
@@ -1415,7 +1415,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:78:23
    │
 78 │             my_string=self.my_string.to_mem(),
-   │                       ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 980173007631351881
+   │                       ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 479567274386559793
    │
    = ExpressionAttributes {
          typ: String(
@@ -1437,7 +1437,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:79:21
    │
 79 │             my_u16s=self.my_u16s.to_mem(),
-   │                     ^^^^^^^^^^^^ attributes hash: 17663154659675933749
+   │                     ^^^^^^^^^^^^ attributes hash: 3638136190345823764
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1460,7 +1460,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:79:21
    │
 79 │             my_u16s=self.my_u16s.to_mem(),
-   │                     ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8574438854382779579
+   │                     ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11370949935968145318
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1485,7 +1485,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:80:21
    │
 80 │             my_bool=self.my_bool,
-   │                     ^^^^^^^^^^^^ attributes hash: 11793743503936840609
+   │                     ^^^^^^^^^^^^ attributes hash: 10335342584136832528
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1505,7 +1505,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:81:22
    │
 81 │             my_bytes=self.my_bytes.to_mem()
-   │                      ^^^^^^^^^^^^^ attributes hash: 9395896937976048107
+   │                      ^^^^^^^^^^^^^ attributes hash: 9690820209598930829
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1528,7 +1528,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:81:22
    │
 81 │             my_bytes=self.my_bytes.to_mem()
-   │                      ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7056116585361174256
+   │                      ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 935098840617860160
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1559,7 +1559,7 @@ note:
    · │
 81 │ │             my_bytes=self.my_bytes.to_mem()
 82 │ │         )
-   │ ╰─────────^ attributes hash: 12045518562209920550
+   │ ╰─────────^ attributes hash: 4513326996750634814
    │  
    = EventDef {
          name: "MyEvent",
@@ -1627,7 +1627,7 @@ note:
    │  
 23 │ ╭     pub def set_my_addrs(my_addrs: address[5]):
 24 │ │         self.my_addrs = my_addrs
-   │ ╰────────────────────────────────^ attributes hash: 7691120414811764389
+   │ ╰────────────────────────────────^ attributes hash: 3484459237604996140
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1653,7 +1653,7 @@ note:
    │  
 26 │ ╭     pub def get_my_addrs() -> address[5]:
 27 │ │         return self.my_addrs.to_mem()
-   │ ╰─────────────────────────────────────^ attributes hash: 1359287435307305545
+   │ ╰─────────────────────────────────────^ attributes hash: 6854959387736105149
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1672,7 +1672,7 @@ note:
    │  
 29 │ ╭     pub def set_my_u128(my_u128: u128):
 30 │ │         self.my_u128 = my_u128
-   │ ╰──────────────────────────────^ attributes hash: 11158656996687638027
+   │ ╰──────────────────────────────^ attributes hash: 3670453502374636498
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1697,7 +1697,7 @@ note:
    │  
 32 │ ╭     pub def get_my_u128() -> u128:
 33 │ │         return self.my_u128
-   │ ╰───────────────────────────^ attributes hash: 16058412060331016941
+   │ ╰───────────────────────────^ attributes hash: 6567182268868518688
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1715,7 +1715,7 @@ note:
    │  
 35 │ ╭     pub def set_my_string(my_string: String<10>):
 36 │ │         self.my_string = my_string
-   │ ╰──────────────────────────────────^ attributes hash: 4692728853600965584
+   │ ╰──────────────────────────────────^ attributes hash: 300587573070880888
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1740,7 +1740,7 @@ note:
    │  
 38 │ ╭     pub def get_my_string() -> String<10>:
 39 │ │         return self.my_string.to_mem()
-   │ ╰──────────────────────────────────────^ attributes hash: 707398757101008385
+   │ ╰──────────────────────────────────────^ attributes hash: 15583749956230021960
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1758,7 +1758,7 @@ note:
    │  
 41 │ ╭     pub def set_my_u16s(my_u16s: u16[255]):
 42 │ │         self.my_u16s = my_u16s
-   │ ╰──────────────────────────────^ attributes hash: 13893384016191907628
+   │ ╰──────────────────────────────^ attributes hash: 12620518859327210640
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1786,7 +1786,7 @@ note:
    │  
 44 │ ╭     pub def get_my_u16s() -> u16[255]:
 45 │ │         return self.my_u16s.to_mem()
-   │ ╰────────────────────────────────────^ attributes hash: 1192576253771683432
+   │ ╰────────────────────────────────────^ attributes hash: 15621759143299994801
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1807,7 +1807,7 @@ note:
    │  
 47 │ ╭     pub def set_my_bool(my_bool: bool):
 48 │ │         self.my_bool = my_bool
-   │ ╰──────────────────────────────^ attributes hash: 8659823120065861693
+   │ ╰──────────────────────────────^ attributes hash: 7762688218221814837
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1830,7 +1830,7 @@ note:
    │  
 50 │ ╭     pub def get_my_bool() -> bool:
 51 │ │         return self.my_bool
-   │ ╰───────────────────────────^ attributes hash: 402155180145147731
+   │ ╰───────────────────────────^ attributes hash: 16285252210970749142
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1846,7 +1846,7 @@ note:
    │  
 53 │ ╭     pub def set_my_bytes(my_bytes: u8[100]):
 54 │ │         self.my_bytes = my_bytes
-   │ ╰────────────────────────────────^ attributes hash: 6008990854532809473
+   │ ╰────────────────────────────────^ attributes hash: 6371281254941268595
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1874,7 +1874,7 @@ note:
    │  
 56 │ ╭     pub def get_my_bytes() -> u8[100]:
 57 │ │         return self.my_bytes.to_mem()
-   │ ╰─────────────────────────────────────^ attributes hash: 14963641192730894379
+   │ ╰─────────────────────────────────────^ attributes hash: 16314159820631207612
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1900,7 +1900,7 @@ note:
 63 │ │             my_bool=true,
 64 │ │             my_addr=address(123456)
 65 │ │         )
-   │ ╰─────────^ attributes hash: 2740071883700160944
+   │ ╰─────────^ attributes hash: 3692665483222009348
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1952,7 +1952,7 @@ note:
 70 │ │         my_struct.my_bool = false
 71 │ │         my_struct.my_addr = address(9999)
 72 │ │         return my_struct
-   │ ╰────────────────────────^ attributes hash: 6449978803396160030
+   │ ╰────────────────────────^ attributes hash: 9497953550094470683
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2044,7 +2044,7 @@ note:
    · │
 81 │ │             my_bytes=self.my_bytes.to_mem()
 82 │ │         )
-   │ ╰─────────^ attributes hash: 11962324298072924216
+   │ ╰─────────^ attributes hash: 11006694017805682653
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2065,7 +2065,7 @@ note:
    · │
 81 │ │             my_bytes=self.my_bytes.to_mem()
 82 │ │         )
-   │ ╰─────────^ attributes hash: 1245491618511738007
+   │ ╰─────────^ attributes hash: 6100196207567586091
    │  
    = ContractAttributes {
          public_functions: [
@@ -2474,7 +2474,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:27:16
    │
 27 │         return self.my_addrs.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
    │
    = ValueAttribute
 
@@ -2482,7 +2482,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:39:16
    │
 39 │         return self.my_string.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
    │
    = ValueAttribute
 
@@ -2490,7 +2490,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:45:16
    │
 45 │         return self.my_u16s.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
    │
    = ValueAttribute
 
@@ -2498,7 +2498,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:57:16
    │
 57 │         return self.my_bytes.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
    │
    = ValueAttribute
 
@@ -2506,7 +2506,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:60:16
    │
 60 │         return MyStruct(
-   │                ^^^^^^^^ attributes hash: 15920791982837982248
+   │                ^^^^^^^^ attributes hash: 56248341546260726
    │
    = TypeConstructor {
          typ: Struct(
@@ -2550,7 +2550,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:62:21
    │
 62 │             my_num2=u8(26),
-   │                     ^^ attributes hash: 7477807812820783771
+   │                     ^^ attributes hash: 4311289215688173045
    │
    = TypeConstructor {
          typ: Base(
@@ -2564,7 +2564,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:64:21
    │
 64 │             my_addr=address(123456)
-   │                     ^^^^^^^ attributes hash: 12543456546113081273
+   │                     ^^^^^^^ attributes hash: 14203407709342965641
    │
    = TypeConstructor {
          typ: Base(
@@ -2576,7 +2576,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:69:29
    │
 69 │         my_struct.my_num2 = u8(42)
-   │                             ^^ attributes hash: 7477807812820783771
+   │                             ^^ attributes hash: 4311289215688173045
    │
    = TypeConstructor {
          typ: Base(
@@ -2590,7 +2590,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:71:29
    │
 71 │         my_struct.my_addr = address(9999)
-   │                             ^^^^^^^ attributes hash: 12543456546113081273
+   │                             ^^^^^^^ attributes hash: 14203407709342965641
    │
    = TypeConstructor {
          typ: Base(
@@ -2602,7 +2602,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:76:22
    │
 76 │             my_addrs=self.my_addrs.to_mem(),
-   │                      ^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │                      ^^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
    │
    = ValueAttribute
 
@@ -2610,7 +2610,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:78:23
    │
 78 │             my_string=self.my_string.to_mem(),
-   │                       ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │                       ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
    │
    = ValueAttribute
 
@@ -2618,7 +2618,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:79:21
    │
 79 │             my_u16s=self.my_u16s.to_mem(),
-   │                     ^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │                     ^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
    │
    = ValueAttribute
 
@@ -2626,7 +2626,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:81:22
    │
 81 │             my_bytes=self.my_bytes.to_mem()
-   │                      ^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │                      ^^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
    │
    = ValueAttribute
 
@@ -2640,7 +2640,7 @@ note:
 19 │ │         my_u16s: u16[255]
 20 │ │         my_bool: bool
 21 │ │         my_bytes: u8[100]
-   │ ╰─────────────────────────^ attributes hash: 12045518562209920550
+   │ ╰─────────────────────────^ attributes hash: 4513326996750634814
    │  
    = EventDef {
          name: "MyEvent",
@@ -2707,7 +2707,7 @@ note:
   ┌─ stress/abi_encoding_stress.fe:2:13
   │
 2 │     my_num: u256
-  │             ^^^^ attributes hash: 17942395924573474124
+  │             ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -2719,7 +2719,7 @@ note:
   ┌─ stress/abi_encoding_stress.fe:3:14
   │
 3 │     my_num2: u8
-  │              ^^ attributes hash: 1872326638020472004
+  │              ^^ attributes hash: 3165084411644393001
   │
   = Base(
         Numeric(
@@ -2731,7 +2731,7 @@ note:
   ┌─ stress/abi_encoding_stress.fe:4:14
   │
 4 │     my_bool: bool
-  │              ^^^^ attributes hash: 8311861578736502650
+  │              ^^^^ attributes hash: 5425972608982369985
   │
   = Base(
         Bool,
@@ -2741,7 +2741,7 @@ note:
   ┌─ stress/abi_encoding_stress.fe:5:14
   │
 5 │     my_addr: address
-  │              ^^^^^^^ attributes hash: 16931239362436195516
+  │              ^^^^^^^ attributes hash: 928477466454064117
   │
   = Base(
         Address,
@@ -2751,7 +2751,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:16:19
    │
 16 │         my_addrs: address[5]
-   │                   ^^^^^^^ attributes hash: 16931239362436195516
+   │                   ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
@@ -2761,7 +2761,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:16:19
    │
 16 │         my_addrs: address[5]
-   │                   ^^^^^^^^^^ attributes hash: 8018526834227667332
+   │                   ^^^^^^^^^^ attributes hash: 3212419807255328463
    │
    = Array(
          Array {
@@ -2774,7 +2774,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:17:18
    │
 17 │         my_u128: u128
-   │                  ^^^^ attributes hash: 14909107886776088983
+   │                  ^^^^ attributes hash: 6162263163478414243
    │
    = Base(
          Numeric(
@@ -2786,7 +2786,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:18:20
    │
 18 │         my_string: String<10>
-   │                    ^^^^^^^^^^ attributes hash: 3801988794903197532
+   │                    ^^^^^^^^^^ attributes hash: 11802431919326539080
    │
    = String(
          FeString {
@@ -2798,7 +2798,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:19:18
    │
 19 │         my_u16s: u16[255]
-   │                  ^^^ attributes hash: 547894393873242964
+   │                  ^^^ attributes hash: 10482216811962112628
    │
    = Base(
          Numeric(
@@ -2810,7 +2810,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:19:18
    │
 19 │         my_u16s: u16[255]
-   │                  ^^^^^^^^ attributes hash: 14875306470317127363
+   │                  ^^^^^^^^ attributes hash: 12203565470524119480
    │
    = Array(
          Array {
@@ -2825,7 +2825,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:20:18
    │
 20 │         my_bool: bool
-   │                  ^^^^ attributes hash: 8311861578736502650
+   │                  ^^^^ attributes hash: 5425972608982369985
    │
    = Base(
          Bool,
@@ -2835,7 +2835,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:21:19
    │
 21 │         my_bytes: u8[100]
-   │                   ^^ attributes hash: 1872326638020472004
+   │                   ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -2847,7 +2847,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:21:19
    │
 21 │         my_bytes: u8[100]
-   │                   ^^^^^^^ attributes hash: 3287218553536941062
+   │                   ^^^^^^^ attributes hash: 13273353011268797629
    │
    = Array(
          Array {
@@ -2862,7 +2862,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:23:36
    │
 23 │     pub def set_my_addrs(my_addrs: address[5]):
-   │                                    ^^^^^^^ attributes hash: 16931239362436195516
+   │                                    ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
@@ -2872,7 +2872,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:23:36
    │
 23 │     pub def set_my_addrs(my_addrs: address[5]):
-   │                                    ^^^^^^^^^^ attributes hash: 8018526834227667332
+   │                                    ^^^^^^^^^^ attributes hash: 3212419807255328463
    │
    = Array(
          Array {
@@ -2885,7 +2885,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:26:31
    │
 26 │     pub def get_my_addrs() -> address[5]:
-   │                               ^^^^^^^ attributes hash: 16931239362436195516
+   │                               ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
@@ -2895,7 +2895,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:26:31
    │
 26 │     pub def get_my_addrs() -> address[5]:
-   │                               ^^^^^^^^^^ attributes hash: 8018526834227667332
+   │                               ^^^^^^^^^^ attributes hash: 3212419807255328463
    │
    = Array(
          Array {
@@ -2908,7 +2908,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:29:34
    │
 29 │     pub def set_my_u128(my_u128: u128):
-   │                                  ^^^^ attributes hash: 14909107886776088983
+   │                                  ^^^^ attributes hash: 6162263163478414243
    │
    = Base(
          Numeric(
@@ -2920,7 +2920,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:32:30
    │
 32 │     pub def get_my_u128() -> u128:
-   │                              ^^^^ attributes hash: 14909107886776088983
+   │                              ^^^^ attributes hash: 6162263163478414243
    │
    = Base(
          Numeric(
@@ -2932,7 +2932,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:35:38
    │
 35 │     pub def set_my_string(my_string: String<10>):
-   │                                      ^^^^^^^^^^ attributes hash: 3801988794903197532
+   │                                      ^^^^^^^^^^ attributes hash: 11802431919326539080
    │
    = String(
          FeString {
@@ -2944,7 +2944,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:38:32
    │
 38 │     pub def get_my_string() -> String<10>:
-   │                                ^^^^^^^^^^ attributes hash: 3801988794903197532
+   │                                ^^^^^^^^^^ attributes hash: 11802431919326539080
    │
    = String(
          FeString {
@@ -2956,7 +2956,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:41:34
    │
 41 │     pub def set_my_u16s(my_u16s: u16[255]):
-   │                                  ^^^ attributes hash: 547894393873242964
+   │                                  ^^^ attributes hash: 10482216811962112628
    │
    = Base(
          Numeric(
@@ -2968,7 +2968,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:41:34
    │
 41 │     pub def set_my_u16s(my_u16s: u16[255]):
-   │                                  ^^^^^^^^ attributes hash: 14875306470317127363
+   │                                  ^^^^^^^^ attributes hash: 12203565470524119480
    │
    = Array(
          Array {
@@ -2983,7 +2983,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:44:30
    │
 44 │     pub def get_my_u16s() -> u16[255]:
-   │                              ^^^ attributes hash: 547894393873242964
+   │                              ^^^ attributes hash: 10482216811962112628
    │
    = Base(
          Numeric(
@@ -2995,7 +2995,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:44:30
    │
 44 │     pub def get_my_u16s() -> u16[255]:
-   │                              ^^^^^^^^ attributes hash: 14875306470317127363
+   │                              ^^^^^^^^ attributes hash: 12203565470524119480
    │
    = Array(
          Array {
@@ -3010,7 +3010,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:47:34
    │
 47 │     pub def set_my_bool(my_bool: bool):
-   │                                  ^^^^ attributes hash: 8311861578736502650
+   │                                  ^^^^ attributes hash: 5425972608982369985
    │
    = Base(
          Bool,
@@ -3020,7 +3020,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:50:30
    │
 50 │     pub def get_my_bool() -> bool:
-   │                              ^^^^ attributes hash: 8311861578736502650
+   │                              ^^^^ attributes hash: 5425972608982369985
    │
    = Base(
          Bool,
@@ -3030,7 +3030,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:53:36
    │
 53 │     pub def set_my_bytes(my_bytes: u8[100]):
-   │                                    ^^ attributes hash: 1872326638020472004
+   │                                    ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -3042,7 +3042,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:53:36
    │
 53 │     pub def set_my_bytes(my_bytes: u8[100]):
-   │                                    ^^^^^^^ attributes hash: 3287218553536941062
+   │                                    ^^^^^^^ attributes hash: 13273353011268797629
    │
    = Array(
          Array {
@@ -3057,7 +3057,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:56:31
    │
 56 │     pub def get_my_bytes() -> u8[100]:
-   │                               ^^ attributes hash: 1872326638020472004
+   │                               ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -3069,7 +3069,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:56:31
    │
 56 │     pub def get_my_bytes() -> u8[100]:
-   │                               ^^^^^^^ attributes hash: 3287218553536941062
+   │                               ^^^^^^^ attributes hash: 13273353011268797629
    │
    = Array(
          Array {
@@ -3084,7 +3084,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:59:32
    │
 59 │     pub def get_my_struct() -> MyStruct:
-   │                                ^^^^^^^^ attributes hash: 16430676452298735095
+   │                                ^^^^^^^^ attributes hash: 9436600167440013184
    │
    = Struct(
          Struct {
@@ -3126,7 +3126,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:67:38
    │
 67 │     pub def mod_my_struct(my_struct: MyStruct) -> MyStruct:
-   │                                      ^^^^^^^^ attributes hash: 16430676452298735095
+   │                                      ^^^^^^^^ attributes hash: 9436600167440013184
    │
    = Struct(
          Struct {
@@ -3168,7 +3168,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:67:51
    │
 67 │     pub def mod_my_struct(my_struct: MyStruct) -> MyStruct:
-   │                                                   ^^^^^^^^ attributes hash: 16430676452298735095
+   │                                                   ^^^^^^^^ attributes hash: 9436600167440013184
    │
    = Struct(
          Struct {
@@ -3210,7 +3210,7 @@ note:
   ┌─ stress/abi_encoding_stress.fe:8:15
   │
 8 │     my_addrs: address[5]
-  │               ^^^^^^^ attributes hash: 16931239362436195516
+  │               ^^^^^^^ attributes hash: 928477466454064117
   │
   = Base(
         Address,
@@ -3220,7 +3220,7 @@ note:
   ┌─ stress/abi_encoding_stress.fe:8:15
   │
 8 │     my_addrs: address[5]
-  │               ^^^^^^^^^^ attributes hash: 8018526834227667332
+  │               ^^^^^^^^^^ attributes hash: 3212419807255328463
   │
   = Array(
         Array {
@@ -3233,7 +3233,7 @@ note:
   ┌─ stress/abi_encoding_stress.fe:9:14
   │
 9 │     my_u128: u128
-  │              ^^^^ attributes hash: 14909107886776088983
+  │              ^^^^ attributes hash: 6162263163478414243
   │
   = Base(
         Numeric(
@@ -3245,7 +3245,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:10:16
    │
 10 │     my_string: String<10>
-   │                ^^^^^^^^^^ attributes hash: 3801988794903197532
+   │                ^^^^^^^^^^ attributes hash: 11802431919326539080
    │
    = String(
          FeString {
@@ -3257,7 +3257,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:11:14
    │
 11 │     my_u16s: u16[255]
-   │              ^^^ attributes hash: 547894393873242964
+   │              ^^^ attributes hash: 10482216811962112628
    │
    = Base(
          Numeric(
@@ -3269,7 +3269,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:11:14
    │
 11 │     my_u16s: u16[255]
-   │              ^^^^^^^^ attributes hash: 14875306470317127363
+   │              ^^^^^^^^ attributes hash: 12203565470524119480
    │
    = Array(
          Array {
@@ -3284,7 +3284,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:12:14
    │
 12 │     my_bool: bool
-   │              ^^^^ attributes hash: 8311861578736502650
+   │              ^^^^ attributes hash: 5425972608982369985
    │
    = Base(
          Bool,
@@ -3294,7 +3294,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:13:15
    │
 13 │     my_bytes: u8[100]
-   │               ^^ attributes hash: 1872326638020472004
+   │               ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -3306,7 +3306,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:13:15
    │
 13 │     my_bytes: u8[100]
-   │               ^^^^^^^ attributes hash: 3287218553536941062
+   │               ^^^^^^^ attributes hash: 13273353011268797629
    │
    = Array(
          Array {

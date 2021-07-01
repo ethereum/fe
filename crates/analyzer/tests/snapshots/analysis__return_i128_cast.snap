@@ -29,7 +29,7 @@ note:
   ┌─ features/return_i128_cast.fe:3:22
   │
 3 │         return i128(-3)
-  │                      ^ attributes hash: 16797824492585953824
+  │                      ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -45,7 +45,7 @@ note:
   ┌─ features/return_i128_cast.fe:3:21
   │
 3 │         return i128(-3)
-  │                     ^^ attributes hash: 5494075259962106032
+  │                     ^^ attributes hash: 7454845908456114205
   │
   = ExpressionAttributes {
         typ: Base(
@@ -61,7 +61,7 @@ note:
   ┌─ features/return_i128_cast.fe:3:16
   │
 3 │         return i128(-3)
-  │                ^^^^^^^^ attributes hash: 5494075259962106032
+  │                ^^^^^^^^ attributes hash: 7454845908456114205
   │
   = ExpressionAttributes {
         typ: Base(
@@ -78,7 +78,7 @@ note:
   │  
 2 │ ╭     pub def bar() -> i128:
 3 │ │         return i128(-3)
-  │ ╰───────────────────────^ attributes hash: 4353453468124866257
+  │ ╰───────────────────────^ attributes hash: 15885647765624010011
   │  
   = FunctionAttributes {
         is_public: true,
@@ -97,7 +97,7 @@ note:
 1 │ ╭ contract Foo:
 2 │ │     pub def bar() -> i128:
 3 │ │         return i128(-3)
-  │ ╰───────────────────────^ attributes hash: 7852873630292919407
+  │ ╰───────────────────────^ attributes hash: 7832835924028497188
   │  
   = ContractAttributes {
         public_functions: [
@@ -122,7 +122,7 @@ note:
   ┌─ features/return_i128_cast.fe:3:16
   │
 3 │         return i128(-3)
-  │                ^^^^ attributes hash: 8485302633634877015
+  │                ^^^^ attributes hash: 17259437597606577465
   │
   = TypeConstructor {
         typ: Base(
@@ -136,7 +136,7 @@ note:
   ┌─ features/return_i128_cast.fe:2:22
   │
 2 │     pub def bar() -> i128:
-  │                      ^^^^ attributes hash: 2176316003589696703
+  │                      ^^^^ attributes hash: 1662973713176693737
   │
   = Base(
         Numeric(

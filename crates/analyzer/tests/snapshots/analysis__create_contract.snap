@@ -44,7 +44,7 @@ note:
   ┌─ features/create_contract.fe:3:16
   │
 3 │         return 42
-  │                ^^ attributes hash: 16797824492585953824
+  │                ^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -60,7 +60,7 @@ note:
   ┌─ features/create_contract.fe:7:31
   │
 7 │         foo: Foo = Foo.create(0)
-  │                               ^ attributes hash: 16797824492585953824
+  │                               ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -76,7 +76,7 @@ note:
   ┌─ features/create_contract.fe:7:20
   │
 7 │         foo: Foo = Foo.create(0)
-  │                    ^^^^^^^^^^^^^ attributes hash: 8552961459538575979
+  │                    ^^^^^^^^^^^^^ attributes hash: 15904475842515523811
   │
   = ExpressionAttributes {
         typ: Contract(
@@ -104,7 +104,7 @@ note:
   ┌─ features/create_contract.fe:8:24
   │
 8 │         return address(foo)
-  │                        ^^^ attributes hash: 8552961459538575979
+  │                        ^^^ attributes hash: 15904475842515523811
   │
   = ExpressionAttributes {
         typ: Contract(
@@ -132,7 +132,7 @@ note:
   ┌─ features/create_contract.fe:8:16
   │
 8 │         return address(foo)
-  │                ^^^^^^^^^^^^ attributes hash: 16366719240912622931
+  │                ^^^^^^^^^^^^ attributes hash: 16804606599831072828
   │
   = ExpressionAttributes {
         typ: Base(
@@ -147,7 +147,7 @@ note:
   │  
 2 │ ╭     pub def get_my_num() -> u256:
 3 │ │         return 42
-  │ ╰─────────────────^ attributes hash: 10550548704405770348
+  │ ╰─────────────────^ attributes hash: 14067495107198162751
   │  
   = FunctionAttributes {
         is_public: true,
@@ -166,7 +166,7 @@ note:
 6 │ ╭     pub def create_foo() -> address:
 7 │ │         foo: Foo = Foo.create(0)
 8 │ │         return address(foo)
-  │ ╰───────────────────────────^ attributes hash: 11307555315188767880
+  │ ╰───────────────────────────^ attributes hash: 16637425593092057151
   │  
   = FunctionAttributes {
         is_public: true,
@@ -181,7 +181,7 @@ note:
   ┌─ features/create_contract.fe:7:9
   │
 7 │         foo: Foo = Foo.create(0)
-  │         ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11013990582171916248
+  │         ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18140820768229133196
   │
   = Contract(
         Contract {
@@ -207,7 +207,7 @@ note:
 1 │ ╭ contract Foo:
 2 │ │     pub def get_my_num() -> u256:
 3 │ │         return 42
-  │ ╰─────────────────^ attributes hash: 16252373182675216901
+  │ ╰─────────────────^ attributes hash: 11980950209948939941
   │  
   = ContractAttributes {
         public_functions: [
@@ -249,7 +249,7 @@ note:
 6 │ │     pub def create_foo() -> address:
 7 │ │         foo: Foo = Foo.create(0)
 8 │ │         return address(foo)
-  │ ╰───────────────────────────^ attributes hash: 15817588436725138336
+  │ ╰───────────────────────────^ attributes hash: 15481041844530195022
   │  
   = ContractAttributes {
         public_functions: [
@@ -288,7 +288,7 @@ note:
   ┌─ features/create_contract.fe:7:20
   │
 7 │         foo: Foo = Foo.create(0)
-  │                    ^^^^^^^^^^ attributes hash: 4712101790258272829
+  │                    ^^^^^^^^^^ attributes hash: 5786702353596486570
   │
   = TypeAttribute {
         typ: Contract(
@@ -315,7 +315,7 @@ note:
   ┌─ features/create_contract.fe:8:16
   │
 8 │         return address(foo)
-  │                ^^^^^^^ attributes hash: 12543456546113081273
+  │                ^^^^^^^ attributes hash: 14203407709342965641
   │
   = TypeConstructor {
         typ: Base(
@@ -327,7 +327,7 @@ note:
   ┌─ features/create_contract.fe:2:29
   │
 2 │     pub def get_my_num() -> u256:
-  │                             ^^^^ attributes hash: 17942395924573474124
+  │                             ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -339,7 +339,7 @@ note:
   ┌─ features/create_contract.fe:6:29
   │
 6 │     pub def create_foo() -> address:
-  │                             ^^^^^^^ attributes hash: 16931239362436195516
+  │                             ^^^^^^^ attributes hash: 928477466454064117
   │
   = Base(
         Address,
@@ -349,7 +349,7 @@ note:
   ┌─ features/create_contract.fe:7:14
   │
 7 │         foo: Foo = Foo.create(0)
-  │              ^^^ attributes hash: 2324270301873557290
+  │              ^^^ attributes hash: 18140820768229133196
   │
   = Contract(
         Contract {

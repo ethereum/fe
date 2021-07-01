@@ -1963,7 +1963,7 @@ note:
   ┌─ features/checked_arithmetic.fe:4:16
   │
 4 │         return left + right
-  │                ^^^^ attributes hash: 16797824492585953824
+  │                ^^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -1979,7 +1979,7 @@ note:
   ┌─ features/checked_arithmetic.fe:4:23
   │
 4 │         return left + right
-  │                       ^^^^^ attributes hash: 16797824492585953824
+  │                       ^^^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -1995,7 +1995,7 @@ note:
   ┌─ features/checked_arithmetic.fe:4:16
   │
 4 │         return left + right
-  │                ^^^^^^^^^^^^ attributes hash: 16797824492585953824
+  │                ^^^^^^^^^^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -2011,7 +2011,7 @@ note:
   ┌─ features/checked_arithmetic.fe:7:16
   │
 7 │         return left + right
-  │                ^^^^ attributes hash: 9341420026351674595
+  │                ^^^^ attributes hash: 231358192590700262
   │
   = ExpressionAttributes {
         typ: Base(
@@ -2027,7 +2027,7 @@ note:
   ┌─ features/checked_arithmetic.fe:7:23
   │
 7 │         return left + right
-  │                       ^^^^^ attributes hash: 9341420026351674595
+  │                       ^^^^^ attributes hash: 231358192590700262
   │
   = ExpressionAttributes {
         typ: Base(
@@ -2043,7 +2043,7 @@ note:
   ┌─ features/checked_arithmetic.fe:7:16
   │
 7 │         return left + right
-  │                ^^^^^^^^^^^^ attributes hash: 9341420026351674595
+  │                ^^^^^^^^^^^^ attributes hash: 231358192590700262
   │
   = ExpressionAttributes {
         typ: Base(
@@ -2059,7 +2059,7 @@ note:
    ┌─ features/checked_arithmetic.fe:10:16
    │
 10 │         return left + right
-   │                ^^^^ attributes hash: 3044889006329355385
+   │                ^^^^ attributes hash: 18134665206326494843
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2075,7 +2075,7 @@ note:
    ┌─ features/checked_arithmetic.fe:10:23
    │
 10 │         return left + right
-   │                       ^^^^^ attributes hash: 3044889006329355385
+   │                       ^^^^^ attributes hash: 18134665206326494843
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2091,7 +2091,7 @@ note:
    ┌─ features/checked_arithmetic.fe:10:16
    │
 10 │         return left + right
-   │                ^^^^^^^^^^^^ attributes hash: 3044889006329355385
+   │                ^^^^^^^^^^^^ attributes hash: 18134665206326494843
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2107,7 +2107,7 @@ note:
    ┌─ features/checked_arithmetic.fe:13:16
    │
 13 │         return left + right
-   │                ^^^^ attributes hash: 5442387896079309831
+   │                ^^^^ attributes hash: 8114386917066957540
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2123,7 +2123,7 @@ note:
    ┌─ features/checked_arithmetic.fe:13:23
    │
 13 │         return left + right
-   │                       ^^^^^ attributes hash: 5442387896079309831
+   │                       ^^^^^ attributes hash: 8114386917066957540
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2139,7 +2139,7 @@ note:
    ┌─ features/checked_arithmetic.fe:13:16
    │
 13 │         return left + right
-   │                ^^^^^^^^^^^^ attributes hash: 5442387896079309831
+   │                ^^^^^^^^^^^^ attributes hash: 8114386917066957540
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2155,7 +2155,7 @@ note:
    ┌─ features/checked_arithmetic.fe:16:16
    │
 16 │         return left + right
-   │                ^^^^ attributes hash: 17931047209024117248
+   │                ^^^^ attributes hash: 1434400102836480875
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2171,7 +2171,7 @@ note:
    ┌─ features/checked_arithmetic.fe:16:23
    │
 16 │         return left + right
-   │                       ^^^^^ attributes hash: 17931047209024117248
+   │                       ^^^^^ attributes hash: 1434400102836480875
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2187,7 +2187,7 @@ note:
    ┌─ features/checked_arithmetic.fe:16:16
    │
 16 │         return left + right
-   │                ^^^^^^^^^^^^ attributes hash: 17931047209024117248
+   │                ^^^^^^^^^^^^ attributes hash: 1434400102836480875
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2203,7 +2203,7 @@ note:
    ┌─ features/checked_arithmetic.fe:19:16
    │
 19 │         return left + right
-   │                ^^^^ attributes hash: 6817314866882205962
+   │                ^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2219,7 +2219,7 @@ note:
    ┌─ features/checked_arithmetic.fe:19:23
    │
 19 │         return left + right
-   │                       ^^^^^ attributes hash: 6817314866882205962
+   │                       ^^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2235,7 +2235,7 @@ note:
    ┌─ features/checked_arithmetic.fe:19:16
    │
 19 │         return left + right
-   │                ^^^^^^^^^^^^ attributes hash: 6817314866882205962
+   │                ^^^^^^^^^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2251,7 +2251,7 @@ note:
    ┌─ features/checked_arithmetic.fe:22:16
    │
 22 │         return left + right
-   │                ^^^^ attributes hash: 17351186385905986417
+   │                ^^^^ attributes hash: 15251787519388345880
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2267,7 +2267,7 @@ note:
    ┌─ features/checked_arithmetic.fe:22:23
    │
 22 │         return left + right
-   │                       ^^^^^ attributes hash: 17351186385905986417
+   │                       ^^^^^ attributes hash: 15251787519388345880
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2283,7 +2283,7 @@ note:
    ┌─ features/checked_arithmetic.fe:22:16
    │
 22 │         return left + right
-   │                ^^^^^^^^^^^^ attributes hash: 17351186385905986417
+   │                ^^^^^^^^^^^^ attributes hash: 15251787519388345880
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2299,7 +2299,7 @@ note:
    ┌─ features/checked_arithmetic.fe:25:16
    │
 25 │         return left + right
-   │                ^^^^ attributes hash: 5494075259962106032
+   │                ^^^^ attributes hash: 7454845908456114205
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2315,7 +2315,7 @@ note:
    ┌─ features/checked_arithmetic.fe:25:23
    │
 25 │         return left + right
-   │                       ^^^^^ attributes hash: 5494075259962106032
+   │                       ^^^^^ attributes hash: 7454845908456114205
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2331,7 +2331,7 @@ note:
    ┌─ features/checked_arithmetic.fe:25:16
    │
 25 │         return left + right
-   │                ^^^^^^^^^^^^ attributes hash: 5494075259962106032
+   │                ^^^^^^^^^^^^ attributes hash: 7454845908456114205
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2347,7 +2347,7 @@ note:
    ┌─ features/checked_arithmetic.fe:28:16
    │
 28 │         return left + right
-   │                ^^^^ attributes hash: 16198180549924123587
+   │                ^^^^ attributes hash: 9118369605090770275
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2363,7 +2363,7 @@ note:
    ┌─ features/checked_arithmetic.fe:28:23
    │
 28 │         return left + right
-   │                       ^^^^^ attributes hash: 16198180549924123587
+   │                       ^^^^^ attributes hash: 9118369605090770275
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2379,7 +2379,7 @@ note:
    ┌─ features/checked_arithmetic.fe:28:16
    │
 28 │         return left + right
-   │                ^^^^^^^^^^^^ attributes hash: 16198180549924123587
+   │                ^^^^^^^^^^^^ attributes hash: 9118369605090770275
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2395,7 +2395,7 @@ note:
    ┌─ features/checked_arithmetic.fe:31:16
    │
 31 │         return left + right
-   │                ^^^^ attributes hash: 13972995067286817043
+   │                ^^^^ attributes hash: 16606532750379249980
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2411,7 +2411,7 @@ note:
    ┌─ features/checked_arithmetic.fe:31:23
    │
 31 │         return left + right
-   │                       ^^^^^ attributes hash: 13972995067286817043
+   │                       ^^^^^ attributes hash: 16606532750379249980
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2427,7 +2427,7 @@ note:
    ┌─ features/checked_arithmetic.fe:31:16
    │
 31 │         return left + right
-   │                ^^^^^^^^^^^^ attributes hash: 13972995067286817043
+   │                ^^^^^^^^^^^^ attributes hash: 16606532750379249980
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2443,7 +2443,7 @@ note:
    ┌─ features/checked_arithmetic.fe:34:16
    │
 34 │         return left + right
-   │                ^^^^ attributes hash: 13584665093848691268
+   │                ^^^^ attributes hash: 17413650603257084367
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2459,7 +2459,7 @@ note:
    ┌─ features/checked_arithmetic.fe:34:23
    │
 34 │         return left + right
-   │                       ^^^^^ attributes hash: 13584665093848691268
+   │                       ^^^^^ attributes hash: 17413650603257084367
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2475,7 +2475,7 @@ note:
    ┌─ features/checked_arithmetic.fe:34:16
    │
 34 │         return left + right
-   │                ^^^^^^^^^^^^ attributes hash: 13584665093848691268
+   │                ^^^^^^^^^^^^ attributes hash: 17413650603257084367
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2491,7 +2491,7 @@ note:
    ┌─ features/checked_arithmetic.fe:37:16
    │
 37 │         return left + right
-   │                ^^^^ attributes hash: 9715536092457030614
+   │                ^^^^ attributes hash: 6720198376222228094
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2507,7 +2507,7 @@ note:
    ┌─ features/checked_arithmetic.fe:37:23
    │
 37 │         return left + right
-   │                       ^^^^^ attributes hash: 9715536092457030614
+   │                       ^^^^^ attributes hash: 6720198376222228094
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2523,7 +2523,7 @@ note:
    ┌─ features/checked_arithmetic.fe:37:16
    │
 37 │         return left + right
-   │                ^^^^^^^^^^^^ attributes hash: 9715536092457030614
+   │                ^^^^^^^^^^^^ attributes hash: 6720198376222228094
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2539,7 +2539,7 @@ note:
    ┌─ features/checked_arithmetic.fe:40:16
    │
 40 │         return left - right
-   │                ^^^^ attributes hash: 16797824492585953824
+   │                ^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2555,7 +2555,7 @@ note:
    ┌─ features/checked_arithmetic.fe:40:23
    │
 40 │         return left - right
-   │                       ^^^^^ attributes hash: 16797824492585953824
+   │                       ^^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2571,7 +2571,7 @@ note:
    ┌─ features/checked_arithmetic.fe:40:16
    │
 40 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 16797824492585953824
+   │                ^^^^^^^^^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2587,7 +2587,7 @@ note:
    ┌─ features/checked_arithmetic.fe:43:16
    │
 43 │         return left - right
-   │                ^^^^ attributes hash: 9341420026351674595
+   │                ^^^^ attributes hash: 231358192590700262
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2603,7 +2603,7 @@ note:
    ┌─ features/checked_arithmetic.fe:43:23
    │
 43 │         return left - right
-   │                       ^^^^^ attributes hash: 9341420026351674595
+   │                       ^^^^^ attributes hash: 231358192590700262
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2619,7 +2619,7 @@ note:
    ┌─ features/checked_arithmetic.fe:43:16
    │
 43 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 9341420026351674595
+   │                ^^^^^^^^^^^^ attributes hash: 231358192590700262
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2635,7 +2635,7 @@ note:
    ┌─ features/checked_arithmetic.fe:46:16
    │
 46 │         return left - right
-   │                ^^^^ attributes hash: 3044889006329355385
+   │                ^^^^ attributes hash: 18134665206326494843
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2651,7 +2651,7 @@ note:
    ┌─ features/checked_arithmetic.fe:46:23
    │
 46 │         return left - right
-   │                       ^^^^^ attributes hash: 3044889006329355385
+   │                       ^^^^^ attributes hash: 18134665206326494843
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2667,7 +2667,7 @@ note:
    ┌─ features/checked_arithmetic.fe:46:16
    │
 46 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 3044889006329355385
+   │                ^^^^^^^^^^^^ attributes hash: 18134665206326494843
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2683,7 +2683,7 @@ note:
    ┌─ features/checked_arithmetic.fe:49:16
    │
 49 │         return left - right
-   │                ^^^^ attributes hash: 5442387896079309831
+   │                ^^^^ attributes hash: 8114386917066957540
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2699,7 +2699,7 @@ note:
    ┌─ features/checked_arithmetic.fe:49:23
    │
 49 │         return left - right
-   │                       ^^^^^ attributes hash: 5442387896079309831
+   │                       ^^^^^ attributes hash: 8114386917066957540
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2715,7 +2715,7 @@ note:
    ┌─ features/checked_arithmetic.fe:49:16
    │
 49 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 5442387896079309831
+   │                ^^^^^^^^^^^^ attributes hash: 8114386917066957540
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2731,7 +2731,7 @@ note:
    ┌─ features/checked_arithmetic.fe:52:16
    │
 52 │         return left - right
-   │                ^^^^ attributes hash: 17931047209024117248
+   │                ^^^^ attributes hash: 1434400102836480875
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2747,7 +2747,7 @@ note:
    ┌─ features/checked_arithmetic.fe:52:23
    │
 52 │         return left - right
-   │                       ^^^^^ attributes hash: 17931047209024117248
+   │                       ^^^^^ attributes hash: 1434400102836480875
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2763,7 +2763,7 @@ note:
    ┌─ features/checked_arithmetic.fe:52:16
    │
 52 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 17931047209024117248
+   │                ^^^^^^^^^^^^ attributes hash: 1434400102836480875
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2779,7 +2779,7 @@ note:
    ┌─ features/checked_arithmetic.fe:55:16
    │
 55 │         return left - right
-   │                ^^^^ attributes hash: 6817314866882205962
+   │                ^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2795,7 +2795,7 @@ note:
    ┌─ features/checked_arithmetic.fe:55:23
    │
 55 │         return left - right
-   │                       ^^^^^ attributes hash: 6817314866882205962
+   │                       ^^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2811,7 +2811,7 @@ note:
    ┌─ features/checked_arithmetic.fe:55:16
    │
 55 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 6817314866882205962
+   │                ^^^^^^^^^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2827,7 +2827,7 @@ note:
    ┌─ features/checked_arithmetic.fe:58:16
    │
 58 │         return left - right
-   │                ^^^^ attributes hash: 17351186385905986417
+   │                ^^^^ attributes hash: 15251787519388345880
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2843,7 +2843,7 @@ note:
    ┌─ features/checked_arithmetic.fe:58:23
    │
 58 │         return left - right
-   │                       ^^^^^ attributes hash: 17351186385905986417
+   │                       ^^^^^ attributes hash: 15251787519388345880
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2859,7 +2859,7 @@ note:
    ┌─ features/checked_arithmetic.fe:58:16
    │
 58 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 17351186385905986417
+   │                ^^^^^^^^^^^^ attributes hash: 15251787519388345880
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2875,7 +2875,7 @@ note:
    ┌─ features/checked_arithmetic.fe:61:16
    │
 61 │         return left - right
-   │                ^^^^ attributes hash: 5494075259962106032
+   │                ^^^^ attributes hash: 7454845908456114205
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2891,7 +2891,7 @@ note:
    ┌─ features/checked_arithmetic.fe:61:23
    │
 61 │         return left - right
-   │                       ^^^^^ attributes hash: 5494075259962106032
+   │                       ^^^^^ attributes hash: 7454845908456114205
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2907,7 +2907,7 @@ note:
    ┌─ features/checked_arithmetic.fe:61:16
    │
 61 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 5494075259962106032
+   │                ^^^^^^^^^^^^ attributes hash: 7454845908456114205
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2923,7 +2923,7 @@ note:
    ┌─ features/checked_arithmetic.fe:64:16
    │
 64 │         return left - right
-   │                ^^^^ attributes hash: 16198180549924123587
+   │                ^^^^ attributes hash: 9118369605090770275
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2939,7 +2939,7 @@ note:
    ┌─ features/checked_arithmetic.fe:64:23
    │
 64 │         return left - right
-   │                       ^^^^^ attributes hash: 16198180549924123587
+   │                       ^^^^^ attributes hash: 9118369605090770275
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2955,7 +2955,7 @@ note:
    ┌─ features/checked_arithmetic.fe:64:16
    │
 64 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 16198180549924123587
+   │                ^^^^^^^^^^^^ attributes hash: 9118369605090770275
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2971,7 +2971,7 @@ note:
    ┌─ features/checked_arithmetic.fe:67:16
    │
 67 │         return left - right
-   │                ^^^^ attributes hash: 13972995067286817043
+   │                ^^^^ attributes hash: 16606532750379249980
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2987,7 +2987,7 @@ note:
    ┌─ features/checked_arithmetic.fe:67:23
    │
 67 │         return left - right
-   │                       ^^^^^ attributes hash: 13972995067286817043
+   │                       ^^^^^ attributes hash: 16606532750379249980
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3003,7 +3003,7 @@ note:
    ┌─ features/checked_arithmetic.fe:67:16
    │
 67 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 13972995067286817043
+   │                ^^^^^^^^^^^^ attributes hash: 16606532750379249980
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3019,7 +3019,7 @@ note:
    ┌─ features/checked_arithmetic.fe:70:16
    │
 70 │         return left - right
-   │                ^^^^ attributes hash: 13584665093848691268
+   │                ^^^^ attributes hash: 17413650603257084367
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3035,7 +3035,7 @@ note:
    ┌─ features/checked_arithmetic.fe:70:23
    │
 70 │         return left - right
-   │                       ^^^^^ attributes hash: 13584665093848691268
+   │                       ^^^^^ attributes hash: 17413650603257084367
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3051,7 +3051,7 @@ note:
    ┌─ features/checked_arithmetic.fe:70:16
    │
 70 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 13584665093848691268
+   │                ^^^^^^^^^^^^ attributes hash: 17413650603257084367
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3067,7 +3067,7 @@ note:
    ┌─ features/checked_arithmetic.fe:73:16
    │
 73 │         return left - right
-   │                ^^^^ attributes hash: 9715536092457030614
+   │                ^^^^ attributes hash: 6720198376222228094
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3083,7 +3083,7 @@ note:
    ┌─ features/checked_arithmetic.fe:73:23
    │
 73 │         return left - right
-   │                       ^^^^^ attributes hash: 9715536092457030614
+   │                       ^^^^^ attributes hash: 6720198376222228094
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3099,7 +3099,7 @@ note:
    ┌─ features/checked_arithmetic.fe:73:16
    │
 73 │         return left - right
-   │                ^^^^^^^^^^^^ attributes hash: 9715536092457030614
+   │                ^^^^^^^^^^^^ attributes hash: 6720198376222228094
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3115,7 +3115,7 @@ note:
    ┌─ features/checked_arithmetic.fe:76:16
    │
 76 │         return left / right
-   │                ^^^^ attributes hash: 16797824492585953824
+   │                ^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3131,7 +3131,7 @@ note:
    ┌─ features/checked_arithmetic.fe:76:23
    │
 76 │         return left / right
-   │                       ^^^^^ attributes hash: 16797824492585953824
+   │                       ^^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3147,7 +3147,7 @@ note:
    ┌─ features/checked_arithmetic.fe:76:16
    │
 76 │         return left / right
-   │                ^^^^^^^^^^^^ attributes hash: 16797824492585953824
+   │                ^^^^^^^^^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3163,7 +3163,7 @@ note:
    ┌─ features/checked_arithmetic.fe:79:16
    │
 79 │         return left / right
-   │                ^^^^ attributes hash: 9341420026351674595
+   │                ^^^^ attributes hash: 231358192590700262
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3179,7 +3179,7 @@ note:
    ┌─ features/checked_arithmetic.fe:79:23
    │
 79 │         return left / right
-   │                       ^^^^^ attributes hash: 9341420026351674595
+   │                       ^^^^^ attributes hash: 231358192590700262
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3195,7 +3195,7 @@ note:
    ┌─ features/checked_arithmetic.fe:79:16
    │
 79 │         return left / right
-   │                ^^^^^^^^^^^^ attributes hash: 9341420026351674595
+   │                ^^^^^^^^^^^^ attributes hash: 231358192590700262
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3211,7 +3211,7 @@ note:
    ┌─ features/checked_arithmetic.fe:82:16
    │
 82 │         return left / right
-   │                ^^^^ attributes hash: 3044889006329355385
+   │                ^^^^ attributes hash: 18134665206326494843
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3227,7 +3227,7 @@ note:
    ┌─ features/checked_arithmetic.fe:82:23
    │
 82 │         return left / right
-   │                       ^^^^^ attributes hash: 3044889006329355385
+   │                       ^^^^^ attributes hash: 18134665206326494843
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3243,7 +3243,7 @@ note:
    ┌─ features/checked_arithmetic.fe:82:16
    │
 82 │         return left / right
-   │                ^^^^^^^^^^^^ attributes hash: 3044889006329355385
+   │                ^^^^^^^^^^^^ attributes hash: 18134665206326494843
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3259,7 +3259,7 @@ note:
    ┌─ features/checked_arithmetic.fe:85:16
    │
 85 │         return left / right
-   │                ^^^^ attributes hash: 5442387896079309831
+   │                ^^^^ attributes hash: 8114386917066957540
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3275,7 +3275,7 @@ note:
    ┌─ features/checked_arithmetic.fe:85:23
    │
 85 │         return left / right
-   │                       ^^^^^ attributes hash: 5442387896079309831
+   │                       ^^^^^ attributes hash: 8114386917066957540
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3291,7 +3291,7 @@ note:
    ┌─ features/checked_arithmetic.fe:85:16
    │
 85 │         return left / right
-   │                ^^^^^^^^^^^^ attributes hash: 5442387896079309831
+   │                ^^^^^^^^^^^^ attributes hash: 8114386917066957540
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3307,7 +3307,7 @@ note:
    ┌─ features/checked_arithmetic.fe:88:16
    │
 88 │         return left / right
-   │                ^^^^ attributes hash: 17931047209024117248
+   │                ^^^^ attributes hash: 1434400102836480875
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3323,7 +3323,7 @@ note:
    ┌─ features/checked_arithmetic.fe:88:23
    │
 88 │         return left / right
-   │                       ^^^^^ attributes hash: 17931047209024117248
+   │                       ^^^^^ attributes hash: 1434400102836480875
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3339,7 +3339,7 @@ note:
    ┌─ features/checked_arithmetic.fe:88:16
    │
 88 │         return left / right
-   │                ^^^^^^^^^^^^ attributes hash: 17931047209024117248
+   │                ^^^^^^^^^^^^ attributes hash: 1434400102836480875
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3355,7 +3355,7 @@ note:
    ┌─ features/checked_arithmetic.fe:91:16
    │
 91 │         return left / right
-   │                ^^^^ attributes hash: 6817314866882205962
+   │                ^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3371,7 +3371,7 @@ note:
    ┌─ features/checked_arithmetic.fe:91:23
    │
 91 │         return left / right
-   │                       ^^^^^ attributes hash: 6817314866882205962
+   │                       ^^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3387,7 +3387,7 @@ note:
    ┌─ features/checked_arithmetic.fe:91:16
    │
 91 │         return left / right
-   │                ^^^^^^^^^^^^ attributes hash: 6817314866882205962
+   │                ^^^^^^^^^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3403,7 +3403,7 @@ note:
    ┌─ features/checked_arithmetic.fe:94:16
    │
 94 │         return left / right
-   │                ^^^^ attributes hash: 17351186385905986417
+   │                ^^^^ attributes hash: 15251787519388345880
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3419,7 +3419,7 @@ note:
    ┌─ features/checked_arithmetic.fe:94:23
    │
 94 │         return left / right
-   │                       ^^^^^ attributes hash: 17351186385905986417
+   │                       ^^^^^ attributes hash: 15251787519388345880
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3435,7 +3435,7 @@ note:
    ┌─ features/checked_arithmetic.fe:94:16
    │
 94 │         return left / right
-   │                ^^^^^^^^^^^^ attributes hash: 17351186385905986417
+   │                ^^^^^^^^^^^^ attributes hash: 15251787519388345880
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3451,7 +3451,7 @@ note:
    ┌─ features/checked_arithmetic.fe:97:16
    │
 97 │         return left / right
-   │                ^^^^ attributes hash: 5494075259962106032
+   │                ^^^^ attributes hash: 7454845908456114205
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3467,7 +3467,7 @@ note:
    ┌─ features/checked_arithmetic.fe:97:23
    │
 97 │         return left / right
-   │                       ^^^^^ attributes hash: 5494075259962106032
+   │                       ^^^^^ attributes hash: 7454845908456114205
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3483,7 +3483,7 @@ note:
    ┌─ features/checked_arithmetic.fe:97:16
    │
 97 │         return left / right
-   │                ^^^^^^^^^^^^ attributes hash: 5494075259962106032
+   │                ^^^^^^^^^^^^ attributes hash: 7454845908456114205
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3499,7 +3499,7 @@ note:
     ┌─ features/checked_arithmetic.fe:100:16
     │
 100 │         return left / right
-    │                ^^^^ attributes hash: 16198180549924123587
+    │                ^^^^ attributes hash: 9118369605090770275
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3515,7 +3515,7 @@ note:
     ┌─ features/checked_arithmetic.fe:100:23
     │
 100 │         return left / right
-    │                       ^^^^^ attributes hash: 16198180549924123587
+    │                       ^^^^^ attributes hash: 9118369605090770275
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3531,7 +3531,7 @@ note:
     ┌─ features/checked_arithmetic.fe:100:16
     │
 100 │         return left / right
-    │                ^^^^^^^^^^^^ attributes hash: 16198180549924123587
+    │                ^^^^^^^^^^^^ attributes hash: 9118369605090770275
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3547,7 +3547,7 @@ note:
     ┌─ features/checked_arithmetic.fe:103:16
     │
 103 │         return left / right
-    │                ^^^^ attributes hash: 13972995067286817043
+    │                ^^^^ attributes hash: 16606532750379249980
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3563,7 +3563,7 @@ note:
     ┌─ features/checked_arithmetic.fe:103:23
     │
 103 │         return left / right
-    │                       ^^^^^ attributes hash: 13972995067286817043
+    │                       ^^^^^ attributes hash: 16606532750379249980
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3579,7 +3579,7 @@ note:
     ┌─ features/checked_arithmetic.fe:103:16
     │
 103 │         return left / right
-    │                ^^^^^^^^^^^^ attributes hash: 13972995067286817043
+    │                ^^^^^^^^^^^^ attributes hash: 16606532750379249980
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3595,7 +3595,7 @@ note:
     ┌─ features/checked_arithmetic.fe:106:16
     │
 106 │         return left / right
-    │                ^^^^ attributes hash: 13584665093848691268
+    │                ^^^^ attributes hash: 17413650603257084367
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3611,7 +3611,7 @@ note:
     ┌─ features/checked_arithmetic.fe:106:23
     │
 106 │         return left / right
-    │                       ^^^^^ attributes hash: 13584665093848691268
+    │                       ^^^^^ attributes hash: 17413650603257084367
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3627,7 +3627,7 @@ note:
     ┌─ features/checked_arithmetic.fe:106:16
     │
 106 │         return left / right
-    │                ^^^^^^^^^^^^ attributes hash: 13584665093848691268
+    │                ^^^^^^^^^^^^ attributes hash: 17413650603257084367
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3643,7 +3643,7 @@ note:
     ┌─ features/checked_arithmetic.fe:109:16
     │
 109 │         return left / right
-    │                ^^^^ attributes hash: 9715536092457030614
+    │                ^^^^ attributes hash: 6720198376222228094
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3659,7 +3659,7 @@ note:
     ┌─ features/checked_arithmetic.fe:109:23
     │
 109 │         return left / right
-    │                       ^^^^^ attributes hash: 9715536092457030614
+    │                       ^^^^^ attributes hash: 6720198376222228094
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3675,7 +3675,7 @@ note:
     ┌─ features/checked_arithmetic.fe:109:16
     │
 109 │         return left / right
-    │                ^^^^^^^^^^^^ attributes hash: 9715536092457030614
+    │                ^^^^^^^^^^^^ attributes hash: 6720198376222228094
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3691,7 +3691,7 @@ note:
     ┌─ features/checked_arithmetic.fe:112:16
     │
 112 │         return left * right
-    │                ^^^^ attributes hash: 16797824492585953824
+    │                ^^^^ attributes hash: 1230752710897721197
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3707,7 +3707,7 @@ note:
     ┌─ features/checked_arithmetic.fe:112:23
     │
 112 │         return left * right
-    │                       ^^^^^ attributes hash: 16797824492585953824
+    │                       ^^^^^ attributes hash: 1230752710897721197
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3723,7 +3723,7 @@ note:
     ┌─ features/checked_arithmetic.fe:112:16
     │
 112 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │                ^^^^^^^^^^^^ attributes hash: 1230752710897721197
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3739,7 +3739,7 @@ note:
     ┌─ features/checked_arithmetic.fe:115:16
     │
 115 │         return left * right
-    │                ^^^^ attributes hash: 9341420026351674595
+    │                ^^^^ attributes hash: 231358192590700262
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3755,7 +3755,7 @@ note:
     ┌─ features/checked_arithmetic.fe:115:23
     │
 115 │         return left * right
-    │                       ^^^^^ attributes hash: 9341420026351674595
+    │                       ^^^^^ attributes hash: 231358192590700262
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3771,7 +3771,7 @@ note:
     ┌─ features/checked_arithmetic.fe:115:16
     │
 115 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 9341420026351674595
+    │                ^^^^^^^^^^^^ attributes hash: 231358192590700262
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3787,7 +3787,7 @@ note:
     ┌─ features/checked_arithmetic.fe:118:16
     │
 118 │         return left * right
-    │                ^^^^ attributes hash: 3044889006329355385
+    │                ^^^^ attributes hash: 18134665206326494843
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3803,7 +3803,7 @@ note:
     ┌─ features/checked_arithmetic.fe:118:23
     │
 118 │         return left * right
-    │                       ^^^^^ attributes hash: 3044889006329355385
+    │                       ^^^^^ attributes hash: 18134665206326494843
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3819,7 +3819,7 @@ note:
     ┌─ features/checked_arithmetic.fe:118:16
     │
 118 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 3044889006329355385
+    │                ^^^^^^^^^^^^ attributes hash: 18134665206326494843
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3835,7 +3835,7 @@ note:
     ┌─ features/checked_arithmetic.fe:121:16
     │
 121 │         return left * right
-    │                ^^^^ attributes hash: 5442387896079309831
+    │                ^^^^ attributes hash: 8114386917066957540
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3851,7 +3851,7 @@ note:
     ┌─ features/checked_arithmetic.fe:121:23
     │
 121 │         return left * right
-    │                       ^^^^^ attributes hash: 5442387896079309831
+    │                       ^^^^^ attributes hash: 8114386917066957540
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3867,7 +3867,7 @@ note:
     ┌─ features/checked_arithmetic.fe:121:16
     │
 121 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 5442387896079309831
+    │                ^^^^^^^^^^^^ attributes hash: 8114386917066957540
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3883,7 +3883,7 @@ note:
     ┌─ features/checked_arithmetic.fe:124:16
     │
 124 │         return left * right
-    │                ^^^^ attributes hash: 17931047209024117248
+    │                ^^^^ attributes hash: 1434400102836480875
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3899,7 +3899,7 @@ note:
     ┌─ features/checked_arithmetic.fe:124:23
     │
 124 │         return left * right
-    │                       ^^^^^ attributes hash: 17931047209024117248
+    │                       ^^^^^ attributes hash: 1434400102836480875
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3915,7 +3915,7 @@ note:
     ┌─ features/checked_arithmetic.fe:124:16
     │
 124 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 17931047209024117248
+    │                ^^^^^^^^^^^^ attributes hash: 1434400102836480875
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3931,7 +3931,7 @@ note:
     ┌─ features/checked_arithmetic.fe:127:16
     │
 127 │         return left * right
-    │                ^^^^ attributes hash: 6817314866882205962
+    │                ^^^^ attributes hash: 11226462071603862164
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3947,7 +3947,7 @@ note:
     ┌─ features/checked_arithmetic.fe:127:23
     │
 127 │         return left * right
-    │                       ^^^^^ attributes hash: 6817314866882205962
+    │                       ^^^^^ attributes hash: 11226462071603862164
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3963,7 +3963,7 @@ note:
     ┌─ features/checked_arithmetic.fe:127:16
     │
 127 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 6817314866882205962
+    │                ^^^^^^^^^^^^ attributes hash: 11226462071603862164
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3979,7 +3979,7 @@ note:
     ┌─ features/checked_arithmetic.fe:130:16
     │
 130 │         return left * right
-    │                ^^^^ attributes hash: 17351186385905986417
+    │                ^^^^ attributes hash: 15251787519388345880
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3995,7 +3995,7 @@ note:
     ┌─ features/checked_arithmetic.fe:130:23
     │
 130 │         return left * right
-    │                       ^^^^^ attributes hash: 17351186385905986417
+    │                       ^^^^^ attributes hash: 15251787519388345880
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4011,7 +4011,7 @@ note:
     ┌─ features/checked_arithmetic.fe:130:16
     │
 130 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 17351186385905986417
+    │                ^^^^^^^^^^^^ attributes hash: 15251787519388345880
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4027,7 +4027,7 @@ note:
     ┌─ features/checked_arithmetic.fe:133:16
     │
 133 │         return left * right
-    │                ^^^^ attributes hash: 5494075259962106032
+    │                ^^^^ attributes hash: 7454845908456114205
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4043,7 +4043,7 @@ note:
     ┌─ features/checked_arithmetic.fe:133:23
     │
 133 │         return left * right
-    │                       ^^^^^ attributes hash: 5494075259962106032
+    │                       ^^^^^ attributes hash: 7454845908456114205
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4059,7 +4059,7 @@ note:
     ┌─ features/checked_arithmetic.fe:133:16
     │
 133 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 5494075259962106032
+    │                ^^^^^^^^^^^^ attributes hash: 7454845908456114205
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4075,7 +4075,7 @@ note:
     ┌─ features/checked_arithmetic.fe:136:16
     │
 136 │         return left * right
-    │                ^^^^ attributes hash: 16198180549924123587
+    │                ^^^^ attributes hash: 9118369605090770275
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4091,7 +4091,7 @@ note:
     ┌─ features/checked_arithmetic.fe:136:23
     │
 136 │         return left * right
-    │                       ^^^^^ attributes hash: 16198180549924123587
+    │                       ^^^^^ attributes hash: 9118369605090770275
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4107,7 +4107,7 @@ note:
     ┌─ features/checked_arithmetic.fe:136:16
     │
 136 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 16198180549924123587
+    │                ^^^^^^^^^^^^ attributes hash: 9118369605090770275
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4123,7 +4123,7 @@ note:
     ┌─ features/checked_arithmetic.fe:139:16
     │
 139 │         return left * right
-    │                ^^^^ attributes hash: 13972995067286817043
+    │                ^^^^ attributes hash: 16606532750379249980
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4139,7 +4139,7 @@ note:
     ┌─ features/checked_arithmetic.fe:139:23
     │
 139 │         return left * right
-    │                       ^^^^^ attributes hash: 13972995067286817043
+    │                       ^^^^^ attributes hash: 16606532750379249980
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4155,7 +4155,7 @@ note:
     ┌─ features/checked_arithmetic.fe:139:16
     │
 139 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 13972995067286817043
+    │                ^^^^^^^^^^^^ attributes hash: 16606532750379249980
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4171,7 +4171,7 @@ note:
     ┌─ features/checked_arithmetic.fe:142:16
     │
 142 │         return left * right
-    │                ^^^^ attributes hash: 13584665093848691268
+    │                ^^^^ attributes hash: 17413650603257084367
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4187,7 +4187,7 @@ note:
     ┌─ features/checked_arithmetic.fe:142:23
     │
 142 │         return left * right
-    │                       ^^^^^ attributes hash: 13584665093848691268
+    │                       ^^^^^ attributes hash: 17413650603257084367
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4203,7 +4203,7 @@ note:
     ┌─ features/checked_arithmetic.fe:142:16
     │
 142 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 13584665093848691268
+    │                ^^^^^^^^^^^^ attributes hash: 17413650603257084367
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4219,7 +4219,7 @@ note:
     ┌─ features/checked_arithmetic.fe:145:16
     │
 145 │         return left * right
-    │                ^^^^ attributes hash: 9715536092457030614
+    │                ^^^^ attributes hash: 6720198376222228094
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4235,7 +4235,7 @@ note:
     ┌─ features/checked_arithmetic.fe:145:23
     │
 145 │         return left * right
-    │                       ^^^^^ attributes hash: 9715536092457030614
+    │                       ^^^^^ attributes hash: 6720198376222228094
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4251,7 +4251,7 @@ note:
     ┌─ features/checked_arithmetic.fe:145:16
     │
 145 │         return left * right
-    │                ^^^^^^^^^^^^ attributes hash: 9715536092457030614
+    │                ^^^^^^^^^^^^ attributes hash: 6720198376222228094
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4267,7 +4267,7 @@ note:
     ┌─ features/checked_arithmetic.fe:148:16
     │
 148 │         return left % right
-    │                ^^^^ attributes hash: 16797824492585953824
+    │                ^^^^ attributes hash: 1230752710897721197
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4283,7 +4283,7 @@ note:
     ┌─ features/checked_arithmetic.fe:148:23
     │
 148 │         return left % right
-    │                       ^^^^^ attributes hash: 16797824492585953824
+    │                       ^^^^^ attributes hash: 1230752710897721197
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4299,7 +4299,7 @@ note:
     ┌─ features/checked_arithmetic.fe:148:16
     │
 148 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │                ^^^^^^^^^^^^ attributes hash: 1230752710897721197
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4315,7 +4315,7 @@ note:
     ┌─ features/checked_arithmetic.fe:151:16
     │
 151 │         return left % right
-    │                ^^^^ attributes hash: 9341420026351674595
+    │                ^^^^ attributes hash: 231358192590700262
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4331,7 +4331,7 @@ note:
     ┌─ features/checked_arithmetic.fe:151:23
     │
 151 │         return left % right
-    │                       ^^^^^ attributes hash: 9341420026351674595
+    │                       ^^^^^ attributes hash: 231358192590700262
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4347,7 +4347,7 @@ note:
     ┌─ features/checked_arithmetic.fe:151:16
     │
 151 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 9341420026351674595
+    │                ^^^^^^^^^^^^ attributes hash: 231358192590700262
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4363,7 +4363,7 @@ note:
     ┌─ features/checked_arithmetic.fe:154:16
     │
 154 │         return left % right
-    │                ^^^^ attributes hash: 3044889006329355385
+    │                ^^^^ attributes hash: 18134665206326494843
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4379,7 +4379,7 @@ note:
     ┌─ features/checked_arithmetic.fe:154:23
     │
 154 │         return left % right
-    │                       ^^^^^ attributes hash: 3044889006329355385
+    │                       ^^^^^ attributes hash: 18134665206326494843
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4395,7 +4395,7 @@ note:
     ┌─ features/checked_arithmetic.fe:154:16
     │
 154 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 3044889006329355385
+    │                ^^^^^^^^^^^^ attributes hash: 18134665206326494843
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4411,7 +4411,7 @@ note:
     ┌─ features/checked_arithmetic.fe:157:16
     │
 157 │         return left % right
-    │                ^^^^ attributes hash: 5442387896079309831
+    │                ^^^^ attributes hash: 8114386917066957540
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4427,7 +4427,7 @@ note:
     ┌─ features/checked_arithmetic.fe:157:23
     │
 157 │         return left % right
-    │                       ^^^^^ attributes hash: 5442387896079309831
+    │                       ^^^^^ attributes hash: 8114386917066957540
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4443,7 +4443,7 @@ note:
     ┌─ features/checked_arithmetic.fe:157:16
     │
 157 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 5442387896079309831
+    │                ^^^^^^^^^^^^ attributes hash: 8114386917066957540
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4459,7 +4459,7 @@ note:
     ┌─ features/checked_arithmetic.fe:160:16
     │
 160 │         return left % right
-    │                ^^^^ attributes hash: 17931047209024117248
+    │                ^^^^ attributes hash: 1434400102836480875
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4475,7 +4475,7 @@ note:
     ┌─ features/checked_arithmetic.fe:160:23
     │
 160 │         return left % right
-    │                       ^^^^^ attributes hash: 17931047209024117248
+    │                       ^^^^^ attributes hash: 1434400102836480875
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4491,7 +4491,7 @@ note:
     ┌─ features/checked_arithmetic.fe:160:16
     │
 160 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 17931047209024117248
+    │                ^^^^^^^^^^^^ attributes hash: 1434400102836480875
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4507,7 +4507,7 @@ note:
     ┌─ features/checked_arithmetic.fe:163:16
     │
 163 │         return left % right
-    │                ^^^^ attributes hash: 6817314866882205962
+    │                ^^^^ attributes hash: 11226462071603862164
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4523,7 +4523,7 @@ note:
     ┌─ features/checked_arithmetic.fe:163:23
     │
 163 │         return left % right
-    │                       ^^^^^ attributes hash: 6817314866882205962
+    │                       ^^^^^ attributes hash: 11226462071603862164
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4539,7 +4539,7 @@ note:
     ┌─ features/checked_arithmetic.fe:163:16
     │
 163 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 6817314866882205962
+    │                ^^^^^^^^^^^^ attributes hash: 11226462071603862164
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4555,7 +4555,7 @@ note:
     ┌─ features/checked_arithmetic.fe:166:16
     │
 166 │         return left % right
-    │                ^^^^ attributes hash: 17351186385905986417
+    │                ^^^^ attributes hash: 15251787519388345880
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4571,7 +4571,7 @@ note:
     ┌─ features/checked_arithmetic.fe:166:23
     │
 166 │         return left % right
-    │                       ^^^^^ attributes hash: 17351186385905986417
+    │                       ^^^^^ attributes hash: 15251787519388345880
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4587,7 +4587,7 @@ note:
     ┌─ features/checked_arithmetic.fe:166:16
     │
 166 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 17351186385905986417
+    │                ^^^^^^^^^^^^ attributes hash: 15251787519388345880
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4603,7 +4603,7 @@ note:
     ┌─ features/checked_arithmetic.fe:169:16
     │
 169 │         return left % right
-    │                ^^^^ attributes hash: 5494075259962106032
+    │                ^^^^ attributes hash: 7454845908456114205
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4619,7 +4619,7 @@ note:
     ┌─ features/checked_arithmetic.fe:169:23
     │
 169 │         return left % right
-    │                       ^^^^^ attributes hash: 5494075259962106032
+    │                       ^^^^^ attributes hash: 7454845908456114205
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4635,7 +4635,7 @@ note:
     ┌─ features/checked_arithmetic.fe:169:16
     │
 169 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 5494075259962106032
+    │                ^^^^^^^^^^^^ attributes hash: 7454845908456114205
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4651,7 +4651,7 @@ note:
     ┌─ features/checked_arithmetic.fe:172:16
     │
 172 │         return left % right
-    │                ^^^^ attributes hash: 16198180549924123587
+    │                ^^^^ attributes hash: 9118369605090770275
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4667,7 +4667,7 @@ note:
     ┌─ features/checked_arithmetic.fe:172:23
     │
 172 │         return left % right
-    │                       ^^^^^ attributes hash: 16198180549924123587
+    │                       ^^^^^ attributes hash: 9118369605090770275
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4683,7 +4683,7 @@ note:
     ┌─ features/checked_arithmetic.fe:172:16
     │
 172 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 16198180549924123587
+    │                ^^^^^^^^^^^^ attributes hash: 9118369605090770275
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4699,7 +4699,7 @@ note:
     ┌─ features/checked_arithmetic.fe:175:16
     │
 175 │         return left % right
-    │                ^^^^ attributes hash: 13972995067286817043
+    │                ^^^^ attributes hash: 16606532750379249980
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4715,7 +4715,7 @@ note:
     ┌─ features/checked_arithmetic.fe:175:23
     │
 175 │         return left % right
-    │                       ^^^^^ attributes hash: 13972995067286817043
+    │                       ^^^^^ attributes hash: 16606532750379249980
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4731,7 +4731,7 @@ note:
     ┌─ features/checked_arithmetic.fe:175:16
     │
 175 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 13972995067286817043
+    │                ^^^^^^^^^^^^ attributes hash: 16606532750379249980
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4747,7 +4747,7 @@ note:
     ┌─ features/checked_arithmetic.fe:178:16
     │
 178 │         return left % right
-    │                ^^^^ attributes hash: 13584665093848691268
+    │                ^^^^ attributes hash: 17413650603257084367
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4763,7 +4763,7 @@ note:
     ┌─ features/checked_arithmetic.fe:178:23
     │
 178 │         return left % right
-    │                       ^^^^^ attributes hash: 13584665093848691268
+    │                       ^^^^^ attributes hash: 17413650603257084367
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4779,7 +4779,7 @@ note:
     ┌─ features/checked_arithmetic.fe:178:16
     │
 178 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 13584665093848691268
+    │                ^^^^^^^^^^^^ attributes hash: 17413650603257084367
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4795,7 +4795,7 @@ note:
     ┌─ features/checked_arithmetic.fe:181:16
     │
 181 │         return left % right
-    │                ^^^^ attributes hash: 9715536092457030614
+    │                ^^^^ attributes hash: 6720198376222228094
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4811,7 +4811,7 @@ note:
     ┌─ features/checked_arithmetic.fe:181:23
     │
 181 │         return left % right
-    │                       ^^^^^ attributes hash: 9715536092457030614
+    │                       ^^^^^ attributes hash: 6720198376222228094
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4827,7 +4827,7 @@ note:
     ┌─ features/checked_arithmetic.fe:181:16
     │
 181 │         return left % right
-    │                ^^^^^^^^^^^^ attributes hash: 9715536092457030614
+    │                ^^^^^^^^^^^^ attributes hash: 6720198376222228094
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4843,7 +4843,7 @@ note:
     ┌─ features/checked_arithmetic.fe:184:16
     │
 184 │         return left ** right
-    │                ^^^^ attributes hash: 16797824492585953824
+    │                ^^^^ attributes hash: 1230752710897721197
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4859,7 +4859,7 @@ note:
     ┌─ features/checked_arithmetic.fe:184:24
     │
 184 │         return left ** right
-    │                        ^^^^^ attributes hash: 16797824492585953824
+    │                        ^^^^^ attributes hash: 1230752710897721197
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4875,7 +4875,7 @@ note:
     ┌─ features/checked_arithmetic.fe:184:16
     │
 184 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │                ^^^^^^^^^^^^^ attributes hash: 1230752710897721197
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4891,7 +4891,7 @@ note:
     ┌─ features/checked_arithmetic.fe:187:16
     │
 187 │         return left ** right
-    │                ^^^^ attributes hash: 9341420026351674595
+    │                ^^^^ attributes hash: 231358192590700262
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4907,7 +4907,7 @@ note:
     ┌─ features/checked_arithmetic.fe:187:24
     │
 187 │         return left ** right
-    │                        ^^^^^ attributes hash: 9341420026351674595
+    │                        ^^^^^ attributes hash: 231358192590700262
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4923,7 +4923,7 @@ note:
     ┌─ features/checked_arithmetic.fe:187:16
     │
 187 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 9341420026351674595
+    │                ^^^^^^^^^^^^^ attributes hash: 231358192590700262
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4939,7 +4939,7 @@ note:
     ┌─ features/checked_arithmetic.fe:190:16
     │
 190 │         return left ** right
-    │                ^^^^ attributes hash: 3044889006329355385
+    │                ^^^^ attributes hash: 18134665206326494843
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4955,7 +4955,7 @@ note:
     ┌─ features/checked_arithmetic.fe:190:24
     │
 190 │         return left ** right
-    │                        ^^^^^ attributes hash: 3044889006329355385
+    │                        ^^^^^ attributes hash: 18134665206326494843
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4971,7 +4971,7 @@ note:
     ┌─ features/checked_arithmetic.fe:190:16
     │
 190 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 3044889006329355385
+    │                ^^^^^^^^^^^^^ attributes hash: 18134665206326494843
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4987,7 +4987,7 @@ note:
     ┌─ features/checked_arithmetic.fe:193:16
     │
 193 │         return left ** right
-    │                ^^^^ attributes hash: 5442387896079309831
+    │                ^^^^ attributes hash: 8114386917066957540
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5003,7 +5003,7 @@ note:
     ┌─ features/checked_arithmetic.fe:193:24
     │
 193 │         return left ** right
-    │                        ^^^^^ attributes hash: 5442387896079309831
+    │                        ^^^^^ attributes hash: 8114386917066957540
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5019,7 +5019,7 @@ note:
     ┌─ features/checked_arithmetic.fe:193:16
     │
 193 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 5442387896079309831
+    │                ^^^^^^^^^^^^^ attributes hash: 8114386917066957540
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5035,7 +5035,7 @@ note:
     ┌─ features/checked_arithmetic.fe:196:16
     │
 196 │         return left ** right
-    │                ^^^^ attributes hash: 17931047209024117248
+    │                ^^^^ attributes hash: 1434400102836480875
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5051,7 +5051,7 @@ note:
     ┌─ features/checked_arithmetic.fe:196:24
     │
 196 │         return left ** right
-    │                        ^^^^^ attributes hash: 17931047209024117248
+    │                        ^^^^^ attributes hash: 1434400102836480875
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5067,7 +5067,7 @@ note:
     ┌─ features/checked_arithmetic.fe:196:16
     │
 196 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 17931047209024117248
+    │                ^^^^^^^^^^^^^ attributes hash: 1434400102836480875
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5083,7 +5083,7 @@ note:
     ┌─ features/checked_arithmetic.fe:199:16
     │
 199 │         return left ** right
-    │                ^^^^ attributes hash: 6817314866882205962
+    │                ^^^^ attributes hash: 11226462071603862164
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5099,7 +5099,7 @@ note:
     ┌─ features/checked_arithmetic.fe:199:24
     │
 199 │         return left ** right
-    │                        ^^^^^ attributes hash: 6817314866882205962
+    │                        ^^^^^ attributes hash: 11226462071603862164
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5115,7 +5115,7 @@ note:
     ┌─ features/checked_arithmetic.fe:199:16
     │
 199 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 6817314866882205962
+    │                ^^^^^^^^^^^^^ attributes hash: 11226462071603862164
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5131,7 +5131,7 @@ note:
     ┌─ features/checked_arithmetic.fe:202:16
     │
 202 │         return left ** right
-    │                ^^^^ attributes hash: 17351186385905986417
+    │                ^^^^ attributes hash: 15251787519388345880
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5147,7 +5147,7 @@ note:
     ┌─ features/checked_arithmetic.fe:202:24
     │
 202 │         return left ** right
-    │                        ^^^^^ attributes hash: 16797824492585953824
+    │                        ^^^^^ attributes hash: 1230752710897721197
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5163,7 +5163,7 @@ note:
     ┌─ features/checked_arithmetic.fe:202:16
     │
 202 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 17351186385905986417
+    │                ^^^^^^^^^^^^^ attributes hash: 15251787519388345880
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5179,7 +5179,7 @@ note:
     ┌─ features/checked_arithmetic.fe:205:16
     │
 205 │         return left ** right
-    │                ^^^^ attributes hash: 5494075259962106032
+    │                ^^^^ attributes hash: 7454845908456114205
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5195,7 +5195,7 @@ note:
     ┌─ features/checked_arithmetic.fe:205:24
     │
 205 │         return left ** right
-    │                        ^^^^^ attributes hash: 9341420026351674595
+    │                        ^^^^^ attributes hash: 231358192590700262
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5211,7 +5211,7 @@ note:
     ┌─ features/checked_arithmetic.fe:205:16
     │
 205 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 5494075259962106032
+    │                ^^^^^^^^^^^^^ attributes hash: 7454845908456114205
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5227,7 +5227,7 @@ note:
     ┌─ features/checked_arithmetic.fe:208:16
     │
 208 │         return left ** right
-    │                ^^^^ attributes hash: 16198180549924123587
+    │                ^^^^ attributes hash: 9118369605090770275
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5243,7 +5243,7 @@ note:
     ┌─ features/checked_arithmetic.fe:208:24
     │
 208 │         return left ** right
-    │                        ^^^^^ attributes hash: 3044889006329355385
+    │                        ^^^^^ attributes hash: 18134665206326494843
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5259,7 +5259,7 @@ note:
     ┌─ features/checked_arithmetic.fe:208:16
     │
 208 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 16198180549924123587
+    │                ^^^^^^^^^^^^^ attributes hash: 9118369605090770275
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5275,7 +5275,7 @@ note:
     ┌─ features/checked_arithmetic.fe:211:16
     │
 211 │         return left ** right
-    │                ^^^^ attributes hash: 13972995067286817043
+    │                ^^^^ attributes hash: 16606532750379249980
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5291,7 +5291,7 @@ note:
     ┌─ features/checked_arithmetic.fe:211:24
     │
 211 │         return left ** right
-    │                        ^^^^^ attributes hash: 5442387896079309831
+    │                        ^^^^^ attributes hash: 8114386917066957540
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5307,7 +5307,7 @@ note:
     ┌─ features/checked_arithmetic.fe:211:16
     │
 211 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 13972995067286817043
+    │                ^^^^^^^^^^^^^ attributes hash: 16606532750379249980
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5323,7 +5323,7 @@ note:
     ┌─ features/checked_arithmetic.fe:214:16
     │
 214 │         return left ** right
-    │                ^^^^ attributes hash: 13584665093848691268
+    │                ^^^^ attributes hash: 17413650603257084367
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5339,7 +5339,7 @@ note:
     ┌─ features/checked_arithmetic.fe:214:24
     │
 214 │         return left ** right
-    │                        ^^^^^ attributes hash: 17931047209024117248
+    │                        ^^^^^ attributes hash: 1434400102836480875
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5355,7 +5355,7 @@ note:
     ┌─ features/checked_arithmetic.fe:214:16
     │
 214 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 13584665093848691268
+    │                ^^^^^^^^^^^^^ attributes hash: 17413650603257084367
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5371,7 +5371,7 @@ note:
     ┌─ features/checked_arithmetic.fe:217:16
     │
 217 │         return left ** right
-    │                ^^^^ attributes hash: 9715536092457030614
+    │                ^^^^ attributes hash: 6720198376222228094
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5387,7 +5387,7 @@ note:
     ┌─ features/checked_arithmetic.fe:217:24
     │
 217 │         return left ** right
-    │                        ^^^^^ attributes hash: 6817314866882205962
+    │                        ^^^^^ attributes hash: 11226462071603862164
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5403,7 +5403,7 @@ note:
     ┌─ features/checked_arithmetic.fe:217:16
     │
 217 │         return left ** right
-    │                ^^^^^^^^^^^^^ attributes hash: 9715536092457030614
+    │                ^^^^^^^^^^^^^ attributes hash: 6720198376222228094
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5420,7 +5420,7 @@ note:
   │  
 3 │ ╭     pub def add_u256(left: u256, right: u256) -> u256:
 4 │ │         return left + right
-  │ ╰───────────────────────────^ attributes hash: 9066179045338310136
+  │ ╰───────────────────────────^ attributes hash: 11861824990948015219
   │  
   = FunctionAttributes {
         is_public: true,
@@ -5455,7 +5455,7 @@ note:
   │  
 6 │ ╭     pub def add_u128(left: u128, right: u128) -> u128:
 7 │ │         return left + right
-  │ ╰───────────────────────────^ attributes hash: 4108241668206270760
+  │ ╰───────────────────────────^ attributes hash: 11616356530757861023
   │  
   = FunctionAttributes {
         is_public: true,
@@ -5490,7 +5490,7 @@ note:
    │  
  9 │ ╭     pub def add_u64(left: u64, right: u64) -> u64:
 10 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 13138627789560031943
+   │ ╰───────────────────────────^ attributes hash: 4785108859578840755
    │  
    = FunctionAttributes {
          is_public: true,
@@ -5525,7 +5525,7 @@ note:
    │  
 12 │ ╭     pub def add_u32(left: u32, right: u32) -> u32:
 13 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 17200947025477149223
+   │ ╰───────────────────────────^ attributes hash: 17780796302977548550
    │  
    = FunctionAttributes {
          is_public: true,
@@ -5560,7 +5560,7 @@ note:
    │  
 15 │ ╭     pub def add_u16(left: u16, right: u16) -> u16:
 16 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 4665711293544416041
+   │ ╰───────────────────────────^ attributes hash: 18086776672321953969
    │  
    = FunctionAttributes {
          is_public: true,
@@ -5595,7 +5595,7 @@ note:
    │  
 18 │ ╭     pub def add_u8(left: u8, right: u8) -> u8:
 19 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 13573801959649392124
+   │ ╰───────────────────────────^ attributes hash: 3429604537937536064
    │  
    = FunctionAttributes {
          is_public: true,
@@ -5630,7 +5630,7 @@ note:
    │  
 21 │ ╭     pub def add_i256(left: i256, right: i256) -> i256:
 22 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 6652759093009316481
+   │ ╰───────────────────────────^ attributes hash: 9319580171590518872
    │  
    = FunctionAttributes {
          is_public: true,
@@ -5665,7 +5665,7 @@ note:
    │  
 24 │ ╭     pub def add_i128(left: i128, right: i128) -> i128:
 25 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 1273358960858786913
+   │ ╰───────────────────────────^ attributes hash: 12368377143554810736
    │  
    = FunctionAttributes {
          is_public: true,
@@ -5700,7 +5700,7 @@ note:
    │  
 27 │ ╭     pub def add_i64(left: i64, right: i64) -> i64:
 28 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 15307096736571134426
+   │ ╰───────────────────────────^ attributes hash: 15670709155046980275
    │  
    = FunctionAttributes {
          is_public: true,
@@ -5735,7 +5735,7 @@ note:
    │  
 30 │ ╭     pub def add_i32(left: i32, right: i32) -> i32:
 31 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 5561066889439885695
+   │ ╰───────────────────────────^ attributes hash: 10002014413139784460
    │  
    = FunctionAttributes {
          is_public: true,
@@ -5770,7 +5770,7 @@ note:
    │  
 33 │ ╭     pub def add_i16(left: i16, right: i16) -> i16:
 34 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 18345856590251573907
+   │ ╰───────────────────────────^ attributes hash: 14880727723016896879
    │  
    = FunctionAttributes {
          is_public: true,
@@ -5805,7 +5805,7 @@ note:
    │  
 36 │ ╭     pub def add_i8(left: i8, right: i8) -> i8:
 37 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 1445465074129905281
+   │ ╰───────────────────────────^ attributes hash: 10129070409897498921
    │  
    = FunctionAttributes {
          is_public: true,
@@ -5840,7 +5840,7 @@ note:
    │  
 39 │ ╭     pub def sub_u256(left: u256, right: u256) -> u256:
 40 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 5515482933284834925
+   │ ╰───────────────────────────^ attributes hash: 14816601299519204212
    │  
    = FunctionAttributes {
          is_public: true,
@@ -5875,7 +5875,7 @@ note:
    │  
 42 │ ╭     pub def sub_u128(left: u128, right: u128) -> u128:
 43 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 14996329899404307784
+   │ ╰───────────────────────────^ attributes hash: 7070501674638744154
    │  
    = FunctionAttributes {
          is_public: true,
@@ -5910,7 +5910,7 @@ note:
    │  
 45 │ ╭     pub def sub_u64(left: u64, right: u64) -> u64:
 46 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 15237513157188907285
+   │ ╰───────────────────────────^ attributes hash: 17352673244420037729
    │  
    = FunctionAttributes {
          is_public: true,
@@ -5945,7 +5945,7 @@ note:
    │  
 48 │ ╭     pub def sub_u32(left: u32, right: u32) -> u32:
 49 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 8587539978670056186
+   │ ╰───────────────────────────^ attributes hash: 12071447203220772600
    │  
    = FunctionAttributes {
          is_public: true,
@@ -5980,7 +5980,7 @@ note:
    │  
 51 │ ╭     pub def sub_u16(left: u16, right: u16) -> u16:
 52 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 5862612156425078555
+   │ ╰───────────────────────────^ attributes hash: 1743038422738133482
    │  
    = FunctionAttributes {
          is_public: true,
@@ -6015,7 +6015,7 @@ note:
    │  
 54 │ ╭     pub def sub_u8(left: u8, right: u8) -> u8:
 55 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 17342404223770897671
+   │ ╰───────────────────────────^ attributes hash: 4818790736524167171
    │  
    = FunctionAttributes {
          is_public: true,
@@ -6050,7 +6050,7 @@ note:
    │  
 57 │ ╭     pub def sub_i256(left: i256, right: i256) -> i256:
 58 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 8657502099515686262
+   │ ╰───────────────────────────^ attributes hash: 12229189579119788355
    │  
    = FunctionAttributes {
          is_public: true,
@@ -6085,7 +6085,7 @@ note:
    │  
 60 │ ╭     pub def sub_i128(left: i128, right: i128) -> i128:
 61 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 45547824054058453
+   │ ╰───────────────────────────^ attributes hash: 13765693292309698687
    │  
    = FunctionAttributes {
          is_public: true,
@@ -6120,7 +6120,7 @@ note:
    │  
 63 │ ╭     pub def sub_i64(left: i64, right: i64) -> i64:
 64 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 9432393162118442767
+   │ ╰───────────────────────────^ attributes hash: 7957807061698228226
    │  
    = FunctionAttributes {
          is_public: true,
@@ -6155,7 +6155,7 @@ note:
    │  
 66 │ ╭     pub def sub_i32(left: i32, right: i32) -> i32:
 67 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 4860814396774721578
+   │ ╰───────────────────────────^ attributes hash: 13018369201660858470
    │  
    = FunctionAttributes {
          is_public: true,
@@ -6190,7 +6190,7 @@ note:
    │  
 69 │ ╭     pub def sub_i16(left: i16, right: i16) -> i16:
 70 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 8654996214829658591
+   │ ╰───────────────────────────^ attributes hash: 257871892211482221
    │  
    = FunctionAttributes {
          is_public: true,
@@ -6225,7 +6225,7 @@ note:
    │  
 72 │ ╭     pub def sub_i8(left: i8, right: i8) -> i8:
 73 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 7911748417851387022
+   │ ╰───────────────────────────^ attributes hash: 13553478495336995018
    │  
    = FunctionAttributes {
          is_public: true,
@@ -6260,7 +6260,7 @@ note:
    │  
 75 │ ╭     pub def div_u256(left: u256, right: u256) -> u256:
 76 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 17199795366021074565
+   │ ╰───────────────────────────^ attributes hash: 14371756250518810762
    │  
    = FunctionAttributes {
          is_public: true,
@@ -6295,7 +6295,7 @@ note:
    │  
 78 │ ╭     pub def div_u128(left: u128, right: u128) -> u128:
 79 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 16957721065773881486
+   │ ╰───────────────────────────^ attributes hash: 1685714878950287378
    │  
    = FunctionAttributes {
          is_public: true,
@@ -6330,7 +6330,7 @@ note:
    │  
 81 │ ╭     pub def div_u64(left: u64, right: u64) -> u64:
 82 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 8013450522581049602
+   │ ╰───────────────────────────^ attributes hash: 14173651579601049190
    │  
    = FunctionAttributes {
          is_public: true,
@@ -6365,7 +6365,7 @@ note:
    │  
 84 │ ╭     pub def div_u32(left: u32, right: u32) -> u32:
 85 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 15706017215661807894
+   │ ╰───────────────────────────^ attributes hash: 6103706028515359229
    │  
    = FunctionAttributes {
          is_public: true,
@@ -6400,7 +6400,7 @@ note:
    │  
 87 │ ╭     pub def div_u16(left: u16, right: u16) -> u16:
 88 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 12200610246316332750
+   │ ╰───────────────────────────^ attributes hash: 10676121748343885176
    │  
    = FunctionAttributes {
          is_public: true,
@@ -6435,7 +6435,7 @@ note:
    │  
 90 │ ╭     pub def div_u8(left: u8, right: u8) -> u8:
 91 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 17632481304163584376
+   │ ╰───────────────────────────^ attributes hash: 1070558499603504836
    │  
    = FunctionAttributes {
          is_public: true,
@@ -6470,7 +6470,7 @@ note:
    │  
 93 │ ╭     pub def div_i256(left: i256, right: i256) -> i256:
 94 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 12176989810955488166
+   │ ╰───────────────────────────^ attributes hash: 5617465495507584415
    │  
    = FunctionAttributes {
          is_public: true,
@@ -6505,7 +6505,7 @@ note:
    │  
 96 │ ╭     pub def div_i128(left: i128, right: i128) -> i128:
 97 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 10525207139796838492
+   │ ╰───────────────────────────^ attributes hash: 15337438690986146047
    │  
    = FunctionAttributes {
          is_public: true,
@@ -6540,7 +6540,7 @@ note:
     │  
  99 │ ╭     pub def div_i64(left: i64, right: i64) -> i64:
 100 │ │         return left / right
-    │ ╰───────────────────────────^ attributes hash: 14448539849757943388
+    │ ╰───────────────────────────^ attributes hash: 16436516269786093580
     │  
     = FunctionAttributes {
           is_public: true,
@@ -6575,7 +6575,7 @@ note:
     │  
 102 │ ╭     pub def div_i32(left: i32, right: i32) -> i32:
 103 │ │         return left / right
-    │ ╰───────────────────────────^ attributes hash: 7378201874991968997
+    │ ╰───────────────────────────^ attributes hash: 16528645550499187682
     │  
     = FunctionAttributes {
           is_public: true,
@@ -6610,7 +6610,7 @@ note:
     │  
 105 │ ╭     pub def div_i16(left: i16, right: i16) -> i16:
 106 │ │         return left / right
-    │ ╰───────────────────────────^ attributes hash: 836904006991306668
+    │ ╰───────────────────────────^ attributes hash: 10380041430520877234
     │  
     = FunctionAttributes {
           is_public: true,
@@ -6645,7 +6645,7 @@ note:
     │  
 108 │ ╭     pub def div_i8(left: i8, right: i8) -> i8:
 109 │ │         return left / right
-    │ ╰───────────────────────────^ attributes hash: 5325182410304041224
+    │ ╰───────────────────────────^ attributes hash: 11252141968970107708
     │  
     = FunctionAttributes {
           is_public: true,
@@ -6680,7 +6680,7 @@ note:
     │  
 111 │ ╭     pub def mul_u256(left: u256, right: u256) -> u256:
 112 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 4225472239289086513
+    │ ╰───────────────────────────^ attributes hash: 3745359816974034234
     │  
     = FunctionAttributes {
           is_public: true,
@@ -6715,7 +6715,7 @@ note:
     │  
 114 │ ╭     pub def mul_u128(left: u128, right: u128) -> u128:
 115 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 7519771596380437230
+    │ ╰───────────────────────────^ attributes hash: 9947397205405135006
     │  
     = FunctionAttributes {
           is_public: true,
@@ -6750,7 +6750,7 @@ note:
     │  
 117 │ ╭     pub def mul_u64(left: u64, right: u64) -> u64:
 118 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 18116492230422912989
+    │ ╰───────────────────────────^ attributes hash: 13478923250665499349
     │  
     = FunctionAttributes {
           is_public: true,
@@ -6785,7 +6785,7 @@ note:
     │  
 120 │ ╭     pub def mul_u32(left: u32, right: u32) -> u32:
 121 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 12802584820353982900
+    │ ╰───────────────────────────^ attributes hash: 17534546174739646606
     │  
     = FunctionAttributes {
           is_public: true,
@@ -6820,7 +6820,7 @@ note:
     │  
 123 │ ╭     pub def mul_u16(left: u16, right: u16) -> u16:
 124 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 2231493698712017967
+    │ ╰───────────────────────────^ attributes hash: 9465480078989010813
     │  
     = FunctionAttributes {
           is_public: true,
@@ -6855,7 +6855,7 @@ note:
     │  
 126 │ ╭     pub def mul_u8(left: u8, right: u8) -> u8:
 127 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 6487327599814558578
+    │ ╰───────────────────────────^ attributes hash: 14280308261136175623
     │  
     = FunctionAttributes {
           is_public: true,
@@ -6890,7 +6890,7 @@ note:
     │  
 129 │ ╭     pub def mul_i256(left: i256, right: i256) -> i256:
 130 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 9137042171305305481
+    │ ╰───────────────────────────^ attributes hash: 15225784505481526704
     │  
     = FunctionAttributes {
           is_public: true,
@@ -6925,7 +6925,7 @@ note:
     │  
 132 │ ╭     pub def mul_i128(left: i128, right: i128) -> i128:
 133 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 1693532141848491463
+    │ ╰───────────────────────────^ attributes hash: 3848549597141689293
     │  
     = FunctionAttributes {
           is_public: true,
@@ -6960,7 +6960,7 @@ note:
     │  
 135 │ ╭     pub def mul_i64(left: i64, right: i64) -> i64:
 136 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 11765468032476377806
+    │ ╰───────────────────────────^ attributes hash: 1185149926424286851
     │  
     = FunctionAttributes {
           is_public: true,
@@ -6995,7 +6995,7 @@ note:
     │  
 138 │ ╭     pub def mul_i32(left: i32, right: i32) -> i32:
 139 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 7804749780740207375
+    │ ╰───────────────────────────^ attributes hash: 10305345316516407265
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7030,7 +7030,7 @@ note:
     │  
 141 │ ╭     pub def mul_i16(left: i16, right: i16) -> i16:
 142 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 11686232261498608513
+    │ ╰───────────────────────────^ attributes hash: 10071654339587410486
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7065,7 +7065,7 @@ note:
     │  
 144 │ ╭     pub def mul_i8(left: i8, right: i8) -> i8:
 145 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 926334138589321687
+    │ ╰───────────────────────────^ attributes hash: 13715950072099296664
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7100,7 +7100,7 @@ note:
     │  
 147 │ ╭     pub def mod_u256(left: u256, right: u256) -> u256:
 148 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 5389511528550821822
+    │ ╰───────────────────────────^ attributes hash: 10111899857524235093
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7135,7 +7135,7 @@ note:
     │  
 150 │ ╭     pub def mod_u128(left: u128, right: u128) -> u128:
 151 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 12298619176153606199
+    │ ╰───────────────────────────^ attributes hash: 12379900529098907437
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7170,7 +7170,7 @@ note:
     │  
 153 │ ╭     pub def mod_u64(left: u64, right: u64) -> u64:
 154 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 13531712182053802520
+    │ ╰───────────────────────────^ attributes hash: 11848518905809479323
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7205,7 +7205,7 @@ note:
     │  
 156 │ ╭     pub def mod_u32(left: u32, right: u32) -> u32:
 157 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 8934652299877274074
+    │ ╰───────────────────────────^ attributes hash: 11056990072323369423
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7240,7 +7240,7 @@ note:
     │  
 159 │ ╭     pub def mod_u16(left: u16, right: u16) -> u16:
 160 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 3990775617388724626
+    │ ╰───────────────────────────^ attributes hash: 3760501747649529936
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7275,7 +7275,7 @@ note:
     │  
 162 │ ╭     pub def mod_u8(left: u8, right: u8) -> u8:
 163 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 2780406428953864708
+    │ ╰───────────────────────────^ attributes hash: 2272547533674616507
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7310,7 +7310,7 @@ note:
     │  
 165 │ ╭     pub def mod_i256(left: i256, right: i256) -> i256:
 166 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 8451534936992937533
+    │ ╰───────────────────────────^ attributes hash: 9644694072584234922
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7345,7 +7345,7 @@ note:
     │  
 168 │ ╭     pub def mod_i128(left: i128, right: i128) -> i128:
 169 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 16136414803182462885
+    │ ╰───────────────────────────^ attributes hash: 13761715580057780642
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7380,7 +7380,7 @@ note:
     │  
 171 │ ╭     pub def mod_i64(left: i64, right: i64) -> i64:
 172 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 16860079799478015994
+    │ ╰───────────────────────────^ attributes hash: 16363634215680787363
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7415,7 +7415,7 @@ note:
     │  
 174 │ ╭     pub def mod_i32(left: i32, right: i32) -> i32:
 175 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 13610852400499284322
+    │ ╰───────────────────────────^ attributes hash: 16598291529520649262
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7450,7 +7450,7 @@ note:
     │  
 177 │ ╭     pub def mod_i16(left: i16, right: i16) -> i16:
 178 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 16334533390019904741
+    │ ╰───────────────────────────^ attributes hash: 11233660643854913281
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7485,7 +7485,7 @@ note:
     │  
 180 │ ╭     pub def mod_i8(left: i8, right: i8) -> i8:
 181 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 2164007759865587270
+    │ ╰───────────────────────────^ attributes hash: 16753401524237726220
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7520,7 +7520,7 @@ note:
     │  
 183 │ ╭     pub def pow_u256(left: u256, right: u256) -> u256:
 184 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 9426973820460077118
+    │ ╰────────────────────────────^ attributes hash: 17681820589282768588
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7555,7 +7555,7 @@ note:
     │  
 186 │ ╭     pub def pow_u128(left: u128, right: u128) -> u128:
 187 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 3666817247811358105
+    │ ╰────────────────────────────^ attributes hash: 10496927115278826718
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7590,7 +7590,7 @@ note:
     │  
 189 │ ╭     pub def pow_u64(left: u64, right: u64) -> u64:
 190 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 9038730796663521841
+    │ ╰────────────────────────────^ attributes hash: 892432340673291606
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7625,7 +7625,7 @@ note:
     │  
 192 │ ╭     pub def pow_u32(left: u32, right: u32) -> u32:
 193 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 14455971819344113807
+    │ ╰────────────────────────────^ attributes hash: 10414269044683952460
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7660,7 +7660,7 @@ note:
     │  
 195 │ ╭     pub def pow_u16(left: u16, right: u16) -> u16:
 196 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 332969038248406683
+    │ ╰────────────────────────────^ attributes hash: 16191199069321703809
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7695,7 +7695,7 @@ note:
     │  
 198 │ ╭     pub def pow_u8(left: u8, right: u8) -> u8:
 199 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 7528438160167210422
+    │ ╰────────────────────────────^ attributes hash: 18008352716252837013
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7730,7 +7730,7 @@ note:
     │  
 201 │ ╭     pub def pow_i256(left: i256, right: u256) -> i256:
 202 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 11629388815261952320
+    │ ╰────────────────────────────^ attributes hash: 12900139596973197578
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7765,7 +7765,7 @@ note:
     │  
 204 │ ╭     pub def pow_i128(left: i128, right: u128) -> i128:
 205 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 3863600908780824015
+    │ ╰────────────────────────────^ attributes hash: 3073059711841352980
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7800,7 +7800,7 @@ note:
     │  
 207 │ ╭     pub def pow_i64(left: i64, right: u64) -> i64:
 208 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 8090984990979277946
+    │ ╰────────────────────────────^ attributes hash: 3317894102069286567
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7835,7 +7835,7 @@ note:
     │  
 210 │ ╭     pub def pow_i32(left: i32, right: u32) -> i32:
 211 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 13810451446534112659
+    │ ╰────────────────────────────^ attributes hash: 7493996493148764012
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7870,7 +7870,7 @@ note:
     │  
 213 │ ╭     pub def pow_i16(left: i16, right: u16) -> i16:
 214 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 8949937248939812202
+    │ ╰────────────────────────────^ attributes hash: 16918450004819271149
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7905,7 +7905,7 @@ note:
     │  
 216 │ ╭     pub def pow_i8(left: i8, right: u8) -> i8:
 217 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 12263173049213881436
+    │ ╰────────────────────────────^ attributes hash: 16648877690197604059
     │  
     = FunctionAttributes {
           is_public: true,
@@ -7945,7 +7945,7 @@ note:
     · │
 216 │ │     pub def pow_i8(left: i8, right: u8) -> i8:
 217 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 17034940771357855680
+    │ ╰────────────────────────────^ attributes hash: 2074199165904993523
     │  
     = ContractAttributes {
           public_functions: [
@@ -9904,7 +9904,7 @@ note:
   ┌─ features/checked_arithmetic.fe:3:28
   │
 3 │     pub def add_u256(left: u256, right: u256) -> u256:
-  │                            ^^^^ attributes hash: 17942395924573474124
+  │                            ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -9916,7 +9916,7 @@ note:
   ┌─ features/checked_arithmetic.fe:3:41
   │
 3 │     pub def add_u256(left: u256, right: u256) -> u256:
-  │                                         ^^^^ attributes hash: 17942395924573474124
+  │                                         ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -9928,7 +9928,7 @@ note:
   ┌─ features/checked_arithmetic.fe:3:50
   │
 3 │     pub def add_u256(left: u256, right: u256) -> u256:
-  │                                                  ^^^^ attributes hash: 17942395924573474124
+  │                                                  ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -9940,7 +9940,7 @@ note:
   ┌─ features/checked_arithmetic.fe:6:28
   │
 6 │     pub def add_u128(left: u128, right: u128) -> u128:
-  │                            ^^^^ attributes hash: 14909107886776088983
+  │                            ^^^^ attributes hash: 6162263163478414243
   │
   = Base(
         Numeric(
@@ -9952,7 +9952,7 @@ note:
   ┌─ features/checked_arithmetic.fe:6:41
   │
 6 │     pub def add_u128(left: u128, right: u128) -> u128:
-  │                                         ^^^^ attributes hash: 14909107886776088983
+  │                                         ^^^^ attributes hash: 6162263163478414243
   │
   = Base(
         Numeric(
@@ -9964,7 +9964,7 @@ note:
   ┌─ features/checked_arithmetic.fe:6:50
   │
 6 │     pub def add_u128(left: u128, right: u128) -> u128:
-  │                                                  ^^^^ attributes hash: 14909107886776088983
+  │                                                  ^^^^ attributes hash: 6162263163478414243
   │
   = Base(
         Numeric(
@@ -9976,7 +9976,7 @@ note:
   ┌─ features/checked_arithmetic.fe:9:27
   │
 9 │     pub def add_u64(left: u64, right: u64) -> u64:
-  │                           ^^^ attributes hash: 17534999559619587862
+  │                           ^^^ attributes hash: 9157081425890653064
   │
   = Base(
         Numeric(
@@ -9988,7 +9988,7 @@ note:
   ┌─ features/checked_arithmetic.fe:9:39
   │
 9 │     pub def add_u64(left: u64, right: u64) -> u64:
-  │                                       ^^^ attributes hash: 17534999559619587862
+  │                                       ^^^ attributes hash: 9157081425890653064
   │
   = Base(
         Numeric(
@@ -10000,7 +10000,7 @@ note:
   ┌─ features/checked_arithmetic.fe:9:47
   │
 9 │     pub def add_u64(left: u64, right: u64) -> u64:
-  │                                               ^^^ attributes hash: 17534999559619587862
+  │                                               ^^^ attributes hash: 9157081425890653064
   │
   = Base(
         Numeric(
@@ -10012,7 +10012,7 @@ note:
    ┌─ features/checked_arithmetic.fe:12:27
    │
 12 │     pub def add_u32(left: u32, right: u32) -> u32:
-   │                           ^^^ attributes hash: 11356073382633174465
+   │                           ^^^ attributes hash: 6988938628910073395
    │
    = Base(
          Numeric(
@@ -10024,7 +10024,7 @@ note:
    ┌─ features/checked_arithmetic.fe:12:39
    │
 12 │     pub def add_u32(left: u32, right: u32) -> u32:
-   │                                       ^^^ attributes hash: 11356073382633174465
+   │                                       ^^^ attributes hash: 6988938628910073395
    │
    = Base(
          Numeric(
@@ -10036,7 +10036,7 @@ note:
    ┌─ features/checked_arithmetic.fe:12:47
    │
 12 │     pub def add_u32(left: u32, right: u32) -> u32:
-   │                                               ^^^ attributes hash: 11356073382633174465
+   │                                               ^^^ attributes hash: 6988938628910073395
    │
    = Base(
          Numeric(
@@ -10048,7 +10048,7 @@ note:
    ┌─ features/checked_arithmetic.fe:15:27
    │
 15 │     pub def add_u16(left: u16, right: u16) -> u16:
-   │                           ^^^ attributes hash: 547894393873242964
+   │                           ^^^ attributes hash: 10482216811962112628
    │
    = Base(
          Numeric(
@@ -10060,7 +10060,7 @@ note:
    ┌─ features/checked_arithmetic.fe:15:39
    │
 15 │     pub def add_u16(left: u16, right: u16) -> u16:
-   │                                       ^^^ attributes hash: 547894393873242964
+   │                                       ^^^ attributes hash: 10482216811962112628
    │
    = Base(
          Numeric(
@@ -10072,7 +10072,7 @@ note:
    ┌─ features/checked_arithmetic.fe:15:47
    │
 15 │     pub def add_u16(left: u16, right: u16) -> u16:
-   │                                               ^^^ attributes hash: 547894393873242964
+   │                                               ^^^ attributes hash: 10482216811962112628
    │
    = Base(
          Numeric(
@@ -10084,7 +10084,7 @@ note:
    ┌─ features/checked_arithmetic.fe:18:26
    │
 18 │     pub def add_u8(left: u8, right: u8) -> u8:
-   │                          ^^ attributes hash: 1872326638020472004
+   │                          ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -10096,7 +10096,7 @@ note:
    ┌─ features/checked_arithmetic.fe:18:37
    │
 18 │     pub def add_u8(left: u8, right: u8) -> u8:
-   │                                     ^^ attributes hash: 1872326638020472004
+   │                                     ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -10108,7 +10108,7 @@ note:
    ┌─ features/checked_arithmetic.fe:18:44
    │
 18 │     pub def add_u8(left: u8, right: u8) -> u8:
-   │                                            ^^ attributes hash: 1872326638020472004
+   │                                            ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -10120,7 +10120,7 @@ note:
    ┌─ features/checked_arithmetic.fe:21:28
    │
 21 │     pub def add_i256(left: i256, right: i256) -> i256:
-   │                            ^^^^ attributes hash: 5923332062417896707
+   │                            ^^^^ attributes hash: 11707372354960146103
    │
    = Base(
          Numeric(
@@ -10132,7 +10132,7 @@ note:
    ┌─ features/checked_arithmetic.fe:21:41
    │
 21 │     pub def add_i256(left: i256, right: i256) -> i256:
-   │                                         ^^^^ attributes hash: 5923332062417896707
+   │                                         ^^^^ attributes hash: 11707372354960146103
    │
    = Base(
          Numeric(
@@ -10144,7 +10144,7 @@ note:
    ┌─ features/checked_arithmetic.fe:21:50
    │
 21 │     pub def add_i256(left: i256, right: i256) -> i256:
-   │                                                  ^^^^ attributes hash: 5923332062417896707
+   │                                                  ^^^^ attributes hash: 11707372354960146103
    │
    = Base(
          Numeric(
@@ -10156,7 +10156,7 @@ note:
    ┌─ features/checked_arithmetic.fe:24:28
    │
 24 │     pub def add_i128(left: i128, right: i128) -> i128:
-   │                            ^^^^ attributes hash: 2176316003589696703
+   │                            ^^^^ attributes hash: 1662973713176693737
    │
    = Base(
          Numeric(
@@ -10168,7 +10168,7 @@ note:
    ┌─ features/checked_arithmetic.fe:24:41
    │
 24 │     pub def add_i128(left: i128, right: i128) -> i128:
-   │                                         ^^^^ attributes hash: 2176316003589696703
+   │                                         ^^^^ attributes hash: 1662973713176693737
    │
    = Base(
          Numeric(
@@ -10180,7 +10180,7 @@ note:
    ┌─ features/checked_arithmetic.fe:24:50
    │
 24 │     pub def add_i128(left: i128, right: i128) -> i128:
-   │                                                  ^^^^ attributes hash: 2176316003589696703
+   │                                                  ^^^^ attributes hash: 1662973713176693737
    │
    = Base(
          Numeric(
@@ -10192,7 +10192,7 @@ note:
    ┌─ features/checked_arithmetic.fe:27:27
    │
 27 │     pub def add_i64(left: i64, right: i64) -> i64:
-   │                           ^^^ attributes hash: 11018228789238098422
+   │                           ^^^ attributes hash: 4061011363657204065
    │
    = Base(
          Numeric(
@@ -10204,7 +10204,7 @@ note:
    ┌─ features/checked_arithmetic.fe:27:39
    │
 27 │     pub def add_i64(left: i64, right: i64) -> i64:
-   │                                       ^^^ attributes hash: 11018228789238098422
+   │                                       ^^^ attributes hash: 4061011363657204065
    │
    = Base(
          Numeric(
@@ -10216,7 +10216,7 @@ note:
    ┌─ features/checked_arithmetic.fe:27:47
    │
 27 │     pub def add_i64(left: i64, right: i64) -> i64:
-   │                                               ^^^ attributes hash: 11018228789238098422
+   │                                               ^^^ attributes hash: 4061011363657204065
    │
    = Base(
          Numeric(
@@ -10228,7 +10228,7 @@ note:
    ┌─ features/checked_arithmetic.fe:30:27
    │
 30 │     pub def add_i32(left: i32, right: i32) -> i32:
-   │                           ^^^ attributes hash: 3647277037255055228
+   │                           ^^^ attributes hash: 3989691230564290788
    │
    = Base(
          Numeric(
@@ -10240,7 +10240,7 @@ note:
    ┌─ features/checked_arithmetic.fe:30:39
    │
 30 │     pub def add_i32(left: i32, right: i32) -> i32:
-   │                                       ^^^ attributes hash: 3647277037255055228
+   │                                       ^^^ attributes hash: 3989691230564290788
    │
    = Base(
          Numeric(
@@ -10252,7 +10252,7 @@ note:
    ┌─ features/checked_arithmetic.fe:30:47
    │
 30 │     pub def add_i32(left: i32, right: i32) -> i32:
-   │                                               ^^^ attributes hash: 3647277037255055228
+   │                                               ^^^ attributes hash: 3989691230564290788
    │
    = Base(
          Numeric(
@@ -10264,7 +10264,7 @@ note:
    ┌─ features/checked_arithmetic.fe:33:27
    │
 33 │     pub def add_i16(left: i16, right: i16) -> i16:
-   │                           ^^^ attributes hash: 4248546760475796133
+   │                           ^^^ attributes hash: 13881948389070133681
    │
    = Base(
          Numeric(
@@ -10276,7 +10276,7 @@ note:
    ┌─ features/checked_arithmetic.fe:33:39
    │
 33 │     pub def add_i16(left: i16, right: i16) -> i16:
-   │                                       ^^^ attributes hash: 4248546760475796133
+   │                                       ^^^ attributes hash: 13881948389070133681
    │
    = Base(
          Numeric(
@@ -10288,7 +10288,7 @@ note:
    ┌─ features/checked_arithmetic.fe:33:47
    │
 33 │     pub def add_i16(left: i16, right: i16) -> i16:
-   │                                               ^^^ attributes hash: 4248546760475796133
+   │                                               ^^^ attributes hash: 13881948389070133681
    │
    = Base(
          Numeric(
@@ -10300,7 +10300,7 @@ note:
    ┌─ features/checked_arithmetic.fe:36:26
    │
 36 │     pub def add_i8(left: i8, right: i8) -> i8:
-   │                          ^^ attributes hash: 8158980283050389248
+   │                          ^^ attributes hash: 15894395880381322973
    │
    = Base(
          Numeric(
@@ -10312,7 +10312,7 @@ note:
    ┌─ features/checked_arithmetic.fe:36:37
    │
 36 │     pub def add_i8(left: i8, right: i8) -> i8:
-   │                                     ^^ attributes hash: 8158980283050389248
+   │                                     ^^ attributes hash: 15894395880381322973
    │
    = Base(
          Numeric(
@@ -10324,7 +10324,7 @@ note:
    ┌─ features/checked_arithmetic.fe:36:44
    │
 36 │     pub def add_i8(left: i8, right: i8) -> i8:
-   │                                            ^^ attributes hash: 8158980283050389248
+   │                                            ^^ attributes hash: 15894395880381322973
    │
    = Base(
          Numeric(
@@ -10336,7 +10336,7 @@ note:
    ┌─ features/checked_arithmetic.fe:39:28
    │
 39 │     pub def sub_u256(left: u256, right: u256) -> u256:
-   │                            ^^^^ attributes hash: 17942395924573474124
+   │                            ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -10348,7 +10348,7 @@ note:
    ┌─ features/checked_arithmetic.fe:39:41
    │
 39 │     pub def sub_u256(left: u256, right: u256) -> u256:
-   │                                         ^^^^ attributes hash: 17942395924573474124
+   │                                         ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -10360,7 +10360,7 @@ note:
    ┌─ features/checked_arithmetic.fe:39:50
    │
 39 │     pub def sub_u256(left: u256, right: u256) -> u256:
-   │                                                  ^^^^ attributes hash: 17942395924573474124
+   │                                                  ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -10372,7 +10372,7 @@ note:
    ┌─ features/checked_arithmetic.fe:42:28
    │
 42 │     pub def sub_u128(left: u128, right: u128) -> u128:
-   │                            ^^^^ attributes hash: 14909107886776088983
+   │                            ^^^^ attributes hash: 6162263163478414243
    │
    = Base(
          Numeric(
@@ -10384,7 +10384,7 @@ note:
    ┌─ features/checked_arithmetic.fe:42:41
    │
 42 │     pub def sub_u128(left: u128, right: u128) -> u128:
-   │                                         ^^^^ attributes hash: 14909107886776088983
+   │                                         ^^^^ attributes hash: 6162263163478414243
    │
    = Base(
          Numeric(
@@ -10396,7 +10396,7 @@ note:
    ┌─ features/checked_arithmetic.fe:42:50
    │
 42 │     pub def sub_u128(left: u128, right: u128) -> u128:
-   │                                                  ^^^^ attributes hash: 14909107886776088983
+   │                                                  ^^^^ attributes hash: 6162263163478414243
    │
    = Base(
          Numeric(
@@ -10408,7 +10408,7 @@ note:
    ┌─ features/checked_arithmetic.fe:45:27
    │
 45 │     pub def sub_u64(left: u64, right: u64) -> u64:
-   │                           ^^^ attributes hash: 17534999559619587862
+   │                           ^^^ attributes hash: 9157081425890653064
    │
    = Base(
          Numeric(
@@ -10420,7 +10420,7 @@ note:
    ┌─ features/checked_arithmetic.fe:45:39
    │
 45 │     pub def sub_u64(left: u64, right: u64) -> u64:
-   │                                       ^^^ attributes hash: 17534999559619587862
+   │                                       ^^^ attributes hash: 9157081425890653064
    │
    = Base(
          Numeric(
@@ -10432,7 +10432,7 @@ note:
    ┌─ features/checked_arithmetic.fe:45:47
    │
 45 │     pub def sub_u64(left: u64, right: u64) -> u64:
-   │                                               ^^^ attributes hash: 17534999559619587862
+   │                                               ^^^ attributes hash: 9157081425890653064
    │
    = Base(
          Numeric(
@@ -10444,7 +10444,7 @@ note:
    ┌─ features/checked_arithmetic.fe:48:27
    │
 48 │     pub def sub_u32(left: u32, right: u32) -> u32:
-   │                           ^^^ attributes hash: 11356073382633174465
+   │                           ^^^ attributes hash: 6988938628910073395
    │
    = Base(
          Numeric(
@@ -10456,7 +10456,7 @@ note:
    ┌─ features/checked_arithmetic.fe:48:39
    │
 48 │     pub def sub_u32(left: u32, right: u32) -> u32:
-   │                                       ^^^ attributes hash: 11356073382633174465
+   │                                       ^^^ attributes hash: 6988938628910073395
    │
    = Base(
          Numeric(
@@ -10468,7 +10468,7 @@ note:
    ┌─ features/checked_arithmetic.fe:48:47
    │
 48 │     pub def sub_u32(left: u32, right: u32) -> u32:
-   │                                               ^^^ attributes hash: 11356073382633174465
+   │                                               ^^^ attributes hash: 6988938628910073395
    │
    = Base(
          Numeric(
@@ -10480,7 +10480,7 @@ note:
    ┌─ features/checked_arithmetic.fe:51:27
    │
 51 │     pub def sub_u16(left: u16, right: u16) -> u16:
-   │                           ^^^ attributes hash: 547894393873242964
+   │                           ^^^ attributes hash: 10482216811962112628
    │
    = Base(
          Numeric(
@@ -10492,7 +10492,7 @@ note:
    ┌─ features/checked_arithmetic.fe:51:39
    │
 51 │     pub def sub_u16(left: u16, right: u16) -> u16:
-   │                                       ^^^ attributes hash: 547894393873242964
+   │                                       ^^^ attributes hash: 10482216811962112628
    │
    = Base(
          Numeric(
@@ -10504,7 +10504,7 @@ note:
    ┌─ features/checked_arithmetic.fe:51:47
    │
 51 │     pub def sub_u16(left: u16, right: u16) -> u16:
-   │                                               ^^^ attributes hash: 547894393873242964
+   │                                               ^^^ attributes hash: 10482216811962112628
    │
    = Base(
          Numeric(
@@ -10516,7 +10516,7 @@ note:
    ┌─ features/checked_arithmetic.fe:54:26
    │
 54 │     pub def sub_u8(left: u8, right: u8) -> u8:
-   │                          ^^ attributes hash: 1872326638020472004
+   │                          ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -10528,7 +10528,7 @@ note:
    ┌─ features/checked_arithmetic.fe:54:37
    │
 54 │     pub def sub_u8(left: u8, right: u8) -> u8:
-   │                                     ^^ attributes hash: 1872326638020472004
+   │                                     ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -10540,7 +10540,7 @@ note:
    ┌─ features/checked_arithmetic.fe:54:44
    │
 54 │     pub def sub_u8(left: u8, right: u8) -> u8:
-   │                                            ^^ attributes hash: 1872326638020472004
+   │                                            ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -10552,7 +10552,7 @@ note:
    ┌─ features/checked_arithmetic.fe:57:28
    │
 57 │     pub def sub_i256(left: i256, right: i256) -> i256:
-   │                            ^^^^ attributes hash: 5923332062417896707
+   │                            ^^^^ attributes hash: 11707372354960146103
    │
    = Base(
          Numeric(
@@ -10564,7 +10564,7 @@ note:
    ┌─ features/checked_arithmetic.fe:57:41
    │
 57 │     pub def sub_i256(left: i256, right: i256) -> i256:
-   │                                         ^^^^ attributes hash: 5923332062417896707
+   │                                         ^^^^ attributes hash: 11707372354960146103
    │
    = Base(
          Numeric(
@@ -10576,7 +10576,7 @@ note:
    ┌─ features/checked_arithmetic.fe:57:50
    │
 57 │     pub def sub_i256(left: i256, right: i256) -> i256:
-   │                                                  ^^^^ attributes hash: 5923332062417896707
+   │                                                  ^^^^ attributes hash: 11707372354960146103
    │
    = Base(
          Numeric(
@@ -10588,7 +10588,7 @@ note:
    ┌─ features/checked_arithmetic.fe:60:28
    │
 60 │     pub def sub_i128(left: i128, right: i128) -> i128:
-   │                            ^^^^ attributes hash: 2176316003589696703
+   │                            ^^^^ attributes hash: 1662973713176693737
    │
    = Base(
          Numeric(
@@ -10600,7 +10600,7 @@ note:
    ┌─ features/checked_arithmetic.fe:60:41
    │
 60 │     pub def sub_i128(left: i128, right: i128) -> i128:
-   │                                         ^^^^ attributes hash: 2176316003589696703
+   │                                         ^^^^ attributes hash: 1662973713176693737
    │
    = Base(
          Numeric(
@@ -10612,7 +10612,7 @@ note:
    ┌─ features/checked_arithmetic.fe:60:50
    │
 60 │     pub def sub_i128(left: i128, right: i128) -> i128:
-   │                                                  ^^^^ attributes hash: 2176316003589696703
+   │                                                  ^^^^ attributes hash: 1662973713176693737
    │
    = Base(
          Numeric(
@@ -10624,7 +10624,7 @@ note:
    ┌─ features/checked_arithmetic.fe:63:27
    │
 63 │     pub def sub_i64(left: i64, right: i64) -> i64:
-   │                           ^^^ attributes hash: 11018228789238098422
+   │                           ^^^ attributes hash: 4061011363657204065
    │
    = Base(
          Numeric(
@@ -10636,7 +10636,7 @@ note:
    ┌─ features/checked_arithmetic.fe:63:39
    │
 63 │     pub def sub_i64(left: i64, right: i64) -> i64:
-   │                                       ^^^ attributes hash: 11018228789238098422
+   │                                       ^^^ attributes hash: 4061011363657204065
    │
    = Base(
          Numeric(
@@ -10648,7 +10648,7 @@ note:
    ┌─ features/checked_arithmetic.fe:63:47
    │
 63 │     pub def sub_i64(left: i64, right: i64) -> i64:
-   │                                               ^^^ attributes hash: 11018228789238098422
+   │                                               ^^^ attributes hash: 4061011363657204065
    │
    = Base(
          Numeric(
@@ -10660,7 +10660,7 @@ note:
    ┌─ features/checked_arithmetic.fe:66:27
    │
 66 │     pub def sub_i32(left: i32, right: i32) -> i32:
-   │                           ^^^ attributes hash: 3647277037255055228
+   │                           ^^^ attributes hash: 3989691230564290788
    │
    = Base(
          Numeric(
@@ -10672,7 +10672,7 @@ note:
    ┌─ features/checked_arithmetic.fe:66:39
    │
 66 │     pub def sub_i32(left: i32, right: i32) -> i32:
-   │                                       ^^^ attributes hash: 3647277037255055228
+   │                                       ^^^ attributes hash: 3989691230564290788
    │
    = Base(
          Numeric(
@@ -10684,7 +10684,7 @@ note:
    ┌─ features/checked_arithmetic.fe:66:47
    │
 66 │     pub def sub_i32(left: i32, right: i32) -> i32:
-   │                                               ^^^ attributes hash: 3647277037255055228
+   │                                               ^^^ attributes hash: 3989691230564290788
    │
    = Base(
          Numeric(
@@ -10696,7 +10696,7 @@ note:
    ┌─ features/checked_arithmetic.fe:69:27
    │
 69 │     pub def sub_i16(left: i16, right: i16) -> i16:
-   │                           ^^^ attributes hash: 4248546760475796133
+   │                           ^^^ attributes hash: 13881948389070133681
    │
    = Base(
          Numeric(
@@ -10708,7 +10708,7 @@ note:
    ┌─ features/checked_arithmetic.fe:69:39
    │
 69 │     pub def sub_i16(left: i16, right: i16) -> i16:
-   │                                       ^^^ attributes hash: 4248546760475796133
+   │                                       ^^^ attributes hash: 13881948389070133681
    │
    = Base(
          Numeric(
@@ -10720,7 +10720,7 @@ note:
    ┌─ features/checked_arithmetic.fe:69:47
    │
 69 │     pub def sub_i16(left: i16, right: i16) -> i16:
-   │                                               ^^^ attributes hash: 4248546760475796133
+   │                                               ^^^ attributes hash: 13881948389070133681
    │
    = Base(
          Numeric(
@@ -10732,7 +10732,7 @@ note:
    ┌─ features/checked_arithmetic.fe:72:26
    │
 72 │     pub def sub_i8(left: i8, right: i8) -> i8:
-   │                          ^^ attributes hash: 8158980283050389248
+   │                          ^^ attributes hash: 15894395880381322973
    │
    = Base(
          Numeric(
@@ -10744,7 +10744,7 @@ note:
    ┌─ features/checked_arithmetic.fe:72:37
    │
 72 │     pub def sub_i8(left: i8, right: i8) -> i8:
-   │                                     ^^ attributes hash: 8158980283050389248
+   │                                     ^^ attributes hash: 15894395880381322973
    │
    = Base(
          Numeric(
@@ -10756,7 +10756,7 @@ note:
    ┌─ features/checked_arithmetic.fe:72:44
    │
 72 │     pub def sub_i8(left: i8, right: i8) -> i8:
-   │                                            ^^ attributes hash: 8158980283050389248
+   │                                            ^^ attributes hash: 15894395880381322973
    │
    = Base(
          Numeric(
@@ -10768,7 +10768,7 @@ note:
    ┌─ features/checked_arithmetic.fe:75:28
    │
 75 │     pub def div_u256(left: u256, right: u256) -> u256:
-   │                            ^^^^ attributes hash: 17942395924573474124
+   │                            ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -10780,7 +10780,7 @@ note:
    ┌─ features/checked_arithmetic.fe:75:41
    │
 75 │     pub def div_u256(left: u256, right: u256) -> u256:
-   │                                         ^^^^ attributes hash: 17942395924573474124
+   │                                         ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -10792,7 +10792,7 @@ note:
    ┌─ features/checked_arithmetic.fe:75:50
    │
 75 │     pub def div_u256(left: u256, right: u256) -> u256:
-   │                                                  ^^^^ attributes hash: 17942395924573474124
+   │                                                  ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -10804,7 +10804,7 @@ note:
    ┌─ features/checked_arithmetic.fe:78:28
    │
 78 │     pub def div_u128(left: u128, right: u128) -> u128:
-   │                            ^^^^ attributes hash: 14909107886776088983
+   │                            ^^^^ attributes hash: 6162263163478414243
    │
    = Base(
          Numeric(
@@ -10816,7 +10816,7 @@ note:
    ┌─ features/checked_arithmetic.fe:78:41
    │
 78 │     pub def div_u128(left: u128, right: u128) -> u128:
-   │                                         ^^^^ attributes hash: 14909107886776088983
+   │                                         ^^^^ attributes hash: 6162263163478414243
    │
    = Base(
          Numeric(
@@ -10828,7 +10828,7 @@ note:
    ┌─ features/checked_arithmetic.fe:78:50
    │
 78 │     pub def div_u128(left: u128, right: u128) -> u128:
-   │                                                  ^^^^ attributes hash: 14909107886776088983
+   │                                                  ^^^^ attributes hash: 6162263163478414243
    │
    = Base(
          Numeric(
@@ -10840,7 +10840,7 @@ note:
    ┌─ features/checked_arithmetic.fe:81:27
    │
 81 │     pub def div_u64(left: u64, right: u64) -> u64:
-   │                           ^^^ attributes hash: 17534999559619587862
+   │                           ^^^ attributes hash: 9157081425890653064
    │
    = Base(
          Numeric(
@@ -10852,7 +10852,7 @@ note:
    ┌─ features/checked_arithmetic.fe:81:39
    │
 81 │     pub def div_u64(left: u64, right: u64) -> u64:
-   │                                       ^^^ attributes hash: 17534999559619587862
+   │                                       ^^^ attributes hash: 9157081425890653064
    │
    = Base(
          Numeric(
@@ -10864,7 +10864,7 @@ note:
    ┌─ features/checked_arithmetic.fe:81:47
    │
 81 │     pub def div_u64(left: u64, right: u64) -> u64:
-   │                                               ^^^ attributes hash: 17534999559619587862
+   │                                               ^^^ attributes hash: 9157081425890653064
    │
    = Base(
          Numeric(
@@ -10876,7 +10876,7 @@ note:
    ┌─ features/checked_arithmetic.fe:84:27
    │
 84 │     pub def div_u32(left: u32, right: u32) -> u32:
-   │                           ^^^ attributes hash: 11356073382633174465
+   │                           ^^^ attributes hash: 6988938628910073395
    │
    = Base(
          Numeric(
@@ -10888,7 +10888,7 @@ note:
    ┌─ features/checked_arithmetic.fe:84:39
    │
 84 │     pub def div_u32(left: u32, right: u32) -> u32:
-   │                                       ^^^ attributes hash: 11356073382633174465
+   │                                       ^^^ attributes hash: 6988938628910073395
    │
    = Base(
          Numeric(
@@ -10900,7 +10900,7 @@ note:
    ┌─ features/checked_arithmetic.fe:84:47
    │
 84 │     pub def div_u32(left: u32, right: u32) -> u32:
-   │                                               ^^^ attributes hash: 11356073382633174465
+   │                                               ^^^ attributes hash: 6988938628910073395
    │
    = Base(
          Numeric(
@@ -10912,7 +10912,7 @@ note:
    ┌─ features/checked_arithmetic.fe:87:27
    │
 87 │     pub def div_u16(left: u16, right: u16) -> u16:
-   │                           ^^^ attributes hash: 547894393873242964
+   │                           ^^^ attributes hash: 10482216811962112628
    │
    = Base(
          Numeric(
@@ -10924,7 +10924,7 @@ note:
    ┌─ features/checked_arithmetic.fe:87:39
    │
 87 │     pub def div_u16(left: u16, right: u16) -> u16:
-   │                                       ^^^ attributes hash: 547894393873242964
+   │                                       ^^^ attributes hash: 10482216811962112628
    │
    = Base(
          Numeric(
@@ -10936,7 +10936,7 @@ note:
    ┌─ features/checked_arithmetic.fe:87:47
    │
 87 │     pub def div_u16(left: u16, right: u16) -> u16:
-   │                                               ^^^ attributes hash: 547894393873242964
+   │                                               ^^^ attributes hash: 10482216811962112628
    │
    = Base(
          Numeric(
@@ -10948,7 +10948,7 @@ note:
    ┌─ features/checked_arithmetic.fe:90:26
    │
 90 │     pub def div_u8(left: u8, right: u8) -> u8:
-   │                          ^^ attributes hash: 1872326638020472004
+   │                          ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -10960,7 +10960,7 @@ note:
    ┌─ features/checked_arithmetic.fe:90:37
    │
 90 │     pub def div_u8(left: u8, right: u8) -> u8:
-   │                                     ^^ attributes hash: 1872326638020472004
+   │                                     ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -10972,7 +10972,7 @@ note:
    ┌─ features/checked_arithmetic.fe:90:44
    │
 90 │     pub def div_u8(left: u8, right: u8) -> u8:
-   │                                            ^^ attributes hash: 1872326638020472004
+   │                                            ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -10984,7 +10984,7 @@ note:
    ┌─ features/checked_arithmetic.fe:93:28
    │
 93 │     pub def div_i256(left: i256, right: i256) -> i256:
-   │                            ^^^^ attributes hash: 5923332062417896707
+   │                            ^^^^ attributes hash: 11707372354960146103
    │
    = Base(
          Numeric(
@@ -10996,7 +10996,7 @@ note:
    ┌─ features/checked_arithmetic.fe:93:41
    │
 93 │     pub def div_i256(left: i256, right: i256) -> i256:
-   │                                         ^^^^ attributes hash: 5923332062417896707
+   │                                         ^^^^ attributes hash: 11707372354960146103
    │
    = Base(
          Numeric(
@@ -11008,7 +11008,7 @@ note:
    ┌─ features/checked_arithmetic.fe:93:50
    │
 93 │     pub def div_i256(left: i256, right: i256) -> i256:
-   │                                                  ^^^^ attributes hash: 5923332062417896707
+   │                                                  ^^^^ attributes hash: 11707372354960146103
    │
    = Base(
          Numeric(
@@ -11020,7 +11020,7 @@ note:
    ┌─ features/checked_arithmetic.fe:96:28
    │
 96 │     pub def div_i128(left: i128, right: i128) -> i128:
-   │                            ^^^^ attributes hash: 2176316003589696703
+   │                            ^^^^ attributes hash: 1662973713176693737
    │
    = Base(
          Numeric(
@@ -11032,7 +11032,7 @@ note:
    ┌─ features/checked_arithmetic.fe:96:41
    │
 96 │     pub def div_i128(left: i128, right: i128) -> i128:
-   │                                         ^^^^ attributes hash: 2176316003589696703
+   │                                         ^^^^ attributes hash: 1662973713176693737
    │
    = Base(
          Numeric(
@@ -11044,7 +11044,7 @@ note:
    ┌─ features/checked_arithmetic.fe:96:50
    │
 96 │     pub def div_i128(left: i128, right: i128) -> i128:
-   │                                                  ^^^^ attributes hash: 2176316003589696703
+   │                                                  ^^^^ attributes hash: 1662973713176693737
    │
    = Base(
          Numeric(
@@ -11056,7 +11056,7 @@ note:
    ┌─ features/checked_arithmetic.fe:99:27
    │
 99 │     pub def div_i64(left: i64, right: i64) -> i64:
-   │                           ^^^ attributes hash: 11018228789238098422
+   │                           ^^^ attributes hash: 4061011363657204065
    │
    = Base(
          Numeric(
@@ -11068,7 +11068,7 @@ note:
    ┌─ features/checked_arithmetic.fe:99:39
    │
 99 │     pub def div_i64(left: i64, right: i64) -> i64:
-   │                                       ^^^ attributes hash: 11018228789238098422
+   │                                       ^^^ attributes hash: 4061011363657204065
    │
    = Base(
          Numeric(
@@ -11080,7 +11080,7 @@ note:
    ┌─ features/checked_arithmetic.fe:99:47
    │
 99 │     pub def div_i64(left: i64, right: i64) -> i64:
-   │                                               ^^^ attributes hash: 11018228789238098422
+   │                                               ^^^ attributes hash: 4061011363657204065
    │
    = Base(
          Numeric(
@@ -11092,7 +11092,7 @@ note:
     ┌─ features/checked_arithmetic.fe:102:27
     │
 102 │     pub def div_i32(left: i32, right: i32) -> i32:
-    │                           ^^^ attributes hash: 3647277037255055228
+    │                           ^^^ attributes hash: 3989691230564290788
     │
     = Base(
           Numeric(
@@ -11104,7 +11104,7 @@ note:
     ┌─ features/checked_arithmetic.fe:102:39
     │
 102 │     pub def div_i32(left: i32, right: i32) -> i32:
-    │                                       ^^^ attributes hash: 3647277037255055228
+    │                                       ^^^ attributes hash: 3989691230564290788
     │
     = Base(
           Numeric(
@@ -11116,7 +11116,7 @@ note:
     ┌─ features/checked_arithmetic.fe:102:47
     │
 102 │     pub def div_i32(left: i32, right: i32) -> i32:
-    │                                               ^^^ attributes hash: 3647277037255055228
+    │                                               ^^^ attributes hash: 3989691230564290788
     │
     = Base(
           Numeric(
@@ -11128,7 +11128,7 @@ note:
     ┌─ features/checked_arithmetic.fe:105:27
     │
 105 │     pub def div_i16(left: i16, right: i16) -> i16:
-    │                           ^^^ attributes hash: 4248546760475796133
+    │                           ^^^ attributes hash: 13881948389070133681
     │
     = Base(
           Numeric(
@@ -11140,7 +11140,7 @@ note:
     ┌─ features/checked_arithmetic.fe:105:39
     │
 105 │     pub def div_i16(left: i16, right: i16) -> i16:
-    │                                       ^^^ attributes hash: 4248546760475796133
+    │                                       ^^^ attributes hash: 13881948389070133681
     │
     = Base(
           Numeric(
@@ -11152,7 +11152,7 @@ note:
     ┌─ features/checked_arithmetic.fe:105:47
     │
 105 │     pub def div_i16(left: i16, right: i16) -> i16:
-    │                                               ^^^ attributes hash: 4248546760475796133
+    │                                               ^^^ attributes hash: 13881948389070133681
     │
     = Base(
           Numeric(
@@ -11164,7 +11164,7 @@ note:
     ┌─ features/checked_arithmetic.fe:108:26
     │
 108 │     pub def div_i8(left: i8, right: i8) -> i8:
-    │                          ^^ attributes hash: 8158980283050389248
+    │                          ^^ attributes hash: 15894395880381322973
     │
     = Base(
           Numeric(
@@ -11176,7 +11176,7 @@ note:
     ┌─ features/checked_arithmetic.fe:108:37
     │
 108 │     pub def div_i8(left: i8, right: i8) -> i8:
-    │                                     ^^ attributes hash: 8158980283050389248
+    │                                     ^^ attributes hash: 15894395880381322973
     │
     = Base(
           Numeric(
@@ -11188,7 +11188,7 @@ note:
     ┌─ features/checked_arithmetic.fe:108:44
     │
 108 │     pub def div_i8(left: i8, right: i8) -> i8:
-    │                                            ^^ attributes hash: 8158980283050389248
+    │                                            ^^ attributes hash: 15894395880381322973
     │
     = Base(
           Numeric(
@@ -11200,7 +11200,7 @@ note:
     ┌─ features/checked_arithmetic.fe:111:28
     │
 111 │     pub def mul_u256(left: u256, right: u256) -> u256:
-    │                            ^^^^ attributes hash: 17942395924573474124
+    │                            ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
           Numeric(
@@ -11212,7 +11212,7 @@ note:
     ┌─ features/checked_arithmetic.fe:111:41
     │
 111 │     pub def mul_u256(left: u256, right: u256) -> u256:
-    │                                         ^^^^ attributes hash: 17942395924573474124
+    │                                         ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
           Numeric(
@@ -11224,7 +11224,7 @@ note:
     ┌─ features/checked_arithmetic.fe:111:50
     │
 111 │     pub def mul_u256(left: u256, right: u256) -> u256:
-    │                                                  ^^^^ attributes hash: 17942395924573474124
+    │                                                  ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
           Numeric(
@@ -11236,7 +11236,7 @@ note:
     ┌─ features/checked_arithmetic.fe:114:28
     │
 114 │     pub def mul_u128(left: u128, right: u128) -> u128:
-    │                            ^^^^ attributes hash: 14909107886776088983
+    │                            ^^^^ attributes hash: 6162263163478414243
     │
     = Base(
           Numeric(
@@ -11248,7 +11248,7 @@ note:
     ┌─ features/checked_arithmetic.fe:114:41
     │
 114 │     pub def mul_u128(left: u128, right: u128) -> u128:
-    │                                         ^^^^ attributes hash: 14909107886776088983
+    │                                         ^^^^ attributes hash: 6162263163478414243
     │
     = Base(
           Numeric(
@@ -11260,7 +11260,7 @@ note:
     ┌─ features/checked_arithmetic.fe:114:50
     │
 114 │     pub def mul_u128(left: u128, right: u128) -> u128:
-    │                                                  ^^^^ attributes hash: 14909107886776088983
+    │                                                  ^^^^ attributes hash: 6162263163478414243
     │
     = Base(
           Numeric(
@@ -11272,7 +11272,7 @@ note:
     ┌─ features/checked_arithmetic.fe:117:27
     │
 117 │     pub def mul_u64(left: u64, right: u64) -> u64:
-    │                           ^^^ attributes hash: 17534999559619587862
+    │                           ^^^ attributes hash: 9157081425890653064
     │
     = Base(
           Numeric(
@@ -11284,7 +11284,7 @@ note:
     ┌─ features/checked_arithmetic.fe:117:39
     │
 117 │     pub def mul_u64(left: u64, right: u64) -> u64:
-    │                                       ^^^ attributes hash: 17534999559619587862
+    │                                       ^^^ attributes hash: 9157081425890653064
     │
     = Base(
           Numeric(
@@ -11296,7 +11296,7 @@ note:
     ┌─ features/checked_arithmetic.fe:117:47
     │
 117 │     pub def mul_u64(left: u64, right: u64) -> u64:
-    │                                               ^^^ attributes hash: 17534999559619587862
+    │                                               ^^^ attributes hash: 9157081425890653064
     │
     = Base(
           Numeric(
@@ -11308,7 +11308,7 @@ note:
     ┌─ features/checked_arithmetic.fe:120:27
     │
 120 │     pub def mul_u32(left: u32, right: u32) -> u32:
-    │                           ^^^ attributes hash: 11356073382633174465
+    │                           ^^^ attributes hash: 6988938628910073395
     │
     = Base(
           Numeric(
@@ -11320,7 +11320,7 @@ note:
     ┌─ features/checked_arithmetic.fe:120:39
     │
 120 │     pub def mul_u32(left: u32, right: u32) -> u32:
-    │                                       ^^^ attributes hash: 11356073382633174465
+    │                                       ^^^ attributes hash: 6988938628910073395
     │
     = Base(
           Numeric(
@@ -11332,7 +11332,7 @@ note:
     ┌─ features/checked_arithmetic.fe:120:47
     │
 120 │     pub def mul_u32(left: u32, right: u32) -> u32:
-    │                                               ^^^ attributes hash: 11356073382633174465
+    │                                               ^^^ attributes hash: 6988938628910073395
     │
     = Base(
           Numeric(
@@ -11344,7 +11344,7 @@ note:
     ┌─ features/checked_arithmetic.fe:123:27
     │
 123 │     pub def mul_u16(left: u16, right: u16) -> u16:
-    │                           ^^^ attributes hash: 547894393873242964
+    │                           ^^^ attributes hash: 10482216811962112628
     │
     = Base(
           Numeric(
@@ -11356,7 +11356,7 @@ note:
     ┌─ features/checked_arithmetic.fe:123:39
     │
 123 │     pub def mul_u16(left: u16, right: u16) -> u16:
-    │                                       ^^^ attributes hash: 547894393873242964
+    │                                       ^^^ attributes hash: 10482216811962112628
     │
     = Base(
           Numeric(
@@ -11368,7 +11368,7 @@ note:
     ┌─ features/checked_arithmetic.fe:123:47
     │
 123 │     pub def mul_u16(left: u16, right: u16) -> u16:
-    │                                               ^^^ attributes hash: 547894393873242964
+    │                                               ^^^ attributes hash: 10482216811962112628
     │
     = Base(
           Numeric(
@@ -11380,7 +11380,7 @@ note:
     ┌─ features/checked_arithmetic.fe:126:26
     │
 126 │     pub def mul_u8(left: u8, right: u8) -> u8:
-    │                          ^^ attributes hash: 1872326638020472004
+    │                          ^^ attributes hash: 3165084411644393001
     │
     = Base(
           Numeric(
@@ -11392,7 +11392,7 @@ note:
     ┌─ features/checked_arithmetic.fe:126:37
     │
 126 │     pub def mul_u8(left: u8, right: u8) -> u8:
-    │                                     ^^ attributes hash: 1872326638020472004
+    │                                     ^^ attributes hash: 3165084411644393001
     │
     = Base(
           Numeric(
@@ -11404,7 +11404,7 @@ note:
     ┌─ features/checked_arithmetic.fe:126:44
     │
 126 │     pub def mul_u8(left: u8, right: u8) -> u8:
-    │                                            ^^ attributes hash: 1872326638020472004
+    │                                            ^^ attributes hash: 3165084411644393001
     │
     = Base(
           Numeric(
@@ -11416,7 +11416,7 @@ note:
     ┌─ features/checked_arithmetic.fe:129:28
     │
 129 │     pub def mul_i256(left: i256, right: i256) -> i256:
-    │                            ^^^^ attributes hash: 5923332062417896707
+    │                            ^^^^ attributes hash: 11707372354960146103
     │
     = Base(
           Numeric(
@@ -11428,7 +11428,7 @@ note:
     ┌─ features/checked_arithmetic.fe:129:41
     │
 129 │     pub def mul_i256(left: i256, right: i256) -> i256:
-    │                                         ^^^^ attributes hash: 5923332062417896707
+    │                                         ^^^^ attributes hash: 11707372354960146103
     │
     = Base(
           Numeric(
@@ -11440,7 +11440,7 @@ note:
     ┌─ features/checked_arithmetic.fe:129:50
     │
 129 │     pub def mul_i256(left: i256, right: i256) -> i256:
-    │                                                  ^^^^ attributes hash: 5923332062417896707
+    │                                                  ^^^^ attributes hash: 11707372354960146103
     │
     = Base(
           Numeric(
@@ -11452,7 +11452,7 @@ note:
     ┌─ features/checked_arithmetic.fe:132:28
     │
 132 │     pub def mul_i128(left: i128, right: i128) -> i128:
-    │                            ^^^^ attributes hash: 2176316003589696703
+    │                            ^^^^ attributes hash: 1662973713176693737
     │
     = Base(
           Numeric(
@@ -11464,7 +11464,7 @@ note:
     ┌─ features/checked_arithmetic.fe:132:41
     │
 132 │     pub def mul_i128(left: i128, right: i128) -> i128:
-    │                                         ^^^^ attributes hash: 2176316003589696703
+    │                                         ^^^^ attributes hash: 1662973713176693737
     │
     = Base(
           Numeric(
@@ -11476,7 +11476,7 @@ note:
     ┌─ features/checked_arithmetic.fe:132:50
     │
 132 │     pub def mul_i128(left: i128, right: i128) -> i128:
-    │                                                  ^^^^ attributes hash: 2176316003589696703
+    │                                                  ^^^^ attributes hash: 1662973713176693737
     │
     = Base(
           Numeric(
@@ -11488,7 +11488,7 @@ note:
     ┌─ features/checked_arithmetic.fe:135:27
     │
 135 │     pub def mul_i64(left: i64, right: i64) -> i64:
-    │                           ^^^ attributes hash: 11018228789238098422
+    │                           ^^^ attributes hash: 4061011363657204065
     │
     = Base(
           Numeric(
@@ -11500,7 +11500,7 @@ note:
     ┌─ features/checked_arithmetic.fe:135:39
     │
 135 │     pub def mul_i64(left: i64, right: i64) -> i64:
-    │                                       ^^^ attributes hash: 11018228789238098422
+    │                                       ^^^ attributes hash: 4061011363657204065
     │
     = Base(
           Numeric(
@@ -11512,7 +11512,7 @@ note:
     ┌─ features/checked_arithmetic.fe:135:47
     │
 135 │     pub def mul_i64(left: i64, right: i64) -> i64:
-    │                                               ^^^ attributes hash: 11018228789238098422
+    │                                               ^^^ attributes hash: 4061011363657204065
     │
     = Base(
           Numeric(
@@ -11524,7 +11524,7 @@ note:
     ┌─ features/checked_arithmetic.fe:138:27
     │
 138 │     pub def mul_i32(left: i32, right: i32) -> i32:
-    │                           ^^^ attributes hash: 3647277037255055228
+    │                           ^^^ attributes hash: 3989691230564290788
     │
     = Base(
           Numeric(
@@ -11536,7 +11536,7 @@ note:
     ┌─ features/checked_arithmetic.fe:138:39
     │
 138 │     pub def mul_i32(left: i32, right: i32) -> i32:
-    │                                       ^^^ attributes hash: 3647277037255055228
+    │                                       ^^^ attributes hash: 3989691230564290788
     │
     = Base(
           Numeric(
@@ -11548,7 +11548,7 @@ note:
     ┌─ features/checked_arithmetic.fe:138:47
     │
 138 │     pub def mul_i32(left: i32, right: i32) -> i32:
-    │                                               ^^^ attributes hash: 3647277037255055228
+    │                                               ^^^ attributes hash: 3989691230564290788
     │
     = Base(
           Numeric(
@@ -11560,7 +11560,7 @@ note:
     ┌─ features/checked_arithmetic.fe:141:27
     │
 141 │     pub def mul_i16(left: i16, right: i16) -> i16:
-    │                           ^^^ attributes hash: 4248546760475796133
+    │                           ^^^ attributes hash: 13881948389070133681
     │
     = Base(
           Numeric(
@@ -11572,7 +11572,7 @@ note:
     ┌─ features/checked_arithmetic.fe:141:39
     │
 141 │     pub def mul_i16(left: i16, right: i16) -> i16:
-    │                                       ^^^ attributes hash: 4248546760475796133
+    │                                       ^^^ attributes hash: 13881948389070133681
     │
     = Base(
           Numeric(
@@ -11584,7 +11584,7 @@ note:
     ┌─ features/checked_arithmetic.fe:141:47
     │
 141 │     pub def mul_i16(left: i16, right: i16) -> i16:
-    │                                               ^^^ attributes hash: 4248546760475796133
+    │                                               ^^^ attributes hash: 13881948389070133681
     │
     = Base(
           Numeric(
@@ -11596,7 +11596,7 @@ note:
     ┌─ features/checked_arithmetic.fe:144:26
     │
 144 │     pub def mul_i8(left: i8, right: i8) -> i8:
-    │                          ^^ attributes hash: 8158980283050389248
+    │                          ^^ attributes hash: 15894395880381322973
     │
     = Base(
           Numeric(
@@ -11608,7 +11608,7 @@ note:
     ┌─ features/checked_arithmetic.fe:144:37
     │
 144 │     pub def mul_i8(left: i8, right: i8) -> i8:
-    │                                     ^^ attributes hash: 8158980283050389248
+    │                                     ^^ attributes hash: 15894395880381322973
     │
     = Base(
           Numeric(
@@ -11620,7 +11620,7 @@ note:
     ┌─ features/checked_arithmetic.fe:144:44
     │
 144 │     pub def mul_i8(left: i8, right: i8) -> i8:
-    │                                            ^^ attributes hash: 8158980283050389248
+    │                                            ^^ attributes hash: 15894395880381322973
     │
     = Base(
           Numeric(
@@ -11632,7 +11632,7 @@ note:
     ┌─ features/checked_arithmetic.fe:147:28
     │
 147 │     pub def mod_u256(left: u256, right: u256) -> u256:
-    │                            ^^^^ attributes hash: 17942395924573474124
+    │                            ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
           Numeric(
@@ -11644,7 +11644,7 @@ note:
     ┌─ features/checked_arithmetic.fe:147:41
     │
 147 │     pub def mod_u256(left: u256, right: u256) -> u256:
-    │                                         ^^^^ attributes hash: 17942395924573474124
+    │                                         ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
           Numeric(
@@ -11656,7 +11656,7 @@ note:
     ┌─ features/checked_arithmetic.fe:147:50
     │
 147 │     pub def mod_u256(left: u256, right: u256) -> u256:
-    │                                                  ^^^^ attributes hash: 17942395924573474124
+    │                                                  ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
           Numeric(
@@ -11668,7 +11668,7 @@ note:
     ┌─ features/checked_arithmetic.fe:150:28
     │
 150 │     pub def mod_u128(left: u128, right: u128) -> u128:
-    │                            ^^^^ attributes hash: 14909107886776088983
+    │                            ^^^^ attributes hash: 6162263163478414243
     │
     = Base(
           Numeric(
@@ -11680,7 +11680,7 @@ note:
     ┌─ features/checked_arithmetic.fe:150:41
     │
 150 │     pub def mod_u128(left: u128, right: u128) -> u128:
-    │                                         ^^^^ attributes hash: 14909107886776088983
+    │                                         ^^^^ attributes hash: 6162263163478414243
     │
     = Base(
           Numeric(
@@ -11692,7 +11692,7 @@ note:
     ┌─ features/checked_arithmetic.fe:150:50
     │
 150 │     pub def mod_u128(left: u128, right: u128) -> u128:
-    │                                                  ^^^^ attributes hash: 14909107886776088983
+    │                                                  ^^^^ attributes hash: 6162263163478414243
     │
     = Base(
           Numeric(
@@ -11704,7 +11704,7 @@ note:
     ┌─ features/checked_arithmetic.fe:153:27
     │
 153 │     pub def mod_u64(left: u64, right: u64) -> u64:
-    │                           ^^^ attributes hash: 17534999559619587862
+    │                           ^^^ attributes hash: 9157081425890653064
     │
     = Base(
           Numeric(
@@ -11716,7 +11716,7 @@ note:
     ┌─ features/checked_arithmetic.fe:153:39
     │
 153 │     pub def mod_u64(left: u64, right: u64) -> u64:
-    │                                       ^^^ attributes hash: 17534999559619587862
+    │                                       ^^^ attributes hash: 9157081425890653064
     │
     = Base(
           Numeric(
@@ -11728,7 +11728,7 @@ note:
     ┌─ features/checked_arithmetic.fe:153:47
     │
 153 │     pub def mod_u64(left: u64, right: u64) -> u64:
-    │                                               ^^^ attributes hash: 17534999559619587862
+    │                                               ^^^ attributes hash: 9157081425890653064
     │
     = Base(
           Numeric(
@@ -11740,7 +11740,7 @@ note:
     ┌─ features/checked_arithmetic.fe:156:27
     │
 156 │     pub def mod_u32(left: u32, right: u32) -> u32:
-    │                           ^^^ attributes hash: 11356073382633174465
+    │                           ^^^ attributes hash: 6988938628910073395
     │
     = Base(
           Numeric(
@@ -11752,7 +11752,7 @@ note:
     ┌─ features/checked_arithmetic.fe:156:39
     │
 156 │     pub def mod_u32(left: u32, right: u32) -> u32:
-    │                                       ^^^ attributes hash: 11356073382633174465
+    │                                       ^^^ attributes hash: 6988938628910073395
     │
     = Base(
           Numeric(
@@ -11764,7 +11764,7 @@ note:
     ┌─ features/checked_arithmetic.fe:156:47
     │
 156 │     pub def mod_u32(left: u32, right: u32) -> u32:
-    │                                               ^^^ attributes hash: 11356073382633174465
+    │                                               ^^^ attributes hash: 6988938628910073395
     │
     = Base(
           Numeric(
@@ -11776,7 +11776,7 @@ note:
     ┌─ features/checked_arithmetic.fe:159:27
     │
 159 │     pub def mod_u16(left: u16, right: u16) -> u16:
-    │                           ^^^ attributes hash: 547894393873242964
+    │                           ^^^ attributes hash: 10482216811962112628
     │
     = Base(
           Numeric(
@@ -11788,7 +11788,7 @@ note:
     ┌─ features/checked_arithmetic.fe:159:39
     │
 159 │     pub def mod_u16(left: u16, right: u16) -> u16:
-    │                                       ^^^ attributes hash: 547894393873242964
+    │                                       ^^^ attributes hash: 10482216811962112628
     │
     = Base(
           Numeric(
@@ -11800,7 +11800,7 @@ note:
     ┌─ features/checked_arithmetic.fe:159:47
     │
 159 │     pub def mod_u16(left: u16, right: u16) -> u16:
-    │                                               ^^^ attributes hash: 547894393873242964
+    │                                               ^^^ attributes hash: 10482216811962112628
     │
     = Base(
           Numeric(
@@ -11812,7 +11812,7 @@ note:
     ┌─ features/checked_arithmetic.fe:162:26
     │
 162 │     pub def mod_u8(left: u8, right: u8) -> u8:
-    │                          ^^ attributes hash: 1872326638020472004
+    │                          ^^ attributes hash: 3165084411644393001
     │
     = Base(
           Numeric(
@@ -11824,7 +11824,7 @@ note:
     ┌─ features/checked_arithmetic.fe:162:37
     │
 162 │     pub def mod_u8(left: u8, right: u8) -> u8:
-    │                                     ^^ attributes hash: 1872326638020472004
+    │                                     ^^ attributes hash: 3165084411644393001
     │
     = Base(
           Numeric(
@@ -11836,7 +11836,7 @@ note:
     ┌─ features/checked_arithmetic.fe:162:44
     │
 162 │     pub def mod_u8(left: u8, right: u8) -> u8:
-    │                                            ^^ attributes hash: 1872326638020472004
+    │                                            ^^ attributes hash: 3165084411644393001
     │
     = Base(
           Numeric(
@@ -11848,7 +11848,7 @@ note:
     ┌─ features/checked_arithmetic.fe:165:28
     │
 165 │     pub def mod_i256(left: i256, right: i256) -> i256:
-    │                            ^^^^ attributes hash: 5923332062417896707
+    │                            ^^^^ attributes hash: 11707372354960146103
     │
     = Base(
           Numeric(
@@ -11860,7 +11860,7 @@ note:
     ┌─ features/checked_arithmetic.fe:165:41
     │
 165 │     pub def mod_i256(left: i256, right: i256) -> i256:
-    │                                         ^^^^ attributes hash: 5923332062417896707
+    │                                         ^^^^ attributes hash: 11707372354960146103
     │
     = Base(
           Numeric(
@@ -11872,7 +11872,7 @@ note:
     ┌─ features/checked_arithmetic.fe:165:50
     │
 165 │     pub def mod_i256(left: i256, right: i256) -> i256:
-    │                                                  ^^^^ attributes hash: 5923332062417896707
+    │                                                  ^^^^ attributes hash: 11707372354960146103
     │
     = Base(
           Numeric(
@@ -11884,7 +11884,7 @@ note:
     ┌─ features/checked_arithmetic.fe:168:28
     │
 168 │     pub def mod_i128(left: i128, right: i128) -> i128:
-    │                            ^^^^ attributes hash: 2176316003589696703
+    │                            ^^^^ attributes hash: 1662973713176693737
     │
     = Base(
           Numeric(
@@ -11896,7 +11896,7 @@ note:
     ┌─ features/checked_arithmetic.fe:168:41
     │
 168 │     pub def mod_i128(left: i128, right: i128) -> i128:
-    │                                         ^^^^ attributes hash: 2176316003589696703
+    │                                         ^^^^ attributes hash: 1662973713176693737
     │
     = Base(
           Numeric(
@@ -11908,7 +11908,7 @@ note:
     ┌─ features/checked_arithmetic.fe:168:50
     │
 168 │     pub def mod_i128(left: i128, right: i128) -> i128:
-    │                                                  ^^^^ attributes hash: 2176316003589696703
+    │                                                  ^^^^ attributes hash: 1662973713176693737
     │
     = Base(
           Numeric(
@@ -11920,7 +11920,7 @@ note:
     ┌─ features/checked_arithmetic.fe:171:27
     │
 171 │     pub def mod_i64(left: i64, right: i64) -> i64:
-    │                           ^^^ attributes hash: 11018228789238098422
+    │                           ^^^ attributes hash: 4061011363657204065
     │
     = Base(
           Numeric(
@@ -11932,7 +11932,7 @@ note:
     ┌─ features/checked_arithmetic.fe:171:39
     │
 171 │     pub def mod_i64(left: i64, right: i64) -> i64:
-    │                                       ^^^ attributes hash: 11018228789238098422
+    │                                       ^^^ attributes hash: 4061011363657204065
     │
     = Base(
           Numeric(
@@ -11944,7 +11944,7 @@ note:
     ┌─ features/checked_arithmetic.fe:171:47
     │
 171 │     pub def mod_i64(left: i64, right: i64) -> i64:
-    │                                               ^^^ attributes hash: 11018228789238098422
+    │                                               ^^^ attributes hash: 4061011363657204065
     │
     = Base(
           Numeric(
@@ -11956,7 +11956,7 @@ note:
     ┌─ features/checked_arithmetic.fe:174:27
     │
 174 │     pub def mod_i32(left: i32, right: i32) -> i32:
-    │                           ^^^ attributes hash: 3647277037255055228
+    │                           ^^^ attributes hash: 3989691230564290788
     │
     = Base(
           Numeric(
@@ -11968,7 +11968,7 @@ note:
     ┌─ features/checked_arithmetic.fe:174:39
     │
 174 │     pub def mod_i32(left: i32, right: i32) -> i32:
-    │                                       ^^^ attributes hash: 3647277037255055228
+    │                                       ^^^ attributes hash: 3989691230564290788
     │
     = Base(
           Numeric(
@@ -11980,7 +11980,7 @@ note:
     ┌─ features/checked_arithmetic.fe:174:47
     │
 174 │     pub def mod_i32(left: i32, right: i32) -> i32:
-    │                                               ^^^ attributes hash: 3647277037255055228
+    │                                               ^^^ attributes hash: 3989691230564290788
     │
     = Base(
           Numeric(
@@ -11992,7 +11992,7 @@ note:
     ┌─ features/checked_arithmetic.fe:177:27
     │
 177 │     pub def mod_i16(left: i16, right: i16) -> i16:
-    │                           ^^^ attributes hash: 4248546760475796133
+    │                           ^^^ attributes hash: 13881948389070133681
     │
     = Base(
           Numeric(
@@ -12004,7 +12004,7 @@ note:
     ┌─ features/checked_arithmetic.fe:177:39
     │
 177 │     pub def mod_i16(left: i16, right: i16) -> i16:
-    │                                       ^^^ attributes hash: 4248546760475796133
+    │                                       ^^^ attributes hash: 13881948389070133681
     │
     = Base(
           Numeric(
@@ -12016,7 +12016,7 @@ note:
     ┌─ features/checked_arithmetic.fe:177:47
     │
 177 │     pub def mod_i16(left: i16, right: i16) -> i16:
-    │                                               ^^^ attributes hash: 4248546760475796133
+    │                                               ^^^ attributes hash: 13881948389070133681
     │
     = Base(
           Numeric(
@@ -12028,7 +12028,7 @@ note:
     ┌─ features/checked_arithmetic.fe:180:26
     │
 180 │     pub def mod_i8(left: i8, right: i8) -> i8:
-    │                          ^^ attributes hash: 8158980283050389248
+    │                          ^^ attributes hash: 15894395880381322973
     │
     = Base(
           Numeric(
@@ -12040,7 +12040,7 @@ note:
     ┌─ features/checked_arithmetic.fe:180:37
     │
 180 │     pub def mod_i8(left: i8, right: i8) -> i8:
-    │                                     ^^ attributes hash: 8158980283050389248
+    │                                     ^^ attributes hash: 15894395880381322973
     │
     = Base(
           Numeric(
@@ -12052,7 +12052,7 @@ note:
     ┌─ features/checked_arithmetic.fe:180:44
     │
 180 │     pub def mod_i8(left: i8, right: i8) -> i8:
-    │                                            ^^ attributes hash: 8158980283050389248
+    │                                            ^^ attributes hash: 15894395880381322973
     │
     = Base(
           Numeric(
@@ -12064,7 +12064,7 @@ note:
     ┌─ features/checked_arithmetic.fe:183:28
     │
 183 │     pub def pow_u256(left: u256, right: u256) -> u256:
-    │                            ^^^^ attributes hash: 17942395924573474124
+    │                            ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
           Numeric(
@@ -12076,7 +12076,7 @@ note:
     ┌─ features/checked_arithmetic.fe:183:41
     │
 183 │     pub def pow_u256(left: u256, right: u256) -> u256:
-    │                                         ^^^^ attributes hash: 17942395924573474124
+    │                                         ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
           Numeric(
@@ -12088,7 +12088,7 @@ note:
     ┌─ features/checked_arithmetic.fe:183:50
     │
 183 │     pub def pow_u256(left: u256, right: u256) -> u256:
-    │                                                  ^^^^ attributes hash: 17942395924573474124
+    │                                                  ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
           Numeric(
@@ -12100,7 +12100,7 @@ note:
     ┌─ features/checked_arithmetic.fe:186:28
     │
 186 │     pub def pow_u128(left: u128, right: u128) -> u128:
-    │                            ^^^^ attributes hash: 14909107886776088983
+    │                            ^^^^ attributes hash: 6162263163478414243
     │
     = Base(
           Numeric(
@@ -12112,7 +12112,7 @@ note:
     ┌─ features/checked_arithmetic.fe:186:41
     │
 186 │     pub def pow_u128(left: u128, right: u128) -> u128:
-    │                                         ^^^^ attributes hash: 14909107886776088983
+    │                                         ^^^^ attributes hash: 6162263163478414243
     │
     = Base(
           Numeric(
@@ -12124,7 +12124,7 @@ note:
     ┌─ features/checked_arithmetic.fe:186:50
     │
 186 │     pub def pow_u128(left: u128, right: u128) -> u128:
-    │                                                  ^^^^ attributes hash: 14909107886776088983
+    │                                                  ^^^^ attributes hash: 6162263163478414243
     │
     = Base(
           Numeric(
@@ -12136,7 +12136,7 @@ note:
     ┌─ features/checked_arithmetic.fe:189:27
     │
 189 │     pub def pow_u64(left: u64, right: u64) -> u64:
-    │                           ^^^ attributes hash: 17534999559619587862
+    │                           ^^^ attributes hash: 9157081425890653064
     │
     = Base(
           Numeric(
@@ -12148,7 +12148,7 @@ note:
     ┌─ features/checked_arithmetic.fe:189:39
     │
 189 │     pub def pow_u64(left: u64, right: u64) -> u64:
-    │                                       ^^^ attributes hash: 17534999559619587862
+    │                                       ^^^ attributes hash: 9157081425890653064
     │
     = Base(
           Numeric(
@@ -12160,7 +12160,7 @@ note:
     ┌─ features/checked_arithmetic.fe:189:47
     │
 189 │     pub def pow_u64(left: u64, right: u64) -> u64:
-    │                                               ^^^ attributes hash: 17534999559619587862
+    │                                               ^^^ attributes hash: 9157081425890653064
     │
     = Base(
           Numeric(
@@ -12172,7 +12172,7 @@ note:
     ┌─ features/checked_arithmetic.fe:192:27
     │
 192 │     pub def pow_u32(left: u32, right: u32) -> u32:
-    │                           ^^^ attributes hash: 11356073382633174465
+    │                           ^^^ attributes hash: 6988938628910073395
     │
     = Base(
           Numeric(
@@ -12184,7 +12184,7 @@ note:
     ┌─ features/checked_arithmetic.fe:192:39
     │
 192 │     pub def pow_u32(left: u32, right: u32) -> u32:
-    │                                       ^^^ attributes hash: 11356073382633174465
+    │                                       ^^^ attributes hash: 6988938628910073395
     │
     = Base(
           Numeric(
@@ -12196,7 +12196,7 @@ note:
     ┌─ features/checked_arithmetic.fe:192:47
     │
 192 │     pub def pow_u32(left: u32, right: u32) -> u32:
-    │                                               ^^^ attributes hash: 11356073382633174465
+    │                                               ^^^ attributes hash: 6988938628910073395
     │
     = Base(
           Numeric(
@@ -12208,7 +12208,7 @@ note:
     ┌─ features/checked_arithmetic.fe:195:27
     │
 195 │     pub def pow_u16(left: u16, right: u16) -> u16:
-    │                           ^^^ attributes hash: 547894393873242964
+    │                           ^^^ attributes hash: 10482216811962112628
     │
     = Base(
           Numeric(
@@ -12220,7 +12220,7 @@ note:
     ┌─ features/checked_arithmetic.fe:195:39
     │
 195 │     pub def pow_u16(left: u16, right: u16) -> u16:
-    │                                       ^^^ attributes hash: 547894393873242964
+    │                                       ^^^ attributes hash: 10482216811962112628
     │
     = Base(
           Numeric(
@@ -12232,7 +12232,7 @@ note:
     ┌─ features/checked_arithmetic.fe:195:47
     │
 195 │     pub def pow_u16(left: u16, right: u16) -> u16:
-    │                                               ^^^ attributes hash: 547894393873242964
+    │                                               ^^^ attributes hash: 10482216811962112628
     │
     = Base(
           Numeric(
@@ -12244,7 +12244,7 @@ note:
     ┌─ features/checked_arithmetic.fe:198:26
     │
 198 │     pub def pow_u8(left: u8, right: u8) -> u8:
-    │                          ^^ attributes hash: 1872326638020472004
+    │                          ^^ attributes hash: 3165084411644393001
     │
     = Base(
           Numeric(
@@ -12256,7 +12256,7 @@ note:
     ┌─ features/checked_arithmetic.fe:198:37
     │
 198 │     pub def pow_u8(left: u8, right: u8) -> u8:
-    │                                     ^^ attributes hash: 1872326638020472004
+    │                                     ^^ attributes hash: 3165084411644393001
     │
     = Base(
           Numeric(
@@ -12268,7 +12268,7 @@ note:
     ┌─ features/checked_arithmetic.fe:198:44
     │
 198 │     pub def pow_u8(left: u8, right: u8) -> u8:
-    │                                            ^^ attributes hash: 1872326638020472004
+    │                                            ^^ attributes hash: 3165084411644393001
     │
     = Base(
           Numeric(
@@ -12280,7 +12280,7 @@ note:
     ┌─ features/checked_arithmetic.fe:201:28
     │
 201 │     pub def pow_i256(left: i256, right: u256) -> i256:
-    │                            ^^^^ attributes hash: 5923332062417896707
+    │                            ^^^^ attributes hash: 11707372354960146103
     │
     = Base(
           Numeric(
@@ -12292,7 +12292,7 @@ note:
     ┌─ features/checked_arithmetic.fe:201:41
     │
 201 │     pub def pow_i256(left: i256, right: u256) -> i256:
-    │                                         ^^^^ attributes hash: 17942395924573474124
+    │                                         ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
           Numeric(
@@ -12304,7 +12304,7 @@ note:
     ┌─ features/checked_arithmetic.fe:201:50
     │
 201 │     pub def pow_i256(left: i256, right: u256) -> i256:
-    │                                                  ^^^^ attributes hash: 5923332062417896707
+    │                                                  ^^^^ attributes hash: 11707372354960146103
     │
     = Base(
           Numeric(
@@ -12316,7 +12316,7 @@ note:
     ┌─ features/checked_arithmetic.fe:204:28
     │
 204 │     pub def pow_i128(left: i128, right: u128) -> i128:
-    │                            ^^^^ attributes hash: 2176316003589696703
+    │                            ^^^^ attributes hash: 1662973713176693737
     │
     = Base(
           Numeric(
@@ -12328,7 +12328,7 @@ note:
     ┌─ features/checked_arithmetic.fe:204:41
     │
 204 │     pub def pow_i128(left: i128, right: u128) -> i128:
-    │                                         ^^^^ attributes hash: 14909107886776088983
+    │                                         ^^^^ attributes hash: 6162263163478414243
     │
     = Base(
           Numeric(
@@ -12340,7 +12340,7 @@ note:
     ┌─ features/checked_arithmetic.fe:204:50
     │
 204 │     pub def pow_i128(left: i128, right: u128) -> i128:
-    │                                                  ^^^^ attributes hash: 2176316003589696703
+    │                                                  ^^^^ attributes hash: 1662973713176693737
     │
     = Base(
           Numeric(
@@ -12352,7 +12352,7 @@ note:
     ┌─ features/checked_arithmetic.fe:207:27
     │
 207 │     pub def pow_i64(left: i64, right: u64) -> i64:
-    │                           ^^^ attributes hash: 11018228789238098422
+    │                           ^^^ attributes hash: 4061011363657204065
     │
     = Base(
           Numeric(
@@ -12364,7 +12364,7 @@ note:
     ┌─ features/checked_arithmetic.fe:207:39
     │
 207 │     pub def pow_i64(left: i64, right: u64) -> i64:
-    │                                       ^^^ attributes hash: 17534999559619587862
+    │                                       ^^^ attributes hash: 9157081425890653064
     │
     = Base(
           Numeric(
@@ -12376,7 +12376,7 @@ note:
     ┌─ features/checked_arithmetic.fe:207:47
     │
 207 │     pub def pow_i64(left: i64, right: u64) -> i64:
-    │                                               ^^^ attributes hash: 11018228789238098422
+    │                                               ^^^ attributes hash: 4061011363657204065
     │
     = Base(
           Numeric(
@@ -12388,7 +12388,7 @@ note:
     ┌─ features/checked_arithmetic.fe:210:27
     │
 210 │     pub def pow_i32(left: i32, right: u32) -> i32:
-    │                           ^^^ attributes hash: 3647277037255055228
+    │                           ^^^ attributes hash: 3989691230564290788
     │
     = Base(
           Numeric(
@@ -12400,7 +12400,7 @@ note:
     ┌─ features/checked_arithmetic.fe:210:39
     │
 210 │     pub def pow_i32(left: i32, right: u32) -> i32:
-    │                                       ^^^ attributes hash: 11356073382633174465
+    │                                       ^^^ attributes hash: 6988938628910073395
     │
     = Base(
           Numeric(
@@ -12412,7 +12412,7 @@ note:
     ┌─ features/checked_arithmetic.fe:210:47
     │
 210 │     pub def pow_i32(left: i32, right: u32) -> i32:
-    │                                               ^^^ attributes hash: 3647277037255055228
+    │                                               ^^^ attributes hash: 3989691230564290788
     │
     = Base(
           Numeric(
@@ -12424,7 +12424,7 @@ note:
     ┌─ features/checked_arithmetic.fe:213:27
     │
 213 │     pub def pow_i16(left: i16, right: u16) -> i16:
-    │                           ^^^ attributes hash: 4248546760475796133
+    │                           ^^^ attributes hash: 13881948389070133681
     │
     = Base(
           Numeric(
@@ -12436,7 +12436,7 @@ note:
     ┌─ features/checked_arithmetic.fe:213:39
     │
 213 │     pub def pow_i16(left: i16, right: u16) -> i16:
-    │                                       ^^^ attributes hash: 547894393873242964
+    │                                       ^^^ attributes hash: 10482216811962112628
     │
     = Base(
           Numeric(
@@ -12448,7 +12448,7 @@ note:
     ┌─ features/checked_arithmetic.fe:213:47
     │
 213 │     pub def pow_i16(left: i16, right: u16) -> i16:
-    │                                               ^^^ attributes hash: 4248546760475796133
+    │                                               ^^^ attributes hash: 13881948389070133681
     │
     = Base(
           Numeric(
@@ -12460,7 +12460,7 @@ note:
     ┌─ features/checked_arithmetic.fe:216:26
     │
 216 │     pub def pow_i8(left: i8, right: u8) -> i8:
-    │                          ^^ attributes hash: 8158980283050389248
+    │                          ^^ attributes hash: 15894395880381322973
     │
     = Base(
           Numeric(
@@ -12472,7 +12472,7 @@ note:
     ┌─ features/checked_arithmetic.fe:216:37
     │
 216 │     pub def pow_i8(left: i8, right: u8) -> i8:
-    │                                     ^^ attributes hash: 1872326638020472004
+    │                                     ^^ attributes hash: 3165084411644393001
     │
     = Base(
           Numeric(
@@ -12484,7 +12484,7 @@ note:
     ┌─ features/checked_arithmetic.fe:216:44
     │
 216 │     pub def pow_i8(left: i8, right: u8) -> i8:
-    │                                            ^^ attributes hash: 8158980283050389248
+    │                                            ^^ attributes hash: 15894395880381322973
     │
     = Base(
           Numeric(

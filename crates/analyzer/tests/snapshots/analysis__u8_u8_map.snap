@@ -63,7 +63,7 @@ note:
   ┌─ features/u8_u8_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^ attributes hash: 9234909146222676732
+  │                ^^^^^^^^ attributes hash: 5682377734666527473
   │
   = ExpressionAttributes {
         typ: Map(
@@ -90,7 +90,7 @@ note:
   ┌─ features/u8_u8_map.fe:5:25
   │
 5 │         return self.bar[key]
-  │                         ^^^ attributes hash: 6817314866882205962
+  │                         ^^^ attributes hash: 11226462071603862164
   │
   = ExpressionAttributes {
         typ: Base(
@@ -106,7 +106,7 @@ note:
   ┌─ features/u8_u8_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ attributes hash: 1740598829751249486
+  │                ^^^^^^^^^^^^^ attributes hash: 18214955623291495272
   │
   = ExpressionAttributes {
         typ: Base(
@@ -126,7 +126,7 @@ note:
   ┌─ features/u8_u8_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^ attributes hash: 9234909146222676732
+  │         ^^^^^^^^ attributes hash: 5682377734666527473
   │
   = ExpressionAttributes {
         typ: Map(
@@ -153,7 +153,7 @@ note:
   ┌─ features/u8_u8_map.fe:8:18
   │
 8 │         self.bar[key] = value
-  │                  ^^^ attributes hash: 6817314866882205962
+  │                  ^^^ attributes hash: 11226462071603862164
   │
   = ExpressionAttributes {
         typ: Base(
@@ -169,7 +169,7 @@ note:
   ┌─ features/u8_u8_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^^^^^^ attributes hash: 11720477144688003496
+  │         ^^^^^^^^^^^^^ attributes hash: 16040380126306158811
   │
   = ExpressionAttributes {
         typ: Base(
@@ -187,7 +187,7 @@ note:
   ┌─ features/u8_u8_map.fe:8:25
   │
 8 │         self.bar[key] = value
-  │                         ^^^^^ attributes hash: 6817314866882205962
+  │                         ^^^^^ attributes hash: 11226462071603862164
   │
   = ExpressionAttributes {
         typ: Base(
@@ -204,7 +204,7 @@ note:
   │  
 4 │ ╭     pub def read_bar(key: u8) -> u8:
 5 │ │         return self.bar[key]
-  │ ╰────────────────────────────^ attributes hash: 8220196972298724241
+  │ ╰────────────────────────────^ attributes hash: 4735810328520573444
   │  
   = FunctionAttributes {
         is_public: true,
@@ -231,7 +231,7 @@ note:
   │  
 7 │ ╭     pub def write_bar(key: u8, value: u8):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 3686208607173516581
+  │ ╰─────────────────────────────^ attributes hash: 12302297343297635301
   │  
   = FunctionAttributes {
         is_public: true,
@@ -269,7 +269,7 @@ note:
   · │
 7 │ │     pub def write_bar(key: u8, value: u8):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 2749813523511115958
+  │ ╰─────────────────────────────^ attributes hash: 5349499630302604765
   │  
   = ContractAttributes {
         public_functions: [
@@ -328,7 +328,7 @@ note:
   ┌─ features/u8_u8_map.fe:4:27
   │
 4 │     pub def read_bar(key: u8) -> u8:
-  │                           ^^ attributes hash: 1872326638020472004
+  │                           ^^ attributes hash: 3165084411644393001
   │
   = Base(
         Numeric(
@@ -340,7 +340,7 @@ note:
   ┌─ features/u8_u8_map.fe:4:34
   │
 4 │     pub def read_bar(key: u8) -> u8:
-  │                                  ^^ attributes hash: 1872326638020472004
+  │                                  ^^ attributes hash: 3165084411644393001
   │
   = Base(
         Numeric(
@@ -352,7 +352,7 @@ note:
   ┌─ features/u8_u8_map.fe:7:28
   │
 7 │     pub def write_bar(key: u8, value: u8):
-  │                            ^^ attributes hash: 1872326638020472004
+  │                            ^^ attributes hash: 3165084411644393001
   │
   = Base(
         Numeric(
@@ -364,7 +364,7 @@ note:
   ┌─ features/u8_u8_map.fe:7:39
   │
 7 │     pub def write_bar(key: u8, value: u8):
-  │                                       ^^ attributes hash: 1872326638020472004
+  │                                       ^^ attributes hash: 3165084411644393001
   │
   = Base(
         Numeric(
@@ -376,7 +376,7 @@ note:
   ┌─ features/u8_u8_map.fe:2:18
   │
 2 │     pub bar: Map<u8, u8>
-  │                  ^^ attributes hash: 1872326638020472004
+  │                  ^^ attributes hash: 3165084411644393001
   │
   = Base(
         Numeric(
@@ -388,7 +388,7 @@ note:
   ┌─ features/u8_u8_map.fe:2:22
   │
 2 │     pub bar: Map<u8, u8>
-  │                      ^^ attributes hash: 1872326638020472004
+  │                      ^^ attributes hash: 3165084411644393001
   │
   = Base(
         Numeric(
@@ -400,7 +400,7 @@ note:
   ┌─ features/u8_u8_map.fe:2:14
   │
 2 │     pub bar: Map<u8, u8>
-  │              ^^^^^^^^^^^ attributes hash: 15893437220884405684
+  │              ^^^^^^^^^^^ attributes hash: 15635320608203772098
   │
   = Map(
         Map {
