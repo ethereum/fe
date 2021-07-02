@@ -1,0 +1,12 @@
+---
+source: crates/yulgen/tests/yulgen.rs
+expression: "abi_functions::decode_component_bytes(26, AbiDecodeLocation::Memory)"
+
+---
+function abi_decode_component_bytes_26_mem(head_start, head_offset) -> return_val {
+    let head_ptr := add(head_start, head_offset)
+    let data_start_offset := mload(head_ptr)
+    let data_start := add(32, add(head_start, data_start_offset))
+    let data_size := 26
+    return_val := mcopym(data_start, data_size)
+}

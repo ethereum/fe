@@ -18,7 +18,9 @@ ModuleAttributes {
                                 Array(
                                     Array {
                                         size: 3,
-                                        inner: Byte,
+                                        inner: Numeric(
+                                            U8,
+                                        ),
                                     },
                                 ),
                             ),
@@ -38,7 +40,9 @@ ModuleAttributes {
                                 Array(
                                     Array {
                                         size: 32,
-                                        inner: Byte,
+                                        inner: Numeric(
+                                            U8,
+                                        ),
                                     },
                                 ),
                             ),
@@ -58,7 +62,9 @@ ModuleAttributes {
                                 Array(
                                     Array {
                                         size: 1,
-                                        inner: Byte,
+                                        inner: Numeric(
+                                            U8,
+                                        ),
                                     },
                                 ),
                             ),
@@ -79,13 +85,15 @@ note:
   ┌─ features/keccak.fe:4:26
   │
 4 │         return keccak256(val)
-  │                          ^^^ attributes hash: 8598609981099527373
+  │                          ^^^ attributes hash: 574919542176978760
   │
   = ExpressionAttributes {
         typ: Array(
             Array {
                 size: 1,
-                inner: Byte,
+                inner: Numeric(
+                    U8,
+                ),
             },
         ),
         location: Memory,
@@ -112,13 +120,15 @@ note:
   ┌─ features/keccak.fe:7:26
   │
 7 │         return keccak256(val)
-  │                          ^^^ attributes hash: 2245312459861268279
+  │                          ^^^ attributes hash: 2476317639556092543
   │
   = ExpressionAttributes {
         typ: Array(
             Array {
                 size: 3,
-                inner: Byte,
+                inner: Numeric(
+                    U8,
+                ),
             },
         ),
         location: Memory,
@@ -145,13 +155,15 @@ note:
    ┌─ features/keccak.fe:10:26
    │
 10 │         return keccak256(val)
-   │                          ^^^ attributes hash: 10306023770505947435
+   │                          ^^^ attributes hash: 8617270725692205871
    │
    = ExpressionAttributes {
          typ: Array(
              Array {
                  size: 32,
-                 inner: Byte,
+                 inner: Numeric(
+                     U8,
+                 ),
              },
          ),
          location: Memory,
@@ -177,9 +189,9 @@ note:
 note: 
   ┌─ features/keccak.fe:3:5
   │  
-3 │ ╭     pub def return_hash_from_u8(val: bytes[1]) -> u256:
+3 │ ╭     pub def return_hash_from_u8(val: u8[1]) -> u256:
 4 │ │         return keccak256(val)
-  │ ╰─────────────────────────────^ attributes hash: 2802555885149581505
+  │ ╰─────────────────────────────^ attributes hash: 3916898137266517094
   │  
   = FunctionAttributes {
         is_public: true,
@@ -190,7 +202,9 @@ note:
                 Array(
                     Array {
                         size: 1,
-                        inner: Byte,
+                        inner: Numeric(
+                            U8,
+                        ),
                     },
                 ),
             ),
@@ -205,9 +219,9 @@ note:
 note: 
   ┌─ features/keccak.fe:6:5
   │  
-6 │ ╭     pub def return_hash_from_foo(val: bytes[3]) -> u256:
+6 │ ╭     pub def return_hash_from_foo(val: u8[3]) -> u256:
 7 │ │         return keccak256(val)
-  │ ╰─────────────────────────────^ attributes hash: 1953567334235706242
+  │ ╰─────────────────────────────^ attributes hash: 17383477138669681037
   │  
   = FunctionAttributes {
         is_public: true,
@@ -218,7 +232,9 @@ note:
                 Array(
                     Array {
                         size: 3,
-                        inner: Byte,
+                        inner: Numeric(
+                            U8,
+                        ),
                     },
                 ),
             ),
@@ -233,9 +249,9 @@ note:
 note: 
    ┌─ features/keccak.fe:9:5
    │  
- 9 │ ╭     pub def return_hash_from_u256(val: bytes[32]) -> u256:
+ 9 │ ╭     pub def return_hash_from_u256(val: u8[32]) -> u256:
 10 │ │         return keccak256(val)
-   │ ╰─────────────────────────────^ attributes hash: 1810257651932301344
+   │ ╰─────────────────────────────^ attributes hash: 15968512545592203569
    │  
    = FunctionAttributes {
          is_public: true,
@@ -246,7 +262,9 @@ note:
                  Array(
                      Array {
                          size: 32,
-                         inner: Byte,
+                         inner: Numeric(
+                             U8,
+                         ),
                      },
                  ),
              ),
@@ -263,12 +281,12 @@ note:
    │  
  1 │ ╭ contract Keccak:
  2 │ │ 
- 3 │ │     pub def return_hash_from_u8(val: bytes[1]) -> u256:
+ 3 │ │     pub def return_hash_from_u8(val: u8[1]) -> u256:
  4 │ │         return keccak256(val)
    · │
- 9 │ │     pub def return_hash_from_u256(val: bytes[32]) -> u256:
+ 9 │ │     pub def return_hash_from_u256(val: u8[32]) -> u256:
 10 │ │         return keccak256(val)
-   │ ╰─────────────────────────────^ attributes hash: 4633599559494434568
+   │ ╰─────────────────────────────^ attributes hash: 5932214619634805024
    │  
    = ContractAttributes {
          public_functions: [
@@ -281,7 +299,9 @@ note:
                          Array(
                              Array {
                                  size: 3,
-                                 inner: Byte,
+                                 inner: Numeric(
+                                     U8,
+                                 ),
                              },
                          ),
                      ),
@@ -301,7 +321,9 @@ note:
                          Array(
                              Array {
                                  size: 32,
-                                 inner: Byte,
+                                 inner: Numeric(
+                                     U8,
+                                 ),
                              },
                          ),
                      ),
@@ -321,7 +343,9 @@ note:
                          Array(
                              Array {
                                  size: 1,
-                                 inner: Byte,
+                                 inner: Numeric(
+                                     U8,
+                                 ),
                              },
                          ),
                      ),
@@ -372,31 +396,35 @@ note:
 note: 
   ┌─ features/keccak.fe:3:38
   │
-3 │     pub def return_hash_from_u8(val: bytes[1]) -> u256:
-  │                                      ^^^^^ attributes hash: 16931239362436195516
+3 │     pub def return_hash_from_u8(val: u8[1]) -> u256:
+  │                                      ^^ attributes hash: 1872326638020472004
   │
   = Base(
-        Byte,
+        Numeric(
+            U8,
+        ),
     )
 
 note: 
   ┌─ features/keccak.fe:3:38
   │
-3 │     pub def return_hash_from_u8(val: bytes[1]) -> u256:
-  │                                      ^^^^^^^^ attributes hash: 4344437352449401303
+3 │     pub def return_hash_from_u8(val: u8[1]) -> u256:
+  │                                      ^^^^^ attributes hash: 16032867211949180524
   │
   = Array(
         Array {
             size: 1,
-            inner: Byte,
+            inner: Numeric(
+                U8,
+            ),
         },
     )
 
 note: 
-  ┌─ features/keccak.fe:3:51
+  ┌─ features/keccak.fe:3:48
   │
-3 │     pub def return_hash_from_u8(val: bytes[1]) -> u256:
-  │                                                   ^^^^ attributes hash: 17942395924573474124
+3 │     pub def return_hash_from_u8(val: u8[1]) -> u256:
+  │                                                ^^^^ attributes hash: 17942395924573474124
   │
   = Base(
         Numeric(
@@ -407,31 +435,35 @@ note:
 note: 
   ┌─ features/keccak.fe:6:39
   │
-6 │     pub def return_hash_from_foo(val: bytes[3]) -> u256:
-  │                                       ^^^^^ attributes hash: 16931239362436195516
+6 │     pub def return_hash_from_foo(val: u8[3]) -> u256:
+  │                                       ^^ attributes hash: 1872326638020472004
   │
   = Base(
-        Byte,
+        Numeric(
+            U8,
+        ),
     )
 
 note: 
   ┌─ features/keccak.fe:6:39
   │
-6 │     pub def return_hash_from_foo(val: bytes[3]) -> u256:
-  │                                       ^^^^^^^^ attributes hash: 6535243094049238753
+6 │     pub def return_hash_from_foo(val: u8[3]) -> u256:
+  │                                       ^^^^^ attributes hash: 10356998517084871572
   │
   = Array(
         Array {
             size: 3,
-            inner: Byte,
+            inner: Numeric(
+                U8,
+            ),
         },
     )
 
 note: 
-  ┌─ features/keccak.fe:6:52
+  ┌─ features/keccak.fe:6:49
   │
-6 │     pub def return_hash_from_foo(val: bytes[3]) -> u256:
-  │                                                    ^^^^ attributes hash: 17942395924573474124
+6 │     pub def return_hash_from_foo(val: u8[3]) -> u256:
+  │                                                 ^^^^ attributes hash: 17942395924573474124
   │
   = Base(
         Numeric(
@@ -442,31 +474,35 @@ note:
 note: 
   ┌─ features/keccak.fe:9:40
   │
-9 │     pub def return_hash_from_u256(val: bytes[32]) -> u256:
-  │                                        ^^^^^ attributes hash: 16931239362436195516
+9 │     pub def return_hash_from_u256(val: u8[32]) -> u256:
+  │                                        ^^ attributes hash: 1872326638020472004
   │
   = Base(
-        Byte,
+        Numeric(
+            U8,
+        ),
     )
 
 note: 
   ┌─ features/keccak.fe:9:40
   │
-9 │     pub def return_hash_from_u256(val: bytes[32]) -> u256:
-  │                                        ^^^^^^^^^ attributes hash: 11241566943402129315
+9 │     pub def return_hash_from_u256(val: u8[32]) -> u256:
+  │                                        ^^^^^^ attributes hash: 15962440351507396272
   │
   = Array(
         Array {
             size: 32,
-            inner: Byte,
+            inner: Numeric(
+                U8,
+            ),
         },
     )
 
 note: 
-  ┌─ features/keccak.fe:9:54
+  ┌─ features/keccak.fe:9:51
   │
-9 │     pub def return_hash_from_u256(val: bytes[32]) -> u256:
-  │                                                      ^^^^ attributes hash: 17942395924573474124
+9 │     pub def return_hash_from_u256(val: u8[32]) -> u256:
+  │                                                   ^^^^ attributes hash: 17942395924573474124
   │
   = Base(
         Numeric(

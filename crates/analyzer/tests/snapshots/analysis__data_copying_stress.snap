@@ -1958,7 +1958,7 @@ note:
 69 │ │             self.my_string.to_mem(),
 70 │ │             self.my_u256.to_mem()
 71 │ │         )
-   │ ╰─────────^ attributes hash: 13510039392732087821
+   │ ╰─────────^ attributes hash: 513065555763557710
    │  
    = ExpressionAttributes {
          typ: Base(
@@ -2004,7 +2004,7 @@ note:
    ┌─ stress/data_copying_stress.fe:77:9
    │
 77 │         self.my_addrs = my_addrs
-   │         ^^^^^^^^^^^^^ attributes hash: 26273883718814979
+   │         ^^^^^^^^^^^^^ attributes hash: 6657393468177465028
    │
    = ExpressionAttributes {
          typ: Array(
@@ -2025,7 +2025,7 @@ note:
    ┌─ stress/data_copying_stress.fe:77:25
    │
 77 │         self.my_addrs = my_addrs
-   │                         ^^^^^^^^ attributes hash: 8828756767044949401
+   │                         ^^^^^^^^ attributes hash: 2245312459861268279
    │
    = ExpressionAttributes {
          typ: Array(
@@ -2042,7 +2042,7 @@ note:
    ┌─ stress/data_copying_stress.fe:80:16
    │
 80 │         return self.my_addrs[1]
-   │                ^^^^^^^^^^^^^ attributes hash: 26273883718814979
+   │                ^^^^^^^^^^^^^ attributes hash: 6657393468177465028
    │
    = ExpressionAttributes {
          typ: Array(
@@ -2079,7 +2079,7 @@ note:
    ┌─ stress/data_copying_stress.fe:80:16
    │
 80 │         return self.my_addrs[1]
-   │                ^^^^^^^^^^^^^^^^ attributes hash: 15587646813440843004
+   │                ^^^^^^^^^^^^^^^^ attributes hash: 4019208676761915907
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2133,7 +2133,7 @@ note:
    · │
 24 │ │         self.my_u256 = my_u256
 25 │ │         self.my_other_u256 = my_other_u256
-   │ ╰──────────────────────────────────────────^ attributes hash: 1560259300258650942
+   │ ╰──────────────────────────────────────────^ attributes hash: 6175440269983715159
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2183,7 +2183,7 @@ note:
 27 │ ╭     pub def set_to_my_other_vals():
 28 │ │         self.my_string = self.my_other_string
 29 │ │         self.my_u256 = self.my_other_u256
-   │ ╰─────────────────────────────────────────^ attributes hash: 16862758663013252212
+   │ ╰─────────────────────────────────────────^ attributes hash: 10601154972370772075
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2204,7 +2204,7 @@ note:
    · │
 43 │ │         assert my_2nd_array[3] == 50
 44 │ │         assert my_3rd_array[3] == 50
-   │ ╰────────────────────────────────────^ attributes hash: 6476964505927014984
+   │ ╰────────────────────────────────────^ attributes hash: 7806718866218994516
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2362,7 +2362,7 @@ note:
 69 │ │             self.my_string.to_mem(),
 70 │ │             self.my_u256.to_mem()
 71 │ │         )
-   │ ╰─────────^ attributes hash: 10533351548551667725
+   │ ╰─────────^ attributes hash: 11962324298072924216
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2378,7 +2378,7 @@ note:
    │  
 73 │ ╭     def emit_my_event_internal(some_string: String<42>, some_u256: u256):
 74 │ │         emit MyEvent(my_string=some_string, my_u256=some_u256)
-   │ ╰──────────────────────────────────────────────────────────────^ attributes hash: 2034642201325374256
+   │ ╰──────────────────────────────────────────────────────────────^ attributes hash: 9301243115763667579
    │  
    = FunctionAttributes {
          is_public: false,
@@ -2411,7 +2411,7 @@ note:
    │  
 76 │ ╭     pub def set_my_addrs(my_addrs: address[3]):
 77 │ │         self.my_addrs = my_addrs
-   │ ╰────────────────────────────────^ attributes hash: 12139699556071315906
+   │ ╰────────────────────────────────^ attributes hash: 16611403743027696076
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2437,7 +2437,7 @@ note:
    │  
 79 │ ╭     pub def get_my_second_addr() -> address:
 80 │ │         return self.my_addrs[1]
-   │ ╰───────────────────────────────^ attributes hash: 1028183163529791095
+   │ ╰───────────────────────────────^ attributes hash: 8198424112402208752
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2503,7 +2503,7 @@ note:
    · │
 79 │ │     pub def get_my_second_addr() -> address:
 80 │ │         return self.my_addrs[1]
-   │ ╰───────────────────────────────^ attributes hash: 11054534901318549189
+   │ ╰───────────────────────────────^ attributes hash: 13856666633291790232
    │  
    = ContractAttributes {
          public_functions: [
@@ -3127,7 +3127,7 @@ note:
    ┌─ stress/data_copying_stress.fe:76:36
    │
 76 │     pub def set_my_addrs(my_addrs: address[3]):
-   │                                    ^^^^^^^ attributes hash: 574436082528610497
+   │                                    ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -3137,7 +3137,7 @@ note:
    ┌─ stress/data_copying_stress.fe:76:36
    │
 76 │     pub def set_my_addrs(my_addrs: address[3]):
-   │                                    ^^^^^^^^^^ attributes hash: 15168711049449449818
+   │                                    ^^^^^^^^^^ attributes hash: 6535243094049238753
    │
    = Array(
          Array {
@@ -3150,7 +3150,7 @@ note:
    ┌─ stress/data_copying_stress.fe:79:37
    │
 79 │     pub def get_my_second_addr() -> address:
-   │                                     ^^^^^^^ attributes hash: 574436082528610497
+   │                                     ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -3235,7 +3235,7 @@ note:
    ┌─ stress/data_copying_stress.fe:10:15
    │
 10 │     my_addrs: address[3]
-   │               ^^^^^^^ attributes hash: 574436082528610497
+   │               ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -3245,7 +3245,7 @@ note:
    ┌─ stress/data_copying_stress.fe:10:15
    │
 10 │     my_addrs: address[3]
-   │               ^^^^^^^^^^ attributes hash: 15168711049449449818
+   │               ^^^^^^^^^^ attributes hash: 6535243094049238753
    │
    = Array(
          Array {

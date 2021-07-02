@@ -1,0 +1,11 @@
+---
+source: crates/yulgen/tests/yulgen.rs
+expression: "abi_functions::decode_data(&[Base::Bool, Base::Address],\n                           AbiDecodeLocation::Memory)"
+
+---
+function abi_decode_data_bool_address_mem(head_start, data_end) -> val_0, val_1 {
+    let offset_0 := 0
+    let offset_1 := 32
+    val_0 := abi_decode_component_bool_mem(head_start, offset_0)
+    val_1 := abi_decode_component_address_mem(head_start, offset_1)
+}

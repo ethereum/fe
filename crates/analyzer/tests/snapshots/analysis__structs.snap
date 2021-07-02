@@ -34,7 +34,9 @@ ModuleAttributes {
                         return_type: Array(
                             Array {
                                 size: 128,
-                                inner: Byte,
+                                inner: Numeric(
+                                    U8,
+                                ),
                             },
                         ),
                     },
@@ -4195,13 +4197,15 @@ note:
    ┌─ features/structs.fe:74:16
    │
 74 │         return house.abi_encode()
-   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 14553861407964170732
+   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 4677320303864000111
    │
    = ExpressionAttributes {
          typ: Array(
              Array {
                  size: 128,
-                 inner: Byte,
+                 inner: Numeric(
+                     U8,
+                 ),
              },
          ),
          location: Memory,
@@ -4392,13 +4396,15 @@ note:
    ┌─ features/structs.fe:83:26
    │
 83 │         return keccak256(house.abi_encode())
-   │                          ^^^^^^^^^^^^^^^^^^ attributes hash: 14553861407964170732
+   │                          ^^^^^^^^^^^^^^^^^^ attributes hash: 4677320303864000111
    │
    = ExpressionAttributes {
          typ: Array(
              Array {
                  size: 128,
-                 inner: Byte,
+                 inner: Numeric(
+                     U8,
+                 ),
              },
          ),
          location: Memory,
@@ -4431,7 +4437,7 @@ note:
    · │
 41 │ │         assert self.my_house.rooms == u8(100)
 42 │ │         assert self.my_house.vacant
-   │ ╰───────────────────────────────────^ attributes hash: 12009841491257710086
+   │ ╰───────────────────────────────────^ attributes hash: 5203286745277310538
    │  
    = FunctionAttributes {
          is_public: true,
@@ -4468,14 +4474,14 @@ note:
 note: 
    ┌─ features/structs.fe:67:5
    │  
-67 │ ╭     pub def encode_house() -> bytes[128]:
+67 │ ╭     pub def encode_house() -> u8[128]:
 68 │ │         house: House = House(
 69 │ │             price=300,
 70 │ │             size=500,
    · │
 73 │ │         )
 74 │ │         return house.abi_encode()
-   │ ╰─────────────────────────────────^ attributes hash: 11253432886008930448
+   │ ╰─────────────────────────────────^ attributes hash: 883193963732861781
    │  
    = FunctionAttributes {
          is_public: true,
@@ -4484,7 +4490,9 @@ note:
          return_type: Array(
              Array {
                  size: 128,
-                 inner: Byte,
+                 inner: Numeric(
+                     U8,
+                 ),
              },
          ),
      }
@@ -4669,7 +4677,7 @@ note:
    · │
 82 │ │         )
 83 │ │         return keccak256(house.abi_encode())
-   │ ╰────────────────────────────────────────────^ attributes hash: 3311199043119639431
+   │ ╰────────────────────────────────────────────^ attributes hash: 703003343063867377
    │  
    = ContractAttributes {
          public_functions: [
@@ -4698,7 +4706,9 @@ note:
                  return_type: Array(
                      Array {
                          size: 128,
-                         inner: Byte,
+                         inner: Numeric(
+                             U8,
+                         ),
                      },
                  ),
              },
@@ -5208,23 +5218,27 @@ note:
 note: 
    ┌─ features/structs.fe:67:31
    │
-67 │     pub def encode_house() -> bytes[128]:
-   │                               ^^^^^ attributes hash: 16931239362436195516
+67 │     pub def encode_house() -> u8[128]:
+   │                               ^^ attributes hash: 1872326638020472004
    │
    = Base(
-         Byte,
+         Numeric(
+             U8,
+         ),
      )
 
 note: 
    ┌─ features/structs.fe:67:31
    │
-67 │     pub def encode_house() -> bytes[128]:
-   │                               ^^^^^^^^^^ attributes hash: 5563244624631649972
+67 │     pub def encode_house() -> u8[128]:
+   │                               ^^^^^^^ attributes hash: 11606088786347470395
    │
    = Array(
          Array {
              size: 128,
-             inner: Byte,
+             inner: Numeric(
+                 U8,
+             ),
          },
      )
 

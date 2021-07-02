@@ -30,48 +30,50 @@ pub trait FeSized {
     fn size(&self) -> usize;
 }
 
-/// The size of uint element in the ABI encoding.
-///
-/// Example: The values inside of a byte array have a padded size of 1 byte and
-/// a data size of 1 byte, whereas the values inside of an address array have
-/// a padded size of 32 bytes and a data size of 20 bytes. These sizes are
-/// needed by our encoding/decoding functions to properly read and write data.
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
-pub struct AbiUintSize {
-    pub data_size: usize,
-    pub padded_size: usize,
-}
-
-/// The size of an array.
-///
-/// Can either be statically-sized with a fixed value known by the compiler
-/// or a dynamically-sized with the value not being known until runtime.
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
-pub enum AbiArraySize {
-    Static { size: usize },
-    Dynamic,
-}
-
-/// The type of an element in terms of the ABI spec.
+/// ABI types given in the Solidity specification with some extra information needed to inform
+/// generation of encoding/decoding functions.
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
 pub enum AbiType {
-    /// Array elements consist of a dynamically- or statically-sized set of
-    /// uints.
-    Array {
-        inner: Box<AbiType>,
-        size: AbiArraySize,
-    },
-    Tuple {
-        elems: Vec<AbiType>,
-    },
-    /// All elements are encoded as a uint or set of uints.
-    Uint {
-        size: AbiUintSize,
-    },
+    StaticArray { inner: Box<AbiType>, size: usize },
+    Tuple { components: Vec<AbiType> },
+    Uint { size: usize },
+    Int { size: usize },
+    Bool,
+    Address,
+    String { max_size: usize },
+    Bytes { size: usize },
+}
+
+impl AbiType {
+    /// The number of bytes used to encode the type's head.
+    pub fn head_size(&self) -> usize {
+        match self {
+            AbiType::StaticArray { size, .. } => 32 * size,
+            AbiType::Tuple { components } => 32 * components.len(),
+            AbiType::Uint { .. } => 32,
+            AbiType::Int { .. } => 32,
+            AbiType::Bool => 32,
+            AbiType::Address => 32,
+            AbiType::String { .. } => 32,
+            AbiType::Bytes { .. } => 32,
+        }
+    }
+
+    /// The number of bytes used in Fe's data layout. This is used when packing and unpacking
+    /// arrays.
+    pub fn packed_size(&self) -> usize {
+        match *self {
+            AbiType::Uint { size } => size,
+            AbiType::Int { size } => size,
+            AbiType::Bool => 1,
+            AbiType::Address => 32,
+            _ => todo!("recursive encoding"),
+        }
+    }
 }
 
 /// Data can be decoded from memory or calldata.
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Copy)]
 pub enum AbiDecodeLocation {
     Calldata,
     Memory,
@@ -87,7 +89,7 @@ pub struct AbiComponent {
 }
 
 /// Information relevant to ABI encoding.
-pub trait AbiEncoding: SafeNames {
+pub trait AbiEncoding {
     /// Name of the type as it appears in the Json ABI.
     fn abi_json_name(&self) -> String;
 
@@ -99,6 +101,10 @@ pub trait AbiEncoding: SafeNames {
 
     /// The ABI type of a Fe type.
     fn abi_type(&self) -> AbiType;
+}
+
+pub fn abi_types<T: AbiEncoding>(types: &[T]) -> Vec<AbiType> {
+    types.iter().map(|typ| typ.abi_type()).collect()
 }
 
 /// Names that can be used to build identifiers without collision.
@@ -132,7 +138,6 @@ pub enum FixedSize {
 pub enum Base {
     Numeric(Integer),
     Bool,
-    Byte,
     Address,
     Unit,
 }
@@ -467,7 +472,6 @@ impl FeSized for Base {
         match self {
             Base::Numeric(integer) => integer.size(),
             Base::Bool => 1,
-            Base::Byte => 1,
             Base::Address => 32,
             Base::Unit => 0,
         }
@@ -566,7 +570,6 @@ impl AbiEncoding for Base {
             Base::Numeric(Integer::I16) => "int16".to_string(),
             Base::Numeric(Integer::I8) => "int8".to_string(),
             Base::Address => "address".to_string(),
-            Base::Byte => "byte".to_string(),
             Base::Bool => "bool".to_string(),
             Base::Unit => panic!("unit type is not abi encodable"),
         }
@@ -581,42 +584,29 @@ impl AbiEncoding for Base {
     }
 
     fn abi_type(&self) -> AbiType {
-        let (data_size, padded_size) = match self {
-            Base::Bool => (1, 32),
-            Base::Numeric(size) => match size {
-                Integer::U256 => (32, 32),
-                Integer::U128 => (16, 32),
-                Integer::U64 => (8, 32),
-                Integer::U32 => (4, 32),
-                Integer::U16 => (2, 32),
-                Integer::U8 => (1, 32),
-                Integer::I256 => (32, 32),
-                Integer::I128 => (16, 32),
-                Integer::I64 => (8, 32),
-                Integer::I32 => (4, 32),
-                Integer::I16 => (2, 32),
-                Integer::I8 => (1, 32),
-            },
-            Base::Address => (32, 32),
-            Base::Byte => (1, 1),
+        match self {
+            Base::Numeric(integer) => {
+                let size = integer.size();
+                if integer.is_signed() {
+                    AbiType::Int { size }
+                } else {
+                    AbiType::Uint { size }
+                }
+            }
+            Base::Address => AbiType::Address,
+            Base::Bool => AbiType::Bool,
             Base::Unit => panic!("unit type is not abi encodable"),
-        };
-        AbiType::Uint {
-            size: AbiUintSize {
-                data_size,
-                padded_size,
-            },
         }
     }
 }
 
 impl AbiEncoding for Array {
     fn abi_json_name(&self) -> String {
-        if self.inner == Base::Byte {
-            return format!("bytes{}", self.size);
+        if self.inner == Base::Numeric(Integer::U8) {
+            "bytes".to_string()
+        } else {
+            format!("{}[{}]", self.inner.abi_json_name(), self.size)
         }
-
-        format!("{}[{}]", self.inner.abi_json_name(), self.size)
     }
 
     fn abi_selector_name(&self) -> String {
@@ -628,9 +618,13 @@ impl AbiEncoding for Array {
     }
 
     fn abi_type(&self) -> AbiType {
-        AbiType::Array {
-            inner: Box::new(self.inner.abi_type()),
-            size: AbiArraySize::Static { size: self.size },
+        if matches!(self.inner, Base::Numeric(Integer::U8)) {
+            AbiType::Bytes { size: self.size }
+        } else {
+            AbiType::StaticArray {
+                inner: Box::new(self.inner.abi_type()),
+                size: self.size,
+            }
         }
     }
 }
@@ -663,7 +657,7 @@ impl AbiEncoding for Struct {
 
     fn abi_type(&self) -> AbiType {
         AbiType::Tuple {
-            elems: self.fields.iter().map(|(_, typ)| typ.abi_type()).collect(),
+            components: self.fields.iter().map(|(_, typ)| typ.abi_type()).collect(),
         }
     }
 }
@@ -697,7 +691,7 @@ impl AbiEncoding for Tuple {
 
     fn abi_type(&self) -> AbiType {
         AbiType::Tuple {
-            elems: self.items.iter().map(|typ| typ.abi_type()).collect(),
+            components: self.items.iter().map(|typ| typ.abi_type()).collect(),
         }
     }
 }
@@ -734,14 +728,8 @@ impl AbiEncoding for FeString {
     }
 
     fn abi_type(&self) -> AbiType {
-        AbiType::Array {
-            inner: Box::new(AbiType::Uint {
-                size: AbiUintSize {
-                    data_size: 1,
-                    padded_size: 1,
-                },
-            }),
-            size: AbiArraySize::Dynamic,
+        AbiType::String {
+            max_size: self.max_size,
         }
     }
 }
@@ -775,7 +763,6 @@ impl SafeNames for Base {
             Base::Numeric(Integer::I16) => "i16".to_string(),
             Base::Numeric(Integer::I8) => "i8".to_string(),
             Base::Address => "address".to_string(),
-            Base::Byte => "byte".to_string(),
             Base::Bool => "bool".to_string(),
             Base::Unit => "unit".to_string(),
         }
@@ -856,7 +843,6 @@ impl fmt::Display for Base {
         let name = match self {
             Base::Numeric(int) => return int.fmt(f),
             Base::Bool => "bool",
-            Base::Byte => "byte",
             Base::Address => "address",
             Base::Unit => "()",
         };

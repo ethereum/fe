@@ -405,12 +405,6 @@ fn expr_attribute(
 ) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Attribute { value, attr } = &exp.kind {
         let base_type = |typ| Ok(ExpressionAttributes::new(Type::Base(typ), Location::Value));
-        let array_type = |array| {
-            Ok(ExpressionAttributes::new(
-                Type::Array(array),
-                Location::Value,
-            ))
-        };
         let fatal_err = Err(FatalError);
 
         // If the value is a name, check if it is a builtin object and attribute.
@@ -454,10 +448,7 @@ fn expr_attribute(
                 Ok(Object::Msg) => {
                     return match MsgField::from_str(&attr.kind) {
                         Ok(MsgField::Sender) => base_type(Base::Address),
-                        Ok(MsgField::Sig) => array_type(Array {
-                            size: 32,
-                            inner: Base::Byte,
-                        }),
+                        Ok(MsgField::Sig) => base_type(U256),
                         Ok(MsgField::Value) => base_type(U256),
                         Err(_) => {
                             context.fancy_error(
@@ -750,7 +741,7 @@ fn expr_call_builtin_function(
             if !matches!(
                 arg_typ,
                 Type::Array(Array {
-                    inner: Base::Byte,
+                    inner: Base::Numeric(Integer::U8),
                     ..
                 })
             ) {
@@ -1176,7 +1167,7 @@ fn expr_call_value_attribute(
 
                     Ok(ExpressionAttributes::new(
                         Type::Array(Array {
-                            inner: Base::Byte,
+                            inner: Base::Numeric(Integer::U8),
                             size: struct_.fields.len() * 32,
                         }),
                         Location::Memory,
@@ -1195,7 +1186,7 @@ fn expr_call_value_attribute(
 
                     Ok(ExpressionAttributes::new(
                         Type::Array(Array {
-                            inner: Base::Byte,
+                            inner: Base::Numeric(Integer::U8),
                             size: tuple.items.len() * 32,
                         }),
                         Location::Memory,

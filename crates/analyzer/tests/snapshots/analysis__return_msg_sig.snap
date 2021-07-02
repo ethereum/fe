@@ -13,11 +13,10 @@ ModuleAttributes {
                         is_public: true,
                         name: "bar",
                         params: [],
-                        return_type: Array(
-                            Array {
-                                size: 32,
-                                inner: Byte,
-                            },
+                        return_type: Base(
+                            Numeric(
+                                U256,
+                            ),
                         ),
                     },
                 ],
@@ -27,99 +26,46 @@ ModuleAttributes {
 }
 
 note: 
-  ┌─ features/return_msg_sig.fe:4:9
+  ┌─ features/return_msg_sig.fe:3:16
   │
-4 │         msg_sig = msg.sig
-  │         ^^^^^^^ attributes hash: 10306023770505947435
-  │
-  = ExpressionAttributes {
-        typ: Array(
-            Array {
-                size: 32,
-                inner: Byte,
-            },
-        ),
-        location: Memory,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_msg_sig.fe:4:19
-  │
-4 │         msg_sig = msg.sig
-  │                   ^^^^^^^ attributes hash: 2120953519987356880
+3 │         return msg.sig
+  │                ^^^^^^^ attributes hash: 16797824492585953824
   │
   = ExpressionAttributes {
-        typ: Array(
-            Array {
-                size: 32,
-                inner: Byte,
-            },
+        typ: Base(
+            Numeric(
+                U256,
+            ),
         ),
         location: Value,
         move_location: None,
     }
 
 note: 
-  ┌─ features/return_msg_sig.fe:5:16
-  │
-5 │         return msg_sig
-  │                ^^^^^^^ attributes hash: 10306023770505947435
-  │
-  = ExpressionAttributes {
-        typ: Array(
-            Array {
-                size: 32,
-                inner: Byte,
-            },
-        ),
-        location: Memory,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/return_msg_sig.fe:2:5
   │  
-2 │ ╭     pub def bar() -> bytes[32]:
-3 │ │         msg_sig: bytes[32]
-4 │ │         msg_sig = msg.sig
-5 │ │         return msg_sig
-  │ ╰──────────────────────^ attributes hash: 4777280719977385695
+2 │ ╭     pub def bar() -> u256:
+3 │ │         return msg.sig
+  │ ╰──────────────────────^ attributes hash: 2041944711719443549
   │  
   = FunctionAttributes {
         is_public: true,
         name: "bar",
         params: [],
-        return_type: Array(
-            Array {
-                size: 32,
-                inner: Byte,
-            },
+        return_type: Base(
+            Numeric(
+                U256,
+            ),
         ),
     }
-
-note: 
-  ┌─ features/return_msg_sig.fe:3:9
-  │
-3 │         msg_sig: bytes[32]
-  │         ^^^^^^^^^^^^^^^^^^ attributes hash: 11241566943402129315
-  │
-  = Array(
-        Array {
-            size: 32,
-            inner: Byte,
-        },
-    )
 
 note: 
   ┌─ features/return_msg_sig.fe:1:1
   │  
 1 │ ╭ contract Foo:
-2 │ │     pub def bar() -> bytes[32]:
-3 │ │         msg_sig: bytes[32]
-4 │ │         msg_sig = msg.sig
-5 │ │         return msg_sig
-  │ ╰──────────────────────^ attributes hash: 11415107133512128527
+2 │ │     pub def bar() -> u256:
+3 │ │         return msg.sig
+  │ ╰──────────────────────^ attributes hash: 16417315723405128961
   │  
   = ContractAttributes {
         public_functions: [
@@ -127,11 +73,10 @@ note:
                 is_public: true,
                 name: "bar",
                 params: [],
-                return_type: Array(
-                    Array {
-                        size: 32,
-                        inner: Byte,
-                    },
+                return_type: Base(
+                    Numeric(
+                        U256,
+                    ),
                 ),
             },
         ],
@@ -144,47 +89,13 @@ note:
 note: 
   ┌─ features/return_msg_sig.fe:2:22
   │
-2 │     pub def bar() -> bytes[32]:
-  │                      ^^^^^ attributes hash: 16931239362436195516
+2 │     pub def bar() -> u256:
+  │                      ^^^^ attributes hash: 17942395924573474124
   │
   = Base(
-        Byte,
-    )
-
-note: 
-  ┌─ features/return_msg_sig.fe:2:22
-  │
-2 │     pub def bar() -> bytes[32]:
-  │                      ^^^^^^^^^ attributes hash: 11241566943402129315
-  │
-  = Array(
-        Array {
-            size: 32,
-            inner: Byte,
-        },
-    )
-
-note: 
-  ┌─ features/return_msg_sig.fe:3:18
-  │
-3 │         msg_sig: bytes[32]
-  │                  ^^^^^ attributes hash: 16931239362436195516
-  │
-  = Base(
-        Byte,
-    )
-
-note: 
-  ┌─ features/return_msg_sig.fe:3:18
-  │
-3 │         msg_sig: bytes[32]
-  │                  ^^^^^^^^^ attributes hash: 11241566943402129315
-  │
-  = Array(
-        Array {
-            size: 32,
-            inner: Byte,
-        },
+        Numeric(
+            U256,
+        ),
     )
 
 

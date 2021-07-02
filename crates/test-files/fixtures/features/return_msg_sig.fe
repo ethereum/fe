@@ -1,5 +1,3 @@
 contract Foo:
-    pub def bar() -> bytes[32]:
-        msg_sig: bytes[32]
-        msg_sig = msg.sig
-        return msg_sig
+    pub def bar() -> u256:
+        return msg.sig

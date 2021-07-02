@@ -39,5 +39,5 @@ contract Foo:
         )
         self.emit_my_event(my_tuple)
 
-    pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> bytes[96]:
+    pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> u8[96]:
         return my_tuple.abi_encode()

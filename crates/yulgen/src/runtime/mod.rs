@@ -1,4 +1,4 @@
-mod abi_dispatcher;
+pub mod abi_dispatcher;
 pub mod functions;
 use crate::Context;
 use fe_analyzer::context::FunctionAttributes;
@@ -68,24 +68,16 @@ pub fn build(context: &Context, contract: &Node<fe::Contract>) -> Vec<yul::State
             functions::abi::batch_encode(batch)
         };
         let decoding = {
-            let public_functions_batch: Vec<(FixedSize, AbiDecodeLocation)> = attributes
+            let public_functions_batch = attributes
                 .public_functions
                 .to_owned()
                 .into_iter()
-                .map(|attributes| attributes.param_types())
-                .collect::<Vec<_>>()
-                .concat()
-                .into_iter()
-                .map(|typ| (typ, AbiDecodeLocation::Calldata))
+                .map(|attributes| (attributes.param_types(), AbiDecodeLocation::Calldata))
                 .collect();
 
             let init_params_batch =
                 if let Some(init_attributes) = attributes.init_function.to_owned() {
-                    init_attributes
-                        .param_types()
-                        .into_iter()
-                        .map(|typ| (typ, AbiDecodeLocation::Memory))
-                        .collect::<Vec<_>>()
+                    vec![(init_attributes.param_types(), AbiDecodeLocation::Memory)]
                 } else {
                     vec![]
                 };
@@ -93,7 +85,7 @@ pub fn build(context: &Context, contract: &Node<fe::Contract>) -> Vec<yul::State
             let contracts_batch = external_functions
                 .into_iter()
                 .filter(|function| !function.return_type.is_unit())
-                .map(|function| (function.return_type, AbiDecodeLocation::Memory))
+                .map(|function| (vec![function.return_type], AbiDecodeLocation::Memory))
                 .collect();
 
             let batch = [public_functions_batch, init_params_batch, contracts_batch].concat();
@@ -144,7 +136,7 @@ pub fn build(context: &Context, contract: &Node<fe::Contract>) -> Vec<yul::State
     panic!("missing contract attributes")
 }
 
-/// Concatenates the functions inside of each contracts.
+/// Concatenates the functions inside of each contract.
 fn concat_contract_functions(contracts: Vec<Contract>) -> Vec<FunctionAttributes> {
     contracts
         .into_iter()
@@ -153,17 +145,14 @@ fn concat_contract_functions(contracts: Vec<Contract>) -> Vec<FunctionAttributes
         .concat()
 }
 
-/// Builds the set of function statements that are needed during as well as an
-/// ABI dispatcher statement.
+/// Builds the set of function statements that are needed during runtime as well as an ABI dispatcher statement.
 pub fn build_with_abi_dispatcher(
     context: &Context,
     contract: &Node<fe::Contract>,
 ) -> Vec<yul::Statement> {
     if let Some(attributes) = context.analysis.get_contract(contract) {
         let mut runtime = build(context, contract);
-        runtime.push(abi_dispatcher::dispatcher(
-            attributes.public_functions.to_owned(),
-        ));
+        runtime.push(abi_dispatcher::dispatcher(&attributes.public_functions));
 
         return runtime;
     }

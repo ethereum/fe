@@ -1,0 +1,9 @@
+---
+source: crates/yulgen/tests/yulgen.rs
+expression: "abi_functions::decode_component_bool(AbiDecodeLocation::Calldata)"
+
+---
+function abi_decode_component_bool_calldata(head_start, offset) -> return_val {
+    let ptr := add(head_start, offset)
+    return_val := calldataload(ptr)
+}

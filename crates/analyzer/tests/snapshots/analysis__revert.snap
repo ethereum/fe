@@ -230,7 +230,7 @@ note:
    │  
 13 │ ╭     pub def revert_custom_error():
 14 │ │         revert Error(msg=1, val=true)
-   │ ╰─────────────────────────────────────^ attributes hash: 12416044718721723673
+   │ ╰─────────────────────────────────────^ attributes hash: 13299702893868883002
    │  
    = FunctionAttributes {
          is_public: true,
@@ -246,7 +246,7 @@ note:
    │  
 16 │ ╭     pub def revert_other_error():
 17 │ │         revert OtherError(msg=1, val=true)
-   │ ╰──────────────────────────────────────────^ attributes hash: 2922949012455231953
+   │ ╰──────────────────────────────────────────^ attributes hash: 6517921423196446083
    │  
    = FunctionAttributes {
          is_public: true,
@@ -267,7 +267,7 @@ note:
    · │
 16 │ │     pub def revert_other_error():
 17 │ │         revert OtherError(msg=1, val=true)
-   │ ╰──────────────────────────────────────────^ attributes hash: 5555419990939220415
+   │ ╰──────────────────────────────────────────^ attributes hash: 15320749304990754816
    │  
    = ContractAttributes {
          public_functions: [

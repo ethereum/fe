@@ -8,17 +8,17 @@ contract Foo:
     my_addrs: address[5]
     my_u128: u128
     my_string: String<10>
-    my_u8s: u8[255]
+    my_u16s: u16[255]
     my_bool: bool
-    my_bytes: bytes[100]
+    my_bytes: u8[100]
 
     event MyEvent:
         my_addrs: address[5]
         my_u128: u128
         my_string: String<10>
-        my_u8s: u8[255]
+        my_u16s: u16[255]
         my_bool: bool
-        my_bytes: bytes[100]
+        my_bytes: u8[100]
 
     pub def set_my_addrs(my_addrs: address[5]):
         self.my_addrs = my_addrs
@@ -38,11 +38,11 @@ contract Foo:
     pub def get_my_string() -> String<10>:
         return self.my_string.to_mem()
 
-    pub def set_my_u8s(my_u8s: u8[255]):
-        self.my_u8s = my_u8s
+    pub def set_my_u16s(my_u16s: u16[255]):
+        self.my_u16s = my_u16s
 
-    pub def get_my_u8s() -> u8[255]:
-        return self.my_u8s.to_mem()
+    pub def get_my_u16s() -> u16[255]:
+        return self.my_u16s.to_mem()
 
     pub def set_my_bool(my_bool: bool):
         self.my_bool = my_bool
@@ -50,10 +50,10 @@ contract Foo:
     pub def get_my_bool() -> bool:
         return self.my_bool
 
-    pub def set_my_bytes(my_bytes: bytes[100]):
+    pub def set_my_bytes(my_bytes: u8[100]):
         self.my_bytes = my_bytes
 
-    pub def get_my_bytes() -> bytes[100]:
+    pub def get_my_bytes() -> u8[100]:
         return self.my_bytes.to_mem()
 
     pub def get_my_struct() -> MyStruct:
@@ -76,7 +76,7 @@ contract Foo:
             my_addrs=self.my_addrs.to_mem(),
             my_u128=self.my_u128,
             my_string=self.my_string.to_mem(),
-            my_u8s=self.my_u8s.to_mem(),
+            my_u16s=self.my_u16s.to_mem(),
             my_bool=self.my_bool,
             my_bytes=self.my_bytes.to_mem()
         )

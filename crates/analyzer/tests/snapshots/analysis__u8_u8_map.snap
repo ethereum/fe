@@ -231,7 +231,7 @@ note:
   │  
 7 │ ╭     pub def write_bar(key: u8, value: u8):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 8968390687644046085
+  │ ╰─────────────────────────────^ attributes hash: 3686208607173516581
   │  
   = FunctionAttributes {
         is_public: true,
@@ -269,7 +269,7 @@ note:
   · │
 7 │ │     pub def write_bar(key: u8, value: u8):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 10097728334127541592
+  │ ╰─────────────────────────────^ attributes hash: 2749813523511115958
   │  
   = ContractAttributes {
         public_functions: [

@@ -4,7 +4,7 @@ use fe_common::files::FileStore;
 use fe_common::utils::keccak;
 use fe_driver as driver;
 use fe_yulgen::runtime::functions;
-use primitive_types::{H160, H256, U256};
+use primitive_types::{H160, U256};
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use yultsur::*;
@@ -602,20 +602,7 @@ pub fn bool_token(val: bool) -> ethabi::Token {
 
 #[allow(dead_code)]
 pub fn bytes_token(s: &str) -> ethabi::Token {
-    ethabi::Token::FixedBytes(ethabi::FixedBytes::from(s))
-}
-
-#[allow(dead_code)]
-pub fn bytes32(val: &str) -> Vec<u8> {
-    H256::from_str(val)
-        .unwrap_or_else(|_| panic!("couldn't create bytes[32] from: {}", val))
-        .as_bytes()
-        .to_vec()
-}
-
-#[allow(dead_code)]
-pub fn bytes32_token(val: &str) -> ethabi::Token {
-    ethabi::Token::FixedBytes(bytes32(&format! {"{:0<64}", val}))
+    ethabi::Token::Bytes(ethabi::Bytes::from(s))
 }
 
 #[allow(dead_code)]

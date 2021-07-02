@@ -344,7 +344,7 @@ note:
    ┌─ demos/erc20_token.fe:25:20
    │
 25 │         self._mint(msg.sender, 1000000000000000000000000)
-   │                    ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                    ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -374,7 +374,7 @@ note:
    ┌─ demos/erc20_token.fe:25:9
    │
 25 │         self._mint(msg.sender, 1000000000000000000000000)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
    │
    = ExpressionAttributes {
          typ: Base(
@@ -516,7 +516,7 @@ note:
    ┌─ demos/erc20_token.fe:40:16
    │
 40 │         return self._balances[account]
-   │                ^^^^^^^^^^^^^^ attributes hash: 3083590660514624733
+   │                ^^^^^^^^^^^^^^ attributes hash: 16295847970515239570
    │
    = ExpressionAttributes {
          typ: Map(
@@ -541,7 +541,7 @@ note:
    ┌─ demos/erc20_token.fe:40:31
    │
 40 │         return self._balances[account]
-   │                               ^^^^^^^ attributes hash: 513065555763557710
+   │                               ^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -575,7 +575,7 @@ note:
    ┌─ demos/erc20_token.fe:43:24
    │
 43 │         self._transfer(msg.sender, recipient, value)
-   │                        ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                        ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -589,7 +589,7 @@ note:
    ┌─ demos/erc20_token.fe:43:36
    │
 43 │         self._transfer(msg.sender, recipient, value)
-   │                                    ^^^^^^^^^ attributes hash: 513065555763557710
+   │                                    ^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -619,7 +619,7 @@ note:
    ┌─ demos/erc20_token.fe:43:9
    │
 43 │         self._transfer(msg.sender, recipient, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
    │
    = ExpressionAttributes {
          typ: Base(
@@ -647,7 +647,7 @@ note:
    ┌─ demos/erc20_token.fe:47:16
    │
 47 │         return self._allowances[owner][spender]
-   │                ^^^^^^^^^^^^^^^^ attributes hash: 1809596235975120774
+   │                ^^^^^^^^^^^^^^^^ attributes hash: 2459692748288327725
    │
    = ExpressionAttributes {
          typ: Map(
@@ -677,7 +677,7 @@ note:
    ┌─ demos/erc20_token.fe:47:33
    │
 47 │         return self._allowances[owner][spender]
-   │                                 ^^^^^ attributes hash: 513065555763557710
+   │                                 ^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -691,7 +691,7 @@ note:
    ┌─ demos/erc20_token.fe:47:16
    │
 47 │         return self._allowances[owner][spender]
-   │                ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8054157001498380852
+   │                ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2951433597334534045
    │
    = ExpressionAttributes {
          typ: Map(
@@ -714,7 +714,7 @@ note:
    ┌─ demos/erc20_token.fe:47:40
    │
 47 │         return self._allowances[owner][spender]
-   │                                        ^^^^^^^ attributes hash: 513065555763557710
+   │                                        ^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -748,7 +748,7 @@ note:
    ┌─ demos/erc20_token.fe:50:23
    │
 50 │         self._approve(msg.sender, spender, value)
-   │                       ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                       ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -762,7 +762,7 @@ note:
    ┌─ demos/erc20_token.fe:50:35
    │
 50 │         self._approve(msg.sender, spender, value)
-   │                                   ^^^^^^^ attributes hash: 513065555763557710
+   │                                   ^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -792,7 +792,7 @@ note:
    ┌─ demos/erc20_token.fe:50:9
    │
 50 │         self._approve(msg.sender, spender, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
    │
    = ExpressionAttributes {
          typ: Base(
@@ -820,7 +820,7 @@ note:
    ┌─ demos/erc20_token.fe:54:16
    │
 54 │         assert self._allowances[sender][msg.sender] >= value
-   │                ^^^^^^^^^^^^^^^^ attributes hash: 1809596235975120774
+   │                ^^^^^^^^^^^^^^^^ attributes hash: 2459692748288327725
    │
    = ExpressionAttributes {
          typ: Map(
@@ -850,7 +850,7 @@ note:
    ┌─ demos/erc20_token.fe:54:33
    │
 54 │         assert self._allowances[sender][msg.sender] >= value
-   │                                 ^^^^^^ attributes hash: 513065555763557710
+   │                                 ^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -864,7 +864,7 @@ note:
    ┌─ demos/erc20_token.fe:54:16
    │
 54 │         assert self._allowances[sender][msg.sender] >= value
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8054157001498380852
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2951433597334534045
    │
    = ExpressionAttributes {
          typ: Map(
@@ -887,7 +887,7 @@ note:
    ┌─ demos/erc20_token.fe:54:41
    │
 54 │         assert self._allowances[sender][msg.sender] >= value
-   │                                         ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                                         ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -951,7 +951,7 @@ note:
    ┌─ demos/erc20_token.fe:56:24
    │
 56 │         self._transfer(sender, recipient, value)
-   │                        ^^^^^^ attributes hash: 513065555763557710
+   │                        ^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -965,7 +965,7 @@ note:
    ┌─ demos/erc20_token.fe:56:32
    │
 56 │         self._transfer(sender, recipient, value)
-   │                                ^^^^^^^^^ attributes hash: 513065555763557710
+   │                                ^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -995,7 +995,7 @@ note:
    ┌─ demos/erc20_token.fe:56:9
    │
 56 │         self._transfer(sender, recipient, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1009,7 +1009,7 @@ note:
    ┌─ demos/erc20_token.fe:57:23
    │
 57 │         self._approve(sender, msg.sender, self._allowances[sender][msg.sender] - value)
-   │                       ^^^^^^ attributes hash: 513065555763557710
+   │                       ^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1023,7 +1023,7 @@ note:
    ┌─ demos/erc20_token.fe:57:31
    │
 57 │         self._approve(sender, msg.sender, self._allowances[sender][msg.sender] - value)
-   │                               ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                               ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1037,7 +1037,7 @@ note:
    ┌─ demos/erc20_token.fe:57:43
    │
 57 │         self._approve(sender, msg.sender, self._allowances[sender][msg.sender] - value)
-   │                                           ^^^^^^^^^^^^^^^^ attributes hash: 1809596235975120774
+   │                                           ^^^^^^^^^^^^^^^^ attributes hash: 2459692748288327725
    │
    = ExpressionAttributes {
          typ: Map(
@@ -1067,7 +1067,7 @@ note:
    ┌─ demos/erc20_token.fe:57:60
    │
 57 │         self._approve(sender, msg.sender, self._allowances[sender][msg.sender] - value)
-   │                                                            ^^^^^^ attributes hash: 513065555763557710
+   │                                                            ^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1081,7 +1081,7 @@ note:
    ┌─ demos/erc20_token.fe:57:43
    │
 57 │         self._approve(sender, msg.sender, self._allowances[sender][msg.sender] - value)
-   │                                           ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8054157001498380852
+   │                                           ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2951433597334534045
    │
    = ExpressionAttributes {
          typ: Map(
@@ -1104,7 +1104,7 @@ note:
    ┌─ demos/erc20_token.fe:57:68
    │
 57 │         self._approve(sender, msg.sender, self._allowances[sender][msg.sender] - value)
-   │                                                                    ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                                                                    ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1170,7 +1170,7 @@ note:
    ┌─ demos/erc20_token.fe:57:9
    │
 57 │         self._approve(sender, msg.sender, self._allowances[sender][msg.sender] - value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1198,7 +1198,7 @@ note:
    ┌─ demos/erc20_token.fe:61:23
    │
 61 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] + addedValue)
-   │                       ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                       ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1212,7 +1212,7 @@ note:
    ┌─ demos/erc20_token.fe:61:35
    │
 61 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] + addedValue)
-   │                                   ^^^^^^^ attributes hash: 513065555763557710
+   │                                   ^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1226,7 +1226,7 @@ note:
    ┌─ demos/erc20_token.fe:61:44
    │
 61 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] + addedValue)
-   │                                            ^^^^^^^^^^^^^^^^ attributes hash: 1809596235975120774
+   │                                            ^^^^^^^^^^^^^^^^ attributes hash: 2459692748288327725
    │
    = ExpressionAttributes {
          typ: Map(
@@ -1256,7 +1256,7 @@ note:
    ┌─ demos/erc20_token.fe:61:61
    │
 61 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] + addedValue)
-   │                                                             ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                                                             ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1270,7 +1270,7 @@ note:
    ┌─ demos/erc20_token.fe:61:44
    │
 61 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] + addedValue)
-   │                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8054157001498380852
+   │                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2951433597334534045
    │
    = ExpressionAttributes {
          typ: Map(
@@ -1293,7 +1293,7 @@ note:
    ┌─ demos/erc20_token.fe:61:73
    │
 61 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] + addedValue)
-   │                                                                         ^^^^^^^ attributes hash: 513065555763557710
+   │                                                                         ^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1359,7 +1359,7 @@ note:
    ┌─ demos/erc20_token.fe:61:9
    │
 61 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] + addedValue)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1387,7 +1387,7 @@ note:
    ┌─ demos/erc20_token.fe:65:23
    │
 65 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] - subtractedValue)
-   │                       ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                       ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1401,7 +1401,7 @@ note:
    ┌─ demos/erc20_token.fe:65:35
    │
 65 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] - subtractedValue)
-   │                                   ^^^^^^^ attributes hash: 513065555763557710
+   │                                   ^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1415,7 +1415,7 @@ note:
    ┌─ demos/erc20_token.fe:65:44
    │
 65 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] - subtractedValue)
-   │                                            ^^^^^^^^^^^^^^^^ attributes hash: 1809596235975120774
+   │                                            ^^^^^^^^^^^^^^^^ attributes hash: 2459692748288327725
    │
    = ExpressionAttributes {
          typ: Map(
@@ -1445,7 +1445,7 @@ note:
    ┌─ demos/erc20_token.fe:65:61
    │
 65 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] - subtractedValue)
-   │                                                             ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                                                             ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1459,7 +1459,7 @@ note:
    ┌─ demos/erc20_token.fe:65:44
    │
 65 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] - subtractedValue)
-   │                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8054157001498380852
+   │                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2951433597334534045
    │
    = ExpressionAttributes {
          typ: Map(
@@ -1482,7 +1482,7 @@ note:
    ┌─ demos/erc20_token.fe:65:73
    │
 65 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] - subtractedValue)
-   │                                                                         ^^^^^^^ attributes hash: 513065555763557710
+   │                                                                         ^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1548,7 +1548,7 @@ note:
    ┌─ demos/erc20_token.fe:65:9
    │
 65 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] - subtractedValue)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1576,7 +1576,7 @@ note:
    ┌─ demos/erc20_token.fe:69:16
    │
 69 │         assert sender != address(0)
-   │                ^^^^^^ attributes hash: 513065555763557710
+   │                ^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1606,7 +1606,7 @@ note:
    ┌─ demos/erc20_token.fe:69:26
    │
 69 │         assert sender != address(0)
-   │                          ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                          ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1634,7 +1634,7 @@ note:
    ┌─ demos/erc20_token.fe:70:16
    │
 70 │         assert recipient != address(0)
-   │                ^^^^^^^^^ attributes hash: 513065555763557710
+   │                ^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1664,7 +1664,7 @@ note:
    ┌─ demos/erc20_token.fe:70:29
    │
 70 │         assert recipient != address(0)
-   │                             ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                             ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1692,7 +1692,7 @@ note:
    ┌─ demos/erc20_token.fe:72:37
    │
 72 │         self._before_token_transfer(sender, recipient, value)
-   │                                     ^^^^^^ attributes hash: 513065555763557710
+   │                                     ^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1706,7 +1706,7 @@ note:
    ┌─ demos/erc20_token.fe:72:45
    │
 72 │         self._before_token_transfer(sender, recipient, value)
-   │                                             ^^^^^^^^^ attributes hash: 513065555763557710
+   │                                             ^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1736,7 +1736,7 @@ note:
    ┌─ demos/erc20_token.fe:72:9
    │
 72 │         self._before_token_transfer(sender, recipient, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1750,7 +1750,7 @@ note:
    ┌─ demos/erc20_token.fe:74:9
    │
 74 │         self._balances[sender] = self._balances[sender] - value
-   │         ^^^^^^^^^^^^^^ attributes hash: 3083590660514624733
+   │         ^^^^^^^^^^^^^^ attributes hash: 16295847970515239570
    │
    = ExpressionAttributes {
          typ: Map(
@@ -1775,7 +1775,7 @@ note:
    ┌─ demos/erc20_token.fe:74:24
    │
 74 │         self._balances[sender] = self._balances[sender] - value
-   │                        ^^^^^^ attributes hash: 513065555763557710
+   │                        ^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1807,7 +1807,7 @@ note:
    ┌─ demos/erc20_token.fe:74:34
    │
 74 │         self._balances[sender] = self._balances[sender] - value
-   │                                  ^^^^^^^^^^^^^^ attributes hash: 3083590660514624733
+   │                                  ^^^^^^^^^^^^^^ attributes hash: 16295847970515239570
    │
    = ExpressionAttributes {
          typ: Map(
@@ -1832,7 +1832,7 @@ note:
    ┌─ demos/erc20_token.fe:74:49
    │
 74 │         self._balances[sender] = self._balances[sender] - value
-   │                                                 ^^^^^^ attributes hash: 513065555763557710
+   │                                                 ^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1898,7 +1898,7 @@ note:
    ┌─ demos/erc20_token.fe:75:9
    │
 75 │         self._balances[recipient] = self._balances[recipient] + value
-   │         ^^^^^^^^^^^^^^ attributes hash: 3083590660514624733
+   │         ^^^^^^^^^^^^^^ attributes hash: 16295847970515239570
    │
    = ExpressionAttributes {
          typ: Map(
@@ -1923,7 +1923,7 @@ note:
    ┌─ demos/erc20_token.fe:75:24
    │
 75 │         self._balances[recipient] = self._balances[recipient] + value
-   │                        ^^^^^^^^^ attributes hash: 513065555763557710
+   │                        ^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1955,7 +1955,7 @@ note:
    ┌─ demos/erc20_token.fe:75:37
    │
 75 │         self._balances[recipient] = self._balances[recipient] + value
-   │                                     ^^^^^^^^^^^^^^ attributes hash: 3083590660514624733
+   │                                     ^^^^^^^^^^^^^^ attributes hash: 16295847970515239570
    │
    = ExpressionAttributes {
          typ: Map(
@@ -1980,7 +1980,7 @@ note:
    ┌─ demos/erc20_token.fe:75:52
    │
 75 │         self._balances[recipient] = self._balances[recipient] + value
-   │                                                    ^^^^^^^^^ attributes hash: 513065555763557710
+   │                                                    ^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2046,7 +2046,7 @@ note:
    ┌─ demos/erc20_token.fe:76:28
    │
 76 │         emit Transfer(from=sender, to=recipient, value=value)
-   │                            ^^^^^^ attributes hash: 513065555763557710
+   │                            ^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2060,7 +2060,7 @@ note:
    ┌─ demos/erc20_token.fe:76:39
    │
 76 │         emit Transfer(from=sender, to=recipient, value=value)
-   │                                       ^^^^^^^^^ attributes hash: 513065555763557710
+   │                                       ^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2090,7 +2090,7 @@ note:
    ┌─ demos/erc20_token.fe:79:16
    │
 79 │         assert account != address(0)
-   │                ^^^^^^^ attributes hash: 513065555763557710
+   │                ^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2120,7 +2120,7 @@ note:
    ┌─ demos/erc20_token.fe:79:27
    │
 79 │         assert account != address(0)
-   │                           ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                           ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2164,7 +2164,7 @@ note:
    ┌─ demos/erc20_token.fe:81:37
    │
 81 │         self._before_token_transfer(address(0), account, value)
-   │                                     ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                                     ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2178,7 +2178,7 @@ note:
    ┌─ demos/erc20_token.fe:81:49
    │
 81 │         self._before_token_transfer(address(0), account, value)
-   │                                                 ^^^^^^^ attributes hash: 513065555763557710
+   │                                                 ^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2208,7 +2208,7 @@ note:
    ┌─ demos/erc20_token.fe:81:9
    │
 81 │         self._before_token_transfer(address(0), account, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2296,7 +2296,7 @@ note:
    ┌─ demos/erc20_token.fe:84:9
    │
 84 │         self._balances[account] = self._balances[account] + value
-   │         ^^^^^^^^^^^^^^ attributes hash: 3083590660514624733
+   │         ^^^^^^^^^^^^^^ attributes hash: 16295847970515239570
    │
    = ExpressionAttributes {
          typ: Map(
@@ -2321,7 +2321,7 @@ note:
    ┌─ demos/erc20_token.fe:84:24
    │
 84 │         self._balances[account] = self._balances[account] + value
-   │                        ^^^^^^^ attributes hash: 513065555763557710
+   │                        ^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2353,7 +2353,7 @@ note:
    ┌─ demos/erc20_token.fe:84:35
    │
 84 │         self._balances[account] = self._balances[account] + value
-   │                                   ^^^^^^^^^^^^^^ attributes hash: 3083590660514624733
+   │                                   ^^^^^^^^^^^^^^ attributes hash: 16295847970515239570
    │
    = ExpressionAttributes {
          typ: Map(
@@ -2378,7 +2378,7 @@ note:
    ┌─ demos/erc20_token.fe:84:50
    │
 84 │         self._balances[account] = self._balances[account] + value
-   │                                                  ^^^^^^^ attributes hash: 513065555763557710
+   │                                                  ^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2460,7 +2460,7 @@ note:
    ┌─ demos/erc20_token.fe:85:28
    │
 85 │         emit Transfer(from=address(0), to=account, value=value)
-   │                            ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                            ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2474,7 +2474,7 @@ note:
    ┌─ demos/erc20_token.fe:85:43
    │
 85 │         emit Transfer(from=address(0), to=account, value=value)
-   │                                           ^^^^^^^ attributes hash: 513065555763557710
+   │                                           ^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2504,7 +2504,7 @@ note:
    ┌─ demos/erc20_token.fe:88:16
    │
 88 │         assert account != address(0)
-   │                ^^^^^^^ attributes hash: 513065555763557710
+   │                ^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2534,7 +2534,7 @@ note:
    ┌─ demos/erc20_token.fe:88:27
    │
 88 │         assert account != address(0)
-   │                           ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                           ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2562,7 +2562,7 @@ note:
    ┌─ demos/erc20_token.fe:90:37
    │
 90 │         self._before_token_transfer(account, address(0), value)
-   │                                     ^^^^^^^ attributes hash: 513065555763557710
+   │                                     ^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2592,7 +2592,7 @@ note:
    ┌─ demos/erc20_token.fe:90:46
    │
 90 │         self._before_token_transfer(account, address(0), value)
-   │                                              ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                                              ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2622,7 +2622,7 @@ note:
    ┌─ demos/erc20_token.fe:90:9
    │
 90 │         self._before_token_transfer(account, address(0), value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2636,7 +2636,7 @@ note:
    ┌─ demos/erc20_token.fe:92:9
    │
 92 │         self._balances[account] = self._balances[account] - value
-   │         ^^^^^^^^^^^^^^ attributes hash: 3083590660514624733
+   │         ^^^^^^^^^^^^^^ attributes hash: 16295847970515239570
    │
    = ExpressionAttributes {
          typ: Map(
@@ -2661,7 +2661,7 @@ note:
    ┌─ demos/erc20_token.fe:92:24
    │
 92 │         self._balances[account] = self._balances[account] - value
-   │                        ^^^^^^^ attributes hash: 513065555763557710
+   │                        ^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2693,7 +2693,7 @@ note:
    ┌─ demos/erc20_token.fe:92:35
    │
 92 │         self._balances[account] = self._balances[account] - value
-   │                                   ^^^^^^^^^^^^^^ attributes hash: 3083590660514624733
+   │                                   ^^^^^^^^^^^^^^ attributes hash: 16295847970515239570
    │
    = ExpressionAttributes {
          typ: Map(
@@ -2718,7 +2718,7 @@ note:
    ┌─ demos/erc20_token.fe:92:50
    │
 92 │         self._balances[account] = self._balances[account] - value
-   │                                                  ^^^^^^^ attributes hash: 513065555763557710
+   │                                                  ^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2858,7 +2858,7 @@ note:
    ┌─ demos/erc20_token.fe:94:28
    │
 94 │         emit Transfer(from=account, to=address(0), value)
-   │                            ^^^^^^^ attributes hash: 513065555763557710
+   │                            ^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2888,7 +2888,7 @@ note:
    ┌─ demos/erc20_token.fe:94:40
    │
 94 │         emit Transfer(from=account, to=address(0), value)
-   │                                        ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                                        ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2918,7 +2918,7 @@ note:
    ┌─ demos/erc20_token.fe:97:16
    │
 97 │         assert owner != address(0)
-   │                ^^^^^ attributes hash: 513065555763557710
+   │                ^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2948,7 +2948,7 @@ note:
    ┌─ demos/erc20_token.fe:97:25
    │
 97 │         assert owner != address(0)
-   │                         ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                         ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2976,7 +2976,7 @@ note:
    ┌─ demos/erc20_token.fe:98:16
    │
 98 │         assert spender != address(0)
-   │                ^^^^^^^ attributes hash: 513065555763557710
+   │                ^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3006,7 +3006,7 @@ note:
    ┌─ demos/erc20_token.fe:98:27
    │
 98 │         assert spender != address(0)
-   │                           ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                           ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3034,7 +3034,7 @@ note:
     ┌─ demos/erc20_token.fe:100:9
     │
 100 │         self._allowances[owner][spender] = value
-    │         ^^^^^^^^^^^^^^^^ attributes hash: 1809596235975120774
+    │         ^^^^^^^^^^^^^^^^ attributes hash: 2459692748288327725
     │
     = ExpressionAttributes {
           typ: Map(
@@ -3064,7 +3064,7 @@ note:
     ┌─ demos/erc20_token.fe:100:26
     │
 100 │         self._allowances[owner][spender] = value
-    │                          ^^^^^ attributes hash: 513065555763557710
+    │                          ^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3078,7 +3078,7 @@ note:
     ┌─ demos/erc20_token.fe:100:9
     │
 100 │         self._allowances[owner][spender] = value
-    │         ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8054157001498380852
+    │         ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2951433597334534045
     │
     = ExpressionAttributes {
           typ: Map(
@@ -3101,7 +3101,7 @@ note:
     ┌─ demos/erc20_token.fe:100:33
     │
 100 │         self._allowances[owner][spender] = value
-    │                                 ^^^^^^^ attributes hash: 513065555763557710
+    │                                 ^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3149,7 +3149,7 @@ note:
     ┌─ demos/erc20_token.fe:101:23
     │
 101 │         emit Approval(owner, spender, value)
-    │                       ^^^^^ attributes hash: 513065555763557710
+    │                       ^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3163,7 +3163,7 @@ note:
     ┌─ demos/erc20_token.fe:101:30
     │
 101 │         emit Approval(owner, spender, value)
-    │                              ^^^^^^^ attributes hash: 513065555763557710
+    │                              ^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3229,7 +3229,7 @@ note:
    ┌─ demos/erc20_token.fe:76:9
    │
 76 │         emit Transfer(from=sender, to=recipient, value=value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15998888495671832844
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14259868357080556433
    │
    = EventDef {
          name: "Transfer",
@@ -3266,7 +3266,7 @@ note:
    ┌─ demos/erc20_token.fe:85:9
    │
 85 │         emit Transfer(from=address(0), to=account, value=value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15998888495671832844
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14259868357080556433
    │
    = EventDef {
          name: "Transfer",
@@ -3303,7 +3303,7 @@ note:
    ┌─ demos/erc20_token.fe:94:9
    │
 94 │         emit Transfer(from=account, to=address(0), value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15998888495671832844
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14259868357080556433
    │
    = EventDef {
          name: "Transfer",
@@ -3340,7 +3340,7 @@ note:
     ┌─ demos/erc20_token.fe:101:9
     │
 101 │         emit Approval(owner, spender, value)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13897255059570952921
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12352882478287260175
     │
     = EventDef {
           name: "Approval",
@@ -3381,7 +3381,7 @@ note:
 23 │ │         self._symbol = symbol
 24 │ │         self._decimals = u8(18)
 25 │ │         self._mint(msg.sender, 1000000000000000000000000)
-   │ ╰─────────────────────────────────────────────────────────^ attributes hash: 16507451754266593018
+   │ ╰─────────────────────────────────────────────────────────^ attributes hash: 4615809944642264865
    │  
    = FunctionAttributes {
          is_public: true,
@@ -3486,7 +3486,7 @@ note:
    │  
 39 │ ╭     pub def balanceOf(account: address) -> u256:
 40 │ │         return self._balances[account]
-   │ ╰──────────────────────────────────────^ attributes hash: 11298556184345312488
+   │ ╰──────────────────────────────────────^ attributes hash: 15911996938892051175
    │  
    = FunctionAttributes {
          is_public: true,
@@ -3512,7 +3512,7 @@ note:
 42 │ ╭     pub def transfer(recipient: address, value: u256) -> bool:
 43 │ │         self._transfer(msg.sender, recipient, value)
 44 │ │         return true
-   │ ╰───────────────────^ attributes hash: 9791124835288196242
+   │ ╰───────────────────^ attributes hash: 13472792111918010400
    │  
    = FunctionAttributes {
          is_public: true,
@@ -3543,7 +3543,7 @@ note:
    │  
 46 │ ╭     pub def allowance(owner: address, spender: address) -> u256:
 47 │ │         return self._allowances[owner][spender]
-   │ ╰───────────────────────────────────────────────^ attributes hash: 18109296432776771449
+   │ ╰───────────────────────────────────────────────^ attributes hash: 9649244832340157107
    │  
    = FunctionAttributes {
          is_public: true,
@@ -3575,7 +3575,7 @@ note:
 49 │ ╭     pub def approve(spender: address, value: u256) -> bool:
 50 │ │         self._approve(msg.sender, spender, value)
 51 │ │         return true
-   │ ╰───────────────────^ attributes hash: 1774558567315485250
+   │ ╰───────────────────^ attributes hash: 5933255474942187139
    │  
    = FunctionAttributes {
          is_public: true,
@@ -3610,7 +3610,7 @@ note:
 56 │ │         self._transfer(sender, recipient, value)
 57 │ │         self._approve(sender, msg.sender, self._allowances[sender][msg.sender] - value)
 58 │ │         return true
-   │ ╰───────────────────^ attributes hash: 5292630794815279422
+   │ ╰───────────────────^ attributes hash: 9514631974987452929
    │  
    = FunctionAttributes {
          is_public: true,
@@ -3648,7 +3648,7 @@ note:
 60 │ ╭     pub def increaseAllowance(spender: address, addedValue: u256) -> bool:
 61 │ │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] + addedValue)
 62 │ │         return true
-   │ ╰───────────────────^ attributes hash: 17165992196171528065
+   │ ╰───────────────────^ attributes hash: 2222351914528205933
    │  
    = FunctionAttributes {
          is_public: true,
@@ -3680,7 +3680,7 @@ note:
 64 │ ╭     pub def decreaseAllowance(spender: address, subtractedValue: u256) -> bool:
 65 │ │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] - subtractedValue)
 66 │ │         return true
-   │ ╰───────────────────^ attributes hash: 6258063546790300235
+   │ ╰───────────────────^ attributes hash: 16270967616472814968
    │  
    = FunctionAttributes {
          is_public: true,
@@ -3716,7 +3716,7 @@ note:
    · │
 75 │ │         self._balances[recipient] = self._balances[recipient] + value
 76 │ │         emit Transfer(from=sender, to=recipient, value=value)
-   │ ╰─────────────────────────────────────────────────────────────^ attributes hash: 5235743689364830446
+   │ ╰─────────────────────────────────────────────────────────────^ attributes hash: 8466594766512156196
    │  
    = FunctionAttributes {
          is_public: false,
@@ -3758,7 +3758,7 @@ note:
    · │
 84 │ │         self._balances[account] = self._balances[account] + value
 85 │ │         emit Transfer(from=address(0), to=account, value=value)
-   │ ╰───────────────────────────────────────────────────────────────^ attributes hash: 4212583220897592452
+   │ ╰───────────────────────────────────────────────────────────────^ attributes hash: 1639530849087568453
    │  
    = FunctionAttributes {
          is_public: false,
@@ -3794,7 +3794,7 @@ note:
    · │
 93 │ │         self._total_supply = self._total_supply - value
 94 │ │         emit Transfer(from=account, to=address(0), value)
-   │ ╰─────────────────────────────────────────────────────────^ attributes hash: 2235422051894015840
+   │ ╰─────────────────────────────────────────────────────────^ attributes hash: 6762854395399481869
    │  
    = FunctionAttributes {
          is_public: false,
@@ -3829,7 +3829,7 @@ note:
  99 │ │ 
 100 │ │         self._allowances[owner][spender] = value
 101 │ │         emit Approval(owner, spender, value)
-    │ ╰────────────────────────────────────────────^ attributes hash: 422334171292144355
+    │ ╰────────────────────────────────────────────^ attributes hash: 15561797380107913570
     │  
     = FunctionAttributes {
           is_public: false,
@@ -3866,7 +3866,7 @@ note:
     │  
 103 │ ╭     def _setup_decimals(decimals_: u8):
 104 │ │         self._decimals = decimals_
-    │ ╰──────────────────────────────────^ attributes hash: 10552040440503690559
+    │ ╰──────────────────────────────────^ attributes hash: 12890793623944231189
     │  
     = FunctionAttributes {
           is_public: false,
@@ -3891,7 +3891,7 @@ note:
     │  
 106 │ ╭     def _before_token_transfer(from: address, to: address, value: u256):
 107 │ │         pass
-    │ ╰────────────^ attributes hash: 601366328933825474
+    │ ╰────────────^ attributes hash: 14597397527753009908
     │  
     = FunctionAttributes {
           is_public: false,
@@ -3933,7 +3933,7 @@ note:
     · │
 106 │ │     def _before_token_transfer(from: address, to: address, value: u256):
 107 │ │         pass
-    │ ╰────────────^ attributes hash: 4956673513059637282
+    │ ╰────────────^ attributes hash: 8743064890757882069
     │  
     = ContractAttributes {
           public_functions: [
@@ -4336,7 +4336,7 @@ note:
    ┌─ demos/erc20_token.fe:69:26
    │
 69 │         assert sender != address(0)
-   │                          ^^^^^^^ attributes hash: 6114858510168753394
+   │                          ^^^^^^^ attributes hash: 12543456546113081273
    │
    = TypeConstructor {
          typ: Base(
@@ -4348,7 +4348,7 @@ note:
    ┌─ demos/erc20_token.fe:70:29
    │
 70 │         assert recipient != address(0)
-   │                             ^^^^^^^ attributes hash: 6114858510168753394
+   │                             ^^^^^^^ attributes hash: 12543456546113081273
    │
    = TypeConstructor {
          typ: Base(
@@ -4370,7 +4370,7 @@ note:
    ┌─ demos/erc20_token.fe:79:27
    │
 79 │         assert account != address(0)
-   │                           ^^^^^^^ attributes hash: 6114858510168753394
+   │                           ^^^^^^^ attributes hash: 12543456546113081273
    │
    = TypeConstructor {
          typ: Base(
@@ -4392,7 +4392,7 @@ note:
    ┌─ demos/erc20_token.fe:81:37
    │
 81 │         self._before_token_transfer(address(0), account, value)
-   │                                     ^^^^^^^ attributes hash: 6114858510168753394
+   │                                     ^^^^^^^ attributes hash: 12543456546113081273
    │
    = TypeConstructor {
          typ: Base(
@@ -4404,7 +4404,7 @@ note:
    ┌─ demos/erc20_token.fe:85:28
    │
 85 │         emit Transfer(from=address(0), to=account, value=value)
-   │                            ^^^^^^^ attributes hash: 6114858510168753394
+   │                            ^^^^^^^ attributes hash: 12543456546113081273
    │
    = TypeConstructor {
          typ: Base(
@@ -4416,7 +4416,7 @@ note:
    ┌─ demos/erc20_token.fe:88:27
    │
 88 │         assert account != address(0)
-   │                           ^^^^^^^ attributes hash: 6114858510168753394
+   │                           ^^^^^^^ attributes hash: 12543456546113081273
    │
    = TypeConstructor {
          typ: Base(
@@ -4438,7 +4438,7 @@ note:
    ┌─ demos/erc20_token.fe:90:46
    │
 90 │         self._before_token_transfer(account, address(0), value)
-   │                                              ^^^^^^^ attributes hash: 6114858510168753394
+   │                                              ^^^^^^^ attributes hash: 12543456546113081273
    │
    = TypeConstructor {
          typ: Base(
@@ -4450,7 +4450,7 @@ note:
    ┌─ demos/erc20_token.fe:94:40
    │
 94 │         emit Transfer(from=account, to=address(0), value)
-   │                                        ^^^^^^^ attributes hash: 6114858510168753394
+   │                                        ^^^^^^^ attributes hash: 12543456546113081273
    │
    = TypeConstructor {
          typ: Base(
@@ -4462,7 +4462,7 @@ note:
    ┌─ demos/erc20_token.fe:97:25
    │
 97 │         assert owner != address(0)
-   │                         ^^^^^^^ attributes hash: 6114858510168753394
+   │                         ^^^^^^^ attributes hash: 12543456546113081273
    │
    = TypeConstructor {
          typ: Base(
@@ -4474,7 +4474,7 @@ note:
    ┌─ demos/erc20_token.fe:98:27
    │
 98 │         assert spender != address(0)
-   │                           ^^^^^^^ attributes hash: 6114858510168753394
+   │                           ^^^^^^^ attributes hash: 12543456546113081273
    │
    = TypeConstructor {
          typ: Base(
@@ -4489,7 +4489,7 @@ note:
 12 │ │         idx owner: address
 13 │ │         idx spender: address
 14 │ │         value: u256
-   │ ╰───────────────────^ attributes hash: 13897255059570952921
+   │ ╰───────────────────^ attributes hash: 12352882478287260175
    │  
    = EventDef {
          name: "Approval",
@@ -4529,7 +4529,7 @@ note:
 17 │ │         idx from: address
 18 │ │         idx to: address
 19 │ │         value: u256
-   │ ╰───────────────────^ attributes hash: 15998888495671832844
+   │ ╰───────────────────^ attributes hash: 14259868357080556433
    │  
    = EventDef {
          name: "Transfer",
@@ -4566,7 +4566,7 @@ note:
    ┌─ demos/erc20_token.fe:12:20
    │
 12 │         idx owner: address
-   │                    ^^^^^^^ attributes hash: 574436082528610497
+   │                    ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -4576,7 +4576,7 @@ note:
    ┌─ demos/erc20_token.fe:13:22
    │
 13 │         idx spender: address
-   │                      ^^^^^^^ attributes hash: 574436082528610497
+   │                      ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -4598,7 +4598,7 @@ note:
    ┌─ demos/erc20_token.fe:17:19
    │
 17 │         idx from: address
-   │                   ^^^^^^^ attributes hash: 574436082528610497
+   │                   ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -4608,7 +4608,7 @@ note:
    ┌─ demos/erc20_token.fe:18:17
    │
 18 │         idx to: address
-   │                 ^^^^^^^ attributes hash: 574436082528610497
+   │                 ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -4702,7 +4702,7 @@ note:
    ┌─ demos/erc20_token.fe:39:32
    │
 39 │     pub def balanceOf(account: address) -> u256:
-   │                                ^^^^^^^ attributes hash: 574436082528610497
+   │                                ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -4724,7 +4724,7 @@ note:
    ┌─ demos/erc20_token.fe:42:33
    │
 42 │     pub def transfer(recipient: address, value: u256) -> bool:
-   │                                 ^^^^^^^ attributes hash: 574436082528610497
+   │                                 ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -4756,7 +4756,7 @@ note:
    ┌─ demos/erc20_token.fe:46:30
    │
 46 │     pub def allowance(owner: address, spender: address) -> u256:
-   │                              ^^^^^^^ attributes hash: 574436082528610497
+   │                              ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -4766,7 +4766,7 @@ note:
    ┌─ demos/erc20_token.fe:46:48
    │
 46 │     pub def allowance(owner: address, spender: address) -> u256:
-   │                                                ^^^^^^^ attributes hash: 574436082528610497
+   │                                                ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -4788,7 +4788,7 @@ note:
    ┌─ demos/erc20_token.fe:49:30
    │
 49 │     pub def approve(spender: address, value: u256) -> bool:
-   │                              ^^^^^^^ attributes hash: 574436082528610497
+   │                              ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -4820,7 +4820,7 @@ note:
    ┌─ demos/erc20_token.fe:53:34
    │
 53 │     pub def transferFrom(sender: address, recipient: address, value: u256) -> bool:
-   │                                  ^^^^^^^ attributes hash: 574436082528610497
+   │                                  ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -4830,7 +4830,7 @@ note:
    ┌─ demos/erc20_token.fe:53:54
    │
 53 │     pub def transferFrom(sender: address, recipient: address, value: u256) -> bool:
-   │                                                      ^^^^^^^ attributes hash: 574436082528610497
+   │                                                      ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -4862,7 +4862,7 @@ note:
    ┌─ demos/erc20_token.fe:60:40
    │
 60 │     pub def increaseAllowance(spender: address, addedValue: u256) -> bool:
-   │                                        ^^^^^^^ attributes hash: 574436082528610497
+   │                                        ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -4894,7 +4894,7 @@ note:
    ┌─ demos/erc20_token.fe:64:40
    │
 64 │     pub def decreaseAllowance(spender: address, subtractedValue: u256) -> bool:
-   │                                        ^^^^^^^ attributes hash: 574436082528610497
+   │                                        ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -4926,7 +4926,7 @@ note:
    ┌─ demos/erc20_token.fe:68:27
    │
 68 │     def _transfer(sender: address, recipient: address, value: u256):
-   │                           ^^^^^^^ attributes hash: 574436082528610497
+   │                           ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -4936,7 +4936,7 @@ note:
    ┌─ demos/erc20_token.fe:68:47
    │
 68 │     def _transfer(sender: address, recipient: address, value: u256):
-   │                                               ^^^^^^^ attributes hash: 574436082528610497
+   │                                               ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -4958,7 +4958,7 @@ note:
    ┌─ demos/erc20_token.fe:78:24
    │
 78 │     def _mint(account: address, value: u256):
-   │                        ^^^^^^^ attributes hash: 574436082528610497
+   │                        ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -4980,7 +4980,7 @@ note:
    ┌─ demos/erc20_token.fe:87:24
    │
 87 │     def _burn(account: address, value: u256):
-   │                        ^^^^^^^ attributes hash: 574436082528610497
+   │                        ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -5002,7 +5002,7 @@ note:
    ┌─ demos/erc20_token.fe:96:25
    │
 96 │     def _approve(owner: address, spender: address, value: u256):
-   │                         ^^^^^^^ attributes hash: 574436082528610497
+   │                         ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -5012,7 +5012,7 @@ note:
    ┌─ demos/erc20_token.fe:96:43
    │
 96 │     def _approve(owner: address, spender: address, value: u256):
-   │                                           ^^^^^^^ attributes hash: 574436082528610497
+   │                                           ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -5046,7 +5046,7 @@ note:
     ┌─ demos/erc20_token.fe:106:38
     │
 106 │     def _before_token_transfer(from: address, to: address, value: u256):
-    │                                      ^^^^^^^ attributes hash: 574436082528610497
+    │                                      ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -5056,7 +5056,7 @@ note:
     ┌─ demos/erc20_token.fe:106:51
     │
 106 │     def _before_token_transfer(from: address, to: address, value: u256):
-    │                                                   ^^^^^^^ attributes hash: 574436082528610497
+    │                                                   ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -5078,7 +5078,7 @@ note:
   ┌─ demos/erc20_token.fe:2:20
   │
 2 │     _balances: Map<address, u256>
-  │                    ^^^^^^^ attributes hash: 574436082528610497
+  │                    ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,
@@ -5100,7 +5100,7 @@ note:
   ┌─ demos/erc20_token.fe:2:16
   │
 2 │     _balances: Map<address, u256>
-  │                ^^^^^^^^^^^^^^^^^^ attributes hash: 6830914040603267556
+  │                ^^^^^^^^^^^^^^^^^^ attributes hash: 4896103645274849570
   │
   = Map(
         Map {
@@ -5117,7 +5117,7 @@ note:
   ┌─ demos/erc20_token.fe:3:22
   │
 3 │     _allowances: Map<address, Map<address, u256>>
-  │                      ^^^^^^^ attributes hash: 574436082528610497
+  │                      ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,
@@ -5127,7 +5127,7 @@ note:
   ┌─ demos/erc20_token.fe:3:35
   │
 3 │     _allowances: Map<address, Map<address, u256>>
-  │                                   ^^^^^^^ attributes hash: 574436082528610497
+  │                                   ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,
@@ -5149,7 +5149,7 @@ note:
   ┌─ demos/erc20_token.fe:3:31
   │
 3 │     _allowances: Map<address, Map<address, u256>>
-  │                               ^^^^^^^^^^^^^^^^^^ attributes hash: 6830914040603267556
+  │                               ^^^^^^^^^^^^^^^^^^ attributes hash: 4896103645274849570
   │
   = Map(
         Map {
@@ -5166,7 +5166,7 @@ note:
   ┌─ demos/erc20_token.fe:3:18
   │
 3 │     _allowances: Map<address, Map<address, u256>>
-  │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 652293232820874660
+  │                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17290724986880152566
   │
   = Map(
         Map {

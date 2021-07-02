@@ -67,7 +67,7 @@ note:
   ┌─ features/return_unit.fe:7:12
   │
 7 │     return ()
-  │            ^^ attributes hash: 13510039392732087821
+  │            ^^ attributes hash: 513065555763557710
   │
   = ExpressionAttributes {
         typ: Base(
@@ -81,7 +81,7 @@ note:
    ┌─ features/return_unit.fe:13:12
    │
 13 │     return ()
-   │            ^^ attributes hash: 13510039392732087821
+   │            ^^ attributes hash: 513065555763557710
    │
    = ExpressionAttributes {
          typ: Base(
@@ -96,7 +96,7 @@ note:
   │  
 3 │ ╭   pub def explicit_return_a1():
 4 │ │     return
-  │ ╰──────────^ attributes hash: 1876963790513669126
+  │ ╰──────────^ attributes hash: 15075410168300747903
   │  
   = FunctionAttributes {
         is_public: true,
@@ -112,7 +112,7 @@ note:
   │  
 6 │ ╭   pub def explicit_return_a2():
 7 │ │     return ()
-  │ ╰─────────────^ attributes hash: 3364218285822111877
+  │ ╰─────────────^ attributes hash: 16304827799292902014
   │  
   = FunctionAttributes {
         is_public: true,
@@ -128,7 +128,7 @@ note:
    │  
  9 │ ╭   pub def explicit_return_b1() -> ():
 10 │ │     return
-   │ ╰──────────^ attributes hash: 3119760715755557810
+   │ ╰──────────^ attributes hash: 15035223921056621731
    │  
    = FunctionAttributes {
          is_public: true,
@@ -144,7 +144,7 @@ note:
    │  
 12 │ ╭   pub def explicit_return_b2() -> ():
 13 │ │     return ()
-   │ ╰─────────────^ attributes hash: 3632662372498159713
+   │ ╰─────────────^ attributes hash: 2893054146685256717
    │  
    = FunctionAttributes {
          is_public: true,
@@ -160,7 +160,7 @@ note:
    │  
 15 │ ╭   pub def implicit_a1():
 16 │ │     pass
-   │ ╰────────^ attributes hash: 17402243144066639029
+   │ ╰────────^ attributes hash: 12364371827553425931
    │  
    = FunctionAttributes {
          is_public: true,
@@ -176,7 +176,7 @@ note:
    │  
 18 │ ╭   pub def implicit_a2() -> ():
 19 │ │     pass
-   │ ╰────────^ attributes hash: 13481222315964146038
+   │ ╰────────^ attributes hash: 12198633077641647917
    │  
    = FunctionAttributes {
          is_public: true,
@@ -197,7 +197,7 @@ note:
    · │
 18 │ │   pub def implicit_a2() -> ():
 19 │ │     pass
-   │ ╰────────^ attributes hash: 12660317516329267343
+   │ ╰────────^ attributes hash: 7602391269202270144
    │  
    = ContractAttributes {
          public_functions: [
@@ -260,7 +260,7 @@ note:
   ┌─ features/return_unit.fe:9:35
   │
 9 │   pub def explicit_return_b1() -> ():
-  │                                   ^^ attributes hash: 7530568563565570143
+  │                                   ^^ attributes hash: 574436082528610497
   │
   = Base(
         Unit,
@@ -270,7 +270,7 @@ note:
    ┌─ features/return_unit.fe:12:35
    │
 12 │   pub def explicit_return_b2() -> ():
-   │                                   ^^ attributes hash: 7530568563565570143
+   │                                   ^^ attributes hash: 574436082528610497
    │
    = Base(
          Unit,
@@ -280,7 +280,7 @@ note:
    ┌─ features/return_unit.fe:18:28
    │
 18 │   pub def implicit_a2() -> ():
-   │                            ^^ attributes hash: 7530568563565570143
+   │                            ^^ attributes hash: 574436082528610497
    │
    = Base(
          Unit,

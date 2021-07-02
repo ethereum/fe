@@ -1,0 +1,9 @@
+---
+source: crates/yulgen/tests/yulgen.rs
+expression: "abi_functions::decode_component_uint(256, AbiDecodeLocation::Memory)"
+
+---
+function abi_decode_component_uint2048_mem(head_start, offset) -> return_val {
+    let ptr := add(head_start, offset)
+    return_val := mload(ptr)
+}

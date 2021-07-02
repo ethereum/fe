@@ -1,4 +1,5 @@
 use crate::names;
+use crate::names::abi as abi_names;
 use crate::operations::abi as abi_operations;
 use fe_abi::utils as abi_utils;
 use fe_analyzer::namespace::types::Contract;
@@ -27,16 +28,7 @@ pub fn calls(contract: Contract) -> Vec<yul::Statement> {
                 .collect::<Vec<String>>();
 
             // create a pair of identifiers and expressions for the parameters
-            let (param_idents, param_exprs): (Vec<yul::Identifier>, Vec<yul::Expression>) = (0
-                ..function.params.len())
-                .into_iter()
-                .map(|n| {
-                    let name = format!("val_{}", n);
-                    (identifier! { (name) }, identifier_expression! { (name) })
-                })
-                .collect::<Vec<_>>()
-                .into_iter()
-                .unzip();
+            let (param_idents, param_exprs) = abi_names::vals("param", function.params.len());
             // the function selector must be added to the first 4 bytes of the calldata
             let selector = {
                 let selector = abi_utils::func_selector(&function.name, &param_names);
@@ -44,9 +36,9 @@ pub fn calls(contract: Contract) -> Vec<yul::Statement> {
             };
             // the operations used to encode the parameters
             let encoding_operation =
-                abi_operations::encode(function.param_types(), param_exprs.clone());
+                abi_operations::encode(&function.param_types(), param_exprs.clone());
             // the size of the encoded data
-            let encoding_size = abi_operations::encode_size(function.param_types(), param_exprs);
+            let encoding_size = abi_operations::encode_size(&function.param_types(), param_exprs);
 
             if function.return_type.is_unit() {
                 // there is no return data to handle
@@ -59,12 +51,12 @@ pub fn calls(contract: Contract) -> Vec<yul::Statement> {
                     }
                 }
             } else {
-                let decoding_operation = abi_operations::decode(
-                    vec![function.return_type],
+                let decoding_operation = abi_operations::decode_data(
+                    &[function.return_type],
+                    identifier_expression! { outstart },
                     identifier_expression! { outstart },
                     AbiDecodeLocation::Memory,
-                )[0]
-                .to_owned();
+                );
                 // return data must be captured and decoded
                 function_definition! {
                     function [function_name](addr, [param_idents...]) -> return_val {

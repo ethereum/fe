@@ -1,0 +1,9 @@
+---
+source: crates/yulgen/tests/yulgen.rs
+expression: "abi_functions::decode_component_tuple(&[AbiType::Uint{size: 32,},\n                                        AbiType::Address],\n                                      AbiDecodeLocation::Memory)"
+
+---
+function abi_decode_component_tuple_uint256_address_mem(head_start, offset) -> return_val {
+    let ptr := add(head_start, offset)
+    return_val := mcopym(ptr, 64)
+}

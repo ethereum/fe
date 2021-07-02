@@ -78,8 +78,8 @@ pub fn emit_event(event: EventDef, vals: Vec<yul::Expression>) -> yul::Statement
         .map(|(index, typ)| (vals[index].to_owned(), typ))
         .unzip();
 
-    let encoding = abi_operations::encode(field_types.clone(), field_vals);
-    let encoding_size = abi_operations::encode_size(field_types, vals);
+    let encoding = abi_operations::encode(&field_types, field_vals);
+    let encoding_size = abi_operations::encode_size(&field_types, vals);
 
     // for now we assume these are all base type values and therefore do not need to
     // be hashed
@@ -116,59 +116,4 @@ pub fn indexed_array(
 ) -> yul::Expression {
     let inner_size = literal_expression! { (typ.inner.size()) };
     expression! { add([array], (mul([index], [inner_size]))) }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::operations::data::{emit_event, sum};
-    use fe_analyzer::namespace::events::EventDef;
-    use fe_analyzer::namespace::types::{Base, FixedSize, U256};
-    use yultsur::*;
-
-    #[test]
-    fn test_emit_event_no_indexed() {
-        let event = EventDef::new(
-            "MyEvent",
-            vec![
-                ("my_u256".to_string(), FixedSize::Base(U256)),
-                ("my_addr".to_string(), FixedSize::Base(Base::Address)),
-            ],
-            vec![],
-        );
-
-        assert_eq!(
-            emit_event(event, vec![expression! { 26 }, expression! { 0x00 }]).to_string(),
-            "log1(abi_encode_u256_address(26, 0x00), add(64, 0), 0x74bffa18f2b20140b65de9264a54040b23ab0a34e7643d52f67f7fb18be9bbcb)"
-        )
-    }
-
-    #[test]
-    fn test_emit_event_one_indexed() {
-        let event = EventDef::new(
-            "MyEvent",
-            vec![
-                ("my_u256".to_string(), FixedSize::Base(U256)),
-                ("my_addr".to_string(), FixedSize::Base(Base::Address)),
-            ],
-            vec![0],
-        );
-
-        assert_eq!(
-            emit_event(event, vec![expression! { 26 }, expression! { 0x00 }]).to_string(),
-            "log2(abi_encode_address(0x00), add(32, 0), 0x74bffa18f2b20140b65de9264a54040b23ab0a34e7643d52f67f7fb18be9bbcb, 26)"
-        )
-    }
-
-    #[test]
-    fn test_sum() {
-        assert_eq!(
-            sum(vec![
-                expression! { 42 },
-                expression! { 26 },
-                expression! { 22 }
-            ])
-            .to_string(),
-            "add(add(42, 26), 22)"
-        )
-    }
 }

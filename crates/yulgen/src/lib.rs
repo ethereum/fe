@@ -8,8 +8,8 @@ pub mod constants;
 pub mod constructor;
 mod context;
 mod mappers;
-mod names;
-mod operations;
+pub mod names;
+pub mod operations;
 pub mod runtime;
 mod utils;
 

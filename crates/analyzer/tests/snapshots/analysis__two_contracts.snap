@@ -82,7 +82,7 @@ note:
   ┌─ features/two_contracts.fe:6:20
   │
 6 │         return Bar(address(0)).bar()
-  │                    ^^^^^^^^^^ attributes hash: 513065555763557710
+  │                    ^^^^^^^^^^ attributes hash: 16366719240912622931
   │
   = ExpressionAttributes {
         typ: Base(
@@ -182,7 +182,7 @@ note:
    ┌─ features/two_contracts.fe:16:20
    │
 16 │         return Foo(address(0)).foo()
-   │                    ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                    ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -516,7 +516,7 @@ note:
   ┌─ features/two_contracts.fe:6:20
   │
 6 │         return Bar(address(0)).bar()
-  │                    ^^^^^^^ attributes hash: 6114858510168753394
+  │                    ^^^^^^^ attributes hash: 12543456546113081273
   │
   = TypeConstructor {
         typ: Base(
@@ -572,7 +572,7 @@ note:
    ┌─ features/two_contracts.fe:16:20
    │
 16 │         return Foo(address(0)).foo()
-   │                    ^^^^^^^ attributes hash: 6114858510168753394
+   │                    ^^^^^^^ attributes hash: 12543456546113081273
    │
    = TypeConstructor {
          typ: Base(

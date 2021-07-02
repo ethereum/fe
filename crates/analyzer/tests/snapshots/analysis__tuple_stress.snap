@@ -117,7 +117,9 @@ ModuleAttributes {
                         return_type: Array(
                             Array {
                                 size: 96,
-                                inner: Byte,
+                                inner: Numeric(
+                                    U8,
+                                ),
                             },
                         ),
                     },
@@ -296,7 +298,7 @@ note:
    ┌─ stress/tuple_stress.fe:12:34
    │
 12 │         return (my_num, my_bool, my_address)
-   │                                  ^^^^^^^^^^ attributes hash: 513065555763557710
+   │                                  ^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -310,7 +312,7 @@ note:
    ┌─ stress/tuple_stress.fe:12:16
    │
 12 │         return (my_num, my_bool, my_address)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14640869125644683951
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14644505037216732699
    │
    = ExpressionAttributes {
          typ: Tuple(
@@ -338,7 +340,7 @@ note:
    ┌─ stress/tuple_stress.fe:15:16
    │
 15 │         return my_tuple.item0
-   │                ^^^^^^^^ attributes hash: 14640869125644683951
+   │                ^^^^^^^^ attributes hash: 14644505037216732699
    │
    = ExpressionAttributes {
          typ: Tuple(
@@ -384,7 +386,7 @@ note:
    ┌─ stress/tuple_stress.fe:18:16
    │
 18 │         return my_tuple.item1
-   │                ^^^^^^^^ attributes hash: 14640869125644683951
+   │                ^^^^^^^^ attributes hash: 14644505037216732699
    │
    = ExpressionAttributes {
          typ: Tuple(
@@ -428,7 +430,7 @@ note:
    ┌─ stress/tuple_stress.fe:21:16
    │
 21 │         return my_tuple.item2
-   │                ^^^^^^^^ attributes hash: 14640869125644683951
+   │                ^^^^^^^^ attributes hash: 14644505037216732699
    │
    = ExpressionAttributes {
          typ: Tuple(
@@ -456,7 +458,7 @@ note:
    ┌─ stress/tuple_stress.fe:21:16
    │
 21 │         return my_tuple.item2
-   │                ^^^^^^^^^^^^^^ attributes hash: 4842680713810666204
+   │                ^^^^^^^^^^^^^^ attributes hash: 5051351972033522013
    │
    = ExpressionAttributes {
          typ: Base(
@@ -472,7 +474,7 @@ note:
    ┌─ stress/tuple_stress.fe:24:22
    │
 24 │         emit MyEvent(my_tuple)
-   │                      ^^^^^^^^ attributes hash: 14640869125644683951
+   │                      ^^^^^^^^ attributes hash: 14644505037216732699
    │
    = ExpressionAttributes {
          typ: Tuple(
@@ -1030,7 +1032,7 @@ note:
    ┌─ stress/tuple_stress.fe:38:13
    │
 38 │             address(26)
-   │             ^^^^^^^^^^^ attributes hash: 513065555763557710
+   │             ^^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1049,7 +1051,7 @@ note:
 37 │ │             true and false,
 38 │ │             address(26)
 39 │ │         )
-   │ ╰─────────^ attributes hash: 14640869125644683951
+   │ ╰─────────^ attributes hash: 14644505037216732699
    │  
    = ExpressionAttributes {
          typ: Tuple(
@@ -1077,7 +1079,7 @@ note:
    ┌─ stress/tuple_stress.fe:40:28
    │
 40 │         self.emit_my_event(my_tuple)
-   │                            ^^^^^^^^ attributes hash: 14640869125644683951
+   │                            ^^^^^^^^ attributes hash: 14644505037216732699
    │
    = ExpressionAttributes {
          typ: Tuple(
@@ -1105,7 +1107,7 @@ note:
    ┌─ stress/tuple_stress.fe:40:9
    │
 40 │         self.emit_my_event(my_tuple)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13510039392732087821
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 513065555763557710
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1119,7 +1121,7 @@ note:
    ┌─ stress/tuple_stress.fe:43:16
    │
 43 │         return my_tuple.abi_encode()
-   │                ^^^^^^^^ attributes hash: 14640869125644683951
+   │                ^^^^^^^^ attributes hash: 14644505037216732699
    │
    = ExpressionAttributes {
          typ: Tuple(
@@ -1147,13 +1149,15 @@ note:
    ┌─ stress/tuple_stress.fe:43:16
    │
 43 │         return my_tuple.abi_encode()
-   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5235017701104600297
+   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2460474923347533320
    │
    = ExpressionAttributes {
          typ: Array(
              Array {
                  size: 96,
-                 inner: Byte,
+                 inner: Numeric(
+                     U8,
+                 ),
              },
          ),
          location: Memory,
@@ -1164,7 +1168,7 @@ note:
    ┌─ stress/tuple_stress.fe:24:9
    │
 24 │         emit MyEvent(my_tuple)
-   │         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7180845855031653163
+   │         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1410467236008119665
    │
    = EventDef {
          name: "MyEvent",
@@ -1203,7 +1207,7 @@ note:
 10 │ │         my_address: address
 11 │ │     ) -> (u256, bool, address):
 12 │ │         return (my_num, my_bool, my_address)
-   │ ╰────────────────────────────────────────────^ attributes hash: 9415884201190221320
+   │ ╰────────────────────────────────────────────^ attributes hash: 4687129181747254704
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1254,7 +1258,7 @@ note:
    │  
 14 │ ╭     pub def read_my_tuple_item0(my_tuple: (u256, bool, address)) -> u256:
 15 │ │         return my_tuple.item0
-   │ ╰─────────────────────────────^ attributes hash: 9091169294864108441
+   │ ╰─────────────────────────────^ attributes hash: 1041240475181451355
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1293,7 +1297,7 @@ note:
    │  
 17 │ ╭     pub def read_my_tuple_item1(my_tuple: (u256, bool, address)) -> bool:
 18 │ │         return my_tuple.item1
-   │ ╰─────────────────────────────^ attributes hash: 3826824339952842433
+   │ ╰─────────────────────────────^ attributes hash: 9738896822239366910
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1330,7 +1334,7 @@ note:
    │  
 20 │ ╭     pub def read_my_tuple_item2(my_tuple: (u256, bool, address)) -> address:
 21 │ │         return my_tuple.item2
-   │ ╰─────────────────────────────^ attributes hash: 267241487307632182
+   │ ╰─────────────────────────────^ attributes hash: 6131848532299554634
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1367,7 +1371,7 @@ note:
    │  
 23 │ ╭     pub def emit_my_event(my_tuple: (u256, bool, address)):
 24 │ │         emit MyEvent(my_tuple)
-   │ ╰──────────────────────────────^ attributes hash: 11179766985792630760
+   │ ╰──────────────────────────────^ attributes hash: 2600047884858679771
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1405,7 +1409,7 @@ note:
 26 │ ╭     pub def set_my_sto_tuple(my_u256: u256, my_i32: i32):
 27 │ │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
 28 │ │         self.my_sto_tuple = (my_u256, my_i32)
-   │ ╰─────────────────────────────────────────────^ attributes hash: 1596944400908148027
+   │ ╰─────────────────────────────────────────────^ attributes hash: 4696819639129048692
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1472,7 +1476,7 @@ note:
    · │
 39 │ │         )
 40 │ │         self.emit_my_event(my_tuple)
-   │ ╰────────────────────────────────────^ attributes hash: 693326251577398155
+   │ ╰────────────────────────────────────^ attributes hash: 17234959798740803857
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1486,9 +1490,9 @@ note:
 note: 
    ┌─ stress/tuple_stress.fe:42:5
    │  
-42 │ ╭     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> bytes[96]:
+42 │ ╭     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> u8[96]:
 43 │ │         return my_tuple.abi_encode()
-   │ ╰────────────────────────────────────^ attributes hash: 15781795395741685743
+   │ ╰────────────────────────────────────^ attributes hash: 7083567295304271680
    │  
    = FunctionAttributes {
          is_public: true,
@@ -1518,7 +1522,9 @@ note:
          return_type: Array(
              Array {
                  size: 96,
-                 inner: Byte,
+                 inner: Numeric(
+                     U8,
+                 ),
              },
          ),
      }
@@ -1543,7 +1549,7 @@ note:
 37 │ │             true and false,
 38 │ │             address(26)
 39 │ │         )
-   │ ╰─────────^ attributes hash: 7508447797123000311
+   │ ╰─────────^ attributes hash: 11905070505714258055
    │  
    = Tuple(
          Tuple {
@@ -1571,9 +1577,9 @@ note:
  3 │ │ 
  4 │ │     event MyEvent:
    · │
-42 │ │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> bytes[96]:
+42 │ │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> u8[96]:
 43 │ │         return my_tuple.abi_encode()
-   │ ╰────────────────────────────────────^ attributes hash: 8500049769879482489
+   │ ╰────────────────────────────────────^ attributes hash: 4782207415879159232
    │  
    = ContractAttributes {
          public_functions: [
@@ -1685,7 +1691,9 @@ note:
                  return_type: Array(
                      Array {
                          size: 96,
-                         inner: Byte,
+                         inner: Numeric(
+                             U8,
+                         ),
                      },
                  ),
              },
@@ -1899,7 +1907,7 @@ note:
    ┌─ stress/tuple_stress.fe:38:13
    │
 38 │             address(26)
-   │             ^^^^^^^ attributes hash: 6114858510168753394
+   │             ^^^^^^^ attributes hash: 12543456546113081273
    │
    = TypeConstructor {
          typ: Base(
@@ -1930,7 +1938,7 @@ note:
   │  
 4 │ ╭     event MyEvent:
 5 │ │         my_tuple: (u256, bool, address)
-  │ ╰───────────────────────────────────────^ attributes hash: 7180845855031653163
+  │ ╰───────────────────────────────────────^ attributes hash: 1410467236008119665
   │  
   = EventDef {
         name: "MyEvent",
@@ -1986,7 +1994,7 @@ note:
   ┌─ stress/tuple_stress.fe:5:32
   │
 5 │         my_tuple: (u256, bool, address)
-  │                                ^^^^^^^ attributes hash: 574436082528610497
+  │                                ^^^^^^^ attributes hash: 16931239362436195516
   │
   = Base(
         Address,
@@ -1996,7 +2004,7 @@ note:
   ┌─ stress/tuple_stress.fe:5:19
   │
 5 │         my_tuple: (u256, bool, address)
-  │                   ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2987591369032148946
+  │                   ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13223894189960686356
   │
   = Tuple(
         Tuple {
@@ -2042,7 +2050,7 @@ note:
    ┌─ stress/tuple_stress.fe:10:21
    │
 10 │         my_address: address
-   │                     ^^^^^^^ attributes hash: 574436082528610497
+   │                     ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -2074,7 +2082,7 @@ note:
    ┌─ stress/tuple_stress.fe:11:23
    │
 11 │     ) -> (u256, bool, address):
-   │                       ^^^^^^^ attributes hash: 574436082528610497
+   │                       ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -2084,7 +2092,7 @@ note:
    ┌─ stress/tuple_stress.fe:11:10
    │
 11 │     ) -> (u256, bool, address):
-   │          ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2987591369032148946
+   │          ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13223894189960686356
    │
    = Tuple(
          Tuple {
@@ -2130,7 +2138,7 @@ note:
    ┌─ stress/tuple_stress.fe:14:56
    │
 14 │     pub def read_my_tuple_item0(my_tuple: (u256, bool, address)) -> u256:
-   │                                                        ^^^^^^^ attributes hash: 574436082528610497
+   │                                                        ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -2140,7 +2148,7 @@ note:
    ┌─ stress/tuple_stress.fe:14:43
    │
 14 │     pub def read_my_tuple_item0(my_tuple: (u256, bool, address)) -> u256:
-   │                                           ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2987591369032148946
+   │                                           ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13223894189960686356
    │
    = Tuple(
          Tuple {
@@ -2198,7 +2206,7 @@ note:
    ┌─ stress/tuple_stress.fe:17:56
    │
 17 │     pub def read_my_tuple_item1(my_tuple: (u256, bool, address)) -> bool:
-   │                                                        ^^^^^^^ attributes hash: 574436082528610497
+   │                                                        ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -2208,7 +2216,7 @@ note:
    ┌─ stress/tuple_stress.fe:17:43
    │
 17 │     pub def read_my_tuple_item1(my_tuple: (u256, bool, address)) -> bool:
-   │                                           ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2987591369032148946
+   │                                           ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13223894189960686356
    │
    = Tuple(
          Tuple {
@@ -2264,7 +2272,7 @@ note:
    ┌─ stress/tuple_stress.fe:20:56
    │
 20 │     pub def read_my_tuple_item2(my_tuple: (u256, bool, address)) -> address:
-   │                                                        ^^^^^^^ attributes hash: 574436082528610497
+   │                                                        ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -2274,7 +2282,7 @@ note:
    ┌─ stress/tuple_stress.fe:20:43
    │
 20 │     pub def read_my_tuple_item2(my_tuple: (u256, bool, address)) -> address:
-   │                                           ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2987591369032148946
+   │                                           ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13223894189960686356
    │
    = Tuple(
          Tuple {
@@ -2298,7 +2306,7 @@ note:
    ┌─ stress/tuple_stress.fe:20:69
    │
 20 │     pub def read_my_tuple_item2(my_tuple: (u256, bool, address)) -> address:
-   │                                                                     ^^^^^^^ attributes hash: 574436082528610497
+   │                                                                     ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -2330,7 +2338,7 @@ note:
    ┌─ stress/tuple_stress.fe:23:50
    │
 23 │     pub def emit_my_event(my_tuple: (u256, bool, address)):
-   │                                                  ^^^^^^^ attributes hash: 574436082528610497
+   │                                                  ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -2340,7 +2348,7 @@ note:
    ┌─ stress/tuple_stress.fe:23:37
    │
 23 │     pub def emit_my_event(my_tuple: (u256, bool, address)):
-   │                                     ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2987591369032148946
+   │                                     ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13223894189960686356
    │
    = Tuple(
          Tuple {
@@ -2434,7 +2442,7 @@ note:
 note: 
    ┌─ stress/tuple_stress.fe:42:40
    │
-42 │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> bytes[96]:
+42 │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> u8[96]:
    │                                        ^^^^ attributes hash: 17942395924573474124
    │
    = Base(
@@ -2446,7 +2454,7 @@ note:
 note: 
    ┌─ stress/tuple_stress.fe:42:46
    │
-42 │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> bytes[96]:
+42 │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> u8[96]:
    │                                              ^^^^ attributes hash: 8311861578736502650
    │
    = Base(
@@ -2456,8 +2464,8 @@ note:
 note: 
    ┌─ stress/tuple_stress.fe:42:52
    │
-42 │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> bytes[96]:
-   │                                                    ^^^^^^^ attributes hash: 574436082528610497
+42 │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> u8[96]:
+   │                                                    ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -2466,8 +2474,8 @@ note:
 note: 
    ┌─ stress/tuple_stress.fe:42:39
    │
-42 │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> bytes[96]:
-   │                                       ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2987591369032148946
+42 │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> u8[96]:
+   │                                       ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13223894189960686356
    │
    = Tuple(
          Tuple {
@@ -2490,23 +2498,27 @@ note:
 note: 
    ┌─ stress/tuple_stress.fe:42:65
    │
-42 │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> bytes[96]:
-   │                                                                 ^^^^^ attributes hash: 16931239362436195516
+42 │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> u8[96]:
+   │                                                                 ^^ attributes hash: 1872326638020472004
    │
    = Base(
-         Byte,
+         Numeric(
+             U8,
+         ),
      )
 
 note: 
    ┌─ stress/tuple_stress.fe:42:65
    │
-42 │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> bytes[96]:
-   │                                                                 ^^^^^^^^^ attributes hash: 8593777673114136086
+42 │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> u8[96]:
+   │                                                                 ^^^^^^ attributes hash: 13443678254131285000
    │
    = Array(
          Array {
              size: 96,
-             inner: Byte,
+             inner: Numeric(
+                 U8,
+             ),
          },
      )
 
@@ -2595,7 +2607,7 @@ note:
    ┌─ stress/tuple_stress.fe:35:32
    │
 35 │         my_tuple: (u256, bool, address) = (
-   │                                ^^^^^^^ attributes hash: 574436082528610497
+   │                                ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
@@ -2605,7 +2617,7 @@ note:
    ┌─ stress/tuple_stress.fe:35:19
    │
 35 │         my_tuple: (u256, bool, address) = (
-   │                   ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2987591369032148946
+   │                   ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13223894189960686356
    │
    = Tuple(
          Tuple {

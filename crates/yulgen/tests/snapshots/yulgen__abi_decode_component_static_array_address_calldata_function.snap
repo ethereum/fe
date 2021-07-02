@@ -1,0 +1,9 @@
+---
+source: crates/yulgen/tests/yulgen.rs
+expression: "abi_functions::decode_component_static_array(AbiType::Address, 42,\n                                             AbiDecodeLocation::Calldata)"
+
+---
+function abi_decode_component_static_array_42_address_calldata(head_start, offset) -> return_val {
+    let ptr := add(head_start, offset)
+    return_val := ccopym(ptr, 1344)
+}
