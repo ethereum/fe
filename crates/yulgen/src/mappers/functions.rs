@@ -132,7 +132,7 @@ fn revert(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
                 context.revert_errors.insert(val.clone());
 
                 let revert_data = expressions::expr(context, error_expr);
-                let size = abi_operations::encode_size(&[val.clone()], vec![revert_data.clone()]);
+                let size = abi_operations::encoding_size(&[val.clone()], vec![revert_data.clone()]);
                 let revert_fn = names::revert_name(&val.name, &val.get_field_types());
 
                 return statement! {
@@ -177,7 +177,7 @@ fn assert(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
                     .expect("missing expression");
 
                 if let Type::String(str) = &msg_attributes.typ {
-                    let size = abi_operations::encode_size(&[str.clone()], vec![msg.clone()]);
+                    let size = abi_operations::encoding_size(&[str.clone()], vec![msg.clone()]);
                     let fixed_size = FixedSize::String(str.clone());
                     context.assert_strings.insert(str.clone());
                     let revert_fn = names::error_revert_name(&[fixed_size]);

@@ -1,6 +1,6 @@
 ---
 source: crates/yulgen/tests/yulgen.rs
-expression: "revert::generate_revert_fn_for_assert(&[FeString{max_size: 3,}.into()])"
+expression: "revert_functions::generate_revert_fn_for_assert(&[FeString{max_size:\n                                                               3,}.into()])"
 
 ---
 function revert_with_0x08c379a0_string_3(data_ptr, size) {

@@ -254,7 +254,7 @@ fn return_array() {
             &mut executor,
             "bar",
             &[uint_token(42)],
-            Some(&u256_array_token(&[0, 0, 0, 42, 0])),
+            Some(&uint_array_token(&[0, 0, 0, 42, 0])),
         )
     })
 }
@@ -268,7 +268,7 @@ fn multi_param() {
             &mut executor,
             "bar",
             &[uint_token(4), uint_token(42), uint_token(420)],
-            Some(&u256_array_token(&[4, 42, 420])),
+            Some(&uint_array_token(&[4, 42, 420])),
         )
     })
 }
@@ -296,7 +296,7 @@ fn test_map(fixture_file: &str) {
         harness.test_function(
             &mut executor,
             "write_bar",
-            &[uint_token(420), uint_token(12)],
+            &[uint_token(26), uint_token(12)],
             None,
         );
 
@@ -310,7 +310,7 @@ fn test_map(fixture_file: &str) {
         harness.test_function(
             &mut executor,
             "read_bar",
-            &[uint_token(420)],
+            &[uint_token(26)],
             Some(&uint_token(12)),
         );
     })
@@ -651,7 +651,7 @@ fn sized_vals_in_sto() {
         let harness = deploy_contract(&mut executor, "sized_vals_in_sto.fe", "Foo", &[]);
 
         let num = uint_token(68);
-        let nums = u256_array_token(&(0..42).into_iter().collect::<Vec<_>>());
+        let nums = uint_array_token(&(0..42).into_iter().collect::<Vec<_>>());
         let string = string_token("there are 26 protons in fe");
 
         harness.test_function(&mut executor, "write_num", &[num.clone()], None);
@@ -1128,7 +1128,7 @@ fn external_contract() {
             &mut executor,
             "call_build_array",
             &[foo_address, uint_token(a), uint_token(b)],
-            Some(&u256_array_token(&[a, c, b])),
+            Some(&uint_array_token(&[a, c, b])),
         );
 
         foo_harness.events_emitted(executor, &[("MyEvent", &[my_num, my_addrs, my_string])]);
@@ -1274,5 +1274,247 @@ fn tuple_destructuring() {
             &[uint_token(1), bool_token(false)],
             Some(&uint_token(1)),
         );
+    });
+}
+
+#[test]
+fn abi_decode_checks() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "abi_decode_checks.fe", "Foo", &[]);
+
+        // decode_u256
+        {
+            let input = [uint_token(99999999)];
+            let data = harness.build_calldata("decode_u256", &input);
+
+            // add a byte
+            let mut tampered_data = data.clone();
+            tampered_data.push(42);
+            harness.test_call_reverts(&mut executor, tampered_data);
+
+            // remove last 8 bytes
+            let mut tampered_data = data.clone();
+            tampered_data.truncate(data.len() - 8);
+            harness.test_call_reverts(&mut executor, tampered_data);
+        }
+
+        // decode_u128_bool
+        {
+            let input = [uint_token(99999999), bool_token(true)];
+            let data = harness.build_calldata("decode_u128_bool", &input);
+
+            // add a byte
+            let mut tampered_data = data.clone();
+            tampered_data.push(42);
+            harness.test_call_reverts(&mut executor, tampered_data);
+
+            // place non-zero byte in padded region of `u128`
+            let mut tampered_data = data.clone();
+            // 4 bytes past end of selector (4 + 4)
+            tampered_data[9] = 26;
+            harness.test_call_reverts(&mut executor, tampered_data);
+
+            // place non-zero byte in padded region of u128
+            let mut tampered_data = data;
+            // 8 bytes past end of u128 (4 + 32 + 8)
+            tampered_data[44] = 1;
+            harness.test_call_reverts(&mut executor, tampered_data);
+        }
+
+        // decode_u256_bytes_tuple_array
+        {
+            let head_size = 32 + 32 + 64 + (26 * 32);
+            let input = [
+                uint_token(99999999),
+                bytes_token(
+                    iter::repeat("ten bytes.")
+                        .take(10)
+                        .collect::<String>()
+                        .as_str(),
+                ),
+                tuple_token(&[address_token("a"), uint_token(42)]),
+                int_array_token(&(-10..16).collect::<Vec<_>>()),
+            ];
+            let data = harness.build_calldata("decode_u256_bytes_tuple_array", &input);
+
+            // add a byte
+            let mut tampered_data = data.clone();
+            tampered_data.push(42);
+            harness.test_call_reverts(&mut executor, tampered_data);
+
+            // remove a byte
+            let mut tampered_data = data.clone();
+            tampered_data.truncate(tampered_data.len() - 1);
+            harness.test_call_reverts(&mut executor, tampered_data);
+
+            // give invalid length to bytes. it expects 100, we give 99
+            let mut tampered_data = data.clone();
+            // final byte in data size location for bytes[100]
+            let byte_index = 4 + head_size + 31;
+            tampered_data[byte_index] = 99;
+            harness.test_call_reverts(&mut executor, tampered_data);
+
+            // place non-zero byte in padded region of bytes
+            let mut tampered_data = data.clone();
+            // the first byte directly following the bytes' data
+            let byte_index = 4 + head_size + 32 + 100;
+            tampered_data[byte_index] = 128; // set the first bit to `1`
+            harness.test_call_reverts(&mut executor, tampered_data);
+
+            // place non-zero byte in padded region of bytes
+            let mut tampered_data = data.clone();
+            // the first byte directly following the bytes' data
+            let byte_index = 4 + head_size + 32 + 127;
+            tampered_data[byte_index] = 1; // set the last bit to `1`
+                                           // sanity check
+            assert_eq!(tampered_data.len(), byte_index + 1);
+            harness.test_call_reverts(&mut executor, tampered_data);
+
+            // place non-zero byte in padded region of the tuple
+            let mut tampered_data = data.clone();
+            // first byte in the address padding
+            let byte_index = 4 + 32 + 32;
+            // set the last bit in the address padding to `1`
+            tampered_data[byte_index] = 128;
+            harness.test_call_reverts(&mut executor, tampered_data);
+
+            // place non-zero byte in padded region of the tuple
+            let mut tampered_data = data.clone();
+            // last byte in the address padding
+            let byte_index = 4 + 32 + 32 + 11;
+            // set the last bit in the address padding to `1`
+            tampered_data[byte_index] = 1;
+            harness.test_call_reverts(&mut executor, tampered_data);
+
+            // place non-zero byte in padded region of the tuple
+            let mut tampered_data = data.clone();
+            // 5 bytes past the end of address
+            let byte_index = 4 + 32 + 32 + 32 + 5;
+            tampered_data[byte_index] = 26;
+            harness.test_call_reverts(&mut executor, tampered_data);
+
+            // place zero byte in padded region of a negative int
+            let mut tampered_data = data.clone();
+            // index 2 of array and 0 bytes in
+            let byte_index = 4 + 32 + 32 + 64 + (2 * 32);
+            tampered_data[byte_index] = 0;
+            harness.test_call_reverts(&mut executor, tampered_data);
+
+            // place non-zero byte in padded region of a positive int
+            let mut tampered_data = data;
+            // index 12 of array and 4 bytes in
+            let byte_index = 4 + 32 + 32 + 64 + (12 * 32 + 4);
+            tampered_data[byte_index] = 26;
+            harness.test_call_reverts(&mut executor, tampered_data);
+        }
+
+        // decode_string_address_bytes_bool
+        {
+            let func_name = "decode_string_address_bytes_bool";
+            let input = [
+                string_token("hello Fe"),
+                address_token("baddad"),
+                bytes_token(
+                    iter::repeat("ten bytes.")
+                        .take(100)
+                        .collect::<String>()
+                        .as_str(),
+                ),
+                bool_token(true),
+            ];
+            let data = harness.build_calldata(func_name, &input);
+
+            let head_size = 32 + 32 + 32 + 32;
+            let string_data_size = 64;
+            let string_size = 8;
+            let bytes_data_size = 32 + 1024;
+            let bytes_size = 1000;
+
+            // add 100 bytes
+            let mut tampered_data = data.clone();
+            tampered_data.append(vec![42; 100].as_mut());
+            harness.test_call_reverts(&mut executor, tampered_data);
+
+            // remove 20 bytes
+            let mut tampered_data = data.clone();
+            tampered_data.truncate(tampered_data.len() - 20);
+            harness.test_call_reverts(&mut executor, tampered_data);
+
+            // set string length to value that extends beyond the next data offset
+            let mut tampered_data = data.clone();
+            let byte_index = 4 + head_size + 31;
+            // data section would now occupy 64 + 32 bytes, instead of 32 + 32 bytes
+            // this would break the equivalence of string's `data_offset + data_size` and
+            // the bytes' `data_offset`, making the encoding invalid
+            tampered_data[byte_index] = 33;
+            // the string length is completely valid otherwise. 32 for example will not revert
+            // tampered_data[byte_index] = 32;
+            harness.test_call_reverts(&mut executor, tampered_data);
+
+            // place non-zero byte in padded region of the string
+            let mut tampered_data = data.clone();
+            // last byte in string encoding
+            let byte_index = 4 + head_size + string_data_size - 1;
+            // set last bit to 1
+            tampered_data[byte_index] = 1;
+            harness.test_call_reverts(&mut executor, tampered_data);
+
+            // place non-zero byte in padded region of the string
+            let mut tampered_data = data.clone();
+            // first byte in padded section of string encoding
+            let byte_index = 4 + head_size + 32 + string_size;
+            // set first bit to 1
+            tampered_data[byte_index] = 128;
+            harness.test_call_reverts(&mut executor, tampered_data);
+
+            // place non-zero byte in padded region of the bytes
+            let mut tampered_data = data.clone();
+            // last byte in bytes encoding
+            let byte_index = 4 + head_size + string_data_size + bytes_data_size - 1;
+            // set last bit to 1
+            tampered_data[byte_index] = 1;
+            harness.test_call_reverts(&mut executor, tampered_data);
+
+            // place non-zero byte in padded region of the bytes
+            let mut tampered_data = data;
+            // first byte in padded section of string encoding
+            let byte_index = 4 + head_size + string_data_size + 32 + bytes_size;
+            // set first bit to 1
+            tampered_data[byte_index] = 128;
+            harness.test_call_reverts(&mut executor, tampered_data);
+
+            // invalid since bytes has size 990 instead of 1000
+            let invalid_input = [
+                string_token("hello Fe"),
+                address_token("baddad"),
+                bytes_token(
+                    iter::repeat("ten bytes.")
+                        .take(99)
+                        .collect::<String>()
+                        .as_str(),
+                ),
+                bool_token(true),
+            ];
+            harness.test_function_reverts(&mut executor, func_name, &invalid_input, &[]);
+
+            // invalid since string has size 100, which is greater than 80
+            let invalid_input = [
+                string_token(
+                    iter::repeat("hello Fe..")
+                        .take(10)
+                        .collect::<String>()
+                        .as_str(),
+                ),
+                address_token("baddad"),
+                bytes_token(
+                    iter::repeat("ten bytes.")
+                        .take(100)
+                        .collect::<String>()
+                        .as_str(),
+                ),
+                bool_token(true),
+            ];
+            harness.test_function_reverts(&mut executor, func_name, &invalid_input, &[]);
+        }
     });
 }

@@ -52,17 +52,19 @@ fn dispatch_arm(attributes: FunctionAttributes) -> yul::Case {
                 (return(0, 0))
             }
         } else {
-            let encode = abi_operations::encode(
+            let encode_expr = abi_operations::encode(
                 &[attributes.return_type.clone()],
                 expressions! { return_val },
             );
-            let encode_size =
-                abi_operations::encode_size(&[attributes.return_type], expressions! { return_val });
+            let encoding_size = abi_operations::encoding_size(
+                &[attributes.return_type],
+                expressions! { return_val },
+            );
             statements! {
                 (let return_val := [call])
-                (let encode_start := [encode])
-                (let encode_size := [encode_size])
-                (return(encode_start, encode_size))
+                (let encoding_start := [encode_expr])
+                (let encoding_size := [encoding_size])
+                (return(encoding_start, encoding_size))
             }
         }
     };

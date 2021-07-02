@@ -5,5 +5,15 @@ expression: "abi_functions::decode_component_tuple(&[AbiType::Uint{size: 32,},\n
 ---
 function abi_decode_component_tuple_uint256_address_mem(head_start, offset) -> return_val {
     let ptr := add(head_start, offset)
-    return_val := mcopym(ptr, 64)
+    return_val := avail()
+    {
+        let component_offset := add(offset, mul(32, 0))
+        let decoded_val := abi_decode_component_uint256_mem(head_start, component_offset)
+        pop(alloc_mstoren(decoded_val, 32))
+    }
+    {
+        let component_offset := add(offset, mul(32, 1))
+        let decoded_val := abi_decode_component_address_mem(head_start, component_offset)
+        pop(alloc_mstoren(decoded_val, 32))
+    }
 }

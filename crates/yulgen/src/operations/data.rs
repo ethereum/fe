@@ -79,7 +79,7 @@ pub fn emit_event(event: EventDef, vals: Vec<yul::Expression>) -> yul::Statement
         .unzip();
 
     let encoding = abi_operations::encode(&field_types, field_vals);
-    let encoding_size = abi_operations::encode_size(&field_types, vals);
+    let encoding_size = abi_operations::encoding_size(&field_types, vals);
 
     // for now we assume these are all base type values and therefore do not need to
     // be hashed
