@@ -35,6 +35,20 @@ pub fn build(context: &Context, contract: &Node<fe::Contract>) -> Vec<yul::State
                 .map(|function| function.param_types())
                 .collect();
 
+            let assert_strings_batch = context
+                .assert_strings
+                .clone()
+                .into_iter()
+                .map(|val| vec![val.into()])
+                .collect::<Vec<_>>();
+
+            let revert_errors_batch = context
+                .revert_errors
+                .clone()
+                .into_iter()
+                .map(|val| val.get_field_types())
+                .collect::<Vec<_>>();
+
             let structs_batch = attributes
                 .structs
                 .clone()
@@ -46,6 +60,8 @@ pub fn build(context: &Context, contract: &Node<fe::Contract>) -> Vec<yul::State
                 public_functions_batch,
                 events_batch,
                 contracts_batch,
+                assert_strings_batch,
+                revert_errors_batch,
                 structs_batch,
             ]
             .concat();
@@ -99,7 +115,30 @@ pub fn build(context: &Context, contract: &Node<fe::Contract>) -> Vec<yul::State
             .collect::<Vec<_>>()
             .concat();
 
-        return [std, encoding, decoding, contract_calls, struct_apis].concat();
+        let revert_calls_from_assert = context
+            .assert_strings
+            .clone()
+            .into_iter()
+            .map(|val| functions::revert::generate_revert_fn_for_assert(&[val.into()]))
+            .collect::<Vec<_>>();
+
+        let revert_calls = context
+            .revert_errors
+            .clone()
+            .into_iter()
+            .map(|val| functions::revert::generate_struct_revert(&val))
+            .collect::<Vec<_>>();
+
+        return [
+            std,
+            encoding,
+            decoding,
+            contract_calls,
+            revert_calls_from_assert,
+            revert_calls,
+            struct_apis,
+        ]
+        .concat();
     }
 
     panic!("missing contract attributes")

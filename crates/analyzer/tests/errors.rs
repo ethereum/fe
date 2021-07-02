@@ -187,6 +187,8 @@ test_file! { return_call_to_fn_with_param_type_mismatch }
 test_file! { return_call_to_fn_without_return }
 test_file! { return_from_init }
 test_file! { return_lt_mixed_types }
+
+test_stmt! { revert_reason_not_stuct, "revert 1" }
 test_file! { strict_boolean_if_else }
 test_file! { struct_call_bad_args }
 test_file! { struct_call_without_kw_args }

@@ -1,6 +1,6 @@
 use fe_analyzer::namespace::types::{AbiDecodeLocation, Base, FeString, FixedSize, Struct, U256};
 use fe_yulgen::constructor;
-use fe_yulgen::runtime::functions::{abi, structs};
+use fe_yulgen::runtime::functions::{abi, revert, structs};
 use insta::assert_display_snapshot;
 use wasm_bindgen_test::wasm_bindgen_test;
 
@@ -39,3 +39,5 @@ test_yulgen! { struct_empty, structs::generate_new_fn(&Struct::new("Foo")) }
 test_yulgen! { struct_new_gen, structs::generate_new_fn(&struct_bool_bool()) }
 test_yulgen! { struct_getter_gen_bar, structs::generate_get_fn(&struct_bool_bool(), &struct_bool_bool().fields[0].0) }
 test_yulgen! { struct_getter_gen_bar2, structs::generate_get_fn(&struct_bool_bool(), &struct_bool_bool().fields[1].0) }
+
+test_yulgen! { revert_string_error, revert::generate_revert_fn_for_assert(&[FeString { max_size: 3}.into()]) }

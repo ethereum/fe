@@ -58,7 +58,7 @@ fn selector(name: &str, params: &[FixedSize]) -> yul::Literal {
         .map(|param| param.abi_selector_name())
         .collect::<Vec<String>>();
 
-    literal! {(abi_utils::func_selector(name, params))}
+    literal! {(abi_utils::func_selector(name, &params))}
 }
 
 fn selection(name: &str, params: &[FixedSize]) -> yul::Expression {

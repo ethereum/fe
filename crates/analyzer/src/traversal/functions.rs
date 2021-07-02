@@ -233,7 +233,7 @@ fn func_stmt(
         Assert { .. } => assert(scope, context, stmt),
         Expr { .. } => expr(scope, context, stmt),
         Pass => Ok(()),
-        Revert => Ok(()),
+        Revert { .. } => revert(scope, context, stmt),
         Break | Continue => {
             loop_flow_statement(scope, context, stmt);
             Ok(())
@@ -429,6 +429,32 @@ fn assert(
                     "`assert` reason must be a string",
                     msg.span,
                     format!("this has type `{}`; expected a string", msg_attributes.typ),
+                );
+            }
+        }
+
+        return Ok(());
+    }
+
+    unreachable!()
+}
+
+fn revert(
+    scope: Shared<BlockScope>,
+    context: &mut Context,
+    stmt: &Node<fe::FuncStmt>,
+) -> Result<(), FatalError> {
+    if let fe::FuncStmt::Revert { error } = &stmt.kind {
+        if let Some(error_expr) = error {
+            let error_attributes = expressions::expr(Rc::clone(&scope), context, error_expr, None)?;
+            if !matches!(error_attributes.typ, Type::Struct(_)) {
+                context.error(
+                    "`revert` error must be a struct",
+                    error_expr.span,
+                    format!(
+                        "this has type `{}`; expected a struct",
+                        error_attributes.typ
+                    ),
                 );
             }
         }

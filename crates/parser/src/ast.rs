@@ -207,7 +207,9 @@ pub enum FuncStmt {
     Pass,
     Break,
     Continue,
-    Revert,
+    Revert {
+        error: Option<Node<Expr>>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]

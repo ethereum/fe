@@ -220,6 +220,11 @@ impl Struct {
             .map(|(_, typ)| typ)
     }
 
+    /// Return the types of all fields
+    pub fn get_field_types(&self) -> Vec<FixedSize> {
+        self.fields.iter().cloned().map(|(_, typ)| typ).collect()
+    }
+
     /// Return the index of the given field name
     pub fn get_field_index(&self, name: &str) -> Option<usize> {
         self.fields.iter().position(|(field, _)| field == name)
@@ -394,6 +399,12 @@ impl PartialEq<Type> for FixedSize {
 impl From<Base> for FixedSize {
     fn from(value: Base) -> Self {
         FixedSize::Base(value)
+    }
+}
+
+impl From<FeString> for FixedSize {
+    fn from(value: FeString) -> Self {
+        FixedSize::String(value)
     }
 }
 
