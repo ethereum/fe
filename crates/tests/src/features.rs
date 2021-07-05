@@ -55,24 +55,15 @@ fn test_revert() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, "revert.fe", "Foo", &[]);
 
-        let exit = harness.capture_call(&mut executor, "bar", &[]);
-
-        assert!(matches!(
-            exit,
-            evm::Capture::Exit((evm::ExitReason::Revert(_), _))
-        ));
-
-        let exit2 = harness.capture_call(&mut executor, "revert_custom_error", &[]);
+        validate_revert(harness.capture_call(&mut executor, "bar", &[]), &[]);
 
         validate_revert(
-            exit2,
+            harness.capture_call(&mut executor, "revert_custom_error", &[]),
             &encode_error("Error(uint256,bool)", &[uint_token(1), bool_token(true)]),
         );
 
-        let exit3 = harness.capture_call(&mut executor, "revert_other_error", &[]);
-
         validate_revert(
-            exit3,
+            harness.capture_call(&mut executor, "revert_other_error", &[]),
             &encode_error(
                 "OtherError(uint256,bool)",
                 &[uint_token(1), bool_token(true)],
@@ -86,43 +77,31 @@ fn test_assert() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, "assert.fe", "Foo", &[]);
 
-        let exit1 = harness.capture_call(&mut executor, "bar", &[uint_token(4)]);
-
-        match exit1 {
-            evm::Capture::Exit((evm::ExitReason::Revert(_), output)) => assert_eq!(output.len(), 0),
-            _ => panic!("Did not revert correctly"),
-        }
-
-        let exit2 = harness.capture_call(&mut executor, "bar", &[uint_token(42)]);
+        validate_revert(
+            harness.capture_call(&mut executor, "bar", &[uint_token(4)]),
+            &[],
+        );
 
         assert!(matches!(
-            exit2,
+            harness.capture_call(&mut executor, "bar", &[uint_token(42)]),
             evm::Capture::Exit((evm::ExitReason::Succeed(_), _))
         ));
 
-        let exit3 =
-            harness.capture_call(&mut executor, "revert_with_static_string", &[uint_token(4)]);
-
-        match exit3 {
-            evm::Capture::Exit((evm::ExitReason::Revert(_), output)) => {
-                assert_eq!(output, encode_error_reason("Must be greater than five"))
-            }
-            _ => panic!("Did not revert correctly"),
-        }
-
-        let reason = "A very looooooooooooooong reason that consumes multiple words";
-        let exit4 = harness.capture_call(
-            &mut executor,
-            "revert_with",
-            &[uint_token(4), string_token(&reason)],
+        validate_revert(
+            harness.capture_call(&mut executor, "revert_with_static_string", &[uint_token(4)]),
+            &encode_error_reason("Must be greater than five"),
         );
 
-        match exit4 {
-            evm::Capture::Exit((evm::ExitReason::Revert(_), output)) => {
-                assert_eq!(output, encode_error_reason(reason))
-            }
-            _ => panic!("Did not revert correctly"),
-        }
+        let reason = "A very looooooooooooooong reason that consumes multiple words";
+
+        validate_revert(
+            harness.capture_call(
+                &mut executor,
+                "revert_with",
+                &[uint_token(4), string_token(&reason)],
+            ),
+            &encode_error_reason(reason),
+        );
     })
 }
 
