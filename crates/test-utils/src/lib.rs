@@ -257,11 +257,11 @@ pub fn deploy_solidity_contract(
 
 #[allow(dead_code)]
 pub fn encode_error_reason(reason: &str) -> Vec<u8> {
-    encode_error("Error(string)", &[string_token(reason)])
+    encode_revert("Error(string)", &[string_token(reason)])
 }
 
 #[allow(dead_code)]
-pub fn encode_error(selector: &str, input: &[ethabi::Token]) -> Vec<u8> {
+pub fn encode_revert(selector: &str, input: &[ethabi::Token]) -> Vec<u8> {
     let mut data = String::new();
     for param in input {
         let encoded = match param {

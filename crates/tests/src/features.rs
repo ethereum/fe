@@ -59,12 +59,12 @@ fn test_revert() {
 
         validate_revert(
             harness.capture_call(&mut executor, "revert_custom_error", &[]),
-            &encode_error("Error(uint256,bool)", &[uint_token(1), bool_token(true)]),
+            &encode_revert("Error(uint256,bool)", &[uint_token(1), bool_token(true)]),
         );
 
         validate_revert(
             harness.capture_call(&mut executor, "revert_other_error", &[]),
-            &encode_error(
+            &encode_revert(
                 "OtherError(uint256,bool)",
                 &[uint_token(1), bool_token(true)],
             ),
