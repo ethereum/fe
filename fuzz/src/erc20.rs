@@ -174,6 +174,7 @@ pub fn erc20_transfer(info: TransferInfo, mut executor: Executor, mut harness: C
         &mut executor,
         "transferFrom",
         &[address_token(info.to), address_token(BOB), value.clone()],
+        &[],
     );
     harness.test_function(
         &mut executor,

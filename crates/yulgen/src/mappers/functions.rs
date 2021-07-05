@@ -1,3 +1,4 @@
+use crate::constants::PANIC_FAILED_ASSERTION;
 use crate::mappers::{assignments, declarations, expressions};
 use crate::names;
 use crate::operations::abi as abi_operations;
@@ -189,7 +190,9 @@ fn assert(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
                 }
                 unreachable!()
             }
-            None => statement! { if (iszero([test])) { (revert(0, 0)) } },
+            None => {
+                statement! { if (iszero([test])) { (revert_with_panic([literal_expression! {(PANIC_FAILED_ASSERTION)}])) } }
+            }
         };
     }
 

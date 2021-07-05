@@ -79,7 +79,7 @@ fn test_assert() {
 
         validate_revert(
             harness.capture_call(&mut executor, "bar", &[uint_token(4)]),
-            &[],
+            &encoded_panic_assert(),
         );
 
         assert!(matches!(
@@ -682,10 +682,12 @@ fn checked_arithmetic() {
             // ADDITION
 
             // unsigned: max_value + 1 fails
+
             harness.test_function_reverts(
                 &mut executor,
                 &format!("add_u{}", config.size),
                 &[config.u_max.clone(), uint_token(1)],
+                &encoded_over_or_underflow(),
             );
 
             // unsigned: max_value + 0 works
@@ -701,6 +703,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("add_i{}", config.size),
                 &[config.i_max.clone(), int_token(1)],
+                &encoded_over_or_underflow(),
             );
 
             // signed: max_value + 0 works
@@ -716,6 +719,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("add_i{}", config.size),
                 &[config.i_min.clone(), int_token(-1)],
+                &encoded_over_or_underflow(),
             );
 
             // signed: min_value + 0 works
@@ -732,6 +736,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("sub_u{}", config.size),
                 &[config.u_min.clone(), uint_token(1)],
+                &encoded_over_or_underflow(),
             );
 
             // unsigned: min_value - 0 works
@@ -747,6 +752,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("sub_i{}", config.size),
                 &[config.i_min.clone(), int_token(1)],
+                &encoded_over_or_underflow(),
             );
 
             // signed: min_value - 0 works
@@ -762,6 +768,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("sub_i{}", config.size),
                 &[config.i_max.clone(), int_token(-1)],
+                &encoded_over_or_underflow(),
             );
 
             // signed: max_value - -0 works
@@ -778,6 +785,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("div_u{}", config.size),
                 &[config.u_max.clone(), uint_token(0)],
+                &encoded_div_or_mod_by_zero(),
             );
 
             // unsigned: 3 / 2 works
@@ -793,6 +801,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("div_i{}", config.size),
                 &[config.i_max.clone(), int_token(0)],
+                &encoded_div_or_mod_by_zero(),
             );
 
             // signed: min_value / -1 fails
@@ -800,6 +809,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("div_i{}", config.size),
                 &[config.i_min.clone(), int_token(-1)],
+                &encoded_over_or_underflow(),
             );
 
             // signed: 3 / -2 works
@@ -816,6 +826,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("pow_u{}", config.size),
                 &[config.u_max.clone(), uint_token(2)],
+                &encoded_over_or_underflow(),
             );
 
             // unsigned: 2 ** (bit_len-1) works
@@ -833,6 +844,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("pow_i{}", config.size),
                 &[config.i_max.clone(), uint_token(2)],
+                &encoded_over_or_underflow(),
             );
 
             // signed: min ** 3 fails (underflow)
@@ -840,6 +852,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("pow_i{}", config.size),
                 &[config.i_min.clone(), uint_token(3)],
+                &encoded_over_or_underflow(),
             );
 
             // signed: 2 ** (bit_len-2) works
@@ -868,6 +881,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("mod_u{}", config.size),
                 &[config.u_max.clone(), uint_token(0)],
+                &encoded_div_or_mod_by_zero(),
             );
 
             // unsigned: max_value % 2 works
@@ -883,6 +897,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("mod_i{}", config.size),
                 &[config.i_max.clone(), int_token(0)],
+                &encoded_div_or_mod_by_zero(),
             );
 
             // unsigned: max_value % 2 works
@@ -915,6 +930,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("mul_u{}", config.size),
                 &[config.u_max.clone(), uint_token(2)],
+                &encoded_over_or_underflow(),
             );
 
             // unsigned: max_value * 1 works
@@ -930,6 +946,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("mul_i{}", config.size),
                 &[config.i_max.clone(), int_token(2)],
+                &encoded_over_or_underflow(),
             );
 
             // signed: max_value * 1 works
@@ -945,6 +962,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("mul_i{}", config.size),
                 &[config.i_max.clone(), int_token(-2)],
+                &encoded_over_or_underflow(),
             );
 
             // signed: min_value * -2 fails
@@ -952,6 +970,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("mul_i{}", config.size),
                 &[config.i_min.clone(), int_token(-2)],
+                &encoded_over_or_underflow(),
             );
 
             harness.test_function(

@@ -104,6 +104,7 @@ fn erc20_token() {
                 address_token(bob),
                 uint_token_from_dec_str("5000000000000000"),
             ],
+            &encoded_panic_assert(),
         );
         harness.test_function(
             &mut executor,

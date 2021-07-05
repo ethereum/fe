@@ -57,3 +57,10 @@ pub fn numeric_min_max() -> HashMap<Integer, (yul::Expression, yul::Expression)>
         )
     }
 }
+
+// Panic codes as defined by solidity
+// https://docs.soliditylang.org/en/v0.8.6/control-structures.html?highlight=0x12#panic-via-assert-and-error-via-require
+
+pub const PANIC_FAILED_ASSERTION: usize = 0x01;
+pub const PANIC_OVER_OR_UNDERFLOW: usize = 0x11;
+pub const PANIC_DIV_OR_MOD_BY_ZERO: usize = 0x12;

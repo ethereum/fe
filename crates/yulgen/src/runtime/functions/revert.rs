@@ -1,8 +1,7 @@
 use crate::names;
 use crate::names::abi as abi_names;
 use fe_abi::utils as abi_utils;
-use fe_analyzer::namespace::types::Struct;
-use fe_analyzer::namespace::types::{AbiEncoding, FixedSize};
+use fe_analyzer::namespace::types::{AbiEncoding, FixedSize, Struct, U256};
 use yultsur::*;
 
 fn selector(name: &str, params: &[FixedSize]) -> yul::Expression {
@@ -28,7 +27,20 @@ pub fn generate_struct_revert(val: &Struct) -> yul::Statement {
     generate_revert_fn(&val.name, &[FixedSize::Struct(val.clone())], &struct_fields)
 }
 
-/// Generate a YUL function that can be used to revert with data
+/// Generate a YUL function to revert with panic codes
+pub fn generate_revert_fn_for_panic() -> yul::Statement {
+    let selector = selector("Panic", &[FixedSize::Base(U256)]);
+
+    return function_definition! {
+        function revert_with_panic(error_code) {
+            (let ptr := alloc_mstoren([selector], 4))
+            (pop((alloc_mstoren(error_code, 32))))
+            (revert(ptr, (add(4, 32))))
+        }
+    };
+}
+
+/// Generate a YUL function to revert with data
 pub fn generate_revert_fn(
     name: &str,
     encoding_params: &[FixedSize],
@@ -47,4 +59,9 @@ pub fn generate_revert_fn(
             (revert(ptr, (add(4, size))))
         }
     };
+}
+
+/// Return all revert runtime functions
+pub fn all() -> Vec<yul::Statement> {
+    vec![generate_revert_fn_for_panic()]
 }
