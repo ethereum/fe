@@ -46,7 +46,7 @@ note:
   ┌─ features/return_pow_i256.fe:3:16
   │
 3 │         return x ** y
-  │                ^ attributes hash: 9715536092457030614
+  │                ^ attributes hash: 6720198376222228094
   │
   = ExpressionAttributes {
         typ: Base(
@@ -62,7 +62,7 @@ note:
   ┌─ features/return_pow_i256.fe:3:21
   │
 3 │         return x ** y
-  │                     ^ attributes hash: 6817314866882205962
+  │                     ^ attributes hash: 11226462071603862164
   │
   = ExpressionAttributes {
         typ: Base(
@@ -78,7 +78,7 @@ note:
   ┌─ features/return_pow_i256.fe:3:16
   │
 3 │         return x ** y
-  │                ^^^^^^ attributes hash: 9715536092457030614
+  │                ^^^^^^ attributes hash: 6720198376222228094
   │
   = ExpressionAttributes {
         typ: Base(
@@ -95,7 +95,7 @@ note:
   │  
 2 │ ╭     pub def bar(x: i8, y: u8) -> i8:
 3 │ │         return x ** y
-  │ ╰─────────────────────^ attributes hash: 7362986797872325469
+  │ ╰─────────────────────^ attributes hash: 17420911871031240417
   │  
   = FunctionAttributes {
         is_public: true,
@@ -131,7 +131,7 @@ note:
 1 │ ╭ contract Foo:
 2 │ │     pub def bar(x: i8, y: u8) -> i8:
 3 │ │         return x ** y
-  │ ╰─────────────────────^ attributes hash: 9878815201673830083
+  │ ╰─────────────────────^ attributes hash: 17633493671977098825
   │  
   = ContractAttributes {
         public_functions: [
@@ -173,7 +173,7 @@ note:
   ┌─ features/return_pow_i256.fe:2:20
   │
 2 │     pub def bar(x: i8, y: u8) -> i8:
-  │                    ^^ attributes hash: 8158980283050389248
+  │                    ^^ attributes hash: 15894395880381322973
   │
   = Base(
         Numeric(
@@ -185,7 +185,7 @@ note:
   ┌─ features/return_pow_i256.fe:2:27
   │
 2 │     pub def bar(x: i8, y: u8) -> i8:
-  │                           ^^ attributes hash: 1872326638020472004
+  │                           ^^ attributes hash: 3165084411644393001
   │
   = Base(
         Numeric(
@@ -197,7 +197,7 @@ note:
   ┌─ features/return_pow_i256.fe:2:34
   │
 2 │     pub def bar(x: i8, y: u8) -> i8:
-  │                                  ^^ attributes hash: 8158980283050389248
+  │                                  ^^ attributes hash: 15894395880381322973
   │
   = Base(
         Numeric(

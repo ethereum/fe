@@ -40,7 +40,7 @@ note:
   ┌─ features/return_bool_op_and.fe:3:16
   │
 3 │         return x and y
-  │                ^ attributes hash: 10866140763116710699
+  │                ^ attributes hash: 519621297275845584
   │
   = ExpressionAttributes {
         typ: Base(
@@ -54,7 +54,7 @@ note:
   ┌─ features/return_bool_op_and.fe:3:22
   │
 3 │         return x and y
-  │                      ^ attributes hash: 10866140763116710699
+  │                      ^ attributes hash: 519621297275845584
   │
   = ExpressionAttributes {
         typ: Base(
@@ -68,7 +68,7 @@ note:
   ┌─ features/return_bool_op_and.fe:3:16
   │
 3 │         return x and y
-  │                ^^^^^^^ attributes hash: 10866140763116710699
+  │                ^^^^^^^ attributes hash: 519621297275845584
   │
   = ExpressionAttributes {
         typ: Base(
@@ -83,7 +83,7 @@ note:
   │  
 2 │ ╭     pub def bar(x: bool, y: bool) -> bool:
 3 │ │         return x and y
-  │ ╰──────────────────────^ attributes hash: 12504548879835873590
+  │ ╰──────────────────────^ attributes hash: 1533992358452030354
   │  
   = FunctionAttributes {
         is_public: true,
@@ -113,7 +113,7 @@ note:
 1 │ ╭ contract Foo:
 2 │ │     pub def bar(x: bool, y: bool) -> bool:
 3 │ │         return x and y
-  │ ╰──────────────────────^ attributes hash: 11916709975174477393
+  │ ╰──────────────────────^ attributes hash: 14335401137548040534
   │  
   = ContractAttributes {
         public_functions: [
@@ -149,7 +149,7 @@ note:
   ┌─ features/return_bool_op_and.fe:2:20
   │
 2 │     pub def bar(x: bool, y: bool) -> bool:
-  │                    ^^^^ attributes hash: 8311861578736502650
+  │                    ^^^^ attributes hash: 5425972608982369985
   │
   = Base(
         Bool,
@@ -159,7 +159,7 @@ note:
   ┌─ features/return_bool_op_and.fe:2:29
   │
 2 │     pub def bar(x: bool, y: bool) -> bool:
-  │                             ^^^^ attributes hash: 8311861578736502650
+  │                             ^^^^ attributes hash: 5425972608982369985
   │
   = Base(
         Bool,
@@ -169,7 +169,7 @@ note:
   ┌─ features/return_bool_op_and.fe:2:38
   │
 2 │     pub def bar(x: bool, y: bool) -> bool:
-  │                                      ^^^^ attributes hash: 8311861578736502650
+  │                                      ^^^^ attributes hash: 5425972608982369985
   │
   = Base(
         Bool,

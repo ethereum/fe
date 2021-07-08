@@ -29,7 +29,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:5:9
   │
 5 │         my_array[0] = 2
-  │         ^^^^^^^^ attributes hash: 9322500749845443226
+  │         ^^^^^^^^ attributes hash: 1409573588937423555
   │
   = ExpressionAttributes {
         typ: Array(
@@ -48,7 +48,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:5:18
   │
 5 │         my_array[0] = 2
-  │                  ^ attributes hash: 16797824492585953824
+  │                  ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -64,7 +64,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:5:9
   │
 5 │         my_array[0] = 2
-  │         ^^^^^^^^^^^ attributes hash: 3617588353493611640
+  │         ^^^^^^^^^^^ attributes hash: 13245336599501214748
   │
   = ExpressionAttributes {
         typ: Base(
@@ -80,7 +80,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:5:23
   │
 5 │         my_array[0] = 2
-  │                       ^ attributes hash: 16797824492585953824
+  │                       ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -96,7 +96,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:6:9
   │
 6 │         my_array[1] = 3
-  │         ^^^^^^^^ attributes hash: 9322500749845443226
+  │         ^^^^^^^^ attributes hash: 1409573588937423555
   │
   = ExpressionAttributes {
         typ: Array(
@@ -115,7 +115,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:6:18
   │
 6 │         my_array[1] = 3
-  │                  ^ attributes hash: 16797824492585953824
+  │                  ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -131,7 +131,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:6:9
   │
 6 │         my_array[1] = 3
-  │         ^^^^^^^^^^^ attributes hash: 3617588353493611640
+  │         ^^^^^^^^^^^ attributes hash: 13245336599501214748
   │
   = ExpressionAttributes {
         typ: Base(
@@ -147,7 +147,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:6:23
   │
 6 │         my_array[1] = 3
-  │                       ^ attributes hash: 16797824492585953824
+  │                       ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -163,7 +163,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:7:9
   │
 7 │         my_array[2] = 5
-  │         ^^^^^^^^ attributes hash: 9322500749845443226
+  │         ^^^^^^^^ attributes hash: 1409573588937423555
   │
   = ExpressionAttributes {
         typ: Array(
@@ -182,7 +182,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:7:18
   │
 7 │         my_array[2] = 5
-  │                  ^ attributes hash: 16797824492585953824
+  │                  ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -198,7 +198,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:7:9
   │
 7 │         my_array[2] = 5
-  │         ^^^^^^^^^^^ attributes hash: 3617588353493611640
+  │         ^^^^^^^^^^^ attributes hash: 13245336599501214748
   │
   = ExpressionAttributes {
         typ: Base(
@@ -214,7 +214,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:7:23
   │
 7 │         my_array[2] = 5
-  │                       ^ attributes hash: 16797824492585953824
+  │                       ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -230,7 +230,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:8:9
   │
 8 │         my_array[3] = 6
-  │         ^^^^^^^^ attributes hash: 9322500749845443226
+  │         ^^^^^^^^ attributes hash: 1409573588937423555
   │
   = ExpressionAttributes {
         typ: Array(
@@ -249,7 +249,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:8:18
   │
 8 │         my_array[3] = 6
-  │                  ^ attributes hash: 16797824492585953824
+  │                  ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -265,7 +265,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:8:9
   │
 8 │         my_array[3] = 6
-  │         ^^^^^^^^^^^ attributes hash: 3617588353493611640
+  │         ^^^^^^^^^^^ attributes hash: 13245336599501214748
   │
   = ExpressionAttributes {
         typ: Base(
@@ -281,7 +281,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:8:23
   │
 8 │         my_array[3] = 6
-  │                       ^ attributes hash: 16797824492585953824
+  │                       ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -297,7 +297,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:9:9
   │
 9 │         my_array[4] = 9
-  │         ^^^^^^^^ attributes hash: 9322500749845443226
+  │         ^^^^^^^^ attributes hash: 1409573588937423555
   │
   = ExpressionAttributes {
         typ: Array(
@@ -316,7 +316,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:9:18
   │
 9 │         my_array[4] = 9
-  │                  ^ attributes hash: 16797824492585953824
+  │                  ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -332,7 +332,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:9:9
   │
 9 │         my_array[4] = 9
-  │         ^^^^^^^^^^^ attributes hash: 3617588353493611640
+  │         ^^^^^^^^^^^ attributes hash: 13245336599501214748
   │
   = ExpressionAttributes {
         typ: Base(
@@ -348,7 +348,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:9:23
   │
 9 │         my_array[4] = 9
-  │                       ^ attributes hash: 16797824492585953824
+  │                       ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -364,7 +364,7 @@ note:
    ┌─ features/for_loop_with_continue.fe:10:21
    │
 10 │         sum: u256 = 0
-   │                     ^ attributes hash: 16797824492585953824
+   │                     ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -380,7 +380,7 @@ note:
    ┌─ features/for_loop_with_continue.fe:11:18
    │
 11 │         for i in my_array:
-   │                  ^^^^^^^^ attributes hash: 9322500749845443226
+   │                  ^^^^^^^^ attributes hash: 1409573588937423555
    │
    = ExpressionAttributes {
          typ: Array(
@@ -399,7 +399,7 @@ note:
    ┌─ features/for_loop_with_continue.fe:12:16
    │
 12 │             if i % 2 == 0:
-   │                ^ attributes hash: 16797824492585953824
+   │                ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -415,7 +415,7 @@ note:
    ┌─ features/for_loop_with_continue.fe:12:20
    │
 12 │             if i % 2 == 0:
-   │                    ^ attributes hash: 16797824492585953824
+   │                    ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -431,7 +431,7 @@ note:
    ┌─ features/for_loop_with_continue.fe:12:16
    │
 12 │             if i % 2 == 0:
-   │                ^^^^^ attributes hash: 16797824492585953824
+   │                ^^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -447,7 +447,7 @@ note:
    ┌─ features/for_loop_with_continue.fe:12:25
    │
 12 │             if i % 2 == 0:
-   │                         ^ attributes hash: 16797824492585953824
+   │                         ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -463,7 +463,7 @@ note:
    ┌─ features/for_loop_with_continue.fe:12:16
    │
 12 │             if i % 2 == 0:
-   │                ^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -477,7 +477,7 @@ note:
    ┌─ features/for_loop_with_continue.fe:14:13
    │
 14 │             sum = sum + i
-   │             ^^^ attributes hash: 16797824492585953824
+   │             ^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -493,7 +493,7 @@ note:
    ┌─ features/for_loop_with_continue.fe:14:19
    │
 14 │             sum = sum + i
-   │                   ^^^ attributes hash: 16797824492585953824
+   │                   ^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -509,7 +509,7 @@ note:
    ┌─ features/for_loop_with_continue.fe:14:25
    │
 14 │             sum = sum + i
-   │                         ^ attributes hash: 16797824492585953824
+   │                         ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -525,7 +525,7 @@ note:
    ┌─ features/for_loop_with_continue.fe:14:19
    │
 14 │             sum = sum + i
-   │                   ^^^^^^^ attributes hash: 16797824492585953824
+   │                   ^^^^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -541,7 +541,7 @@ note:
    ┌─ features/for_loop_with_continue.fe:15:16
    │
 15 │         return sum
-   │                ^^^ attributes hash: 16797824492585953824
+   │                ^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -563,7 +563,7 @@ note:
    · │
 14 │ │             sum = sum + i
 15 │ │         return sum
-   │ ╰──────────────────^ attributes hash: 2041944711719443549
+   │ ╰──────────────────^ attributes hash: 5931278080780939395
    │  
    = FunctionAttributes {
          is_public: true,
@@ -580,7 +580,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:4:9
   │
 4 │         my_array: u256[5]
-  │         ^^^^^^^^^^^^^^^^^ attributes hash: 12285037458725956106
+  │         ^^^^^^^^^^^^^^^^^ attributes hash: 10049365445048351196
   │
   = Array(
         Array {
@@ -595,7 +595,7 @@ note:
    ┌─ features/for_loop_with_continue.fe:10:9
    │
 10 │         sum: u256 = 0
-   │         ^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+   │         ^^^^^^^^^^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -613,7 +613,7 @@ note:
    · │
 14 │ │             sum = sum + i
 15 │ │         return sum
-   │ ╰──────────────────^ attributes hash: 16417315723405128961
+   │ ╰──────────────────^ attributes hash: 5268314470252829497
    │  
    = ContractAttributes {
          public_functions: [
@@ -638,7 +638,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:3:22
   │
 3 │     pub def bar() -> u256:
-  │                      ^^^^ attributes hash: 17942395924573474124
+  │                      ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -650,7 +650,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:4:19
   │
 4 │         my_array: u256[5]
-  │                   ^^^^ attributes hash: 17942395924573474124
+  │                   ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -662,7 +662,7 @@ note:
   ┌─ features/for_loop_with_continue.fe:4:19
   │
 4 │         my_array: u256[5]
-  │                   ^^^^^^^ attributes hash: 12285037458725956106
+  │                   ^^^^^^^ attributes hash: 10049365445048351196
   │
   = Array(
         Array {
@@ -677,7 +677,7 @@ note:
    ┌─ features/for_loop_with_continue.fe:10:14
    │
 10 │         sum: u256 = 0
-   │              ^^^^ attributes hash: 17942395924573474124
+   │              ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(

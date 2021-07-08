@@ -29,7 +29,7 @@ note:
   ┌─ features/while_loop.fe:3:21
   │
 3 │         val: u256 = 0
-  │                     ^ attributes hash: 16797824492585953824
+  │                     ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -45,7 +45,7 @@ note:
   ┌─ features/while_loop.fe:4:15
   │
 4 │         while val < 2:
-  │               ^^^ attributes hash: 16797824492585953824
+  │               ^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -61,7 +61,7 @@ note:
   ┌─ features/while_loop.fe:4:21
   │
 4 │         while val < 2:
-  │                     ^ attributes hash: 16797824492585953824
+  │                     ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -77,7 +77,7 @@ note:
   ┌─ features/while_loop.fe:4:15
   │
 4 │         while val < 2:
-  │               ^^^^^^^ attributes hash: 10866140763116710699
+  │               ^^^^^^^ attributes hash: 519621297275845584
   │
   = ExpressionAttributes {
         typ: Base(
@@ -91,7 +91,7 @@ note:
   ┌─ features/while_loop.fe:5:13
   │
 5 │             val = val + 1
-  │             ^^^ attributes hash: 16797824492585953824
+  │             ^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -107,7 +107,7 @@ note:
   ┌─ features/while_loop.fe:5:19
   │
 5 │             val = val + 1
-  │                   ^^^ attributes hash: 16797824492585953824
+  │                   ^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -123,7 +123,7 @@ note:
   ┌─ features/while_loop.fe:5:25
   │
 5 │             val = val + 1
-  │                         ^ attributes hash: 16797824492585953824
+  │                         ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -139,7 +139,7 @@ note:
   ┌─ features/while_loop.fe:5:19
   │
 5 │             val = val + 1
-  │                   ^^^^^^^ attributes hash: 16797824492585953824
+  │                   ^^^^^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -155,7 +155,7 @@ note:
   ┌─ features/while_loop.fe:6:16
   │
 6 │             if val == 2:
-  │                ^^^ attributes hash: 16797824492585953824
+  │                ^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -171,7 +171,7 @@ note:
   ┌─ features/while_loop.fe:6:23
   │
 6 │             if val == 2:
-  │                       ^ attributes hash: 16797824492585953824
+  │                       ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -187,7 +187,7 @@ note:
   ┌─ features/while_loop.fe:6:16
   │
 6 │             if val == 2:
-  │                ^^^^^^^^ attributes hash: 10866140763116710699
+  │                ^^^^^^^^ attributes hash: 519621297275845584
   │
   = ExpressionAttributes {
         typ: Base(
@@ -201,7 +201,7 @@ note:
   ┌─ features/while_loop.fe:7:17
   │
 7 │                 val = 3
-  │                 ^^^ attributes hash: 16797824492585953824
+  │                 ^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -217,7 +217,7 @@ note:
   ┌─ features/while_loop.fe:7:23
   │
 7 │                 val = 3
-  │                       ^ attributes hash: 16797824492585953824
+  │                       ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -233,7 +233,7 @@ note:
   ┌─ features/while_loop.fe:8:16
   │
 8 │         return val
-  │                ^^^ attributes hash: 16797824492585953824
+  │                ^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -255,7 +255,7 @@ note:
 6 │ │             if val == 2:
 7 │ │                 val = 3
 8 │ │         return val
-  │ ╰──────────────────^ attributes hash: 2041944711719443549
+  │ ╰──────────────────^ attributes hash: 5931278080780939395
   │  
   = FunctionAttributes {
         is_public: true,
@@ -272,7 +272,7 @@ note:
   ┌─ features/while_loop.fe:3:9
   │
 3 │         val: u256 = 0
-  │         ^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+  │         ^^^^^^^^^^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -290,7 +290,7 @@ note:
   · │
 7 │ │                 val = 3
 8 │ │         return val
-  │ ╰──────────────────^ attributes hash: 16417315723405128961
+  │ ╰──────────────────^ attributes hash: 5268314470252829497
   │  
   = ContractAttributes {
         public_functions: [
@@ -315,7 +315,7 @@ note:
   ┌─ features/while_loop.fe:2:22
   │
 2 │     pub def bar() -> u256:
-  │                      ^^^^ attributes hash: 17942395924573474124
+  │                      ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -327,7 +327,7 @@ note:
   ┌─ features/while_loop.fe:3:14
   │
 3 │         val: u256 = 0
-  │              ^^^^ attributes hash: 17942395924573474124
+  │              ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(

@@ -38,7 +38,7 @@ note:
   ┌─ features/ternary_expression.fe:4:21
   │
 4 │         return 1 if input > 5 else 0
-  │                     ^^^^^ attributes hash: 16797824492585953824
+  │                     ^^^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -54,7 +54,7 @@ note:
   ┌─ features/ternary_expression.fe:4:29
   │
 4 │         return 1 if input > 5 else 0
-  │                             ^ attributes hash: 16797824492585953824
+  │                             ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -70,7 +70,7 @@ note:
   ┌─ features/ternary_expression.fe:4:21
   │
 4 │         return 1 if input > 5 else 0
-  │                     ^^^^^^^^^ attributes hash: 10866140763116710699
+  │                     ^^^^^^^^^ attributes hash: 519621297275845584
   │
   = ExpressionAttributes {
         typ: Base(
@@ -84,7 +84,7 @@ note:
   ┌─ features/ternary_expression.fe:4:16
   │
 4 │         return 1 if input > 5 else 0
-  │                ^ attributes hash: 16797824492585953824
+  │                ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -100,7 +100,7 @@ note:
   ┌─ features/ternary_expression.fe:4:36
   │
 4 │         return 1 if input > 5 else 0
-  │                                    ^ attributes hash: 16797824492585953824
+  │                                    ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -116,7 +116,7 @@ note:
   ┌─ features/ternary_expression.fe:4:16
   │
 4 │         return 1 if input > 5 else 0
-  │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+  │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -133,7 +133,7 @@ note:
   │  
 3 │ ╭     pub def bar(input: u256) -> u256:
 4 │ │         return 1 if input > 5 else 0
-  │ ╰────────────────────────────────────^ attributes hash: 7333905096283030004
+  │ ╰────────────────────────────────────^ attributes hash: 12628763783334799
   │  
   = FunctionAttributes {
         is_public: true,
@@ -162,7 +162,7 @@ note:
 2 │ │ 
 3 │ │     pub def bar(input: u256) -> u256:
 4 │ │         return 1 if input > 5 else 0
-  │ ╰────────────────────────────────────^ attributes hash: 600014852149833207
+  │ ╰────────────────────────────────────^ attributes hash: 6592343064660742193
   │  
   = ContractAttributes {
         public_functions: [
@@ -196,7 +196,7 @@ note:
   ┌─ features/ternary_expression.fe:3:24
   │
 3 │     pub def bar(input: u256) -> u256:
-  │                        ^^^^ attributes hash: 17942395924573474124
+  │                        ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -208,7 +208,7 @@ note:
   ┌─ features/ternary_expression.fe:3:33
   │
 3 │     pub def bar(input: u256) -> u256:
-  │                                 ^^^^ attributes hash: 17942395924573474124
+  │                                 ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(

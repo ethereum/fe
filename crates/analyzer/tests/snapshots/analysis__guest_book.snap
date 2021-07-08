@@ -53,7 +53,7 @@ note:
    ┌─ demos/guest_book.fe:13:9
    │
 13 │         self.messages[msg.sender] = book_msg
-   │         ^^^^^^^^^^^^^ attributes hash: 2746859838733183336
+   │         ^^^^^^^^^^^^^ attributes hash: 5346682534978568605
    │
    = ExpressionAttributes {
          typ: Map(
@@ -78,7 +78,7 @@ note:
    ┌─ demos/guest_book.fe:13:23
    │
 13 │         self.messages[msg.sender] = book_msg
-   │                       ^^^^^^^^^^ attributes hash: 16366719240912622931
+   │                       ^^^^^^^^^^ attributes hash: 16804606599831072828
    │
    = ExpressionAttributes {
          typ: Base(
@@ -92,7 +92,7 @@ note:
    ┌─ demos/guest_book.fe:13:9
    │
 13 │         self.messages[msg.sender] = book_msg
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12192538827573539833
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12167297811474832651
    │
    = ExpressionAttributes {
          typ: String(
@@ -110,7 +110,7 @@ note:
    ┌─ demos/guest_book.fe:13:37
    │
 13 │         self.messages[msg.sender] = book_msg
-   │                                     ^^^^^^^^ attributes hash: 10521411858691425038
+   │                                     ^^^^^^^^ attributes hash: 4797497344445665156
    │
    = ExpressionAttributes {
          typ: String(
@@ -126,7 +126,7 @@ note:
    ┌─ demos/guest_book.fe:16:30
    │
 16 │         emit Signed(book_msg=book_msg)
-   │                              ^^^^^^^^ attributes hash: 10521411858691425038
+   │                              ^^^^^^^^ attributes hash: 4797497344445665156
    │
    = ExpressionAttributes {
          typ: String(
@@ -142,7 +142,7 @@ note:
    ┌─ demos/guest_book.fe:21:16
    │
 21 │         return self.messages[addr].to_mem()
-   │                ^^^^^^^^^^^^^ attributes hash: 2746859838733183336
+   │                ^^^^^^^^^^^^^ attributes hash: 5346682534978568605
    │
    = ExpressionAttributes {
          typ: Map(
@@ -167,7 +167,7 @@ note:
    ┌─ demos/guest_book.fe:21:30
    │
 21 │         return self.messages[addr].to_mem()
-   │                              ^^^^ attributes hash: 16366719240912622931
+   │                              ^^^^ attributes hash: 16804606599831072828
    │
    = ExpressionAttributes {
          typ: Base(
@@ -181,7 +181,7 @@ note:
    ┌─ demos/guest_book.fe:21:16
    │
 21 │         return self.messages[addr].to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 12192538827573539833
+   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 12167297811474832651
    │
    = ExpressionAttributes {
          typ: String(
@@ -199,7 +199,7 @@ note:
    ┌─ demos/guest_book.fe:21:16
    │
 21 │         return self.messages[addr].to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13131138559634979239
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5537329139837609854
    │
    = ExpressionAttributes {
          typ: String(
@@ -219,7 +219,7 @@ note:
    ┌─ demos/guest_book.fe:16:9
    │
 16 │         emit Signed(book_msg=book_msg)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13470010196640787383
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7183865788821629486
    │
    = EventDef {
          name: "Signed",
@@ -246,7 +246,7 @@ note:
 14 │ │ 
 15 │ │         # Emit the `Signed` event
 16 │ │         emit Signed(book_msg=book_msg)
-   │ ╰──────────────────────────────────────^ attributes hash: 7570419795712838854
+   │ ╰──────────────────────────────────────^ attributes hash: 586413225975811935
    │  
    = FunctionAttributes {
          is_public: true,
@@ -273,7 +273,7 @@ note:
 19 │ │         # Copying data from storage to memory
 20 │ │         # has to be done explicitly via `to_mem()`
 21 │ │         return self.messages[addr].to_mem()
-   │ ╰───────────────────────────────────────────^ attributes hash: 14734697415390335008
+   │ ╰───────────────────────────────────────────^ attributes hash: 17848855580416875690
    │  
    = FunctionAttributes {
          is_public: true,
@@ -303,7 +303,7 @@ note:
    · │
 20 │ │         # has to be done explicitly via `to_mem()`
 21 │ │         return self.messages[addr].to_mem()
-   │ ╰───────────────────────────────────────────^ attributes hash: 1117326237357203593
+   │ ╰───────────────────────────────────────────^ attributes hash: 10725603398456560869
    │  
    = ContractAttributes {
          public_functions: [
@@ -368,7 +368,7 @@ note:
    ┌─ demos/guest_book.fe:21:16
    │
 21 │         return self.messages[addr].to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
    │
    = ValueAttribute
 
@@ -377,7 +377,7 @@ note:
   │  
 8 │ ╭     event Signed:
 9 │ │         book_msg: String<100>
-  │ ╰─────────────────────────────^ attributes hash: 13470010196640787383
+  │ ╰─────────────────────────────^ attributes hash: 7183865788821629486
   │  
   = EventDef {
         name: "Signed",
@@ -399,7 +399,7 @@ note:
   ┌─ demos/guest_book.fe:9:19
   │
 9 │         book_msg: String<100>
-  │                   ^^^^^^^^^^^ attributes hash: 17803113925034335199
+  │                   ^^^^^^^^^^^ attributes hash: 8213016172125664751
   │
   = String(
         FeString {
@@ -411,7 +411,7 @@ note:
    ┌─ demos/guest_book.fe:11:28
    │
 11 │     pub def sign(book_msg: String<100>):
-   │                            ^^^^^^^^^^^ attributes hash: 17803113925034335199
+   │                            ^^^^^^^^^^^ attributes hash: 8213016172125664751
    │
    = String(
          FeString {
@@ -423,7 +423,7 @@ note:
    ┌─ demos/guest_book.fe:18:27
    │
 18 │     pub def get_msg(addr: address) -> String<100>:
-   │                           ^^^^^^^ attributes hash: 16931239362436195516
+   │                           ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
@@ -433,7 +433,7 @@ note:
    ┌─ demos/guest_book.fe:18:39
    │
 18 │     pub def get_msg(addr: address) -> String<100>:
-   │                                       ^^^^^^^^^^^ attributes hash: 17803113925034335199
+   │                                       ^^^^^^^^^^^ attributes hash: 8213016172125664751
    │
    = String(
          FeString {
@@ -445,7 +445,7 @@ note:
   ┌─ demos/guest_book.fe:5:19
   │
 5 │     messages: Map<address, String<100>>
-  │                   ^^^^^^^ attributes hash: 16931239362436195516
+  │                   ^^^^^^^ attributes hash: 928477466454064117
   │
   = Base(
         Address,
@@ -455,7 +455,7 @@ note:
   ┌─ demos/guest_book.fe:5:28
   │
 5 │     messages: Map<address, String<100>>
-  │                            ^^^^^^^^^^^ attributes hash: 17803113925034335199
+  │                            ^^^^^^^^^^^ attributes hash: 8213016172125664751
   │
   = String(
         FeString {
@@ -467,7 +467,7 @@ note:
   ┌─ demos/guest_book.fe:5:15
   │
 5 │     messages: Map<address, String<100>>
-  │               ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12432616856521389637
+  │               ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18158295928067305552
   │
   = Map(
         Map {

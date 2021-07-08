@@ -63,7 +63,7 @@ note:
   ┌─ features/u64_u64_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^ attributes hash: 8023811517735407117
+  │                ^^^^^^^^ attributes hash: 12550851059238114473
   │
   = ExpressionAttributes {
         typ: Map(
@@ -90,7 +90,7 @@ note:
   ┌─ features/u64_u64_map.fe:5:25
   │
 5 │         return self.bar[key]
-  │                         ^^^ attributes hash: 3044889006329355385
+  │                         ^^^ attributes hash: 18134665206326494843
   │
   = ExpressionAttributes {
         typ: Base(
@@ -106,7 +106,7 @@ note:
   ┌─ features/u64_u64_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ attributes hash: 15688310892038921170
+  │                ^^^^^^^^^^^^^ attributes hash: 238472016964255247
   │
   = ExpressionAttributes {
         typ: Base(
@@ -126,7 +126,7 @@ note:
   ┌─ features/u64_u64_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^ attributes hash: 8023811517735407117
+  │         ^^^^^^^^ attributes hash: 12550851059238114473
   │
   = ExpressionAttributes {
         typ: Map(
@@ -153,7 +153,7 @@ note:
   ┌─ features/u64_u64_map.fe:8:18
   │
 8 │         self.bar[key] = value
-  │                  ^^^ attributes hash: 3044889006329355385
+  │                  ^^^ attributes hash: 18134665206326494843
   │
   = ExpressionAttributes {
         typ: Base(
@@ -169,7 +169,7 @@ note:
   ┌─ features/u64_u64_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^^^^^^ attributes hash: 16246061440592408528
+  │         ^^^^^^^^^^^^^ attributes hash: 2453236870145689579
   │
   = ExpressionAttributes {
         typ: Base(
@@ -187,7 +187,7 @@ note:
   ┌─ features/u64_u64_map.fe:8:25
   │
 8 │         self.bar[key] = value
-  │                         ^^^^^ attributes hash: 3044889006329355385
+  │                         ^^^^^ attributes hash: 18134665206326494843
   │
   = ExpressionAttributes {
         typ: Base(
@@ -204,7 +204,7 @@ note:
   │  
 4 │ ╭     pub def read_bar(key: u64) -> u64:
 5 │ │         return self.bar[key]
-  │ ╰────────────────────────────^ attributes hash: 13368727428360435549
+  │ ╰────────────────────────────^ attributes hash: 3469568918915204609
   │  
   = FunctionAttributes {
         is_public: true,
@@ -231,7 +231,7 @@ note:
   │  
 7 │ ╭     pub def write_bar(key: u64, value: u64):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 14323847473854232813
+  │ ╰─────────────────────────────^ attributes hash: 18049750392874690349
   │  
   = FunctionAttributes {
         is_public: true,
@@ -269,7 +269,7 @@ note:
   · │
 7 │ │     pub def write_bar(key: u64, value: u64):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 653765826309845369
+  │ ╰─────────────────────────────^ attributes hash: 10930943558823643229
   │  
   = ContractAttributes {
         public_functions: [
@@ -328,7 +328,7 @@ note:
   ┌─ features/u64_u64_map.fe:4:27
   │
 4 │     pub def read_bar(key: u64) -> u64:
-  │                           ^^^ attributes hash: 17534999559619587862
+  │                           ^^^ attributes hash: 9157081425890653064
   │
   = Base(
         Numeric(
@@ -340,7 +340,7 @@ note:
   ┌─ features/u64_u64_map.fe:4:35
   │
 4 │     pub def read_bar(key: u64) -> u64:
-  │                                   ^^^ attributes hash: 17534999559619587862
+  │                                   ^^^ attributes hash: 9157081425890653064
   │
   = Base(
         Numeric(
@@ -352,7 +352,7 @@ note:
   ┌─ features/u64_u64_map.fe:7:28
   │
 7 │     pub def write_bar(key: u64, value: u64):
-  │                            ^^^ attributes hash: 17534999559619587862
+  │                            ^^^ attributes hash: 9157081425890653064
   │
   = Base(
         Numeric(
@@ -364,7 +364,7 @@ note:
   ┌─ features/u64_u64_map.fe:7:40
   │
 7 │     pub def write_bar(key: u64, value: u64):
-  │                                        ^^^ attributes hash: 17534999559619587862
+  │                                        ^^^ attributes hash: 9157081425890653064
   │
   = Base(
         Numeric(
@@ -376,7 +376,7 @@ note:
   ┌─ features/u64_u64_map.fe:2:18
   │
 2 │     pub bar: Map<u64, u64>
-  │                  ^^^ attributes hash: 17534999559619587862
+  │                  ^^^ attributes hash: 9157081425890653064
   │
   = Base(
         Numeric(
@@ -388,7 +388,7 @@ note:
   ┌─ features/u64_u64_map.fe:2:23
   │
 2 │     pub bar: Map<u64, u64>
-  │                       ^^^ attributes hash: 17534999559619587862
+  │                       ^^^ attributes hash: 9157081425890653064
   │
   = Base(
         Numeric(
@@ -400,7 +400,7 @@ note:
   ┌─ features/u64_u64_map.fe:2:14
   │
 2 │     pub bar: Map<u64, u64>
-  │              ^^^^^^^^^^^^^ attributes hash: 4568353499523922040
+  │              ^^^^^^^^^^^^^ attributes hash: 12714668045992054773
   │
   = Map(
         Map {

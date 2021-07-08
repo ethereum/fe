@@ -46,7 +46,7 @@ note:
   ┌─ features/return_subtraction_i256.fe:3:16
   │
 3 │         return x - y
-  │                ^ attributes hash: 17351186385905986417
+  │                ^ attributes hash: 15251787519388345880
   │
   = ExpressionAttributes {
         typ: Base(
@@ -62,7 +62,7 @@ note:
   ┌─ features/return_subtraction_i256.fe:3:20
   │
 3 │         return x - y
-  │                    ^ attributes hash: 17351186385905986417
+  │                    ^ attributes hash: 15251787519388345880
   │
   = ExpressionAttributes {
         typ: Base(
@@ -78,7 +78,7 @@ note:
   ┌─ features/return_subtraction_i256.fe:3:16
   │
 3 │         return x - y
-  │                ^^^^^ attributes hash: 17351186385905986417
+  │                ^^^^^ attributes hash: 15251787519388345880
   │
   = ExpressionAttributes {
         typ: Base(
@@ -95,7 +95,7 @@ note:
   │  
 2 │ ╭     pub def bar(x: i256, y: i256) -> i256:
 3 │ │         return x - y
-  │ ╰────────────────────^ attributes hash: 10391370878491779741
+  │ ╰────────────────────^ attributes hash: 8898893473179930554
   │  
   = FunctionAttributes {
         is_public: true,
@@ -131,7 +131,7 @@ note:
 1 │ ╭ contract Foo:
 2 │ │     pub def bar(x: i256, y: i256) -> i256:
 3 │ │         return x - y
-  │ ╰────────────────────^ attributes hash: 758579549648349162
+  │ ╰────────────────────^ attributes hash: 2132604809653912839
   │  
   = ContractAttributes {
         public_functions: [
@@ -173,7 +173,7 @@ note:
   ┌─ features/return_subtraction_i256.fe:2:20
   │
 2 │     pub def bar(x: i256, y: i256) -> i256:
-  │                    ^^^^ attributes hash: 5923332062417896707
+  │                    ^^^^ attributes hash: 11707372354960146103
   │
   = Base(
         Numeric(
@@ -185,7 +185,7 @@ note:
   ┌─ features/return_subtraction_i256.fe:2:29
   │
 2 │     pub def bar(x: i256, y: i256) -> i256:
-  │                             ^^^^ attributes hash: 5923332062417896707
+  │                             ^^^^ attributes hash: 11707372354960146103
   │
   = Base(
         Numeric(
@@ -197,7 +197,7 @@ note:
   ┌─ features/return_subtraction_i256.fe:2:38
   │
 2 │     pub def bar(x: i256, y: i256) -> i256:
-  │                                      ^^^^ attributes hash: 5923332062417896707
+  │                                      ^^^^ attributes hash: 11707372354960146103
   │
   = Base(
         Numeric(

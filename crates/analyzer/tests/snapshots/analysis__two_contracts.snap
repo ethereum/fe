@@ -66,7 +66,7 @@ note:
   ┌─ features/two_contracts.fe:6:28
   │
 6 │         return Bar(address(0)).bar()
-  │                            ^ attributes hash: 16797824492585953824
+  │                            ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -82,7 +82,7 @@ note:
   ┌─ features/two_contracts.fe:6:20
   │
 6 │         return Bar(address(0)).bar()
-  │                    ^^^^^^^^^^ attributes hash: 16366719240912622931
+  │                    ^^^^^^^^^^ attributes hash: 16804606599831072828
   │
   = ExpressionAttributes {
         typ: Base(
@@ -96,7 +96,7 @@ note:
   ┌─ features/two_contracts.fe:6:16
   │
 6 │         return Bar(address(0)).bar()
-  │                ^^^^^^^^^^^^^^^ attributes hash: 4801555575728098785
+  │                ^^^^^^^^^^^^^^^ attributes hash: 4206741770631134963
   │
   = ExpressionAttributes {
         typ: Contract(
@@ -134,7 +134,7 @@ note:
   ┌─ features/two_contracts.fe:6:16
   │
 6 │         return Bar(address(0)).bar()
-  │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+  │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -150,7 +150,7 @@ note:
   ┌─ features/two_contracts.fe:9:16
   │
 9 │         return 42
-  │                ^^ attributes hash: 16797824492585953824
+  │                ^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -166,7 +166,7 @@ note:
    ┌─ features/two_contracts.fe:16:28
    │
 16 │         return Foo(address(0)).foo()
-   │                            ^ attributes hash: 16797824492585953824
+   │                            ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -182,7 +182,7 @@ note:
    ┌─ features/two_contracts.fe:16:20
    │
 16 │         return Foo(address(0)).foo()
-   │                    ^^^^^^^^^^ attributes hash: 16366719240912622931
+   │                    ^^^^^^^^^^ attributes hash: 16804606599831072828
    │
    = ExpressionAttributes {
          typ: Base(
@@ -196,7 +196,7 @@ note:
    ┌─ features/two_contracts.fe:16:16
    │
 16 │         return Foo(address(0)).foo()
-   │                ^^^^^^^^^^^^^^^ attributes hash: 479874229303688399
+   │                ^^^^^^^^^^^^^^^ attributes hash: 13716869142087765014
    │
    = ExpressionAttributes {
          typ: Contract(
@@ -234,7 +234,7 @@ note:
    ┌─ features/two_contracts.fe:16:16
    │
 16 │         return Foo(address(0)).foo()
-   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -250,7 +250,7 @@ note:
    ┌─ features/two_contracts.fe:19:16
    │
 19 │         return 26
-   │                ^^ attributes hash: 16797824492585953824
+   │                ^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -267,7 +267,7 @@ note:
   │  
 5 │ ╭     pub def external_bar() -> u256:
 6 │ │         return Bar(address(0)).bar()
-  │ ╰────────────────────────────────────^ attributes hash: 15336561783001008931
+  │ ╰────────────────────────────────────^ attributes hash: 6951749236191192885
   │  
   = FunctionAttributes {
         is_public: true,
@@ -285,7 +285,7 @@ note:
   │  
 8 │ ╭     pub def foo() -> u256:
 9 │ │         return 42
-  │ ╰─────────────────^ attributes hash: 15216770869499965069
+  │ ╰─────────────────^ attributes hash: 11232535930816367115
   │  
   = FunctionAttributes {
         is_public: true,
@@ -303,7 +303,7 @@ note:
    │  
 15 │ ╭     pub def external_foo() -> u256:
 16 │ │         return Foo(address(0)).foo()
-   │ ╰────────────────────────────────────^ attributes hash: 4132907585680072308
+   │ ╰────────────────────────────────────^ attributes hash: 6326551774952214873
    │  
    = FunctionAttributes {
          is_public: true,
@@ -321,7 +321,7 @@ note:
    │  
 18 │ ╭     pub def bar() -> u256:
 19 │ │         return 26
-   │ ╰─────────────────^ attributes hash: 2041944711719443549
+   │ ╰─────────────────^ attributes hash: 5931278080780939395
    │  
    = FunctionAttributes {
          is_public: true,
@@ -344,7 +344,7 @@ note:
   · │
 8 │ │     pub def foo() -> u256:
 9 │ │         return 42
-  │ ╰─────────────────^ attributes hash: 17893928644519020980
+  │ ╰─────────────────^ attributes hash: 16427597213204226830
   │  
   = ContractAttributes {
         public_functions: [
@@ -411,7 +411,7 @@ note:
    · │
 18 │ │     pub def bar() -> u256:
 19 │ │         return 26
-   │ ╰─────────────────^ attributes hash: 13932634080351298271
+   │ ╰─────────────────^ attributes hash: 9831402290883909386
    │  
    = ContractAttributes {
          public_functions: [
@@ -472,7 +472,7 @@ note:
   ┌─ features/two_contracts.fe:6:16
   │
 6 │         return Bar(address(0)).bar()
-  │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+  │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
   │
   = ValueAttribute
 
@@ -480,7 +480,7 @@ note:
   ┌─ features/two_contracts.fe:6:16
   │
 6 │         return Bar(address(0)).bar()
-  │                ^^^ attributes hash: 3185254658974518455
+  │                ^^^ attributes hash: 14901377339513486979
   │
   = TypeConstructor {
         typ: Contract(
@@ -516,7 +516,7 @@ note:
   ┌─ features/two_contracts.fe:6:20
   │
 6 │         return Bar(address(0)).bar()
-  │                    ^^^^^^^ attributes hash: 12543456546113081273
+  │                    ^^^^^^^ attributes hash: 14203407709342965641
   │
   = TypeConstructor {
         typ: Base(
@@ -528,7 +528,7 @@ note:
    ┌─ features/two_contracts.fe:16:16
    │
 16 │         return Foo(address(0)).foo()
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
    │
    = ValueAttribute
 
@@ -536,7 +536,7 @@ note:
    ┌─ features/two_contracts.fe:16:16
    │
 16 │         return Foo(address(0)).foo()
-   │                ^^^ attributes hash: 5649951690903124242
+   │                ^^^ attributes hash: 4709195992833712129
    │
    = TypeConstructor {
          typ: Contract(
@@ -572,7 +572,7 @@ note:
    ┌─ features/two_contracts.fe:16:20
    │
 16 │         return Foo(address(0)).foo()
-   │                    ^^^^^^^ attributes hash: 12543456546113081273
+   │                    ^^^^^^^ attributes hash: 14203407709342965641
    │
    = TypeConstructor {
          typ: Base(
@@ -584,7 +584,7 @@ note:
   ┌─ features/two_contracts.fe:5:31
   │
 5 │     pub def external_bar() -> u256:
-  │                               ^^^^ attributes hash: 17942395924573474124
+  │                               ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -596,7 +596,7 @@ note:
   ┌─ features/two_contracts.fe:8:22
   │
 8 │     pub def foo() -> u256:
-  │                      ^^^^ attributes hash: 17942395924573474124
+  │                      ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -608,7 +608,7 @@ note:
    ┌─ features/two_contracts.fe:15:31
    │
 15 │     pub def external_foo() -> u256:
-   │                               ^^^^ attributes hash: 17942395924573474124
+   │                               ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -620,7 +620,7 @@ note:
    ┌─ features/two_contracts.fe:18:22
    │
 18 │     pub def bar() -> u256:
-   │                      ^^^^ attributes hash: 17942395924573474124
+   │                      ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -632,7 +632,7 @@ note:
   ┌─ features/two_contracts.fe:3:12
   │
 3 │     other: Bar
-  │            ^^^ attributes hash: 13645389495962387725
+  │            ^^^ attributes hash: 6386304407956510501
   │
   = Contract(
         Contract {
@@ -666,7 +666,7 @@ note:
    ┌─ features/two_contracts.fe:13:12
    │
 13 │     other: Foo
-   │            ^^^ attributes hash: 7444901037140767234
+   │            ^^^ attributes hash: 11144019695625837595
    │
    = Contract(
          Contract {

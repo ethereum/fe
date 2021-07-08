@@ -19,7 +19,7 @@ note:
   │  
 1 │ ╭ contract Empty:
 2 │ │   lonely: u256
-  │ ╰──────────────^ attributes hash: 9947701623212590258
+  │ ╰──────────────^ attributes hash: 6468173224170614629
   │  
   = ContractAttributes {
         public_functions: [],
@@ -33,7 +33,7 @@ note:
   ┌─ features/empty.fe:2:11
   │
 2 │   lonely: u256
-  │           ^^^^ attributes hash: 17942395924573474124
+  │           ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(

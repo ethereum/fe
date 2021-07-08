@@ -66,7 +66,7 @@ note:
    ┌─ features/strings.fe:12:22
    │
 12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │                      ^^ attributes hash: 10420235251610747606
+   │                      ^^ attributes hash: 14973471776641027740
    │
    = ExpressionAttributes {
          typ: String(
@@ -82,7 +82,7 @@ note:
    ┌─ features/strings.fe:12:26
    │
 12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │                          ^ attributes hash: 16797824492585953824
+   │                          ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -98,7 +98,7 @@ note:
    ┌─ features/strings.fe:12:29
    │
 12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │                             ^^ attributes hash: 9569027785754553796
+   │                             ^^ attributes hash: 12106970441914835754
    │
    = ExpressionAttributes {
          typ: String(
@@ -114,7 +114,7 @@ note:
    ┌─ features/strings.fe:12:33
    │
 12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │                                 ^^ attributes hash: 10521411858691425038
+   │                                 ^^ attributes hash: 4797497344445665156
    │
    = ExpressionAttributes {
          typ: String(
@@ -130,7 +130,7 @@ note:
    ┌─ features/strings.fe:12:37
    │
 12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │                                     ^ attributes hash: 16366719240912622931
+   │                                     ^ attributes hash: 16804606599831072828
    │
    = ExpressionAttributes {
          typ: Base(
@@ -144,7 +144,7 @@ note:
    ┌─ features/strings.fe:12:43
    │
 12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │                                           ^^^^^^^^^^^^^^^ attributes hash: 15184264815905725710
+   │                                           ^^^^^^^^^^^^^^^ attributes hash: 12490088853716400484
    │
    = ExpressionAttributes {
          typ: String(
@@ -160,7 +160,7 @@ note:
    ┌─ features/strings.fe:12:75
    │
 12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │                                                                           ^^^^^ attributes hash: 16852372960864427970
+   │                                                                           ^^^^^ attributes hash: 14798518609311631157
    │
    = ExpressionAttributes {
          typ: String(
@@ -176,7 +176,7 @@ note:
    ┌─ features/strings.fe:12:63
    │
 12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │                                                               ^^^^^^^^^^^^^^^^^^ attributes hash: 10521411858691425038
+   │                                                               ^^^^^^^^^^^^^^^^^^ attributes hash: 4797497344445665156
    │
    = ExpressionAttributes {
          typ: String(
@@ -192,7 +192,7 @@ note:
    ┌─ features/strings.fe:15:16
    │
 15 │         return s2
-   │                ^^ attributes hash: 10521411858691425038
+   │                ^^ attributes hash: 4797497344445665156
    │
    = ExpressionAttributes {
          typ: String(
@@ -208,7 +208,7 @@ note:
    ┌─ features/strings.fe:18:16
    │
 18 │         return "The quick brown fox jumps over the lazy dog"
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 789892328184844625
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12215426941023995635
    │
    = ExpressionAttributes {
          typ: String(
@@ -224,7 +224,7 @@ note:
    ┌─ features/strings.fe:21:28
    │
 21 │         return String<100>("foo")
-   │                            ^^^^^ attributes hash: 16852372960864427970
+   │                            ^^^^^ attributes hash: 14798518609311631157
    │
    = ExpressionAttributes {
          typ: String(
@@ -240,7 +240,7 @@ note:
    ┌─ features/strings.fe:21:16
    │
 21 │         return String<100>("foo")
-   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 10521411858691425038
+   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 4797497344445665156
    │
    = ExpressionAttributes {
          typ: String(
@@ -256,7 +256,7 @@ note:
    ┌─ features/strings.fe:12:9
    │
 12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16267969184929269854
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14401346865018949396
    │
    = EventDef {
          name: "MyEvent",
@@ -325,7 +325,7 @@ note:
    │  
 11 │ ╭     pub def __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
 12 │ │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │ ╰─────────────────────────────────────────────────────────────────────────────────^ attributes hash: 566449339878557725
+   │ ╰─────────────────────────────────────────────────────────────────────────────────^ attributes hash: 124105727539844571
    │  
    = FunctionAttributes {
          is_public: true,
@@ -380,7 +380,7 @@ note:
    │  
 14 │ ╭     pub def bar(s1: String<100>, s2: String<100>) -> String<100>:
 15 │ │         return s2
-   │ ╰─────────────────^ attributes hash: 1310249449051553929
+   │ ╰─────────────────^ attributes hash: 592417751978733882
    │  
    = FunctionAttributes {
          is_public: true,
@@ -415,7 +415,7 @@ note:
    │  
 17 │ ╭     pub def return_static_string() -> String<43>:
 18 │ │         return "The quick brown fox jumps over the lazy dog"
-   │ ╰────────────────────────────────────────────────────────────^ attributes hash: 16959256329822525068
+   │ ╰────────────────────────────────────────────────────────────^ attributes hash: 6307523210129738943
    │  
    = FunctionAttributes {
          is_public: true,
@@ -433,7 +433,7 @@ note:
    │  
 20 │ ╭     pub def return_casted_static_string() -> String<100>:
 21 │ │         return String<100>("foo")
-   │ ╰─────────────────────────────────^ attributes hash: 17563008375114963269
+   │ ╰─────────────────────────────────^ attributes hash: 7348697589190351231
    │  
    = FunctionAttributes {
          is_public: true,
@@ -456,7 +456,7 @@ note:
    · │
 20 │ │     pub def return_casted_static_string() -> String<100>:
 21 │ │         return String<100>("foo")
-   │ ╰─────────────────────────────────^ attributes hash: 1435241777224980025
+   │ ╰─────────────────────────────────^ attributes hash: 2821469132888555159
    │  
    = ContractAttributes {
          public_functions: [
@@ -628,7 +628,7 @@ note:
    ┌─ features/strings.fe:12:63
    │
 12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │                                                               ^^^^^^ attributes hash: 7215139687200046467
+   │                                                               ^^^^^^ attributes hash: 5923227283421640461
    │
    = TypeConstructor {
          typ: String(
@@ -642,7 +642,7 @@ note:
    ┌─ features/strings.fe:21:16
    │
 21 │         return String<100>("foo")
-   │                ^^^^^^ attributes hash: 7215139687200046467
+   │                ^^^^^^ attributes hash: 5923227283421640461
    │
    = TypeConstructor {
          typ: String(
@@ -662,7 +662,7 @@ note:
   · │
 8 │ │         s4: String<13>
 9 │ │         s5: String<100>
-  │ ╰───────────────────────^ attributes hash: 16267969184929269854
+  │ ╰───────────────────────^ attributes hash: 14401346865018949396
   │  
   = EventDef {
         name: "MyEvent",
@@ -730,7 +730,7 @@ note:
   ┌─ features/strings.fe:3:13
   │
 3 │         s2: String<26>
-  │             ^^^^^^^^^^ attributes hash: 14735093766067758717
+  │             ^^^^^^^^^^ attributes hash: 16414369909362201519
   │
   = String(
         FeString {
@@ -742,7 +742,7 @@ note:
   ┌─ features/strings.fe:4:12
   │
 4 │         u: u256
-  │            ^^^^ attributes hash: 17942395924573474124
+  │            ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -754,7 +754,7 @@ note:
   ┌─ features/strings.fe:5:13
   │
 5 │         s1: String<42>
-  │             ^^^^^^^^^^ attributes hash: 12783265608664719061
+  │             ^^^^^^^^^^ attributes hash: 14777032492858574931
   │
   = String(
         FeString {
@@ -766,7 +766,7 @@ note:
   ┌─ features/strings.fe:6:13
   │
 6 │         s3: String<100>
-  │             ^^^^^^^^^^^ attributes hash: 17803113925034335199
+  │             ^^^^^^^^^^^ attributes hash: 8213016172125664751
   │
   = String(
         FeString {
@@ -778,7 +778,7 @@ note:
   ┌─ features/strings.fe:7:12
   │
 7 │         a: address
-  │            ^^^^^^^ attributes hash: 16931239362436195516
+  │            ^^^^^^^ attributes hash: 928477466454064117
   │
   = Base(
         Address,
@@ -788,7 +788,7 @@ note:
   ┌─ features/strings.fe:8:13
   │
 8 │         s4: String<13>
-  │             ^^^^^^^^^^ attributes hash: 2814527799845147426
+  │             ^^^^^^^^^^ attributes hash: 6720613731815605184
   │
   = String(
         FeString {
@@ -800,7 +800,7 @@ note:
   ┌─ features/strings.fe:9:13
   │
 9 │         s5: String<100>
-  │             ^^^^^^^^^^^ attributes hash: 17803113925034335199
+  │             ^^^^^^^^^^^ attributes hash: 8213016172125664751
   │
   = String(
         FeString {
@@ -812,7 +812,7 @@ note:
    ┌─ features/strings.fe:11:26
    │
 11 │     pub def __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
-   │                          ^^^^^^^^^^ attributes hash: 12783265608664719061
+   │                          ^^^^^^^^^^ attributes hash: 14777032492858574931
    │
    = String(
          FeString {
@@ -824,7 +824,7 @@ note:
    ┌─ features/strings.fe:11:41
    │
 11 │     pub def __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
-   │                                         ^^^^^^^ attributes hash: 16931239362436195516
+   │                                         ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
@@ -834,7 +834,7 @@ note:
    ┌─ features/strings.fe:11:54
    │
 11 │     pub def __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
-   │                                                      ^^^^^^^^^^ attributes hash: 14735093766067758717
+   │                                                      ^^^^^^^^^^ attributes hash: 16414369909362201519
    │
    = String(
          FeString {
@@ -846,7 +846,7 @@ note:
    ┌─ features/strings.fe:11:69
    │
 11 │     pub def __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
-   │                                                                     ^^^^ attributes hash: 17942395924573474124
+   │                                                                     ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -858,7 +858,7 @@ note:
    ┌─ features/strings.fe:11:79
    │
 11 │     pub def __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
-   │                                                                               ^^^^^^^^^^^ attributes hash: 17803113925034335199
+   │                                                                               ^^^^^^^^^^^ attributes hash: 8213016172125664751
    │
    = String(
          FeString {
@@ -870,7 +870,7 @@ note:
    ┌─ features/strings.fe:14:21
    │
 14 │     pub def bar(s1: String<100>, s2: String<100>) -> String<100>:
-   │                     ^^^^^^^^^^^ attributes hash: 17803113925034335199
+   │                     ^^^^^^^^^^^ attributes hash: 8213016172125664751
    │
    = String(
          FeString {
@@ -882,7 +882,7 @@ note:
    ┌─ features/strings.fe:14:38
    │
 14 │     pub def bar(s1: String<100>, s2: String<100>) -> String<100>:
-   │                                      ^^^^^^^^^^^ attributes hash: 17803113925034335199
+   │                                      ^^^^^^^^^^^ attributes hash: 8213016172125664751
    │
    = String(
          FeString {
@@ -894,7 +894,7 @@ note:
    ┌─ features/strings.fe:14:54
    │
 14 │     pub def bar(s1: String<100>, s2: String<100>) -> String<100>:
-   │                                                      ^^^^^^^^^^^ attributes hash: 17803113925034335199
+   │                                                      ^^^^^^^^^^^ attributes hash: 8213016172125664751
    │
    = String(
          FeString {
@@ -906,7 +906,7 @@ note:
    ┌─ features/strings.fe:17:39
    │
 17 │     pub def return_static_string() -> String<43>:
-   │                                       ^^^^^^^^^^ attributes hash: 13742609200355297158
+   │                                       ^^^^^^^^^^ attributes hash: 1032948852269419831
    │
    = String(
          FeString {
@@ -918,7 +918,7 @@ note:
    ┌─ features/strings.fe:20:46
    │
 20 │     pub def return_casted_static_string() -> String<100>:
-   │                                              ^^^^^^^^^^^ attributes hash: 17803113925034335199
+   │                                              ^^^^^^^^^^^ attributes hash: 8213016172125664751
    │
    = String(
          FeString {

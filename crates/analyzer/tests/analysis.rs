@@ -7,11 +7,12 @@ use insta::assert_snapshot;
 use std::collections::hash_map::DefaultHasher;
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
+use wasm_bindgen_test::wasm_bindgen_test;
 
 macro_rules! test_analysis {
     ($name:ident, $path:expr) => {
         #[test]
-        // #[wasm_bindgen_test]
+        #[wasm_bindgen_test]
         fn $name() {
             let mut files = FileStore::new();
             let src = test_files::fixture($path);
@@ -25,17 +26,17 @@ macro_rules! test_analysis {
             };
             match fe_analyzer::analyze(&fe_module, id) {
                 Ok(context) => {
-                    // TODO: These *should* work on wasm, but some run out of memory,
-                    // others run for ages, and the "attributes hash" values don't match those
-                    // in the snapshot. I assume `build_snapshot` is too heavy.
-
-                    // if cfg!(target_arch = "wasm32") {
-                    //     fe_common::assert_snapshot_wasm!(
-                    //         concat!("snapshots/analysis__", stringify!($name), ".snap"),
-                    //         build_snapshot($path, &src, &context)
-                    //     );
-                    // } else {
-                    assert_snapshot!(build_snapshot($path, &src, &context));
+                    if cfg!(target_arch = "wasm32") {
+                        // NOTE: If this assertion fails, the generation of the output diff
+                        //  is very slow on wasm, and may result in an out-of-memory error
+                        //  for larger diffs. I recommend commenting out all tests but one.
+                        fe_common::assert_snapshot_wasm!(
+                            concat!("snapshots/analysis__", stringify!($name), ".snap"),
+                            build_snapshot($path, &src, &context)
+                        );
+                    } else {
+                        assert_snapshot!(build_snapshot($path, &src, &context));
+                    }
                 }
                 Err(AnalyzerError(diagnostics)) => {
                     print_diagnostics(&diagnostics, &files);
@@ -174,7 +175,7 @@ fn build_snapshot(path: &str, src: &str, context: &Context) -> String {
     )
 }
 
-fn build_diagnostics<T: Hash + Debug>(
+fn build_diagnostics<T: Debug>(
     file_id: SourceFileId,
     spanned_attributes: &[(Span, T)],
 ) -> Vec<Diagnostic> {
@@ -184,7 +185,7 @@ fn build_diagnostics<T: Hash + Debug>(
         .collect::<Vec<_>>()
 }
 
-fn build_attributes_diagnostic<T: Hash + Debug>(
+fn build_attributes_diagnostic<T: Debug>(
     file_id: SourceFileId,
     span: &Span,
     attributes: &T,
@@ -197,8 +198,10 @@ fn build_attributes_diagnostic<T: Hash + Debug>(
         .with_notes(vec![format!("{:#?}", attributes)])
 }
 
-fn hash<T: Hash>(item: &T) -> u64 {
+fn hash<T: Debug>(item: &T) -> u64 {
+    // Using the Hash trait on `item` here gives different hash values on wasm vs linux,
+    // so we hash the debug string instead.
     let mut s = DefaultHasher::new();
-    item.hash(&mut s);
+    format!("{:?}", item).hash(&mut s);
     s.finish()
 }

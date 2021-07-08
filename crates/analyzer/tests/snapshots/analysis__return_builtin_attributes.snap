@@ -103,7 +103,7 @@ note:
   ┌─ features/return_builtin_attributes.fe:3:16
   │
 3 │         return block.coinbase
-  │                ^^^^^^^^^^^^^^ attributes hash: 16366719240912622931
+  │                ^^^^^^^^^^^^^^ attributes hash: 16804606599831072828
   │
   = ExpressionAttributes {
         typ: Base(
@@ -117,7 +117,7 @@ note:
   ┌─ features/return_builtin_attributes.fe:6:16
   │
 6 │         return block.difficulty
-  │                ^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+  │                ^^^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -133,7 +133,7 @@ note:
   ┌─ features/return_builtin_attributes.fe:9:16
   │
 9 │         return block.number
-  │                ^^^^^^^^^^^^ attributes hash: 16797824492585953824
+  │                ^^^^^^^^^^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -149,7 +149,7 @@ note:
    ┌─ features/return_builtin_attributes.fe:12:16
    │
 12 │         return block.timestamp
-   │                ^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+   │                ^^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -165,7 +165,7 @@ note:
    ┌─ features/return_builtin_attributes.fe:15:16
    │
 15 │         return chain.id
-   │                ^^^^^^^^ attributes hash: 16797824492585953824
+   │                ^^^^^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -181,7 +181,7 @@ note:
    ┌─ features/return_builtin_attributes.fe:18:16
    │
 18 │         return msg.sender
-   │                ^^^^^^^^^^ attributes hash: 16366719240912622931
+   │                ^^^^^^^^^^ attributes hash: 16804606599831072828
    │
    = ExpressionAttributes {
          typ: Base(
@@ -195,7 +195,7 @@ note:
    ┌─ features/return_builtin_attributes.fe:21:16
    │
 21 │         return msg.value
-   │                ^^^^^^^^^ attributes hash: 16797824492585953824
+   │                ^^^^^^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -211,7 +211,7 @@ note:
    ┌─ features/return_builtin_attributes.fe:24:16
    │
 24 │         return tx.origin
-   │                ^^^^^^^^^ attributes hash: 16366719240912622931
+   │                ^^^^^^^^^ attributes hash: 16804606599831072828
    │
    = ExpressionAttributes {
          typ: Base(
@@ -225,7 +225,7 @@ note:
    ┌─ features/return_builtin_attributes.fe:27:16
    │
 27 │         return tx.gas_price
-   │                ^^^^^^^^^^^^ attributes hash: 16797824492585953824
+   │                ^^^^^^^^^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -242,7 +242,7 @@ note:
   │  
 2 │ ╭     pub def coinbase() -> address:
 3 │ │         return block.coinbase
-  │ ╰─────────────────────────────^ attributes hash: 1050560848340726692
+  │ ╰─────────────────────────────^ attributes hash: 14236702025715162870
   │  
   = FunctionAttributes {
         is_public: true,
@@ -258,7 +258,7 @@ note:
   │  
 5 │ ╭     pub def difficulty() -> u256:
 6 │ │         return block.difficulty
-  │ ╰───────────────────────────────^ attributes hash: 5496647220444456907
+  │ ╰───────────────────────────────^ attributes hash: 395804245798811562
   │  
   = FunctionAttributes {
         is_public: true,
@@ -276,7 +276,7 @@ note:
   │  
 8 │ ╭     pub def number() -> u256:
 9 │ │         return block.number
-  │ ╰───────────────────────────^ attributes hash: 17633445460492668559
+  │ ╰───────────────────────────^ attributes hash: 13502509436137580732
   │  
   = FunctionAttributes {
         is_public: true,
@@ -294,7 +294,7 @@ note:
    │  
 11 │ ╭     pub def timestamp() -> u256:
 12 │ │         return block.timestamp
-   │ ╰──────────────────────────────^ attributes hash: 6842712852652722036
+   │ ╰──────────────────────────────^ attributes hash: 9693391023913544731
    │  
    = FunctionAttributes {
          is_public: true,
@@ -312,7 +312,7 @@ note:
    │  
 14 │ ╭     pub def chainid() -> u256:
 15 │ │         return chain.id
-   │ ╰───────────────────────^ attributes hash: 11973337097366299082
+   │ ╰───────────────────────^ attributes hash: 7517237141748927745
    │  
    = FunctionAttributes {
          is_public: true,
@@ -330,7 +330,7 @@ note:
    │  
 17 │ ╭     pub def sender() -> address:
 18 │ │         return msg.sender
-   │ ╰─────────────────────────^ attributes hash: 9931189698931507850
+   │ ╰─────────────────────────^ attributes hash: 17090816601893651171
    │  
    = FunctionAttributes {
          is_public: true,
@@ -346,7 +346,7 @@ note:
    │  
 20 │ ╭     pub def value() -> u256:
 21 │ │         return msg.value
-   │ ╰────────────────────────^ attributes hash: 15929707993013841213
+   │ ╰────────────────────────^ attributes hash: 5291020722804961877
    │  
    = FunctionAttributes {
          is_public: true,
@@ -364,7 +364,7 @@ note:
    │  
 23 │ ╭     pub def origin() -> address:
 24 │ │         return tx.origin
-   │ ╰────────────────────────^ attributes hash: 16124623633659635689
+   │ ╰────────────────────────^ attributes hash: 7062743268108112920
    │  
    = FunctionAttributes {
          is_public: true,
@@ -380,7 +380,7 @@ note:
    │  
 26 │ ╭     pub def gas_price() -> u256:
 27 │ │         return tx.gas_price
-   │ ╰───────────────────────────^ attributes hash: 8769757081253156598
+   │ ╰───────────────────────────^ attributes hash: 11855694450174249973
    │  
    = FunctionAttributes {
          is_public: true,
@@ -403,7 +403,7 @@ note:
    · │
 26 │ │     pub def gas_price() -> u256:
 27 │ │         return tx.gas_price
-   │ ╰───────────────────────────^ attributes hash: 9161051799665042003
+   │ ╰───────────────────────────^ attributes hash: 5537984652586834693
    │  
    = ContractAttributes {
          public_functions: [
@@ -502,7 +502,7 @@ note:
   ┌─ features/return_builtin_attributes.fe:2:27
   │
 2 │     pub def coinbase() -> address:
-  │                           ^^^^^^^ attributes hash: 16931239362436195516
+  │                           ^^^^^^^ attributes hash: 928477466454064117
   │
   = Base(
         Address,
@@ -512,7 +512,7 @@ note:
   ┌─ features/return_builtin_attributes.fe:5:29
   │
 5 │     pub def difficulty() -> u256:
-  │                             ^^^^ attributes hash: 17942395924573474124
+  │                             ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -524,7 +524,7 @@ note:
   ┌─ features/return_builtin_attributes.fe:8:25
   │
 8 │     pub def number() -> u256:
-  │                         ^^^^ attributes hash: 17942395924573474124
+  │                         ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -536,7 +536,7 @@ note:
    ┌─ features/return_builtin_attributes.fe:11:28
    │
 11 │     pub def timestamp() -> u256:
-   │                            ^^^^ attributes hash: 17942395924573474124
+   │                            ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -548,7 +548,7 @@ note:
    ┌─ features/return_builtin_attributes.fe:14:26
    │
 14 │     pub def chainid() -> u256:
-   │                          ^^^^ attributes hash: 17942395924573474124
+   │                          ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -560,7 +560,7 @@ note:
    ┌─ features/return_builtin_attributes.fe:17:25
    │
 17 │     pub def sender() -> address:
-   │                         ^^^^^^^ attributes hash: 16931239362436195516
+   │                         ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
@@ -570,7 +570,7 @@ note:
    ┌─ features/return_builtin_attributes.fe:20:24
    │
 20 │     pub def value() -> u256:
-   │                        ^^^^ attributes hash: 17942395924573474124
+   │                        ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -582,7 +582,7 @@ note:
    ┌─ features/return_builtin_attributes.fe:23:25
    │
 23 │     pub def origin() -> address:
-   │                         ^^^^^^^ attributes hash: 16931239362436195516
+   │                         ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
@@ -592,7 +592,7 @@ note:
    ┌─ features/return_builtin_attributes.fe:26:28
    │
 26 │     pub def gas_price() -> u256:
-   │                            ^^^^ attributes hash: 17942395924573474124
+   │                            ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(

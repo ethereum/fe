@@ -38,7 +38,7 @@ note:
   ┌─ features/return_identity_u128.fe:3:16
   │
 3 │         return x
-  │                ^ attributes hash: 9341420026351674595
+  │                ^ attributes hash: 231358192590700262
   │
   = ExpressionAttributes {
         typ: Base(
@@ -55,7 +55,7 @@ note:
   │  
 2 │ ╭     pub def bar(x: u128) -> u128:
 3 │ │         return x
-  │ ╰────────────────^ attributes hash: 10497307355197417484
+  │ ╰────────────────^ attributes hash: 15271075518284999585
   │  
   = FunctionAttributes {
         is_public: true,
@@ -83,7 +83,7 @@ note:
 1 │ ╭ contract Foo:
 2 │ │     pub def bar(x: u128) -> u128:
 3 │ │         return x
-  │ ╰────────────────^ attributes hash: 7109346401769907528
+  │ ╰────────────────^ attributes hash: 11710989811967654162
   │  
   = ContractAttributes {
         public_functions: [
@@ -117,7 +117,7 @@ note:
   ┌─ features/return_identity_u128.fe:2:20
   │
 2 │     pub def bar(x: u128) -> u128:
-  │                    ^^^^ attributes hash: 14909107886776088983
+  │                    ^^^^ attributes hash: 6162263163478414243
   │
   = Base(
         Numeric(
@@ -129,7 +129,7 @@ note:
   ┌─ features/return_identity_u128.fe:2:29
   │
 2 │     pub def bar(x: u128) -> u128:
-  │                             ^^^^ attributes hash: 14909107886776088983
+  │                             ^^^^ attributes hash: 6162263163478414243
   │
   = Base(
         Numeric(

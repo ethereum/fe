@@ -97,7 +97,7 @@ note:
    ┌─ features/structs.fe:11:9
    │
 11 │         self.my_house = House(
-   │         ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │         ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -149,7 +149,7 @@ note:
    ┌─ features/structs.fe:12:19
    │
 12 │             price=1,
-   │                   ^ attributes hash: 16797824492585953824
+   │                   ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -165,7 +165,7 @@ note:
    ┌─ features/structs.fe:13:18
    │
 13 │             size=2,
-   │                  ^ attributes hash: 16797824492585953824
+   │                  ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -181,7 +181,7 @@ note:
    ┌─ features/structs.fe:14:22
    │
 14 │             rooms=u8(5),
-   │                      ^ attributes hash: 6817314866882205962
+   │                      ^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -197,7 +197,7 @@ note:
    ┌─ features/structs.fe:14:19
    │
 14 │             rooms=u8(5),
-   │                   ^^^^^ attributes hash: 6817314866882205962
+   │                   ^^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -213,7 +213,7 @@ note:
    ┌─ features/structs.fe:15:20
    │
 15 │             vacant=false
-   │                    ^^^^^ attributes hash: 10866140763116710699
+   │                    ^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -233,7 +233,7 @@ note:
 14 │ │             rooms=u8(5),
 15 │ │             vacant=false
 16 │ │         )
-   │ ╰─────────^ attributes hash: 14046053272972701107
+   │ ╰─────────^ attributes hash: 703374162461487425
    │  
    = ExpressionAttributes {
          typ: Struct(
@@ -281,7 +281,7 @@ note:
    ┌─ features/structs.fe:17:16
    │
 17 │         assert self.my_house.price == 1
-   │                ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │                ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -333,7 +333,7 @@ note:
    ┌─ features/structs.fe:17:16
    │
 17 │         assert self.my_house.price == 1
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
+   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 9658275715484404641
    │
    = ExpressionAttributes {
          typ: Base(
@@ -355,7 +355,7 @@ note:
    ┌─ features/structs.fe:17:39
    │
 17 │         assert self.my_house.price == 1
-   │                                       ^ attributes hash: 16797824492585953824
+   │                                       ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -371,7 +371,7 @@ note:
    ┌─ features/structs.fe:17:16
    │
 17 │         assert self.my_house.price == 1
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -385,7 +385,7 @@ note:
    ┌─ features/structs.fe:18:16
    │
 18 │         assert self.my_house.size == 2
-   │                ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │                ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -437,7 +437,7 @@ note:
    ┌─ features/structs.fe:18:16
    │
 18 │         assert self.my_house.size == 2
-   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
+   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 9658275715484404641
    │
    = ExpressionAttributes {
          typ: Base(
@@ -459,7 +459,7 @@ note:
    ┌─ features/structs.fe:18:38
    │
 18 │         assert self.my_house.size == 2
-   │                                      ^ attributes hash: 16797824492585953824
+   │                                      ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -475,7 +475,7 @@ note:
    ┌─ features/structs.fe:18:16
    │
 18 │         assert self.my_house.size == 2
-   │                ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -489,7 +489,7 @@ note:
    ┌─ features/structs.fe:19:16
    │
 19 │         assert self.my_house.rooms == u8(5)
-   │                ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │                ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -541,7 +541,7 @@ note:
    ┌─ features/structs.fe:19:16
    │
 19 │         assert self.my_house.rooms == u8(5)
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 3920863001671643912
+   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 10558653526815956836
    │
    = ExpressionAttributes {
          typ: Base(
@@ -563,7 +563,7 @@ note:
    ┌─ features/structs.fe:19:42
    │
 19 │         assert self.my_house.rooms == u8(5)
-   │                                          ^ attributes hash: 6817314866882205962
+   │                                          ^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -579,7 +579,7 @@ note:
    ┌─ features/structs.fe:19:39
    │
 19 │         assert self.my_house.rooms == u8(5)
-   │                                       ^^^^^ attributes hash: 6817314866882205962
+   │                                       ^^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -595,7 +595,7 @@ note:
    ┌─ features/structs.fe:19:16
    │
 19 │         assert self.my_house.rooms == u8(5)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -609,7 +609,7 @@ note:
    ┌─ features/structs.fe:20:16
    │
 20 │         assert self.my_house.vacant == false
-   │                ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │                ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -661,7 +661,7 @@ note:
    ┌─ features/structs.fe:20:16
    │
 20 │         assert self.my_house.vacant == false
-   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 5019499297016497421
+   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 13730979586018155653
    │
    = ExpressionAttributes {
          typ: Base(
@@ -681,7 +681,7 @@ note:
    ┌─ features/structs.fe:20:40
    │
 20 │         assert self.my_house.vacant == false
-   │                                        ^^^^^ attributes hash: 10866140763116710699
+   │                                        ^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -695,7 +695,7 @@ note:
    ┌─ features/structs.fe:20:16
    │
 20 │         assert self.my_house.vacant == false
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -709,7 +709,7 @@ note:
    ┌─ features/structs.fe:22:9
    │
 22 │         self.my_house.size = 50
-   │         ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │         ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -761,7 +761,7 @@ note:
    ┌─ features/structs.fe:22:9
    │
 22 │         self.my_house.size = 50
-   │         ^^^^^^^^^^^^^^^^^^ attributes hash: 14248074759348295768
+   │         ^^^^^^^^^^^^^^^^^^ attributes hash: 15242400217978318652
    │
    = ExpressionAttributes {
          typ: Base(
@@ -781,7 +781,7 @@ note:
    ┌─ features/structs.fe:22:30
    │
 22 │         self.my_house.size = 50
-   │                              ^^ attributes hash: 16797824492585953824
+   │                              ^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -797,7 +797,7 @@ note:
    ┌─ features/structs.fe:23:16
    │
 23 │         assert self.my_house.size == 50
-   │                ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │                ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -849,7 +849,7 @@ note:
    ┌─ features/structs.fe:23:16
    │
 23 │         assert self.my_house.size == 50
-   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
+   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 9658275715484404641
    │
    = ExpressionAttributes {
          typ: Base(
@@ -871,7 +871,7 @@ note:
    ┌─ features/structs.fe:23:38
    │
 23 │         assert self.my_house.size == 50
-   │                                      ^^ attributes hash: 16797824492585953824
+   │                                      ^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -887,7 +887,7 @@ note:
    ┌─ features/structs.fe:23:16
    │
 23 │         assert self.my_house.size == 50
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -901,7 +901,7 @@ note:
    ┌─ features/structs.fe:24:16
    │
 24 │         assert self.my_house.price == 1
-   │                ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │                ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -953,7 +953,7 @@ note:
    ┌─ features/structs.fe:24:16
    │
 24 │         assert self.my_house.price == 1
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
+   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 9658275715484404641
    │
    = ExpressionAttributes {
          typ: Base(
@@ -975,7 +975,7 @@ note:
    ┌─ features/structs.fe:24:39
    │
 24 │         assert self.my_house.price == 1
-   │                                       ^ attributes hash: 16797824492585953824
+   │                                       ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -991,7 +991,7 @@ note:
    ┌─ features/structs.fe:24:16
    │
 24 │         assert self.my_house.price == 1
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1005,7 +1005,7 @@ note:
    ┌─ features/structs.fe:25:16
    │
 25 │         assert self.my_house.rooms == u8(5)
-   │                ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │                ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -1057,7 +1057,7 @@ note:
    ┌─ features/structs.fe:25:16
    │
 25 │         assert self.my_house.rooms == u8(5)
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 3920863001671643912
+   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 10558653526815956836
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1079,7 +1079,7 @@ note:
    ┌─ features/structs.fe:25:42
    │
 25 │         assert self.my_house.rooms == u8(5)
-   │                                          ^ attributes hash: 6817314866882205962
+   │                                          ^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1095,7 +1095,7 @@ note:
    ┌─ features/structs.fe:25:39
    │
 25 │         assert self.my_house.rooms == u8(5)
-   │                                       ^^^^^ attributes hash: 6817314866882205962
+   │                                       ^^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1111,7 +1111,7 @@ note:
    ┌─ features/structs.fe:25:16
    │
 25 │         assert self.my_house.rooms == u8(5)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1125,7 +1125,7 @@ note:
    ┌─ features/structs.fe:26:16
    │
 26 │         assert self.my_house.vacant == false
-   │                ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │                ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -1177,7 +1177,7 @@ note:
    ┌─ features/structs.fe:26:16
    │
 26 │         assert self.my_house.vacant == false
-   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 5019499297016497421
+   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 13730979586018155653
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1197,7 +1197,7 @@ note:
    ┌─ features/structs.fe:26:40
    │
 26 │         assert self.my_house.vacant == false
-   │                                        ^^^^^ attributes hash: 10866140763116710699
+   │                                        ^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1211,7 +1211,7 @@ note:
    ┌─ features/structs.fe:26:16
    │
 26 │         assert self.my_house.vacant == false
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1225,7 +1225,7 @@ note:
    ┌─ features/structs.fe:28:9
    │
 28 │         self.my_house.price = 1000
-   │         ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │         ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -1277,7 +1277,7 @@ note:
    ┌─ features/structs.fe:28:9
    │
 28 │         self.my_house.price = 1000
-   │         ^^^^^^^^^^^^^^^^^^^ attributes hash: 14248074759348295768
+   │         ^^^^^^^^^^^^^^^^^^^ attributes hash: 15242400217978318652
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1297,7 +1297,7 @@ note:
    ┌─ features/structs.fe:28:31
    │
 28 │         self.my_house.price = 1000
-   │                               ^^^^ attributes hash: 16797824492585953824
+   │                               ^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1313,7 +1313,7 @@ note:
    ┌─ features/structs.fe:29:16
    │
 29 │         assert self.my_house.size == 50
-   │                ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │                ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -1365,7 +1365,7 @@ note:
    ┌─ features/structs.fe:29:16
    │
 29 │         assert self.my_house.size == 50
-   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
+   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 9658275715484404641
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1387,7 +1387,7 @@ note:
    ┌─ features/structs.fe:29:38
    │
 29 │         assert self.my_house.size == 50
-   │                                      ^^ attributes hash: 16797824492585953824
+   │                                      ^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1403,7 +1403,7 @@ note:
    ┌─ features/structs.fe:29:16
    │
 29 │         assert self.my_house.size == 50
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1417,7 +1417,7 @@ note:
    ┌─ features/structs.fe:30:16
    │
 30 │         assert self.my_house.price == 1000
-   │                ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │                ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -1469,7 +1469,7 @@ note:
    ┌─ features/structs.fe:30:16
    │
 30 │         assert self.my_house.price == 1000
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
+   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 9658275715484404641
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1491,7 +1491,7 @@ note:
    ┌─ features/structs.fe:30:39
    │
 30 │         assert self.my_house.price == 1000
-   │                                       ^^^^ attributes hash: 16797824492585953824
+   │                                       ^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1507,7 +1507,7 @@ note:
    ┌─ features/structs.fe:30:16
    │
 30 │         assert self.my_house.price == 1000
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1521,7 +1521,7 @@ note:
    ┌─ features/structs.fe:31:16
    │
 31 │         assert self.my_house.rooms == u8(5)
-   │                ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │                ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -1573,7 +1573,7 @@ note:
    ┌─ features/structs.fe:31:16
    │
 31 │         assert self.my_house.rooms == u8(5)
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 3920863001671643912
+   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 10558653526815956836
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1595,7 +1595,7 @@ note:
    ┌─ features/structs.fe:31:42
    │
 31 │         assert self.my_house.rooms == u8(5)
-   │                                          ^ attributes hash: 6817314866882205962
+   │                                          ^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1611,7 +1611,7 @@ note:
    ┌─ features/structs.fe:31:39
    │
 31 │         assert self.my_house.rooms == u8(5)
-   │                                       ^^^^^ attributes hash: 6817314866882205962
+   │                                       ^^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1627,7 +1627,7 @@ note:
    ┌─ features/structs.fe:31:16
    │
 31 │         assert self.my_house.rooms == u8(5)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1641,7 +1641,7 @@ note:
    ┌─ features/structs.fe:32:16
    │
 32 │         assert self.my_house.vacant == false
-   │                ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │                ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -1693,7 +1693,7 @@ note:
    ┌─ features/structs.fe:32:16
    │
 32 │         assert self.my_house.vacant == false
-   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 5019499297016497421
+   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 13730979586018155653
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1713,7 +1713,7 @@ note:
    ┌─ features/structs.fe:32:40
    │
 32 │         assert self.my_house.vacant == false
-   │                                        ^^^^^ attributes hash: 10866140763116710699
+   │                                        ^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1727,7 +1727,7 @@ note:
    ┌─ features/structs.fe:32:16
    │
 32 │         assert self.my_house.vacant == false
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1741,7 +1741,7 @@ note:
    ┌─ features/structs.fe:33:9
    │
 33 │         self.my_house.vacant = true
-   │         ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │         ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -1793,7 +1793,7 @@ note:
    ┌─ features/structs.fe:33:9
    │
 33 │         self.my_house.vacant = true
-   │         ^^^^^^^^^^^^^^^^^^^^ attributes hash: 15848239492856542713
+   │         ^^^^^^^^^^^^^^^^^^^^ attributes hash: 12273323640399429874
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1811,7 +1811,7 @@ note:
    ┌─ features/structs.fe:33:32
    │
 33 │         self.my_house.vacant = true
-   │                                ^^^^ attributes hash: 10866140763116710699
+   │                                ^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1825,7 +1825,7 @@ note:
    ┌─ features/structs.fe:34:16
    │
 34 │         assert self.my_house.size == 50
-   │                ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │                ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -1877,7 +1877,7 @@ note:
    ┌─ features/structs.fe:34:16
    │
 34 │         assert self.my_house.size == 50
-   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
+   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 9658275715484404641
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1899,7 +1899,7 @@ note:
    ┌─ features/structs.fe:34:38
    │
 34 │         assert self.my_house.size == 50
-   │                                      ^^ attributes hash: 16797824492585953824
+   │                                      ^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1915,7 +1915,7 @@ note:
    ┌─ features/structs.fe:34:16
    │
 34 │         assert self.my_house.size == 50
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1929,7 +1929,7 @@ note:
    ┌─ features/structs.fe:35:16
    │
 35 │         assert self.my_house.price == 1000
-   │                ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │                ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -1981,7 +1981,7 @@ note:
    ┌─ features/structs.fe:35:16
    │
 35 │         assert self.my_house.price == 1000
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
+   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 9658275715484404641
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2003,7 +2003,7 @@ note:
    ┌─ features/structs.fe:35:39
    │
 35 │         assert self.my_house.price == 1000
-   │                                       ^^^^ attributes hash: 16797824492585953824
+   │                                       ^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2019,7 +2019,7 @@ note:
    ┌─ features/structs.fe:35:16
    │
 35 │         assert self.my_house.price == 1000
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2033,7 +2033,7 @@ note:
    ┌─ features/structs.fe:36:16
    │
 36 │         assert self.my_house.rooms == u8(5)
-   │                ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │                ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -2085,7 +2085,7 @@ note:
    ┌─ features/structs.fe:36:16
    │
 36 │         assert self.my_house.rooms == u8(5)
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 3920863001671643912
+   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 10558653526815956836
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2107,7 +2107,7 @@ note:
    ┌─ features/structs.fe:36:42
    │
 36 │         assert self.my_house.rooms == u8(5)
-   │                                          ^ attributes hash: 6817314866882205962
+   │                                          ^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2123,7 +2123,7 @@ note:
    ┌─ features/structs.fe:36:39
    │
 36 │         assert self.my_house.rooms == u8(5)
-   │                                       ^^^^^ attributes hash: 6817314866882205962
+   │                                       ^^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2139,7 +2139,7 @@ note:
    ┌─ features/structs.fe:36:16
    │
 36 │         assert self.my_house.rooms == u8(5)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2153,7 +2153,7 @@ note:
    ┌─ features/structs.fe:37:16
    │
 37 │         assert self.my_house.vacant
-   │                ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │                ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -2205,7 +2205,7 @@ note:
    ┌─ features/structs.fe:37:16
    │
 37 │         assert self.my_house.vacant
-   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 15848239492856542713
+   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 12273323640399429874
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2223,7 +2223,7 @@ note:
    ┌─ features/structs.fe:38:9
    │
 38 │         self.my_house.rooms = u8(100)
-   │         ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │         ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -2275,7 +2275,7 @@ note:
    ┌─ features/structs.fe:38:9
    │
 38 │         self.my_house.rooms = u8(100)
-   │         ^^^^^^^^^^^^^^^^^^^ attributes hash: 785209101958917995
+   │         ^^^^^^^^^^^^^^^^^^^ attributes hash: 7971402677531616851
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2295,7 +2295,7 @@ note:
    ┌─ features/structs.fe:38:34
    │
 38 │         self.my_house.rooms = u8(100)
-   │                                  ^^^ attributes hash: 6817314866882205962
+   │                                  ^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2311,7 +2311,7 @@ note:
    ┌─ features/structs.fe:38:31
    │
 38 │         self.my_house.rooms = u8(100)
-   │                               ^^^^^^^ attributes hash: 6817314866882205962
+   │                               ^^^^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2327,7 +2327,7 @@ note:
    ┌─ features/structs.fe:39:16
    │
 39 │         assert self.my_house.size == 50
-   │                ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │                ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -2379,7 +2379,7 @@ note:
    ┌─ features/structs.fe:39:16
    │
 39 │         assert self.my_house.size == 50
-   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
+   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 9658275715484404641
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2401,7 +2401,7 @@ note:
    ┌─ features/structs.fe:39:38
    │
 39 │         assert self.my_house.size == 50
-   │                                      ^^ attributes hash: 16797824492585953824
+   │                                      ^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2417,7 +2417,7 @@ note:
    ┌─ features/structs.fe:39:16
    │
 39 │         assert self.my_house.size == 50
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2431,7 +2431,7 @@ note:
    ┌─ features/structs.fe:40:16
    │
 40 │         assert self.my_house.price == 1000
-   │                ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │                ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -2483,7 +2483,7 @@ note:
    ┌─ features/structs.fe:40:16
    │
 40 │         assert self.my_house.price == 1000
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
+   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 9658275715484404641
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2505,7 +2505,7 @@ note:
    ┌─ features/structs.fe:40:39
    │
 40 │         assert self.my_house.price == 1000
-   │                                       ^^^^ attributes hash: 16797824492585953824
+   │                                       ^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2521,7 +2521,7 @@ note:
    ┌─ features/structs.fe:40:16
    │
 40 │         assert self.my_house.price == 1000
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2535,7 +2535,7 @@ note:
    ┌─ features/structs.fe:41:16
    │
 41 │         assert self.my_house.rooms == u8(100)
-   │                ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │                ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -2587,7 +2587,7 @@ note:
    ┌─ features/structs.fe:41:16
    │
 41 │         assert self.my_house.rooms == u8(100)
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 3920863001671643912
+   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 10558653526815956836
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2609,7 +2609,7 @@ note:
    ┌─ features/structs.fe:41:42
    │
 41 │         assert self.my_house.rooms == u8(100)
-   │                                          ^^^ attributes hash: 6817314866882205962
+   │                                          ^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2625,7 +2625,7 @@ note:
    ┌─ features/structs.fe:41:39
    │
 41 │         assert self.my_house.rooms == u8(100)
-   │                                       ^^^^^^^ attributes hash: 6817314866882205962
+   │                                       ^^^^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2641,7 +2641,7 @@ note:
    ┌─ features/structs.fe:41:16
    │
 41 │         assert self.my_house.rooms == u8(100)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2655,7 +2655,7 @@ note:
    ┌─ features/structs.fe:42:16
    │
 42 │         assert self.my_house.vacant
-   │                ^^^^^^^^^^^^^ attributes hash: 11323945906167375022
+   │                ^^^^^^^^^^^^^ attributes hash: 8349109361301603440
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -2707,7 +2707,7 @@ note:
    ┌─ features/structs.fe:42:16
    │
 42 │         assert self.my_house.vacant
-   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 15848239492856542713
+   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 12273323640399429874
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2725,7 +2725,7 @@ note:
    ┌─ features/structs.fe:46:19
    │
 46 │             price=300,
-   │                   ^^^ attributes hash: 16797824492585953824
+   │                   ^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2741,7 +2741,7 @@ note:
    ┌─ features/structs.fe:47:18
    │
 47 │             size=500,
-   │                  ^^^ attributes hash: 16797824492585953824
+   │                  ^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2757,7 +2757,7 @@ note:
    ┌─ features/structs.fe:48:22
    │
 48 │             rooms=u8(20),
-   │                      ^^ attributes hash: 6817314866882205962
+   │                      ^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2773,7 +2773,7 @@ note:
    ┌─ features/structs.fe:48:19
    │
 48 │             rooms=u8(20),
-   │                   ^^^^^^ attributes hash: 6817314866882205962
+   │                   ^^^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2789,7 +2789,7 @@ note:
    ┌─ features/structs.fe:49:20
    │
 49 │             vacant=true
-   │                    ^^^^ attributes hash: 10866140763116710699
+   │                    ^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2809,7 +2809,7 @@ note:
 48 │ │             rooms=u8(20),
 49 │ │             vacant=true
 50 │ │         )
-   │ ╰─────────^ attributes hash: 14046053272972701107
+   │ ╰─────────^ attributes hash: 703374162461487425
    │  
    = ExpressionAttributes {
          typ: Struct(
@@ -2857,7 +2857,7 @@ note:
    ┌─ features/structs.fe:51:16
    │
 51 │         assert building.size == 500
-   │                ^^^^^^^^ attributes hash: 14046053272972701107
+   │                ^^^^^^^^ attributes hash: 703374162461487425
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -2905,7 +2905,7 @@ note:
    ┌─ features/structs.fe:51:16
    │
 51 │         assert building.size == 500
-   │                ^^^^^^^^^^^^^ attributes hash: 11934894478308934606
+   │                ^^^^^^^^^^^^^ attributes hash: 14631543492293849089
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2923,7 +2923,7 @@ note:
    ┌─ features/structs.fe:51:33
    │
 51 │         assert building.size == 500
-   │                                 ^^^ attributes hash: 16797824492585953824
+   │                                 ^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2939,7 +2939,7 @@ note:
    ┌─ features/structs.fe:51:16
    │
 51 │         assert building.size == 500
-   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2953,7 +2953,7 @@ note:
    ┌─ features/structs.fe:52:16
    │
 52 │         assert building.price == 300
-   │                ^^^^^^^^ attributes hash: 14046053272972701107
+   │                ^^^^^^^^ attributes hash: 703374162461487425
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -3001,7 +3001,7 @@ note:
    ┌─ features/structs.fe:52:16
    │
 52 │         assert building.price == 300
-   │                ^^^^^^^^^^^^^^ attributes hash: 11934894478308934606
+   │                ^^^^^^^^^^^^^^ attributes hash: 14631543492293849089
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3019,7 +3019,7 @@ note:
    ┌─ features/structs.fe:52:34
    │
 52 │         assert building.price == 300
-   │                                  ^^^ attributes hash: 16797824492585953824
+   │                                  ^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3035,7 +3035,7 @@ note:
    ┌─ features/structs.fe:52:16
    │
 52 │         assert building.price == 300
-   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3049,7 +3049,7 @@ note:
    ┌─ features/structs.fe:53:16
    │
 53 │         assert building.rooms == u8(20)
-   │                ^^^^^^^^ attributes hash: 14046053272972701107
+   │                ^^^^^^^^ attributes hash: 703374162461487425
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -3097,7 +3097,7 @@ note:
    ┌─ features/structs.fe:53:16
    │
 53 │         assert building.rooms == u8(20)
-   │                ^^^^^^^^^^^^^^ attributes hash: 16427982076128084429
+   │                ^^^^^^^^^^^^^^ attributes hash: 3648390854352794462
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3115,7 +3115,7 @@ note:
    ┌─ features/structs.fe:53:37
    │
 53 │         assert building.rooms == u8(20)
-   │                                     ^^ attributes hash: 6817314866882205962
+   │                                     ^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3131,7 +3131,7 @@ note:
    ┌─ features/structs.fe:53:34
    │
 53 │         assert building.rooms == u8(20)
-   │                                  ^^^^^^ attributes hash: 6817314866882205962
+   │                                  ^^^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3147,7 +3147,7 @@ note:
    ┌─ features/structs.fe:53:16
    │
 53 │         assert building.rooms == u8(20)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3161,7 +3161,7 @@ note:
    ┌─ features/structs.fe:54:16
    │
 54 │         assert building.vacant
-   │                ^^^^^^^^ attributes hash: 14046053272972701107
+   │                ^^^^^^^^ attributes hash: 703374162461487425
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -3209,7 +3209,7 @@ note:
    ┌─ features/structs.fe:54:16
    │
 54 │         assert building.vacant
-   │                ^^^^^^^^^^^^^^^ attributes hash: 11961557806308348850
+   │                ^^^^^^^^^^^^^^^ attributes hash: 9492448225675818972
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3223,7 +3223,7 @@ note:
    ┌─ features/structs.fe:56:9
    │
 56 │         building.vacant = false
-   │         ^^^^^^^^ attributes hash: 14046053272972701107
+   │         ^^^^^^^^ attributes hash: 703374162461487425
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -3271,7 +3271,7 @@ note:
    ┌─ features/structs.fe:56:9
    │
 56 │         building.vacant = false
-   │         ^^^^^^^^^^^^^^^ attributes hash: 11961557806308348850
+   │         ^^^^^^^^^^^^^^^ attributes hash: 9492448225675818972
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3285,7 +3285,7 @@ note:
    ┌─ features/structs.fe:56:27
    │
 56 │         building.vacant = false
-   │                           ^^^^^ attributes hash: 10866140763116710699
+   │                           ^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3299,7 +3299,7 @@ note:
    ┌─ features/structs.fe:57:9
    │
 57 │         building.price = 1
-   │         ^^^^^^^^ attributes hash: 14046053272972701107
+   │         ^^^^^^^^ attributes hash: 703374162461487425
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -3347,7 +3347,7 @@ note:
    ┌─ features/structs.fe:57:9
    │
 57 │         building.price = 1
-   │         ^^^^^^^^^^^^^^ attributes hash: 3617588353493611640
+   │         ^^^^^^^^^^^^^^ attributes hash: 13245336599501214748
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3363,7 +3363,7 @@ note:
    ┌─ features/structs.fe:57:26
    │
 57 │         building.price = 1
-   │                          ^ attributes hash: 16797824492585953824
+   │                          ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3379,7 +3379,7 @@ note:
    ┌─ features/structs.fe:58:9
    │
 58 │         building.size = 2
-   │         ^^^^^^^^ attributes hash: 14046053272972701107
+   │         ^^^^^^^^ attributes hash: 703374162461487425
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -3427,7 +3427,7 @@ note:
    ┌─ features/structs.fe:58:9
    │
 58 │         building.size = 2
-   │         ^^^^^^^^^^^^^ attributes hash: 3617588353493611640
+   │         ^^^^^^^^^^^^^ attributes hash: 13245336599501214748
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3443,7 +3443,7 @@ note:
    ┌─ features/structs.fe:58:25
    │
 58 │         building.size = 2
-   │                         ^ attributes hash: 16797824492585953824
+   │                         ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3459,7 +3459,7 @@ note:
    ┌─ features/structs.fe:59:9
    │
 59 │         building.rooms = u8(10)
-   │         ^^^^^^^^ attributes hash: 14046053272972701107
+   │         ^^^^^^^^ attributes hash: 703374162461487425
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -3507,7 +3507,7 @@ note:
    ┌─ features/structs.fe:59:9
    │
 59 │         building.rooms = u8(10)
-   │         ^^^^^^^^^^^^^^ attributes hash: 9840844041956468502
+   │         ^^^^^^^^^^^^^^ attributes hash: 6931766909497394788
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3523,7 +3523,7 @@ note:
    ┌─ features/structs.fe:59:29
    │
 59 │         building.rooms = u8(10)
-   │                             ^^ attributes hash: 6817314866882205962
+   │                             ^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3539,7 +3539,7 @@ note:
    ┌─ features/structs.fe:59:26
    │
 59 │         building.rooms = u8(10)
-   │                          ^^^^^^ attributes hash: 6817314866882205962
+   │                          ^^^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3555,7 +3555,7 @@ note:
    ┌─ features/structs.fe:61:16
    │
 61 │         assert building.vacant == false
-   │                ^^^^^^^^ attributes hash: 14046053272972701107
+   │                ^^^^^^^^ attributes hash: 703374162461487425
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -3603,7 +3603,7 @@ note:
    ┌─ features/structs.fe:61:16
    │
 61 │         assert building.vacant == false
-   │                ^^^^^^^^^^^^^^^ attributes hash: 16124721822221882146
+   │                ^^^^^^^^^^^^^^^ attributes hash: 793140603415107164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3619,7 +3619,7 @@ note:
    ┌─ features/structs.fe:61:35
    │
 61 │         assert building.vacant == false
-   │                                   ^^^^^ attributes hash: 10866140763116710699
+   │                                   ^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3633,7 +3633,7 @@ note:
    ┌─ features/structs.fe:61:16
    │
 61 │         assert building.vacant == false
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3647,7 +3647,7 @@ note:
    ┌─ features/structs.fe:62:16
    │
 62 │         assert building.price == 1
-   │                ^^^^^^^^ attributes hash: 14046053272972701107
+   │                ^^^^^^^^ attributes hash: 703374162461487425
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -3695,7 +3695,7 @@ note:
    ┌─ features/structs.fe:62:16
    │
 62 │         assert building.price == 1
-   │                ^^^^^^^^^^^^^^ attributes hash: 11934894478308934606
+   │                ^^^^^^^^^^^^^^ attributes hash: 14631543492293849089
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3713,7 +3713,7 @@ note:
    ┌─ features/structs.fe:62:34
    │
 62 │         assert building.price == 1
-   │                                  ^ attributes hash: 16797824492585953824
+   │                                  ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3729,7 +3729,7 @@ note:
    ┌─ features/structs.fe:62:16
    │
 62 │         assert building.price == 1
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3743,7 +3743,7 @@ note:
    ┌─ features/structs.fe:63:16
    │
 63 │         assert building.size == 2
-   │                ^^^^^^^^ attributes hash: 14046053272972701107
+   │                ^^^^^^^^ attributes hash: 703374162461487425
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -3791,7 +3791,7 @@ note:
    ┌─ features/structs.fe:63:16
    │
 63 │         assert building.size == 2
-   │                ^^^^^^^^^^^^^ attributes hash: 11934894478308934606
+   │                ^^^^^^^^^^^^^ attributes hash: 14631543492293849089
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3809,7 +3809,7 @@ note:
    ┌─ features/structs.fe:63:33
    │
 63 │         assert building.size == 2
-   │                                 ^ attributes hash: 16797824492585953824
+   │                                 ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3825,7 +3825,7 @@ note:
    ┌─ features/structs.fe:63:16
    │
 63 │         assert building.size == 2
-   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3839,7 +3839,7 @@ note:
    ┌─ features/structs.fe:64:16
    │
 64 │         assert building.rooms == u8(10)
-   │                ^^^^^^^^ attributes hash: 14046053272972701107
+   │                ^^^^^^^^ attributes hash: 703374162461487425
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -3887,7 +3887,7 @@ note:
    ┌─ features/structs.fe:64:16
    │
 64 │         assert building.rooms == u8(10)
-   │                ^^^^^^^^^^^^^^ attributes hash: 16427982076128084429
+   │                ^^^^^^^^^^^^^^ attributes hash: 3648390854352794462
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3905,7 +3905,7 @@ note:
    ┌─ features/structs.fe:64:37
    │
 64 │         assert building.rooms == u8(10)
-   │                                     ^^ attributes hash: 6817314866882205962
+   │                                     ^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3921,7 +3921,7 @@ note:
    ┌─ features/structs.fe:64:34
    │
 64 │         assert building.rooms == u8(10)
-   │                                  ^^^^^^ attributes hash: 6817314866882205962
+   │                                  ^^^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3937,7 +3937,7 @@ note:
    ┌─ features/structs.fe:64:16
    │
 64 │         assert building.rooms == u8(10)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -3951,7 +3951,7 @@ note:
    ┌─ features/structs.fe:65:16
    │
 65 │         return building.size
-   │                ^^^^^^^^ attributes hash: 14046053272972701107
+   │                ^^^^^^^^ attributes hash: 703374162461487425
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -3999,7 +3999,7 @@ note:
    ┌─ features/structs.fe:65:16
    │
 65 │         return building.size
-   │                ^^^^^^^^^^^^^ attributes hash: 11934894478308934606
+   │                ^^^^^^^^^^^^^ attributes hash: 14631543492293849089
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4017,7 +4017,7 @@ note:
    ┌─ features/structs.fe:69:19
    │
 69 │             price=300,
-   │                   ^^^ attributes hash: 16797824492585953824
+   │                   ^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4033,7 +4033,7 @@ note:
    ┌─ features/structs.fe:70:18
    │
 70 │             size=500,
-   │                  ^^^ attributes hash: 16797824492585953824
+   │                  ^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4049,7 +4049,7 @@ note:
    ┌─ features/structs.fe:71:22
    │
 71 │             rooms=u8(20),
-   │                      ^^ attributes hash: 6817314866882205962
+   │                      ^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4065,7 +4065,7 @@ note:
    ┌─ features/structs.fe:71:19
    │
 71 │             rooms=u8(20),
-   │                   ^^^^^^ attributes hash: 6817314866882205962
+   │                   ^^^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4081,7 +4081,7 @@ note:
    ┌─ features/structs.fe:72:20
    │
 72 │             vacant=true
-   │                    ^^^^ attributes hash: 10866140763116710699
+   │                    ^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4101,7 +4101,7 @@ note:
 71 │ │             rooms=u8(20),
 72 │ │             vacant=true
 73 │ │         )
-   │ ╰─────────^ attributes hash: 14046053272972701107
+   │ ╰─────────^ attributes hash: 703374162461487425
    │  
    = ExpressionAttributes {
          typ: Struct(
@@ -4149,7 +4149,7 @@ note:
    ┌─ features/structs.fe:74:16
    │
 74 │         return house.abi_encode()
-   │                ^^^^^ attributes hash: 14046053272972701107
+   │                ^^^^^ attributes hash: 703374162461487425
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -4197,7 +4197,7 @@ note:
    ┌─ features/structs.fe:74:16
    │
 74 │         return house.abi_encode()
-   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 4677320303864000111
+   │                ^^^^^^^^^^^^^^^^^^ attributes hash: 10111048966907061141
    │
    = ExpressionAttributes {
          typ: Array(
@@ -4216,7 +4216,7 @@ note:
    ┌─ features/structs.fe:78:19
    │
 78 │             price=300,
-   │                   ^^^ attributes hash: 16797824492585953824
+   │                   ^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4232,7 +4232,7 @@ note:
    ┌─ features/structs.fe:79:18
    │
 79 │             size=500,
-   │                  ^^^ attributes hash: 16797824492585953824
+   │                  ^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4248,7 +4248,7 @@ note:
    ┌─ features/structs.fe:80:22
    │
 80 │             rooms=u8(20),
-   │                      ^^ attributes hash: 6817314866882205962
+   │                      ^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4264,7 +4264,7 @@ note:
    ┌─ features/structs.fe:80:19
    │
 80 │             rooms=u8(20),
-   │                   ^^^^^^ attributes hash: 6817314866882205962
+   │                   ^^^^^^ attributes hash: 11226462071603862164
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4280,7 +4280,7 @@ note:
    ┌─ features/structs.fe:81:20
    │
 81 │             vacant=true
-   │                    ^^^^ attributes hash: 10866140763116710699
+   │                    ^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4300,7 +4300,7 @@ note:
 80 │ │             rooms=u8(20),
 81 │ │             vacant=true
 82 │ │         )
-   │ ╰─────────^ attributes hash: 14046053272972701107
+   │ ╰─────────^ attributes hash: 703374162461487425
    │  
    = ExpressionAttributes {
          typ: Struct(
@@ -4348,7 +4348,7 @@ note:
    ┌─ features/structs.fe:83:26
    │
 83 │         return keccak256(house.abi_encode())
-   │                          ^^^^^ attributes hash: 14046053272972701107
+   │                          ^^^^^ attributes hash: 703374162461487425
    │
    = ExpressionAttributes {
          typ: Struct(
@@ -4396,7 +4396,7 @@ note:
    ┌─ features/structs.fe:83:26
    │
 83 │         return keccak256(house.abi_encode())
-   │                          ^^^^^^^^^^^^^^^^^^ attributes hash: 4677320303864000111
+   │                          ^^^^^^^^^^^^^^^^^^ attributes hash: 10111048966907061141
    │
    = ExpressionAttributes {
          typ: Array(
@@ -4415,7 +4415,7 @@ note:
    ┌─ features/structs.fe:83:16
    │
 83 │         return keccak256(house.abi_encode())
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -4437,7 +4437,7 @@ note:
    · │
 41 │ │         assert self.my_house.rooms == u8(100)
 42 │ │         assert self.my_house.vacant
-   │ ╰───────────────────────────────────^ attributes hash: 5203286745277310538
+   │ ╰───────────────────────────────────^ attributes hash: 1788933452927359490
    │  
    = FunctionAttributes {
          is_public: true,
@@ -4458,7 +4458,7 @@ note:
    · │
 64 │ │         assert building.rooms == u8(10)
 65 │ │         return building.size
-   │ ╰────────────────────────────^ attributes hash: 2041944711719443549
+   │ ╰────────────────────────────^ attributes hash: 5931278080780939395
    │  
    = FunctionAttributes {
          is_public: true,
@@ -4481,7 +4481,7 @@ note:
    · │
 73 │ │         )
 74 │ │         return house.abi_encode()
-   │ ╰─────────────────────────────────^ attributes hash: 883193963732861781
+   │ ╰─────────────────────────────────^ attributes hash: 11353115777645092381
    │  
    = FunctionAttributes {
          is_public: true,
@@ -4507,7 +4507,7 @@ note:
    · │
 82 │ │         )
 83 │ │         return keccak256(house.abi_encode())
-   │ ╰────────────────────────────────────────────^ attributes hash: 14710381554205820514
+   │ ╰────────────────────────────────────────────^ attributes hash: 3741846221968384204
    │  
    = FunctionAttributes {
          is_public: true,
@@ -4529,7 +4529,7 @@ note:
 48 │ │             rooms=u8(20),
 49 │ │             vacant=true
 50 │ │         )
-   │ ╰─────────^ attributes hash: 8244172467750240729
+   │ ╰─────────^ attributes hash: 17736702484665416424
    │  
    = Struct(
          Struct {
@@ -4578,7 +4578,7 @@ note:
 71 │ │             rooms=u8(20),
 72 │ │             vacant=true
 73 │ │         )
-   │ ╰─────────^ attributes hash: 8244172467750240729
+   │ ╰─────────^ attributes hash: 17736702484665416424
    │  
    = Struct(
          Struct {
@@ -4627,7 +4627,7 @@ note:
 80 │ │             rooms=u8(20),
 81 │ │             vacant=true
 82 │ │         )
-   │ ╰─────────^ attributes hash: 8244172467750240729
+   │ ╰─────────^ attributes hash: 17736702484665416424
    │  
    = Struct(
          Struct {
@@ -4677,7 +4677,7 @@ note:
    · │
 82 │ │         )
 83 │ │         return keccak256(house.abi_encode())
-   │ ╰────────────────────────────────────────────^ attributes hash: 703003343063867377
+   │ ╰────────────────────────────────────────────^ attributes hash: 481783136194225333
    │  
    = ContractAttributes {
          public_functions: [
@@ -4769,7 +4769,7 @@ note:
    ┌─ features/structs.fe:11:25
    │
 11 │         self.my_house = House(
-   │                         ^^^^^ attributes hash: 3351743285761427611
+   │                         ^^^^^ attributes hash: 15233579221391698255
    │
    = TypeConstructor {
          typ: Struct(
@@ -4815,7 +4815,7 @@ note:
    ┌─ features/structs.fe:14:19
    │
 14 │             rooms=u8(5),
-   │                   ^^ attributes hash: 7477807812820783771
+   │                   ^^ attributes hash: 4311289215688173045
    │
    = TypeConstructor {
          typ: Base(
@@ -4829,7 +4829,7 @@ note:
    ┌─ features/structs.fe:19:39
    │
 19 │         assert self.my_house.rooms == u8(5)
-   │                                       ^^ attributes hash: 7477807812820783771
+   │                                       ^^ attributes hash: 4311289215688173045
    │
    = TypeConstructor {
          typ: Base(
@@ -4843,7 +4843,7 @@ note:
    ┌─ features/structs.fe:25:39
    │
 25 │         assert self.my_house.rooms == u8(5)
-   │                                       ^^ attributes hash: 7477807812820783771
+   │                                       ^^ attributes hash: 4311289215688173045
    │
    = TypeConstructor {
          typ: Base(
@@ -4857,7 +4857,7 @@ note:
    ┌─ features/structs.fe:31:39
    │
 31 │         assert self.my_house.rooms == u8(5)
-   │                                       ^^ attributes hash: 7477807812820783771
+   │                                       ^^ attributes hash: 4311289215688173045
    │
    = TypeConstructor {
          typ: Base(
@@ -4871,7 +4871,7 @@ note:
    ┌─ features/structs.fe:36:39
    │
 36 │         assert self.my_house.rooms == u8(5)
-   │                                       ^^ attributes hash: 7477807812820783771
+   │                                       ^^ attributes hash: 4311289215688173045
    │
    = TypeConstructor {
          typ: Base(
@@ -4885,7 +4885,7 @@ note:
    ┌─ features/structs.fe:38:31
    │
 38 │         self.my_house.rooms = u8(100)
-   │                               ^^ attributes hash: 7477807812820783771
+   │                               ^^ attributes hash: 4311289215688173045
    │
    = TypeConstructor {
          typ: Base(
@@ -4899,7 +4899,7 @@ note:
    ┌─ features/structs.fe:41:39
    │
 41 │         assert self.my_house.rooms == u8(100)
-   │                                       ^^ attributes hash: 7477807812820783771
+   │                                       ^^ attributes hash: 4311289215688173045
    │
    = TypeConstructor {
          typ: Base(
@@ -4913,7 +4913,7 @@ note:
    ┌─ features/structs.fe:45:27
    │
 45 │         building: House = House(
-   │                           ^^^^^ attributes hash: 3351743285761427611
+   │                           ^^^^^ attributes hash: 15233579221391698255
    │
    = TypeConstructor {
          typ: Struct(
@@ -4959,7 +4959,7 @@ note:
    ┌─ features/structs.fe:48:19
    │
 48 │             rooms=u8(20),
-   │                   ^^ attributes hash: 7477807812820783771
+   │                   ^^ attributes hash: 4311289215688173045
    │
    = TypeConstructor {
          typ: Base(
@@ -4973,7 +4973,7 @@ note:
    ┌─ features/structs.fe:53:34
    │
 53 │         assert building.rooms == u8(20)
-   │                                  ^^ attributes hash: 7477807812820783771
+   │                                  ^^ attributes hash: 4311289215688173045
    │
    = TypeConstructor {
          typ: Base(
@@ -4987,7 +4987,7 @@ note:
    ┌─ features/structs.fe:59:26
    │
 59 │         building.rooms = u8(10)
-   │                          ^^ attributes hash: 7477807812820783771
+   │                          ^^ attributes hash: 4311289215688173045
    │
    = TypeConstructor {
          typ: Base(
@@ -5001,7 +5001,7 @@ note:
    ┌─ features/structs.fe:64:34
    │
 64 │         assert building.rooms == u8(10)
-   │                                  ^^ attributes hash: 7477807812820783771
+   │                                  ^^ attributes hash: 4311289215688173045
    │
    = TypeConstructor {
          typ: Base(
@@ -5015,7 +5015,7 @@ note:
    ┌─ features/structs.fe:68:24
    │
 68 │         house: House = House(
-   │                        ^^^^^ attributes hash: 3351743285761427611
+   │                        ^^^^^ attributes hash: 15233579221391698255
    │
    = TypeConstructor {
          typ: Struct(
@@ -5061,7 +5061,7 @@ note:
    ┌─ features/structs.fe:71:19
    │
 71 │             rooms=u8(20),
-   │                   ^^ attributes hash: 7477807812820783771
+   │                   ^^ attributes hash: 4311289215688173045
    │
    = TypeConstructor {
          typ: Base(
@@ -5075,7 +5075,7 @@ note:
    ┌─ features/structs.fe:74:16
    │
 74 │         return house.abi_encode()
-   │                ^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │                ^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
    │
    = ValueAttribute
 
@@ -5083,7 +5083,7 @@ note:
    ┌─ features/structs.fe:77:24
    │
 77 │         house: House = House(
-   │                        ^^^^^ attributes hash: 3351743285761427611
+   │                        ^^^^^ attributes hash: 15233579221391698255
    │
    = TypeConstructor {
          typ: Struct(
@@ -5129,7 +5129,7 @@ note:
    ┌─ features/structs.fe:80:19
    │
 80 │             rooms=u8(20),
-   │                   ^^ attributes hash: 7477807812820783771
+   │                   ^^ attributes hash: 4311289215688173045
    │
    = TypeConstructor {
          typ: Base(
@@ -5143,7 +5143,7 @@ note:
    ┌─ features/structs.fe:83:16
    │
 83 │         return keccak256(house.abi_encode())
-   │                ^^^^^^^^^ attributes hash: 13646096770106105413
+   │                ^^^^^^^^^ attributes hash: 11888120106960716956
    │
    = BuiltinFunction {
          func: Keccak256,
@@ -5153,7 +5153,7 @@ note:
    ┌─ features/structs.fe:83:26
    │
 83 │         return keccak256(house.abi_encode())
-   │                          ^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │                          ^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
    │
    = ValueAttribute
 
@@ -5161,7 +5161,7 @@ note:
   ┌─ features/structs.fe:2:12
   │
 2 │     price: u256
-  │            ^^^^ attributes hash: 17942395924573474124
+  │            ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -5173,7 +5173,7 @@ note:
   ┌─ features/structs.fe:3:11
   │
 3 │     size: u256
-  │           ^^^^ attributes hash: 17942395924573474124
+  │           ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -5185,7 +5185,7 @@ note:
   ┌─ features/structs.fe:4:12
   │
 4 │     rooms: u8
-  │            ^^ attributes hash: 1872326638020472004
+  │            ^^ attributes hash: 3165084411644393001
   │
   = Base(
         Numeric(
@@ -5197,7 +5197,7 @@ note:
   ┌─ features/structs.fe:5:13
   │
 5 │     vacant: bool
-  │             ^^^^ attributes hash: 8311861578736502650
+  │             ^^^^ attributes hash: 5425972608982369985
   │
   = Base(
         Bool,
@@ -5207,7 +5207,7 @@ note:
    ┌─ features/structs.fe:44:22
    │
 44 │     pub def bar() -> u256:
-   │                      ^^^^ attributes hash: 17942395924573474124
+   │                      ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -5219,7 +5219,7 @@ note:
    ┌─ features/structs.fe:67:31
    │
 67 │     pub def encode_house() -> u8[128]:
-   │                               ^^ attributes hash: 1872326638020472004
+   │                               ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -5231,7 +5231,7 @@ note:
    ┌─ features/structs.fe:67:31
    │
 67 │     pub def encode_house() -> u8[128]:
-   │                               ^^^^^^^ attributes hash: 11606088786347470395
+   │                               ^^^^^^^ attributes hash: 7633995411143110431
    │
    = Array(
          Array {
@@ -5246,7 +5246,7 @@ note:
    ┌─ features/structs.fe:76:31
    │
 76 │     pub def hashed_house() -> u256:
-   │                               ^^^^ attributes hash: 17942395924573474124
+   │                               ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -5258,7 +5258,7 @@ note:
   ┌─ features/structs.fe:8:15
   │
 8 │     my_house: House
-  │               ^^^^^ attributes hash: 17457972932280273688
+  │               ^^^^^ attributes hash: 17736702484665416424
   │
   = Struct(
         Struct {
@@ -5302,7 +5302,7 @@ note:
    ┌─ features/structs.fe:45:19
    │
 45 │         building: House = House(
-   │                   ^^^^^ attributes hash: 17457972932280273688
+   │                   ^^^^^ attributes hash: 17736702484665416424
    │
    = Struct(
          Struct {
@@ -5346,7 +5346,7 @@ note:
    ┌─ features/structs.fe:68:16
    │
 68 │         house: House = House(
-   │                ^^^^^ attributes hash: 17457972932280273688
+   │                ^^^^^ attributes hash: 17736702484665416424
    │
    = Struct(
          Struct {
@@ -5390,7 +5390,7 @@ note:
    ┌─ features/structs.fe:77:16
    │
 77 │         house: House = House(
-   │                ^^^^^ attributes hash: 17457972932280273688
+   │                ^^^^^ attributes hash: 17736702484665416424
    │
    = Struct(
          Struct {
