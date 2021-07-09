@@ -1,4 +1,4 @@
-use crate::constants::numeric_min_max;
+use crate::constants::{numeric_min_max, PANIC_DIV_OR_MOD_BY_ZERO, PANIC_OVER_OR_UNDERFLOW};
 use crate::names;
 use fe_analyzer::namespace::types::Integer;
 use yultsur::*;
@@ -109,10 +109,22 @@ pub fn all() -> Vec<yul::Statement> {
     .concat()
 }
 
+fn revert_with_over_or_under_flow() -> yul::Statement {
+    statement!(revert_with_panic([
+        literal_expression! {(PANIC_OVER_OR_UNDERFLOW)}
+    ]))
+}
+
+fn revert_with_div_or_mod_by_zero() -> yul::Statement {
+    statement!(revert_with_panic([
+        literal_expression! {(PANIC_DIV_OR_MOD_BY_ZERO)}
+    ]))
+}
+
 fn checked_mod_unsigned() -> yul::Statement {
     function_definition! {
         function checked_mod_unsigned(val1, val2) -> result {
-            (if (iszero(val2)) { (revert(0, 0)) })
+            (if (iszero(val2)) { [revert_with_div_or_mod_by_zero()] })
             (result := mod(val1, val2))
         }
     }
@@ -121,7 +133,7 @@ fn checked_mod_unsigned() -> yul::Statement {
 fn checked_mod_signed() -> yul::Statement {
     function_definition! {
         function checked_mod_signed(val1, val2) -> result {
-            (if (iszero(val2)) { (revert(0, 0)) })
+            (if (iszero(val2)) { [revert_with_div_or_mod_by_zero()] })
             (result := smod(val1, val2))
         }
     }
@@ -137,7 +149,7 @@ fn checked_mul_unsigned(size: Integer) -> yul::Statement {
     function_definition! {
         function [fn_name](val1, val2) -> product {
             // overflow, if val1 != 0 and val2 > (max_value / val1)
-            (if (and((iszero((iszero(val1)))), (gt(val2, (div([max_value], val1)))))) { (revert(0, 0)) })
+            (if (and((iszero((iszero(val1)))), (gt(val2, (div([max_value], val1)))))) { [revert_with_over_or_under_flow()] })
             (product := mul(val1, val2))
         }
     }
@@ -153,13 +165,13 @@ fn checked_mul_signed(size: Integer) -> yul::Statement {
     function_definition! {
         function [fn_name](val1, val2) -> product {
             // overflow, if val1 > 0, val2 > 0 and val1 > (max_value / val2)
-            (if (and((and((sgt(val1, 0)), (sgt(val2, 0)))), (gt(val1, (div([max_value.clone()], val2)))))) { (revert(0, 0)) })
+            (if (and((and((sgt(val1, 0)), (sgt(val2, 0)))), (gt(val1, (div([max_value.clone()], val2)))))) { [revert_with_over_or_under_flow()] })
             // underflow, if val1 > 0, val2 < 0 and val2 < (min_value / val1)
-            (if (and((and((sgt(val1, 0)), (slt(val2, 0)))), (slt(val2, (sdiv([min_value.clone()], val1)))))) { (revert(0, 0)) })
+            (if (and((and((sgt(val1, 0)), (slt(val2, 0)))), (slt(val2, (sdiv([min_value.clone()], val1)))))) { [revert_with_over_or_under_flow()] })
             // underflow, if val1 < 0, val2 > 0 and val1 < (min_value / val2)
-            (if (and((and((slt(val1, 0)), (sgt(val2, 0)))), (slt(val1, (sdiv([min_value], val2)))))) { (revert(0, 0)) })
+            (if (and((and((slt(val1, 0)), (sgt(val2, 0)))), (slt(val1, (sdiv([min_value], val2)))))) { [revert_with_over_or_under_flow()] })
             // overflow, if val1 < 0, val2 < 0 and val1 < (max_value / val2)
-            (if (and((and((slt(val1, 0)), (slt(val2, 0)))), (slt(val1, (sdiv([max_value], val2)))))) { (revert(0, 0)) })
+            (if (and((and((slt(val1, 0)), (slt(val2, 0)))), (slt(val1, (sdiv([max_value], val2)))))) { [revert_with_over_or_under_flow()] })
             (product := mul(val1, val2))
         }
     }
@@ -175,7 +187,7 @@ fn checked_add_unsigned(size: Integer) -> yul::Statement {
     function_definition! {
         function [fn_name](val1, val2) -> sum {
             // overflow, if val1 > (max_value - val2)
-            (if (gt(val1, (sub([max_value], val2)))) { (revert(0, 0)) })
+            (if (gt(val1, (sub([max_value], val2)))) { [revert_with_over_or_under_flow()] })
             (sum := add(val1, val2))
         }
     }
@@ -190,9 +202,9 @@ fn checked_add_signed(size: Integer) -> yul::Statement {
     function_definition! {
         function [fn_name](val1, val2) -> sum {
             // overflow, if val1 >= 0 and val2 > (max_value - val1)
-            (if (and((iszero((slt(val1, 0)))), (sgt(val2, (sub([max_value], val1)))))) { (revert(0, 0)) })
+            (if (and((iszero((slt(val1, 0)))), (sgt(val2, (sub([max_value], val1)))))) { [revert_with_over_or_under_flow()] })
             // underflow, if val1 < 0 and val2 < (min_val - val1)
-            (if (and((slt(val1, 0)), (slt(val2, (sub([min_value], val1)))))) { (revert(0, 0)) })
+            (if (and((slt(val1, 0)), (slt(val2, (sub([min_value], val1)))))) { [revert_with_over_or_under_flow()] })
             (sum := add(val1, val2))
         }
     }
@@ -201,7 +213,7 @@ fn checked_add_signed(size: Integer) -> yul::Statement {
 fn checked_div_unsigned() -> yul::Statement {
     function_definition! {
         function checked_div_unsigned(val1, val2) -> result {
-            (if (iszero(val2)) { (revert(0, 0)) })
+            (if (iszero(val2)) { [revert_with_div_or_mod_by_zero()] })
             (result := div(val1, val2))
         }
     }
@@ -215,10 +227,10 @@ fn checked_div_signed(size: Integer) -> yul::Statement {
     let fn_name = names::checked_div(&size);
     function_definition! {
         function [fn_name](val1, val2) -> result {
-            (if (iszero(val2)) { (revert(0, 0)) })
+            (if (iszero(val2)) { [revert_with_div_or_mod_by_zero()] })
 
             // overflow for min_val / -1
-            (if (and( (eq(val1, [min_value])), (eq(val2, (sub(0, 1))))) ) { (revert(0, 0)) })
+            (if (and( (eq(val1, [min_value])), (eq(val2, (sub(0, 1))))) ) { [revert_with_over_or_under_flow()] })
             (result := sdiv(val1, val2))
         }
     }
@@ -228,7 +240,7 @@ fn checked_sub_unsigned() -> yul::Statement {
     function_definition! {
         function checked_sub_unsigned(val1, val2) -> diff {
             // underflow, if val2  > val1
-            (if (lt(val1, val2)) { (revert(0, 0)) })
+            (if (lt(val1, val2)) { [revert_with_over_or_under_flow()] })
             (diff := sub(val1, val2))
         }
     }
@@ -244,9 +256,9 @@ fn checked_sub_signed(size: Integer) -> yul::Statement {
     function_definition! {
         function [fn_name](val1, val2) -> diff {
             // underflow, if val2 >= 0 and val1 < (min_value + val2)
-            (if (and((iszero((slt(val2, 0)))), (slt(val1, (add([min_value], val2)))))) { (revert(0, 0)) })
+            (if (and((iszero((slt(val2, 0)))), (slt(val1, (add([min_value], val2)))))) { [revert_with_over_or_under_flow()] })
             // overflow, if val2 < 0 and val1 > (max_value + val2)
-            (if (and((slt(val2, 0)), (sgt(val1, (add([max_value], val2)))))) { (revert(0, 0)) })
+            (if (and((slt(val2, 0)), (sgt(val1, (add([max_value], val2)))))) { [revert_with_over_or_under_flow()] })
             (diff := sub(val1, val2))
         }
     }
@@ -290,7 +302,7 @@ fn checked_exp_helper() -> yul::Statement {
             (for {} (gt(exponent, 1)) {}
             {
                 // overflow check for base * base
-                (if (gt(base, (div(max, base)))) { (revert(0, 0)) })
+                (if (gt(base, (div(max, base)))) { [revert_with_over_or_under_flow()] })
                 (if (and(exponent, 1)) {
                     // No checks for power := mul(power, base) needed, because the check
                     // for base * base above is sufficient, since:
@@ -343,12 +355,12 @@ fn checked_exp_signed() -> yul::Statement {
                 switch (sgt(base, 0))
                 (case 1 {
                     (if (gt(base, (div(max, base)))) {
-                        (revert(0, 0))
+                        [revert_with_over_or_under_flow()]
                     })
                 })
                 (case 0 {
                     (if (slt(base, (sdiv(max, base)))) {
-                        (revert(0, 0))
+                        [revert_with_over_or_under_flow()]
                     })
                 })
             }])
@@ -359,8 +371,8 @@ fn checked_exp_signed() -> yul::Statement {
             (exponent := shr(1, exponent))
             // // Below this point, base is always positive.
             ([checked_exp_helper_call]) // power = 1, base = 16 which is wrong
-            (if (and((sgt(power, 0)), (gt(power, (div(max, base)))))) { (revert(0, 0)) })
-            (if (and((slt(power, 0)), (slt(power, (sdiv(min, base)))))) { (revert(0, 0)) })
+            (if (and((sgt(power, 0)), (gt(power, (div(max, base)))))) { [revert_with_over_or_under_flow()] })
+            (if (and((slt(power, 0)), (slt(power, (sdiv(min, base)))))) { [revert_with_over_or_under_flow()] })
             (power := (mul(power, base)))
         }
     }
@@ -397,28 +409,28 @@ fn checked_exp_unsigned() -> yul::Statement {
                 })
                 (case 2 {
                     (if (gt(exponent, 255)) {
-                        (revert(0, 0))
+                        [revert_with_over_or_under_flow()]
                     })
                     (power := (exp(2, exponent)))
                     (if (gt(power, max)) {
-                        (revert(0, 0))
+                        [revert_with_over_or_under_flow()]
                     })
                     (leave)
                 })
             }])
-            (if (and((sgt(power, 0)), (gt(power, (div(max, base)))))) { (revert(0, 0)) })
+            (if (and((sgt(power, 0)), (gt(power, (div(max, base)))))) { [revert_with_over_or_under_flow()] })
 
             (if (or((and((lt(base, 11)), (lt(exponent, 78)))), (and((lt(base, 307)), (lt(exponent, 32)))))) {
                 (power := (exp(base, exponent)))
                 (if (gt(power, max)) {
-                    (revert(0, 0))
+                    [revert_with_over_or_under_flow()]
                 })
                 (leave)
             })
 
             ([checked_exp_helper_call])
             (if (gt(power, (div(max, base)))) {
-                (revert(0, 0))
+                [revert_with_over_or_under_flow()]
             })
             (power := (mul(power, base)))
         }

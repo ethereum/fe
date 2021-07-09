@@ -8,44 +8,67 @@ use fe_compiler_test_utils::*;
 
 #[rstest(
     method,
+    params,
     reason,
-    case("revert_me", encode_error_reason("Not enough Ether provided.")),
+    case(
+        "revert_bare",
+        &[],
+        &[]
+    ),
+    case("revert_me", &[], &encode_error_reason("Not enough Ether provided.")),
     case(
         "revert_with_long_string",
-        encode_error_reason("A muuuuuch longer reason string that consumes multiple words")
+        &[],
+        &encode_error_reason("A muuuuuch longer reason string that consumes multiple words")
     ),
-    case("revert_with_empty_string", encode_error_reason("")),
+    case("revert_with_empty_string",&[], &encode_error_reason("")),
     case(
         "revert_with_string_error",
-        encode_error("StringError(string)", &[string_token("Not enough Ether provided.")])
+        &[],
+        &encode_revert("StringError(string)", &[string_token("Not enough Ether provided.")])
     ),
     case(
         "revert_with_u256_error",
-        encode_error("U256Error(uint256)", &[uint_token(100)])
+        &[],
+        &encode_revert("U256Error(uint256)", &[uint_token(100)])
     ),
     case(
         "revert_with_i256_error",
-        encode_error("I256Error(int256)", &[int_token(-100)])
+        &[],
+        &encode_revert("I256Error(int256)", &[int_token(-100)])
     ),
     case(
         "revert_with_u8_error",
-        encode_error("U8Error(uint8)", &[uint_token(100)])
+        &[],
+        &encode_revert("U8Error(uint8)", &[uint_token(100)])
     ),
     case(
         "revert_with_two_u256_error",
-        encode_error("TwoU256Error(uint256,uint256)", &[uint_token(100), uint_token(100)])
+        &[],
+        &encode_revert("TwoU256Error(uint256,uint256)", &[uint_token(100), uint_token(100)])
     ),
     case(
         "revert_with_struct_error",
-        encode_error("StructError((uint256,int256,bool))", &[uint_token(100), int_token(-100), bool_token(true)])
+        &[],
+        &encode_revert("StructError((uint256,int256,bool))", &[uint_token(100), int_token(-100), bool_token(true)])
+    ),
+    case(
+        "panic_divide_by_zero",
+        &[uint_token(1), uint_token(0)],
+        &encode_revert("Panic(uint256)", &[uint_token(0x12)])
+    ),
+    case(
+        "panic_assert",
+        &[],
+        &encode_revert("Panic(uint256)", &[uint_token(0x01)])
     ),
 )]
-fn test_revert_errors(method: &str, reason: Vec<u8>) {
+fn test_revert_errors(method: &str, params: &[ethabi::Token], reason: &[u8]) {
     with_executor(&|mut executor| {
         let harness =
             deploy_solidity_contract(&mut executor, "solidity/revert_test.sol", "Foo", &[]);
 
-        let exit = harness.capture_call(&mut executor, method, &[]);
+        let exit = harness.capture_call(&mut executor, method, params);
 
         validate_revert(exit, &reason);
     })

@@ -109,11 +109,9 @@ impl ContractHarness {
         executor: &mut Executor,
         name: &str,
         input: &[ethabi::Token],
+        revert_data: &[u8],
     ) {
-        match self.capture_call(executor, name, input) {
-            evm::Capture::Exit((ExitReason::Revert(_), _)) => {}
-            _ => panic!("function did not revert"),
-        }
+        validate_revert(self.capture_call(executor, name, input), revert_data)
     }
 
     // Executor must be passed by value to get emitted events.
@@ -204,6 +202,18 @@ pub fn validate_revert(
     };
 }
 
+pub fn encoded_panic_assert() -> Vec<u8> {
+    encode_revert("Panic(uint256)", &[uint_token(0x01)])
+}
+
+pub fn encoded_over_or_underflow() -> Vec<u8> {
+    encode_revert("Panic(uint256)", &[uint_token(0x11)])
+}
+
+pub fn encoded_div_or_mod_by_zero() -> Vec<u8> {
+    encode_revert("Panic(uint256)", &[uint_token(0x12)])
+}
+
 #[allow(dead_code)]
 #[cfg(feature = "solc-backend")]
 pub fn deploy_contract(
@@ -257,11 +267,11 @@ pub fn deploy_solidity_contract(
 
 #[allow(dead_code)]
 pub fn encode_error_reason(reason: &str) -> Vec<u8> {
-    encode_error("Error(string)", &[string_token(reason)])
+    encode_revert("Error(string)", &[string_token(reason)])
 }
 
 #[allow(dead_code)]
-pub fn encode_error(selector: &str, input: &[ethabi::Token]) -> Vec<u8> {
+pub fn encode_revert(selector: &str, input: &[ethabi::Token]) -> Vec<u8> {
     let mut data = String::new();
     for param in input {
         let encoded = match param {

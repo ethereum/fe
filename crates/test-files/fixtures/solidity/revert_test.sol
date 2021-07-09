@@ -14,6 +14,10 @@ error StructError(Bag data);
 
 contract Foo {
 
+  function revert_bare() public pure {
+    revert();
+  }
+
   function revert_me() public pure {
     revert("Not enough Ether provided.");
   }
@@ -48,6 +52,14 @@ contract Foo {
 
   function revert_with_struct_error() public pure {
     revert StructError(Bag ({ val1: 100, val2: -100, val3: true }));
+  }
+
+  function panic_divide_by_zero(uint256 val1, uint256 val2) public pure {
+    val1 / val2;
+  }
+
+  function panic_assert() public pure {
+    assert(false);
   }
 
 }
