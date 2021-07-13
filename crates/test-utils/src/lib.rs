@@ -60,17 +60,27 @@ impl ContractHarness {
         name: &str,
         input: &[ethabi::Token],
     ) -> evm::Capture<(evm::ExitReason, Vec<u8>), std::convert::Infallible> {
-        let function = &self.abi.functions[name][0];
+        let input = self.build_calldata(name, input);
+        self.capture_call_raw_bytes(executor, input)
+    }
 
+    pub fn build_calldata(&self, name: &str, input: &[ethabi::Token]) -> Vec<u8> {
+        let function = &self.abi.functions[name][0];
+        function
+            .encode_input(input)
+            .unwrap_or_else(|_| panic!("Unable to encode input for {}", name))
+    }
+
+    pub fn capture_call_raw_bytes(
+        &self,
+        executor: &mut Executor,
+        input: Vec<u8>,
+    ) -> evm::Capture<(evm::ExitReason, Vec<u8>), std::convert::Infallible> {
         let context = evm::Context {
             address: self.address,
             caller: self.caller,
             apparent_value: self.value,
         };
-
-        let input = function
-            .encode_input(input)
-            .unwrap_or_else(|_| panic!("Unable to encode input for {}", name));
 
         executor.call(self.address, None, input, None, false, context)
     }
@@ -112,6 +122,10 @@ impl ContractHarness {
         revert_data: &[u8],
     ) {
         validate_revert(self.capture_call(executor, name, input), revert_data)
+    }
+
+    pub fn test_call_reverts(&self, executor: &mut Executor, input: Vec<u8>, revert_data: &[u8]) {
+        validate_revert(self.capture_call_raw_bytes(executor, input), revert_data)
     }
 
     // Executor must be passed by value to get emitted events.
@@ -212,6 +226,10 @@ pub fn encoded_over_or_underflow() -> Vec<u8> {
 
 pub fn encoded_div_or_mod_by_zero() -> Vec<u8> {
     encode_revert("Panic(uint256)", &[uint_token(0x12)])
+}
+
+pub fn encoded_invalid_abi_data() -> Vec<u8> {
+    encode_revert("Panic(uint256)", &[uint_token(0x99)])
 }
 
 #[allow(dead_code)]
@@ -616,8 +634,13 @@ pub fn bytes_token(s: &str) -> ethabi::Token {
 }
 
 #[allow(dead_code)]
-pub fn u256_array_token(v: &[u64]) -> ethabi::Token {
+pub fn uint_array_token(v: &[u64]) -> ethabi::Token {
     ethabi::Token::FixedArray(v.iter().map(|n| uint_token(*n)).collect())
+}
+
+#[allow(dead_code)]
+pub fn int_array_token(v: &[i64]) -> ethabi::Token {
+    ethabi::Token::FixedArray(v.iter().map(|n| int_token(*n)).collect())
 }
 
 #[allow(dead_code)]

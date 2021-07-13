@@ -4,6 +4,17 @@ use crate::utils::ceil_32;
 use fe_analyzer::namespace::types::{AbiDecodeLocation, AbiEncoding, AbiType};
 use yultsur::*;
 
+/// The size of an encoding known at compile-time.
+///
+/// The expressions should only be given literal values.
+pub enum EncodingSize {
+    Exact(yul::Expression),
+    Bounded {
+        min: yul::Expression,
+        max: yul::Expression,
+    },
+}
+
 /// Returns an expression that encodes the given values and returns a pointer to
 /// the encoding.
 pub fn encode<T: AbiEncoding>(types: &[T], vals: Vec<yul::Expression>) -> yul::Expression {
@@ -12,7 +23,9 @@ pub fn encode<T: AbiEncoding>(types: &[T], vals: Vec<yul::Expression>) -> yul::E
 }
 
 /// Returns an expression that gives size of the encoded values.
-pub fn encode_size<T: AbiEncoding>(types: &[T], vals: Vec<yul::Expression>) -> yul::Expression {
+///
+/// It will sum up the sizes known at compile-time with the sizes known during runtime.
+pub fn encoding_size<T: AbiEncoding>(types: &[T], vals: Vec<yul::Expression>) -> yul::Expression {
     let mut head_size = 0;
     let mut known_data_size = 0;
     let mut unknown_data_size = vec![];
@@ -36,9 +49,41 @@ pub fn encode_size<T: AbiEncoding>(types: &[T], vals: Vec<yul::Expression>) -> y
     expression! { add([static_size], [data_operations::sum(unknown_data_size)]) }
 }
 
-/// Returns an expression that gives the size of the encoding head.
-pub fn encode_head_size<T: AbiEncoding>(types: &[T]) -> yul::Expression {
+/// Returns an expression that gives the size of the encoding's head.
+pub fn encoding_head_size<T: AbiEncoding>(types: &[T]) -> yul::Expression {
     literal_expression! { (types.iter().map(|typ| typ.abi_type().head_size()).sum::<usize>()) }
+}
+
+/// Returns the known-at-compile-time encoding size.
+pub fn encoding_known_size<T: AbiEncoding>(types: &[T]) -> EncodingSize {
+    let (min, max) = types.iter().fold((0, 0), |(mut min, mut max), typ| {
+        min += typ.abi_type().head_size();
+        max += typ.abi_type().head_size();
+
+        match typ.abi_type() {
+            AbiType::String { max_size } => {
+                min += 32;
+                max += ceil_32(max_size) + 32;
+            }
+            AbiType::Bytes { size } => {
+                let size = ceil_32(size) + 32;
+                min += size;
+                max += size;
+            }
+            _ => {}
+        }
+
+        (min, max)
+    });
+
+    if min == max {
+        EncodingSize::Exact(literal_expression! { (min) })
+    } else {
+        EncodingSize::Bounded {
+            min: literal_expression! { (min) },
+            max: literal_expression! { (max) },
+        }
+    }
 }
 
 /// Decode a segment of memory and return each decoded component as separate values.
@@ -54,30 +99,13 @@ pub fn decode_data<T: AbiEncoding>(
 
 /// Decode a single component.
 pub fn decode_component(
-    typ: AbiType,
+    typ: &AbiType,
     head_start: yul::Expression,
     offset: yul::Expression,
     location: AbiDecodeLocation,
 ) -> yul::Expression {
     let func_name = abi_names::decode_component(typ, location);
     expression! { [func_name]([head_start], [offset]) }
-}
-
-/// Pack each value into a newly allocated segment of memory.
-pub fn pack(
-    ptr: yul::Expression,
-    array_size: yul::Expression,
-    inner_data_size: yul::Expression,
-    location: AbiDecodeLocation,
-) -> yul::Expression {
-    match location {
-        AbiDecodeLocation::Memory => expression! {
-            abi_pack_mem([ptr], [array_size], [inner_data_size])
-        },
-        AbiDecodeLocation::Calldata => expression! {
-            abi_pack_calldata([ptr], [array_size], [inner_data_size])
-        },
-    }
 }
 
 /// Unpack each value into a newly allocated segment of memory.

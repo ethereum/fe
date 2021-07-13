@@ -75,12 +75,23 @@ test_yulgen! {
     abi_functions::decode_data(&[Base::Bool, Base::Address], AbiDecodeLocation::Memory)
 }
 test_yulgen! {
+    abi_decode_data_u256_bytes_string_bool_address_bytes_calldata_function,
+    abi_functions::decode_data(&[
+        FixedSize::u256(),
+        FixedSize::Array(Array { inner: Base::Numeric(Integer::U8), size: 100 }),
+        FixedSize::String(FeString { max_size: 42 }),
+        FixedSize::bool(),
+        FixedSize::address(),
+        FixedSize::Array(Array { inner: Base::Numeric(Integer::U8), size: 100 }),
+    ], AbiDecodeLocation::Calldata)
+}
+test_yulgen! {
     abi_decode_component_uint256_mem_function,
-    abi_functions::decode_component_uint(256, AbiDecodeLocation::Memory)
+    abi_functions::decode_component_uint(32, AbiDecodeLocation::Memory)
 }
 test_yulgen! {
     abi_decode_component_int16_calldata_function,
-    abi_functions::decode_component_int(16, AbiDecodeLocation::Calldata)
+    abi_functions::decode_component_int(2, AbiDecodeLocation::Calldata)
 }
 test_yulgen! {
     abi_decode_component_bool_calldata_function,
@@ -92,15 +103,7 @@ test_yulgen! {
 }
 test_yulgen! {
     abi_decode_component_static_array_address_calldata_function,
-    abi_functions::decode_component_static_array(AbiType::Address, 42, AbiDecodeLocation::Calldata)
-}
-test_yulgen! {
-    abi_pack_calldata_function,
-    abi_functions::pack(AbiDecodeLocation::Calldata)
-}
-test_yulgen! {
-    abi_pack_mem_function,
-    abi_functions::pack(AbiDecodeLocation::Memory)
+    abi_functions::decode_component_static_array(&AbiType::Address, 42, AbiDecodeLocation::Calldata)
 }
 test_yulgen! {
     abi_decode_component_tuple_u256_address_mem_function,
@@ -186,7 +189,7 @@ test_yulgen! {
 }
 test_yulgen! {
     encode_size_u256_operation,
-    abi_operations::encode_size(&[U256], vec![expression! { 42 }])
+    abi_operations::encoding_size(&[U256], vec![expression! { 42 }])
 }
 test_yulgen! {
     decode_string_calldata_operation,

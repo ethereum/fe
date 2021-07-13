@@ -18,18 +18,18 @@ pub fn decode_data<T: AbiEncoding>(_types: &[T], location: AbiDecodeLocation) ->
     identifier! { (name) }
 }
 
-pub fn decode_component(typ: AbiType, location: AbiDecodeLocation) -> yul::Identifier {
+pub fn decode_component(typ: &AbiType, location: AbiDecodeLocation) -> yul::Identifier {
     match typ {
         AbiType::Address => decode_component_address(location),
         AbiType::Bool => decode_component_bool(location),
-        AbiType::Uint { size } => decode_component_uint(size, location),
-        AbiType::Int { size } => decode_component_int(size, location),
+        AbiType::Uint { size } => decode_component_uint(*size, location),
+        AbiType::Int { size } => decode_component_int(*size, location),
         AbiType::StaticArray { inner, size } => {
-            decode_component_static_array(&inner, size, location)
+            decode_component_static_array(inner, *size, location)
         }
-        AbiType::Tuple { components: elems } => decode_component_tuple(&elems, location),
-        AbiType::String { max_size } => decode_component_string(max_size, location),
-        AbiType::Bytes { size } => decode_component_bytes(size, location),
+        AbiType::Tuple { components: elems } => decode_component_tuple(elems, location),
+        AbiType::String { max_size } => decode_component_string(*max_size, location),
+        AbiType::Bytes { size } => decode_component_bytes(*size, location),
     }
 }
 

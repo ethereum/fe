@@ -38,7 +38,7 @@ pub fn calls(contract: Contract) -> Vec<yul::Statement> {
             let encoding_operation =
                 abi_operations::encode(&function.param_types(), param_exprs.clone());
             // the size of the encoded data
-            let encoding_size = abi_operations::encode_size(&function.param_types(), param_exprs);
+            let encoding_size = abi_operations::encoding_size(&function.param_types(), param_exprs);
 
             if function.return_type.is_unit() {
                 // there is no return data to handle
@@ -53,8 +53,8 @@ pub fn calls(contract: Contract) -> Vec<yul::Statement> {
             } else {
                 let decoding_operation = abi_operations::decode_data(
                     &[function.return_type],
-                    identifier_expression! { outstart },
-                    identifier_expression! { outstart },
+                    expression! { outstart },
+                    expression! { add(outstart, outsize) },
                     AbiDecodeLocation::Memory,
                 );
                 // return data must be captured and decoded

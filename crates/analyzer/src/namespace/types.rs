@@ -70,6 +70,20 @@ impl AbiType {
             _ => todo!("recursive encoding"),
         }
     }
+
+    /// `true` if the encoded value is stored in the data section, `false` if it is not.
+    pub fn has_data(&self) -> bool {
+        match self {
+            AbiType::Uint { .. } => false,
+            AbiType::StaticArray { .. } => false,
+            AbiType::Tuple { .. } => false,
+            AbiType::Int { .. } => false,
+            AbiType::Bool => false,
+            AbiType::Address => false,
+            AbiType::String { .. } => true,
+            AbiType::Bytes { .. } => true,
+        }
+    }
 }
 
 /// Data can be decoded from memory or calldata.
@@ -379,6 +393,21 @@ impl FixedSize {
     /// Creates an instance of bool.
     pub fn bool() -> Self {
         FixedSize::Base(Base::Bool)
+    }
+
+    /// Creates an instance of address.
+    pub fn address() -> Self {
+        FixedSize::Base(Base::Address)
+    }
+
+    /// Creates an instance of u256.
+    pub fn u256() -> Self {
+        FixedSize::Base(Base::Numeric(Integer::U256))
+    }
+
+    /// Creates an instance of u8.
+    pub fn u8() -> Self {
+        FixedSize::Base(Base::Numeric(Integer::U8))
     }
 
     /// Creates an instance of `()`.
