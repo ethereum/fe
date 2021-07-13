@@ -1,3 +1,4 @@
+use crate::constants::PANIC_INVALID_ABI_DATA;
 use crate::names::abi as abi_names;
 use crate::operations::abi as abi_operations;
 use crate::operations::abi::EncodingSize;
@@ -126,7 +127,7 @@ pub fn decode_data<T: AbiEncoding>(types: &[T], location: AbiDecodeLocation) -> 
         EncodingSize::Exact(size) => statements! {
             (let encoding_size := sub(data_end, head_start))
             (if (iszero((eq(encoding_size, [size])))) {
-                (revert(0, 0))
+                [revert_with_invalid_abi_data()]
             })
         },
         EncodingSize::Bounded { min, max } => statements! {
@@ -135,7 +136,7 @@ pub fn decode_data<T: AbiEncoding>(types: &[T], location: AbiDecodeLocation) -> 
                 (lt(encoding_size, [min])),
                 (gt(encoding_size, [max]))
             )) {
-                (revert(0, 0))
+                [revert_with_invalid_abi_data()]
             })
         },
     };
@@ -204,7 +205,7 @@ pub fn decode_data<T: AbiEncoding>(types: &[T], location: AbiDecodeLocation) -> 
             .zip(end_offset_exprs)
             .map(|(start_offset, end_offset)| {
                 statement! {
-                    if (iszero((eq([start_offset], [end_offset])))) { (revert(0, 0)) }
+                    if (iszero((eq([start_offset], [end_offset])))) { [revert_with_invalid_abi_data()] }
                 }
             })
             .collect()
@@ -245,7 +246,7 @@ pub fn decode_component(typ: &AbiType, location: AbiDecodeLocation) -> yul::Stat
 pub fn decode_component_uint(size: usize, location: AbiDecodeLocation) -> yul::Statement {
     let func_name = abi_names::decode_component_uint(size, location);
     let decode_expr = load_word(expression! { ptr }, location);
-    let check_padding = abi_operations::check_left_padding(
+    let check_padding = check_left_padding(
         literal_expression! { ((32 - size) * 8) },
         expression! { return_val },
     );
@@ -262,7 +263,7 @@ pub fn decode_component_uint(size: usize, location: AbiDecodeLocation) -> yul::S
 pub fn decode_component_int(size: usize, location: AbiDecodeLocation) -> yul::Statement {
     let func_name = abi_names::decode_component_int(size, location);
     let decode_expr = load_word(expression! { ptr }, location);
-    let check_size = abi_operations::check_int_size(size, expression! { return_val });
+    let check_size = check_int_size(size, expression! { return_val });
 
     function_definition! {
          function [func_name](head_start, offset) -> return_val {
@@ -276,8 +277,7 @@ pub fn decode_component_int(size: usize, location: AbiDecodeLocation) -> yul::St
 pub fn decode_component_bool(location: AbiDecodeLocation) -> yul::Statement {
     let func_name = abi_names::decode_component_bool(location);
     let decode_expr = load_word(expression! { ptr }, location);
-    let check_padding =
-        abi_operations::check_left_padding(expression! { 255 }, expression! { return_val });
+    let check_padding = check_left_padding(expression! { 255 }, expression! { return_val });
 
     function_definition! {
          function [func_name](head_start, offset) -> return_val {
@@ -291,8 +291,7 @@ pub fn decode_component_bool(location: AbiDecodeLocation) -> yul::Statement {
 pub fn decode_component_address(location: AbiDecodeLocation) -> yul::Statement {
     let func_name = abi_names::decode_component_address(location);
     let decode_expr = load_word(expression! { ptr }, location);
-    let check_padding =
-        abi_operations::check_left_padding(expression! { 96 }, expression! { return_val });
+    let check_padding = check_left_padding(expression! { 96 }, expression! { return_val });
 
     function_definition! {
          function [func_name](head_start, offset) -> return_val {
@@ -373,13 +372,13 @@ pub fn decode_component_bytes(size: usize, location: AbiDecodeLocation) -> yul::
             (data_start_offset := [load_word(expression! { head_ptr }, location)])
             (let data_start := add(head_start, data_start_offset))
             (let bytes_size := [load_word(expression! { data_start }, location)])
-            (if (iszero((eq(bytes_size, [size])))) { (revert(0, 0)) } )
+            (if (iszero((eq(bytes_size, [size])))) { [revert_with_invalid_abi_data()] } )
             (let data_size := add(bytes_size, 32))
             (let padded_data_size := ceil32(data_size))
             (data_end_offset := add(data_start_offset, padded_data_size))
             (let end_word := [load_word(expression! { sub((add(head_start, data_end_offset)), 32) }, location)])
             (let padding_size_bits := mul((sub(padded_data_size, data_size)), 8))
-            [abi_operations::check_right_padding(
+            [check_right_padding(
                 expression! { padding_size_bits },
                 expression! { end_word }
             )]
@@ -404,13 +403,13 @@ pub fn decode_component_string(max_size: usize, location: AbiDecodeLocation) -> 
             (data_start_offset := [load_word(expression! { head_ptr }, location)])
             (let data_start := add(head_start, data_start_offset))
             (let string_size := [load_word(expression! { data_start }, location)])
-            (if (gt(string_size, [max_size])) { (revert(0, 0)) })
+            (if (gt(string_size, [max_size])) { [revert_with_invalid_abi_data()] })
             (let data_size := add(string_size, 32))
             (let padded_data_size := ceil32(data_size))
             (data_end_offset := add(data_start_offset, padded_data_size))
             (let end_word := [load_word(expression! { sub((add(head_start, data_end_offset)), 32) }, location)])
             (let padding_size_bits := mul((sub(padded_data_size, data_size)), 8))
-            [abi_operations::check_right_padding(
+            [check_right_padding(
                 expression! { padding_size_bits },
                 expression! { end_word }
             )]
@@ -444,6 +443,45 @@ pub fn is_right_padded() -> yul::Statement {
             (let bits_shifted := sub(256, size_bits))
             (let shifted_val := shl(bits_shifted, val))
             (return_val := iszero(shifted_val))
+        }
+    }
+}
+
+fn revert_with_invalid_abi_data() -> yul::Statement {
+    statement!(revert_with_panic([
+        literal_expression! { (PANIC_INVALID_ABI_DATA) }
+    ]))
+}
+
+/// Reverts if the value is not left padded with the given number of bits.
+fn check_left_padding(size_bits: yul::Expression, val: yul::Expression) -> yul::Statement {
+    statement! {
+        if (iszero((is_left_padded([size_bits], [val])))) {
+            [revert_with_invalid_abi_data()]
+        }
+    }
+}
+
+/// Reverts if the value is not right padded with the given number of bits.
+fn check_right_padding(size_bits: yul::Expression, val: yul::Expression) -> yul::Statement {
+    statement! {
+        if (iszero((is_right_padded([size_bits], [val])))) {
+            [revert_with_invalid_abi_data()]
+        }
+    }
+}
+
+/// Reverts if the integer value does not fit within the given number of bytes.
+fn check_int_size(size: usize, val: yul::Expression) -> yul::Statement {
+    // the bits to the left of this size should be either all 0s or all 1s
+    let size_bits = literal_expression! { (size * 8 - 1) };
+    let is_all_0s = expression! { iszero((shr([size_bits.clone()], [val.clone()]))) };
+    let is_all_1s = expression! { iszero((shr([size_bits], (not([val]))))) };
+    let is_all_0s_or_1s = expression! { or([is_all_0s], [is_all_1s]) };
+
+    statement! {
+        if (iszero([is_all_0s_or_1s])) {
+            [revert_with_invalid_abi_data()]
         }
     }
 }

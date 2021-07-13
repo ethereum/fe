@@ -1281,6 +1281,7 @@ fn tuple_destructuring() {
 fn abi_decode_checks() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, "abi_decode_checks.fe", "Foo", &[]);
+        let revert_data = encoded_invalid_abi_data();
 
         // decode_u256
         {
@@ -1290,12 +1291,12 @@ fn abi_decode_checks() {
             // add a byte
             let mut tampered_data = data.clone();
             tampered_data.push(42);
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
 
             // remove last 8 bytes
             let mut tampered_data = data.clone();
             tampered_data.truncate(data.len() - 8);
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
         }
 
         // decode_u128_bool
@@ -1306,19 +1307,19 @@ fn abi_decode_checks() {
             // add a byte
             let mut tampered_data = data.clone();
             tampered_data.push(42);
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
 
             // place non-zero byte in padded region of `u128`
             let mut tampered_data = data.clone();
             // 4 bytes past end of selector (4 + 4)
             tampered_data[9] = 26;
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
 
             // place non-zero byte in padded region of u128
             let mut tampered_data = data;
             // 8 bytes past end of u128 (4 + 32 + 8)
             tampered_data[44] = 1;
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
         }
 
         // decode_u256_bytes_tuple_array
@@ -1340,26 +1341,26 @@ fn abi_decode_checks() {
             // add a byte
             let mut tampered_data = data.clone();
             tampered_data.push(42);
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
 
             // remove a byte
             let mut tampered_data = data.clone();
             tampered_data.truncate(tampered_data.len() - 1);
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
 
             // give invalid length to bytes. it expects 100, we give 99
             let mut tampered_data = data.clone();
             // final byte in data size location for bytes[100]
             let byte_index = 4 + head_size + 31;
             tampered_data[byte_index] = 99;
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
 
             // place non-zero byte in padded region of bytes
             let mut tampered_data = data.clone();
             // the first byte directly following the bytes' data
             let byte_index = 4 + head_size + 32 + 100;
             tampered_data[byte_index] = 128; // set the first bit to `1`
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
 
             // place non-zero byte in padded region of bytes
             let mut tampered_data = data.clone();
@@ -1368,7 +1369,7 @@ fn abi_decode_checks() {
             tampered_data[byte_index] = 1; // set the last bit to `1`
                                            // sanity check
             assert_eq!(tampered_data.len(), byte_index + 1);
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
 
             // place non-zero byte in padded region of the tuple
             let mut tampered_data = data.clone();
@@ -1376,7 +1377,7 @@ fn abi_decode_checks() {
             let byte_index = 4 + 32 + 32;
             // set the last bit in the address padding to `1`
             tampered_data[byte_index] = 128;
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
 
             // place non-zero byte in padded region of the tuple
             let mut tampered_data = data.clone();
@@ -1384,28 +1385,28 @@ fn abi_decode_checks() {
             let byte_index = 4 + 32 + 32 + 11;
             // set the last bit in the address padding to `1`
             tampered_data[byte_index] = 1;
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
 
             // place non-zero byte in padded region of the tuple
             let mut tampered_data = data.clone();
             // 5 bytes past the end of address
             let byte_index = 4 + 32 + 32 + 32 + 5;
             tampered_data[byte_index] = 26;
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
 
             // place zero byte in padded region of a negative int
             let mut tampered_data = data.clone();
             // index 2 of array and 0 bytes in
             let byte_index = 4 + 32 + 32 + 64 + (2 * 32);
             tampered_data[byte_index] = 0;
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
 
             // place non-zero byte in padded region of a positive int
             let mut tampered_data = data;
             // index 12 of array and 4 bytes in
             let byte_index = 4 + 32 + 32 + 64 + (12 * 32 + 4);
             tampered_data[byte_index] = 26;
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
         }
 
         // decode_string_address_bytes_bool
@@ -1433,12 +1434,12 @@ fn abi_decode_checks() {
             // add 100 bytes
             let mut tampered_data = data.clone();
             tampered_data.append(vec![42; 100].as_mut());
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
 
             // remove 20 bytes
             let mut tampered_data = data.clone();
             tampered_data.truncate(tampered_data.len() - 20);
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
 
             // set string length to value that extends beyond the next data offset
             let mut tampered_data = data.clone();
@@ -1449,7 +1450,7 @@ fn abi_decode_checks() {
             tampered_data[byte_index] = 33;
             // the string length is completely valid otherwise. 32 for example will not revert
             // tampered_data[byte_index] = 32;
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
 
             // place non-zero byte in padded region of the string
             let mut tampered_data = data.clone();
@@ -1457,7 +1458,7 @@ fn abi_decode_checks() {
             let byte_index = 4 + head_size + string_data_size - 1;
             // set last bit to 1
             tampered_data[byte_index] = 1;
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
 
             // place non-zero byte in padded region of the string
             let mut tampered_data = data.clone();
@@ -1465,7 +1466,7 @@ fn abi_decode_checks() {
             let byte_index = 4 + head_size + 32 + string_size;
             // set first bit to 1
             tampered_data[byte_index] = 128;
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
 
             // place non-zero byte in padded region of the bytes
             let mut tampered_data = data.clone();
@@ -1473,7 +1474,7 @@ fn abi_decode_checks() {
             let byte_index = 4 + head_size + string_data_size + bytes_data_size - 1;
             // set last bit to 1
             tampered_data[byte_index] = 1;
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
 
             // place non-zero byte in padded region of the bytes
             let mut tampered_data = data;
@@ -1481,7 +1482,7 @@ fn abi_decode_checks() {
             let byte_index = 4 + head_size + string_data_size + 32 + bytes_size;
             // set first bit to 1
             tampered_data[byte_index] = 128;
-            harness.test_call_reverts(&mut executor, tampered_data);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
 
             // invalid since bytes has size 990 instead of 1000
             let invalid_input = [
@@ -1495,7 +1496,7 @@ fn abi_decode_checks() {
                 ),
                 bool_token(true),
             ];
-            harness.test_function_reverts(&mut executor, func_name, &invalid_input, &[]);
+            harness.test_function_reverts(&mut executor, func_name, &invalid_input, &revert_data);
 
             // invalid since string has size 100, which is greater than 80
             let invalid_input = [
@@ -1514,7 +1515,7 @@ fn abi_decode_checks() {
                 ),
                 bool_token(true),
             ];
-            harness.test_function_reverts(&mut executor, func_name, &invalid_input, &[]);
+            harness.test_function_reverts(&mut executor, func_name, &invalid_input, &revert_data);
         }
     });
 }

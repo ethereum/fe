@@ -116,36 +116,3 @@ pub fn unpack(
 ) -> yul::Statement {
     statement! { abi_unpack([ptr], [array_size], [inner_data_size]) }
 }
-
-/// Reverts if the value is not left padded with the given number of bits.
-pub fn check_left_padding(size_bits: yul::Expression, val: yul::Expression) -> yul::Statement {
-    statement! {
-        if (iszero((is_left_padded([size_bits], [val])))) {
-            (revert(0, 0))
-        }
-    }
-}
-
-/// Reverts if the value is not right padded with the given number of bits.
-pub fn check_right_padding(size_bits: yul::Expression, val: yul::Expression) -> yul::Statement {
-    statement! {
-        if (iszero((is_right_padded([size_bits], [val])))) {
-            (revert(0, 0))
-        }
-    }
-}
-
-/// Reverts if the integer value does not fit within the given number of bytes.
-pub fn check_int_size(size: usize, val: yul::Expression) -> yul::Statement {
-    // the bits to the left of this size should be either all 0s or all 1s
-    let size_bits = literal_expression! { (size * 8 - 1) };
-    let is_all_0s = expression! { iszero((shr([size_bits.clone()], [val.clone()]))) };
-    let is_all_1s = expression! { iszero((shr([size_bits], (not([val]))))) };
-    let is_all_0s_or_1s = expression! { or([is_all_0s], [is_all_1s]) };
-
-    statement! {
-        if (iszero([is_all_0s_or_1s])) {
-            (revert(0, 0))
-        }
-    }
-}

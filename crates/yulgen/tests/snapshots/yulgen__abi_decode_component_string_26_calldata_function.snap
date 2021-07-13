@@ -8,12 +8,12 @@ function abi_decode_component_bytes_26_calldata(head_start, head_offset) -> retu
     data_start_offset := calldataload(head_ptr)
     let data_start := add(head_start, data_start_offset)
     let bytes_size := calldataload(data_start)
-    if iszero(eq(bytes_size, 26)) { revert(0, 0) }
+    if iszero(eq(bytes_size, 26)) { revert_with_panic(153) }
     let data_size := add(bytes_size, 32)
     let padded_data_size := ceil32(data_size)
     data_end_offset := add(data_start_offset, padded_data_size)
     let end_word := calldataload(sub(add(head_start, data_end_offset), 32))
     let padding_size_bits := mul(sub(padded_data_size, data_size), 8)
-    if iszero(is_right_padded(padding_size_bits, end_word)) { revert(0, 0) }
+    if iszero(is_right_padded(padding_size_bits, end_word)) { revert_with_panic(153) }
     return_val := ccopym(add(data_start, 32), sub(data_size, 32))
 }

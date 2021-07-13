@@ -5,12 +5,12 @@ expression: "abi_functions::decode_data(&[Base::Bool, Base::Address],\n         
 ---
 function abi_decode_data_bool_address_mem(head_start, data_end) -> return_val_0, return_val_1 {
     let encoding_size := sub(data_end, head_start)
-    if iszero(eq(encoding_size, 64)) { revert(0, 0) }
+    if iszero(eq(encoding_size, 64)) { revert_with_panic(153) }
     let head_offset_0 := 0
     let head_offset_1 := 32
     let decoded_val_0 := abi_decode_component_bool_mem(head_start, head_offset_0)
     let decoded_val_1 := abi_decode_component_address_mem(head_start, head_offset_1)
-    if iszero(eq(encoding_size, 64)) { revert(0, 0) }
+    if iszero(eq(encoding_size, 64)) { revert_with_panic(153) }
     return_val_0 := decoded_val_0
     return_val_1 := decoded_val_1
 }
