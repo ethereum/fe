@@ -1559,11 +1559,10 @@ note:
    · │
 81 │ │             my_bytes=self.my_bytes.to_mem()
 82 │ │         )
-   │ ╰─────────^ attributes hash: 4513326996750634814
+   │ ╰─────────^ attributes hash: 12177163395993072198
    │  
    = EventDef {
          name: "MyEvent",
-         topic: "0xcac88c5748a42fc8d9baf196f981a3571f79726e9c579d4268b8b1155eb48f47",
          fields: [
              (
                  "my_addrs",
@@ -2065,7 +2064,7 @@ note:
    · │
 81 │ │             my_bytes=self.my_bytes.to_mem()
 82 │ │         )
-   │ ╰─────────^ attributes hash: 6100196207567586091
+   │ ╰─────────^ attributes hash: 10470223520467846865
    │  
    = ContractAttributes {
          public_functions: [
@@ -2373,7 +2372,6 @@ note:
          events: [
              EventDef {
                  name: "MyEvent",
-                 topic: "0xcac88c5748a42fc8d9baf196f981a3571f79726e9c579d4268b8b1155eb48f47",
                  fields: [
                      (
                          "my_addrs",
@@ -2640,11 +2638,10 @@ note:
 19 │ │         my_u16s: u16[255]
 20 │ │         my_bool: bool
 21 │ │         my_bytes: u8[100]
-   │ ╰─────────────────────────^ attributes hash: 4513326996750634814
+   │ ╰─────────────────────────^ attributes hash: 12177163395993072198
    │  
    = EventDef {
          name: "MyEvent",
-         topic: "0xcac88c5748a42fc8d9baf196f981a3571f79726e9c579d4268b8b1155eb48f47",
          fields: [
              (
                  "my_addrs",

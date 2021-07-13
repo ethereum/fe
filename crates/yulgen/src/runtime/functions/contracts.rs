@@ -1,9 +1,9 @@
 use crate::names;
 use crate::names::abi as abi_names;
 use crate::operations::abi as abi_operations;
+use crate::types::{to_abi_selector_names, to_abi_types, AbiDecodeLocation, AbiType};
 use fe_abi::utils as abi_utils;
 use fe_analyzer::namespace::types::Contract;
-use fe_analyzer::namespace::types::{AbiDecodeLocation, AbiEncoding};
 use yultsur::*;
 
 /// Return all contacts runtime functions
@@ -21,24 +21,20 @@ pub fn calls(contract: Contract) -> Vec<yul::Statement> {
         .map(|function| {
             // get the name of the call function and its parameters
             let function_name = names::contract_call(&contract_name, &function.name);
-            let param_names = function
-                .param_types()
-                .iter()
-                .map(|typ| typ.abi_selector_name())
-                .collect::<Vec<String>>();
+            let param_types = to_abi_types(&function.param_types());
 
             // create a pair of identifiers and expressions for the parameters
             let (param_idents, param_exprs) = abi_names::vals("param", function.params.len());
             // the function selector must be added to the first 4 bytes of the calldata
             let selector = {
-                let selector = abi_utils::func_selector(&function.name, &param_names);
+                let selector =
+                    abi_utils::func_selector(&function.name, &to_abi_selector_names(&param_types));
                 literal_expression! { (selector) }
             };
             // the operations used to encode the parameters
-            let encoding_operation =
-                abi_operations::encode(&function.param_types(), param_exprs.clone());
+            let encoding_operation = abi_operations::encode(&param_types, param_exprs.clone());
             // the size of the encoded data
-            let encoding_size = abi_operations::encoding_size(&function.param_types(), param_exprs);
+            let encoding_size = abi_operations::encoding_size(&param_types, param_exprs);
 
             if function.return_type.is_unit() {
                 // there is no return data to handle
@@ -52,7 +48,7 @@ pub fn calls(contract: Contract) -> Vec<yul::Statement> {
                 }
             } else {
                 let decoding_operation = abi_operations::decode_data(
-                    &[function.return_type],
+                    &[AbiType::from(&function.return_type)],
                     expression! { outstart },
                     expression! { add(outstart, outsize) },
                     AbiDecodeLocation::Memory,

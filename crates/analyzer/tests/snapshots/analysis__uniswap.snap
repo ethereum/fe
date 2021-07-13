@@ -13742,11 +13742,10 @@ note:
    ┌─ demos/uniswap.fe:78:9
    │
 78 │         emit Transfer(from=address(0), to, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7306228411242967775
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13133831135344517982
    │
    = EventDef {
          name: "Transfer",
-         topic: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
          fields: [
              (
                  "from",
@@ -13779,11 +13778,10 @@ note:
    ┌─ demos/uniswap.fe:83:9
    │
 83 │         emit Transfer(from, to=address(0), value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7306228411242967775
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13133831135344517982
    │
    = EventDef {
          name: "Transfer",
-         topic: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
          fields: [
              (
                  "from",
@@ -13816,11 +13814,10 @@ note:
    ┌─ demos/uniswap.fe:87:9
    │
 87 │         emit Approval(owner, spender, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1848444562662411933
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 33203932515406232
    │
    = EventDef {
          name: "Approval",
-         topic: "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925",
          fields: [
              (
                  "owner",
@@ -13853,11 +13850,10 @@ note:
    ┌─ demos/uniswap.fe:92:9
    │
 92 │         emit Transfer(from, to, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7306228411242967775
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13133831135344517982
    │
    = EventDef {
          name: "Transfer",
-         topic: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
          fields: [
              (
                  "from",
@@ -13890,11 +13886,10 @@ note:
     ┌─ demos/uniswap.fe:135:9
     │
 135 │         emit Sync(reserve0=self.reserve0, reserve1=self.reserve1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1491363276386853569
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13994204795377527353
     │
     = EventDef {
           name: "Sync",
-          topic: "0xcf2aa50876cdfbb541206f89af0ee78d44a2abf8d328e37fa4917f982149848a",
           fields: [
               (
                   "reserve0",
@@ -13920,11 +13915,10 @@ note:
     ┌─ demos/uniswap.fe:184:9
     │
 184 │         emit Mint(sender=msg.sender, amount0, amount1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16552791640588084768
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2843628716761322765
     │
     = EventDef {
           name: "Mint",
-          topic: "0x4c209b5fc8ad50758f13e2e1088ba56a560dff690a1c6fef26394f4c03821c4f",
           fields: [
               (
                   "sender",
@@ -13958,11 +13952,10 @@ note:
     ┌─ demos/uniswap.fe:213:9
     │
 213 │         emit Burn(sender=msg.sender, amount0, amount1, to)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13447946108360371057
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2179438666396421974
     │
     = EventDef {
           name: "Burn",
-          topic: "0xdccd412f0b1252819cb1fd330b93224ca42612892bb3f4f789976e6d81936496",
           fields: [
               (
                   "sender",
@@ -14003,11 +13996,10 @@ note:
     ┌─ demos/uniswap.fe:253:9
     │
 253 │         emit Swap(sender=msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16809180625926927400
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13230512840943275093
     │
     = EventDef {
           name: "Swap",
-          topic: "0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822",
           fields: [
               (
                   "sender",
@@ -14064,11 +14056,10 @@ note:
     ┌─ demos/uniswap.fe:328:9
     │
 328 │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15124876836433594590
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6014823549090347161
     │
     = EventDef {
           name: "PairCreated",
-          topic: "0x0d3648bd0f6ba80134a33ba9275ac585d9d315f0ad8355cddefde31afa28d0e9",
           fields: [
               (
                   "token0",
@@ -16655,7 +16646,7 @@ note:
     · │
 281 │ │     def min(x: u256, y: u256) -> u256:
 282 │ │         return x if x < y else y
-    │ ╰────────────────────────────────^ attributes hash: 3296488074704541138
+    │ ╰────────────────────────────────^ attributes hash: 70790541238228800
     │  
     = ContractAttributes {
           public_functions: [
@@ -16935,7 +16926,6 @@ note:
           events: [
               EventDef {
                   name: "Approval",
-                  topic: "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925",
                   fields: [
                       (
                           "owner",
@@ -16965,7 +16955,6 @@ note:
               },
               EventDef {
                   name: "Burn",
-                  topic: "0xdccd412f0b1252819cb1fd330b93224ca42612892bb3f4f789976e6d81936496",
                   fields: [
                       (
                           "sender",
@@ -17003,7 +16992,6 @@ note:
               },
               EventDef {
                   name: "Mint",
-                  topic: "0x4c209b5fc8ad50758f13e2e1088ba56a560dff690a1c6fef26394f4c03821c4f",
                   fields: [
                       (
                           "sender",
@@ -17034,7 +17022,6 @@ note:
               },
               EventDef {
                   name: "Swap",
-                  topic: "0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822",
                   fields: [
                       (
                           "sender",
@@ -17088,7 +17075,6 @@ note:
               },
               EventDef {
                   name: "Sync",
-                  topic: "0xcf2aa50876cdfbb541206f89af0ee78d44a2abf8d328e37fa4917f982149848a",
                   fields: [
                       (
                           "reserve0",
@@ -17111,7 +17097,6 @@ note:
               },
               EventDef {
                   name: "Transfer",
-                  topic: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
                   fields: [
                       (
                           "from",
@@ -17282,7 +17267,7 @@ note:
     · │
 336 │ │         assert msg.sender == fee_to_setter, "UniswapV2: FORBIDDEN"
 337 │ │         self.fee_to_setter = fee_to_setter
-    │ ╰──────────────────────────────────────────^ attributes hash: 17828679396369561962
+    │ ╰──────────────────────────────────────────^ attributes hash: 15769488941515133797
     │  
     = ContractAttributes {
           public_functions: [
@@ -17384,7 +17369,6 @@ note:
           events: [
               EventDef {
                   name: "PairCreated",
-                  topic: "0x0d3648bd0f6ba80134a33ba9275ac585d9d315f0ad8355cddefde31afa28d0e9",
                   fields: [
                       (
                           "token0",
@@ -19179,11 +19163,10 @@ note:
 31 │ │         idx owner: address
 32 │ │         idx spender: address
 33 │ │         value: u256
-   │ ╰───────────────────^ attributes hash: 1848444562662411933
+   │ ╰───────────────────^ attributes hash: 33203932515406232
    │  
    = EventDef {
          name: "Approval",
-         topic: "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925",
          fields: [
              (
                  "owner",
@@ -19219,11 +19202,10 @@ note:
 36 │ │         idx from: address
 37 │ │         idx to: address
 38 │ │         value: u256
-   │ ╰───────────────────^ attributes hash: 7306228411242967775
+   │ ╰───────────────────^ attributes hash: 13133831135344517982
    │  
    = EventDef {
          name: "Transfer",
-         topic: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
          fields: [
              (
                  "from",
@@ -19259,11 +19241,10 @@ note:
 41 │ │         idx sender: address
 42 │ │         amount0: u256
 43 │ │         amount1: u256
-   │ ╰─────────────────────^ attributes hash: 16552791640588084768
+   │ ╰─────────────────────^ attributes hash: 2843628716761322765
    │  
    = EventDef {
          name: "Mint",
-         topic: "0x4c209b5fc8ad50758f13e2e1088ba56a560dff690a1c6fef26394f4c03821c4f",
          fields: [
              (
                  "sender",
@@ -19301,11 +19282,10 @@ note:
 47 │ │         amount0: u256
 48 │ │         amount1: u256
 49 │ │         idx to: address
-   │ ╰───────────────────────^ attributes hash: 13447946108360371057
+   │ ╰───────────────────────^ attributes hash: 2179438666396421974
    │  
    = EventDef {
          name: "Burn",
-         topic: "0xdccd412f0b1252819cb1fd330b93224ca42612892bb3f4f789976e6d81936496",
          fields: [
              (
                  "sender",
@@ -19352,11 +19332,10 @@ note:
 55 │ │         amount0_out: u256
 56 │ │         amount1_out: u256
 57 │ │         idx to: address
-   │ ╰───────────────────────^ attributes hash: 16809180625926927400
+   │ ╰───────────────────────^ attributes hash: 13230512840943275093
    │  
    = EventDef {
          name: "Swap",
-         topic: "0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822",
          fields: [
              (
                  "sender",
@@ -19415,11 +19394,10 @@ note:
 59 │ ╭     event Sync:
 60 │ │         reserve0: u256
 61 │ │         reserve1: u256
-   │ ╰──────────────────────^ attributes hash: 1491363276386853569
+   │ ╰──────────────────────^ attributes hash: 13994204795377527353
    │  
    = EventDef {
          name: "Sync",
-         topic: "0xcf2aa50876cdfbb541206f89af0ee78d44a2abf8d328e37fa4917f982149848a",
          fields: [
              (
                  "reserve0",
@@ -19449,11 +19427,10 @@ note:
 295 │ │         idx token1: address
 296 │ │         pair: address
 297 │ │         index: u256
-    │ ╰───────────────────^ attributes hash: 15124876836433594590
+    │ ╰───────────────────^ attributes hash: 6014823549090347161
     │  
     = EventDef {
           name: "PairCreated",
-          topic: "0x0d3648bd0f6ba80134a33ba9275ac585d9d315f0ad8355cddefde31afa28d0e9",
           fields: [
               (
                   "token0",

@@ -1,11 +1,12 @@
 use crate::constants::PANIC_FAILED_ASSERTION;
 use crate::mappers::{assignments, declarations, expressions};
 use crate::names;
-use crate::operations::abi as abi_operations;
 use crate::operations::data as data_operations;
+use crate::operations::revert as revert_operations;
+use crate::types::{AbiType, EvmSized};
 use crate::Context;
 use fe_analyzer::context::ExpressionAttributes;
-use fe_analyzer::namespace::types::{FeSized, FixedSize, Type};
+use fe_analyzer::namespace::types::Type;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use yultsur::*;
@@ -128,23 +129,23 @@ fn revert(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
                 .get_expression(error_expr)
                 .expect("missing expression");
 
-            if let Type::Struct(val) = &error_attributes.typ {
-                context.revert_errors.insert(val.clone());
+            if let Type::Struct(_struct) = &error_attributes.typ {
+                context.revert_errors.insert(_struct.clone());
 
-                let revert_data = expressions::expr(context, error_expr);
-                let size = abi_operations::encoding_size(&[val.clone()], vec![revert_data.clone()]);
-                let revert_fn = names::revert_name(&val.name, &val.get_field_types());
-
-                return statement! {
-                    ([revert_fn]([revert_data], [size]))
-                };
+                revert_operations::revert(
+                    &_struct.name,
+                    &AbiType::from(_struct),
+                    expressions::expr(context, error_expr),
+                )
+            } else {
+                panic!("trying to revert with non-struct expression")
             }
+        } else {
+            statement! { revert(0, 0) }
         }
-
-        return statement! { revert(0, 0) };
+    } else {
+        unreachable!()
     }
-
-    unreachable!()
 }
 
 fn emit(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
@@ -168,7 +169,7 @@ fn emit(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
 fn assert(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     if let fe::FuncStmt::Assert { test, msg } = &stmt.kind {
         let test = expressions::expr(context, test);
-        return match msg {
+        match msg {
             Some(val) => {
                 let msg = expressions::expr(context, val);
                 let msg_attributes = context
@@ -176,27 +177,29 @@ fn assert(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
                     .get_expression(val)
                     .expect("missing expression");
 
-                if let Type::String(str) = &msg_attributes.typ {
-                    let size = abi_operations::encoding_size(&[str.clone()], vec![msg.clone()]);
-                    let fixed_size = FixedSize::String(str.clone());
-                    context.assert_strings.insert(str.clone());
-                    let revert_fn = names::error_revert_name(&[fixed_size]);
+                if let Type::String(string) = &msg_attributes.typ {
+                    context.assert_strings.insert(string.to_owned());
 
-                    return statement! {
+                    statement! {
                         if (iszero([test])) {
-                            ([revert_fn]([msg], [size]))
+                            [revert_operations::error_revert(&AbiType::from(string), msg)]
                         }
-                    };
+                    }
+                } else {
+                    unreachable!()
                 }
-                unreachable!()
             }
             None => {
-                statement! { if (iszero([test])) { (revert_with_panic([literal_expression! {(PANIC_FAILED_ASSERTION)}])) } }
+                statement! {
+                    if (iszero([test])) {
+                        [revert_operations::panic_revert(PANIC_FAILED_ASSERTION)]
+                    }
+                }
             }
-        };
+        }
+    } else {
+        unreachable!()
     }
-
-    unreachable!()
 }
 
 fn break_statement(_context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {

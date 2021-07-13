@@ -219,11 +219,10 @@ note:
    ┌─ demos/guest_book.fe:16:9
    │
 16 │         emit Signed(book_msg=book_msg)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7183865788821629486
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9556729338567466879
    │
    = EventDef {
          name: "Signed",
-         topic: "0xcd5d879305a2503cad08d3e2d007778eec8dc5def7bc74dd20875842b2ff7765",
          fields: [
              (
                  "book_msg",
@@ -303,7 +302,7 @@ note:
    · │
 20 │ │         # has to be done explicitly via `to_mem()`
 21 │ │         return self.messages[addr].to_mem()
-   │ ╰───────────────────────────────────────────^ attributes hash: 10725603398456560869
+   │ ╰───────────────────────────────────────────^ attributes hash: 9853337215152345802
    │  
    = ContractAttributes {
          public_functions: [
@@ -346,7 +345,6 @@ note:
          events: [
              EventDef {
                  name: "Signed",
-                 topic: "0xcd5d879305a2503cad08d3e2d007778eec8dc5def7bc74dd20875842b2ff7765",
                  fields: [
                      (
                          "book_msg",
@@ -377,11 +375,10 @@ note:
   │  
 8 │ ╭     event Signed:
 9 │ │         book_msg: String<100>
-  │ ╰─────────────────────────────^ attributes hash: 7183865788821629486
+  │ ╰─────────────────────────────^ attributes hash: 9556729338567466879
   │  
   = EventDef {
         name: "Signed",
-        topic: "0xcd5d879305a2503cad08d3e2d007778eec8dc5def7bc74dd20875842b2ff7765",
         fields: [
             (
                 "book_msg",

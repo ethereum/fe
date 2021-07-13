@@ -3229,11 +3229,10 @@ note:
    ┌─ demos/erc20_token.fe:76:9
    │
 76 │         emit Transfer(from=sender, to=recipient, value=value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7306228411242967775
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13133831135344517982
    │
    = EventDef {
          name: "Transfer",
-         topic: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
          fields: [
              (
                  "from",
@@ -3266,11 +3265,10 @@ note:
    ┌─ demos/erc20_token.fe:85:9
    │
 85 │         emit Transfer(from=address(0), to=account, value=value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7306228411242967775
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13133831135344517982
    │
    = EventDef {
          name: "Transfer",
-         topic: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
          fields: [
              (
                  "from",
@@ -3303,11 +3301,10 @@ note:
    ┌─ demos/erc20_token.fe:94:9
    │
 94 │         emit Transfer(from=account, to=address(0), value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7306228411242967775
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13133831135344517982
    │
    = EventDef {
          name: "Transfer",
-         topic: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
          fields: [
              (
                  "from",
@@ -3340,11 +3337,10 @@ note:
     ┌─ demos/erc20_token.fe:101:9
     │
 101 │         emit Approval(owner, spender, value)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1848444562662411933
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 33203932515406232
     │
     = EventDef {
           name: "Approval",
-          topic: "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925",
           fields: [
               (
                   "owner",
@@ -3933,7 +3929,7 @@ note:
     · │
 106 │ │     def _before_token_transfer(from: address, to: address, value: u256):
 107 │ │         pass
-    │ ╰────────────^ attributes hash: 9140180386963659551
+    │ ╰────────────^ attributes hash: 2383532079953921392
     │  
     = ContractAttributes {
           public_functions: [
@@ -4169,7 +4165,6 @@ note:
           events: [
               EventDef {
                   name: "Approval",
-                  topic: "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925",
                   fields: [
                       (
                           "owner",
@@ -4199,7 +4194,6 @@ note:
               },
               EventDef {
                   name: "Transfer",
-                  topic: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
                   fields: [
                       (
                           "from",
@@ -4489,11 +4483,10 @@ note:
 12 │ │         idx owner: address
 13 │ │         idx spender: address
 14 │ │         value: u256
-   │ ╰───────────────────^ attributes hash: 1848444562662411933
+   │ ╰───────────────────^ attributes hash: 33203932515406232
    │  
    = EventDef {
          name: "Approval",
-         topic: "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925",
          fields: [
              (
                  "owner",
@@ -4529,11 +4522,10 @@ note:
 17 │ │         idx from: address
 18 │ │         idx to: address
 19 │ │         value: u256
-   │ ╰───────────────────^ attributes hash: 7306228411242967775
+   │ ╰───────────────────^ attributes hash: 13133831135344517982
    │  
    = EventDef {
          name: "Transfer",
-         topic: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
          fields: [
              (
                  "from",

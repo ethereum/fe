@@ -2097,11 +2097,10 @@ note:
    ┌─ stress/data_copying_stress.fe:74:9
    │
 74 │         emit MyEvent(my_string=some_string, my_u256=some_u256)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8256047936283544719
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2143436862180406659
    │
    = EventDef {
          name: "MyEvent",
-         topic: "0x417b479eab59fa49bedfbbb7cab907b3a81d8375cfca57da274a3d8b6c61a813",
          fields: [
              (
                  "my_string",
@@ -2503,7 +2502,7 @@ note:
    · │
 79 │ │     pub def get_my_second_addr() -> address:
 80 │ │         return self.my_addrs[1]
-   │ ╰───────────────────────────────^ attributes hash: 13264315667730462853
+   │ ╰───────────────────────────────^ attributes hash: 6310860118106615959
    │  
    = ContractAttributes {
          public_functions: [
@@ -2703,7 +2702,6 @@ note:
          events: [
              EventDef {
                  name: "MyEvent",
-                 topic: "0x417b479eab59fa49bedfbbb7cab907b3a81d8375cfca57da274a3d8b6c61a813",
                  fields: [
                      (
                          "my_string",
@@ -2785,11 +2783,10 @@ note:
 12 │ ╭     event MyEvent:
 13 │ │         my_string: String<42>
 14 │ │         my_u256: u256
-   │ ╰─────────────────────^ attributes hash: 8256047936283544719
+   │ ╰─────────────────────^ attributes hash: 2143436862180406659
    │  
    = EventDef {
          name: "MyEvent",
-         topic: "0x417b479eab59fa49bedfbbb7cab907b3a81d8375cfca57da274a3d8b6c61a813",
          fields: [
              (
                  "my_string",

@@ -456,11 +456,10 @@ note:
 32 │ │             nums=self.nums.to_mem(),
 33 │ │             str=self.str.to_mem()
 34 │ │         )
-   │ ╰─────────^ attributes hash: 3097665000133065506
+   │ ╰─────────^ attributes hash: 12755436388436492077
    │  
    = EventDef {
          name: "MyEvent",
-         topic: "0xa1df37e97e04df228bf0d77958ff8e03261b1070a21f3aa7a439f6d234c1dcf2",
          fields: [
              (
                  "num",
@@ -658,7 +657,7 @@ note:
    · │
 33 │ │             str=self.str.to_mem()
 34 │ │         )
-   │ ╰─────────^ attributes hash: 6442315895292032331
+   │ ╰─────────^ attributes hash: 5920818002125761658
    │  
    = ContractAttributes {
          public_functions: [
@@ -762,7 +761,6 @@ note:
          events: [
              EventDef {
                  name: "MyEvent",
-                 topic: "0xa1df37e97e04df228bf0d77958ff8e03261b1070a21f3aa7a439f6d234c1dcf2",
                  fields: [
                      (
                          "num",
@@ -838,11 +836,10 @@ note:
 7 │ │         num: u256
 8 │ │         nums: u256[42]
 9 │ │         str: String<26>
-  │ ╰───────────────────────^ attributes hash: 3097665000133065506
+  │ ╰───────────────────────^ attributes hash: 12755436388436492077
   │  
   = EventDef {
         name: "MyEvent",
-        topic: "0xa1df37e97e04df228bf0d77958ff8e03261b1070a21f3aa7a439f6d234c1dcf2",
         fields: [
             (
                 "num",

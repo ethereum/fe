@@ -937,11 +937,10 @@ note:
   ┌─ features/external_contract.fe:8:9
   │
 8 │         emit MyEvent(my_num, my_addrs, my_string)
-  │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4492871892068261472
+  │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 3647007368702598913
   │
   = EventDef {
         name: "MyEvent",
-        topic: "0xd67c2bc3a91d2cec185a9b15d2b3c2ab27e058d76493e2442c375b78fc226e7b",
         fields: [
             (
                 "my_num",
@@ -1339,7 +1338,7 @@ note:
    · │
 14 │ │         my_array[2] = b
 15 │ │         return my_array
-   │ ╰───────────────────────^ attributes hash: 10746953601890129745
+   │ ╰───────────────────────^ attributes hash: 15321376917823949382
    │  
    = ContractAttributes {
          public_functions: [
@@ -1412,7 +1411,6 @@ note:
          events: [
              EventDef {
                  name: "MyEvent",
-                 topic: "0xd67c2bc3a91d2cec185a9b15d2b3c2ab27e058d76493e2442c375b78fc226e7b",
                  fields: [
                      (
                          "my_num",
@@ -1879,11 +1877,10 @@ note:
 3 │ │         my_num: u256
 4 │ │         my_addrs: address[5]
 5 │ │         my_string: String<11>
-  │ ╰─────────────────────────────^ attributes hash: 4492871892068261472
+  │ ╰─────────────────────────────^ attributes hash: 3647007368702598913
   │  
   = EventDef {
         name: "MyEvent",
-        topic: "0xd67c2bc3a91d2cec185a9b15d2b3c2ab27e058d76493e2442c375b78fc226e7b",
         fields: [
             (
                 "my_num",

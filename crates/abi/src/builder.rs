@@ -1,7 +1,6 @@
-use crate::elements::{Component, Contract, Event, EventField, ModuleAbis};
+use crate::elements::{Component, Contract, Event, EventField, JsonAbi, ModuleAbis};
 use crate::errors::AbiError;
 use fe_analyzer::context::Context;
-use fe_analyzer::namespace::types::AbiEncoding;
 use fe_parser::ast as fe;
 
 /// Parse a map of contract ABIs from the input `module`.

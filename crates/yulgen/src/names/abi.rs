@@ -1,17 +1,17 @@
-use fe_analyzer::namespace::types::{abi_types, AbiDecodeLocation, AbiEncoding, AbiType};
+use crate::types::{AbiDecodeLocation, AbiType};
 use yultsur::*;
 
 /// Generates an ABI encoding function name for a given set of types.
-pub fn encode<T: AbiEncoding>(_types: &[T]) -> yul::Identifier {
-    let name = format!("abi_encode_{}", types(&abi_types(_types)));
+pub fn encode(_types: &[AbiType]) -> yul::Identifier {
+    let name = format!("abi_encode_{}", types(_types));
 
     identifier! { (name) }
 }
 
-pub fn decode_data<T: AbiEncoding>(_types: &[T], location: AbiDecodeLocation) -> yul::Identifier {
+pub fn decode_data(_types: &[AbiType], location: AbiDecodeLocation) -> yul::Identifier {
     let name = format!(
         "abi_decode_data_{}_{}",
-        types(&abi_types(_types)),
+        types(_types),
         decode_location(location)
     );
 
@@ -123,7 +123,7 @@ pub fn vals(prefix: &str, n: usize) -> (Vec<yul::Identifier>, Vec<yul::Expressio
         .unzip()
 }
 
-fn typ(_typ: &AbiType) -> String {
+pub fn typ(_typ: &AbiType) -> String {
     match _typ {
         AbiType::Uint { size } => format!("uint{}", size * 8),
         AbiType::Int { size } => format!("int{}", size * 8),
@@ -136,7 +136,7 @@ fn typ(_typ: &AbiType) -> String {
     }
 }
 
-fn types(types: &[AbiType]) -> String {
+pub fn types(types: &[AbiType]) -> String {
     types.iter().map(typ).collect::<Vec<_>>().join("_")
 }
 
