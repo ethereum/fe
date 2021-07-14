@@ -44,7 +44,6 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
 pub struct FunctionScope<'a> {
     pub db: &'a dyn AnalyzerDb,
     pub function: FunctionId,
-
     pub body: RefCell<FunctionBody>,
     pub diagnostics: RefCell<Vec<Diagnostic>>,
 }
@@ -68,7 +67,21 @@ impl<'a> FunctionScope<'a> {
     }
 
     pub fn var_type(&self, name: &str) -> Option<FixedSize> {
-        self.function.param(self.db, name)
+        self.function
+            .signature(self.db)
+            .params
+            .iter()
+            .find_map(|param| (param.name == name).then(|| param.typ.clone()))
+    }
+
+    pub fn var_def_span(&self, name: &str) -> Option<Span> {
+        self.function
+            .data(self.db)
+            .ast
+            .kind
+            .args
+            .iter()
+            .find_map(|param| (param.kind.name.kind == name).then(|| param.span))
     }
 
     pub fn contract_field(&self, name: &str) -> Option<(Rc<Type>, usize)> {
@@ -82,6 +95,15 @@ impl<'a> FunctionScope<'a> {
             .functions
             .get(name)
             .cloned()
+    }
+
+    pub fn resolve_event(&self, name: &str) -> Option<Rc<EventDef>> {
+        Some(
+            self.function
+                .contract(self.db)
+                .event(self.db, name)?
+                .typ(self.db),
+        )
     }
 
     pub fn function_return_type(&self) -> FixedSize {
@@ -166,12 +188,6 @@ impl<'a> FunctionScope<'a> {
     }
 }
 
-// impl<'a> AnalyzerContext for FunctionScope<'a> {
-//     fn add_diagnostic(&mut self, diag: Diagnostic) {
-//         self.diagnostics.push(diag)
-//     }
-// }
-
 pub struct BlockScope<'a, 'b> {
     root: &'a FunctionScope<'b>,
     pub parent: Option<&'a BlockScope<'a, 'b>>,
@@ -214,34 +230,6 @@ impl<'a, 'b> BlockScope<'a, 'b> {
         }
     }
 
-    // /// Return the contract scope and its immediate block scope child
-    // fn find_scope_boundary(&self) -> (Shared<ContractScope>, Shared<BlockScope>) {
-    //     let mut parent = self.parent.clone();
-    //     let mut last_block_scope = Rc::new(RefCell::new(self.clone()));
-    //     loop {
-    //         parent = match parent {
-    //             BlockScopeParent::Block(ref scope) => {
-    //                 last_block_scope = Rc::clone(&scope);
-    //                 scope.borrow().parent.clone()
-    //             }
-    //             BlockScopeParent::Contract(ref scope) => {
-    //                 return (Rc::clone(&scope), last_block_scope)
-    //             }
-    //         }
-    //     }
-    // }
-
-    // /// Return the block scope that is associated with the function block
-    // pub fn function_scope(&self) -> Shared<BlockScope> {
-    //     let (_, function_scope) = self.find_scope_boundary();
-    //     function_scope
-    // }
-
-    // /// Lookup an event definition on the inherited contract scope
-    // pub fn contract_event_def(&self, name: &str) -> Option<EventDef> {
-    //     self.contract_scope().borrow().event_def(name)
-    // }
-
     pub fn contract_name(&self) -> String {
         self.root.function.contract(self.root.db).name(self.root.db)
     }
@@ -256,11 +244,9 @@ impl<'a, 'b> BlockScope<'a, 'b> {
         self.root.contract_function(name)
     }
 
-    // /// Lookup the function definition for the current block scope on the
-    // /// inherited contract scope.
-    // pub fn current_function_def(&self) -> Option<ContractFunctionDef> {
-    //     self.contract_function_def(&self.function_scope().borrow().name)
-    // }
+    pub fn resolve_event(&self, name: &str) -> Option<Rc<EventDef>> {
+        self.root.resolve_event(name)
+    }
 
     pub fn function_return_type(&self) -> FixedSize {
         self.root.function_return_type()
@@ -270,9 +256,17 @@ impl<'a, 'b> BlockScope<'a, 'b> {
     pub fn var_type(&self, name: &str) -> Option<FixedSize> {
         self.variable_defs
             .get(name)
-            .map(|(typ, _)| (*typ).clone())
+            .map(|(typ, _span)| typ.clone())
             .or_else(|| self.parent?.var_type(name))
             .or_else(|| self.root.var_type(name))
+    }
+
+    pub fn var_def_span(&self, name: &str) -> Option<Span> {
+        self.variable_defs
+            .get(name)
+            .map(|(_typ, span)| *span)
+            .or_else(|| self.parent?.var_def_span(name))
+            .or_else(|| self.root.var_def_span(name))
     }
 
     /// Add a variable to the block scope.
@@ -282,10 +276,11 @@ impl<'a, 'b> BlockScope<'a, 'b> {
         typ: FixedSize,
         span: Span,
     ) -> Result<(), AlreadyDefined2<Span>> {
-        match self.variable_defs.entry(name.to_owned()) {
-            Entry::Occupied(e) => Err(AlreadyDefined2(e.get().1)),
-            Entry::Vacant(e) => {
-                e.insert((typ, span));
+        // It's (currently) an error to shadow a variable in a nested scope
+        match self.var_def_span(name) {
+            Some(prev_span) => Err(AlreadyDefined2(prev_span)),
+            None => {
+                self.variable_defs.insert(name.to_string(), (typ, span));
                 Ok(())
             }
         }
@@ -317,7 +312,6 @@ impl<'a, 'b> BlockScope<'a, 'b> {
 // }
 
 /// temporary helper until `BTreeMap::try_insert` is stabilized
-
 trait OptionExt {
     fn expect_none(self, msg: &str);
 }

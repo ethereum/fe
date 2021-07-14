@@ -58,7 +58,6 @@ fn add_var(
             if let Err(AlreadyDefined2(prev_span)) = scope.add_var(&name, typ, target.span) {
                 scope.fancy_error(
                     "duplicate variable definition",
-                    // TODO: figure out how to include the previously defined var
                     vec![
                         Label::primary(prev_span, &format!("`{}` first defined here", name)),
                         Label::secondary(target.span, &format!("`{}` redefined here", name)),

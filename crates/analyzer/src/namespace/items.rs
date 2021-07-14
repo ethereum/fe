@@ -1,13 +1,12 @@
 use crate::db::AnalyzerDb;
 use crate::errors;
 use crate::impl_intern_key;
-use crate::namespace::types;
+use crate::namespace::{events, types};
 use fe_common::diagnostics::{Diagnostic, Label};
 use fe_common::files::SourceFileId;
 use fe_parser::ast;
-use fe_parser::node::Node;
+use fe_parser::node::{Node, Span};
 use indexmap::IndexMap;
-use semver::{Version, VersionReq};
 use std::rc::Rc;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -24,34 +23,23 @@ impl ModuleId {
         db.lookup_intern_module(*self)
     }
 
-    pub fn type_defs(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, TypeDefId>> {
-        db.module_type_defs(*self)
+    /// Maps defined type name to its [`TypeDefId`].
+    /// Type defs include structs, type aliases, and contracts.
+    pub fn type_def_map(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, TypeDefId>> {
+        db.module_type_def_map(*self).value
+    }
+
+    /// Includes type defs with duplicate names
+    pub fn all_type_defs(&self, db: &dyn AnalyzerDb) -> Rc<Vec<TypeDefId>> {
+        db.module_all_type_defs(*self)
     }
 
     pub fn resolve_type(&self, db: &dyn AnalyzerDb, name: &str) -> Option<Rc<types::Type>> {
         db.module_resolve_type(*self, name.into())
     }
 
-    pub fn diagnostics(&self, db: &dyn AnalyzerDb) -> Vec<Diagnostic> {
-        let mut diags = vec![];
-        let ast::Module { body } = &self.data(db).ast;
-        for stmt in body {
-            match stmt {
-                ast::ModuleStmt::Pragma(inner) => {
-                    diags.extend(check_pragma_version(inner).into_iter())
-                }
-                ast::ModuleStmt::Import(inner) => {
-                    diags.push(errors::not_yet_implemented("import", inner.span))
-                }
-                _ => {} // everything else is a type def, handled below.
-            }
-        }
-
-        // XXX need to check for duplicate names
-        for type_def in self.type_defs(db).values() {
-            diags.extend(type_def.diagnostics(db).iter().cloned())
-        }
-        diags
+    pub fn diagnostics(&self, db: &dyn AnalyzerDb) -> Rc<Vec<Diagnostic>> {
+        db.module_diagnostics(*self)
     }
 }
 
@@ -63,6 +51,22 @@ pub enum TypeDefId {
     // Event(EventDefId),
 }
 impl TypeDefId {
+    pub fn name(&self, db: &dyn AnalyzerDb) -> String {
+        match self {
+            TypeDefId::Alias(id) => id.data(db).ast.kind.name.kind.clone(),
+            TypeDefId::Struct(id) => id.data(db).ast.kind.name.kind.clone(),
+            TypeDefId::Contract(id) => id.data(db).ast.kind.name.kind.clone(),
+        }
+    }
+
+    pub fn span(&self, db: &dyn AnalyzerDb) -> Span {
+        match self {
+            TypeDefId::Alias(id) => id.data(db).ast.span,
+            TypeDefId::Struct(id) => id.data(db).ast.span,
+            TypeDefId::Contract(id) => id.data(db).ast.span,
+        }
+    }
+
     pub fn typ(&self, db: &dyn AnalyzerDb) -> Rc<types::Type> {
         match self {
             TypeDefId::Alias(id) => id.typ(db),
@@ -71,9 +75,9 @@ impl TypeDefId {
         }
     }
 
-    pub fn diagnostics(&self, db: &dyn AnalyzerDb) -> Vec<Diagnostic> {
+    pub fn diagnostics(&self, db: &dyn AnalyzerDb) -> Rc<Vec<Diagnostic>> {
         match self {
-            TypeDefId::Alias(id) => id.diagnostics(db).to_vec(),
+            TypeDefId::Alias(id) => id.diagnostics(db),
             TypeDefId::Struct(id) => id.diagnostics(db),
             TypeDefId::Contract(id) => id.diagnostics(db),
         }
@@ -97,8 +101,8 @@ impl TypeAliasId {
     pub fn typ(&self, db: &dyn AnalyzerDb) -> Rc<types::Type> {
         db.type_alias_type(*self).value
     }
-    pub fn diagnostics(&self, db: &dyn AnalyzerDb) -> Vec<Diagnostic> {
-        db.type_alias_type(*self).diagnostics.to_vec()
+    pub fn diagnostics(&self, db: &dyn AnalyzerDb) -> Rc<Vec<Diagnostic>> {
+        db.type_alias_type(*self).diagnostics
     }
 }
 
@@ -142,17 +146,15 @@ impl ContractId {
         db.contract_events(*self)
     }
 
-    pub fn diagnostics(&self, db: &dyn AnalyzerDb) -> Vec<Diagnostic> {
-        let mut diags = vec![];
-        diags.extend(db.contract_type(*self).diagnostics.iter().cloned());
-        diags.extend(db.contract_fields(*self).diagnostics.iter().cloned());
-        for id in self.functions(db).iter() {
-            diags.extend(id.diagnostics(db).iter().cloned());
-        }
-        for id in self.events(db).iter() {
-            diags.extend(id.diagnostics(db).iter().cloned());
-        }
-        diags
+    pub fn event(&self, db: &dyn AnalyzerDb, name: &str) -> Option<EventId> {
+        db.contract_events(*self)
+            .iter()
+            .cloned()
+            .find(|event| event.typ(db).name == name)
+    }
+
+    pub fn diagnostics(&self, db: &dyn AnalyzerDb) -> Rc<Vec<Diagnostic>> {
+        db.contract_diagnostics(*self)
     }
 }
 
@@ -182,13 +184,6 @@ impl FunctionId {
         db.function_signature(*self).value
     }
 
-    pub fn param(&self, db: &dyn AnalyzerDb, name: &str) -> Option<types::FixedSize> {
-        self.signature(db)
-            .params
-            .iter()
-            .find_map(|(pname, typ)| (pname == name).then(|| typ.clone()))
-    }
-
     pub fn diagnostics(&self, db: &dyn AnalyzerDb) -> Vec<Diagnostic> {
         let mut diags = vec![];
         diags.extend(db.function_signature(*self).diagnostics.iter().cloned());
@@ -213,8 +208,8 @@ impl StructId {
     pub fn typ(&self, db: &dyn AnalyzerDb) -> Rc<types::Struct> {
         db.struct_type(*self).value
     }
-    pub fn diagnostics(&self, db: &dyn AnalyzerDb) -> Vec<Diagnostic> {
-        db.struct_type(*self).diagnostics.as_ref().clone()
+    pub fn diagnostics(&self, db: &dyn AnalyzerDb) -> Rc<Vec<Diagnostic>> {
+        db.struct_type(*self).diagnostics
     }
 }
 
@@ -229,38 +224,17 @@ pub struct EventId(pub(crate) u32);
 impl_intern_key!(EventId);
 
 impl EventId {
-    pub fn diagnostics(&self, db: &dyn AnalyzerDb) -> Vec<Diagnostic> {
-        // XXX
-        vec![]
+    pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<Event> {
+        db.lookup_intern_event(*self)
+    }
+    pub fn typ(&self, db: &dyn AnalyzerDb) -> Rc<events::EventDef> {
+        db.event_type(*self).value
+    }
+    pub fn module(&self, db: &dyn AnalyzerDb) -> ModuleId {
+        self.data(db).contract.module(db)
+    }
+    pub fn diagnostics(&self, db: &dyn AnalyzerDb) -> Rc<Vec<Diagnostic>> {
+        db.event_type(*self).diagnostics
     }
     // namespace::events::EventDef
-}
-
-// XXX: move this
-fn check_pragma_version(stmt: &Node<ast::Pragma>) -> Option<Diagnostic> {
-    let version_requirement = &stmt.kind.version_requirement;
-    // This can't fail because the parser already validated it
-    let requirement =
-        VersionReq::parse(&version_requirement.kind).expect("Invalid version requirement");
-    let actual_version =
-        Version::parse(env!("CARGO_PKG_VERSION")).expect("Missing package version");
-
-    if !requirement.matches(&actual_version) {
-        Some(errors::fancy_error(
-            format!(
-                "The current compiler version {} doesn't match the specified requirement",
-                actual_version
-            ),
-            vec![Label::primary(
-                version_requirement.span,
-                "The specified version requirement",
-            )],
-            vec![format!(
-                "Note: Use `pragma {}` to make the code compile",
-                actual_version
-            )],
-        ))
-    } else {
-        None
-    }
 }

@@ -69,10 +69,14 @@ pub trait AnalyzerDb {
     #[salsa::interned]
     fn intern_event(&self, data: Rc<items::Event>) -> EventId;
 
-    #[salsa::invoke(queries::module::module_type_defs)]
-    fn module_type_defs(&self, module: ModuleId) -> Rc<IndexMap<String, TypeDefId>>;
+    #[salsa::invoke(queries::module::module_all_type_defs)]
+    fn module_all_type_defs(&self, module: ModuleId) -> Rc<Vec<TypeDefId>>;
+    #[salsa::invoke(queries::module::module_type_def_map)]
+    fn module_type_def_map(&self, module: ModuleId) -> Analysis<Rc<IndexMap<String, TypeDefId>>>;
     #[salsa::invoke(queries::module::module_resolve_type)]
     fn module_resolve_type(&self, module: ModuleId, name: String) -> Option<Rc<types::Type>>;
+    #[salsa::invoke(queries::module::module_diagnostics)]
+    fn module_diagnostics(&self, module: ModuleId) -> Rc<Vec<Diagnostic>>;
 
     #[salsa::invoke(queries::contracts::contract_type)]
     fn contract_type(&self, contract: ContractId) -> Analysis<Rc<types::Contract>>;
@@ -85,6 +89,8 @@ pub trait AnalyzerDb {
         &self,
         contract: ContractId,
     ) -> Analysis<Rc<IndexMap<String, Rc<types::Type>>>>;
+    #[salsa::invoke(queries::contracts::contract_diagnostics)]
+    fn contract_diagnostics(&self, contract: ContractId) -> Rc<Vec<Diagnostic>>;
 
     #[salsa::invoke(queries::functions::function_signature)]
     fn function_signature(&self, id: FunctionId) -> Analysis<Rc<types::FunctionSignature>>;

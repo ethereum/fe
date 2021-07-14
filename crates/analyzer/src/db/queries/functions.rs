@@ -61,7 +61,10 @@ pub fn function_signature(
                 None
             } else {
                 names.insert(&name.kind, index);
-                Some((name.kind.clone(), typ))
+                Some(types::FunctionParam {
+                    name: name.kind.clone(),
+                    typ,
+                })
             }
         })
         .collect();

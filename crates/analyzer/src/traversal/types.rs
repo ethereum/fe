@@ -1,7 +1,7 @@
 use crate::context::AnalyzerContext;
 use crate::errors::{self, FatalError, TypeError};
 use crate::namespace::types::{Array, Base, FeString, FixedSize, Integer, Map, Tuple, Type};
-use crate::traversal::expressions::validate_arg_count;
+use crate::traversal::call_args::validate_arg_count;
 use fe_common::diagnostics::Label;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;

@@ -178,7 +178,14 @@ pub struct Tuple {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Struct {
     pub name: String,
-    pub fields: Vec<(String, FixedSize)>,
+    pub fields: Vec<StructField>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StructField {
+    pub name: String,
+    pub typ: FixedSize,
+    // is_const, is_pub, ...?
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
@@ -190,6 +197,26 @@ pub struct FeString {
 pub struct Contract {
     pub name: String,
     pub functions: IndexMap<String, Rc<ContractFunction>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ContractFunction {
+    pub is_public: bool,
+    // XXX id is only used to get the span. we just get it via the contract's ast.
+    pub id: FunctionId,
+    pub signature: Rc<FunctionSignature>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FunctionSignature {
+    pub params: Vec<FunctionParam>,
+    pub return_type: FixedSize,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FunctionParam {
+    pub name: String,
+    pub typ: FixedSize,
 }
 
 impl Map {
@@ -205,48 +232,30 @@ impl Tuple {
 }
 
 impl Struct {
-    pub fn new(name: &str) -> Struct {
-        Struct {
-            name: name.to_string(),
-            fields: vec![],
-        }
-    }
-
     /// Return `true` if the struct does not have any fields, otherwise return `false`
     pub fn is_empty(&self) -> bool {
         self.fields.is_empty()
-    }
-
-    /// Add a field to the struct
-    pub fn add_field(&mut self, name: &str, value: &FixedSize) -> Result<(), AlreadyDefined> {
-        if self.fields.iter().any(|(fname, _)| fname == name) {
-            Err(AlreadyDefined)
-        } else {
-            self.fields.push((name.to_string(), value.clone()));
-            Ok(())
-        }
     }
 
     /// Return the type of the given field name
     pub fn get_field_type(&self, name: &str) -> Option<&FixedSize> {
         self.fields
             .iter()
-            .find(|(nm, _)| nm == name)
-            .map(|(_, typ)| typ)
+            .find_map(|field| (field.name == name).then(|| &field.typ))
     }
 
-    /// Return the types of all fields
-    pub fn get_field_types(&self) -> Vec<FixedSize> {
-        self.fields.iter().cloned().map(|(_, typ)| typ).collect()
-    }
+    // /// Return the types of all fields
+    // pub fn get_field_types(&self) -> Vec<FixedSize> {
+    //     self.fields.map(|field| field.typ).cloned().collect()
+    // }
 
-    /// Return the index of the given field name
-    pub fn get_field_index(&self, name: &str) -> Option<usize> {
-        self.fields.iter().position(|(field, _)| field == name)
-    }
+    // /// Return the index of the given field name
+    // pub fn get_field_index(&self, name: &str) -> Option<usize> {
+    //     self.fields.get_full(name).map(|(idx, _, _)| idx)
+    // }
 
     fn is_mysterious(&self) -> bool {
-        self.fields.iter().any(|(_, typ)| typ.is_mysterious())
+        self.fields.iter().any(|field| field.typ.is_mysterious())
     }
 }
 
@@ -289,32 +298,18 @@ impl Integer {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ContractFunction {
-    pub is_public: bool,
-    // XXX id is only used to get the span. we just get it via the contract's ast.
-    pub id: FunctionId,
-    pub signature: Rc<FunctionSignature>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FunctionSignature {
-    pub params: Vec<(String, FixedSize)>,
-    pub return_type: FixedSize,
-}
-
 impl FunctionSignature {
-    pub fn param_types(&self) -> Vec<FixedSize> {
-        self.params.iter().map(|(_, typ)| typ.to_owned()).collect()
-    }
+    // pub fn param_types(&self) -> Vec<FixedSize> {
+    //     self.params.iter().map(|(_, typ)| typ.to_owned()).collect()
+    // }
 
-    // XXX: is this used?
-    pub fn param_names(&self) -> Vec<String> {
-        self.params
-            .iter()
-            .map(|(name, _)| name.to_owned())
-            .collect()
-    }
+    // // XXX: is this used?
+    // pub fn param_names(&self) -> Vec<String> {
+    //     self.params
+    //         .iter()
+    //         .map(|(name, _)| name.to_owned())
+    //         .collect()
+    // }
 }
 
 impl Type {
@@ -726,7 +721,7 @@ impl AbiEncoding for Struct {
         let field_names = self
             .fields
             .iter()
-            .map(|(_, typ)| typ.abi_json_name())
+            .map(|field| field.typ.abi_json_name())
             .collect::<Vec<String>>();
         let joined_names = field_names.join(",");
         format!("({})", joined_names)
@@ -735,9 +730,9 @@ impl AbiEncoding for Struct {
     fn abi_components(&self) -> Vec<AbiComponent> {
         self.fields
             .iter()
-            .map(|(name, typ)| AbiComponent {
-                name: name.to_owned(),
-                typ: typ.abi_json_name(),
+            .map(|field| AbiComponent {
+                name: field.name.to_owned(),
+                typ: field.typ.abi_json_name(),
                 components: vec![],
             })
             .collect()
@@ -745,7 +740,11 @@ impl AbiEncoding for Struct {
 
     fn abi_type(&self) -> AbiType {
         AbiType::Tuple {
-            elems: self.fields.iter().map(|(_, typ)| typ.abi_type()).collect(),
+            elems: self
+                .fields
+                .iter()
+                .map(|field| field.typ.abi_type())
+                .collect(),
         }
     }
 }

@@ -8,8 +8,8 @@ use crate::traversal::types::type_desc;
 use fe_common::diagnostics::{Diagnostic, Label};
 use fe_parser::ast;
 use fe_parser::node::Node;
-use indexmap::{map::Entry, IndexMap};
-use std::collections::HashSet;
+use indexmap::map::{Entry, IndexMap};
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 pub fn contract_functions(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<Vec<FunctionId>> {
@@ -95,7 +95,7 @@ pub fn contract_fields(
 }
 
 pub fn contract_type(db: &dyn AnalyzerDb, contract: ContractId) -> Analysis<Rc<types::Contract>> {
-    let mut contract_typ = types::Contract {
+    let mut contract_type = types::Contract {
         name: contract.name(db),
         functions: IndexMap::new(),
     };
@@ -105,12 +105,12 @@ pub fn contract_type(db: &dyn AnalyzerDb, contract: ContractId) -> Analysis<Rc<t
         let def = &func.data(db).ast;
         let name = def.kind.name.kind.clone();
 
-        match contract_typ.functions.entry(name) {
+        match contract_type.functions.entry(name) {
             Entry::Occupied(entry) => {
                 diagnostics.push(errors::fancy_error(
                     format!(
                         "duplicate function names in `contract {}`",
-                        contract_typ.name,
+                        contract_type.name,
                     ),
                     vec![
                         Label::primary(
@@ -154,7 +154,53 @@ pub fn contract_type(db: &dyn AnalyzerDb, contract: ContractId) -> Analysis<Rc<t
     }
 
     Analysis {
-        value: Rc::new(contract_typ),
+        value: Rc::new(contract_type),
         diagnostics: Rc::new(diagnostics),
     }
+}
+
+pub fn contract_diagnostics(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<Vec<Diagnostic>> {
+    let mut diags = vec![];
+
+    // fields
+    diags.extend(db.contract_fields(contract).diagnostics.iter().cloned());
+
+    // events
+    let mut names = HashMap::<String, EventId>::new();
+    for event in contract.events(db).iter() {
+        let Analysis {
+            value: typ,
+            diagnostics,
+        } = db.event_type(*event);
+        if let Some(dup_event) = names.get(&typ.name) {
+            diags.push(errors::fancy_error(
+                &format!(
+                    "duplicate event definitions in `contract {}`",
+                    contract.typ(db).name
+                ),
+                vec![
+                    Label::primary(
+                        dup_event.data(db).ast.span,
+                        format!("`event {}` first defined here", typ.name),
+                    ),
+                    Label::secondary(
+                        event.data(db).ast.span,
+                        format!("`event {}` redefined here", typ.name),
+                    ),
+                ],
+                vec![],
+            ));
+        } else {
+            names.insert(typ.name.clone(), *event);
+        }
+        diags.extend(diagnostics.iter().cloned());
+    }
+
+    // functions
+    diags.extend(db.contract_type(contract).diagnostics.iter().cloned());
+    for id in contract.functions(db).iter() {
+        diags.extend(id.diagnostics(db).iter().cloned());
+    }
+
+    Rc::new(diags)
 }

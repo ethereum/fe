@@ -2,7 +2,7 @@ use crate::context::{AnalyzerContext, ExpressionAttributes, Label, Location};
 use crate::errors::{AlreadyDefined2, FatalError};
 use crate::namespace::scopes::{BlockScope, BlockScopeType};
 use crate::namespace::types::{Base, FixedSize, Type};
-use crate::traversal::{assignments, declarations, expressions, types};
+use crate::traversal::{assignments, call_args, declarations, expressions, types};
 
 use fe_common::diagnostics::Diagnostic;
 use fe_parser::ast as fe;
@@ -32,7 +32,7 @@ fn func_stmt(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fa
         While { .. } => while_loop(scope, stmt),
         If { .. } => if_statement(scope, stmt),
         Assert { .. } => assert(scope, stmt),
-        Expr { .. } => expr(scope, stmt),
+        Expr { value } => expressions::expr(scope, value, None).map(|_| ()),
         Pass => Ok(()),
         Revert { .. } => revert(scope, stmt),
         Break | Continue => {
@@ -142,28 +142,18 @@ fn while_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), F
     }
 }
 
-fn expr(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
-    if let fe::FuncStmt::Expr { value } = &stmt.kind {
-        let _attributes = expressions::expr(scope, value, None)?;
-    }
-
-    Ok(())
-}
-
 fn emit(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
     if let fe::FuncStmt::Emit { name, args } = &stmt.kind {
-        todo!();
-        // if let Some(event) = scope.borrow().contract_event_def(&name.kind) {
-        //     scope.add_emit(stmt, event.clone());
-        //     expressions::validate_named_args(scope, &name.kind, name.span, args, &event.fields)?;
-        // } else {
-        //     scope.error(
-        //         format!("undefined event: `{}`", name.kind),
-        //         name.span,
-        //         "undefined event",
-        //     );
-        // }
-        // return Ok(());
+        if let Some(event) = scope.resolve_event(&name.kind) {
+            call_args::validate_named_args(scope, &name.kind, name.span, args, &event.fields)?;
+        } else {
+            scope.error(
+                &format!("undefined event: `{}`", name.kind),
+                name.span,
+                "undefined event",
+            );
+        }
+        return Ok(());
     }
 
     unreachable!()

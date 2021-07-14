@@ -1,3 +1,7 @@
+use crate::builtins::{
+    BlockField, ChainField, ContractTypeMethod, GlobalMethod, MsgField, Object, SelfField, TxField,
+    ValueMethod,
+};
 use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, Location};
 use crate::errors::{FatalError, IndexingError, TypeError};
 use crate::namespace::scopes::BlockScope;
@@ -5,12 +9,10 @@ use crate::namespace::types::{
     Array, Base, Contract, FeString, FixedSize, Integer, Struct, Tuple, Type, TypeDowncast, U256,
 };
 use crate::operations;
-use crate::traversal::utils::{add_bin_operations_errors, types_to_fixed_sizes};
-
-use crate::builtins::{
-    BlockField, ChainField, ContractTypeMethod, GlobalMethod, MsgField, Object, SelfField, TxField,
-    ValueMethod,
+use crate::traversal::call_args::{
+    validate_arg_count, validate_arg_labels, validate_arg_types, validate_named_args,
 };
+use crate::traversal::utils::{add_bin_operations_errors, types_to_fixed_sizes};
 use fe_common::numeric;
 use fe_common::{diagnostics::Label, utils::humanize::pluralize_conditionally};
 use fe_common::{Span, Spanned};
@@ -19,6 +21,7 @@ use fe_parser::ast::UnaryOperator;
 use fe_parser::node::Node;
 use num_bigint::BigInt;
 use std::convert::TryFrom;
+use std::iter;
 use std::rc::Rc;
 use std::str::FromStr;
 use vec1::Vec1;
@@ -713,175 +716,30 @@ fn expr_call_builtin_function(
     match typ {
         GlobalMethod::Keccak256 => {
             validate_arg_count(scope, typ.into(), name_span, args, 1);
-            validate_arg_labels(scope, args, &[None]);
+            expect_no_label_on_first_arg(scope, args);
 
-            // We only need to return with a FatalError here because the error is already reported
-            // as part of a different check on function arguments.
-            let arg_typ = argument_attributes
-                .first()
-                .map(|attr| &attr.typ)
-                .ok_or(FatalError)?;
+            if let Some(arg_typ) = argument_attributes.first().map(|attr| &attr.typ) {
+                if !matches!(
+                    arg_typ,
+                    Type::Array(Array {
+                        inner: Base::Byte,
+                        ..
+                    })
+                ) {
+                    scope.fancy_error(
+                        &format!(
+                            "`{}` can not be used as a parameter to `keccak(..)`",
+                            arg_typ
+                        ),
+                        vec![Label::primary(args.span, "wrong type")],
+                        vec!["Note: keccak(..) expects a byte array as parameter".into()],
+                    );
+                }
+            };
 
-            if !matches!(
-                arg_typ,
-                Type::Array(Array {
-                    inner: Base::Byte,
-                    ..
-                })
-            ) {
-                scope.fancy_error(
-                    &format!(
-                        "`{}` can not be used as a parameter to `keccak(..)`",
-                        arg_typ
-                    ),
-                    vec![Label::primary(args.span, "wrong type")],
-                    vec!["Note: keccak(..) expects a byte array as parameter".into()],
-                );
-            }
             Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value))
         }
     }
-}
-
-pub fn validate_arg_count(
-    context: &mut dyn AnalyzerContext,
-    name: &str,
-    name_span: Span,
-    args: &Node<Vec<impl Spanned>>,
-    param_count: usize,
-) {
-    if args.kind.len() != param_count {
-        let mut labels = vec![Label::primary(
-            name_span,
-            format!(
-                "expects {} {}",
-                param_count,
-                pluralize_conditionally("argument", param_count)
-            ),
-        )];
-        if args.kind.is_empty() {
-            labels.push(Label::secondary(args.span, "supplied 0 arguments"));
-        } else {
-            for arg in &args.kind {
-                labels.push(Label::secondary(arg.span(), ""));
-            }
-            labels.last_mut().unwrap().message = format!(
-                "supplied {} {}",
-                args.kind.len(),
-                pluralize_conditionally("argument", args.kind.len())
-            );
-        }
-
-        context.fancy_error(
-            &format!(
-                "`{}` expects {} {}, but {} {} provided",
-                name,
-                param_count,
-                pluralize_conditionally("argument", param_count),
-                args.kind.len(),
-                pluralize_conditionally(("was", "were"), args.kind.len())
-            ),
-            labels,
-            vec![],
-        );
-        // TODO: add `defined here` label (need span for definition)
-    }
-}
-
-pub fn validate_arg_labels(
-    scope: &mut BlockScope,
-    args: &Node<Vec<Node<fe::CallArg>>>,
-    labels: &[Option<&str>],
-) {
-    for (expected_label, arg) in labels.iter().zip(args.kind.iter()) {
-        let arg_val = &arg.kind.value;
-        match (expected_label, &arg.kind.label) {
-            (Some(expected_label), Some(actual_label)) => {
-                if *expected_label != actual_label.kind {
-                    let notes = if labels
-                        .iter()
-                        .any(|nm| nm == &Some(actual_label.kind.as_str()))
-                    {
-                        vec!["Note: arguments must be provided in order.".into()]
-                    } else {
-                        vec![]
-                    };
-                    scope.fancy_error(
-                        "argument label mismatch".into(),
-                        vec![Label::primary(
-                            actual_label.span,
-                            format!("expected `{}`", expected_label),
-                        )],
-                        notes,
-                    );
-                }
-            }
-            (Some(expected_label), None) => match &arg_val.kind {
-                fe::Expr::Name(var_name) if var_name == *expected_label => {}
-                _ => {
-                    scope.fancy_error(
-                        "missing argument label".into(),
-                        vec![Label::primary(
-                            Span::new(arg_val.span.start, arg_val.span.start),
-                            format!("add `{}=` here", expected_label),
-                        )],
-                        vec![format!(
-                            "Note: this label is optional if the argument is a variable named `{}`.",
-                            expected_label
-                        )],
-                    );
-                }
-            },
-            (None, Some(actual_label)) => {
-                scope.error(
-                    "argument should not be labeled".into(),
-                    actual_label.span,
-                    "remove this label".into(),
-                );
-            }
-            (None, None) => {}
-        }
-    }
-}
-
-pub fn validate_arg_types(
-    scope: &mut BlockScope,
-    name: &str,
-    args: &Node<Vec<Node<fe::CallArg>>>,
-    params: &[(String, FixedSize)],
-) -> Result<(), FatalError> {
-    for ((label, param_type), arg) in params.iter().zip(args.kind.iter()) {
-        let val_attrs = assignable_expr(scope, &arg.kind.value, Some(&param_type.clone().into()))?;
-        if param_type != &val_attrs.typ {
-            scope.type_error(
-                &format!("incorrect type for `{}` argument `{}`", name, label),
-                arg.kind.value.span,
-                param_type,
-                &val_attrs.typ,
-            );
-        }
-    }
-    Ok(())
-}
-
-pub fn validate_named_args(
-    scope: &mut BlockScope,
-    name: &str,
-    name_span: Span,
-    args: &Node<Vec<Node<fe::CallArg>>>,
-    params: &[(String, FixedSize)],
-) -> Result<(), FatalError> {
-    validate_arg_count(scope, name, name_span, args, params.len());
-    validate_arg_labels(
-        scope,
-        args,
-        &params
-            .iter()
-            .map(|(nm, _)| Some(nm.as_str()))
-            .collect::<Vec<_>>(),
-    );
-    validate_arg_types(scope, name, args, params)?;
-    Ok(())
 }
 
 fn expr_call_struct_constructor(
@@ -898,6 +756,16 @@ fn expr_call_struct_constructor(
     ))
 }
 
+fn expect_no_label_on_first_arg(scope: &mut BlockScope, args: &Node<Vec<Node<fe::CallArg>>>) {
+    if let Some(label) = args.kind.first().and_then(|arg| arg.kind.label.as_ref()) {
+        scope.error(
+            "argument should not be labeled".into(),
+            label.span,
+            "remove this label".into(),
+        );
+    }
+}
+
 fn expr_call_type_constructor(
     scope: &mut BlockScope,
     name_span: Span,
@@ -910,7 +778,7 @@ fn expr_call_type_constructor(
 
     // These all expect 1 arg, for now.
     validate_arg_count(scope, &format!("{}", typ), name_span, args, 1);
-    validate_arg_labels(scope, args, &[None]);
+    expect_no_label_on_first_arg(scope, &args);
 
     match &typ {
         Type::String(string_type) => {

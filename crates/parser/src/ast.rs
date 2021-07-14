@@ -325,6 +325,12 @@ impl Contract {
     }
 }
 
+impl Node<Field> {
+    pub fn name(&self) -> &str {
+        &self.kind.name.kind
+    }
+}
+
 impl Spanned for ModuleStmt {
     fn span(&self) -> Span {
         match self {
