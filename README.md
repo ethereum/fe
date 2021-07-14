@@ -18,7 +18,6 @@ Fe is a statically typed language for the Ethereum Virtual Machine (EVM). It is 
 * More precise gas estimation (as a consequence of decidability)
 * Static typing
 * Pure function support
-* Binary fixed-point math
 * Restrictions on reentrancy
 * Static looping
 * Module imports
