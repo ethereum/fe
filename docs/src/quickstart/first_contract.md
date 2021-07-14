@@ -78,7 +78,7 @@ Let's focus on the functionality of our world changing application and add a met
 contract GuestBook:
   messages: Map<address, String<100>>
 
-  pub def sign(book_msg: string100):
+  pub def sign(book_msg: String<100>):
       self.messages[msg.sender] = book_msg
 ```
 
@@ -122,10 +122,10 @@ To make the guest book more useful we will also add a method `get_msg` to read e
 contract GuestBook:
   messages: Map<address, String<100>>
 
-  pub def sign(book_msg: string100):
+  pub def sign(book_msg: String<100>):
       self.messages[msg.sender] = book_msg
 
-  pub def get_msg(addr: address) -> string100:
+  pub def get_msg(addr: address) -> String<100>:
       return self.messages[addr]
 ```
 
@@ -133,9 +133,14 @@ However, we will hit another error as we try to recompile the current code.
 
 ```
 Unable to compile guest_book.fe.
-Analyzer error: CannotMove on line 8
-pub def get_msg(addr: address) -> string100:
-      return self.messages[addr]
+error: value must be copied to memory
+  ┌─ guest_book.fe:8:14
+  │
+8 │       return self.messages[addr]
+  │              ^^^^^^^^^^^^^^^^^^^ this value is in storage
+  │
+  = Hint: values located in storage can be copied to memory using the `to_mem` function.
+  = Example: `self.my_array.to_mem()`
 ```
 
 When we try to return a reference type such as an array from the storage of the contract we have to explicitly copy it to memory using the [`to_mem()`](/docs/spec/index.html#623-the-to_mem-function) function.
@@ -148,10 +153,10 @@ The code should compile fine when we change it accordingly.
 contract GuestBook:
   messages: Map<address, String<100>>
 
-  pub def sign(book_msg: string100):
+  pub def sign(book_msg: String<100>):
       self.messages[msg.sender] = book_msg
 
-  pub def get_msg(addr: address) -> string100:
+  pub def get_msg(addr: address) -> String<100>:
       return self.messages[addr].to_mem()
 ```
 
