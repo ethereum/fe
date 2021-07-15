@@ -174,6 +174,7 @@ test_file! { invalid_string_field }
 test_file! { invalid_struct_field }
 test_file! { invalid_tuple_field }
 test_file! { invalid_tx_field }
+test_file! { invalid_var_declaration_1 }
 test_file! { issue_451 }
 test_file! { mismatch_return_type }
 test_file! { missing_return }

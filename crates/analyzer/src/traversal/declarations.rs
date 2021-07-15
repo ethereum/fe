@@ -79,6 +79,12 @@ fn add_var(
             }
             Ok(())
         }
+        (fe::VarDeclTarget::Tuple(_), typ) if !matches!(typ, FixedSize::Tuple(_)) => {
+            context.fancy_error("invalid declaration",
+            vec![Label::primary(target.span, "")],
+            vec![format!("Tuple declaration targets need to be declared with the tuple type but here the type is {}", typ)]);
+            Err(FatalError::new())
+        }
         _ => Err(FatalError::new()),
     }
 }
