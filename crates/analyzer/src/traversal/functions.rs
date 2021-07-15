@@ -94,7 +94,7 @@ pub fn func_def(
                     name
                 )],
             );
-            return Err(FatalError);
+            return Err(FatalError::new());
         }
         Ok(val) => {
             let attributes: FunctionAttributes = val.to_owned().into();
@@ -262,7 +262,7 @@ fn for_loop(
                     "array",
                     iter_type,
                 );
-                return Err(FatalError);
+                return Err(FatalError::new());
             };
             if let Err(AlreadyDefined) = body_scope.borrow_mut().add_var(&target.kind, target_type)
             {

@@ -72,13 +72,13 @@ fn add_var(
         (fe::VarDeclTarget::Tuple(items), FixedSize::Tuple(items_ty)) => {
             let items_ty = items_ty.items;
             if items.len() != items_ty.as_vec().len() {
-                return Err(FatalError);
+                return Err(FatalError::new());
             }
             for (item, item_ty) in items.iter().zip(items_ty.into_iter()) {
                 add_var(context, scope, item, item_ty)?;
             }
             Ok(())
         }
-        _ => Err(FatalError),
+        _ => Err(FatalError::new()),
     }
 }
