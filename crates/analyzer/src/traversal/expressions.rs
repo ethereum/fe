@@ -98,7 +98,7 @@ pub fn expr_list(
                         first_attr.typ
                     ),
                 );
-                return Err(FatalError);
+                return Err(FatalError::new());
             }
         };
 
@@ -196,7 +196,7 @@ pub fn assignable_expr(
                 exp.span,
                 "this type can only be used in a contract field",
             );
-            return Err(FatalError);
+            return Err(FatalError::new());
         }
     };
     context.update_expression(exp, attributes.clone());
@@ -230,7 +230,7 @@ fn expr_tuple(
                     exp.span,
                     "",
                 );
-                return Err(FatalError);
+                return Err(FatalError::new());
             }
             Ok(val) => val,
         };
@@ -293,7 +293,7 @@ fn expr_name(
                                     exp.span,
                                     "wrong type",
                                 );
-                                return Err(FatalError);
+                                return Err(FatalError::new());
                             }
                             Ok(val) => val,
                         };
@@ -303,7 +303,7 @@ fn expr_name(
                             Location::assign_location(&fixed_size),
                         ))
                     }
-                    None => Err(FatalError),
+                    None => Err(FatalError::new()),
                 }
             }
         };
@@ -369,7 +369,7 @@ fn expr_subscript(
                         vec![Label::primary(value.span, "unsubscriptable type")],
                         vec!["Note: Only arrays and maps are subscriptable".into()],
                     );
-                    return Err(FatalError);
+                    return Err(FatalError::new());
                 }
                 Err(IndexingError::WrongIndexType) => {
                     context.fancy_error(
@@ -380,7 +380,7 @@ fn expr_subscript(
                         vec![Label::primary(index.span, "wrong index type")],
                         vec![],
                     );
-                    return Err(FatalError);
+                    return Err(FatalError::new());
                 }
                 Ok(val) => val,
             };
@@ -405,7 +405,7 @@ fn expr_attribute(
 ) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Attribute { value, attr } = &exp.kind {
         let base_type = |typ| Ok(ExpressionAttributes::new(Type::Base(typ), Location::Value));
-        let fatal_err = Err(FatalError);
+        let fatal_err = Err(FatalError::new());
 
         // If the value is a name, check if it is a builtin object and attribute.
         if let fe::Expr::Name(name) = &value.kind {
@@ -598,7 +598,7 @@ fn expr_attribute_self(
                 vec![Label::primary(attr.span, "undefined field")],
                 vec![],
             );
-            Err(FatalError)
+            Err(FatalError::new())
         }
     }
 }
@@ -617,7 +617,7 @@ fn expr_bin_operation(
         let typ = match operations::bin(&left_attributes.typ, &op.kind, &right_attributes.typ) {
             Err(err) => {
                 add_bin_operations_errors(context, left, right, err);
-                return Err(FatalError);
+                return Err(FatalError::new());
             }
             Ok(val) => val,
         };
@@ -990,7 +990,7 @@ fn expr_call_type_constructor(
                 Location::Value,
             ))
         }
-        _ => Err(FatalError),
+        _ => Err(FatalError::new()),
     }
 }
 
@@ -1041,7 +1041,7 @@ fn expr_call_self_attribute(
             vec![Label::primary(name_span, "undefined function")],
             vec![],
         );
-        Err(FatalError)
+        Err(FatalError::new())
     }
 }
 
@@ -1093,7 +1093,7 @@ fn expr_call_value_attribute(
                     vec![Label::primary(attr.span, "undefined function")],
                     vec![],
                 );
-                return Err(FatalError);
+                return Err(FatalError::new());
             }
             Ok(ValueMethod::Clone) => {
                 match value_attributes.location {
@@ -1284,7 +1284,7 @@ fn expr_call_type_attribute(
                 vec![Label::primary(name_span, "undefined function")],
                 vec![],
             );
-            Err(FatalError)
+            Err(FatalError::new())
         }
     }
 }
@@ -1326,7 +1326,7 @@ fn expr_call_contract_attribute(
             vec![Label::primary(name_span, "undefined function")],
             vec![],
         );
-        Err(FatalError)
+        Err(FatalError::new())
     }
 }
 
@@ -1349,7 +1349,7 @@ fn expr_call_type(
                 )],
                 vec![],
             );
-            Err(FatalError)
+            Err(FatalError::new())
         }
     }?;
 
@@ -1411,14 +1411,14 @@ fn expr_name_call_type(
             [fe::GenericArg::Int(len)] => Ok(CallType::TypeConstructor {
                 typ: Type::String(FeString { max_size: len.kind }),
             }),
-            _ => Err(FatalError),
+            _ => Err(FatalError::new()),
         },
         (value, _) => {
             if let Some(typ) = scope.borrow().get_module_type_def(value) {
                 Ok(CallType::TypeConstructor { typ })
             } else {
                 context.error("undefined function", name_span, "undefined");
-                Err(FatalError)
+                Err(FatalError::new())
             }
         }
     }
@@ -1439,7 +1439,7 @@ fn expr_attribute_call_type(
                         vec![],
                     );
 
-                    return Err(FatalError);
+                    return Err(FatalError::new());
                 }
                 Ok(Object::Self_) => {
                     return Ok(CallType::SelfAttribute {

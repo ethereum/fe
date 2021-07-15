@@ -10,6 +10,22 @@ pub struct AlreadyDefined;
 #[derive(Debug)]
 pub struct FatalError;
 
+impl FatalError {
+    /// Create a `FatalError` instance.
+    pub fn new() -> FatalError {
+        // This is primarly a hook for debugging. If we hit a FatalError for which we haven't
+        // yet assigned a proper user error, we can place a panic here to see where the fatal
+        // error originates.
+        FatalError
+    }
+}
+
+impl Default for FatalError {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Error indicating that a value can not move between memory and storage
 #[derive(Debug)]
 pub struct CannotMove;
