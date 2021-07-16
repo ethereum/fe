@@ -4,6 +4,7 @@ use crate::namespace::types::FixedSize;
 use crate::traversal::{expressions, types};
 use crate::Context;
 use fe_common::diagnostics::Label;
+use fe_common::utils::humanize::pluralize_conditionally;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use std::rc::Rc;
@@ -71,7 +72,20 @@ fn add_var(
         }
         (fe::VarDeclTarget::Tuple(items), FixedSize::Tuple(items_ty)) => {
             let items_ty = items_ty.items;
-            if items.len() != items_ty.as_vec().len() {
+            let items_ty_len = items_ty.as_vec().len();
+            if items.len() != items_ty_len {
+                context.fancy_error(
+                    "invalid declaration",
+                    vec![Label::primary(target.span, "")],
+                    vec![format!(
+                        "Tuple declaration has {} {} but the specified tuple type has {} {}",
+                        items.len(),
+                        pluralize_conditionally("item", items.len()),
+                        items_ty_len,
+                        pluralize_conditionally("item", items_ty_len),
+                    )],
+                );
+
                 return Err(FatalError::new());
             }
             for (item, item_ty) in items.iter().zip(items_ty.into_iter()) {
