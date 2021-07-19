@@ -56,6 +56,16 @@ ModuleAttributes {
                             },
                         ),
                     },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "return_with_newline",
+                        params: [],
+                        return_type: String(
+                            FeString {
+                                max_size: 16,
+                            },
+                        ),
+                    },
                 ],
             },
         ),
@@ -246,6 +256,24 @@ note:
          typ: String(
              FeString {
                  max_size: 100,
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/strings.fe:24:16
+   │  
+24 │           return "foo
+   │ ╭────────────────^
+25 │ │         balu"
+   │ ╰─────────────^ attributes hash: 15759196394724794690
+   │  
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 16,
              },
          ),
          location: Memory,
@@ -447,6 +475,25 @@ note:
      }
 
 note: 
+   ┌─ features/strings.fe:23:5
+   │  
+23 │ ╭     pub def return_with_newline() -> String<16>:
+24 │ │         return "foo
+25 │ │         balu"
+   │ ╰─────────────^ attributes hash: 14350780978254754932
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "return_with_newline",
+         params: [],
+         return_type: String(
+             FeString {
+                 max_size: 16,
+             },
+         ),
+     }
+
+note: 
    ┌─ features/strings.fe:1:1
    │  
  1 │ ╭ contract Foo:
@@ -454,9 +501,9 @@ note:
  3 │ │         s2: String<26>
  4 │ │         u: u256
    · │
-20 │ │     pub def return_casted_static_string() -> String<100>:
-21 │ │         return String<100>("foo")
-   │ ╰─────────────────────────────────^ attributes hash: 2821469132888555159
+24 │ │         return "foo
+25 │ │         balu"
+   │ ╰─────────────^ attributes hash: 8230381975525950566
    │  
    = ContractAttributes {
          public_functions: [
@@ -504,6 +551,16 @@ note:
                  return_type: String(
                      FeString {
                          max_size: 43,
+                     },
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "return_with_newline",
+                 params: [],
+                 return_type: String(
+                     FeString {
+                         max_size: 16,
                      },
                  ),
              },
@@ -923,6 +980,18 @@ note:
    = String(
          FeString {
              max_size: 100,
+         },
+     )
+
+note: 
+   ┌─ features/strings.fe:23:38
+   │
+23 │     pub def return_with_newline() -> String<16>:
+   │                                      ^^^^^^^^^^ attributes hash: 7943909822945469766
+   │
+   = String(
+         FeString {
+             max_size: 16,
          },
      )
 

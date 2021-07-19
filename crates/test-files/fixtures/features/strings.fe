@@ -19,3 +19,7 @@ contract Foo:
 
     pub def return_casted_static_string() -> String<100>:
         return String<100>("foo")
+
+    pub def return_with_newline() -> String<16>:
+        return "foo
+        balu"
