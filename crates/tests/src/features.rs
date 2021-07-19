@@ -593,6 +593,16 @@ fn strings() {
             Some(&string_token("foo")),
         );
 
+        harness.test_function(
+            &mut executor,
+            "return_with_newline",
+            &[],
+            Some(&string_token(
+                "foo
+        balu",
+            )),
+        );
+
         harness.events_emitted(
             executor,
             &[(
