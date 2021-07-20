@@ -114,7 +114,6 @@ contract UniswapV2Pair:
 
     # called once by the factory at time of deployment
     pub def initialize(token0: address, token1: address):
-        # TODO: we should not be ignoring the revert messages (https://github.com/ethereum/fe/issues/288)
         assert msg.sender == self.factory, "UniswapV2: FORBIDDEN"
         self.token0 = token0
         self.token1 = token1
