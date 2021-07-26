@@ -10,11 +10,11 @@ Fe divides keywords into two categories:
 These keywords can only be used in their correct contexts. They cannot
 be used as the names of:
 
-* [Items]
-* [Variables] and function parameters
-* Fields and [variants]
+* [Items](items.md)
+* [Variables](variables.md) and function parameters
+* Fields and [variants](enumeration.md)
 
-> **<sup>Lexer:<sup>**\
+> **Lexer:**\
 > KW_AS             : `as`\
 > KW_BREAK          : `break`\
 > KW_CONST          : `const`\
@@ -52,7 +52,7 @@ the same restrictions as strict keywords. The reasoning behind this is to make
 current programs forward compatible with future versions of Fe by forbidding
 them to use these keywords.
 
-> **<sup>Lexer</sup>**\
+> **Lexer:**\
 > KW_ABSTRACT       : `abstract`\
 > KW_ABSTRACT       : `async`\
 > KW_ABSTRACT       : `await`\
