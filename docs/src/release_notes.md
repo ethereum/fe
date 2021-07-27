@@ -12,6 +12,95 @@ Fe is moving fast. Read up on all the latest improvements.
 **WARNING: All Fe releases are alpha releases and only meant to share the development progress with developers and enthusiasts. It is NOT yet ready for production usage.**
 
 [//]: # (towncrier release notes start)
+## 0.7.0-alpha "Galaxite" (2021-07-27)
+
+### Features
+
+
+- Enable the optimizer by default. The optimizer can still be disabled
+  by supplying `--optimize=false` as an argument. ([#439](https://github.com/ethereum/fe/issues/439))
+- The following checks are now performed while decoding data:
+
+  - The size of the encoded data fits within the size range known at compile-time.
+  - Values are correctly padded.
+    - unsigned integers, addresses, and bools are checked to have correct left zero padding
+    - the size of signed integers are checked
+    - bytes and strings are checked to have correct right padding
+  - Data section offsets are consistent with the size of preceding values in the data section.
+  - The dynamic size of strings does not exceed their maximum size.
+  - The dynamic size of byte arrays (`u8[n]`) is equal to the size of the array. ([#440](https://github.com/ethereum/fe/issues/440))
+- Type aliases can now include tuples. Example:
+  ```
+  type InternetPoints = (address, u256)
+  ```
+  ([#459](https://github.com/ethereum/fe/issues/459))
+- Revert with custom errors
+
+  Example:
+
+  ```
+  struct PlatformError:
+    code: u256
+
+  pub def do_something():
+    revert PlatformError(code=4711)
+  ```
+
+  Error encoding [follows Solidity](https://docs.soliditylang.org/en/v0.8.4/abi-spec.html#errors) which is based on [EIP-838](https://github.com/ethereum/EIPs/issues/838). This means that custom errors returned from Fe are fully compatible with Solidity. ([#464](https://github.com/ethereum/fe/issues/464))
+- - The builtin value `msg.sig` now has type `u256`.
+  - Removed the `bytes[n]` type. The type `u8[n]` can be used in its placed and will be encoded as a dynamically-sized, but checked, bytes component. ([#472](https://github.com/ethereum/fe/issues/472))
+- Encode certain reverts as panics.
+
+  With this change, the following reverts are encoded as `Panic(uint256)` with
+  the following panic codes:
+
+  - `0x01`: An assertion that failed and did not specify an error message
+  - `0x11`: An arithmetic expression resulted in an over- or underflow
+  - `0x12`: An arithmetic expression divided or modulo by zero
+
+  The panic codes are aligned with [the panic codes that Solidity uses](https://docs.soliditylang.org/en/v0.8.4/control-structures.html?highlight=Panic#panic-via-assert-and-error-via-require). ([#476](https://github.com/ethereum/fe/issues/476))
+
+
+### Bugfixes
+
+
+- Fixed a crash when trying to access an invalid attribute on a string.
+
+  Example:
+
+  ```
+  contract Foo:
+
+    pub def foo():
+      "".does_not_exist
+  ```
+
+  The above now yields a proper user error. ([#444](https://github.com/ethereum/fe/issues/444))
+- Ensure `String<N>` type is capitalized in error messages ([#445](https://github.com/ethereum/fe/issues/445))
+- Fixed ICE when using a static string that spans over multiple lines.
+
+  Previous to this fix, the following code would lead to a compiler crash:
+
+  ```
+  contract Foo:
+      pub def return_with_newline() -> String<16>:
+          return "foo
+          balu"
+  ```
+
+  The above code now works as intended. ([#448](https://github.com/ethereum/fe/issues/448))
+- Fixed ICE when using a tuple declaration and specifying a non-tuple type.
+  Fixed a second ICE when using a tuple declaration where the number of
+  target items doesn't match the number of items in the declared type. ([#469](https://github.com/ethereum/fe/issues/469))
+
+
+### Internal Changes - for Fe Contributors
+
+
+- - Cleaned up ABI encoding internals.
+  - Improved yulc panic formatting. ([#472](https://github.com/ethereum/fe/issues/472))
+
+
 ## 0.6.0-alpha "Feldspar" (2021-06-10)
 
 
