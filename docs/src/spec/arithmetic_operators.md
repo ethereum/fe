@@ -1,4 +1,4 @@
-### 4.2.1 Arithmetic Operators
+# Arithmetic Operators
 
 > **<sup>Syntax</sup>**\
 > _ArithmeticExpression_ :\
@@ -18,19 +18,19 @@ Binary operators expressions are all written with [infix notation](https://en.wi
 This table summarizes the behavior of arithmetic and logical binary operators on
 primitive types.
 
-| Symbol | Integer                 | Status      | Discussions    |
-|--------|-------------------------|-------------|----------------|
-| `+`    | Addition                | IMPLEMENTED |                |
-| `-`    | Subtraction             | IMPLEMENTED |                |
-| `*`    | Multiplication          | IMPLEMENTED |                |
-| `/`    | Division*               | IMPLEMENTED |                |
-| `%`    | Remainder               | IMPLEMENTED |                |
-| `**`   | Exponentiation          | IMPLEMENTED |                |
-| `&`    | Bitwise AND             | IMPLEMENTED |                |
-| <code>&#124;</code> | Bitwise OR | IMPLEMENTED |                |
-| `^`    | Bitwise XOR             | IMPLEMENTED |                |
-| `<<`   | Left Shift              | IMPLEMENTED |                |
-| `>>`   | Right Shift             | IMPLEMENTED |                |
+| Symbol | Integer                 |
+|--------|-------------------------|
+| `+`    | Addition                |
+| `-`    | Subtraction             |
+| `*`    | Multiplication          |
+| `/`    | Division*               |
+| `%`    | Remainder               |
+| `**`   | Exponentiation          |
+| `&`    | Bitwise AND             |
+| <code>&#124;</code> | Bitwise OR |
+| `^`    | Bitwise XOR             |
+| `<<`   | Left Shift              |
+| `>>`   | Right Shift             |
 
 \* Integer division rounds towards zero.
 
@@ -50,3 +50,6 @@ Here are examples of these operators being used.
 212 << 1 == 424
 212 >> 1 == 106
 ```
+
+
+[_Expression_]:expressions.md

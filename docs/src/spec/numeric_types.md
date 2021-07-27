@@ -1,4 +1,4 @@
-### Numeric types
+# Numeric types
 
 The unsigned integer types consist of:
 

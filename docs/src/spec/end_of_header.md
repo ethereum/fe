@@ -1,4 +1,4 @@
-### End of header
+# End of header
 
 > **<sup>Lexer:<sup>**\
 > _EndOfHeader_ :\

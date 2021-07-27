@@ -1,6 +1,6 @@
-# 1. Notation
+# Notation
 
-## 1.1 Grammar
+## Grammar
 
 The following notations are used by the *Lexer* and *Syntax* grammar snippets:
 

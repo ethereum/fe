@@ -1,4 +1,4 @@
-### 6.1. Stack
+# Stack
 
 The following can be stored on the stack:
 

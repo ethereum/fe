@@ -1,4 +1,4 @@
-### Constant size values in storage
+# Constant size values in storage
 
 Storage pointers for constant size values are determined at compile time.
 

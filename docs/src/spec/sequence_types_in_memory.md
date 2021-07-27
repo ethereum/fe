@@ -1,4 +1,4 @@
-### Sequence types in memory
+# Sequence types in memory
 
 Sequence type values may exceed the 256-bit stack slot size, so we store them in memory and
 reference them using pointers kept on the stack.

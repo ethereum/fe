@@ -1,4 +1,4 @@
-### Maps in storage
+# Maps in storage
 
 Maps are not assigned pointers, because they do not have a location in storage. They are instead
 assigned a nonce that is used to derive the location of keyed values during runtime.

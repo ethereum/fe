@@ -1,9 +1,4 @@
-
-
-
-
-
-### Events
+# Events
 
 > **<sup>Syntax</sup>**\
 > _Event_ :\
@@ -13,8 +8,8 @@
 > &nbsp;&nbsp; _EventField_<sup>\*</sup>
 >
 > _EventField_ :\
-> &nbsp;&nbsp; _EventIndexability_ [IDENTIFIER] `:` [_Type_]
-
+> &nbsp;&nbsp; _EventIndexability_ [IDENTIFIER] `:` [_Type_]\
+>
 > _EventIndexability_ :\
 > &nbsp;&nbsp; `idx`<sup>?</sup>
 
@@ -33,3 +28,8 @@ def transfer(to : address, value : u256):
    # All done, log the event for listeners
    emit Transfer(msg.sender, _to, _value)
 ```
+
+[_EndOfHeader_]: end_of_header.md
+[IDENTIFIER]: identifiers.md
+[_Type_]: types.md
+[event type]: event_types.md

@@ -1,4 +1,4 @@
-### The `to_mem` function
+# The `to_mem` function
 
 Reference type values can be copied from storage and into memory using the `to_mem` function.
 

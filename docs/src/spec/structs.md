@@ -1,4 +1,4 @@
-### Structs
+# Structs
 
 > **<sup>Syntax</sup>**\
 > _Struct_ :\
@@ -28,3 +28,8 @@ px: u256 = p.x;
 Builtin functions:
 
 - `abi_encode()` encodes the struct as an ABI tuple and returns the encoded data as a fixed-size byte array that is equal in size to the encoding.
+
+
+[_EndOfHeader_]: end_of_header.md
+[IDENTIFIER]: identifiers.md
+[_Type_]: types.md

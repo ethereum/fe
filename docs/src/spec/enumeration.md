@@ -1,4 +1,4 @@
-### Enumeration
+# Enumeration
 
 > **<sup>Syntax</sup>**\
 > _Enumeration_ :\
@@ -24,3 +24,8 @@ enum Animal:
 
 barker = Animal.Dog
 ```
+
+[_EndOfHeader_]: end_of_header.md
+[IDENTIFIER]: identifiers.md
+[_Type_]: types.md
+[enumerated type]:enumerated_types.md
