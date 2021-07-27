@@ -8,13 +8,13 @@ license = "GPL-3.0-or-later"
 name = "fe"
 readme = "README.md"
 repository = "https://github.com/ethereum/fe"
-version = "0.6.1-alpha"
+version = "0.7.0-alpha"
 
 [features]
 solc-backend = ["fe-driver/solc-backend"]
 
 [dependencies]
 clap = "2.33.3"
-fe-common = {path = "../common", version = "^0.6.1-alpha"}
-fe-driver = {path = "../driver", version = "^0.6.1-alpha"}
-fe-parser = {path = "../parser", version = "^0.6.1-alpha"}
+fe-common = {path = "../common", version = "^0.7.0-alpha"}
+fe-driver = {path = "../driver", version = "^0.7.0-alpha"}
+fe-parser = {path = "../parser", version = "^0.7.0-alpha"}
