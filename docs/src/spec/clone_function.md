@@ -1,4 +1,4 @@
-#### 6.2.3. The `clone` function
+# The `clone` function
 
 Reference type values in memory can be cloned using the `clone` function.
 

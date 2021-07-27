@@ -1,4 +1,4 @@
-### Struct types
+# Struct types
 
 A *struct type* is the type denoted by the name of an [`struct` item].
 A `struct` *type* is a heterogeneous product of other types, called the

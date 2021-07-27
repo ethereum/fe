@@ -1,4 +1,4 @@
-### 4.2.2 Comparision Operators
+# Comparision Operators
 
 > **<sup>Syntax</sup>**\
 > _ComparisonExpression_ :\
@@ -10,14 +10,14 @@
 > &nbsp;&nbsp; | [_Expression_] `<=` [_Expression_]
 
 
-| Symbol | Meaning                  |     Status                 |
-|--------|--------------------------|----------------------------|
-| `==`   | Equal                    |         IMPLEMENTED        |
-| `!=`   | Not equal                |         IMPLEMENTED        |
-| `>`    | Greater than             |         IMPLEMENTED        |
-| `<`    | Less than                |         IMPLEMENTED        |
-| `>=`   | Greater than or equal to |         IMPLEMENTED        |
-| `<=`   | Less than or equal to    |         IMPLEMENTED        |
+| Symbol | Meaning                  |
+|--------|--------------------------|
+| `==`   | Equal                    |
+| `!=`   | Not equal                |
+| `>`    | Greater than             |
+| `<`    | Less than                |
+| `>=`   | Greater than or equal to |
+| `<=`   | Less than or equal to    |
 
 Here are examples of the comparison operators being used.
 
@@ -29,3 +29,5 @@ Here are examples of the comparison operators being used.
 11 < 12
 11 <= 11
 ```
+
+[_Expression_]:expressions.md

@@ -1,5 +1,4 @@
-
-### Functions
+# Functions
 
 > **<sup>Syntax</sup>**\
 > _Function_ :\
@@ -43,3 +42,13 @@ For example, this is a simple function:
 def answer_to_life_the_universe_and_everything() -> u256:
     return 42
 ```
+
+[_EndOfHeader_]: end_of_header.md
+[_BlockExpression_]: block_expression.md
+[block]: block_expression.md
+[IDENTIFIER]: identifiers.md
+[_Type_]: types.md
+[type]: types.md
+[_function_]: function_item_types.md
+[*function item type*]: function_item_types.md
+[variables]: variables.md

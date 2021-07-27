@@ -1,4 +1,4 @@
-### 5.1.1.2. Contract types
+# Contract types
 
 An *contract type* is the type denoted by the name of an [`contract` item].
 
@@ -7,10 +7,10 @@ attribute functions. A new contract value can be created by either casting
 an address to a contract type or by creating a new contract using the type 
 attribute functions `create` or `create2`.
 
-example:
+Example:
 
 ```python 
- contract Foo:
+contract Foo:
     pub def get_my_num() -> u256:
         return 42
 
@@ -20,3 +20,5 @@ contract FooFactory:
         foo: Foo = Foo.create2(0, 52)
         return address(foo)
 ```
+
+[`contract` item]: contracts.md

@@ -1,4 +1,4 @@
-### Contracts
+# Contracts
 
 > **<sup>Syntax</sup>**\
 > _Contract_ :\
@@ -10,7 +10,7 @@
 > _ContractMember_:\
 > &nbsp;&nbsp; [_Visibility_]<sup>?</sup>\
 > &nbsp;&nbsp; (\
-> &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;  [_ContractField_]\
+> &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;  _ContractField_\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_Function_]\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_Struct_]\
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_Event_]\
@@ -30,17 +30,25 @@ An example of a `contract`:
 
 ```
 contract GuestBook:
-    pub guest_book: Map<address, bytes[100]>
+    messages: Map<address, String<100>>
 
     event Signed:
-        idx book_msg: bytes[100]
+        book_msg: String<100>
 
-    pub def sign(book_msg: bytes[100]):
-        self.guest_book[msg.sender] = book_msg
-
+    pub def sign(book_msg: String<100>):
+        self.messages[msg.sender] = book_msg
         emit Signed(book_msg=book_msg)
 
-    pub def get_msg(addr: address) -> bytes[100]:
-        return self.guest_book[addr]
+    pub def get_msg(addr: address) -> String<100>:
+        return self.messages[addr].to_mem()
 ```
 
+[_EndOfHeader_]: end_of_header.md
+[IDENTIFIER]: identifiers.md
+[_Visibility_]: visibility_and_privacy.md
+[_Type_]: types.md
+[type]: types.md
+[_Function_]: function_item_types.md
+[_Struct_]: structs.md
+[_Event_]: events.md
+[_Enumeration_]: enumeration.md

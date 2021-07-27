@@ -1,4 +1,4 @@
-### Visibility and Privacy
+# Visibility and Privacy
 
 These two terms are often used interchangeably, and what they are attempting to convey is the answer to the question "Can this item be used at this location?"
 

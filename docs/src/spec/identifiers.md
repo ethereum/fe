@@ -1,4 +1,4 @@
-### Identifiers
+# Identifiers
 
 > **<sup>Lexer:<sup>**\
 > IDENTIFIER_OR_KEYWORD :\
@@ -20,5 +20,5 @@ Or
 * The identifier is more than one character. `_` alone is not an identifier.
 * The remaining characters are alphanumeric or `_`.
 
-[strict]: index.md#strict-keywords
-[reserved]: index.md#reserved-keywords
+[strict]: keywords.md#strict-keywords
+[reserved]: keywords.md#reserved-keywords

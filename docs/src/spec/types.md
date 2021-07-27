@@ -1,4 +1,4 @@
-### Types
+# Types
 
 Every variable, item, and value in a Fe program has a type. The _type_ of a
 *value* defines the interpretation of the memory holding it and the operations
@@ -19,7 +19,6 @@ The list of types is:
         * Sequence types
             * [Tuple]
             * [Array]
-            * [Bytes]
             * [String]
             * [Struct]
             * [Enum]
@@ -28,3 +27,17 @@ The list of types is:
     * [Event]
     * [Contract]
     * [Function]
+
+
+[Array]: array_types.md
+[Boolean]:boolean_type.md
+[Address]:address_type.md
+[Numeric]:numeric_types.md
+[Tuple]: tuple_types.md
+[String]: string_type.md
+[Struct]: struct_types.md
+[Enum]: enumerated_types.md
+[HashMap]: hashmap_type.md
+[Event]: event_types.md
+[Contract]: contract_types.md
+[Function]: function_types.md

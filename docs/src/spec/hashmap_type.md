@@ -1,4 +1,4 @@
-### HashMap type
+# HashMap type
 
 Maps a key to a value.
 

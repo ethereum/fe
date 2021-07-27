@@ -1,11 +1,11 @@
-### Keywords
+# Keywords
 
 Fe divides keywords into two categories:
 
 * [strict](#strict-keywords)
 * [reserved](#reserved-keywords)
 
-#### Strict keywords
+## Strict keywords
 
 These keywords can only be used in their correct contexts. They cannot
 be used as the names of:
@@ -45,7 +45,7 @@ be used as the names of:
 > KW_ADDRESS        : `address`
 
 
-#### Reserved keywords
+## Reserved keywords
 
 These keywords aren't used yet, but they are reserved for future use. They have
 the same restrictions as strict keywords. The reasoning behind this is to make

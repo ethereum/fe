@@ -1,5 +1,4 @@
-
-### Memory
+# Memory
 
 Only sequence types can be stored in memory.
 

@@ -1,5 +1,4 @@
-
-## 6. Data Layout
+# Data Layout
 
 There are three places where data can be stored on the EVM:
 
@@ -9,5 +8,7 @@ storage slots does not increase gas cost.
 - **memory**: 256-bit address space where 256-bit values can be stored. Accessing higher
 memory slots increases gas cost.
 
-Each data type described in section 5 can be stored in these locations. How data is stored is
+Each [data type] can be stored in these locations. How data is stored is
 described in this section.
+
+[data type]: types.md
