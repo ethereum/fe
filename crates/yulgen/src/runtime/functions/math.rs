@@ -1,5 +1,6 @@
 use crate::constants::{numeric_min_max, PANIC_DIV_OR_MOD_BY_ZERO, PANIC_OVER_OR_UNDERFLOW};
 use crate::names;
+use crate::operations::revert as revert_operations;
 use fe_analyzer::namespace::types::Integer;
 use yultsur::*;
 
@@ -110,15 +111,11 @@ pub fn all() -> Vec<yul::Statement> {
 }
 
 fn revert_with_over_or_under_flow() -> yul::Statement {
-    statement!(revert_with_panic([
-        literal_expression! {(PANIC_OVER_OR_UNDERFLOW)}
-    ]))
+    revert_operations::panic_revert(PANIC_OVER_OR_UNDERFLOW)
 }
 
 fn revert_with_div_or_mod_by_zero() -> yul::Statement {
-    statement!(revert_with_panic([
-        literal_expression! {(PANIC_DIV_OR_MOD_BY_ZERO)}
-    ]))
+    revert_operations::panic_revert(PANIC_DIV_OR_MOD_BY_ZERO)
 }
 
 fn checked_mod_unsigned() -> yul::Statement {

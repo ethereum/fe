@@ -1,34 +1,43 @@
 use crate::operations::abi as abi_operations;
+use crate::types::{to_abi_selector_names, to_abi_types, EvmSized};
 use fe_analyzer::namespace::events::EventDef;
-use fe_analyzer::namespace::types::{Array, FeSized, FixedSize};
+use fe_analyzer::namespace::types::{Array, FixedSize};
 use yultsur::*;
 
 /// Loads a value of the given type from storage.
-pub fn sload<T: FeSized>(typ: T, sptr: yul::Expression) -> yul::Expression {
+pub fn sload<T: EvmSized>(typ: T, sptr: yul::Expression) -> yul::Expression {
     let size = literal_expression! { (typ.size()) };
     expression! { bytes_sloadn([sptr], [size]) }
 }
 
 /// Stores a value of the given type in storage.
-pub fn sstore<T: FeSized>(typ: T, sptr: yul::Expression, value: yul::Expression) -> yul::Statement {
+pub fn sstore<T: EvmSized>(
+    typ: T,
+    sptr: yul::Expression,
+    value: yul::Expression,
+) -> yul::Statement {
     let size = literal_expression! { (typ.size()) };
     statement! { bytes_sstoren([sptr], [size], [value]) }
 }
 
 /// Loads a value of the given type from memory.
-pub fn mload<T: FeSized>(typ: T, mptr: yul::Expression) -> yul::Expression {
+pub fn mload<T: EvmSized>(typ: T, mptr: yul::Expression) -> yul::Expression {
     let size = literal_expression! { (typ.size()) };
     expression! { mloadn([mptr], [size]) }
 }
 
 /// Stores a value of the given type in memory.
-pub fn mstore<T: FeSized>(typ: T, mptr: yul::Expression, value: yul::Expression) -> yul::Statement {
+pub fn mstore<T: EvmSized>(
+    typ: T,
+    mptr: yul::Expression,
+    value: yul::Expression,
+) -> yul::Statement {
     let size = literal_expression! { (typ.size()) };
     statement! { mstoren([mptr], [size], [value]) }
 }
 
 /// Copies a segment of memory into storage.
-pub fn mcopys<T: FeSized>(typ: T, sptr: yul::Expression, mptr: yul::Expression) -> yul::Statement {
+pub fn mcopys<T: EvmSized>(typ: T, sptr: yul::Expression, mptr: yul::Expression) -> yul::Statement {
     let size = literal_expression! { (typ.size()) };
     let word_ptr = expression! { div([sptr], 32) };
     statement! { mcopys([mptr], [word_ptr], [size]) }
@@ -37,14 +46,14 @@ pub fn mcopys<T: FeSized>(typ: T, sptr: yul::Expression, mptr: yul::Expression) 
 /// Copies a segment of storage into memory.
 ///
 /// Returns the address of the data in memory.
-pub fn scopym<T: FeSized>(typ: T, sptr: yul::Expression) -> yul::Expression {
+pub fn scopym<T: EvmSized>(typ: T, sptr: yul::Expression) -> yul::Expression {
     let size = literal_expression! { (typ.size()) };
     let word_ptr = expression! { div([sptr], 32) };
     expression! { scopym([word_ptr], [size]) }
 }
 
 /// Copies a segment of storage to another segment of storage.
-pub fn scopys<T: FeSized>(
+pub fn scopys<T: EvmSized>(
     typ: T,
     dest_ptr: yul::Expression,
     origin_ptr: yul::Expression,
@@ -56,14 +65,19 @@ pub fn scopys<T: FeSized>(
 }
 
 /// Copies a segment of memory to another segment of memory.
-pub fn mcopym<T: FeSized>(typ: T, ptr: yul::Expression) -> yul::Expression {
+pub fn mcopym<T: EvmSized>(typ: T, ptr: yul::Expression) -> yul::Expression {
     let size = literal_expression! { (typ.size()) };
     expression! { mcopym([ptr], [size]) }
 }
 
 /// Logs an event.
 pub fn emit_event(event: EventDef, vals: Vec<yul::Expression>) -> yul::Statement {
-    let mut topics = vec![literal_expression! { (event.topic) }];
+    // the first topic is the hash of the event signature
+    let topic_0 = fe_abi::utils::event_topic(
+        &event.name,
+        &to_abi_selector_names(&event.all_field_types()),
+    );
+    let mut topics = vec![literal_expression! { (topic_0) }];
 
     let (field_vals, field_types): (Vec<yul::Expression>, Vec<FixedSize>) = event
         .non_indexed_field_types_with_index()
@@ -78,8 +92,8 @@ pub fn emit_event(event: EventDef, vals: Vec<yul::Expression>) -> yul::Statement
         .map(|(index, typ)| (vals[index].to_owned(), typ))
         .unzip();
 
-    let encoding = abi_operations::encode(&field_types, field_vals);
-    let encoding_size = abi_operations::encoding_size(&field_types, vals);
+    let encoding = abi_operations::encode(&to_abi_types(&field_types), field_vals);
+    let encoding_size = abi_operations::encoding_size(&to_abi_types(&field_types), vals);
 
     // for now we assume these are all base type values and therefore do not need to
     // be hashed

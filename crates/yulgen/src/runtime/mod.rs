@@ -1,8 +1,9 @@
 pub mod abi_dispatcher;
 pub mod functions;
+use crate::types::{to_abi_types, AbiDecodeLocation, AbiType};
 use crate::Context;
 use fe_analyzer::context::FunctionAttributes;
-use fe_analyzer::namespace::types::{AbiDecodeLocation, Contract, FixedSize};
+use fe_analyzer::namespace::types::Contract;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use yultsur::*;
@@ -20,40 +21,38 @@ pub fn build(context: &Context, contract: &Node<fe::Contract>) -> Vec<yul::State
                 .public_functions
                 .iter()
                 .filter(|attributes| !attributes.return_type.is_unit())
-                .map(|attributes| vec![attributes.return_type.clone()])
+                .map(|attributes| vec![AbiType::from(&attributes.return_type)])
                 .collect::<Vec<_>>();
 
             let events_batch = attributes
                 .events
                 .iter()
-                .map(|event| event.non_indexed_field_types())
+                .map(|event| to_abi_types(&event.non_indexed_field_types()))
                 .collect::<Vec<_>>();
 
             let contracts_batch = external_functions
-                .clone()
-                .into_iter()
-                .map(|function| function.param_types())
+                .iter()
+                .map(|function| to_abi_types(&function.param_types()))
                 .collect();
 
             let assert_strings_batch = context
                 .assert_strings
-                .clone()
-                .into_iter()
-                .map(|val| vec![val.into()])
+                .iter()
+                .map(|val| vec![AbiType::from(val)])
                 .collect::<Vec<_>>();
 
             let revert_errors_batch = context
                 .revert_errors
-                .clone()
-                .into_iter()
-                .map(|val| val.get_field_types())
+                .iter()
+                .map(|val| to_abi_types(&val.get_field_types()))
                 .collect::<Vec<_>>();
+
+            let revert_panic_batch = vec![vec![AbiType::Uint { size: 32 }]];
 
             let structs_batch = attributes
                 .structs
-                .clone()
-                .into_iter()
-                .map(|struct_| vec![FixedSize::Struct(struct_)])
+                .iter()
+                .map(|struct_| vec![AbiType::from(struct_)])
                 .collect::<Vec<Vec<_>>>();
 
             let batch = [
@@ -62,6 +61,7 @@ pub fn build(context: &Context, contract: &Node<fe::Contract>) -> Vec<yul::State
                 contracts_batch,
                 assert_strings_batch,
                 revert_errors_batch,
+                revert_panic_batch,
                 structs_batch,
             ]
             .concat();
@@ -70,22 +70,34 @@ pub fn build(context: &Context, contract: &Node<fe::Contract>) -> Vec<yul::State
         let decoding = {
             let public_functions_batch = attributes
                 .public_functions
-                .to_owned()
-                .into_iter()
-                .map(|attributes| (attributes.param_types(), AbiDecodeLocation::Calldata))
+                .iter()
+                .map(|attributes| {
+                    (
+                        to_abi_types(&attributes.param_types()),
+                        AbiDecodeLocation::Calldata,
+                    )
+                })
                 .collect();
 
             let init_params_batch =
                 if let Some(init_attributes) = attributes.init_function.to_owned() {
-                    vec![(init_attributes.param_types(), AbiDecodeLocation::Memory)]
+                    vec![(
+                        to_abi_types(&init_attributes.param_types()),
+                        AbiDecodeLocation::Memory,
+                    )]
                 } else {
                     vec![]
                 };
 
             let contracts_batch = external_functions
-                .into_iter()
+                .iter()
                 .filter(|function| !function.return_type.is_unit())
-                .map(|function| (vec![function.return_type], AbiDecodeLocation::Memory))
+                .map(|function| {
+                    (
+                        vec![AbiType::from(&function.return_type)],
+                        AbiDecodeLocation::Memory,
+                    )
+                })
                 .collect();
 
             let batch = [public_functions_batch, init_params_batch, contracts_batch].concat();
@@ -109,19 +121,17 @@ pub fn build(context: &Context, contract: &Node<fe::Contract>) -> Vec<yul::State
 
         let revert_calls_from_assert = context
             .assert_strings
-            .clone()
-            .into_iter()
-            .map(|val| functions::revert::generate_revert_fn_for_assert(&[val.into()]))
+            .iter()
+            .map(|string| functions::revert::error_revert(&AbiType::from(string)))
             .collect::<Vec<_>>();
 
         let revert_calls = context
             .revert_errors
-            .clone()
-            .into_iter()
-            .map(|val| functions::revert::generate_struct_revert(&val))
+            .iter()
+            .map(|_struct| functions::revert::revert(&_struct.name, &AbiType::from(_struct)))
             .collect::<Vec<_>>();
 
-        return [
+        let mut funcs = [
             std,
             encoding,
             decoding,
@@ -131,6 +141,9 @@ pub fn build(context: &Context, contract: &Node<fe::Contract>) -> Vec<yul::State
             struct_apis,
         ]
         .concat();
+        funcs.sort();
+        funcs.dedup();
+        return funcs;
     }
 
     panic!("missing contract attributes")

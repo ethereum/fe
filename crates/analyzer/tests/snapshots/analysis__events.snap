@@ -355,11 +355,10 @@ note:
    ┌─ features/events.fe:20:9
    │
 20 │         emit Nums(num1=26, num2=42)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10238921483171311
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4173083644535479702
    │
    = EventDef {
          name: "Nums",
-         topic: "0x3cc309fb61c8d0d1165018be6f4c8d7f7fd4ef4739dea209201fe9d06f2dc8c3",
          fields: [
              (
                  "num1",
@@ -387,11 +386,10 @@ note:
    ┌─ features/events.fe:23:9
    │
 23 │         emit Bases(num=26, addr)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9537689344407037091
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5225681472135288954
    │
    = EventDef {
          name: "Bases",
-         topic: "0x6bffe320be20b1367c958a4599064519ff8b5a775856c842306b2549283f977b",
          fields: [
              (
                  "num",
@@ -415,11 +413,10 @@ note:
    ┌─ features/events.fe:26:9
    │
 26 │         emit Mix(num1=26, addr, num2=42, my_bytes)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17802014580178921388
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9252761509683604439
    │
    = EventDef {
          name: "Mix",
-         topic: "0xb81cb79c37f55a0aac157707a5d7ce4bd0a2571eea1abfefcc3df86c9e2ac1a4",
          fields: [
              (
                  "num1",
@@ -464,11 +461,10 @@ note:
    ┌─ features/events.fe:32:9
    │
 32 │         emit Addresses(addrs)
-   │         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7515606018431882693
+   │         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11156221068256331545
    │
    = EventDef {
          name: "Addresses",
-         topic: "0x56000a174d799384dffb63081e5f2a4875fdfb797b50719cf536d42e2aeea37f",
          fields: [
              (
                  "addrs",
@@ -611,7 +607,7 @@ note:
    · │
 31 │ │         addrs[1] = addr2
 32 │ │         emit Addresses(addrs)
-   │ ╰─────────────────────────────^ attributes hash: 1223784352612324630
+   │ ╰─────────────────────────────^ attributes hash: 5589918496276372530
    │  
    = ContractAttributes {
          public_functions: [
@@ -690,7 +686,6 @@ note:
          events: [
              EventDef {
                  name: "Addresses",
-                 topic: "0x56000a174d799384dffb63081e5f2a4875fdfb797b50719cf536d42e2aeea37f",
                  fields: [
                      (
                          "addrs",
@@ -706,7 +701,6 @@ note:
              },
              EventDef {
                  name: "Bases",
-                 topic: "0x6bffe320be20b1367c958a4599064519ff8b5a775856c842306b2549283f977b",
                  fields: [
                      (
                          "num",
@@ -727,7 +721,6 @@ note:
              },
              EventDef {
                  name: "Mix",
-                 topic: "0xb81cb79c37f55a0aac157707a5d7ce4bd0a2571eea1abfefcc3df86c9e2ac1a4",
                  fields: [
                      (
                          "num1",
@@ -769,7 +762,6 @@ note:
              },
              EventDef {
                  name: "Nums",
-                 topic: "0x3cc309fb61c8d0d1165018be6f4c8d7f7fd4ef4739dea209201fe9d06f2dc8c3",
                  fields: [
                      (
                          "num1",
@@ -803,11 +795,10 @@ note:
 2 │ ╭     event Nums:
 3 │ │         idx num1: u256
 4 │ │         num2: u256
-  │ ╰──────────────────^ attributes hash: 10238921483171311
+  │ ╰──────────────────^ attributes hash: 4173083644535479702
   │  
   = EventDef {
         name: "Nums",
-        topic: "0x3cc309fb61c8d0d1165018be6f4c8d7f7fd4ef4739dea209201fe9d06f2dc8c3",
         fields: [
             (
                 "num1",
@@ -837,11 +828,10 @@ note:
 6 │ ╭     event Bases:
 7 │ │         num: u256
 8 │ │         addr: address
-  │ ╰─────────────────────^ attributes hash: 9537689344407037091
+  │ ╰─────────────────────^ attributes hash: 5225681472135288954
   │  
   = EventDef {
         name: "Bases",
-        topic: "0x6bffe320be20b1367c958a4599064519ff8b5a775856c842306b2549283f977b",
         fields: [
             (
                 "num",
@@ -869,11 +859,10 @@ note:
 12 │ │         idx addr: address
 13 │ │         num2: u256
 14 │ │         my_bytes: u8[100]
-   │ ╰─────────────────────────^ attributes hash: 17802014580178921388
+   │ ╰─────────────────────────^ attributes hash: 9252761509683604439
    │  
    = EventDef {
          name: "Mix",
-         topic: "0xb81cb79c37f55a0aac157707a5d7ce4bd0a2571eea1abfefcc3df86c9e2ac1a4",
          fields: [
              (
                  "num1",
@@ -919,11 +908,10 @@ note:
    │  
 16 │ ╭     event Addresses:
 17 │ │         addrs: address[2]
-   │ ╰─────────────────────────^ attributes hash: 7515606018431882693
+   │ ╰─────────────────────────^ attributes hash: 11156221068256331545
    │  
    = EventDef {
          name: "Addresses",
-         topic: "0x56000a174d799384dffb63081e5f2a4875fdfb797b50719cf536d42e2aeea37f",
          fields: [
              (
                  "addrs",

@@ -158,8 +158,9 @@ impl ContractHarness {
                 .collect::<Vec<_>>();
 
             if !outputs_for_event.iter().any(|v| v == expected_output) {
+                println!("raw logs dump: {:?}", raw_logs);
                 panic!(
-                    "no {} logs matching: {:?}\nfound: {:?}",
+                    "no \"{}\" logs matching: {:?}\nfound: {:?}",
                     name, expected_output, outputs_for_event
                 )
             }

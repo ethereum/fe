@@ -1,6 +1,6 @@
 use crate::errors::AbiError;
 use fe_analyzer::context::FunctionAttributes;
-use fe_analyzer::namespace::types::{AbiComponent, AbiEncoding};
+use fe_analyzer::namespace::types::{Array, Base, FeString, FixedSize, Integer, Struct, Tuple};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
@@ -59,6 +59,133 @@ impl Serialize for Contract {
         }
 
         seq.end()
+    }
+}
+
+/// Single component of a tuple.
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+pub struct AbiComponent {
+    pub name: String,
+    pub typ: String,
+    /// The subcomponents of the component.
+    pub components: Vec<AbiComponent>,
+}
+
+/// Information relevant to ABI encoding.
+pub trait JsonAbi {
+    /// Name of the type as it appears in the Json ABI.
+    fn abi_json_name(&self) -> String;
+
+    /// The components of an ABI tuple.
+    fn abi_components(&self) -> Vec<AbiComponent>;
+}
+
+impl JsonAbi for FixedSize {
+    fn abi_json_name(&self) -> String {
+        match self {
+            FixedSize::Array(array) => array.abi_json_name(),
+            FixedSize::Base(base) => base.abi_json_name(),
+            FixedSize::Tuple(tuple) => tuple.abi_json_name(),
+            FixedSize::String(string) => string.abi_json_name(),
+            FixedSize::Contract(_) => "address".to_string(),
+            FixedSize::Struct(val) => val.abi_json_name(),
+        }
+    }
+
+    fn abi_components(&self) -> Vec<AbiComponent> {
+        match self {
+            FixedSize::Array(array) => array.abi_components(),
+            FixedSize::Base(base) => base.abi_components(),
+            FixedSize::Tuple(tuple) => tuple.abi_components(),
+            FixedSize::String(string) => string.abi_components(),
+            FixedSize::Contract(_) => vec![],
+            FixedSize::Struct(val) => val.abi_components(),
+        }
+    }
+}
+
+impl JsonAbi for Base {
+    fn abi_json_name(&self) -> String {
+        match self {
+            Base::Numeric(Integer::U256) => "uint256".to_string(),
+            Base::Numeric(Integer::U128) => "uint128".to_string(),
+            Base::Numeric(Integer::U64) => "uint64".to_string(),
+            Base::Numeric(Integer::U32) => "uint32".to_string(),
+            Base::Numeric(Integer::U16) => "uint16".to_string(),
+            Base::Numeric(Integer::U8) => "uint8".to_string(),
+            Base::Numeric(Integer::I256) => "int256".to_string(),
+            Base::Numeric(Integer::I128) => "int128".to_string(),
+            Base::Numeric(Integer::I64) => "int64".to_string(),
+            Base::Numeric(Integer::I32) => "int32".to_string(),
+            Base::Numeric(Integer::I16) => "int16".to_string(),
+            Base::Numeric(Integer::I8) => "int8".to_string(),
+            Base::Address => "address".to_string(),
+            Base::Bool => "bool".to_string(),
+            Base::Unit => panic!("unit type is not abi encodable"),
+        }
+    }
+
+    fn abi_components(&self) -> Vec<AbiComponent> {
+        vec![]
+    }
+}
+
+impl JsonAbi for Array {
+    fn abi_json_name(&self) -> String {
+        if self.inner == Base::Numeric(Integer::U8) {
+            "bytes".to_string()
+        } else {
+            format!("{}[{}]", self.inner.abi_json_name(), self.size)
+        }
+    }
+
+    fn abi_components(&self) -> Vec<AbiComponent> {
+        vec![]
+    }
+}
+
+impl JsonAbi for Struct {
+    fn abi_json_name(&self) -> String {
+        "tuple".to_string()
+    }
+
+    fn abi_components(&self) -> Vec<AbiComponent> {
+        self.fields
+            .iter()
+            .map(|(name, typ)| AbiComponent {
+                name: name.to_owned(),
+                typ: typ.abi_json_name(),
+                components: vec![],
+            })
+            .collect()
+    }
+}
+
+impl JsonAbi for Tuple {
+    fn abi_json_name(&self) -> String {
+        "tuple".to_string()
+    }
+
+    fn abi_components(&self) -> Vec<AbiComponent> {
+        self.items
+            .iter()
+            .enumerate()
+            .map(|(index, item)| AbiComponent {
+                name: format!("item{}", index),
+                typ: item.abi_json_name(),
+                components: vec![],
+            })
+            .collect()
+    }
+}
+
+impl JsonAbi for FeString {
+    fn abi_json_name(&self) -> String {
+        "string".to_string()
+    }
+
+    fn abi_components(&self) -> Vec<AbiComponent> {
+        vec![]
     }
 }
 

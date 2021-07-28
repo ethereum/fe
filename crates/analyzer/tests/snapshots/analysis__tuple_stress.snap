@@ -1168,11 +1168,10 @@ note:
    ┌─ stress/tuple_stress.fe:24:9
    │
 24 │         emit MyEvent(my_tuple)
-   │         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8657778404503886351
+   │         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1448730452803770990
    │
    = EventDef {
          name: "MyEvent",
-         topic: "0x61f3dbecaa72e626e43d4d3e9617d7c4f3c6cba20efd487973b991c1d46f3627",
          fields: [
              (
                  "my_tuple",
@@ -1579,7 +1578,7 @@ note:
    · │
 42 │ │     pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> u8[96]:
 43 │ │         return my_tuple.abi_encode()
-   │ ╰────────────────────────────────────^ attributes hash: 10749101579316714129
+   │ ╰────────────────────────────────────^ attributes hash: 13290905967414103606
    │  
    = ContractAttributes {
          public_functions: [
@@ -1837,7 +1836,6 @@ note:
          events: [
              EventDef {
                  name: "MyEvent",
-                 topic: "0x61f3dbecaa72e626e43d4d3e9617d7c4f3c6cba20efd487973b991c1d46f3627",
                  fields: [
                      (
                          "my_tuple",
@@ -1938,11 +1936,10 @@ note:
   │  
 4 │ ╭     event MyEvent:
 5 │ │         my_tuple: (u256, bool, address)
-  │ ╰───────────────────────────────────────^ attributes hash: 8657778404503886351
+  │ ╰───────────────────────────────────────^ attributes hash: 1448730452803770990
   │  
   = EventDef {
         name: "MyEvent",
-        topic: "0x61f3dbecaa72e626e43d4d3e9617d7c4f3c6cba20efd487973b991c1d46f3627",
         fields: [
             (
                 "my_tuple",

@@ -408,11 +408,10 @@ note:
    ┌─ features/ownable.fe:17:5
    │
 17 │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner=address(0))
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2811860516133209857
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9113824683084517456
    │
    = EventDef {
          name: "OwnershipTransferred",
-         topic: "0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0",
          fields: [
              (
                  "previousOwner",
@@ -437,11 +436,10 @@ note:
    ┌─ features/ownable.fe:23:5
    │
 23 │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner)
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2811860516133209857
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9113824683084517456
    │
    = EventDef {
          name: "OwnershipTransferred",
-         topic: "0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0",
          fields: [
              (
                  "previousOwner",
@@ -548,7 +546,7 @@ note:
    · │
 22 │ │     self._owner = newOwner
 23 │ │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner)
-   │ ╰─────────────────────────────────────────────────────────────────^ attributes hash: 6356425488681343574
+   │ ╰─────────────────────────────────────────────────────────────────^ attributes hash: 3105072853312817186
    │  
    = ContractAttributes {
          public_functions: [
@@ -597,7 +595,6 @@ note:
          events: [
              EventDef {
                  name: "OwnershipTransferred",
-                 topic: "0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0",
                  fields: [
                      (
                          "previousOwner",
@@ -664,11 +661,10 @@ note:
 4 │ ╭   event OwnershipTransferred:
 5 │ │     idx previousOwner: address
 6 │ │     idx newOwner: address
-  │ ╰─────────────────────────^ attributes hash: 2811860516133209857
+  │ ╰─────────────────────────^ attributes hash: 9113824683084517456
   │  
   = EventDef {
         name: "OwnershipTransferred",
-        topic: "0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0",
         fields: [
             (
                 "previousOwner",

@@ -1,5 +1,6 @@
 use crate::names;
-use fe_analyzer::namespace::types::{FeSized, Struct};
+use crate::types::EvmSized;
+use fe_analyzer::namespace::types::Struct;
 use yultsur::*;
 
 /// Generate a YUL function that can be used to create an instance of
