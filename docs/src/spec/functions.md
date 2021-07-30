@@ -3,7 +3,6 @@
 
 > **<sup>Syntax</sup>**\
 > _Function_ :\
-> &nbsp;&nbsp; _FunctionDecorators_\
 > &nbsp;&nbsp; _FunctionQualifiers_ `def` [IDENTIFIER]\
 > &nbsp;&nbsp; &nbsp;&nbsp; `(` _FunctionParameters_<sup>?</sup> `)`\
 > &nbsp;&nbsp; &nbsp;&nbsp; _FunctionReturnType_<sup>?</sup>\
@@ -13,11 +12,7 @@
 > _FunctionQualifiers_ :\
 > &nbsp;&nbsp; `pub`<sup>?</sup>
 >
-> _FunctionDecorators_ :\
-> &nbsp;&nbsp; _FunctionDecorator_<sup>\*</sup>
 >
-> _FunctionDecorator_ :\
-> &nbsp;&nbsp; `@`[IDENTIFIER]
 >
 > _FunctionParameters_ :\
 > &nbsp;&nbsp; _FunctionParam_ (`,` _FunctionParam_)<sup>\*</sup> `,`<sup>?</sup>
