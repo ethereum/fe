@@ -2,10 +2,10 @@
 
 > **<sup>Syntax</sup>**\
 > _Enumeration_ :\
-> &nbsp;&nbsp; `enum`
->   [IDENTIFIER]&nbsp;
-> &nbsp;&nbsp; [_EndOfHeader_]\
-> &nbsp;&nbsp; _EnumField_<sup>\*</sup>
+> &nbsp;&nbsp; `enum` [IDENTIFIER] `:` [NEWLINE]\
+> &nbsp;&nbsp; [INDENT]\
+> &nbsp;&nbsp; _EnumField_<sup>\*</sup>\
+> &nbsp;&nbsp; [DEDENT]\
 >
 > _EnumField_ :\
 > &nbsp;&nbsp; [IDENTIFIER]`,`
@@ -25,7 +25,9 @@ enum Animal:
 barker = Animal.Dog
 ```
 
-[_EndOfHeader_]: end_of_header.md
+[NEWLINE]: tokens.md#newline
+[INDENT]: tokens.md#indent
+[DEDENT]: tokens.md#dedent
 [IDENTIFIER]: identifiers.md
 [_Type_]: types.md
 [enumerated type]:enumerated_types.md
