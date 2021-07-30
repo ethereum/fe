@@ -74,19 +74,24 @@ pub fn expr_list(
 
     let inner_type = if let Some(expected) = expected_type {
         for elt in elts {
-            let attr = expr(
+            let element_attributes = assignable_expr(
                 Rc::clone(&scope),
                 context,
                 elt,
                 Some(&Type::Base(expected.inner)),
             )?;
-            if attr.typ != Type::Base(expected.inner) {
-                context.type_error("type mismatch", elt.span, &expected.inner, attr.typ);
+            if element_attributes.typ != Type::Base(expected.inner) {
+                context.type_error(
+                    "type mismatch",
+                    elt.span,
+                    &expected.inner,
+                    element_attributes.typ,
+                );
             }
         }
         expected.inner
     } else {
-        let first_attr = expr(Rc::clone(&scope), context, &elts[0], None)?;
+        let first_attr = assignable_expr(Rc::clone(&scope), context, &elts[0], None)?;
         let inner = match first_attr.typ {
             Type::Base(base) => base,
             _ => {
@@ -105,13 +110,17 @@ pub fn expr_list(
         // Assuming every element attribute should match the attribute of 0th element
         // of list.
         for elt in &elts[1..] {
-            let attr = expr(Rc::clone(&scope), context, elt, Some(&first_attr.typ))?;
-            if attr.typ != first_attr.typ {
+            let element_attributes =
+                assignable_expr(Rc::clone(&scope), context, elt, Some(&first_attr.typ))?;
+            if element_attributes.typ != first_attr.typ {
                 context.fancy_error(
                     "array elements must have same type",
                     vec![
                         Label::primary(elts[0].span, format!("this has type `{}`", first_attr.typ)),
-                        Label::secondary(elt.span, format!("this has type `{}`", attr.typ)),
+                        Label::secondary(
+                            elt.span,
+                            format!("this has type `{}`", element_attributes.typ),
+                        ),
                     ],
                     vec![],
                 );
@@ -121,7 +130,7 @@ pub fn expr_list(
     };
 
     // TODO: Right now we are only supporting Base type arrays
-    // Potential we can support the tuples as well.
+    // Potentially we can support tuples as well.
     let array_typ = Array {
         size: elts.len(),
         inner: inner_type,

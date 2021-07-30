@@ -197,3 +197,6 @@ test_file! { struct_call_without_kw_args }
 test_file! { non_pub_init }
 test_file! { abi_encode_u256 }
 test_file! { abi_encode_from_storage }
+test_file! { assert_sto_msg_no_copy }
+test_file! { for_loop_sto_iter_no_copy }
+test_file! { revert_sto_error_no_copy }

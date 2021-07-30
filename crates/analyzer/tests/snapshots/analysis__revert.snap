@@ -56,6 +56,14 @@ ModuleAttributes {
                             Unit,
                         ),
                     },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "revert_other_error_from_sto",
+                        params: [],
+                        return_type: Base(
+                            Unit,
+                        ),
+                    },
                 ],
             },
         ),
@@ -84,9 +92,9 @@ ModuleAttributes {
 }
 
 note: 
-   ┌─ features/revert.fe:14:26
+   ┌─ features/revert.fe:16:26
    │
-14 │         revert Error(msg=1, val=true)
+16 │         revert Error(msg=1, val=true)
    │                          ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
@@ -100,9 +108,9 @@ note:
      }
 
 note: 
-   ┌─ features/revert.fe:14:33
+   ┌─ features/revert.fe:16:33
    │
-14 │         revert Error(msg=1, val=true)
+16 │         revert Error(msg=1, val=true)
    │                                 ^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
@@ -114,9 +122,9 @@ note:
      }
 
 note: 
-   ┌─ features/revert.fe:14:16
+   ┌─ features/revert.fe:16:16
    │
-14 │         revert Error(msg=1, val=true)
+16 │         revert Error(msg=1, val=true)
    │                ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11694781548607974207
    │
    = ExpressionAttributes {
@@ -146,9 +154,9 @@ note:
      }
 
 note: 
-   ┌─ features/revert.fe:17:31
+   ┌─ features/revert.fe:19:31
    │
-17 │         revert OtherError(msg=1, val=true)
+19 │         revert OtherError(msg=1, val=true)
    │                               ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
@@ -162,9 +170,9 @@ note:
      }
 
 note: 
-   ┌─ features/revert.fe:17:38
+   ┌─ features/revert.fe:19:38
    │
-17 │         revert OtherError(msg=1, val=true)
+19 │         revert OtherError(msg=1, val=true)
    │                                      ^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
@@ -176,9 +184,9 @@ note:
      }
 
 note: 
-   ┌─ features/revert.fe:17:16
+   ┌─ features/revert.fe:19:16
    │
-17 │         revert OtherError(msg=1, val=true)
+19 │         revert OtherError(msg=1, val=true)
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6207322651044042545
    │
    = ExpressionAttributes {
@@ -208,10 +216,182 @@ note:
      }
 
 note: 
-   ┌─ features/revert.fe:10:5
+   ┌─ features/revert.fe:22:9
+   │
+22 │         self.my_other_error = OtherError(msg=1, val=true)
+   │         ^^^^^^^^^^^^^^^^^^^ attributes hash: 1455945768619151908
+   │
+   = ExpressionAttributes {
+         typ: Struct(
+             Struct {
+                 name: "OtherError",
+                 fields: [
+                     (
+                         "msg",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "val",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/revert.fe:22:46
+   │
+22 │         self.my_other_error = OtherError(msg=1, val=true)
+   │                                              ^ attributes hash: 1230752710897721197
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/revert.fe:22:53
+   │
+22 │         self.my_other_error = OtherError(msg=1, val=true)
+   │                                                     ^^^^ attributes hash: 519621297275845584
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/revert.fe:22:31
+   │
+22 │         self.my_other_error = OtherError(msg=1, val=true)
+   │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6207322651044042545
+   │
+   = ExpressionAttributes {
+         typ: Struct(
+             Struct {
+                 name: "OtherError",
+                 fields: [
+                     (
+                         "msg",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "val",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/revert.fe:23:16
+   │
+23 │         revert self.my_other_error.to_mem()
+   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 1455945768619151908
+   │
+   = ExpressionAttributes {
+         typ: Struct(
+             Struct {
+                 name: "OtherError",
+                 fields: [
+                     (
+                         "msg",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "val",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/revert.fe:23:16
+   │
+23 │         revert self.my_other_error.to_mem()
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4295708869972799250
+   │
+   = ExpressionAttributes {
+         typ: Struct(
+             Struct {
+                 name: "OtherError",
+                 fields: [
+                     (
+                         "msg",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "val",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: Some(
+             Memory,
+         ),
+     }
+
+note: 
+   ┌─ features/revert.fe:12:5
    │  
-10 │ ╭     pub def bar() -> u256:
-11 │ │         revert
+12 │ ╭     pub def bar() -> u256:
+13 │ │         revert
    │ ╰──────────────^ attributes hash: 5931278080780939395
    │  
    = FunctionAttributes {
@@ -226,10 +406,10 @@ note:
      }
 
 note: 
-   ┌─ features/revert.fe:13:5
+   ┌─ features/revert.fe:15:5
    │  
-13 │ ╭     pub def revert_custom_error():
-14 │ │         revert Error(msg=1, val=true)
+15 │ ╭     pub def revert_custom_error():
+16 │ │         revert Error(msg=1, val=true)
    │ ╰─────────────────────────────────────^ attributes hash: 8604546375909025578
    │  
    = FunctionAttributes {
@@ -242,10 +422,10 @@ note:
      }
 
 note: 
-   ┌─ features/revert.fe:16:5
+   ┌─ features/revert.fe:18:5
    │  
-16 │ ╭     pub def revert_other_error():
-17 │ │         revert OtherError(msg=1, val=true)
+18 │ ╭     pub def revert_other_error():
+19 │ │         revert OtherError(msg=1, val=true)
    │ ╰──────────────────────────────────────────^ attributes hash: 13536596200836451553
    │  
    = FunctionAttributes {
@@ -258,16 +438,33 @@ note:
      }
 
 note: 
+   ┌─ features/revert.fe:21:5
+   │  
+21 │ ╭     pub def revert_other_error_from_sto():
+22 │ │         self.my_other_error = OtherError(msg=1, val=true)
+23 │ │         revert self.my_other_error.to_mem()
+   │ ╰───────────────────────────────────────────^ attributes hash: 10600311300800311694
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "revert_other_error_from_sto",
+         params: [],
+         return_type: Base(
+             Unit,
+         ),
+     }
+
+note: 
    ┌─ features/revert.fe:9:1
    │  
  9 │ ╭ contract Foo:
-10 │ │     pub def bar() -> u256:
-11 │ │         revert
-12 │ │ 
+10 │ │     my_other_error: OtherError
+11 │ │ 
+12 │ │     pub def bar() -> u256:
    · │
-16 │ │     pub def revert_other_error():
-17 │ │         revert OtherError(msg=1, val=true)
-   │ ╰──────────────────────────────────────────^ attributes hash: 1654722370251683476
+22 │ │         self.my_other_error = OtherError(msg=1, val=true)
+23 │ │         revert self.my_other_error.to_mem()
+   │ ╰───────────────────────────────────────────^ attributes hash: 15459304479214598396
    │  
    = ContractAttributes {
          public_functions: [
@@ -292,6 +489,14 @@ note:
              FunctionAttributes {
                  is_public: true,
                  name: "revert_other_error",
+                 params: [],
+                 return_type: Base(
+                     Unit,
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "revert_other_error_from_sto",
                  params: [],
                  return_type: Base(
                      Unit,
@@ -344,9 +549,9 @@ note:
      }
 
 note: 
-   ┌─ features/revert.fe:14:16
+   ┌─ features/revert.fe:16:16
    │
-14 │         revert Error(msg=1, val=true)
+16 │         revert Error(msg=1, val=true)
    │                ^^^^^ attributes hash: 563910565138212793
    │
    = TypeConstructor {
@@ -374,9 +579,9 @@ note:
      }
 
 note: 
-   ┌─ features/revert.fe:17:16
+   ┌─ features/revert.fe:19:16
    │
-17 │         revert OtherError(msg=1, val=true)
+19 │         revert OtherError(msg=1, val=true)
    │                ^^^^^^^^^^ attributes hash: 371870897900126483
    │
    = TypeConstructor {
@@ -402,6 +607,44 @@ note:
              },
          ),
      }
+
+note: 
+   ┌─ features/revert.fe:22:31
+   │
+22 │         self.my_other_error = OtherError(msg=1, val=true)
+   │                               ^^^^^^^^^^ attributes hash: 371870897900126483
+   │
+   = TypeConstructor {
+         typ: Struct(
+             Struct {
+                 name: "OtherError",
+                 fields: [
+                     (
+                         "msg",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "val",
+                         Base(
+                             Bool,
+                         ),
+                     ),
+                 ],
+             },
+         ),
+     }
+
+note: 
+   ┌─ features/revert.fe:23:16
+   │
+23 │         revert self.my_other_error.to_mem()
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
+   │
+   = ValueAttribute
 
 note: 
   ┌─ features/revert.fe:2:10
@@ -448,15 +691,43 @@ note:
     )
 
 note: 
-   ┌─ features/revert.fe:10:22
+   ┌─ features/revert.fe:12:22
    │
-10 │     pub def bar() -> u256:
+12 │     pub def bar() -> u256:
    │                      ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
              U256,
          ),
+     )
+
+note: 
+   ┌─ features/revert.fe:10:21
+   │
+10 │     my_other_error: OtherError
+   │                     ^^^^^^^^^^ attributes hash: 11110528865914593659
+   │
+   = Struct(
+         Struct {
+             name: "OtherError",
+             fields: [
+                 (
+                     "msg",
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 ),
+                 (
+                     "val",
+                     Base(
+                         Bool,
+                     ),
+                 ),
+             ],
+         },
      )
 
 
