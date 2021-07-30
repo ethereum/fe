@@ -5,7 +5,6 @@ use evm_runtime::Handler;
 use primitive_types::{H160, U256};
 use rstest::rstest;
 use std::collections::BTreeMap;
-use std::iter;
 
 use fe_common::utils::keccak;
 use fe_compiler_test_utils::*;
@@ -98,7 +97,7 @@ fn test_assert() {
             harness.capture_call(
                 &mut executor,
                 "revert_with",
-                &[uint_token(4), string_token(&reason)],
+                &[uint_token(4), string_token(reason)],
             ),
             &encode_error_reason(reason),
         );
@@ -508,12 +507,7 @@ fn events() {
         let addr1 = address_token("1234000000000000000000000000000000005678");
         let addr2 = address_token("9123000000000000000000000000000000004567");
         let addr_array = ethabi::Token::FixedArray(vec![addr1.clone(), addr2.clone()]);
-        let bytes = bytes_token(
-            iter::repeat("ten bytes.")
-                .take(10)
-                .collect::<String>()
-                .as_str(),
-        );
+        let bytes = bytes_token(&"ten bytes.".repeat(10));
 
         harness.test_function(&mut executor, "emit_nums", &[], None);
         harness.test_function(&mut executor, "emit_bases", &[addr1.clone()], None);
@@ -1069,7 +1063,7 @@ fn keccak() {
             "return_hash_from_foo",
             &[bytes_token("foo")],
             Some(&ethabi::Token::Uint(
-                keccak::full_as_bytes(&"foo".as_bytes()).into(),
+                keccak::full_as_bytes("foo".as_bytes()).into(),
             )),
         );
     });
@@ -1337,12 +1331,7 @@ fn abi_decode_checks() {
             let head_size = 32 + 32 + 64 + (26 * 32);
             let input = [
                 uint_token(99999999),
-                bytes_token(
-                    iter::repeat("ten bytes.")
-                        .take(10)
-                        .collect::<String>()
-                        .as_str(),
-                ),
+                bytes_token(&"ten bytes.".repeat(10)),
                 tuple_token(&[address_token("a"), uint_token(42)]),
                 int_array_token(&(-10..16).collect::<Vec<_>>()),
             ];
@@ -1425,12 +1414,7 @@ fn abi_decode_checks() {
             let input = [
                 string_token("hello Fe"),
                 address_token("baddad"),
-                bytes_token(
-                    iter::repeat("ten bytes.")
-                        .take(100)
-                        .collect::<String>()
-                        .as_str(),
-                ),
+                bytes_token(&"ten bytes.".repeat(100)),
                 bool_token(true),
             ];
             let data = harness.build_calldata(func_name, &input);
@@ -1498,31 +1482,16 @@ fn abi_decode_checks() {
             let invalid_input = [
                 string_token("hello Fe"),
                 address_token("baddad"),
-                bytes_token(
-                    iter::repeat("ten bytes.")
-                        .take(99)
-                        .collect::<String>()
-                        .as_str(),
-                ),
+                bytes_token(&"ten bytes.".repeat(99)),
                 bool_token(true),
             ];
             harness.test_function_reverts(&mut executor, func_name, &invalid_input, &revert_data);
 
             // invalid since string has size 100, which is greater than 80
             let invalid_input = [
-                string_token(
-                    iter::repeat("hello Fe..")
-                        .take(10)
-                        .collect::<String>()
-                        .as_str(),
-                ),
+                string_token(&"hello Fe..".repeat(10)),
                 address_token("baddad"),
-                bytes_token(
-                    iter::repeat("ten bytes.")
-                        .take(100)
-                        .collect::<String>()
-                        .as_str(),
-                ),
+                bytes_token(&"ten bytes.".repeat(100)),
                 bool_token(true),
             ];
             harness.test_function_reverts(&mut executor, func_name, &invalid_input, &revert_data);

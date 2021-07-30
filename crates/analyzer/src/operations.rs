@@ -81,7 +81,7 @@ fn bin_pow(left: &Type, right: &Type) -> Result<Type, BinaryOperationError> {
         // side and under/overflow checks are based on that type.
         if right.is_signed() {
             Err(BinaryOperationError::RightIsSigned)
-        } else if left.can_hold(&right) {
+        } else if left.can_hold(right) {
             Ok(Type::Base(Base::Numeric(left.to_owned())))
         } else {
             Err(BinaryOperationError::RightTooLarge)

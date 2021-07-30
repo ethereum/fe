@@ -17,7 +17,7 @@ pub fn var_decl(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statem
         let target = names::var_name(var_decl_name(&target.kind));
 
         return if let Some(value) = value {
-            let value = expressions::expr(context, &value);
+            let value = expressions::expr(context, value);
             statement! { let [target] := [value] }
         } else {
             match decl_type {

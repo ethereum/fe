@@ -48,7 +48,7 @@ pub fn type_desc(
             }
         },
         fe::TypeDesc::Array { typ, dimension } => {
-            if let Type::Base(base) = type_desc(scope, context, &typ)? {
+            if let Type::Base(base) = type_desc(scope, context, typ)? {
                 Type::Array(Array {
                     inner: base,
                     size: *dimension,
@@ -64,17 +64,17 @@ pub fn type_desc(
         }
         fe::TypeDesc::Generic { base, args } => match base.kind.as_str() {
             "Map" => {
-                validate_arg_count(context, &base.kind, base.span, &args, 2);
+                validate_arg_count(context, &base.kind, base.span, args, 2);
                 if args.kind.len() < 2 {
                     return Err(FatalError::new());
                 }
                 match &args.kind[..2] {
                     [fe::GenericArg::TypeDesc(from), fe::GenericArg::TypeDesc(to)] => {
-                        let key_type = type_desc(scope, context, &from)?;
+                        let key_type = type_desc(scope, context, from)?;
                         if let Type::Base(base) = key_type {
                             Type::Map(Map {
                                 key: base,
-                                value: Box::new(type_desc(scope, context, &to)?),
+                                value: Box::new(type_desc(scope, context, to)?),
                             })
                         } else {
                             context.error(
@@ -123,7 +123,7 @@ pub fn type_desc(
             items: Vec1::try_from_vec(
                 items
                     .iter()
-                    .map(|typ| type_desc_fixed_size(scope, context, &typ))
+                    .map(|typ| type_desc_fixed_size(scope, context, typ))
                     .collect::<Result<_, _>>()?,
             )
             .expect("tuple is empty"),

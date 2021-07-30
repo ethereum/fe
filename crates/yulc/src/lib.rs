@@ -71,7 +71,7 @@ fn test_solc_sanity() {
     let solc_temp = include_str!("solc_temp.json");
     let input = solc_temp
         .replace("{optimizer_enabled}", "false")
-        .replace("{src}", &yul_src);
+        .replace("{src}", yul_src);
 
     let raw_output = solc::compile(&input);
     let output: serde_json::Value = serde_json::from_str(&raw_output).unwrap();

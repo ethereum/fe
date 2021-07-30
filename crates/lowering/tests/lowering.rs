@@ -16,10 +16,10 @@ fn lower_file(src: &str, id: SourceFileId, files: &FileStore) -> fe::Module {
 }
 
 fn analyze(module: &fe::Module, id: SourceFileId, files: &FileStore) -> Context {
-    match fe_analyzer::analyze(&module, id) {
+    match fe_analyzer::analyze(module, id) {
         Ok(context) => context,
         Err(AnalyzerError(diagnostics)) => {
-            print_diagnostics(&diagnostics, &files);
+            print_diagnostics(&diagnostics, files);
             panic!("analysis failed");
         }
     }
@@ -66,8 +66,8 @@ fn test_lowering(fixture: &str) {
     let expected_lowered = test_files::fixture(&path);
     let el_id = files.add_file(&path, expected_lowered);
 
-    let expected_lowered_ast = parse_file(&expected_lowered, el_id, &files);
-    let actual_lowered_ast = lower_file(&src, src_id, &files);
+    let expected_lowered_ast = parse_file(expected_lowered, el_id, &files);
+    let actual_lowered_ast = lower_file(src, src_id, &files);
 
     assert_strings_eq!(
         replace_spans(to_ron_string_pretty(&expected_lowered_ast).unwrap()),

@@ -96,7 +96,7 @@ fn contract_field(
     stmt: &Node<fe::Field>,
 ) -> Result<(), FatalError> {
     let fe::Field { name, typ, .. } = &stmt.kind;
-    let typ = types::type_desc(&Scope::Contract(Rc::clone(&scope)), context, &typ)?;
+    let typ = types::type_desc(&Scope::Contract(Rc::clone(&scope)), context, typ)?;
 
     if let Err(AlreadyDefined) = scope.borrow_mut().add_field(&name.kind, typ) {
         context.fancy_error(
@@ -206,7 +206,7 @@ fn event_field(
         *is_idx,
         (
             name.kind.to_string(),
-            types::type_desc_fixed_size(&Scope::Contract(scope), context, &typ)?,
+            types::type_desc_fixed_size(&Scope::Contract(scope), context, typ)?,
         ),
     ))
 }

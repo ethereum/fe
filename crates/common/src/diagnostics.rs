@@ -52,7 +52,7 @@ pub fn print_diagnostics(diagnostics: &[Diagnostic], files: &FileStore) {
     let config = term::Config::default();
 
     for diag in diagnostics {
-        term::emit(&mut buffer, &config, files, &diag).unwrap();
+        term::emit(&mut buffer, &config, files, diag).unwrap();
     }
     // If we use `writer` here, the output won't be captured by rust's test system.
     eprintln!("{}", std::str::from_utf8(buffer.as_slice()).unwrap());
@@ -65,7 +65,7 @@ pub fn diagnostics_string(diagnostics: &[Diagnostic], files: &FileStore) -> Stri
     let config = term::Config::default();
 
     for diag in diagnostics {
-        term::emit(&mut buffer, &config, files, &diag).expect("failed to emit diagnostic");
+        term::emit(&mut buffer, &config, files, diag).expect("failed to emit diagnostic");
     }
     std::str::from_utf8(buffer.as_slice()).unwrap().to_string()
 }

@@ -1,8 +1,6 @@
 //! Stress tests that test broad behavior
 
 #![cfg(feature = "solc-backend")]
-use std::iter;
-
 use fe_compiler_test_utils::*;
 
 pub fn deploy_contract(
@@ -114,12 +112,7 @@ fn abi_encoding_stress() {
         let my_string = string_token("my string");
         let my_u16s = uint_array_token(&(0..255).collect::<Vec<_>>());
         let my_bool = bool_token(true);
-        let my_bytes = bytes_token(
-            iter::repeat("ten bytes.")
-                .take(10)
-                .collect::<String>()
-                .as_str(),
-        );
+        let my_bytes = bytes_token(&"ten bytes.".repeat(10));
 
         harness.test_function(&mut executor, "set_my_addrs", &[my_addrs.clone()], None);
         harness.test_function(&mut executor, "get_my_addrs", &[], Some(&my_addrs));

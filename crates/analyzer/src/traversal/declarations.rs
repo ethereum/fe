@@ -17,7 +17,7 @@ pub fn var_decl(
 ) -> Result<(), FatalError> {
     if let fe::FuncStmt::VarDecl { target, typ, value } = &stmt.kind {
         let declared_type =
-            types::type_desc_fixed_size(&Scope::Block(Rc::clone(&scope)), context, &typ)?;
+            types::type_desc_fixed_size(&Scope::Block(Rc::clone(&scope)), context, typ)?;
 
         if let Some(value) = value {
             let value_attributes = expressions::assignable_expr(
@@ -37,7 +37,7 @@ pub fn var_decl(
             }
         }
 
-        add_var(context, &scope, &target, declared_type.clone())?;
+        add_var(context, &scope, target, declared_type.clone())?;
         context.add_declaration(stmt, declared_type);
         return Ok(());
     }
@@ -54,7 +54,7 @@ fn add_var(
 ) -> Result<(), FatalError> {
     match (&target.kind, typ) {
         (fe::VarDeclTarget::Name(name), typ) => {
-            if let Err(AlreadyDefined) = scope.borrow_mut().add_var(&name, typ) {
+            if let Err(AlreadyDefined) = scope.borrow_mut().add_var(name, typ) {
                 context.fancy_error(
                     "a variable with the same name already exists in this scope",
                     // TODO: figure out how to include the previously defined var

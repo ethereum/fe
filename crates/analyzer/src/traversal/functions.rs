@@ -35,7 +35,7 @@ pub fn func_def(
     let mut return_type = return_type_node
         .as_ref()
         .map(|typ| {
-            types::type_desc_fixed_size(&Scope::Block(Rc::clone(&function_scope)), context, &typ)
+            types::type_desc_fixed_size(&Scope::Block(Rc::clone(&function_scope)), context, typ)
         })
         .transpose()?
         .unwrap_or_else(FixedSize::unit);
@@ -127,7 +127,7 @@ pub fn func_body(
     // both returning (explicit) or not returning (implicit return) are valid syntax.
     // If the return type is anything else, we do need to ensure that all code paths
     // return or revert.
-    if !host_func_def.return_type.is_unit() && !all_paths_return_or_revert(&body) {
+    if !host_func_def.return_type.is_unit() && !all_paths_return_or_revert(body) {
         context.fancy_error(
             "function body is missing a return or revert statement",
             vec![
@@ -173,8 +173,8 @@ fn all_paths_return_or_revert(block: &[Node<fe::FuncStmt>]) -> bool {
                 body,
                 or_else,
             } => {
-                let body_returns = all_paths_return_or_revert(&body);
-                let or_else_returns = or_else.is_empty() || all_paths_return_or_revert(&or_else);
+                let body_returns = all_paths_return_or_revert(body);
+                let or_else_returns = or_else.is_empty() || all_paths_return_or_revert(or_else);
                 if body_returns && or_else_returns {
                     return true;
                 }
@@ -192,7 +192,7 @@ fn func_def_arg(
     arg: &Node<fe::FunctionArg>,
 ) -> Result<(String, FixedSize), FatalError> {
     let fe::FunctionArg { name, typ } = &arg.kind;
-    let typ = types::type_desc_fixed_size(&Scope::Block(Rc::clone(&scope)), context, &typ)?;
+    let typ = types::type_desc_fixed_size(&Scope::Block(Rc::clone(&scope)), context, typ)?;
 
     if let Err(AlreadyDefined) = scope.borrow_mut().add_var(&name.kind, typ.clone()) {
         context.fancy_error(
@@ -252,7 +252,7 @@ fn for_loop(
             let body_scope = BlockScope::from_block_scope(BlockScopeType::Loop, Rc::clone(&scope));
             // Make sure iter is in the function scope & it should be an array.
 
-            let iter_type = expressions::expr(Rc::clone(&scope), context, &iter, None)?.typ;
+            let iter_type = expressions::expr(Rc::clone(&scope), context, iter, None)?.typ;
             let target_type = if let Type::Array(array) = iter_type {
                 FixedSize::Base(array.inner)
             } else {
@@ -346,7 +346,7 @@ fn while_loop(
 ) -> Result<(), FatalError> {
     match &stmt.kind {
         fe::FuncStmt::While { test, body } => {
-            let test_type = expressions::expr(Rc::clone(&scope), context, &test, None)?.typ;
+            let test_type = expressions::expr(Rc::clone(&scope), context, test, None)?.typ;
             if test_type != Type::Base(Base::Bool) {
                 context.type_error(
                     "`while` loop condition is not bool",
@@ -412,7 +412,7 @@ fn assert(
     stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), FatalError> {
     if let fe::FuncStmt::Assert { test, msg } = &stmt.kind {
-        let test_type = expressions::expr(Rc::clone(&scope), context, &test, None)?.typ;
+        let test_type = expressions::expr(Rc::clone(&scope), context, test, None)?.typ;
         if test_type != Type::Base(Base::Bool) {
             context.type_error(
                 "`assert` condition is not bool",

@@ -90,7 +90,7 @@ pub fn struct_apis(struct_type: Struct) -> Vec<yul::Statement> {
         struct_type
             .fields
             .iter()
-            .map(|(name, _)| generate_get_fn(&struct_type, &name))
+            .map(|(name, _)| generate_get_fn(&struct_type, name))
             .collect(),
     ]
     .concat()
