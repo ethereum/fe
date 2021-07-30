@@ -2,10 +2,10 @@
 
 > **<sup>Syntax</sup>**\
 > _Contract_ :\
-> &nbsp;&nbsp; `contract`
->   [IDENTIFIER]&nbsp;
-> &nbsp;&nbsp; [_EndOfHeader_]\
-> &nbsp;&nbsp; _ContractMember_<sup>\*</sup>
+> &nbsp;&nbsp; `contract` [IDENTIFIER] `:` [NEWLINE]\
+> &nbsp;&nbsp; [INDENT]\
+> &nbsp;&nbsp; _ContractMember_<sup>\*</sup>\
+> &nbsp;&nbsp; [DEDENT]\
 >
 > _ContractMember_:\
 > &nbsp;&nbsp; [_Visibility_]<sup>?</sup>\
@@ -43,7 +43,9 @@ contract GuestBook:
         return self.messages[addr].to_mem()
 ```
 
-[_EndOfHeader_]: end_of_header.md
+[NEWLINE]: tokens.md#newline
+[INDENT]: tokens.md#indent
+[DEDENT]: tokens.md#dedent
 [IDENTIFIER]: identifiers.md
 [_Visibility_]: visibility_and_privacy.md
 [_Type_]: types.md

@@ -5,8 +5,10 @@
 > &nbsp;&nbsp; _FunctionQualifiers_ `def` [IDENTIFIER]\
 > &nbsp;&nbsp; &nbsp;&nbsp; `(` _FunctionParameters_<sup>?</sup> `)`\
 > &nbsp;&nbsp; &nbsp;&nbsp; _FunctionReturnType_<sup>?</sup>\
-> &nbsp;&nbsp; &nbsp;&nbsp; [_EndOfHeader_]\
-> &nbsp;&nbsp; &nbsp;&nbsp; [_BlockExpression_]
+> &nbsp;&nbsp; &nbsp;&nbsp; `:` [NEWLINE]\
+> &nbsp;&nbsp; &nbsp;&nbsp; [INDENT]\
+> &nbsp;&nbsp; &nbsp;&nbsp; [_BlockExpression_]\
+> &nbsp;&nbsp; &nbsp;&nbsp; [DEDENT]\
 >
 > _FunctionQualifiers_ :\
 > &nbsp;&nbsp; `pub`<sup>?</sup>
@@ -43,7 +45,9 @@ def answer_to_life_the_universe_and_everything() -> u256:
     return 42
 ```
 
-[_EndOfHeader_]: end_of_header.md
+[NEWLINE]: tokens.md#newline
+[INDENT]: tokens.md#indent
+[DEDENT]: tokens.md#dedent
 [_BlockExpression_]: block_expression.md
 [block]: block_expression.md
 [IDENTIFIER]: identifiers.md

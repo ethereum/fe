@@ -14,7 +14,6 @@ For example, the following defines the type `BookMsg` as a synonym for the type
 type BookMsg = u8[100]
 ```
 
-[_EndOfHeader_]: end_of_header.md
 [IDENTIFIER]: identifiers.md
 [_Type_]: types.md
 [type]: types.md

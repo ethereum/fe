@@ -2,10 +2,10 @@
 
 > **<sup>Syntax</sup>**\
 > _Event_ :\
-> &nbsp;&nbsp; `event`
->   [IDENTIFIER]&nbsp;
-> &nbsp;&nbsp; [_EndOfHeader_]\
-> &nbsp;&nbsp; _EventField_<sup>\*</sup>
+> &nbsp;&nbsp; `event` [IDENTIFIER] `:` [NEWLINE]\
+> &nbsp;&nbsp; [INDENT]\
+> &nbsp;&nbsp; _EventField_<sup>\*</sup>\
+> &nbsp;&nbsp; [DEDENT]\
 >
 > _EventField_ :\
 > &nbsp;&nbsp; _EventIndexability_ [IDENTIFIER] `:` [_Type_]\
@@ -29,7 +29,9 @@ def transfer(to : address, value : u256):
    emit Transfer(msg.sender, _to, _value)
 ```
 
-[_EndOfHeader_]: end_of_header.md
+[NEWLINE]: tokens.md#newline
+[INDENT]: tokens.md#indent
+[DEDENT]: tokens.md#dedent
 [IDENTIFIER]: identifiers.md
 [_Type_]: types.md
 [event type]: event_types.md

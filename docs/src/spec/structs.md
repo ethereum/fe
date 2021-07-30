@@ -2,10 +2,10 @@
 
 > **<sup>Syntax</sup>**\
 > _Struct_ :\
-> &nbsp;&nbsp; `struct`
->   [IDENTIFIER]&nbsp;
-> &nbsp;&nbsp; [_EndOfHeader_]\
-> &nbsp;&nbsp; _StructField_<sup>\*</sup>
+> &nbsp;&nbsp; `struct` [IDENTIFIER] `:` [NEWLINE]\
+> &nbsp;&nbsp; [INDENT]\
+> &nbsp;&nbsp; _StructField_<sup>\*</sup>\
+> &nbsp;&nbsp; [DEDENT]\
 >
 > _StructField_ :\
 > &nbsp;&nbsp; [IDENTIFIER] `:` [_Type_]
@@ -30,6 +30,8 @@ Builtin functions:
 - `abi_encode()` encodes the struct as an ABI tuple and returns the encoded data as a fixed-size byte array that is equal in size to the encoding.
 
 
-[_EndOfHeader_]: end_of_header.md
+[NEWLINE]: tokens.md#newline
+[INDENT]: tokens.md#indent
+[DEDENT]: tokens.md#dedent
 [IDENTIFIER]: identifiers.md
 [_Type_]: types.md
