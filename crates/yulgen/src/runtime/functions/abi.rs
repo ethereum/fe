@@ -106,7 +106,7 @@ pub fn decode_data(types: &[AbiType], location: AbiDecodeLocation) -> yul::State
         data_offsets: Option<DataOffsets>,
     }
 
-    let func_name = abi_names::decode_data(&types, location);
+    let func_name = abi_names::decode_data(types, location);
 
     let vals: Vec<DecodeVal> = types
         .iter()
@@ -241,7 +241,7 @@ pub fn decode_component(typ: &AbiType, location: AbiDecodeLocation) -> yul::Stat
         AbiType::StaticArray { inner, size } => {
             decode_component_static_array(inner, *size, location)
         }
-        AbiType::Tuple { components: elems } => decode_component_tuple(&elems, location),
+        AbiType::Tuple { components: elems } => decode_component_tuple(elems, location),
         AbiType::Uint { size } => decode_component_uint(*size, location),
         AbiType::Int { size } => decode_component_int(*size, location),
         AbiType::Bool => decode_component_bool(location),
@@ -319,7 +319,7 @@ pub fn decode_component_static_array(
     let array_size = literal_expression! { (array_size) };
     let inner_packed_size = literal_expression! { (inner.packed_size()) };
     let decode_inner_expr = abi_operations::decode_component(
-        &inner,
+        inner,
         expression! { head_start },
         expression! { inner_offset },
         location,
@@ -346,7 +346,7 @@ pub fn decode_component_tuple(elems: &[AbiType], location: AbiDecodeLocation) ->
         .enumerate()
         .map(|(index, component)| {
             let decode_component_expr = abi_operations::decode_component(
-                &component,
+                component,
                 expression! { head_start },
                 expression! { component_offset },
                 location,

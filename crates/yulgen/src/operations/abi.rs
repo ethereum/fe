@@ -18,7 +18,7 @@ pub enum EncodingSize {
 /// Returns an expression that encodes the given values and returns a pointer to
 /// the encoding.
 pub fn encode(types: &[AbiType], vals: Vec<yul::Expression>) -> yul::Expression {
-    let func_name = abi_names::encode(&types);
+    let func_name = abi_names::encode(types);
     expression! { [func_name]([vals...]) }
 }
 

@@ -100,7 +100,7 @@ pub fn main() {
             std::process::exit(1)
         }
     };
-    match write_compiled_module(compiled_module, &content, &targets, &output_dir, overwrite) {
+    match write_compiled_module(compiled_module, &content, &targets, output_dir, overwrite) {
         Ok(_) => println!("Compiled {}. Outputs in `{}`", input_file, output_dir),
         Err(err) => {
             eprintln!(

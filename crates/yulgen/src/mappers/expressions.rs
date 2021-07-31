@@ -120,12 +120,12 @@ fn expr_call(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
                         return match (value_attributes.typ.to_owned(), &attr.kind) {
                             (Type::Contract(contract), func_name) => contract_operations::call(
                                 contract,
-                                &func_name,
+                                func_name,
                                 expr(context, value),
                                 yul_args,
                             ),
                             (typ, func_name) => {
-                                match builtins::ValueMethod::from_str(&func_name)
+                                match builtins::ValueMethod::from_str(func_name)
                                     .expect("uncaught analyzer error")
                                 {
                                     // Copying is done in `expr(..)` based on the move location set
@@ -156,14 +156,14 @@ fn expr_call(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
                         (Type::Contract(contract), ContractTypeMethod::Create2) => {
                             context.created_contracts.insert(contract.name.clone());
                             contract_operations::create2(
-                                &contract,
+                                contract,
                                 yul_args[0].to_owned(),
                                 yul_args[1].to_owned(),
                             )
                         }
                         (Type::Contract(contract), ContractTypeMethod::Create) => {
                             context.created_contracts.insert(contract.name.clone());
-                            contract_operations::create(&contract, yul_args[0].to_owned())
+                            contract_operations::create(contract, yul_args[0].to_owned())
                         }
                         _ => panic!("invalid attributes"),
                     }

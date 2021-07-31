@@ -70,7 +70,7 @@ fn test_revert_errors(method: &str, params: &[ethabi::Token], reason: &[u8]) {
 
         let exit = harness.capture_call(&mut executor, method, params);
 
-        validate_revert(exit, &reason);
+        validate_revert(exit, reason);
     })
 }
 

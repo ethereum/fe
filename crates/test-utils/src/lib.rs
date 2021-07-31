@@ -104,7 +104,7 @@ impl ContractHarness {
     ) -> Option<ethabi::Token> {
         let function = &self.abi.functions[name][0];
 
-        match self.capture_call(executor, name, &input) {
+        match self.capture_call(executor, name, input) {
             evm::Capture::Exit((ExitReason::Succeed(_), output)) => function
                 .decode_output(&output)
                 .unwrap_or_else(|_| panic!("unable to decode output of {}: {:?}", name, &output))
@@ -245,7 +245,7 @@ pub fn deploy_contract(
     let mut files = FileStore::new();
     let id = files.add_file(fixture, src);
 
-    let compiled_module = match driver::compile(&src, id, true, true) {
+    let compiled_module = match driver::compile(src, id, true, true) {
         Ok(module) => module,
         Err(error) => {
             fe_common::diagnostics::print_diagnostics(&error.0, &files);
@@ -382,7 +382,7 @@ pub fn compile_solidity_contract(
         }
       }
     "#;
-    let solc_config = solc_config.replace("{src}", &solidity_src);
+    let solc_config = solc_config.replace("{src}", solidity_src);
 
     let raw_output = solc::compile(&solc_config);
 
@@ -448,7 +448,7 @@ pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> Contr
     let mut files = FileStore::new();
     let src = test_files::fixture(fixture);
     let id = files.add_file(fixture, src);
-    let compiled_module = match driver::compile(&src, id, true, true) {
+    let compiled_module = match driver::compile(src, id, true, true) {
         Ok(module) => module,
         Err(err) => {
             print_diagnostics(&err.0, &files);
@@ -526,7 +526,7 @@ impl Runtime {
 
     #[cfg(feature = "solc-backend")]
     pub fn execute(&self, executor: &mut Executor) -> ExecutionOutput {
-        let (exit_reason, data) = execute_runtime_functions(executor, &self);
+        let (exit_reason, data) = execute_runtime_functions(executor, self);
         ExecutionOutput::new(exit_reason, data)
     }
 }

@@ -97,7 +97,7 @@ fn if_statement(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statem
         or_else,
     } = &stmt.kind
     {
-        let yul_test = expressions::expr(context, &test);
+        let yul_test = expressions::expr(context, test);
         let yul_body = multiple_func_stmt(context, body);
         let yul_or_else = multiple_func_stmt(context, or_else);
 

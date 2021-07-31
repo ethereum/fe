@@ -88,7 +88,7 @@ fn build_type_desc(module: &ModuleContext, typ: &FixedSize) -> fe::TypeDesc {
             typ: build_type_desc(module, &array.inner.into()).into_boxed_node(),
         },
         FixedSize::Tuple(tuple) => fe::TypeDesc::Base {
-            base: names::tuple_struct_name(&tuple),
+            base: names::tuple_struct_name(tuple),
         },
         FixedSize::String(string) => fe::TypeDesc::Generic {
             base: Node::new("String".to_string(), Span::zero()),

@@ -919,7 +919,7 @@ fn expr_call_struct_constructor(
         context,
         &typ.name,
         name_span,
-        &args,
+        args,
         &typ.fields,
     )?;
 
@@ -1052,7 +1052,7 @@ fn expr_call_value_attribute(
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Attribute { value, attr } = &func.kind {
-        let value_attributes = expr(Rc::clone(&scope), context, &value, None)?;
+        let value_attributes = expr(Rc::clone(&scope), context, value, None)?;
 
         if let Type::Contract(contract) = &value_attributes.typ {
             // We must ensure the expression is loaded onto the stack.
@@ -1431,7 +1431,7 @@ fn expr_attribute_call_type(
 ) -> Result<CallType, FatalError> {
     if let fe::Expr::Attribute { value, attr } = &exp.kind {
         if let fe::Expr::Name(name) = &value.kind {
-            match Object::from_str(&name) {
+            match Object::from_str(name) {
                 Ok(Object::Block) | Ok(Object::Chain) | Ok(Object::Msg) | Ok(Object::Tx) => {
                     context.fancy_error(
                         format!("no function `{}` exists on builtin `{}`", &attr.kind, &name),
@@ -1449,7 +1449,7 @@ fn expr_attribute_call_type(
                 Err(_) => {}
             }
 
-            if let Some(typ) = scope.borrow().get_module_type_def(&name) {
+            if let Some(typ) = scope.borrow().get_module_type_def(name) {
                 return Ok(CallType::TypeAttribute {
                     typ,
                     func_name: attr.kind.to_string(),
