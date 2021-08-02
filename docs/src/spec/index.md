@@ -30,7 +30,6 @@
         * [Boolean Type](boolean_type.md)
         * [Contract Type](contract_types.md)
         * [Numeric Types](numeric_types.md)
-        * [Textual Types](textual_types.md)
         * [Tuple Types](tuple_types.md)
         * [Array Types](array_types.md)
         * [Struct Types](struct_types.md)
