@@ -250,9 +250,10 @@ fn for_loop(
         fe::FuncStmt::For { target, iter, body } => {
             // Create the for loop body scope.
             let body_scope = BlockScope::from_block_scope(BlockScopeType::Loop, Rc::clone(&scope));
-            // Make sure iter is in the function scope & it should be an array.
 
-            let iter_type = expressions::expr(Rc::clone(&scope), context, iter, None)?.typ;
+            // Make sure iter is in the function scope and it should be an array.
+            let iter_type =
+                expressions::assignable_expr(Rc::clone(&scope), context, iter, None)?.typ;
             let target_type = if let Type::Array(array) = iter_type {
                 FixedSize::Base(array.inner)
             } else {
@@ -264,7 +265,10 @@ fn for_loop(
                 );
                 return Err(FatalError::new());
             };
-            if let Err(AlreadyDefined) = body_scope.borrow_mut().add_var(&target.kind, target_type)
+            if body_scope
+                .borrow_mut()
+                .add_var(&target.kind, target_type)
+                .is_err()
             {
                 context.fancy_error(
                     "a variable with the same name already exists in this scope",
@@ -317,7 +321,7 @@ fn if_statement(
             body,
             or_else,
         } => {
-            let test_type = expressions::expr(Rc::clone(&scope), context, test, None)?.typ;
+            let test_type = expressions::value_expr(Rc::clone(&scope), context, test, None)?.typ;
             if test_type != Type::Base(Base::Bool) {
                 context.type_error(
                     "`if` statement condition is not bool",
@@ -346,7 +350,7 @@ fn while_loop(
 ) -> Result<(), FatalError> {
     match &stmt.kind {
         fe::FuncStmt::While { test, body } => {
-            let test_type = expressions::expr(Rc::clone(&scope), context, test, None)?.typ;
+            let test_type = expressions::value_expr(Rc::clone(&scope), context, test, None)?.typ;
             if test_type != Type::Base(Base::Bool) {
                 context.type_error(
                     "`while` loop condition is not bool",
@@ -412,7 +416,7 @@ fn assert(
     stmt: &Node<fe::FuncStmt>,
 ) -> Result<(), FatalError> {
     if let fe::FuncStmt::Assert { test, msg } = &stmt.kind {
-        let test_type = expressions::expr(Rc::clone(&scope), context, test, None)?.typ;
+        let test_type = expressions::value_expr(Rc::clone(&scope), context, test, None)?.typ;
         if test_type != Type::Base(Base::Bool) {
             context.type_error(
                 "`assert` condition is not bool",
@@ -423,7 +427,7 @@ fn assert(
         }
 
         if let Some(msg) = msg {
-            let msg_attributes = expressions::expr(scope, context, msg, None)?;
+            let msg_attributes = expressions::assignable_expr(scope, context, msg, None)?;
             if !matches!(msg_attributes.typ, Type::String(_)) {
                 context.error(
                     "`assert` reason must be a string",
@@ -446,7 +450,8 @@ fn revert(
 ) -> Result<(), FatalError> {
     if let fe::FuncStmt::Revert { error } = &stmt.kind {
         if let Some(error_expr) = error {
-            let error_attributes = expressions::expr(Rc::clone(&scope), context, error_expr, None)?;
+            let error_attributes =
+                expressions::assignable_expr(Rc::clone(&scope), context, error_expr, None)?;
             if !matches!(error_attributes.typ, Type::Struct(_)) {
                 context.error(
                     "`revert` error must be a struct",

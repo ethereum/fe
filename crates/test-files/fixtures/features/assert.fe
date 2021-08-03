@@ -1,4 +1,7 @@
 contract Foo:
+    my_bool: bool
+    my_string: String<5>
+
     pub def bar(baz: u256):
         assert baz > 5
 
@@ -7,3 +10,11 @@ contract Foo:
 
     pub def revert_with(baz: u256, reason: String<1000>):
         assert baz > 5, reason
+
+    pub def assert_sto_bool():
+        self.my_bool = false
+        assert self.my_bool
+
+    pub def assert_sto_string_msg():
+        self.my_string = "hello"
+        assert false, self.my_string.to_mem()

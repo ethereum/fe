@@ -68,6 +68,14 @@ fn test_revert() {
                 &[uint_token(1), bool_token(true)],
             ),
         );
+
+        validate_revert(
+            harness.capture_call(&mut executor, "revert_other_error_from_sto", &[]),
+            &encode_revert(
+                "OtherError(uint256,bool)",
+                &[uint_token(1), bool_token(true)],
+            ),
+        );
     })
 }
 
@@ -75,6 +83,16 @@ fn test_revert() {
 fn test_assert() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, "assert.fe", "Foo", &[]);
+
+        validate_revert(
+            harness.capture_call(&mut executor, "assert_sto_bool", &[]),
+            &encoded_panic_assert(),
+        );
+
+        validate_revert(
+            harness.capture_call(&mut executor, "assert_sto_string_msg", &[]),
+            &encode_error_reason("hello"),
+        );
 
         validate_revert(
             harness.capture_call(&mut executor, "bar", &[uint_token(4)]),
@@ -106,14 +124,17 @@ fn test_assert() {
 
 #[rstest(fixture_file, input, expected,
     case("for_loop_with_static_array.fe", &[], uint_token(30)),
+    case("for_loop_with_static_array_from_sto.fe", &[], uint_token(6)),
     case("for_loop_with_break.fe", &[], uint_token(15)),
     case("for_loop_with_continue.fe", &[], uint_token(17)),
     case("while_loop_with_continue.fe", &[], uint_token(1)),
     case("while_loop.fe", &[], uint_token(3)),
+    case("while_loop_test_from_sto.fe", &[], uint_token(42)),
     case("while_loop_with_break.fe", &[], uint_token(1)),
     case("while_loop_with_break_2.fe", &[], uint_token(1)),
     case("if_statement.fe", &[uint_token(6)], uint_token(1)),
     case("if_statement.fe", &[uint_token(4)], uint_token(0)),
+    case("if_statement_test_from_sto.fe", &[], uint_token(42)),
     case("if_statement_2.fe", &[uint_token(6)], uint_token(1)),
     case("if_statement_with_block_declaration.fe", &[], uint_token(1)),
     case("ternary_expression.fe", &[uint_token(6)], uint_token(1)),

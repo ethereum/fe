@@ -2205,7 +2205,7 @@ note:
    ┌─ features/structs.fe:37:16
    │
 37 │         assert self.my_house.vacant
-   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 12273323640399429874
+   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 13730979586018155653
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2216,7 +2216,9 @@ note:
                  0,
              ),
          },
-         move_location: None,
+         move_location: Some(
+             Value,
+         ),
      }
 
 note: 
@@ -2707,7 +2709,7 @@ note:
    ┌─ features/structs.fe:42:16
    │
 42 │         assert self.my_house.vacant
-   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 12273323640399429874
+   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 13730979586018155653
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2718,7 +2720,9 @@ note:
                  0,
              ),
          },
-         move_location: None,
+         move_location: Some(
+             Value,
+         ),
      }
 
 note: 
@@ -3209,14 +3213,16 @@ note:
    ┌─ features/structs.fe:54:16
    │
 54 │         assert building.vacant
-   │                ^^^^^^^^^^^^^^^ attributes hash: 9492448225675818972
+   │                ^^^^^^^^^^^^^^^ attributes hash: 793140603415107164
    │
    = ExpressionAttributes {
          typ: Base(
              Bool,
          ),
          location: Memory,
-         move_location: None,
+         move_location: Some(
+             Value,
+         ),
      }
 
 note: 

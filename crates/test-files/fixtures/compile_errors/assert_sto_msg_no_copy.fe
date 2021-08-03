@@ -1,0 +1,5 @@
+contract Foo:
+    my_string: String<42>
+
+    pub def bar():
+        assert false, self.my_string
