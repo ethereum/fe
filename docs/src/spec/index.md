@@ -10,7 +10,6 @@
     * [Identifiers](identifiers.md)
     * [Tokens](tokens.md)
 * [Comments](comments.md)
-* [Block Expression](block_expression.md)
 * [Items](items.md)
     * [Visibility and Privacy](visibility_and_privacy.md)
     * [Functions](functions.md)

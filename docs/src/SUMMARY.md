@@ -16,7 +16,6 @@
         * [Identifiers](spec/identifiers.md)
         * [Tokens](spec/tokens.md)
     * [Comments](spec/comments.md)
-    * [Block Expression](spec/block_expression.md)
     * [Items](spec/items.md)
         * [Visibility and Privacy](spec/visibility_and_privacy.md)
         * [Functions](spec/functions.md)
