@@ -4,7 +4,7 @@
 > _Struct_ :\
 > &nbsp;&nbsp; `struct` [IDENTIFIER] `:` [NEWLINE]\
 > &nbsp;&nbsp; [INDENT]\
-> &nbsp;&nbsp; _StructField_<sup>\*</sup>\
+> &nbsp;&nbsp; _StructField_<sup>*</sup>\
 > &nbsp;&nbsp; [DEDENT]\
 >
 > _StructField_ :\

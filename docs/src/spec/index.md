@@ -22,6 +22,7 @@
     * [`pragma` Statement](statement_pragma.md)
     * [`revert` Statement](statement_revert.md)
     * [`return` Statement](statement_return.md)
+    * [`if` Statement](statement_if.md)
 * [Expressions](expressions.md)
     * [Arithmetic Operators](arithmetic_operators.md)
     * [Comparision Operators](comparision_operators.md)

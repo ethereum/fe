@@ -69,17 +69,17 @@ def answer_to_life_the_universe_and_everything() -> u256:
 [*function item type*]: function_item_types.md
 [variables]: variables.md
 
-[_ReturnStatement_]: statements.md
+[_ReturnStatement_]: statement_return.md
 [_VariableDeclarationStatement_]: statements.md
 [_AssignStatement_]: statements.md
 [_AugmentedAssignStatement_]: statements.md
 [_ForStatement_]: statements.md
 [_WhileStatement_]: statements.md
-[_IfStatement_]: statements.md
+[_IfStatement_]: statement_if.md
 [_AssertStatement_]: statements.md
 [_EmitStatement_]: statements.md
 [_PassStatement_]: statements.md
 [_BreakStatement_]: statements.md
 [_ContinueStatement_]: statements.md
-[_RevertStatement_]: statements.md
+[_RevertStatement_]: statement_revert.md
 [_Expression_]: expressions.md
