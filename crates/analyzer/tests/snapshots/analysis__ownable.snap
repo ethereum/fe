@@ -463,7 +463,7 @@ note:
 note: 
   ┌─ features/ownable.fe:8:3
   │  
-8 │ ╭   pub def __init__():
+8 │ ╭   pub fn __init__():
 9 │ │     self._owner = msg.sender
   │ ╰────────────────────────────^ attributes hash: 5584559917281080592
   │  
@@ -479,7 +479,7 @@ note:
 note: 
    ┌─ features/ownable.fe:11:3
    │  
-11 │ ╭   pub def owner() -> address:
+11 │ ╭   pub fn owner() -> address:
 12 │ │     return self._owner
    │ ╰──────────────────────^ attributes hash: 9316434013084181965
    │  
@@ -495,7 +495,7 @@ note:
 note: 
    ┌─ features/ownable.fe:14:3
    │  
-14 │ ╭   pub def renounceOwnership():
+14 │ ╭   pub fn renounceOwnership():
 15 │ │     assert msg.sender == self._owner
 16 │ │     self._owner = address(0)
 17 │ │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner=address(0))
@@ -513,7 +513,7 @@ note:
 note: 
    ┌─ features/ownable.fe:19:3
    │  
-19 │ ╭   pub def transferOwnership(newOwner: address):
+19 │ ╭   pub fn transferOwnership(newOwner: address):
 20 │ │     assert msg.sender == self._owner
 21 │ │     assert newOwner != address(0)
 22 │ │     self._owner = newOwner
@@ -706,20 +706,20 @@ note:
     )
 
 note: 
-   ┌─ features/ownable.fe:11:22
+   ┌─ features/ownable.fe:11:21
    │
-11 │   pub def owner() -> address:
-   │                      ^^^^^^^ attributes hash: 928477466454064117
+11 │   pub fn owner() -> address:
+   │                     ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
      )
 
 note: 
-   ┌─ features/ownable.fe:19:39
+   ┌─ features/ownable.fe:19:38
    │
-19 │   pub def transferOwnership(newOwner: address):
-   │                                       ^^^^^^^ attributes hash: 928477466454064117
+19 │   pub fn transferOwnership(newOwner: address):
+   │                                      ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,

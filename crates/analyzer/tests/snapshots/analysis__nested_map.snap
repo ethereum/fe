@@ -552,7 +552,7 @@ note:
 note: 
   ┌─ features/nested_map.fe:5:5
   │  
-5 │ ╭     pub def read_bar(a: address, b: address) -> u256:
+5 │ ╭     pub fn read_bar(a: address, b: address) -> u256:
 6 │ │         return self.bar[a][b]
   │ ╰─────────────────────────────^ attributes hash: 10024110223657719649
   │  
@@ -583,7 +583,7 @@ note:
 note: 
   ┌─ features/nested_map.fe:8:5
   │  
-8 │ ╭     pub def write_bar(a: address, b: address, value: u256):
+8 │ ╭     pub fn write_bar(a: address, b: address, value: u256):
 9 │ │         self.bar[a][b] = value
   │ ╰──────────────────────────────^ attributes hash: 14129922578398797319
   │  
@@ -620,7 +620,7 @@ note:
 note: 
    ┌─ features/nested_map.fe:11:5
    │  
-11 │ ╭     pub def read_baz(a: address, b: u256) -> bool:
+11 │ ╭     pub fn read_baz(a: address, b: u256) -> bool:
 12 │ │         return self.baz[a][b]
    │ ╰─────────────────────────────^ attributes hash: 173287432308673817
    │  
@@ -651,7 +651,7 @@ note:
 note: 
    ┌─ features/nested_map.fe:14:5
    │  
-14 │ ╭     pub def write_baz(a: address, b: u256, value: bool):
+14 │ ╭     pub fn write_baz(a: address, b: u256, value: bool):
 15 │ │         self.baz[a][b] = value
    │ ╰──────────────────────────────^ attributes hash: 14658687342455194127
    │  
@@ -693,7 +693,7 @@ note:
  3 │ │     baz: Map<address, Map<u256, bool>>
  4 │ │ 
    · │
-14 │ │     pub def write_baz(a: address, b: u256, value: bool):
+14 │ │     pub fn write_baz(a: address, b: u256, value: bool):
 15 │ │         self.baz[a][b] = value
    │ ╰──────────────────────────────^ attributes hash: 9312017443177892010
    │  
@@ -811,9 +811,41 @@ note:
      }
 
 note: 
-  ┌─ features/nested_map.fe:5:25
+  ┌─ features/nested_map.fe:5:24
   │
-5 │     pub def read_bar(a: address, b: address) -> u256:
+5 │     pub fn read_bar(a: address, b: address) -> u256:
+  │                        ^^^^^^^ attributes hash: 928477466454064117
+  │
+  = Base(
+        Address,
+    )
+
+note: 
+  ┌─ features/nested_map.fe:5:36
+  │
+5 │     pub fn read_bar(a: address, b: address) -> u256:
+  │                                    ^^^^^^^ attributes hash: 928477466454064117
+  │
+  = Base(
+        Address,
+    )
+
+note: 
+  ┌─ features/nested_map.fe:5:48
+  │
+5 │     pub fn read_bar(a: address, b: address) -> u256:
+  │                                                ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/nested_map.fe:8:25
+  │
+8 │     pub fn write_bar(a: address, b: address, value: u256):
   │                         ^^^^^^^ attributes hash: 928477466454064117
   │
   = Base(
@@ -821,9 +853,9 @@ note:
     )
 
 note: 
-  ┌─ features/nested_map.fe:5:37
+  ┌─ features/nested_map.fe:8:37
   │
-5 │     pub def read_bar(a: address, b: address) -> u256:
+8 │     pub fn write_bar(a: address, b: address, value: u256):
   │                                     ^^^^^^^ attributes hash: 928477466454064117
   │
   = Base(
@@ -831,42 +863,10 @@ note:
     )
 
 note: 
-  ┌─ features/nested_map.fe:5:49
+  ┌─ features/nested_map.fe:8:53
   │
-5 │     pub def read_bar(a: address, b: address) -> u256:
-  │                                                 ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/nested_map.fe:8:26
-  │
-8 │     pub def write_bar(a: address, b: address, value: u256):
-  │                          ^^^^^^^ attributes hash: 928477466454064117
-  │
-  = Base(
-        Address,
-    )
-
-note: 
-  ┌─ features/nested_map.fe:8:38
-  │
-8 │     pub def write_bar(a: address, b: address, value: u256):
-  │                                      ^^^^^^^ attributes hash: 928477466454064117
-  │
-  = Base(
-        Address,
-    )
-
-note: 
-  ┌─ features/nested_map.fe:8:54
-  │
-8 │     pub def write_bar(a: address, b: address, value: u256):
-  │                                                      ^^^^ attributes hash: 4293763436908729629
+8 │     pub fn write_bar(a: address, b: address, value: u256):
+  │                                                     ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -875,9 +875,41 @@ note:
     )
 
 note: 
-   ┌─ features/nested_map.fe:11:25
+   ┌─ features/nested_map.fe:11:24
    │
-11 │     pub def read_baz(a: address, b: u256) -> bool:
+11 │     pub fn read_baz(a: address, b: u256) -> bool:
+   │                        ^^^^^^^ attributes hash: 928477466454064117
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ features/nested_map.fe:11:36
+   │
+11 │     pub fn read_baz(a: address, b: u256) -> bool:
+   │                                    ^^^^ attributes hash: 4293763436908729629
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/nested_map.fe:11:45
+   │
+11 │     pub fn read_baz(a: address, b: u256) -> bool:
+   │                                             ^^^^ attributes hash: 5425972608982369985
+   │
+   = Base(
+         Bool,
+     )
+
+note: 
+   ┌─ features/nested_map.fe:14:25
+   │
+14 │     pub fn write_baz(a: address, b: u256, value: bool):
    │                         ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
@@ -885,9 +917,9 @@ note:
      )
 
 note: 
-   ┌─ features/nested_map.fe:11:37
+   ┌─ features/nested_map.fe:14:37
    │
-11 │     pub def read_baz(a: address, b: u256) -> bool:
+14 │     pub fn write_baz(a: address, b: u256, value: bool):
    │                                     ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
@@ -897,42 +929,10 @@ note:
      )
 
 note: 
-   ┌─ features/nested_map.fe:11:46
+   ┌─ features/nested_map.fe:14:50
    │
-11 │     pub def read_baz(a: address, b: u256) -> bool:
-   │                                              ^^^^ attributes hash: 5425972608982369985
-   │
-   = Base(
-         Bool,
-     )
-
-note: 
-   ┌─ features/nested_map.fe:14:26
-   │
-14 │     pub def write_baz(a: address, b: u256, value: bool):
-   │                          ^^^^^^^ attributes hash: 928477466454064117
-   │
-   = Base(
-         Address,
-     )
-
-note: 
-   ┌─ features/nested_map.fe:14:38
-   │
-14 │     pub def write_baz(a: address, b: u256, value: bool):
-   │                                      ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
-
-note: 
-   ┌─ features/nested_map.fe:14:51
-   │
-14 │     pub def write_baz(a: address, b: u256, value: bool):
-   │                                                   ^^^^ attributes hash: 5425972608982369985
+14 │     pub fn write_baz(a: address, b: u256, value: bool):
+   │                                                  ^^^^ attributes hash: 5425972608982369985
    │
    = Base(
          Bool,

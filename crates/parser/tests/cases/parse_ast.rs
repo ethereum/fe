@@ -131,7 +131,7 @@ test_parse! { type_map4, types::parse_type_desc, "map < address , map < u8, u256
 test_parse! { type_tuple, types::parse_type_desc, "(u8, u16, address, Map<u8, u8>)" }
 test_parse! { type_unit, types::parse_type_desc, "()" }
 
-test_parse! { fn_def, |par| functions::parse_fn_def(par, None), "def foo21(x: bool, y: address,) -> bool:\n x"}
+test_parse! { fn_def, |par| functions::parse_fn_def(par, None), "fn foo21(x: bool, y: address,) -> bool:\n x"}
 test_parse! { event_def, types::parse_event_def, "event Foo:\n  x: address\n  idx y: u8" }
 test_parse! { empty_event_def, types::parse_event_def, "event Foo:\n  pass" }
 
@@ -154,7 +154,7 @@ test_parse! { contract_def, contracts::parse_contract_def, r#"contract Foo:
   x: address
   pub y: u8
   pub const z: Map<u8, address>
-  pub def foo() -> u8:
+  pub fn foo() -> u8:
     return 10
   event Bar:
     idx from: address
@@ -187,11 +187,11 @@ contract GuestBook:
     event Signed:
         idx book_msg: BookMsg
 
-    pub def sign(book_msg: BookMsg):
+    pub fn sign(book_msg: BookMsg):
         self.guest_book[msg.sender] = book_msg
 
         emit Signed(book_msg=book_msg)
 
-    pub def get_msg(addr: address) -> BookMsg:
+    pub fn get_msg(addr: address) -> BookMsg:
         return self.guest_book[addr]
 "# }

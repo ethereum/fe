@@ -206,14 +206,14 @@ contract GuestBook:
     event Signed:
         book_msg: String&lt;100&gt;
 
-    pub def sign(book_msg: String&lt;100&gt;):
+    pub fn sign(book_msg: String&lt;100&gt;):
         # All storage access is explicit using `self.&lt;some-key&gt;`
         self.messages[msg.sender] = book_msg
 
         # Emit the `Signed` event
         emit Signed(book_msg=book_msg)
 
-    pub def get_msg(addr: address) -> String&lt;100&gt;:
+    pub fn get_msg(addr: address) -> String&lt;100&gt;:
         # Copying data from storage to memory
         # has to be done explicitly via `to_mem()`
         return self.messages[addr].to_mem()

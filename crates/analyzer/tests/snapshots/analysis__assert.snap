@@ -407,7 +407,7 @@ note:
 note: 
   ┌─ features/assert.fe:5:5
   │  
-5 │ ╭     pub def bar(baz: u256):
+5 │ ╭     pub fn bar(baz: u256):
 6 │ │         assert baz > 5
   │ ╰──────────────────────^ attributes hash: 14705602729846184909
   │  
@@ -432,7 +432,7 @@ note:
 note: 
   ┌─ features/assert.fe:8:5
   │  
-8 │ ╭     pub def revert_with_static_string(baz: u256):
+8 │ ╭     pub fn revert_with_static_string(baz: u256):
 9 │ │         assert baz > 5, "Must be greater than five"
   │ ╰───────────────────────────────────────────────────^ attributes hash: 12915933724383760692
   │  
@@ -457,7 +457,7 @@ note:
 note: 
    ┌─ features/assert.fe:11:5
    │  
-11 │ ╭     pub def revert_with(baz: u256, reason: String<1000>):
+11 │ ╭     pub fn revert_with(baz: u256, reason: String<1000>):
 12 │ │         assert baz > 5, reason
    │ ╰──────────────────────────────^ attributes hash: 5206967184411358358
    │  
@@ -490,7 +490,7 @@ note:
 note: 
    ┌─ features/assert.fe:14:5
    │  
-14 │ ╭     pub def assert_sto_bool():
+14 │ ╭     pub fn assert_sto_bool():
 15 │ │         self.my_bool = false
 16 │ │         assert self.my_bool
    │ ╰───────────────────────────^ attributes hash: 386062522787178436
@@ -507,7 +507,7 @@ note:
 note: 
    ┌─ features/assert.fe:18:5
    │  
-18 │ ╭     pub def assert_sto_string_msg():
+18 │ ╭     pub fn assert_sto_string_msg():
 19 │ │         self.my_string = "hello"
 20 │ │         assert false, self.my_string.to_mem()
    │ ╰─────────────────────────────────────────────^ attributes hash: 1836150226267414980
@@ -626,22 +626,10 @@ note:
    = ValueAttribute
 
 note: 
-  ┌─ features/assert.fe:5:22
+  ┌─ features/assert.fe:5:21
   │
-5 │     pub def bar(baz: u256):
-  │                      ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/assert.fe:8:44
-  │
-8 │     pub def revert_with_static_string(baz: u256):
-  │                                            ^^^^ attributes hash: 4293763436908729629
+5 │     pub fn bar(baz: u256):
+  │                     ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -650,10 +638,22 @@ note:
     )
 
 note: 
-   ┌─ features/assert.fe:11:30
+  ┌─ features/assert.fe:8:43
+  │
+8 │     pub fn revert_with_static_string(baz: u256):
+  │                                           ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+   ┌─ features/assert.fe:11:29
    │
-11 │     pub def revert_with(baz: u256, reason: String<1000>):
-   │                              ^^^^ attributes hash: 4293763436908729629
+11 │     pub fn revert_with(baz: u256, reason: String<1000>):
+   │                             ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -662,10 +662,10 @@ note:
      )
 
 note: 
-   ┌─ features/assert.fe:11:44
+   ┌─ features/assert.fe:11:43
    │
-11 │     pub def revert_with(baz: u256, reason: String<1000>):
-   │                                            ^^^^^^^^^^^^ attributes hash: 7691650642384229431
+11 │     pub fn revert_with(baz: u256, reason: String<1000>):
+   │                                           ^^^^^^^^^^^^ attributes hash: 7691650642384229431
    │
    = String(
          FeString {

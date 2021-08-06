@@ -131,7 +131,7 @@ note:
 note: 
   ┌─ features/ternary_expression.fe:3:5
   │  
-3 │ ╭     pub def bar(input: u256) -> u256:
+3 │ ╭     pub fn bar(input: u256) -> u256:
 4 │ │         return 1 if input > 5 else 0
   │ ╰────────────────────────────────────^ attributes hash: 12628763783334799
   │  
@@ -160,7 +160,7 @@ note:
   │  
 1 │ ╭ contract Foo:
 2 │ │ 
-3 │ │     pub def bar(input: u256) -> u256:
+3 │ │     pub fn bar(input: u256) -> u256:
 4 │ │         return 1 if input > 5 else 0
   │ ╰────────────────────────────────────^ attributes hash: 6592343064660742193
   │  
@@ -193,10 +193,10 @@ note:
     }
 
 note: 
-  ┌─ features/ternary_expression.fe:3:24
+  ┌─ features/ternary_expression.fe:3:23
   │
-3 │     pub def bar(input: u256) -> u256:
-  │                        ^^^^ attributes hash: 4293763436908729629
+3 │     pub fn bar(input: u256) -> u256:
+  │                       ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -205,10 +205,10 @@ note:
     )
 
 note: 
-  ┌─ features/ternary_expression.fe:3:33
+  ┌─ features/ternary_expression.fe:3:32
   │
-3 │     pub def bar(input: u256) -> u256:
-  │                                 ^^^^ attributes hash: 4293763436908729629
+3 │     pub fn bar(input: u256) -> u256:
+  │                                ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(

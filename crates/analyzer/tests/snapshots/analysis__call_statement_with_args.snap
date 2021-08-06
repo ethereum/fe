@@ -198,7 +198,7 @@ note:
 note: 
   ┌─ features/call_statement_with_args.fe:4:5
   │  
-4 │ ╭     def assign(val: u256):
+4 │ ╭     fn assign(val: u256):
 5 │ │         self.baz[0] = val
   │ ╰─────────────────────────^ attributes hash: 9632195529339613523
   │  
@@ -223,7 +223,7 @@ note:
 note: 
   ┌─ features/call_statement_with_args.fe:7:5
   │  
-7 │ ╭     pub def bar() -> u256:
+7 │ ╭     pub fn bar() -> u256:
 8 │ │         self.assign(100)
 9 │ │         return self.baz[0]
   │ ╰──────────────────────────^ attributes hash: 5931278080780939395
@@ -245,7 +245,7 @@ note:
 1 │ ╭ contract Foo:
 2 │ │     baz: Map<u256, u256>
 3 │ │ 
-4 │ │     def assign(val: u256):
+4 │ │     fn assign(val: u256):
   · │
 8 │ │         self.assign(100)
 9 │ │         return self.baz[0]
@@ -281,10 +281,10 @@ note:
     }
 
 note: 
-  ┌─ features/call_statement_with_args.fe:4:21
+  ┌─ features/call_statement_with_args.fe:4:20
   │
-4 │     def assign(val: u256):
-  │                     ^^^^ attributes hash: 4293763436908729629
+4 │     fn assign(val: u256):
+  │                    ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -293,10 +293,10 @@ note:
     )
 
 note: 
-  ┌─ features/call_statement_with_args.fe:7:22
+  ┌─ features/call_statement_with_args.fe:7:21
   │
-7 │     pub def bar() -> u256:
-  │                      ^^^^ attributes hash: 4293763436908729629
+7 │     pub fn bar() -> u256:
+  │                     ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(

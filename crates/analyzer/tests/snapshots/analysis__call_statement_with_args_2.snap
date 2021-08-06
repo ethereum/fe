@@ -216,7 +216,7 @@ note:
 note: 
   ┌─ features/call_statement_with_args_2.fe:4:5
   │  
-4 │ ╭     def assign(val: u256) -> u256:
+4 │ ╭     fn assign(val: u256) -> u256:
 5 │ │         self.baz[0] = val
 6 │ │         return val
   │ ╰──────────────────^ attributes hash: 2404992125564761668
@@ -244,7 +244,7 @@ note:
 note: 
    ┌─ features/call_statement_with_args_2.fe:8:5
    │  
- 8 │ ╭     pub def bar() -> u256:
+ 8 │ ╭     pub fn bar() -> u256:
  9 │ │         self.assign(100)
 10 │ │         return self.baz[0]
    │ ╰──────────────────────────^ attributes hash: 5931278080780939395
@@ -266,7 +266,7 @@ note:
  1 │ ╭ contract Foo:
  2 │ │     baz: Map<u256, u256>
  3 │ │ 
- 4 │ │     def assign(val: u256) -> u256:
+ 4 │ │     fn assign(val: u256) -> u256:
    · │
  9 │ │         self.assign(100)
 10 │ │         return self.baz[0]
@@ -302,34 +302,34 @@ note:
     }
 
 note: 
-  ┌─ features/call_statement_with_args_2.fe:4:21
+  ┌─ features/call_statement_with_args_2.fe:4:20
   │
-4 │     def assign(val: u256) -> u256:
+4 │     fn assign(val: u256) -> u256:
+  │                    ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/call_statement_with_args_2.fe:4:29
+  │
+4 │     fn assign(val: u256) -> u256:
+  │                             ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/call_statement_with_args_2.fe:8:21
+  │
+8 │     pub fn bar() -> u256:
   │                     ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/call_statement_with_args_2.fe:4:30
-  │
-4 │     def assign(val: u256) -> u256:
-  │                              ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/call_statement_with_args_2.fe:8:22
-  │
-8 │     pub def bar() -> u256:
-  │                      ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(

@@ -265,7 +265,7 @@ note:
 note: 
   ┌─ features/two_contracts.fe:5:5
   │  
-5 │ ╭     pub def external_bar() -> u256:
+5 │ ╭     pub fn external_bar() -> u256:
 6 │ │         return Bar(address(0)).bar()
   │ ╰────────────────────────────────────^ attributes hash: 6951749236191192885
   │  
@@ -283,7 +283,7 @@ note:
 note: 
   ┌─ features/two_contracts.fe:8:5
   │  
-8 │ ╭     pub def foo() -> u256:
+8 │ ╭     pub fn foo() -> u256:
 9 │ │         return 42
   │ ╰─────────────────^ attributes hash: 11232535930816367115
   │  
@@ -301,7 +301,7 @@ note:
 note: 
    ┌─ features/two_contracts.fe:15:5
    │  
-15 │ ╭     pub def external_foo() -> u256:
+15 │ ╭     pub fn external_foo() -> u256:
 16 │ │         return Foo(address(0)).foo()
    │ ╰────────────────────────────────────^ attributes hash: 6326551774952214873
    │  
@@ -319,7 +319,7 @@ note:
 note: 
    ┌─ features/two_contracts.fe:18:5
    │  
-18 │ ╭     pub def bar() -> u256:
+18 │ ╭     pub fn bar() -> u256:
 19 │ │         return 26
    │ ╰─────────────────^ attributes hash: 5931278080780939395
    │  
@@ -342,7 +342,7 @@ note:
 3 │ │     other: Bar
 4 │ │ 
   · │
-8 │ │     pub def foo() -> u256:
+8 │ │     pub fn foo() -> u256:
 9 │ │         return 42
   │ ╰─────────────────^ attributes hash: 16427597213204226830
   │  
@@ -409,7 +409,7 @@ note:
 13 │ │     other: Foo
 14 │ │ 
    · │
-18 │ │     pub def bar() -> u256:
+18 │ │     pub fn bar() -> u256:
 19 │ │         return 26
    │ ╰─────────────────^ attributes hash: 9831402290883909386
    │  
@@ -581,22 +581,10 @@ note:
      }
 
 note: 
-  ┌─ features/two_contracts.fe:5:31
+  ┌─ features/two_contracts.fe:5:30
   │
-5 │     pub def external_bar() -> u256:
-  │                               ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/two_contracts.fe:8:22
-  │
-8 │     pub def foo() -> u256:
-  │                      ^^^^ attributes hash: 4293763436908729629
+5 │     pub fn external_bar() -> u256:
+  │                              ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -605,10 +593,22 @@ note:
     )
 
 note: 
-   ┌─ features/two_contracts.fe:15:31
+  ┌─ features/two_contracts.fe:8:21
+  │
+8 │     pub fn foo() -> u256:
+  │                     ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+   ┌─ features/two_contracts.fe:15:30
    │
-15 │     pub def external_foo() -> u256:
-   │                               ^^^^ attributes hash: 4293763436908729629
+15 │     pub fn external_foo() -> u256:
+   │                              ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -617,10 +617,10 @@ note:
      )
 
 note: 
-   ┌─ features/two_contracts.fe:18:22
+   ┌─ features/two_contracts.fe:18:21
    │
-18 │     pub def bar() -> u256:
-   │                      ^^^^ attributes hash: 4293763436908729629
+18 │     pub fn bar() -> u256:
+   │                     ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(

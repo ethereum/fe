@@ -182,7 +182,7 @@ note:
 note: 
   ┌─ features/call_statement_without_args.fe:4:5
   │  
-4 │ ╭     def assign():
+4 │ ╭     fn assign():
 5 │ │         self.baz[0] = 100
   │ ╰─────────────────────────^ attributes hash: 5313045008842383154
   │  
@@ -198,7 +198,7 @@ note:
 note: 
   ┌─ features/call_statement_without_args.fe:7:5
   │  
-7 │ ╭     pub def bar() -> u256:
+7 │ ╭     pub fn bar() -> u256:
 8 │ │         self.assign()
 9 │ │         return self.baz[0]
   │ ╰──────────────────────────^ attributes hash: 5931278080780939395
@@ -220,7 +220,7 @@ note:
 1 │ ╭ contract Foo:
 2 │ │     baz: Map<u256, u256>
 3 │ │ 
-4 │ │     def assign():
+4 │ │     fn assign():
   · │
 8 │ │         self.assign()
 9 │ │         return self.baz[0]
@@ -256,10 +256,10 @@ note:
     }
 
 note: 
-  ┌─ features/call_statement_without_args.fe:7:22
+  ┌─ features/call_statement_without_args.fe:7:21
   │
-7 │     pub def bar() -> u256:
-  │                      ^^^^ attributes hash: 4293763436908729629
+7 │     pub fn bar() -> u256:
+  │                     ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(

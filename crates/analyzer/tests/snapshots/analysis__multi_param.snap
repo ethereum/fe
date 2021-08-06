@@ -276,7 +276,7 @@ note:
 note: 
   ┌─ features/multi_param.fe:2:5
   │  
-2 │ ╭     pub def bar(x: u256, y: u256, z: u256) -> u256[3]:
+2 │ ╭     pub fn bar(x: u256, y: u256, z: u256) -> u256[3]:
 3 │ │         my_array: u256[3]
 4 │ │         my_array[0] = x
 5 │ │         my_array[1] = y
@@ -342,7 +342,7 @@ note:
   ┌─ features/multi_param.fe:1:1
   │  
 1 │ ╭ contract Foo:
-2 │ │     pub def bar(x: u256, y: u256, z: u256) -> u256[3]:
+2 │ │     pub fn bar(x: u256, y: u256, z: u256) -> u256[3]:
 3 │ │         my_array: u256[3]
 4 │ │         my_array[0] = x
 5 │ │         my_array[1] = y
@@ -398,22 +398,10 @@ note:
     }
 
 note: 
-  ┌─ features/multi_param.fe:2:20
+  ┌─ features/multi_param.fe:2:19
   │
-2 │     pub def bar(x: u256, y: u256, z: u256) -> u256[3]:
-  │                    ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/multi_param.fe:2:29
-  │
-2 │     pub def bar(x: u256, y: u256, z: u256) -> u256[3]:
-  │                             ^^^^ attributes hash: 4293763436908729629
+2 │     pub fn bar(x: u256, y: u256, z: u256) -> u256[3]:
+  │                   ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -422,22 +410,10 @@ note:
     )
 
 note: 
-  ┌─ features/multi_param.fe:2:38
+  ┌─ features/multi_param.fe:2:28
   │
-2 │     pub def bar(x: u256, y: u256, z: u256) -> u256[3]:
-  │                                      ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/multi_param.fe:2:47
-  │
-2 │     pub def bar(x: u256, y: u256, z: u256) -> u256[3]:
-  │                                               ^^^^ attributes hash: 4293763436908729629
+2 │     pub fn bar(x: u256, y: u256, z: u256) -> u256[3]:
+  │                            ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -446,10 +422,34 @@ note:
     )
 
 note: 
-  ┌─ features/multi_param.fe:2:47
+  ┌─ features/multi_param.fe:2:37
   │
-2 │     pub def bar(x: u256, y: u256, z: u256) -> u256[3]:
-  │                                               ^^^^^^^ attributes hash: 12759010689691238080
+2 │     pub fn bar(x: u256, y: u256, z: u256) -> u256[3]:
+  │                                     ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/multi_param.fe:2:46
+  │
+2 │     pub fn bar(x: u256, y: u256, z: u256) -> u256[3]:
+  │                                              ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/multi_param.fe:2:46
+  │
+2 │     pub fn bar(x: u256, y: u256, z: u256) -> u256[3]:
+  │                                              ^^^^^^^ attributes hash: 12759010689691238080
   │
   = Array(
         Array {

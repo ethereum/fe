@@ -70,7 +70,7 @@ note:
 note: 
   ┌─ features/return_u256_from_called_fn.fe:4:5
   │  
-4 │ ╭     pub def bar() -> u256:
+4 │ ╭     pub fn bar() -> u256:
 5 │ │         return self.foo()
   │ ╰─────────────────────────^ attributes hash: 5931278080780939395
   │  
@@ -88,7 +88,7 @@ note:
 note: 
   ┌─ features/return_u256_from_called_fn.fe:7:5
   │  
-7 │ ╭     pub def foo() -> u256:
+7 │ ╭     pub fn foo() -> u256:
 8 │ │         return 42
   │ ╰─────────────────^ attributes hash: 11232535930816367115
   │  
@@ -109,9 +109,9 @@ note:
 1 │ ╭ contract Foo:
 2 │ │ 
 3 │ │     # We intentionally define `bar` before `foo` to test that order isn't important
-4 │ │     pub def bar() -> u256:
+4 │ │     pub fn bar() -> u256:
   · │
-7 │ │     pub def foo() -> u256:
+7 │ │     pub fn foo() -> u256:
 8 │ │         return 42
   │ ╰─────────────────^ attributes hash: 3955389950047773850
   │  
@@ -155,10 +155,10 @@ note:
     }
 
 note: 
-  ┌─ features/return_u256_from_called_fn.fe:4:22
+  ┌─ features/return_u256_from_called_fn.fe:4:21
   │
-4 │     pub def bar() -> u256:
-  │                      ^^^^ attributes hash: 4293763436908729629
+4 │     pub fn bar() -> u256:
+  │                     ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -167,10 +167,10 @@ note:
     )
 
 note: 
-  ┌─ features/return_u256_from_called_fn.fe:7:22
+  ┌─ features/return_u256_from_called_fn.fe:7:21
   │
-7 │     pub def foo() -> u256:
-  │                      ^^^^ attributes hash: 4293763436908729629
+7 │     pub fn foo() -> u256:
+  │                     ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(

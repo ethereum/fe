@@ -390,7 +390,7 @@ note:
 note: 
    ┌─ features/for_loop_with_break.fe:3:5
    │  
- 3 │ ╭     pub def bar() -> u256:
+ 3 │ ╭     pub fn bar() -> u256:
  4 │ │         my_array: u256[3]
  5 │ │         my_array[0] = 5
  6 │ │         my_array[1] = 10
@@ -442,7 +442,7 @@ note:
    │  
  1 │ ╭ contract Foo:
  2 │ │ 
- 3 │ │     pub def bar() -> u256:
+ 3 │ │     pub fn bar() -> u256:
  4 │ │         my_array: u256[3]
    · │
 12 │ │                 break
@@ -469,10 +469,10 @@ note:
      }
 
 note: 
-  ┌─ features/for_loop_with_break.fe:3:22
+  ┌─ features/for_loop_with_break.fe:3:21
   │
-3 │     pub def bar() -> u256:
-  │                      ^^^^ attributes hash: 4293763436908729629
+3 │     pub fn bar() -> u256:
+  │                     ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(

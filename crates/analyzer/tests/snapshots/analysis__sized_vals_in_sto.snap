@@ -495,7 +495,7 @@ note:
 note: 
    ┌─ features/sized_vals_in_sto.fe:11:5
    │  
-11 │ ╭     pub def write_num(x: u256):
+11 │ ╭     pub fn write_num(x: u256):
 12 │ │         self.num = x
    │ ╰────────────────────^ attributes hash: 4190346186254739408
    │  
@@ -520,7 +520,7 @@ note:
 note: 
    ┌─ features/sized_vals_in_sto.fe:14:5
    │  
-14 │ ╭     pub def read_num() -> u256:
+14 │ ╭     pub fn read_num() -> u256:
 15 │ │         return self.num
    │ ╰───────────────────────^ attributes hash: 18369887561931081857
    │  
@@ -538,7 +538,7 @@ note:
 note: 
    ┌─ features/sized_vals_in_sto.fe:17:5
    │  
-17 │ ╭     pub def write_nums(x: u256[42]):
+17 │ ╭     pub fn write_nums(x: u256[42]):
 18 │ │         self.nums = x
    │ ╰─────────────────────^ attributes hash: 18176272542606463681
    │  
@@ -566,7 +566,7 @@ note:
 note: 
    ┌─ features/sized_vals_in_sto.fe:20:5
    │  
-20 │ ╭     pub def read_nums() -> u256[42]:
+20 │ ╭     pub fn read_nums() -> u256[42]:
 21 │ │         return self.nums.to_mem()
    │ ╰─────────────────────────────────^ attributes hash: 18017423867355310149
    │  
@@ -587,7 +587,7 @@ note:
 note: 
    ┌─ features/sized_vals_in_sto.fe:23:5
    │  
-23 │ ╭     pub def write_str(x: String<26>):
+23 │ ╭     pub fn write_str(x: String<26>):
 24 │ │         self.str = x
    │ ╰────────────────────^ attributes hash: 701907601803704877
    │  
@@ -612,7 +612,7 @@ note:
 note: 
    ┌─ features/sized_vals_in_sto.fe:26:5
    │  
-26 │ ╭     pub def read_str() -> String<26>:
+26 │ ╭     pub fn read_str() -> String<26>:
 27 │ │         return self.str.to_mem()
    │ ╰────────────────────────────────^ attributes hash: 6495104549159084966
    │  
@@ -630,7 +630,7 @@ note:
 note: 
    ┌─ features/sized_vals_in_sto.fe:29:5
    │  
-29 │ ╭     pub def emit_event():
+29 │ ╭     pub fn emit_event():
 30 │ │         emit MyEvent(
 31 │ │             num=self.num,
 32 │ │             nums=self.nums.to_mem(),
@@ -924,9 +924,21 @@ note:
     )
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:11:26
+   ┌─ features/sized_vals_in_sto.fe:11:25
    │
-11 │     pub def write_num(x: u256):
+11 │     pub fn write_num(x: u256):
+   │                         ^^^^ attributes hash: 4293763436908729629
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:14:26
+   │
+14 │     pub fn read_num() -> u256:
    │                          ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
@@ -936,9 +948,36 @@ note:
      )
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:14:27
+   ┌─ features/sized_vals_in_sto.fe:17:26
    │
-14 │     pub def read_num() -> u256:
+17 │     pub fn write_nums(x: u256[42]):
+   │                          ^^^^ attributes hash: 4293763436908729629
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:17:26
+   │
+17 │     pub fn write_nums(x: u256[42]):
+   │                          ^^^^^^^^ attributes hash: 13311310269507036242
+   │
+   = Array(
+         Array {
+             size: 42,
+             inner: Numeric(
+                 U256,
+             ),
+         },
+     )
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:20:27
+   │
+20 │     pub fn read_nums() -> u256[42]:
    │                           ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
@@ -948,21 +987,9 @@ note:
      )
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:17:27
+   ┌─ features/sized_vals_in_sto.fe:20:27
    │
-17 │     pub def write_nums(x: u256[42]):
-   │                           ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:17:27
-   │
-17 │     pub def write_nums(x: u256[42]):
+20 │     pub fn read_nums() -> u256[42]:
    │                           ^^^^^^^^ attributes hash: 13311310269507036242
    │
    = Array(
@@ -975,37 +1002,10 @@ note:
      )
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:20:28
+   ┌─ features/sized_vals_in_sto.fe:23:25
    │
-20 │     pub def read_nums() -> u256[42]:
-   │                            ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:20:28
-   │
-20 │     pub def read_nums() -> u256[42]:
-   │                            ^^^^^^^^ attributes hash: 13311310269507036242
-   │
-   = Array(
-         Array {
-             size: 42,
-             inner: Numeric(
-                 U256,
-             ),
-         },
-     )
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:23:26
-   │
-23 │     pub def write_str(x: String<26>):
-   │                          ^^^^^^^^^^ attributes hash: 16414369909362201519
+23 │     pub fn write_str(x: String<26>):
+   │                         ^^^^^^^^^^ attributes hash: 16414369909362201519
    │
    = String(
          FeString {
@@ -1014,10 +1014,10 @@ note:
      )
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:26:27
+   ┌─ features/sized_vals_in_sto.fe:26:26
    │
-26 │     pub def read_str() -> String<26>:
-   │                           ^^^^^^^^^^ attributes hash: 16414369909362201519
+26 │     pub fn read_str() -> String<26>:
+   │                          ^^^^^^^^^^ attributes hash: 16414369909362201519
    │
    = String(
          FeString {

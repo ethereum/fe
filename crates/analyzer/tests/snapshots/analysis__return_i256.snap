@@ -60,7 +60,7 @@ note:
 note: 
   ┌─ features/return_i256.fe:2:5
   │  
-2 │ ╭     pub def bar() -> i256:
+2 │ ╭     pub fn bar() -> i256:
 3 │ │         return -3
   │ ╰─────────────────^ attributes hash: 15263507459917957771
   │  
@@ -79,7 +79,7 @@ note:
   ┌─ features/return_i256.fe:1:1
   │  
 1 │ ╭ contract Foo:
-2 │ │     pub def bar() -> i256:
+2 │ │     pub fn bar() -> i256:
 3 │ │         return -3
   │ ╰─────────────────^ attributes hash: 560590712416349446
   │  
@@ -103,10 +103,10 @@ note:
     }
 
 note: 
-  ┌─ features/return_i256.fe:2:22
+  ┌─ features/return_i256.fe:2:21
   │
-2 │     pub def bar() -> i256:
-  │                      ^^^^ attributes hash: 11707372354960146103
+2 │     pub fn bar() -> i256:
+  │                     ^^^^ attributes hash: 11707372354960146103
   │
   = Base(
         Numeric(

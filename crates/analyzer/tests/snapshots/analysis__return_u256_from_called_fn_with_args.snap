@@ -501,7 +501,7 @@ note:
 note: 
   ┌─ features/return_u256_from_called_fn_with_args.fe:3:5
   │  
-3 │ ╭     pub def foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
+3 │ ╭     pub fn foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
 4 │ │         return val1 + val2 + val3 + val4 + val5
   │ ╰───────────────────────────────────────────────^ attributes hash: 76569032200436284
   │  
@@ -560,7 +560,7 @@ note:
 note: 
   ┌─ features/return_u256_from_called_fn_with_args.fe:6:5
   │  
-6 │ ╭     pub def cem() -> u256:
+6 │ ╭     pub fn cem() -> u256:
 7 │ │         return 100
   │ ╰──────────────────^ attributes hash: 2373878914578048276
   │  
@@ -578,7 +578,7 @@ note:
 note: 
    ┌─ features/return_u256_from_called_fn_with_args.fe:9:5
    │  
- 9 │ ╭     pub def bar() -> u256:
+ 9 │ ╭     pub fn bar() -> u256:
 10 │ │         self.baz[0] = 43
 11 │ │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
    │ ╰───────────────────────────────────────────────────────────────^ attributes hash: 5931278080780939395
@@ -599,7 +599,7 @@ note:
    │  
  1 │ ╭ contract Foo:
  2 │ │     baz: Map<u256, u256>
- 3 │ │     pub def foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
+ 3 │ │     pub fn foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
  4 │ │         return val1 + val2 + val3 + val4 + val5
    · │
 10 │ │         self.baz[0] = 43
@@ -707,81 +707,9 @@ note:
      }
 
 note: 
-  ┌─ features/return_u256_from_called_fn_with_args.fe:3:23
+  ┌─ features/return_u256_from_called_fn_with_args.fe:3:22
   │
-3 │     pub def foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
-  │                       ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/return_u256_from_called_fn_with_args.fe:3:35
-  │
-3 │     pub def foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
-  │                                   ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/return_u256_from_called_fn_with_args.fe:3:47
-  │
-3 │     pub def foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
-  │                                               ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/return_u256_from_called_fn_with_args.fe:3:59
-  │
-3 │     pub def foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
-  │                                                           ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/return_u256_from_called_fn_with_args.fe:3:71
-  │
-3 │     pub def foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
-  │                                                                       ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/return_u256_from_called_fn_with_args.fe:3:80
-  │
-3 │     pub def foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
-  │                                                                                ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/return_u256_from_called_fn_with_args.fe:6:22
-  │
-6 │     pub def cem() -> u256:
+3 │     pub fn foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
   │                      ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
@@ -791,10 +719,82 @@ note:
     )
 
 note: 
-  ┌─ features/return_u256_from_called_fn_with_args.fe:9:22
+  ┌─ features/return_u256_from_called_fn_with_args.fe:3:34
   │
-9 │     pub def bar() -> u256:
-  │                      ^^^^ attributes hash: 4293763436908729629
+3 │     pub fn foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
+  │                                  ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:3:46
+  │
+3 │     pub fn foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
+  │                                              ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:3:58
+  │
+3 │     pub fn foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
+  │                                                          ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:3:70
+  │
+3 │     pub fn foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
+  │                                                                      ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:3:79
+  │
+3 │     pub fn foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
+  │                                                                               ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:6:21
+  │
+6 │     pub fn cem() -> u256:
+  │                     ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_u256_from_called_fn_with_args.fe:9:21
+  │
+9 │     pub fn bar() -> u256:
+  │                     ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(

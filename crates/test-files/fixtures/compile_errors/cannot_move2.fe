@@ -1,6 +1,6 @@
 contract Foo:
 
-  pub def foo():
+  pub fn foo():
     x:u256[10]
     y:u256[10]
     c:u256[20] = x + y

@@ -1,6 +1,6 @@
 contract Foo:
     my_array: u256[3]
 
-    pub def bar():
+    pub fn bar():
         for i in self.my_array:
             pass

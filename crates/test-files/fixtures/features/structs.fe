@@ -7,7 +7,7 @@ struct House:
 contract Foo:
     my_house: House
 
-    pub def create_house():
+    pub fn create_house():
         self.my_house = House(
             price=1,
             size=2,
@@ -41,7 +41,7 @@ contract Foo:
         assert self.my_house.rooms == u8(100)
         assert self.my_house.vacant
 
-    pub def bar() -> u256:
+    pub fn bar() -> u256:
         building: House = House(
             price=300,
             size=500,
@@ -64,7 +64,7 @@ contract Foo:
         assert building.rooms == u8(10)
         return building.size
 
-    pub def encode_house() -> u8[128]:
+    pub fn encode_house() -> u8[128]:
         house: House = House(
             price=300,
             size=500,
@@ -73,7 +73,7 @@ contract Foo:
         )
         return house.abi_encode()
 
-    pub def hashed_house() -> u256:
+    pub fn hashed_house() -> u256:
         house: House = House(
             price=300,
             size=500,

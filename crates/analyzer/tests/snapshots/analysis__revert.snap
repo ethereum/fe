@@ -390,7 +390,7 @@ note:
 note: 
    ┌─ features/revert.fe:12:5
    │  
-12 │ ╭     pub def bar() -> u256:
+12 │ ╭     pub fn bar() -> u256:
 13 │ │         revert
    │ ╰──────────────^ attributes hash: 5931278080780939395
    │  
@@ -408,7 +408,7 @@ note:
 note: 
    ┌─ features/revert.fe:15:5
    │  
-15 │ ╭     pub def revert_custom_error():
+15 │ ╭     pub fn revert_custom_error():
 16 │ │         revert Error(msg=1, val=true)
    │ ╰─────────────────────────────────────^ attributes hash: 8604546375909025578
    │  
@@ -424,7 +424,7 @@ note:
 note: 
    ┌─ features/revert.fe:18:5
    │  
-18 │ ╭     pub def revert_other_error():
+18 │ ╭     pub fn revert_other_error():
 19 │ │         revert OtherError(msg=1, val=true)
    │ ╰──────────────────────────────────────────^ attributes hash: 13536596200836451553
    │  
@@ -440,7 +440,7 @@ note:
 note: 
    ┌─ features/revert.fe:21:5
    │  
-21 │ ╭     pub def revert_other_error_from_sto():
+21 │ ╭     pub fn revert_other_error_from_sto():
 22 │ │         self.my_other_error = OtherError(msg=1, val=true)
 23 │ │         revert self.my_other_error.to_mem()
    │ ╰───────────────────────────────────────────^ attributes hash: 10600311300800311694
@@ -460,7 +460,7 @@ note:
  9 │ ╭ contract Foo:
 10 │ │     my_other_error: OtherError
 11 │ │ 
-12 │ │     pub def bar() -> u256:
+12 │ │     pub fn bar() -> u256:
    · │
 22 │ │         self.my_other_error = OtherError(msg=1, val=true)
 23 │ │         revert self.my_other_error.to_mem()
@@ -691,10 +691,10 @@ note:
     )
 
 note: 
-   ┌─ features/revert.fe:12:22
+   ┌─ features/revert.fe:12:21
    │
-12 │     pub def bar() -> u256:
-   │                      ^^^^ attributes hash: 4293763436908729629
+12 │     pub fn bar() -> u256:
+   │                     ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(

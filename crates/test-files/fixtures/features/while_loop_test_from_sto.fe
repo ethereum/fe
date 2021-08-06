@@ -1,7 +1,7 @@
 contract Foo:
     my_bool: bool
 
-    pub def bar() -> u256:
+    pub fn bar() -> u256:
         self.my_bool = false
 
         while self.my_bool:

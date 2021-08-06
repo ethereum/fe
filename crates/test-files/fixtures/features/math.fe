@@ -1,7 +1,7 @@
 contract Math:
 
     # https://github.com/Uniswap/uniswap-v2-core/blob/4dd59067c76dea4a0e8e4bfdda41877a6b16dedc/contracts/libraries/Math.sol#L11-L22
-    pub def sqrt(val: u256) -> u256:
+    pub fn sqrt(val: u256) -> u256:
         z: u256
         if (val > 3):
             z = val
@@ -13,5 +13,5 @@ contract Math:
             z = 1
         return z
 
-    pub def min(x: u256, y: u256) -> u256:
+    pub fn min(x: u256, y: u256) -> u256:
         return x if x < y else y

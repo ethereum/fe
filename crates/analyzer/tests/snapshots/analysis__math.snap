@@ -616,7 +616,7 @@ note:
 note: 
    ┌─ features/math.fe:4:5
    │  
- 4 │ ╭     pub def sqrt(val: u256) -> u256:
+ 4 │ ╭     pub fn sqrt(val: u256) -> u256:
  5 │ │         z: u256
  6 │ │         if (val > 3):
  7 │ │             z = val
@@ -648,7 +648,7 @@ note:
 note: 
    ┌─ features/math.fe:16:5
    │  
-16 │ ╭     pub def min(x: u256, y: u256) -> u256:
+16 │ ╭     pub fn min(x: u256, y: u256) -> u256:
 17 │ │         return x if x < y else y
    │ ╰────────────────────────────────^ attributes hash: 15188649441906735855
    │  
@@ -710,9 +710,9 @@ note:
  1 │ ╭ contract Math:
  2 │ │ 
  3 │ │     # https://github.com/Uniswap/uniswap-v2-core/blob/4dd59067c76dea4a0e8e4bfdda41877a6b16dedc/contracts/libraries/Math.sol#L11-L22
- 4 │ │     pub def sqrt(val: u256) -> u256:
+ 4 │ │     pub fn sqrt(val: u256) -> u256:
    · │
-16 │ │     pub def min(x: u256, y: u256) -> u256:
+16 │ │     pub fn min(x: u256, y: u256) -> u256:
 17 │ │         return x if x < y else y
    │ ╰────────────────────────────────^ attributes hash: 16726610421548447936
    │  
@@ -772,22 +772,10 @@ note:
      }
 
 note: 
-  ┌─ features/math.fe:4:23
+  ┌─ features/math.fe:4:22
   │
-4 │     pub def sqrt(val: u256) -> u256:
-  │                       ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/math.fe:4:32
-  │
-4 │     pub def sqrt(val: u256) -> u256:
-  │                                ^^^^ attributes hash: 4293763436908729629
+4 │     pub fn sqrt(val: u256) -> u256:
+  │                      ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -796,10 +784,22 @@ note:
     )
 
 note: 
-   ┌─ features/math.fe:16:20
+  ┌─ features/math.fe:4:31
+  │
+4 │     pub fn sqrt(val: u256) -> u256:
+  │                               ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+   ┌─ features/math.fe:16:19
    │
-16 │     pub def min(x: u256, y: u256) -> u256:
-   │                    ^^^^ attributes hash: 4293763436908729629
+16 │     pub fn min(x: u256, y: u256) -> u256:
+   │                   ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -808,10 +808,10 @@ note:
      )
 
 note: 
-   ┌─ features/math.fe:16:29
+   ┌─ features/math.fe:16:28
    │
-16 │     pub def min(x: u256, y: u256) -> u256:
-   │                             ^^^^ attributes hash: 4293763436908729629
+16 │     pub fn min(x: u256, y: u256) -> u256:
+   │                            ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -820,10 +820,10 @@ note:
      )
 
 note: 
-   ┌─ features/math.fe:16:38
+   ┌─ features/math.fe:16:37
    │
-16 │     pub def min(x: u256, y: u256) -> u256:
-   │                                      ^^^^ attributes hash: 4293763436908729629
+16 │     pub fn min(x: u256, y: u256) -> u256:
+   │                                     ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(

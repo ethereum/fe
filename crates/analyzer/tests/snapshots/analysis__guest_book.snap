@@ -239,7 +239,7 @@ note:
 note: 
    ┌─ demos/guest_book.fe:11:5
    │  
-11 │ ╭     pub def sign(book_msg: String<100>):
+11 │ ╭     pub fn sign(book_msg: String<100>):
 12 │ │         # All storage access is explicit using `self.<some-key>`
 13 │ │         self.messages[msg.sender] = book_msg
 14 │ │ 
@@ -268,7 +268,7 @@ note:
 note: 
    ┌─ demos/guest_book.fe:18:5
    │  
-18 │ ╭     pub def get_msg(addr: address) -> String<100>:
+18 │ ╭     pub fn get_msg(addr: address) -> String<100>:
 19 │ │         # Copying data from storage to memory
 20 │ │         # has to be done explicitly via `to_mem()`
 21 │ │         return self.messages[addr].to_mem()
@@ -405,10 +405,10 @@ note:
     )
 
 note: 
-   ┌─ demos/guest_book.fe:11:28
+   ┌─ demos/guest_book.fe:11:27
    │
-11 │     pub def sign(book_msg: String<100>):
-   │                            ^^^^^^^^^^^ attributes hash: 8213016172125664751
+11 │     pub fn sign(book_msg: String<100>):
+   │                           ^^^^^^^^^^^ attributes hash: 8213016172125664751
    │
    = String(
          FeString {
@@ -417,20 +417,20 @@ note:
      )
 
 note: 
-   ┌─ demos/guest_book.fe:18:27
+   ┌─ demos/guest_book.fe:18:26
    │
-18 │     pub def get_msg(addr: address) -> String<100>:
-   │                           ^^^^^^^ attributes hash: 928477466454064117
+18 │     pub fn get_msg(addr: address) -> String<100>:
+   │                          ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
      )
 
 note: 
-   ┌─ demos/guest_book.fe:18:39
+   ┌─ demos/guest_book.fe:18:38
    │
-18 │     pub def get_msg(addr: address) -> String<100>:
-   │                                       ^^^^^^^^^^^ attributes hash: 8213016172125664751
+18 │     pub fn get_msg(addr: address) -> String<100>:
+   │                                      ^^^^^^^^^^^ attributes hash: 8213016172125664751
    │
    = String(
          FeString {

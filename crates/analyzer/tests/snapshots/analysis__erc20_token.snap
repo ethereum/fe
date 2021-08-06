@@ -3372,7 +3372,7 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:21:5
    │  
-21 │ ╭     pub def __init__(name: String<100>, symbol: String<100>):
+21 │ ╭     pub fn __init__(name: String<100>, symbol: String<100>):
 22 │ │         self._name = name
 23 │ │         self._symbol = symbol
 24 │ │         self._decimals = u8(18)
@@ -3408,7 +3408,7 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:27:5
    │  
-27 │ ╭     pub def name() -> String<100>:
+27 │ ╭     pub fn name() -> String<100>:
 28 │ │         return self._name.to_mem()
    │ ╰──────────────────────────────────^ attributes hash: 2273016512517674535
    │  
@@ -3426,7 +3426,7 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:30:5
    │  
-30 │ ╭     pub def symbol() -> String<100>:
+30 │ ╭     pub fn symbol() -> String<100>:
 31 │ │         return self._symbol.to_mem()
    │ ╰────────────────────────────────────^ attributes hash: 13639029099854540875
    │  
@@ -3444,7 +3444,7 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:33:5
    │  
-33 │ ╭     pub def decimals() -> u8:
+33 │ ╭     pub fn decimals() -> u8:
 34 │ │         return self._decimals
    │ ╰─────────────────────────────^ attributes hash: 4472561083185669358
    │  
@@ -3462,7 +3462,7 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:36:5
    │  
-36 │ ╭     pub def totalSupply() -> u256:
+36 │ ╭     pub fn totalSupply() -> u256:
 37 │ │         return self._total_supply
    │ ╰─────────────────────────────────^ attributes hash: 8627719113095126457
    │  
@@ -3480,7 +3480,7 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:39:5
    │  
-39 │ ╭     pub def balanceOf(account: address) -> u256:
+39 │ ╭     pub fn balanceOf(account: address) -> u256:
 40 │ │         return self._balances[account]
    │ ╰──────────────────────────────────────^ attributes hash: 7157545673553628931
    │  
@@ -3505,7 +3505,7 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:42:5
    │  
-42 │ ╭     pub def transfer(recipient: address, value: u256) -> bool:
+42 │ ╭     pub fn transfer(recipient: address, value: u256) -> bool:
 43 │ │         self._transfer(msg.sender, recipient, value)
 44 │ │         return true
    │ ╰───────────────────^ attributes hash: 6682642545223615546
@@ -3537,7 +3537,7 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:46:5
    │  
-46 │ ╭     pub def allowance(owner: address, spender: address) -> u256:
+46 │ ╭     pub fn allowance(owner: address, spender: address) -> u256:
 47 │ │         return self._allowances[owner][spender]
    │ ╰───────────────────────────────────────────────^ attributes hash: 2994404637048855186
    │  
@@ -3568,7 +3568,7 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:49:5
    │  
-49 │ ╭     pub def approve(spender: address, value: u256) -> bool:
+49 │ ╭     pub fn approve(spender: address, value: u256) -> bool:
 50 │ │         self._approve(msg.sender, spender, value)
 51 │ │         return true
    │ ╰───────────────────^ attributes hash: 6637719029659933611
@@ -3600,7 +3600,7 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:53:5
    │  
-53 │ ╭     pub def transferFrom(sender: address, recipient: address, value: u256) -> bool:
+53 │ ╭     pub fn transferFrom(sender: address, recipient: address, value: u256) -> bool:
 54 │ │         assert self._allowances[sender][msg.sender] >= value
 55 │ │ 
 56 │ │         self._transfer(sender, recipient, value)
@@ -3641,7 +3641,7 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:60:5
    │  
-60 │ ╭     pub def increaseAllowance(spender: address, addedValue: u256) -> bool:
+60 │ ╭     pub fn increaseAllowance(spender: address, addedValue: u256) -> bool:
 61 │ │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] + addedValue)
 62 │ │         return true
    │ ╰───────────────────^ attributes hash: 8303429958947660244
@@ -3673,7 +3673,7 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:64:5
    │  
-64 │ ╭     pub def decreaseAllowance(spender: address, subtractedValue: u256) -> bool:
+64 │ ╭     pub fn decreaseAllowance(spender: address, subtractedValue: u256) -> bool:
 65 │ │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] - subtractedValue)
 66 │ │         return true
    │ ╰───────────────────^ attributes hash: 4857407176659410127
@@ -3705,7 +3705,7 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:68:5
    │  
-68 │ ╭     def _transfer(sender: address, recipient: address, value: u256):
+68 │ ╭     fn _transfer(sender: address, recipient: address, value: u256):
 69 │ │         assert sender != address(0)
 70 │ │         assert recipient != address(0)
 71 │ │ 
@@ -3747,7 +3747,7 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:78:5
    │  
-78 │ ╭     def _mint(account: address, value: u256):
+78 │ ╭     fn _mint(account: address, value: u256):
 79 │ │         assert account != address(0)
 80 │ │ 
 81 │ │         self._before_token_transfer(address(0), account, value)
@@ -3783,7 +3783,7 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:87:5
    │  
-87 │ ╭     def _burn(account: address, value: u256):
+87 │ ╭     fn _burn(account: address, value: u256):
 88 │ │         assert account != address(0)
 89 │ │ 
 90 │ │         self._before_token_transfer(account, address(0), value)
@@ -3819,7 +3819,7 @@ note:
 note: 
     ┌─ demos/erc20_token.fe:96:5
     │  
- 96 │ ╭     def _approve(owner: address, spender: address, value: u256):
+ 96 │ ╭     fn _approve(owner: address, spender: address, value: u256):
  97 │ │         assert owner != address(0)
  98 │ │         assert spender != address(0)
  99 │ │ 
@@ -3860,7 +3860,7 @@ note:
 note: 
     ┌─ demos/erc20_token.fe:103:5
     │  
-103 │ ╭     def _setup_decimals(decimals_: u8):
+103 │ ╭     fn _setup_decimals(decimals_: u8):
 104 │ │         self._decimals = decimals_
     │ ╰──────────────────────────────────^ attributes hash: 18094163789242088696
     │  
@@ -3885,7 +3885,7 @@ note:
 note: 
     ┌─ demos/erc20_token.fe:106:5
     │  
-106 │ ╭     def _before_token_transfer(from: address, to: address, value: u256):
+106 │ ╭     fn _before_token_transfer(from: address, to: address, value: u256):
 107 │ │         pass
     │ ╰────────────^ attributes hash: 5843417033802546056
     │  
@@ -3927,7 +3927,7 @@ note:
   3 │ │     _allowances: Map<address, Map<address, u256>>
   4 │ │ 
     · │
-106 │ │     def _before_token_transfer(from: address, to: address, value: u256):
+106 │ │     fn _before_token_transfer(from: address, to: address, value: u256):
 107 │ │         pass
     │ ╰────────────^ attributes hash: 2383532079953921392
     │  
@@ -4619,22 +4619,10 @@ note:
      )
 
 note: 
-   ┌─ demos/erc20_token.fe:21:28
+   ┌─ demos/erc20_token.fe:21:27
    │
-21 │     pub def __init__(name: String<100>, symbol: String<100>):
-   │                            ^^^^^^^^^^^ attributes hash: 8213016172125664751
-   │
-   = String(
-         FeString {
-             max_size: 100,
-         },
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:21:49
-   │
-21 │     pub def __init__(name: String<100>, symbol: String<100>):
-   │                                                 ^^^^^^^^^^^ attributes hash: 8213016172125664751
+21 │     pub fn __init__(name: String<100>, symbol: String<100>):
+   │                           ^^^^^^^^^^^ attributes hash: 8213016172125664751
    │
    = String(
          FeString {
@@ -4643,22 +4631,10 @@ note:
      )
 
 note: 
-   ┌─ demos/erc20_token.fe:27:23
+   ┌─ demos/erc20_token.fe:21:48
    │
-27 │     pub def name() -> String<100>:
-   │                       ^^^^^^^^^^^ attributes hash: 8213016172125664751
-   │
-   = String(
-         FeString {
-             max_size: 100,
-         },
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:30:25
-   │
-30 │     pub def symbol() -> String<100>:
-   │                         ^^^^^^^^^^^ attributes hash: 8213016172125664751
+21 │     pub fn __init__(name: String<100>, symbol: String<100>):
+   │                                                ^^^^^^^^^^^ attributes hash: 8213016172125664751
    │
    = String(
          FeString {
@@ -4667,10 +4643,34 @@ note:
      )
 
 note: 
-   ┌─ demos/erc20_token.fe:33:27
+   ┌─ demos/erc20_token.fe:27:22
    │
-33 │     pub def decimals() -> u8:
-   │                           ^^ attributes hash: 3165084411644393001
+27 │     pub fn name() -> String<100>:
+   │                      ^^^^^^^^^^^ attributes hash: 8213016172125664751
+   │
+   = String(
+         FeString {
+             max_size: 100,
+         },
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:30:24
+   │
+30 │     pub fn symbol() -> String<100>:
+   │                        ^^^^^^^^^^^ attributes hash: 8213016172125664751
+   │
+   = String(
+         FeString {
+             max_size: 100,
+         },
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:33:26
+   │
+33 │     pub fn decimals() -> u8:
+   │                          ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -4679,10 +4679,10 @@ note:
      )
 
 note: 
-   ┌─ demos/erc20_token.fe:36:30
+   ┌─ demos/erc20_token.fe:36:29
    │
-36 │     pub def totalSupply() -> u256:
-   │                              ^^^^ attributes hash: 4293763436908729629
+36 │     pub fn totalSupply() -> u256:
+   │                             ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -4691,9 +4691,31 @@ note:
      )
 
 note: 
-   ┌─ demos/erc20_token.fe:39:32
+   ┌─ demos/erc20_token.fe:39:31
    │
-39 │     pub def balanceOf(account: address) -> u256:
+39 │     pub fn balanceOf(account: address) -> u256:
+   │                               ^^^^^^^ attributes hash: 928477466454064117
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:39:43
+   │
+39 │     pub fn balanceOf(account: address) -> u256:
+   │                                           ^^^^ attributes hash: 4293763436908729629
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:42:32
+   │
+42 │     pub fn transfer(recipient: address, value: u256) -> bool:
    │                                ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
@@ -4701,32 +4723,10 @@ note:
      )
 
 note: 
-   ┌─ demos/erc20_token.fe:39:44
+   ┌─ demos/erc20_token.fe:42:48
    │
-39 │     pub def balanceOf(account: address) -> u256:
-   │                                            ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:42:33
-   │
-42 │     pub def transfer(recipient: address, value: u256) -> bool:
-   │                                 ^^^^^^^ attributes hash: 928477466454064117
-   │
-   = Base(
-         Address,
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:42:49
-   │
-42 │     pub def transfer(recipient: address, value: u256) -> bool:
-   │                                                 ^^^^ attributes hash: 4293763436908729629
+42 │     pub fn transfer(recipient: address, value: u256) -> bool:
+   │                                                ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -4735,199 +4735,29 @@ note:
      )
 
 note: 
-   ┌─ demos/erc20_token.fe:42:58
+   ┌─ demos/erc20_token.fe:42:57
    │
-42 │     pub def transfer(recipient: address, value: u256) -> bool:
-   │                                                          ^^^^ attributes hash: 5425972608982369985
+42 │     pub fn transfer(recipient: address, value: u256) -> bool:
+   │                                                         ^^^^ attributes hash: 5425972608982369985
    │
    = Base(
          Bool,
      )
 
 note: 
-   ┌─ demos/erc20_token.fe:46:30
+   ┌─ demos/erc20_token.fe:46:29
    │
-46 │     pub def allowance(owner: address, spender: address) -> u256:
-   │                              ^^^^^^^ attributes hash: 928477466454064117
-   │
-   = Base(
-         Address,
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:46:48
-   │
-46 │     pub def allowance(owner: address, spender: address) -> u256:
-   │                                                ^^^^^^^ attributes hash: 928477466454064117
+46 │     pub fn allowance(owner: address, spender: address) -> u256:
+   │                             ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
      )
 
 note: 
-   ┌─ demos/erc20_token.fe:46:60
+   ┌─ demos/erc20_token.fe:46:47
    │
-46 │     pub def allowance(owner: address, spender: address) -> u256:
-   │                                                            ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:49:30
-   │
-49 │     pub def approve(spender: address, value: u256) -> bool:
-   │                              ^^^^^^^ attributes hash: 928477466454064117
-   │
-   = Base(
-         Address,
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:49:46
-   │
-49 │     pub def approve(spender: address, value: u256) -> bool:
-   │                                              ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:49:55
-   │
-49 │     pub def approve(spender: address, value: u256) -> bool:
-   │                                                       ^^^^ attributes hash: 5425972608982369985
-   │
-   = Base(
-         Bool,
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:53:34
-   │
-53 │     pub def transferFrom(sender: address, recipient: address, value: u256) -> bool:
-   │                                  ^^^^^^^ attributes hash: 928477466454064117
-   │
-   = Base(
-         Address,
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:53:54
-   │
-53 │     pub def transferFrom(sender: address, recipient: address, value: u256) -> bool:
-   │                                                      ^^^^^^^ attributes hash: 928477466454064117
-   │
-   = Base(
-         Address,
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:53:70
-   │
-53 │     pub def transferFrom(sender: address, recipient: address, value: u256) -> bool:
-   │                                                                      ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:53:79
-   │
-53 │     pub def transferFrom(sender: address, recipient: address, value: u256) -> bool:
-   │                                                                               ^^^^ attributes hash: 5425972608982369985
-   │
-   = Base(
-         Bool,
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:60:40
-   │
-60 │     pub def increaseAllowance(spender: address, addedValue: u256) -> bool:
-   │                                        ^^^^^^^ attributes hash: 928477466454064117
-   │
-   = Base(
-         Address,
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:60:61
-   │
-60 │     pub def increaseAllowance(spender: address, addedValue: u256) -> bool:
-   │                                                             ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:60:70
-   │
-60 │     pub def increaseAllowance(spender: address, addedValue: u256) -> bool:
-   │                                                                      ^^^^ attributes hash: 5425972608982369985
-   │
-   = Base(
-         Bool,
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:64:40
-   │
-64 │     pub def decreaseAllowance(spender: address, subtractedValue: u256) -> bool:
-   │                                        ^^^^^^^ attributes hash: 928477466454064117
-   │
-   = Base(
-         Address,
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:64:66
-   │
-64 │     pub def decreaseAllowance(spender: address, subtractedValue: u256) -> bool:
-   │                                                                  ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:64:75
-   │
-64 │     pub def decreaseAllowance(spender: address, subtractedValue: u256) -> bool:
-   │                                                                           ^^^^ attributes hash: 5425972608982369985
-   │
-   = Base(
-         Bool,
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:68:27
-   │
-68 │     def _transfer(sender: address, recipient: address, value: u256):
-   │                           ^^^^^^^ attributes hash: 928477466454064117
-   │
-   = Base(
-         Address,
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:68:47
-   │
-68 │     def _transfer(sender: address, recipient: address, value: u256):
+46 │     pub fn allowance(owner: address, spender: address) -> u256:
    │                                               ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
@@ -4935,85 +4765,9 @@ note:
      )
 
 note: 
-   ┌─ demos/erc20_token.fe:68:63
+   ┌─ demos/erc20_token.fe:46:59
    │
-68 │     def _transfer(sender: address, recipient: address, value: u256):
-   │                                                               ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:78:24
-   │
-78 │     def _mint(account: address, value: u256):
-   │                        ^^^^^^^ attributes hash: 928477466454064117
-   │
-   = Base(
-         Address,
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:78:40
-   │
-78 │     def _mint(account: address, value: u256):
-   │                                        ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:87:24
-   │
-87 │     def _burn(account: address, value: u256):
-   │                        ^^^^^^^ attributes hash: 928477466454064117
-   │
-   = Base(
-         Address,
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:87:40
-   │
-87 │     def _burn(account: address, value: u256):
-   │                                        ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:96:25
-   │
-96 │     def _approve(owner: address, spender: address, value: u256):
-   │                         ^^^^^^^ attributes hash: 928477466454064117
-   │
-   = Base(
-         Address,
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:96:43
-   │
-96 │     def _approve(owner: address, spender: address, value: u256):
-   │                                           ^^^^^^^ attributes hash: 928477466454064117
-   │
-   = Base(
-         Address,
-     )
-
-note: 
-   ┌─ demos/erc20_token.fe:96:59
-   │
-96 │     def _approve(owner: address, spender: address, value: u256):
+46 │     pub fn allowance(owner: address, spender: address) -> u256:
    │                                                           ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
@@ -5023,10 +4777,256 @@ note:
      )
 
 note: 
-    ┌─ demos/erc20_token.fe:103:36
+   ┌─ demos/erc20_token.fe:49:29
+   │
+49 │     pub fn approve(spender: address, value: u256) -> bool:
+   │                             ^^^^^^^ attributes hash: 928477466454064117
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:49:45
+   │
+49 │     pub fn approve(spender: address, value: u256) -> bool:
+   │                                             ^^^^ attributes hash: 4293763436908729629
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:49:54
+   │
+49 │     pub fn approve(spender: address, value: u256) -> bool:
+   │                                                      ^^^^ attributes hash: 5425972608982369985
+   │
+   = Base(
+         Bool,
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:53:33
+   │
+53 │     pub fn transferFrom(sender: address, recipient: address, value: u256) -> bool:
+   │                                 ^^^^^^^ attributes hash: 928477466454064117
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:53:53
+   │
+53 │     pub fn transferFrom(sender: address, recipient: address, value: u256) -> bool:
+   │                                                     ^^^^^^^ attributes hash: 928477466454064117
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:53:69
+   │
+53 │     pub fn transferFrom(sender: address, recipient: address, value: u256) -> bool:
+   │                                                                     ^^^^ attributes hash: 4293763436908729629
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:53:78
+   │
+53 │     pub fn transferFrom(sender: address, recipient: address, value: u256) -> bool:
+   │                                                                              ^^^^ attributes hash: 5425972608982369985
+   │
+   = Base(
+         Bool,
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:60:39
+   │
+60 │     pub fn increaseAllowance(spender: address, addedValue: u256) -> bool:
+   │                                       ^^^^^^^ attributes hash: 928477466454064117
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:60:60
+   │
+60 │     pub fn increaseAllowance(spender: address, addedValue: u256) -> bool:
+   │                                                            ^^^^ attributes hash: 4293763436908729629
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:60:69
+   │
+60 │     pub fn increaseAllowance(spender: address, addedValue: u256) -> bool:
+   │                                                                     ^^^^ attributes hash: 5425972608982369985
+   │
+   = Base(
+         Bool,
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:64:39
+   │
+64 │     pub fn decreaseAllowance(spender: address, subtractedValue: u256) -> bool:
+   │                                       ^^^^^^^ attributes hash: 928477466454064117
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:64:65
+   │
+64 │     pub fn decreaseAllowance(spender: address, subtractedValue: u256) -> bool:
+   │                                                                 ^^^^ attributes hash: 4293763436908729629
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:64:74
+   │
+64 │     pub fn decreaseAllowance(spender: address, subtractedValue: u256) -> bool:
+   │                                                                          ^^^^ attributes hash: 5425972608982369985
+   │
+   = Base(
+         Bool,
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:68:26
+   │
+68 │     fn _transfer(sender: address, recipient: address, value: u256):
+   │                          ^^^^^^^ attributes hash: 928477466454064117
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:68:46
+   │
+68 │     fn _transfer(sender: address, recipient: address, value: u256):
+   │                                              ^^^^^^^ attributes hash: 928477466454064117
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:68:62
+   │
+68 │     fn _transfer(sender: address, recipient: address, value: u256):
+   │                                                              ^^^^ attributes hash: 4293763436908729629
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:78:23
+   │
+78 │     fn _mint(account: address, value: u256):
+   │                       ^^^^^^^ attributes hash: 928477466454064117
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:78:39
+   │
+78 │     fn _mint(account: address, value: u256):
+   │                                       ^^^^ attributes hash: 4293763436908729629
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:87:23
+   │
+87 │     fn _burn(account: address, value: u256):
+   │                       ^^^^^^^ attributes hash: 928477466454064117
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:87:39
+   │
+87 │     fn _burn(account: address, value: u256):
+   │                                       ^^^^ attributes hash: 4293763436908729629
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:96:24
+   │
+96 │     fn _approve(owner: address, spender: address, value: u256):
+   │                        ^^^^^^^ attributes hash: 928477466454064117
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:96:42
+   │
+96 │     fn _approve(owner: address, spender: address, value: u256):
+   │                                          ^^^^^^^ attributes hash: 928477466454064117
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ demos/erc20_token.fe:96:58
+   │
+96 │     fn _approve(owner: address, spender: address, value: u256):
+   │                                                          ^^^^ attributes hash: 4293763436908729629
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+    ┌─ demos/erc20_token.fe:103:35
     │
-103 │     def _setup_decimals(decimals_: u8):
-    │                                    ^^ attributes hash: 3165084411644393001
+103 │     fn _setup_decimals(decimals_: u8):
+    │                                   ^^ attributes hash: 3165084411644393001
     │
     = Base(
           Numeric(
@@ -5035,30 +5035,30 @@ note:
       )
 
 note: 
-    ┌─ demos/erc20_token.fe:106:38
+    ┌─ demos/erc20_token.fe:106:37
     │
-106 │     def _before_token_transfer(from: address, to: address, value: u256):
-    │                                      ^^^^^^^ attributes hash: 928477466454064117
-    │
-    = Base(
-          Address,
-      )
-
-note: 
-    ┌─ demos/erc20_token.fe:106:51
-    │
-106 │     def _before_token_transfer(from: address, to: address, value: u256):
-    │                                                   ^^^^^^^ attributes hash: 928477466454064117
+106 │     fn _before_token_transfer(from: address, to: address, value: u256):
+    │                                     ^^^^^^^ attributes hash: 928477466454064117
     │
     = Base(
           Address,
       )
 
 note: 
-    ┌─ demos/erc20_token.fe:106:67
+    ┌─ demos/erc20_token.fe:106:50
     │
-106 │     def _before_token_transfer(from: address, to: address, value: u256):
-    │                                                                   ^^^^ attributes hash: 4293763436908729629
+106 │     fn _before_token_transfer(from: address, to: address, value: u256):
+    │                                                  ^^^^^^^ attributes hash: 928477466454064117
+    │
+    = Base(
+          Address,
+      )
+
+note: 
+    ┌─ demos/erc20_token.fe:106:66
+    │
+106 │     fn _before_token_transfer(from: address, to: address, value: u256):
+    │                                                                  ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
           Numeric(

@@ -115,7 +115,7 @@ note:
 note: 
   ┌─ features/if_statement.fe:3:5
   │  
-3 │ ╭     pub def bar(input: u256) -> u256:
+3 │ ╭     pub fn bar(input: u256) -> u256:
 4 │ │         if input > 5:
 5 │ │             return 1
 6 │ │         else:
@@ -147,7 +147,7 @@ note:
   │  
 1 │ ╭ contract Foo:
 2 │ │ 
-3 │ │     pub def bar(input: u256) -> u256:
+3 │ │     pub fn bar(input: u256) -> u256:
 4 │ │         if input > 5:
 5 │ │             return 1
 6 │ │         else:
@@ -183,10 +183,10 @@ note:
     }
 
 note: 
-  ┌─ features/if_statement.fe:3:24
+  ┌─ features/if_statement.fe:3:23
   │
-3 │     pub def bar(input: u256) -> u256:
-  │                        ^^^^ attributes hash: 4293763436908729629
+3 │     pub fn bar(input: u256) -> u256:
+  │                       ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -195,10 +195,10 @@ note:
     )
 
 note: 
-  ┌─ features/if_statement.fe:3:33
+  ┌─ features/if_statement.fe:3:32
   │
-3 │     pub def bar(input: u256) -> u256:
-  │                                 ^^^^ attributes hash: 4293763436908729629
+3 │     pub fn bar(input: u256) -> u256:
+  │                                ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(

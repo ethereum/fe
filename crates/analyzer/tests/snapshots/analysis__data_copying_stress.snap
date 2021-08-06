@@ -2125,7 +2125,7 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:16:5
    │  
-16 │ ╭     pub def set_my_vals(
+16 │ ╭     pub fn set_my_vals(
 17 │ │         my_string: String<42>,
 18 │ │         my_other_string: String<42>,
 19 │ │         my_u256: u256,
@@ -2179,7 +2179,7 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:27:5
    │  
-27 │ ╭     pub def set_to_my_other_vals():
+27 │ ╭     pub fn set_to_my_other_vals():
 28 │ │         self.my_string = self.my_other_string
 29 │ │         self.my_u256 = self.my_other_u256
    │ ╰─────────────────────────────────────────^ attributes hash: 1357326605645579790
@@ -2196,7 +2196,7 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:31:5
    │  
-31 │ ╭     pub def multiple_references_shared_memory(my_array: u256[10]):
+31 │ ╭     pub fn multiple_references_shared_memory(my_array: u256[10]):
 32 │ │         my_2nd_array: u256[10] = my_array
 33 │ │         my_3rd_array: u256[10] = my_2nd_array
 34 │ │ 
@@ -2229,7 +2229,7 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:46:5
    │  
-46 │ ╭     pub def mutate_and_return(my_array: u256[10]) -> u256[10]:
+46 │ ╭     pub fn mutate_and_return(my_array: u256[10]) -> u256[10]:
 47 │ │         my_array[3] = 5
 48 │ │         return my_array
    │ ╰───────────────────────^ attributes hash: 1452426951820943098
@@ -2263,7 +2263,7 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:50:5
    │  
-50 │ ╭     pub def clone_and_return(my_array: u256[10]) -> u256[10]:
+50 │ ╭     pub fn clone_and_return(my_array: u256[10]) -> u256[10]:
 51 │ │         return my_array.clone()
    │ ╰───────────────────────────────^ attributes hash: 5900673887566421517
    │  
@@ -2296,7 +2296,7 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:53:5
    │  
-53 │ ╭     pub def clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
+53 │ ╭     pub fn clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
 54 │ │         my_array.clone()[3] = 5
 55 │ │         return my_array
    │ ╰───────────────────────^ attributes hash: 12449666289702303146
@@ -2330,7 +2330,7 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:57:5
    │  
-57 │ ╭     pub def assign_my_nums_and_return() -> u256[5]:
+57 │ ╭     pub fn assign_my_nums_and_return() -> u256[5]:
 58 │ │         my_nums_mem: u256[5]
 59 │ │         self.my_nums[0] = 42
 60 │ │         self.my_nums[1] = 26
@@ -2356,7 +2356,7 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:67:5
    │  
-67 │ ╭     pub def emit_my_event():
+67 │ ╭     pub fn emit_my_event():
 68 │ │         self.emit_my_event_internal(
 69 │ │             self.my_string.to_mem(),
 70 │ │             self.my_u256.to_mem()
@@ -2375,7 +2375,7 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:73:5
    │  
-73 │ ╭     def emit_my_event_internal(some_string: String<42>, some_u256: u256):
+73 │ ╭     fn emit_my_event_internal(some_string: String<42>, some_u256: u256):
 74 │ │         emit MyEvent(my_string=some_string, my_u256=some_u256)
    │ ╰──────────────────────────────────────────────────────────────^ attributes hash: 14383530330606999137
    │  
@@ -2408,7 +2408,7 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:76:5
    │  
-76 │ ╭     pub def set_my_addrs(my_addrs: address[3]):
+76 │ ╭     pub fn set_my_addrs(my_addrs: address[3]):
 77 │ │         self.my_addrs = my_addrs
    │ ╰────────────────────────────────^ attributes hash: 8693691706541694280
    │  
@@ -2434,7 +2434,7 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:79:5
    │  
-79 │ ╭     pub def get_my_second_addr() -> address:
+79 │ ╭     pub fn get_my_second_addr() -> address:
 80 │ │         return self.my_addrs[1]
    │ ╰───────────────────────────────^ attributes hash: 1070922721708043931
    │  
@@ -2500,7 +2500,7 @@ note:
  3 │ │     my_other_string: String<42>
  4 │ │ 
    · │
-79 │ │     pub def get_my_second_addr() -> address:
+79 │ │     pub fn get_my_second_addr() -> address:
 80 │ │         return self.my_addrs[1]
    │ ╰───────────────────────────────^ attributes hash: 6310860118106615959
    │  
@@ -2881,10 +2881,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:31:57
+   ┌─ stress/data_copying_stress.fe:31:56
    │
-31 │     pub def multiple_references_shared_memory(my_array: u256[10]):
-   │                                                         ^^^^ attributes hash: 4293763436908729629
+31 │     pub fn multiple_references_shared_memory(my_array: u256[10]):
+   │                                                        ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -2893,10 +2893,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:31:57
+   ┌─ stress/data_copying_stress.fe:31:56
    │
-31 │     pub def multiple_references_shared_memory(my_array: u256[10]):
-   │                                                         ^^^^^^^^ attributes hash: 5382577674283633330
+31 │     pub fn multiple_references_shared_memory(my_array: u256[10]):
+   │                                                        ^^^^^^^^ attributes hash: 5382577674283633330
    │
    = Array(
          Array {
@@ -2908,63 +2908,9 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:46:41
+   ┌─ stress/data_copying_stress.fe:46:40
    │
-46 │     pub def mutate_and_return(my_array: u256[10]) -> u256[10]:
-   │                                         ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
-
-note: 
-   ┌─ stress/data_copying_stress.fe:46:41
-   │
-46 │     pub def mutate_and_return(my_array: u256[10]) -> u256[10]:
-   │                                         ^^^^^^^^ attributes hash: 5382577674283633330
-   │
-   = Array(
-         Array {
-             size: 10,
-             inner: Numeric(
-                 U256,
-             ),
-         },
-     )
-
-note: 
-   ┌─ stress/data_copying_stress.fe:46:54
-   │
-46 │     pub def mutate_and_return(my_array: u256[10]) -> u256[10]:
-   │                                                      ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
-
-note: 
-   ┌─ stress/data_copying_stress.fe:46:54
-   │
-46 │     pub def mutate_and_return(my_array: u256[10]) -> u256[10]:
-   │                                                      ^^^^^^^^ attributes hash: 5382577674283633330
-   │
-   = Array(
-         Array {
-             size: 10,
-             inner: Numeric(
-                 U256,
-             ),
-         },
-     )
-
-note: 
-   ┌─ stress/data_copying_stress.fe:50:40
-   │
-50 │     pub def clone_and_return(my_array: u256[10]) -> u256[10]:
+46 │     pub fn mutate_and_return(my_array: u256[10]) -> u256[10]:
    │                                        ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
@@ -2974,9 +2920,9 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:50:40
+   ┌─ stress/data_copying_stress.fe:46:40
    │
-50 │     pub def clone_and_return(my_array: u256[10]) -> u256[10]:
+46 │     pub fn mutate_and_return(my_array: u256[10]) -> u256[10]:
    │                                        ^^^^^^^^ attributes hash: 5382577674283633330
    │
    = Array(
@@ -2989,9 +2935,9 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:50:53
+   ┌─ stress/data_copying_stress.fe:46:53
    │
-50 │     pub def clone_and_return(my_array: u256[10]) -> u256[10]:
+46 │     pub fn mutate_and_return(my_array: u256[10]) -> u256[10]:
    │                                                     ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
@@ -3001,9 +2947,9 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:50:53
+   ┌─ stress/data_copying_stress.fe:46:53
    │
-50 │     pub def clone_and_return(my_array: u256[10]) -> u256[10]:
+46 │     pub fn mutate_and_return(my_array: u256[10]) -> u256[10]:
    │                                                     ^^^^^^^^ attributes hash: 5382577674283633330
    │
    = Array(
@@ -3016,10 +2962,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:53:47
+   ┌─ stress/data_copying_stress.fe:50:39
    │
-53 │     pub def clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
-   │                                               ^^^^ attributes hash: 4293763436908729629
+50 │     pub fn clone_and_return(my_array: u256[10]) -> u256[10]:
+   │                                       ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -3028,10 +2974,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:53:47
+   ┌─ stress/data_copying_stress.fe:50:39
    │
-53 │     pub def clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
-   │                                               ^^^^^^^^ attributes hash: 5382577674283633330
+50 │     pub fn clone_and_return(my_array: u256[10]) -> u256[10]:
+   │                                       ^^^^^^^^ attributes hash: 5382577674283633330
    │
    = Array(
          Array {
@@ -3043,10 +2989,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:53:60
+   ┌─ stress/data_copying_stress.fe:50:52
    │
-53 │     pub def clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
-   │                                                            ^^^^ attributes hash: 4293763436908729629
+50 │     pub fn clone_and_return(my_array: u256[10]) -> u256[10]:
+   │                                                    ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -3055,10 +3001,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:53:60
+   ┌─ stress/data_copying_stress.fe:50:52
    │
-53 │     pub def clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
-   │                                                            ^^^^^^^^ attributes hash: 5382577674283633330
+50 │     pub fn clone_and_return(my_array: u256[10]) -> u256[10]:
+   │                                                    ^^^^^^^^ attributes hash: 5382577674283633330
    │
    = Array(
          Array {
@@ -3070,10 +3016,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:57:44
+   ┌─ stress/data_copying_stress.fe:53:46
    │
-57 │     pub def assign_my_nums_and_return() -> u256[5]:
-   │                                            ^^^^ attributes hash: 4293763436908729629
+53 │     pub fn clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
+   │                                              ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -3082,10 +3028,64 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:57:44
+   ┌─ stress/data_copying_stress.fe:53:46
    │
-57 │     pub def assign_my_nums_and_return() -> u256[5]:
-   │                                            ^^^^^^^ attributes hash: 10049365445048351196
+53 │     pub fn clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
+   │                                              ^^^^^^^^ attributes hash: 5382577674283633330
+   │
+   = Array(
+         Array {
+             size: 10,
+             inner: Numeric(
+                 U256,
+             ),
+         },
+     )
+
+note: 
+   ┌─ stress/data_copying_stress.fe:53:59
+   │
+53 │     pub fn clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
+   │                                                           ^^^^ attributes hash: 4293763436908729629
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ stress/data_copying_stress.fe:53:59
+   │
+53 │     pub fn clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
+   │                                                           ^^^^^^^^ attributes hash: 5382577674283633330
+   │
+   = Array(
+         Array {
+             size: 10,
+             inner: Numeric(
+                 U256,
+             ),
+         },
+     )
+
+note: 
+   ┌─ stress/data_copying_stress.fe:57:43
+   │
+57 │     pub fn assign_my_nums_and_return() -> u256[5]:
+   │                                           ^^^^ attributes hash: 4293763436908729629
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ stress/data_copying_stress.fe:57:43
+   │
+57 │     pub fn assign_my_nums_and_return() -> u256[5]:
+   │                                           ^^^^^^^ attributes hash: 10049365445048351196
    │
    = Array(
          Array {
@@ -3097,10 +3097,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:73:45
+   ┌─ stress/data_copying_stress.fe:73:44
    │
-73 │     def emit_my_event_internal(some_string: String<42>, some_u256: u256):
-   │                                             ^^^^^^^^^^ attributes hash: 14777032492858574931
+73 │     fn emit_my_event_internal(some_string: String<42>, some_u256: u256):
+   │                                            ^^^^^^^^^^ attributes hash: 14777032492858574931
    │
    = String(
          FeString {
@@ -3109,10 +3109,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:73:68
+   ┌─ stress/data_copying_stress.fe:73:67
    │
-73 │     def emit_my_event_internal(some_string: String<42>, some_u256: u256):
-   │                                                                    ^^^^ attributes hash: 4293763436908729629
+73 │     fn emit_my_event_internal(some_string: String<42>, some_u256: u256):
+   │                                                                   ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -3121,20 +3121,20 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:76:36
+   ┌─ stress/data_copying_stress.fe:76:35
    │
-76 │     pub def set_my_addrs(my_addrs: address[3]):
-   │                                    ^^^^^^^ attributes hash: 928477466454064117
+76 │     pub fn set_my_addrs(my_addrs: address[3]):
+   │                                   ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:76:36
+   ┌─ stress/data_copying_stress.fe:76:35
    │
-76 │     pub def set_my_addrs(my_addrs: address[3]):
-   │                                    ^^^^^^^^^^ attributes hash: 9612468392542700466
+76 │     pub fn set_my_addrs(my_addrs: address[3]):
+   │                                   ^^^^^^^^^^ attributes hash: 9612468392542700466
    │
    = Array(
          Array {
@@ -3144,10 +3144,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:79:37
+   ┌─ stress/data_copying_stress.fe:79:36
    │
-79 │     pub def get_my_second_addr() -> address:
-   │                                     ^^^^^^^ attributes hash: 928477466454064117
+79 │     pub fn get_my_second_addr() -> address:
+   │                                    ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,

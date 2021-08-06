@@ -202,7 +202,7 @@ note:
 note: 
   ┌─ features/u32_u32_map.fe:4:5
   │  
-4 │ ╭     pub def read_bar(key: u32) -> u32:
+4 │ ╭     pub fn read_bar(key: u32) -> u32:
 5 │ │         return self.bar[key]
   │ ╰────────────────────────────^ attributes hash: 15291246158354106364
   │  
@@ -229,7 +229,7 @@ note:
 note: 
   ┌─ features/u32_u32_map.fe:7:5
   │  
-7 │ ╭     pub def write_bar(key: u32, value: u32):
+7 │ ╭     pub fn write_bar(key: u32, value: u32):
 8 │ │         self.bar[key] = value
   │ ╰─────────────────────────────^ attributes hash: 2175522536010991558
   │  
@@ -265,9 +265,9 @@ note:
 1 │ ╭ contract Foo:
 2 │ │     pub bar: Map<u32, u32>
 3 │ │ 
-4 │ │     pub def read_bar(key: u32) -> u32:
+4 │ │     pub fn read_bar(key: u32) -> u32:
   · │
-7 │ │     pub def write_bar(key: u32, value: u32):
+7 │ │     pub fn write_bar(key: u32, value: u32):
 8 │ │         self.bar[key] = value
   │ ╰─────────────────────────────^ attributes hash: 15844378283353356077
   │  
@@ -325,9 +325,33 @@ note:
     }
 
 note: 
-  ┌─ features/u32_u32_map.fe:4:27
+  ┌─ features/u32_u32_map.fe:4:26
   │
-4 │     pub def read_bar(key: u32) -> u32:
+4 │     pub fn read_bar(key: u32) -> u32:
+  │                          ^^^ attributes hash: 6988938628910073395
+  │
+  = Base(
+        Numeric(
+            U32,
+        ),
+    )
+
+note: 
+  ┌─ features/u32_u32_map.fe:4:34
+  │
+4 │     pub fn read_bar(key: u32) -> u32:
+  │                                  ^^^ attributes hash: 6988938628910073395
+  │
+  = Base(
+        Numeric(
+            U32,
+        ),
+    )
+
+note: 
+  ┌─ features/u32_u32_map.fe:7:27
+  │
+7 │     pub fn write_bar(key: u32, value: u32):
   │                           ^^^ attributes hash: 6988938628910073395
   │
   = Base(
@@ -337,34 +361,10 @@ note:
     )
 
 note: 
-  ┌─ features/u32_u32_map.fe:4:35
+  ┌─ features/u32_u32_map.fe:7:39
   │
-4 │     pub def read_bar(key: u32) -> u32:
-  │                                   ^^^ attributes hash: 6988938628910073395
-  │
-  = Base(
-        Numeric(
-            U32,
-        ),
-    )
-
-note: 
-  ┌─ features/u32_u32_map.fe:7:28
-  │
-7 │     pub def write_bar(key: u32, value: u32):
-  │                            ^^^ attributes hash: 6988938628910073395
-  │
-  = Base(
-        Numeric(
-            U32,
-        ),
-    )
-
-note: 
-  ┌─ features/u32_u32_map.fe:7:40
-  │
-7 │     pub def write_bar(key: u32, value: u32):
-  │                                        ^^^ attributes hash: 6988938628910073395
+7 │     pub fn write_bar(key: u32, value: u32):
+  │                                       ^^^ attributes hash: 6988938628910073395
   │
   = Base(
         Numeric(

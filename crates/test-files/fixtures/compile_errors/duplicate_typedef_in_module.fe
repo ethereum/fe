@@ -5,5 +5,5 @@ type bar = u8
 
 contract Foo:
 
-    pub def bar():
+    pub fn bar():
         pass

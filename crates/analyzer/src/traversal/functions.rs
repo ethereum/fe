@@ -51,7 +51,7 @@ pub fn func_def(
                 )],
                 vec![
                     "Hint: Remove the return type specification.".to_string(),
-                    "Example: `pub def __init__():`".to_string(),
+                    "Example: `pub fn __init__():`".to_string(),
                 ],
             );
             return_type = FixedSize::unit();
@@ -67,7 +67,7 @@ pub fn func_def(
                 )],
                 vec![
                     "Hint: Add the `pub` modifier.".to_string(),
-                    "Example: `pub def __init__():`".to_string(),
+                    "Example: `pub fn __init__():`".to_string(),
                 ],
             );
             is_pub = true;

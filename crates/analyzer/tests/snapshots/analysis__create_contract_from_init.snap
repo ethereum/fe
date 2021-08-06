@@ -155,7 +155,7 @@ note:
 note: 
   ┌─ features/create_contract_from_init.fe:2:5
   │  
-2 │ ╭     pub def get_my_num() -> u256:
+2 │ ╭     pub fn get_my_num() -> u256:
 3 │ │         return 42
   │ ╰─────────────────^ attributes hash: 14067495107198162751
   │  
@@ -173,7 +173,7 @@ note:
 note: 
   ┌─ features/create_contract_from_init.fe:8:5
   │  
-8 │ ╭     pub def __init__():
+8 │ ╭     pub fn __init__():
 9 │ │         self.foo_addr = address(Foo.create(0))
   │ ╰──────────────────────────────────────────────^ attributes hash: 5584559917281080592
   │  
@@ -189,7 +189,7 @@ note:
 note: 
    ┌─ features/create_contract_from_init.fe:11:5
    │  
-11 │ ╭     pub def get_foo_addr() -> address:
+11 │ ╭     pub fn get_foo_addr() -> address:
 12 │ │         return self.foo_addr
    │ ╰────────────────────────────^ attributes hash: 2649084956590342208
    │  
@@ -206,7 +206,7 @@ note:
   ┌─ features/create_contract_from_init.fe:1:1
   │  
 1 │ ╭ contract Foo:
-2 │ │     pub def get_my_num() -> u256:
+2 │ │     pub fn get_my_num() -> u256:
 3 │ │         return 42
   │ ╰─────────────────^ attributes hash: 17122180752006972630
   │  
@@ -249,9 +249,9 @@ note:
  5 │ ╭ contract FooFactory:
  6 │ │     foo_addr: address
  7 │ │ 
- 8 │ │     pub def __init__():
+ 8 │ │     pub fn __init__():
    · │
-11 │ │     pub def get_foo_addr() -> address:
+11 │ │     pub fn get_foo_addr() -> address:
 12 │ │         return self.foo_addr
    │ ╰────────────────────────────^ attributes hash: 15915795702900027706
    │  
@@ -337,10 +337,10 @@ note:
     }
 
 note: 
-  ┌─ features/create_contract_from_init.fe:2:29
+  ┌─ features/create_contract_from_init.fe:2:28
   │
-2 │     pub def get_my_num() -> u256:
-  │                             ^^^^ attributes hash: 4293763436908729629
+2 │     pub fn get_my_num() -> u256:
+  │                            ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -349,10 +349,10 @@ note:
     )
 
 note: 
-   ┌─ features/create_contract_from_init.fe:11:31
+   ┌─ features/create_contract_from_init.fe:11:30
    │
-11 │     pub def get_foo_addr() -> address:
-   │                               ^^^^^^^ attributes hash: 928477466454064117
+11 │     pub fn get_foo_addr() -> address:
+   │                              ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,

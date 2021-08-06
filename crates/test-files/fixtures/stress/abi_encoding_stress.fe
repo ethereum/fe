@@ -20,43 +20,43 @@ contract Foo:
         my_bool: bool
         my_bytes: u8[100]
 
-    pub def set_my_addrs(my_addrs: address[5]):
+    pub fn set_my_addrs(my_addrs: address[5]):
         self.my_addrs = my_addrs
 
-    pub def get_my_addrs() -> address[5]:
+    pub fn get_my_addrs() -> address[5]:
         return self.my_addrs.to_mem()
 
-    pub def set_my_u128(my_u128: u128):
+    pub fn set_my_u128(my_u128: u128):
         self.my_u128 = my_u128
 
-    pub def get_my_u128() -> u128:
+    pub fn get_my_u128() -> u128:
         return self.my_u128
 
-    pub def set_my_string(my_string: String<10>):
+    pub fn set_my_string(my_string: String<10>):
         self.my_string = my_string
 
-    pub def get_my_string() -> String<10>:
+    pub fn get_my_string() -> String<10>:
         return self.my_string.to_mem()
 
-    pub def set_my_u16s(my_u16s: u16[255]):
+    pub fn set_my_u16s(my_u16s: u16[255]):
         self.my_u16s = my_u16s
 
-    pub def get_my_u16s() -> u16[255]:
+    pub fn get_my_u16s() -> u16[255]:
         return self.my_u16s.to_mem()
 
-    pub def set_my_bool(my_bool: bool):
+    pub fn set_my_bool(my_bool: bool):
         self.my_bool = my_bool
 
-    pub def get_my_bool() -> bool:
+    pub fn get_my_bool() -> bool:
         return self.my_bool
 
-    pub def set_my_bytes(my_bytes: u8[100]):
+    pub fn set_my_bytes(my_bytes: u8[100]):
         self.my_bytes = my_bytes
 
-    pub def get_my_bytes() -> u8[100]:
+    pub fn get_my_bytes() -> u8[100]:
         return self.my_bytes.to_mem()
 
-    pub def get_my_struct() -> MyStruct:
+    pub fn get_my_struct() -> MyStruct:
         return MyStruct(
             my_num=42,
             my_num2=u8(26),
@@ -64,14 +64,14 @@ contract Foo:
             my_addr=address(123456)
         )
 
-    pub def mod_my_struct(my_struct: MyStruct) -> MyStruct:
+    pub fn mod_my_struct(my_struct: MyStruct) -> MyStruct:
         my_struct.my_num = 12341234
         my_struct.my_num2 = u8(42)
         my_struct.my_bool = false
         my_struct.my_addr = address(9999)
         return my_struct
 
-    pub def emit_my_event():
+    pub fn emit_my_event():
         emit MyEvent(
             my_addrs=self.my_addrs.to_mem(),
             my_u128=self.my_u128,

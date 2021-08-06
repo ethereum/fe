@@ -4,5 +4,5 @@ struct Bar:
 contract Foo:
   val: Bar
 
-  pub def foo():
+  pub fn foo():
     self.val.foo

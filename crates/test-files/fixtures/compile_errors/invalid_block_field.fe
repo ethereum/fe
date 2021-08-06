@@ -1,4 +1,4 @@
 contract Foo:
 
-  pub def foo():
+  pub fn foo():
     block.foo

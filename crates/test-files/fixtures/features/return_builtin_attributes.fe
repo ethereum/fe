@@ -1,27 +1,27 @@
 contract Foo:
-    pub def coinbase() -> address:
+    pub fn coinbase() -> address:
         return block.coinbase
 
-    pub def difficulty() -> u256:
+    pub fn difficulty() -> u256:
         return block.difficulty
 
-    pub def number() -> u256:
+    pub fn number() -> u256:
         return block.number
 
-    pub def timestamp() -> u256:
+    pub fn timestamp() -> u256:
         return block.timestamp
 
-    pub def chainid() -> u256:
+    pub fn chainid() -> u256:
         return chain.id
 
-    pub def sender() -> address:
+    pub fn sender() -> address:
         return msg.sender
 
-    pub def value() -> u256:
+    pub fn value() -> u256:
         return msg.value
 
-    pub def origin() -> address:
+    pub fn origin() -> address:
         return tx.origin
 
-    pub def gas_price() -> u256:
+    pub fn gas_price() -> u256:
         return tx.gas_price

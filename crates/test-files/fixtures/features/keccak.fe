@@ -1,10 +1,10 @@
 contract Keccak:
 
-    pub def return_hash_from_u8(val: u8[1]) -> u256:
+    pub fn return_hash_from_u8(val: u8[1]) -> u256:
         return keccak256(val)
 
-    pub def return_hash_from_foo(val: u8[3]) -> u256:
+    pub fn return_hash_from_foo(val: u8[3]) -> u256:
         return keccak256(val)
 
-    pub def return_hash_from_u256(val: u8[32]) -> u256:
+    pub fn return_hash_from_u256(val: u8[32]) -> u256:
         return keccak256(val)

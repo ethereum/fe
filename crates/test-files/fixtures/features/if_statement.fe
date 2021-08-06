@@ -1,6 +1,6 @@
 contract Foo:
 
-    pub def bar(input: u256) -> u256:
+    pub fn bar(input: u256) -> u256:
         if input > 5:
             return 1
         else:

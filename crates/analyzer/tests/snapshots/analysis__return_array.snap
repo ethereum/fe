@@ -126,7 +126,7 @@ note:
 note: 
   ┌─ features/return_array.fe:2:5
   │  
-2 │ ╭     pub def bar(x: u256) -> u256[5]:
+2 │ ╭     pub fn bar(x: u256) -> u256[5]:
 3 │ │         my_array: u256[5]
 4 │ │         my_array[3] = x
 5 │ │         return my_array
@@ -174,7 +174,7 @@ note:
   ┌─ features/return_array.fe:1:1
   │  
 1 │ ╭ contract Foo:
-2 │ │     pub def bar(x: u256) -> u256[5]:
+2 │ │     pub fn bar(x: u256) -> u256[5]:
 3 │ │         my_array: u256[5]
 4 │ │         my_array[3] = x
 5 │ │         return my_array
@@ -212,22 +212,10 @@ note:
     }
 
 note: 
-  ┌─ features/return_array.fe:2:20
+  ┌─ features/return_array.fe:2:19
   │
-2 │     pub def bar(x: u256) -> u256[5]:
-  │                    ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/return_array.fe:2:29
-  │
-2 │     pub def bar(x: u256) -> u256[5]:
-  │                             ^^^^ attributes hash: 4293763436908729629
+2 │     pub fn bar(x: u256) -> u256[5]:
+  │                   ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -236,10 +224,22 @@ note:
     )
 
 note: 
-  ┌─ features/return_array.fe:2:29
+  ┌─ features/return_array.fe:2:28
   │
-2 │     pub def bar(x: u256) -> u256[5]:
-  │                             ^^^^^^^ attributes hash: 10049365445048351196
+2 │     pub fn bar(x: u256) -> u256[5]:
+  │                            ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_array.fe:2:28
+  │
+2 │     pub fn bar(x: u256) -> u256[5]:
+  │                            ^^^^^^^ attributes hash: 10049365445048351196
   │
   = Array(
         Array {

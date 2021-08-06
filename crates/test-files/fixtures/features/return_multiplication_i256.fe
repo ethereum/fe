@@ -1,3 +1,3 @@
 contract Foo:
-    pub def bar(x: i256, y: i256) -> i256:
+    pub fn bar(x: i256, y: i256) -> i256:
         return x * y

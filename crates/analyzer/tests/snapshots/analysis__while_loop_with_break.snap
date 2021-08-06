@@ -170,7 +170,7 @@ note:
 note: 
   ┌─ features/while_loop_with_break.fe:2:5
   │  
-2 │ ╭     pub def bar() -> u256:
+2 │ ╭     pub fn bar() -> u256:
 3 │ │         val: u256 = 0
 4 │ │         while val < 2:
 5 │ │             val = val + 1
@@ -205,7 +205,7 @@ note:
   ┌─ features/while_loop_with_break.fe:1:1
   │  
 1 │ ╭ contract Foo:
-2 │ │     pub def bar() -> u256:
+2 │ │     pub fn bar() -> u256:
 3 │ │         val: u256 = 0
 4 │ │         while val < 2:
 5 │ │             val = val + 1
@@ -233,10 +233,10 @@ note:
     }
 
 note: 
-  ┌─ features/while_loop_with_break.fe:2:22
+  ┌─ features/while_loop_with_break.fe:2:21
   │
-2 │     pub def bar() -> u256:
-  │                      ^^^^ attributes hash: 4293763436908729629
+2 │     pub fn bar() -> u256:
+  │                     ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
