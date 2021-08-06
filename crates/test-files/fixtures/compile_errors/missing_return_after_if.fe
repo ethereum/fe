@@ -2,5 +2,3 @@ contract Foo:
     pub def bar(val: u256) -> u256:
         if val > 1:
             return 5
-        else:
-            x:u256 = 1
