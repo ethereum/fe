@@ -2,5 +2,5 @@ struct MyEmptyType:
     pass
 
 contract Foo:
-    pub def bar() -> MyEmptyType:
+    pub fn bar() -> MyEmptyType:
         return MyEmptyType()

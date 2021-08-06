@@ -1,5 +1,5 @@
 contract Foo:
     my_string: String<42>
 
-    pub def bar():
+    pub fn bar():
         assert false, self.my_string

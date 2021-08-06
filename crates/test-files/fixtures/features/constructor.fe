@@ -1,8 +1,8 @@
 contract Foo:
     bar: Map<u256, u256>
 
-    pub def __init__(baz: u256, bing: u256):
+    pub fn __init__(baz: u256, bing: u256):
         self.bar[42] = baz + bing
 
-    pub def read_bar() -> u256:
+    pub fn read_bar() -> u256:
         return self.bar[42]

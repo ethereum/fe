@@ -14097,7 +14097,7 @@ note:
 note: 
   ┌─ demos/uniswap.fe:2:5
   │  
-2 │ ╭     pub def balanceOf(account: address) -> u256:
+2 │ ╭     pub fn balanceOf(account: address) -> u256:
 3 │ │         return 0
   │ ╰────────────────^ attributes hash: 7157545673553628931
   │  
@@ -14122,7 +14122,7 @@ note:
 note: 
   ┌─ demos/uniswap.fe:5:5
   │  
-5 │ ╭     pub def transfer(recipient: address, amount: u256) -> bool:
+5 │ ╭     pub fn transfer(recipient: address, amount: u256) -> bool:
 6 │ │         return false
   │ ╰────────────────────^ attributes hash: 15882596185871223380
   │  
@@ -14153,7 +14153,7 @@ note:
 note: 
    ┌─ demos/uniswap.fe:63:5
    │  
-63 │ ╭     pub def __init__():
+63 │ ╭     pub fn __init__():
 64 │ │         self.factory = msg.sender
    │ ╰─────────────────────────────────^ attributes hash: 5584559917281080592
    │  
@@ -14169,7 +14169,7 @@ note:
 note: 
    ┌─ demos/uniswap.fe:66:5
    │  
-66 │ ╭     pub def factory() -> address:
+66 │ ╭     pub fn factory() -> address:
 67 │ │         return self.factory
    │ ╰───────────────────────────^ attributes hash: 13988961597390356944
    │  
@@ -14185,7 +14185,7 @@ note:
 note: 
    ┌─ demos/uniswap.fe:69:5
    │  
-69 │ ╭     pub def token0() -> address:
+69 │ ╭     pub fn token0() -> address:
 70 │ │         return self.token0
    │ ╰──────────────────────────^ attributes hash: 3184983857233773825
    │  
@@ -14201,7 +14201,7 @@ note:
 note: 
    ┌─ demos/uniswap.fe:72:5
    │  
-72 │ ╭     pub def token1() -> address:
+72 │ ╭     pub fn token1() -> address:
 73 │ │         return self.token1
    │ ╰──────────────────────────^ attributes hash: 8022982535343174135
    │  
@@ -14217,7 +14217,7 @@ note:
 note: 
    ┌─ demos/uniswap.fe:75:5
    │  
-75 │ ╭     def _mint(to: address, value: u256):
+75 │ ╭     fn _mint(to: address, value: u256):
 76 │ │         self.total_supply = self.total_supply + value
 77 │ │         self.balances[to] = self.balances[to] + value
 78 │ │         emit Transfer(from=address(0), to, value)
@@ -14250,7 +14250,7 @@ note:
 note: 
    ┌─ demos/uniswap.fe:80:5
    │  
-80 │ ╭     def _burn(from: address, value: u256):
+80 │ ╭     fn _burn(from: address, value: u256):
 81 │ │         self.balances[from] = self.balances[from] - value
 82 │ │         self.total_supply = self.total_supply - value
 83 │ │         emit Transfer(from, to=address(0), value)
@@ -14283,7 +14283,7 @@ note:
 note: 
    ┌─ demos/uniswap.fe:85:5
    │  
-85 │ ╭     def _approve(owner: address, spender: address, value: u256):
+85 │ ╭     fn _approve(owner: address, spender: address, value: u256):
 86 │ │         self.allowances[owner][spender] = value
 87 │ │         emit Approval(owner, spender, value)
    │ ╰────────────────────────────────────────────^ attributes hash: 17806413926038540594
@@ -14321,7 +14321,7 @@ note:
 note: 
    ┌─ demos/uniswap.fe:89:5
    │  
-89 │ ╭     def _transfer(from: address, to: address, value: u256):
+89 │ ╭     fn _transfer(from: address, to: address, value: u256):
 90 │ │         self.balances[from] = self.balances[from] - value
 91 │ │         self.balances[to] = self.balances[to] + value
 92 │ │         emit Transfer(from, to, value)
@@ -14360,7 +14360,7 @@ note:
 note: 
    ┌─ demos/uniswap.fe:94:5
    │  
-94 │ ╭     pub def approve(spender: address, value: u256) -> bool:
+94 │ ╭     pub fn approve(spender: address, value: u256) -> bool:
 95 │ │         self._approve(msg.sender, spender, value)
 96 │ │         return true
    │ ╰───────────────────^ attributes hash: 6637719029659933611
@@ -14392,7 +14392,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:98:5
     │  
- 98 │ ╭     pub def transfer(to: address, value: u256) -> bool:
+ 98 │ ╭     pub fn transfer(to: address, value: u256) -> bool:
  99 │ │         self._transfer(msg.sender, to, value)
 100 │ │         return true
     │ ╰───────────────────^ attributes hash: 17527321722461485304
@@ -14424,7 +14424,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:102:5
     │  
-102 │ ╭     pub def transferFrom(from: address, to: address, value: u256) -> bool:
+102 │ ╭     pub fn transferFrom(from: address, to: address, value: u256) -> bool:
 103 │ │         assert self.allowances[from][msg.sender] >= value
 104 │ │ 
 105 │ │         self.allowances[from][msg.sender] = self.allowances[from][msg.sender] - value
@@ -14465,7 +14465,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:109:5
     │  
-109 │ ╭     pub def balanceOf(account: address) -> u256:
+109 │ ╭     pub fn balanceOf(account: address) -> u256:
 110 │ │         return self.balances[account]
     │ ╰─────────────────────────────────────^ attributes hash: 7157545673553628931
     │  
@@ -14490,7 +14490,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:112:5
     │  
-112 │ ╭     pub def get_reserves() -> (u256, u256, u256):
+112 │ ╭     pub fn get_reserves() -> (u256, u256, u256):
 113 │ │         return (self.reserve0, self.reserve1, self.block_timestamp_last)
     │ ╰────────────────────────────────────────────────────────────────────────^ attributes hash: 6922630555867942579
     │  
@@ -14524,7 +14524,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:116:5
     │  
-116 │ ╭     pub def initialize(token0: address, token1: address):
+116 │ ╭     pub fn initialize(token0: address, token1: address):
 117 │ │         assert msg.sender == self.factory, "UniswapV2: FORBIDDEN"
 118 │ │         self.token0 = token0
 119 │ │         self.token1 = token1
@@ -14555,7 +14555,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:122:5
     │  
-122 │ ╭     def _update(balance0: u256, balance1: u256, reserve0: u256, reserve1: u256):
+122 │ ╭     fn _update(balance0: u256, balance1: u256, reserve0: u256, reserve1: u256):
 123 │ │         # changed from u32s
 124 │ │         block_timestamp: u256 = block.timestamp % 2**32
 125 │ │         # TODO: reproduce desired overflow (https://github.com/ethereum/fe/issues/286)
@@ -14609,7 +14609,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:138:5
     │  
-138 │ ╭     def _mint_fee(reserve0: u256, reserve1: u256) -> bool:
+138 │ ╭     fn _mint_fee(reserve0: u256, reserve1: u256) -> bool:
 139 │ │         fee_to: address = UniswapV2Factory(self.factory).fee_to()
 140 │ │         fee_on: bool = fee_to != address(0)
 141 │ │         k_last: u256 = self.k_last # gas savings
@@ -14647,7 +14647,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:158:5
     │  
-158 │ ╭     pub def mint(to: address) -> u256:
+158 │ ╭     pub fn mint(to: address) -> u256:
 159 │ │         MINIMUM_LIQUIDITY: u256 = 1000
 160 │ │         reserve0: u256 = self.reserve0
 161 │ │         reserve1: u256 = self.reserve1
@@ -14677,7 +14677,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:188:5
     │  
-188 │ ╭     pub def burn(to: address) -> (u256, u256):
+188 │ ╭     pub fn burn(to: address) -> (u256, u256):
 189 │ │         reserve0: u256 = self.reserve0
 190 │ │         reserve1: u256 = self.reserve1
 191 │ │         token0: ERC20 = ERC20(self.token0)
@@ -14718,7 +14718,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:219:5
     │  
-219 │ ╭     pub def swap(amount0_out: u256, amount1_out: u256, to: address):
+219 │ ╭     pub fn swap(amount0_out: u256, amount1_out: u256, to: address):
 220 │ │         assert amount0_out > 0 or amount1_out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT"
 221 │ │         reserve0: u256 = self.reserve0
 222 │ │         reserve1: u256 = self.reserve1
@@ -14762,7 +14762,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:256:5
     │  
-256 │ ╭     pub def skim(to: address):
+256 │ ╭     pub fn skim(to: address):
 257 │ │         token0: ERC20 = ERC20(self.token0) # gas savings
 258 │ │         token1: ERC20 = ERC20(self.token1) # gas savings
 259 │ │ 
@@ -14789,7 +14789,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:264:5
     │  
-264 │ ╭     pub def sync():
+264 │ ╭     pub fn sync():
 265 │ │         token0: ERC20 = ERC20(self.token0)
 266 │ │         token1: ERC20 = ERC20(self.token1)
 267 │ │         self._update(token0.balanceOf(self.address), token1.balanceOf(self.address), self.reserve0, self.reserve1)
@@ -14807,7 +14807,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:269:5
     │  
-269 │ ╭     def sqrt(val: u256) -> u256:
+269 │ ╭     fn sqrt(val: u256) -> u256:
 270 │ │         z: u256
 271 │ │         if (val > 3):
 272 │ │             z = val
@@ -14839,7 +14839,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:281:5
     │  
-281 │ ╭     def min(x: u256, y: u256) -> u256:
+281 │ ╭     fn min(x: u256, y: u256) -> u256:
 282 │ │         return x if x < y else y
     │ ╰────────────────────────────────^ attributes hash: 17580763625104168016
     │  
@@ -14874,7 +14874,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:299:5
     │  
-299 │ ╭     pub def __init__(fee_to_setter: address):
+299 │ ╭     pub fn __init__(fee_to_setter: address):
 300 │ │        self.fee_to_setter = fee_to_setter
     │ ╰─────────────────────────────────────────^ attributes hash: 17708011189733590564
     │  
@@ -14897,7 +14897,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:302:5
     │  
-302 │ ╭     pub def fee_to() -> address:
+302 │ ╭     pub fn fee_to() -> address:
 303 │ │         return self.fee_to
     │ ╰──────────────────────────^ attributes hash: 18007099977413937410
     │  
@@ -14913,7 +14913,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:305:5
     │  
-305 │ ╭     pub def fee_to_setter() -> address:
+305 │ ╭     pub fn fee_to_setter() -> address:
 306 │ │         return self.fee_to_setter
     │ ╰─────────────────────────────────^ attributes hash: 17516767922872663408
     │  
@@ -14929,7 +14929,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:308:5
     │  
-308 │ ╭     pub def all_pairs_length() -> u256:
+308 │ ╭     pub fn all_pairs_length() -> u256:
 309 │ │         return self.pair_counter
     │ ╰────────────────────────────────^ attributes hash: 12446037491003663576
     │  
@@ -14947,7 +14947,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:311:5
     │  
-311 │ ╭     pub def create_pair(token_a: address, token_b: address) -> address:
+311 │ ╭     pub fn create_pair(token_a: address, token_b: address) -> address:
 312 │ │         assert token_a != token_b, "UniswapV2: IDENTICAL_ADDRESSES"
 313 │ │ 
 314 │ │         token0: address = token_a if token_a < token_b else token_b
@@ -14981,7 +14981,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:331:5
     │  
-331 │ ╭     pub def set_fee_to(fee_to: address):
+331 │ ╭     pub fn set_fee_to(fee_to: address):
 332 │ │         assert msg.sender == self.fee_to_setter, "UniswapV2: FORBIDDEN"
 333 │ │         self.fee_to = fee_to
     │ ╰────────────────────────────^ attributes hash: 4708750762344106877
@@ -15005,7 +15005,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:335:5
     │  
-335 │ ╭     pub def set_fee_to_setter(fee_to_setter: address):
+335 │ ╭     pub fn set_fee_to_setter(fee_to_setter: address):
 336 │ │         assert msg.sender == fee_to_setter, "UniswapV2: FORBIDDEN"
 337 │ │         self.fee_to_setter = fee_to_setter
     │ ╰──────────────────────────────────────────^ attributes hash: 1315403442305090951
@@ -16230,10 +16230,10 @@ note:
   ┌─ demos/uniswap.fe:1:1
   │  
 1 │ ╭ contract ERC20:
-2 │ │     pub def balanceOf(account: address) -> u256:
+2 │ │     pub fn balanceOf(account: address) -> u256:
 3 │ │         return 0
 4 │ │ 
-5 │ │     pub def transfer(recipient: address, amount: u256) -> bool:
+5 │ │     pub fn transfer(recipient: address, amount: u256) -> bool:
 6 │ │         return false
   │ ╰────────────────────^ attributes hash: 6026512562886001667
   │  
@@ -16644,7 +16644,7 @@ note:
  10 │ │     # const MINIMUM_LIQUIDITY: u256 = 1000
  11 │ │ 
     · │
-281 │ │     def min(x: u256, y: u256) -> u256:
+281 │ │     fn min(x: u256, y: u256) -> u256:
 282 │ │         return x if x < y else y
     │ ╰────────────────────────────────^ attributes hash: 70790541238228800
     │  
@@ -19466,9 +19466,31 @@ note:
       }
 
 note: 
-  ┌─ demos/uniswap.fe:2:32
+  ┌─ demos/uniswap.fe:2:31
   │
-2 │     pub def balanceOf(account: address) -> u256:
+2 │     pub fn balanceOf(account: address) -> u256:
+  │                               ^^^^^^^ attributes hash: 928477466454064117
+  │
+  = Base(
+        Address,
+    )
+
+note: 
+  ┌─ demos/uniswap.fe:2:43
+  │
+2 │     pub fn balanceOf(account: address) -> u256:
+  │                                           ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ demos/uniswap.fe:5:32
+  │
+5 │     pub fn transfer(recipient: address, amount: u256) -> bool:
   │                                ^^^^^^^ attributes hash: 928477466454064117
   │
   = Base(
@@ -19476,32 +19498,10 @@ note:
     )
 
 note: 
-  ┌─ demos/uniswap.fe:2:44
+  ┌─ demos/uniswap.fe:5:49
   │
-2 │     pub def balanceOf(account: address) -> u256:
-  │                                            ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ demos/uniswap.fe:5:33
-  │
-5 │     pub def transfer(recipient: address, amount: u256) -> bool:
-  │                                 ^^^^^^^ attributes hash: 928477466454064117
-  │
-  = Base(
-        Address,
-    )
-
-note: 
-  ┌─ demos/uniswap.fe:5:50
-  │
-5 │     pub def transfer(recipient: address, amount: u256) -> bool:
-  │                                                  ^^^^ attributes hash: 4293763436908729629
+5 │     pub fn transfer(recipient: address, amount: u256) -> bool:
+  │                                                 ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -19510,10 +19510,10 @@ note:
     )
 
 note: 
-  ┌─ demos/uniswap.fe:5:59
+  ┌─ demos/uniswap.fe:5:58
   │
-5 │     pub def transfer(recipient: address, amount: u256) -> bool:
-  │                                                           ^^^^ attributes hash: 5425972608982369985
+5 │     pub fn transfer(recipient: address, amount: u256) -> bool:
+  │                                                          ^^^^ attributes hash: 5425972608982369985
   │
   = Base(
         Bool,
@@ -19754,19 +19754,9 @@ note:
      )
 
 note: 
-   ┌─ demos/uniswap.fe:66:26
+   ┌─ demos/uniswap.fe:66:25
    │
-66 │     pub def factory() -> address:
-   │                          ^^^^^^^ attributes hash: 928477466454064117
-   │
-   = Base(
-         Address,
-     )
-
-note: 
-   ┌─ demos/uniswap.fe:69:25
-   │
-69 │     pub def token0() -> address:
+66 │     pub fn factory() -> address:
    │                         ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
@@ -19774,30 +19764,40 @@ note:
      )
 
 note: 
-   ┌─ demos/uniswap.fe:72:25
+   ┌─ demos/uniswap.fe:69:24
    │
-72 │     pub def token1() -> address:
-   │                         ^^^^^^^ attributes hash: 928477466454064117
-   │
-   = Base(
-         Address,
-     )
-
-note: 
-   ┌─ demos/uniswap.fe:75:19
-   │
-75 │     def _mint(to: address, value: u256):
-   │                   ^^^^^^^ attributes hash: 928477466454064117
+69 │     pub fn token0() -> address:
+   │                        ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
      )
 
 note: 
-   ┌─ demos/uniswap.fe:75:35
+   ┌─ demos/uniswap.fe:72:24
    │
-75 │     def _mint(to: address, value: u256):
-   │                                   ^^^^ attributes hash: 4293763436908729629
+72 │     pub fn token1() -> address:
+   │                        ^^^^^^^ attributes hash: 928477466454064117
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ demos/uniswap.fe:75:18
+   │
+75 │     fn _mint(to: address, value: u256):
+   │                  ^^^^^^^ attributes hash: 928477466454064117
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ demos/uniswap.fe:75:34
+   │
+75 │     fn _mint(to: address, value: u256):
+   │                                  ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -19806,20 +19806,20 @@ note:
      )
 
 note: 
-   ┌─ demos/uniswap.fe:80:21
+   ┌─ demos/uniswap.fe:80:20
    │
-80 │     def _burn(from: address, value: u256):
-   │                     ^^^^^^^ attributes hash: 928477466454064117
+80 │     fn _burn(from: address, value: u256):
+   │                    ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
      )
 
 note: 
-   ┌─ demos/uniswap.fe:80:37
+   ┌─ demos/uniswap.fe:80:36
    │
-80 │     def _burn(from: address, value: u256):
-   │                                     ^^^^ attributes hash: 4293763436908729629
+80 │     fn _burn(from: address, value: u256):
+   │                                    ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -19828,30 +19828,30 @@ note:
      )
 
 note: 
-   ┌─ demos/uniswap.fe:85:25
+   ┌─ demos/uniswap.fe:85:24
    │
-85 │     def _approve(owner: address, spender: address, value: u256):
-   │                         ^^^^^^^ attributes hash: 928477466454064117
-   │
-   = Base(
-         Address,
-     )
-
-note: 
-   ┌─ demos/uniswap.fe:85:43
-   │
-85 │     def _approve(owner: address, spender: address, value: u256):
-   │                                           ^^^^^^^ attributes hash: 928477466454064117
+85 │     fn _approve(owner: address, spender: address, value: u256):
+   │                        ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
      )
 
 note: 
-   ┌─ demos/uniswap.fe:85:59
+   ┌─ demos/uniswap.fe:85:42
    │
-85 │     def _approve(owner: address, spender: address, value: u256):
-   │                                                           ^^^^ attributes hash: 4293763436908729629
+85 │     fn _approve(owner: address, spender: address, value: u256):
+   │                                          ^^^^^^^ attributes hash: 928477466454064117
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ demos/uniswap.fe:85:58
+   │
+85 │     fn _approve(owner: address, spender: address, value: u256):
+   │                                                          ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -19860,30 +19860,30 @@ note:
      )
 
 note: 
-   ┌─ demos/uniswap.fe:89:25
+   ┌─ demos/uniswap.fe:89:24
    │
-89 │     def _transfer(from: address, to: address, value: u256):
-   │                         ^^^^^^^ attributes hash: 928477466454064117
-   │
-   = Base(
-         Address,
-     )
-
-note: 
-   ┌─ demos/uniswap.fe:89:38
-   │
-89 │     def _transfer(from: address, to: address, value: u256):
-   │                                      ^^^^^^^ attributes hash: 928477466454064117
+89 │     fn _transfer(from: address, to: address, value: u256):
+   │                        ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
      )
 
 note: 
-   ┌─ demos/uniswap.fe:89:54
+   ┌─ demos/uniswap.fe:89:37
    │
-89 │     def _transfer(from: address, to: address, value: u256):
-   │                                                      ^^^^ attributes hash: 4293763436908729629
+89 │     fn _transfer(from: address, to: address, value: u256):
+   │                                     ^^^^^^^ attributes hash: 928477466454064117
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ demos/uniswap.fe:89:53
+   │
+89 │     fn _transfer(from: address, to: address, value: u256):
+   │                                                     ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -19892,20 +19892,20 @@ note:
      )
 
 note: 
-   ┌─ demos/uniswap.fe:94:30
+   ┌─ demos/uniswap.fe:94:29
    │
-94 │     pub def approve(spender: address, value: u256) -> bool:
-   │                              ^^^^^^^ attributes hash: 928477466454064117
+94 │     pub fn approve(spender: address, value: u256) -> bool:
+   │                             ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
      )
 
 note: 
-   ┌─ demos/uniswap.fe:94:46
+   ┌─ demos/uniswap.fe:94:45
    │
-94 │     pub def approve(spender: address, value: u256) -> bool:
-   │                                              ^^^^ attributes hash: 4293763436908729629
+94 │     pub fn approve(spender: address, value: u256) -> bool:
+   │                                             ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -19914,30 +19914,30 @@ note:
      )
 
 note: 
-   ┌─ demos/uniswap.fe:94:55
+   ┌─ demos/uniswap.fe:94:54
    │
-94 │     pub def approve(spender: address, value: u256) -> bool:
-   │                                                       ^^^^ attributes hash: 5425972608982369985
+94 │     pub fn approve(spender: address, value: u256) -> bool:
+   │                                                      ^^^^ attributes hash: 5425972608982369985
    │
    = Base(
          Bool,
      )
 
 note: 
-   ┌─ demos/uniswap.fe:98:26
+   ┌─ demos/uniswap.fe:98:25
    │
-98 │     pub def transfer(to: address, value: u256) -> bool:
-   │                          ^^^^^^^ attributes hash: 928477466454064117
+98 │     pub fn transfer(to: address, value: u256) -> bool:
+   │                         ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
      )
 
 note: 
-   ┌─ demos/uniswap.fe:98:42
+   ┌─ demos/uniswap.fe:98:41
    │
-98 │     pub def transfer(to: address, value: u256) -> bool:
-   │                                          ^^^^ attributes hash: 4293763436908729629
+98 │     pub fn transfer(to: address, value: u256) -> bool:
+   │                                         ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -19946,40 +19946,40 @@ note:
      )
 
 note: 
-   ┌─ demos/uniswap.fe:98:51
+   ┌─ demos/uniswap.fe:98:50
    │
-98 │     pub def transfer(to: address, value: u256) -> bool:
-   │                                                   ^^^^ attributes hash: 5425972608982369985
+98 │     pub fn transfer(to: address, value: u256) -> bool:
+   │                                                  ^^^^ attributes hash: 5425972608982369985
    │
    = Base(
          Bool,
      )
 
 note: 
-    ┌─ demos/uniswap.fe:102:32
+    ┌─ demos/uniswap.fe:102:31
     │
-102 │     pub def transferFrom(from: address, to: address, value: u256) -> bool:
-    │                                ^^^^^^^ attributes hash: 928477466454064117
-    │
-    = Base(
-          Address,
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:102:45
-    │
-102 │     pub def transferFrom(from: address, to: address, value: u256) -> bool:
-    │                                             ^^^^^^^ attributes hash: 928477466454064117
+102 │     pub fn transferFrom(from: address, to: address, value: u256) -> bool:
+    │                               ^^^^^^^ attributes hash: 928477466454064117
     │
     = Base(
           Address,
       )
 
 note: 
-    ┌─ demos/uniswap.fe:102:61
+    ┌─ demos/uniswap.fe:102:44
     │
-102 │     pub def transferFrom(from: address, to: address, value: u256) -> bool:
-    │                                                             ^^^^ attributes hash: 4293763436908729629
+102 │     pub fn transferFrom(from: address, to: address, value: u256) -> bool:
+    │                                            ^^^^^^^ attributes hash: 928477466454064117
+    │
+    = Base(
+          Address,
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:102:60
+    │
+102 │     pub fn transferFrom(from: address, to: address, value: u256) -> bool:
+    │                                                            ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
           Numeric(
@@ -19988,66 +19988,30 @@ note:
       )
 
 note: 
-    ┌─ demos/uniswap.fe:102:70
+    ┌─ demos/uniswap.fe:102:69
     │
-102 │     pub def transferFrom(from: address, to: address, value: u256) -> bool:
-    │                                                                      ^^^^ attributes hash: 5425972608982369985
+102 │     pub fn transferFrom(from: address, to: address, value: u256) -> bool:
+    │                                                                     ^^^^ attributes hash: 5425972608982369985
     │
     = Base(
           Bool,
       )
 
 note: 
-    ┌─ demos/uniswap.fe:109:32
+    ┌─ demos/uniswap.fe:109:31
     │
-109 │     pub def balanceOf(account: address) -> u256:
-    │                                ^^^^^^^ attributes hash: 928477466454064117
+109 │     pub fn balanceOf(account: address) -> u256:
+    │                               ^^^^^^^ attributes hash: 928477466454064117
     │
     = Base(
           Address,
       )
 
 note: 
-    ┌─ demos/uniswap.fe:109:44
+    ┌─ demos/uniswap.fe:109:43
     │
-109 │     pub def balanceOf(account: address) -> u256:
-    │                                            ^^^^ attributes hash: 4293763436908729629
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:112:32
-    │
-112 │     pub def get_reserves() -> (u256, u256, u256):
-    │                                ^^^^ attributes hash: 4293763436908729629
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:112:38
-    │
-112 │     pub def get_reserves() -> (u256, u256, u256):
-    │                                      ^^^^ attributes hash: 4293763436908729629
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:112:44
-    │
-112 │     pub def get_reserves() -> (u256, u256, u256):
-    │                                            ^^^^ attributes hash: 4293763436908729629
+109 │     pub fn balanceOf(account: address) -> u256:
+    │                                           ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
           Numeric(
@@ -20058,216 +20022,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:112:31
     │
-112 │     pub def get_reserves() -> (u256, u256, u256):
-    │                               ^^^^^^^^^^^^^^^^^^ attributes hash: 10503701570097950560
-    │
-    = Tuple(
-          Tuple {
-              items: [
-                  Base(
-                      Numeric(
-                          U256,
-                      ),
-                  ),
-                  Base(
-                      Numeric(
-                          U256,
-                      ),
-                  ),
-                  Base(
-                      Numeric(
-                          U256,
-                      ),
-                  ),
-              ],
-          },
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:116:32
-    │
-116 │     pub def initialize(token0: address, token1: address):
-    │                                ^^^^^^^ attributes hash: 928477466454064117
-    │
-    = Base(
-          Address,
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:116:49
-    │
-116 │     pub def initialize(token0: address, token1: address):
-    │                                                 ^^^^^^^ attributes hash: 928477466454064117
-    │
-    = Base(
-          Address,
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:122:27
-    │
-122 │     def _update(balance0: u256, balance1: u256, reserve0: u256, reserve1: u256):
-    │                           ^^^^ attributes hash: 4293763436908729629
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:122:43
-    │
-122 │     def _update(balance0: u256, balance1: u256, reserve0: u256, reserve1: u256):
-    │                                           ^^^^ attributes hash: 4293763436908729629
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:122:59
-    │
-122 │     def _update(balance0: u256, balance1: u256, reserve0: u256, reserve1: u256):
-    │                                                           ^^^^ attributes hash: 4293763436908729629
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:122:75
-    │
-122 │     def _update(balance0: u256, balance1: u256, reserve0: u256, reserve1: u256):
-    │                                                                           ^^^^ attributes hash: 4293763436908729629
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:138:29
-    │
-138 │     def _mint_fee(reserve0: u256, reserve1: u256) -> bool:
-    │                             ^^^^ attributes hash: 4293763436908729629
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:138:45
-    │
-138 │     def _mint_fee(reserve0: u256, reserve1: u256) -> bool:
-    │                                             ^^^^ attributes hash: 4293763436908729629
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:138:54
-    │
-138 │     def _mint_fee(reserve0: u256, reserve1: u256) -> bool:
-    │                                                      ^^^^ attributes hash: 5425972608982369985
-    │
-    = Base(
-          Bool,
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:158:22
-    │
-158 │     pub def mint(to: address) -> u256:
-    │                      ^^^^^^^ attributes hash: 928477466454064117
-    │
-    = Base(
-          Address,
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:158:34
-    │
-158 │     pub def mint(to: address) -> u256:
-    │                                  ^^^^ attributes hash: 4293763436908729629
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:188:22
-    │
-188 │     pub def burn(to: address) -> (u256, u256):
-    │                      ^^^^^^^ attributes hash: 928477466454064117
-    │
-    = Base(
-          Address,
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:188:35
-    │
-188 │     pub def burn(to: address) -> (u256, u256):
-    │                                   ^^^^ attributes hash: 4293763436908729629
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:188:41
-    │
-188 │     pub def burn(to: address) -> (u256, u256):
-    │                                         ^^^^ attributes hash: 4293763436908729629
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:188:34
-    │
-188 │     pub def burn(to: address) -> (u256, u256):
-    │                                  ^^^^^^^^^^^^ attributes hash: 13832975417483913034
-    │
-    = Tuple(
-          Tuple {
-              items: [
-                  Base(
-                      Numeric(
-                          U256,
-                      ),
-                  ),
-                  Base(
-                      Numeric(
-                          U256,
-                      ),
-                  ),
-              ],
-          },
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:219:31
-    │
-219 │     pub def swap(amount0_out: u256, amount1_out: u256, to: address):
+112 │     pub fn get_reserves() -> (u256, u256, u256):
     │                               ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
@@ -20277,42 +20032,10 @@ note:
       )
 
 note: 
-    ┌─ demos/uniswap.fe:219:50
+    ┌─ demos/uniswap.fe:112:37
     │
-219 │     pub def swap(amount0_out: u256, amount1_out: u256, to: address):
-    │                                                  ^^^^ attributes hash: 4293763436908729629
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:219:60
-    │
-219 │     pub def swap(amount0_out: u256, amount1_out: u256, to: address):
-    │                                                            ^^^^^^^ attributes hash: 928477466454064117
-    │
-    = Base(
-          Address,
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:256:22
-    │
-256 │     pub def skim(to: address):
-    │                      ^^^^^^^ attributes hash: 928477466454064117
-    │
-    = Base(
-          Address,
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:269:19
-    │
-269 │     def sqrt(val: u256) -> u256:
-    │                   ^^^^ attributes hash: 4293763436908729629
+112 │     pub fn get_reserves() -> (u256, u256, u256):
+    │                                     ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
           Numeric(
@@ -20321,9 +20044,117 @@ note:
       )
 
 note: 
-    ┌─ demos/uniswap.fe:269:28
+    ┌─ demos/uniswap.fe:112:43
     │
-269 │     def sqrt(val: u256) -> u256:
+112 │     pub fn get_reserves() -> (u256, u256, u256):
+    │                                           ^^^^ attributes hash: 4293763436908729629
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:112:30
+    │
+112 │     pub fn get_reserves() -> (u256, u256, u256):
+    │                              ^^^^^^^^^^^^^^^^^^ attributes hash: 10503701570097950560
+    │
+    = Tuple(
+          Tuple {
+              items: [
+                  Base(
+                      Numeric(
+                          U256,
+                      ),
+                  ),
+                  Base(
+                      Numeric(
+                          U256,
+                      ),
+                  ),
+                  Base(
+                      Numeric(
+                          U256,
+                      ),
+                  ),
+              ],
+          },
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:116:31
+    │
+116 │     pub fn initialize(token0: address, token1: address):
+    │                               ^^^^^^^ attributes hash: 928477466454064117
+    │
+    = Base(
+          Address,
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:116:48
+    │
+116 │     pub fn initialize(token0: address, token1: address):
+    │                                                ^^^^^^^ attributes hash: 928477466454064117
+    │
+    = Base(
+          Address,
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:122:26
+    │
+122 │     fn _update(balance0: u256, balance1: u256, reserve0: u256, reserve1: u256):
+    │                          ^^^^ attributes hash: 4293763436908729629
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:122:42
+    │
+122 │     fn _update(balance0: u256, balance1: u256, reserve0: u256, reserve1: u256):
+    │                                          ^^^^ attributes hash: 4293763436908729629
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:122:58
+    │
+122 │     fn _update(balance0: u256, balance1: u256, reserve0: u256, reserve1: u256):
+    │                                                          ^^^^ attributes hash: 4293763436908729629
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:122:74
+    │
+122 │     fn _update(balance0: u256, balance1: u256, reserve0: u256, reserve1: u256):
+    │                                                                          ^^^^ attributes hash: 4293763436908729629
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:138:28
+    │
+138 │     fn _mint_fee(reserve0: u256, reserve1: u256) -> bool:
     │                            ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
@@ -20333,22 +20164,10 @@ note:
       )
 
 note: 
-    ┌─ demos/uniswap.fe:281:16
+    ┌─ demos/uniswap.fe:138:44
     │
-281 │     def min(x: u256, y: u256) -> u256:
-    │                ^^^^ attributes hash: 4293763436908729629
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:281:25
-    │
-281 │     def min(x: u256, y: u256) -> u256:
-    │                         ^^^^ attributes hash: 4293763436908729629
+138 │     fn _mint_fee(reserve0: u256, reserve1: u256) -> bool:
+    │                                            ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
           Numeric(
@@ -20357,10 +20176,191 @@ note:
       )
 
 note: 
-    ┌─ demos/uniswap.fe:281:34
+    ┌─ demos/uniswap.fe:138:53
     │
-281 │     def min(x: u256, y: u256) -> u256:
+138 │     fn _mint_fee(reserve0: u256, reserve1: u256) -> bool:
+    │                                                     ^^^^ attributes hash: 5425972608982369985
+    │
+    = Base(
+          Bool,
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:158:21
+    │
+158 │     pub fn mint(to: address) -> u256:
+    │                     ^^^^^^^ attributes hash: 928477466454064117
+    │
+    = Base(
+          Address,
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:158:33
+    │
+158 │     pub fn mint(to: address) -> u256:
+    │                                 ^^^^ attributes hash: 4293763436908729629
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:188:21
+    │
+188 │     pub fn burn(to: address) -> (u256, u256):
+    │                     ^^^^^^^ attributes hash: 928477466454064117
+    │
+    = Base(
+          Address,
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:188:34
+    │
+188 │     pub fn burn(to: address) -> (u256, u256):
     │                                  ^^^^ attributes hash: 4293763436908729629
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:188:40
+    │
+188 │     pub fn burn(to: address) -> (u256, u256):
+    │                                        ^^^^ attributes hash: 4293763436908729629
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:188:33
+    │
+188 │     pub fn burn(to: address) -> (u256, u256):
+    │                                 ^^^^^^^^^^^^ attributes hash: 13832975417483913034
+    │
+    = Tuple(
+          Tuple {
+              items: [
+                  Base(
+                      Numeric(
+                          U256,
+                      ),
+                  ),
+                  Base(
+                      Numeric(
+                          U256,
+                      ),
+                  ),
+              ],
+          },
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:219:30
+    │
+219 │     pub fn swap(amount0_out: u256, amount1_out: u256, to: address):
+    │                              ^^^^ attributes hash: 4293763436908729629
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:219:49
+    │
+219 │     pub fn swap(amount0_out: u256, amount1_out: u256, to: address):
+    │                                                 ^^^^ attributes hash: 4293763436908729629
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:219:59
+    │
+219 │     pub fn swap(amount0_out: u256, amount1_out: u256, to: address):
+    │                                                           ^^^^^^^ attributes hash: 928477466454064117
+    │
+    = Base(
+          Address,
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:256:21
+    │
+256 │     pub fn skim(to: address):
+    │                     ^^^^^^^ attributes hash: 928477466454064117
+    │
+    = Base(
+          Address,
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:269:18
+    │
+269 │     fn sqrt(val: u256) -> u256:
+    │                  ^^^^ attributes hash: 4293763436908729629
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:269:27
+    │
+269 │     fn sqrt(val: u256) -> u256:
+    │                           ^^^^ attributes hash: 4293763436908729629
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:281:15
+    │
+281 │     fn min(x: u256, y: u256) -> u256:
+    │               ^^^^ attributes hash: 4293763436908729629
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:281:24
+    │
+281 │     fn min(x: u256, y: u256) -> u256:
+    │                        ^^^^ attributes hash: 4293763436908729629
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:281:33
+    │
+281 │     fn min(x: u256, y: u256) -> u256:
+    │                                 ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
           Numeric(
@@ -20411,40 +20411,40 @@ note:
       )
 
 note: 
-    ┌─ demos/uniswap.fe:299:37
+    ┌─ demos/uniswap.fe:299:36
     │
-299 │     pub def __init__(fee_to_setter: address):
-    │                                     ^^^^^^^ attributes hash: 928477466454064117
-    │
-    = Base(
-          Address,
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:302:25
-    │
-302 │     pub def fee_to() -> address:
-    │                         ^^^^^^^ attributes hash: 928477466454064117
+299 │     pub fn __init__(fee_to_setter: address):
+    │                                    ^^^^^^^ attributes hash: 928477466454064117
     │
     = Base(
           Address,
       )
 
 note: 
-    ┌─ demos/uniswap.fe:305:32
+    ┌─ demos/uniswap.fe:302:24
     │
-305 │     pub def fee_to_setter() -> address:
-    │                                ^^^^^^^ attributes hash: 928477466454064117
+302 │     pub fn fee_to() -> address:
+    │                        ^^^^^^^ attributes hash: 928477466454064117
     │
     = Base(
           Address,
       )
 
 note: 
-    ┌─ demos/uniswap.fe:308:35
+    ┌─ demos/uniswap.fe:305:31
     │
-308 │     pub def all_pairs_length() -> u256:
-    │                                   ^^^^ attributes hash: 4293763436908729629
+305 │     pub fn fee_to_setter() -> address:
+    │                               ^^^^^^^ attributes hash: 928477466454064117
+    │
+    = Base(
+          Address,
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:308:34
+    │
+308 │     pub fn all_pairs_length() -> u256:
+    │                                  ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
           Numeric(
@@ -20453,50 +20453,50 @@ note:
       )
 
 note: 
-    ┌─ demos/uniswap.fe:311:34
+    ┌─ demos/uniswap.fe:311:33
     │
-311 │     pub def create_pair(token_a: address, token_b: address) -> address:
-    │                                  ^^^^^^^ attributes hash: 928477466454064117
-    │
-    = Base(
-          Address,
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:311:52
-    │
-311 │     pub def create_pair(token_a: address, token_b: address) -> address:
-    │                                                    ^^^^^^^ attributes hash: 928477466454064117
+311 │     pub fn create_pair(token_a: address, token_b: address) -> address:
+    │                                 ^^^^^^^ attributes hash: 928477466454064117
     │
     = Base(
           Address,
       )
 
 note: 
-    ┌─ demos/uniswap.fe:311:64
+    ┌─ demos/uniswap.fe:311:51
     │
-311 │     pub def create_pair(token_a: address, token_b: address) -> address:
-    │                                                                ^^^^^^^ attributes hash: 928477466454064117
-    │
-    = Base(
-          Address,
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:331:32
-    │
-331 │     pub def set_fee_to(fee_to: address):
-    │                                ^^^^^^^ attributes hash: 928477466454064117
+311 │     pub fn create_pair(token_a: address, token_b: address) -> address:
+    │                                                   ^^^^^^^ attributes hash: 928477466454064117
     │
     = Base(
           Address,
       )
 
 note: 
-    ┌─ demos/uniswap.fe:335:46
+    ┌─ demos/uniswap.fe:311:63
     │
-335 │     pub def set_fee_to_setter(fee_to_setter: address):
-    │                                              ^^^^^^^ attributes hash: 928477466454064117
+311 │     pub fn create_pair(token_a: address, token_b: address) -> address:
+    │                                                               ^^^^^^^ attributes hash: 928477466454064117
+    │
+    = Base(
+          Address,
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:331:31
+    │
+331 │     pub fn set_fee_to(fee_to: address):
+    │                               ^^^^^^^ attributes hash: 928477466454064117
+    │
+    = Base(
+          Address,
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:335:45
+    │
+335 │     pub fn set_fee_to_setter(fee_to_setter: address):
+    │                                             ^^^^^^^ attributes hash: 928477466454064117
     │
     = Base(
           Address,

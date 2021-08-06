@@ -27,7 +27,7 @@ pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<Contract>> {
     //     idx sender: address
     //     val: u256
     //
-    //   pub def foo() -> address:
+    //   pub fn foo() -> address:
     //     return abc
     //
 
@@ -62,7 +62,7 @@ pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<Contract>> {
                 }
                 fields.push(field);
             }
-            Some(TokenKind::Def) => {
+            Some(TokenKind::Fn) => {
                 if let Some(span) = const_qual {
                     par.error(
                         span,

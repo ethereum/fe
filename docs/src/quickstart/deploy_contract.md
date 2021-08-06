@@ -37,10 +37,10 @@ Let's recall that we finished our guest book in the previous chapter with the fo
 contract GuestBook:
   messages: Map<address, String<100>>
 
-  pub def sign(book_msg: String<100>):
+  pub fn sign(book_msg: String<100>):
       self.messages[msg.sender] = book_msg
 
-  pub def get_msg(addr: address) -> String<100>:
+  pub fn get_msg(addr: address) -> String<100>:
       return self.messages[addr].to_mem()
 ```
 

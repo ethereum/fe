@@ -1624,7 +1624,7 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:23:5
    │  
-23 │ ╭     pub def set_my_addrs(my_addrs: address[5]):
+23 │ ╭     pub fn set_my_addrs(my_addrs: address[5]):
 24 │ │         self.my_addrs = my_addrs
    │ ╰────────────────────────────────^ attributes hash: 3484459237604996140
    │  
@@ -1650,7 +1650,7 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:26:5
    │  
-26 │ ╭     pub def get_my_addrs() -> address[5]:
+26 │ ╭     pub fn get_my_addrs() -> address[5]:
 27 │ │         return self.my_addrs.to_mem()
    │ ╰─────────────────────────────────────^ attributes hash: 6854959387736105149
    │  
@@ -1669,7 +1669,7 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:29:5
    │  
-29 │ ╭     pub def set_my_u128(my_u128: u128):
+29 │ ╭     pub fn set_my_u128(my_u128: u128):
 30 │ │         self.my_u128 = my_u128
    │ ╰──────────────────────────────^ attributes hash: 3670453502374636498
    │  
@@ -1694,7 +1694,7 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:32:5
    │  
-32 │ ╭     pub def get_my_u128() -> u128:
+32 │ ╭     pub fn get_my_u128() -> u128:
 33 │ │         return self.my_u128
    │ ╰───────────────────────────^ attributes hash: 6567182268868518688
    │  
@@ -1712,7 +1712,7 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:35:5
    │  
-35 │ ╭     pub def set_my_string(my_string: String<10>):
+35 │ ╭     pub fn set_my_string(my_string: String<10>):
 36 │ │         self.my_string = my_string
    │ ╰──────────────────────────────────^ attributes hash: 300587573070880888
    │  
@@ -1737,7 +1737,7 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:38:5
    │  
-38 │ ╭     pub def get_my_string() -> String<10>:
+38 │ ╭     pub fn get_my_string() -> String<10>:
 39 │ │         return self.my_string.to_mem()
    │ ╰──────────────────────────────────────^ attributes hash: 15583749956230021960
    │  
@@ -1755,7 +1755,7 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:41:5
    │  
-41 │ ╭     pub def set_my_u16s(my_u16s: u16[255]):
+41 │ ╭     pub fn set_my_u16s(my_u16s: u16[255]):
 42 │ │         self.my_u16s = my_u16s
    │ ╰──────────────────────────────^ attributes hash: 12620518859327210640
    │  
@@ -1783,7 +1783,7 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:44:5
    │  
-44 │ ╭     pub def get_my_u16s() -> u16[255]:
+44 │ ╭     pub fn get_my_u16s() -> u16[255]:
 45 │ │         return self.my_u16s.to_mem()
    │ ╰────────────────────────────────────^ attributes hash: 15621759143299994801
    │  
@@ -1804,7 +1804,7 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:47:5
    │  
-47 │ ╭     pub def set_my_bool(my_bool: bool):
+47 │ ╭     pub fn set_my_bool(my_bool: bool):
 48 │ │         self.my_bool = my_bool
    │ ╰──────────────────────────────^ attributes hash: 7762688218221814837
    │  
@@ -1827,7 +1827,7 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:50:5
    │  
-50 │ ╭     pub def get_my_bool() -> bool:
+50 │ ╭     pub fn get_my_bool() -> bool:
 51 │ │         return self.my_bool
    │ ╰───────────────────────────^ attributes hash: 16285252210970749142
    │  
@@ -1843,7 +1843,7 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:53:5
    │  
-53 │ ╭     pub def set_my_bytes(my_bytes: u8[100]):
+53 │ ╭     pub fn set_my_bytes(my_bytes: u8[100]):
 54 │ │         self.my_bytes = my_bytes
    │ ╰────────────────────────────────^ attributes hash: 6371281254941268595
    │  
@@ -1871,7 +1871,7 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:56:5
    │  
-56 │ ╭     pub def get_my_bytes() -> u8[100]:
+56 │ ╭     pub fn get_my_bytes() -> u8[100]:
 57 │ │         return self.my_bytes.to_mem()
    │ ╰─────────────────────────────────────^ attributes hash: 16314159820631207612
    │  
@@ -1892,7 +1892,7 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:59:5
    │  
-59 │ ╭     pub def get_my_struct() -> MyStruct:
+59 │ ╭     pub fn get_my_struct() -> MyStruct:
 60 │ │         return MyStruct(
 61 │ │             my_num=42,
 62 │ │             my_num2=u8(26),
@@ -1945,7 +1945,7 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:67:5
    │  
-67 │ ╭     pub def mod_my_struct(my_struct: MyStruct) -> MyStruct:
+67 │ ╭     pub fn mod_my_struct(my_struct: MyStruct) -> MyStruct:
 68 │ │         my_struct.my_num = 12341234
 69 │ │         my_struct.my_num2 = u8(42)
 70 │ │         my_struct.my_bool = false
@@ -2036,7 +2036,7 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:74:5
    │  
-74 │ ╭     pub def emit_my_event():
+74 │ ╭     pub fn emit_my_event():
 75 │ │         emit MyEvent(
 76 │ │             my_addrs=self.my_addrs.to_mem(),
 77 │ │             my_u128=self.my_u128,
@@ -2856,20 +2856,20 @@ note:
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:23:36
+   ┌─ stress/abi_encoding_stress.fe:23:35
    │
-23 │     pub def set_my_addrs(my_addrs: address[5]):
-   │                                    ^^^^^^^ attributes hash: 928477466454064117
+23 │     pub fn set_my_addrs(my_addrs: address[5]):
+   │                                   ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:23:36
+   ┌─ stress/abi_encoding_stress.fe:23:35
    │
-23 │     pub def set_my_addrs(my_addrs: address[5]):
-   │                                    ^^^^^^^^^^ attributes hash: 3212419807255328463
+23 │     pub fn set_my_addrs(my_addrs: address[5]):
+   │                                   ^^^^^^^^^^ attributes hash: 3212419807255328463
    │
    = Array(
          Array {
@@ -2879,20 +2879,20 @@ note:
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:26:31
+   ┌─ stress/abi_encoding_stress.fe:26:30
    │
-26 │     pub def get_my_addrs() -> address[5]:
-   │                               ^^^^^^^ attributes hash: 928477466454064117
+26 │     pub fn get_my_addrs() -> address[5]:
+   │                              ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:26:31
+   ┌─ stress/abi_encoding_stress.fe:26:30
    │
-26 │     pub def get_my_addrs() -> address[5]:
-   │                               ^^^^^^^^^^ attributes hash: 3212419807255328463
+26 │     pub fn get_my_addrs() -> address[5]:
+   │                              ^^^^^^^^^^ attributes hash: 3212419807255328463
    │
    = Array(
          Array {
@@ -2902,22 +2902,10 @@ note:
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:29:34
+   ┌─ stress/abi_encoding_stress.fe:29:33
    │
-29 │     pub def set_my_u128(my_u128: u128):
-   │                                  ^^^^ attributes hash: 6162263163478414243
-   │
-   = Base(
-         Numeric(
-             U128,
-         ),
-     )
-
-note: 
-   ┌─ stress/abi_encoding_stress.fe:32:30
-   │
-32 │     pub def get_my_u128() -> u128:
-   │                              ^^^^ attributes hash: 6162263163478414243
+29 │     pub fn set_my_u128(my_u128: u128):
+   │                                 ^^^^ attributes hash: 6162263163478414243
    │
    = Base(
          Numeric(
@@ -2926,10 +2914,22 @@ note:
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:35:38
+   ┌─ stress/abi_encoding_stress.fe:32:29
    │
-35 │     pub def set_my_string(my_string: String<10>):
-   │                                      ^^^^^^^^^^ attributes hash: 11802431919326539080
+32 │     pub fn get_my_u128() -> u128:
+   │                             ^^^^ attributes hash: 6162263163478414243
+   │
+   = Base(
+         Numeric(
+             U128,
+         ),
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:35:37
+   │
+35 │     pub fn set_my_string(my_string: String<10>):
+   │                                     ^^^^^^^^^^ attributes hash: 11802431919326539080
    │
    = String(
          FeString {
@@ -2938,10 +2938,10 @@ note:
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:38:32
+   ┌─ stress/abi_encoding_stress.fe:38:31
    │
-38 │     pub def get_my_string() -> String<10>:
-   │                                ^^^^^^^^^^ attributes hash: 11802431919326539080
+38 │     pub fn get_my_string() -> String<10>:
+   │                               ^^^^^^^^^^ attributes hash: 11802431919326539080
    │
    = String(
          FeString {
@@ -2950,10 +2950,10 @@ note:
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:41:34
+   ┌─ stress/abi_encoding_stress.fe:41:33
    │
-41 │     pub def set_my_u16s(my_u16s: u16[255]):
-   │                                  ^^^ attributes hash: 10482216811962112628
+41 │     pub fn set_my_u16s(my_u16s: u16[255]):
+   │                                 ^^^ attributes hash: 10482216811962112628
    │
    = Base(
          Numeric(
@@ -2962,10 +2962,10 @@ note:
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:41:34
+   ┌─ stress/abi_encoding_stress.fe:41:33
    │
-41 │     pub def set_my_u16s(my_u16s: u16[255]):
-   │                                  ^^^^^^^^ attributes hash: 12203565470524119480
+41 │     pub fn set_my_u16s(my_u16s: u16[255]):
+   │                                 ^^^^^^^^ attributes hash: 12203565470524119480
    │
    = Array(
          Array {
@@ -2977,10 +2977,10 @@ note:
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:44:30
+   ┌─ stress/abi_encoding_stress.fe:44:29
    │
-44 │     pub def get_my_u16s() -> u16[255]:
-   │                              ^^^ attributes hash: 10482216811962112628
+44 │     pub fn get_my_u16s() -> u16[255]:
+   │                             ^^^ attributes hash: 10482216811962112628
    │
    = Base(
          Numeric(
@@ -2989,10 +2989,10 @@ note:
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:44:30
+   ┌─ stress/abi_encoding_stress.fe:44:29
    │
-44 │     pub def get_my_u16s() -> u16[255]:
-   │                              ^^^^^^^^ attributes hash: 12203565470524119480
+44 │     pub fn get_my_u16s() -> u16[255]:
+   │                             ^^^^^^^^ attributes hash: 12203565470524119480
    │
    = Array(
          Array {
@@ -3004,30 +3004,30 @@ note:
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:47:34
+   ┌─ stress/abi_encoding_stress.fe:47:33
    │
-47 │     pub def set_my_bool(my_bool: bool):
-   │                                  ^^^^ attributes hash: 5425972608982369985
-   │
-   = Base(
-         Bool,
-     )
-
-note: 
-   ┌─ stress/abi_encoding_stress.fe:50:30
-   │
-50 │     pub def get_my_bool() -> bool:
-   │                              ^^^^ attributes hash: 5425972608982369985
+47 │     pub fn set_my_bool(my_bool: bool):
+   │                                 ^^^^ attributes hash: 5425972608982369985
    │
    = Base(
          Bool,
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:53:36
+   ┌─ stress/abi_encoding_stress.fe:50:29
    │
-53 │     pub def set_my_bytes(my_bytes: u8[100]):
-   │                                    ^^ attributes hash: 3165084411644393001
+50 │     pub fn get_my_bool() -> bool:
+   │                             ^^^^ attributes hash: 5425972608982369985
+   │
+   = Base(
+         Bool,
+     )
+
+note: 
+   ┌─ stress/abi_encoding_stress.fe:53:35
+   │
+53 │     pub fn set_my_bytes(my_bytes: u8[100]):
+   │                                   ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -3036,10 +3036,10 @@ note:
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:53:36
+   ┌─ stress/abi_encoding_stress.fe:53:35
    │
-53 │     pub def set_my_bytes(my_bytes: u8[100]):
-   │                                    ^^^^^^^ attributes hash: 13273353011268797629
+53 │     pub fn set_my_bytes(my_bytes: u8[100]):
+   │                                   ^^^^^^^ attributes hash: 13273353011268797629
    │
    = Array(
          Array {
@@ -3051,10 +3051,10 @@ note:
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:56:31
+   ┌─ stress/abi_encoding_stress.fe:56:30
    │
-56 │     pub def get_my_bytes() -> u8[100]:
-   │                               ^^ attributes hash: 3165084411644393001
+56 │     pub fn get_my_bytes() -> u8[100]:
+   │                              ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -3063,10 +3063,10 @@ note:
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:56:31
+   ┌─ stress/abi_encoding_stress.fe:56:30
    │
-56 │     pub def get_my_bytes() -> u8[100]:
-   │                               ^^^^^^^ attributes hash: 13273353011268797629
+56 │     pub fn get_my_bytes() -> u8[100]:
+   │                              ^^^^^^^ attributes hash: 13273353011268797629
    │
    = Array(
          Array {
@@ -3078,10 +3078,10 @@ note:
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:59:32
+   ┌─ stress/abi_encoding_stress.fe:59:31
    │
-59 │     pub def get_my_struct() -> MyStruct:
-   │                                ^^^^^^^^ attributes hash: 9436600167440013184
+59 │     pub fn get_my_struct() -> MyStruct:
+   │                               ^^^^^^^^ attributes hash: 9436600167440013184
    │
    = Struct(
          Struct {
@@ -3120,10 +3120,10 @@ note:
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:67:38
+   ┌─ stress/abi_encoding_stress.fe:67:37
    │
-67 │     pub def mod_my_struct(my_struct: MyStruct) -> MyStruct:
-   │                                      ^^^^^^^^ attributes hash: 9436600167440013184
+67 │     pub fn mod_my_struct(my_struct: MyStruct) -> MyStruct:
+   │                                     ^^^^^^^^ attributes hash: 9436600167440013184
    │
    = Struct(
          Struct {
@@ -3162,10 +3162,10 @@ note:
      )
 
 note: 
-   ┌─ stress/abi_encoding_stress.fe:67:51
+   ┌─ stress/abi_encoding_stress.fe:67:50
    │
-67 │     pub def mod_my_struct(my_struct: MyStruct) -> MyStruct:
-   │                                                   ^^^^^^^^ attributes hash: 9436600167440013184
+67 │     pub fn mod_my_struct(my_struct: MyStruct) -> MyStruct:
+   │                                                  ^^^^^^^^ attributes hash: 9436600167440013184
    │
    = Struct(
          Struct {

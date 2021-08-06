@@ -1,6 +1,6 @@
 ---
-source: parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(fn_def), |par| functions::parse_fn_def(par, None),\n           \"def foo21(x: bool, y: address,) -> bool:\\n x\")"
+source: crates/parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(fn_def), |par| functions::parse_fn_def(par, None),\n           \"fn foo21(x: bool, y: address,) -> bool:\\n x\")"
 
 ---
 Node(
@@ -9,8 +9,8 @@ Node(
     name: Node(
       kind: "foo21",
       span: Span(
-        start: 4,
-        end: 9,
+        start: 3,
+        end: 8,
       ),
     ),
     args: [
@@ -19,8 +19,8 @@ Node(
           name: Node(
             kind: "x",
             span: Span(
-              start: 10,
-              end: 11,
+              start: 9,
+              end: 10,
             ),
           ),
           typ: Node(
@@ -28,14 +28,14 @@ Node(
               base: "bool",
             ),
             span: Span(
-              start: 13,
-              end: 17,
+              start: 12,
+              end: 16,
             ),
           ),
         ),
         span: Span(
-          start: 10,
-          end: 17,
+          start: 9,
+          end: 16,
         ),
       ),
       Node(
@@ -43,8 +43,8 @@ Node(
           name: Node(
             kind: "y",
             span: Span(
-              start: 19,
-              end: 20,
+              start: 18,
+              end: 19,
             ),
           ),
           typ: Node(
@@ -52,14 +52,14 @@ Node(
               base: "address",
             ),
             span: Span(
-              start: 22,
-              end: 29,
+              start: 21,
+              end: 28,
             ),
           ),
         ),
         span: Span(
-          start: 19,
-          end: 29,
+          start: 18,
+          end: 28,
         ),
       ),
     ],
@@ -68,8 +68,8 @@ Node(
         base: "bool",
       ),
       span: Span(
-        start: 35,
-        end: 39,
+        start: 34,
+        end: 38,
       ),
     )),
     body: [
@@ -78,20 +78,20 @@ Node(
           value: Node(
             kind: Name("x"),
             span: Span(
-              start: 42,
-              end: 43,
+              start: 41,
+              end: 42,
             ),
           ),
         ),
         span: Span(
-          start: 42,
-          end: 43,
+          start: 41,
+          end: 42,
         ),
       ),
     ],
   ),
   span: Span(
     start: 0,
-    end: 43,
+    end: 42,
   ),
 )

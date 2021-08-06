@@ -6,7 +6,7 @@ expression: "error_string(&path, &src)"
 error: a function with the same name already exists
   ┌─ compile_errors/issue_451.fe:4:5
   │  
-4 │ ╭     pub def bar:
+4 │ ╭     pub fn bar:
 5 │ │      s
   │ ╰──────^ Conflicting definition of function `bar`
   │  

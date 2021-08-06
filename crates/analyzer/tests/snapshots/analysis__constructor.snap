@@ -200,7 +200,7 @@ note:
 note: 
   ┌─ features/constructor.fe:4:5
   │  
-4 │ ╭     pub def __init__(baz: u256, bing: u256):
+4 │ ╭     pub fn __init__(baz: u256, bing: u256):
 5 │ │         self.bar[42] = baz + bing
   │ ╰─────────────────────────────────^ attributes hash: 13081080872766212737
   │  
@@ -233,7 +233,7 @@ note:
 note: 
   ┌─ features/constructor.fe:7:5
   │  
-7 │ ╭     pub def read_bar() -> u256:
+7 │ ╭     pub fn read_bar() -> u256:
 8 │ │         return self.bar[42]
   │ ╰───────────────────────────^ attributes hash: 14729662030811563737
   │  
@@ -254,9 +254,9 @@ note:
 1 │ ╭ contract Foo:
 2 │ │     bar: Map<u256, u256>
 3 │ │ 
-4 │ │     pub def __init__(baz: u256, bing: u256):
+4 │ │     pub fn __init__(baz: u256, bing: u256):
   · │
-7 │ │     pub def read_bar() -> u256:
+7 │ │     pub fn read_bar() -> u256:
 8 │ │         return self.bar[42]
   │ ╰───────────────────────────^ attributes hash: 1581399891614554711
   │  
@@ -306,22 +306,10 @@ note:
     }
 
 note: 
-  ┌─ features/constructor.fe:4:27
+  ┌─ features/constructor.fe:4:26
   │
-4 │     pub def __init__(baz: u256, bing: u256):
-  │                           ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/constructor.fe:4:39
-  │
-4 │     pub def __init__(baz: u256, bing: u256):
-  │                                       ^^^^ attributes hash: 4293763436908729629
+4 │     pub fn __init__(baz: u256, bing: u256):
+  │                          ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -330,10 +318,22 @@ note:
     )
 
 note: 
-  ┌─ features/constructor.fe:7:27
+  ┌─ features/constructor.fe:4:38
   │
-7 │     pub def read_bar() -> u256:
-  │                           ^^^^ attributes hash: 4293763436908729629
+4 │     pub fn __init__(baz: u256, bing: u256):
+  │                                      ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/constructor.fe:7:26
+  │
+7 │     pub fn read_bar() -> u256:
+  │                          ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(

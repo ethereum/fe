@@ -10,9 +10,9 @@ use crate::{Label, ParseFailed, ParseResult, Parser};
 /// the caller, and passed in.
 ///
 /// # Panics
-/// Panics if the next token isn't `def`.
+/// Panics if the next token isn't `fn`.
 pub fn parse_fn_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Node<Function>> {
-    let def_tok = par.assert(TokenKind::Def);
+    let def_tok = par.assert(TokenKind::Fn);
     let name = par.expect(TokenKind::Name, "failed to parse function definition")?;
     let mut span = def_tok.span + pub_qual + name.span;
 
@@ -34,9 +34,9 @@ pub fn parse_fn_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Nod
                         "Note: if the function `{}` takes no parameters, use an empty set of parentheses.",
                         name.text
                     ),
-                    format!("Example: def {}()", name.text),
+                    format!("Example: fn {}()", name.text),
                     "Note: each parameter must have a name and a type.".into(),
-                    format!("Example: def {}(my_value: u256, x: bool)", name.text),
+                    format!("Example: fn {}(my_value: u256, x: bool)", name.text),
                 ],
             );
             vec![]
@@ -48,7 +48,7 @@ pub fn parse_fn_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Nod
                 "failed to parse function definition",
                 vec![
                     "function name must be followed by a list of parameters".into(),
-                    "Example: `def foo(x: address, y: u256)` or `def f()`".into(),
+                    "Example: `fn foo(x: address, y: u256)` or `fn f()`".into(),
                 ],
             );
             return Err(ParseFailed);
@@ -62,7 +62,7 @@ pub fn parse_fn_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Nod
     };
     span += return_type.as_ref();
 
-    // TODO: allow multi-line return type? `def f()\n ->\n u8`
+    // TODO: allow multi-line return type? `fn f()\n ->\n u8`
     // TODO: allow single-line fn defs?
     par.enter_block(span, "function definition")?;
     let body = parse_block_stmts(par)?;

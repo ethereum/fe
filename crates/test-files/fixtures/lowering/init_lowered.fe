@@ -1,4 +1,4 @@
 contract Foo:
-    pub def __init__() -> ():
+    pub fn __init__() -> ():
         pass
         return ()

@@ -106,7 +106,7 @@ note:
 note: 
   ┌─ features/if_statement_with_block_declaration.fe:3:5
   │  
-3 │ ╭     pub def bar() -> u256:
+3 │ ╭     pub fn bar() -> u256:
 4 │ │         if true:
 5 │ │             y: u256 = 1
 6 │ │             return y
@@ -155,7 +155,7 @@ note:
   │  
 1 │ ╭ contract Foo:
 2 │ │ 
-3 │ │     pub def bar() -> u256:
+3 │ │     pub fn bar() -> u256:
 4 │ │         if true:
   · │
 8 │ │             y: u256 = 1
@@ -182,10 +182,10 @@ note:
     }
 
 note: 
-  ┌─ features/if_statement_with_block_declaration.fe:3:22
+  ┌─ features/if_statement_with_block_declaration.fe:3:21
   │
-3 │     pub def bar() -> u256:
-  │                      ^^^^ attributes hash: 4293763436908729629
+3 │     pub fn bar() -> u256:
+  │                     ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(

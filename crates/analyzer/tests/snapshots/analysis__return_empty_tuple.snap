@@ -94,7 +94,7 @@ note:
 note: 
   ┌─ features/return_unit.fe:3:3
   │  
-3 │ ╭   pub def explicit_return_a1():
+3 │ ╭   pub fn explicit_return_a1():
 4 │ │     return
   │ ╰──────────^ attributes hash: 5791311006351266482
   │  
@@ -110,7 +110,7 @@ note:
 note: 
   ┌─ features/return_unit.fe:6:3
   │  
-6 │ ╭   pub def explicit_return_a2():
+6 │ ╭   pub fn explicit_return_a2():
 7 │ │     return ()
   │ ╰─────────────^ attributes hash: 7401482087876001729
   │  
@@ -126,7 +126,7 @@ note:
 note: 
    ┌─ features/return_unit.fe:9:3
    │  
- 9 │ ╭   pub def explicit_return_b1() -> ():
+ 9 │ ╭   pub fn explicit_return_b1() -> ():
 10 │ │     return
    │ ╰──────────^ attributes hash: 13379095857536426648
    │  
@@ -142,7 +142,7 @@ note:
 note: 
    ┌─ features/return_unit.fe:12:3
    │  
-12 │ ╭   pub def explicit_return_b2() -> ():
+12 │ ╭   pub fn explicit_return_b2() -> ():
 13 │ │     return ()
    │ ╰─────────────^ attributes hash: 9023250647845281327
    │  
@@ -158,7 +158,7 @@ note:
 note: 
    ┌─ features/return_unit.fe:15:3
    │  
-15 │ ╭   pub def implicit_a1():
+15 │ ╭   pub fn implicit_a1():
 16 │ │     pass
    │ ╰────────^ attributes hash: 8980588580621881414
    │  
@@ -174,7 +174,7 @@ note:
 note: 
    ┌─ features/return_unit.fe:18:3
    │  
-18 │ ╭   pub def implicit_a2() -> ():
+18 │ ╭   pub fn implicit_a2() -> ():
 19 │ │     pass
    │ ╰────────^ attributes hash: 7195504655642471963
    │  
@@ -192,10 +192,10 @@ note:
    │  
  1 │ ╭ contract Foo:
  2 │ │ 
- 3 │ │   pub def explicit_return_a1():
+ 3 │ │   pub fn explicit_return_a1():
  4 │ │     return
    · │
-18 │ │   pub def implicit_a2() -> ():
+18 │ │   pub fn implicit_a2() -> ():
 19 │ │     pass
    │ ╰────────^ attributes hash: 10194917932447029127
    │  
@@ -257,30 +257,30 @@ note:
      }
 
 note: 
-  ┌─ features/return_unit.fe:9:35
+  ┌─ features/return_unit.fe:9:34
   │
-9 │   pub def explicit_return_b1() -> ():
-  │                                   ^^ attributes hash: 9544957739497455515
+9 │   pub fn explicit_return_b1() -> ():
+  │                                  ^^ attributes hash: 9544957739497455515
   │
   = Base(
         Unit,
     )
 
 note: 
-   ┌─ features/return_unit.fe:12:35
+   ┌─ features/return_unit.fe:12:34
    │
-12 │   pub def explicit_return_b2() -> ():
-   │                                   ^^ attributes hash: 9544957739497455515
+12 │   pub fn explicit_return_b2() -> ():
+   │                                  ^^ attributes hash: 9544957739497455515
    │
    = Base(
          Unit,
      )
 
 note: 
-   ┌─ features/return_unit.fe:18:28
+   ┌─ features/return_unit.fe:18:27
    │
-18 │   pub def implicit_a2() -> ():
-   │                            ^^ attributes hash: 9544957739497455515
+18 │   pub fn implicit_a2() -> ():
+   │                           ^^ attributes hash: 9544957739497455515
    │
    = Base(
          Unit,

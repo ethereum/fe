@@ -1,4 +1,4 @@
 contract Foo:
 
-    pub def bar():
+    pub fn bar():
         5()

@@ -79,11 +79,11 @@ mod tests {
             \ncontract Foo:\
             \n  event Food:\
             \n    idx barge: u256
-            \n  pub def __init__(x: address):\
+            \n  pub fn __init__(x: address):\
             \n    pass\
-            \n  def baz(x: address) -> u256:\
+            \n  fn baz(x: address) -> u256:\
             \n    revert\
-            \n  pub def bar(x: u256) -> u256[10]:\
+            \n  pub fn bar(x: u256) -> u256[10]:\
             \n    revert";
 
         let module = parse_code_chunk(parse_module, contract)

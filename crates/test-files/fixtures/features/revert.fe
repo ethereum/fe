@@ -9,15 +9,15 @@ struct OtherError:
 contract Foo:
     my_other_error: OtherError
 
-    pub def bar() -> u256:
+    pub fn bar() -> u256:
         revert
 
-    pub def revert_custom_error():
+    pub fn revert_custom_error():
         revert Error(msg=1, val=true)
 
-    pub def revert_other_error():
+    pub fn revert_other_error():
         revert OtherError(msg=1, val=true)
 
-    pub def revert_other_error_from_sto():
+    pub fn revert_other_error_from_sto():
         self.my_other_error = OtherError(msg=1, val=true)
         revert self.my_other_error.to_mem()

@@ -4436,7 +4436,7 @@ note:
 note: 
    ┌─ features/structs.fe:10:5
    │  
-10 │ ╭     pub def create_house():
+10 │ ╭     pub fn create_house():
 11 │ │         self.my_house = House(
 12 │ │             price=1,
 13 │ │             size=2,
@@ -4457,7 +4457,7 @@ note:
 note: 
    ┌─ features/structs.fe:44:5
    │  
-44 │ ╭     pub def bar() -> u256:
+44 │ ╭     pub fn bar() -> u256:
 45 │ │         building: House = House(
 46 │ │             price=300,
 47 │ │             size=500,
@@ -4480,7 +4480,7 @@ note:
 note: 
    ┌─ features/structs.fe:67:5
    │  
-67 │ ╭     pub def encode_house() -> u8[128]:
+67 │ ╭     pub fn encode_house() -> u8[128]:
 68 │ │         house: House = House(
 69 │ │             price=300,
 70 │ │             size=500,
@@ -4506,7 +4506,7 @@ note:
 note: 
    ┌─ features/structs.fe:76:5
    │  
-76 │ ╭     pub def hashed_house() -> u256:
+76 │ ╭     pub fn hashed_house() -> u256:
 77 │ │         house: House = House(
 78 │ │             price=300,
 79 │ │             size=500,
@@ -4679,7 +4679,7 @@ note:
  7 │ ╭ contract Foo:
  8 │ │     my_house: House
  9 │ │ 
-10 │ │     pub def create_house():
+10 │ │     pub fn create_house():
    · │
 82 │ │         )
 83 │ │         return keccak256(house.abi_encode())
@@ -5210,10 +5210,10 @@ note:
     )
 
 note: 
-   ┌─ features/structs.fe:44:22
+   ┌─ features/structs.fe:44:21
    │
-44 │     pub def bar() -> u256:
-   │                      ^^^^ attributes hash: 4293763436908729629
+44 │     pub fn bar() -> u256:
+   │                     ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -5222,10 +5222,10 @@ note:
      )
 
 note: 
-   ┌─ features/structs.fe:67:31
+   ┌─ features/structs.fe:67:30
    │
-67 │     pub def encode_house() -> u8[128]:
-   │                               ^^ attributes hash: 3165084411644393001
+67 │     pub fn encode_house() -> u8[128]:
+   │                              ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -5234,10 +5234,10 @@ note:
      )
 
 note: 
-   ┌─ features/structs.fe:67:31
+   ┌─ features/structs.fe:67:30
    │
-67 │     pub def encode_house() -> u8[128]:
-   │                               ^^^^^^^ attributes hash: 7633995411143110431
+67 │     pub fn encode_house() -> u8[128]:
+   │                              ^^^^^^^ attributes hash: 7633995411143110431
    │
    = Array(
          Array {
@@ -5249,10 +5249,10 @@ note:
      )
 
 note: 
-   ┌─ features/structs.fe:76:31
+   ┌─ features/structs.fe:76:30
    │
-76 │     pub def hashed_house() -> u256:
-   │                               ^^^^ attributes hash: 4293763436908729629
+76 │     pub fn hashed_house() -> u256:
+   │                              ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(

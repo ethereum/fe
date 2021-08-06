@@ -47,7 +47,7 @@ macro_rules! test_stmt {
         #[wasm_bindgen_test]
         fn $name() {
             let src = format!(
-                "contract C:\n pub def f():\n  {}",
+                "contract C:\n pub fn f():\n  {}",
                 $stmt.replace('\n', "\n  ")
             );
             if cfg!(target_arch = "wasm32") {

@@ -5,23 +5,23 @@ contract Foo:
         my_tuple: (bool, bool)
         my_other_tuple: (address, address)
 
-    pub def bar(my_num: u256, my_bool: bool) -> (u256, bool):
+    pub fn bar(my_num: u256, my_bool: bool) -> (u256, bool):
         return (my_num, my_bool)
 
-    pub def baz() -> (u256, bool, u8, address):
+    pub fn baz() -> (u256, bool, u8, address):
         return (999999, false, u8(42), address(26))
 
-    pub def bing():
+    pub fn bing():
         foo: (address, address, u16, i32, bool) = (address(0), address(0), u16(0), i32(0), false)
 
-    pub def bop(
+    pub fn bop(
         my_tuple1: (u256, bool),
         my_tuple2: (u256, bool, u8, address),
         my_tuple3: (address, address, u16, i32, bool)
     ):
         pass
 
-    pub def food():
+    pub fn food():
         emit MyEvent(
             my_tuple=(false, true),
             my_other_tuple=(address(0), address(1))

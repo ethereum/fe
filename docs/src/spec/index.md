@@ -53,7 +53,7 @@ be used as the names of:
 > KW_CONST          : `const`\
 > KW_CONTINUE       : `continue`\
 > KW_CONST          : `contract`\
-> KW_DEF            : `def`\
+> KW_FN             : `fn`\
 > KW_ELIF           : `elif`\
 > KW_ELSE           : `else`\
 > KW_EMIT           : `emit`\
@@ -162,7 +162,7 @@ The contents of a block expression are indented from the parent context followin
 > **<sup>Syntax</sup>**\
 > _Function_ :\
 > &nbsp;&nbsp; _FunctionDecorators_\
-> &nbsp;&nbsp; _FunctionQualifiers_ `def` [IDENTIFIER]\
+> &nbsp;&nbsp; _FunctionQualifiers_ `fn` [IDENTIFIER]\
 > &nbsp;&nbsp; &nbsp;&nbsp; `(` _FunctionParameters_<sup>?</sup> `)`\
 > &nbsp;&nbsp; &nbsp;&nbsp; _FunctionReturnType_<sup>?</sup>\
 > &nbsp;&nbsp; &nbsp;&nbsp; [_EndOfHeader_]\
@@ -189,7 +189,7 @@ The contents of a block expression are indented from the parent context followin
 
 A _function_ consists of a [block], along with a name and a set of parameters.
 Other than a name, all these are optional. Functions are declared with the
-keyword `def`. Functions may declare a set of *input* [*variables*][variables]
+keyword `fn`. Functions may declare a set of *input* [*variables*][variables]
 as parameters, through which the caller passes arguments into the function, and
 the *output* [*type*][type] of the value the function will return to its caller
 on completion.
@@ -203,7 +203,7 @@ A function header ends with a colon (`:`) after which the function body begins.
 For example, this is a simple function:
 
 ```python
-def answer_to_life_the_universe_and_everything() -> u256:
+fn answer_to_life_the_universe_and_everything() -> u256:
     return 42;
 ```
 
@@ -220,7 +220,7 @@ Fe knows two different types of visibility for functions and state variables: `p
 For example, this is a function that can be called externally from a transaction:
 
 ```python
-pub def answer_to_life_the_universe_and_everything() -> u256:
+pub fn answer_to_life_the_universe_and_everything() -> u256:
     return 42;
 ```
 
@@ -280,7 +280,7 @@ event Transfer:
     idx receiver: address
     value: u256
 
-def transfer(to : address, value : u256):
+fn transfer(to : address, value : u256):
    # Heavy logic here
    # All done, log the event for listeners
    emit Transfer(msg.sender, _to, _value)
@@ -366,12 +366,12 @@ contract GuestBook:
     event Signed:
         idx book_msg: bytes[100]
 
-    pub def sign(book_msg: bytes[100]):
+    pub fn sign(book_msg: bytes[100]):
         self.guest_book[msg.sender] = book_msg
 
         emit Signed(book_msg=book_msg)
 
-    pub def get_msg(addr: address) -> bytes[100]:
+    pub fn get_msg(addr: address) -> bytes[100]:
         return self.guest_book[addr]
 ```
 
@@ -411,7 +411,7 @@ statement will cause to revert all state changes made by the call and return wit
 An example of a `revert` statement:
 
 ```
-def transfer(to : address, value : u256):
+fn transfer(to : address, value : u256):
     if not self.in_whitelist(to):
         revert
     # more logic here
@@ -561,11 +561,11 @@ example:
 
 ```python 
  contract Foo:
-    pub def get_my_num() -> u256:
+    pub fn get_my_num() -> u256:
         return 42
 
 contract FooFactory:
-    pub def create2_foo() -> address:
+    pub fn create2_foo() -> address:
         # `0` is the value being sent and `52` is the address salt
         foo: Foo = Foo.create2(0, 52)
         return address(foo)

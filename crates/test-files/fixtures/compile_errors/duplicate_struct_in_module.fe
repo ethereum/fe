@@ -6,5 +6,5 @@ struct MyStruct:
 
 contract Foo:
 
-    pub def bar():
+    pub fn bar():
         pass

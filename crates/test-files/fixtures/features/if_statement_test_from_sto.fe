@@ -3,7 +3,7 @@ contract Foo:
     my_bool2: bool
     my_bool3: bool
 
-    pub def bar() -> u256:
+    pub fn bar() -> u256:
         self.my_bool1 = false
         self.my_bool2 = false
         self.my_bool3 = true

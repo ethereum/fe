@@ -1,3 +1,3 @@
 contract Foo:
-    pub def bar() -> u8:
+    pub fn bar() -> u8:
         return u8(0b10)

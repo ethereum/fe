@@ -1,4 +1,4 @@
 contract Foo:
 
-    pub def foo():
+    pub fn foo():
         x: u256[3] = [10, 20, 30]

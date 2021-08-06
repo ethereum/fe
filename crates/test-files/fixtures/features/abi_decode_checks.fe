@@ -1,11 +1,11 @@
 contract Foo:
-    pub def decode_u256(a: u256):
+    pub fn decode_u256(a: u256):
         pass
 
-    pub def decode_u128_bool(a: u128, b: bool):
+    pub fn decode_u128_bool(a: u128, b: bool):
         pass
 
-    pub def decode_u256_bytes_tuple_array(
+    pub fn decode_u256_bytes_tuple_array(
         a: u256,
         b: u8[100],
         c: (address, u8),
@@ -13,7 +13,7 @@ contract Foo:
     ):
         pass
 
-    pub def decode_string_address_bytes_bool(
+    pub fn decode_string_address_bytes_bool(
         a: String<80>,
         b: address,
         c: u8[1000],

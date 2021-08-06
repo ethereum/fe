@@ -8,18 +8,18 @@ contract Foo:
         s4: String<13>
         s5: String<100>
 
-    pub def __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
+    pub fn __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
 
-    pub def bar(s1: String<100>, s2: String<100>) -> String<100>:
+    pub fn bar(s1: String<100>, s2: String<100>) -> String<100>:
         return s2
 
-    pub def return_static_string() -> String<43>:
+    pub fn return_static_string() -> String<43>:
         return "The quick brown fox jumps over the lazy dog"
 
-    pub def return_casted_static_string() -> String<100>:
+    pub fn return_casted_static_string() -> String<100>:
         return String<100>("foo")
 
-    pub def return_with_newline() -> String<16>:
+    pub fn return_with_newline() -> String<16>:
         return "foo
         balu"

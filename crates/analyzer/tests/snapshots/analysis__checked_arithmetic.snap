@@ -5418,7 +5418,7 @@ note:
 note: 
   ┌─ features/checked_arithmetic.fe:3:5
   │  
-3 │ ╭     pub def add_u256(left: u256, right: u256) -> u256:
+3 │ ╭     pub fn add_u256(left: u256, right: u256) -> u256:
 4 │ │         return left + right
   │ ╰───────────────────────────^ attributes hash: 11861824990948015219
   │  
@@ -5453,7 +5453,7 @@ note:
 note: 
   ┌─ features/checked_arithmetic.fe:6:5
   │  
-6 │ ╭     pub def add_u128(left: u128, right: u128) -> u128:
+6 │ ╭     pub fn add_u128(left: u128, right: u128) -> u128:
 7 │ │         return left + right
   │ ╰───────────────────────────^ attributes hash: 11616356530757861023
   │  
@@ -5488,7 +5488,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:9:5
    │  
- 9 │ ╭     pub def add_u64(left: u64, right: u64) -> u64:
+ 9 │ ╭     pub fn add_u64(left: u64, right: u64) -> u64:
 10 │ │         return left + right
    │ ╰───────────────────────────^ attributes hash: 4785108859578840755
    │  
@@ -5523,7 +5523,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:12:5
    │  
-12 │ ╭     pub def add_u32(left: u32, right: u32) -> u32:
+12 │ ╭     pub fn add_u32(left: u32, right: u32) -> u32:
 13 │ │         return left + right
    │ ╰───────────────────────────^ attributes hash: 17780796302977548550
    │  
@@ -5558,7 +5558,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:15:5
    │  
-15 │ ╭     pub def add_u16(left: u16, right: u16) -> u16:
+15 │ ╭     pub fn add_u16(left: u16, right: u16) -> u16:
 16 │ │         return left + right
    │ ╰───────────────────────────^ attributes hash: 18086776672321953969
    │  
@@ -5593,7 +5593,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:18:5
    │  
-18 │ ╭     pub def add_u8(left: u8, right: u8) -> u8:
+18 │ ╭     pub fn add_u8(left: u8, right: u8) -> u8:
 19 │ │         return left + right
    │ ╰───────────────────────────^ attributes hash: 3429604537937536064
    │  
@@ -5628,7 +5628,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:21:5
    │  
-21 │ ╭     pub def add_i256(left: i256, right: i256) -> i256:
+21 │ ╭     pub fn add_i256(left: i256, right: i256) -> i256:
 22 │ │         return left + right
    │ ╰───────────────────────────^ attributes hash: 9319580171590518872
    │  
@@ -5663,7 +5663,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:24:5
    │  
-24 │ ╭     pub def add_i128(left: i128, right: i128) -> i128:
+24 │ ╭     pub fn add_i128(left: i128, right: i128) -> i128:
 25 │ │         return left + right
    │ ╰───────────────────────────^ attributes hash: 12368377143554810736
    │  
@@ -5698,7 +5698,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:27:5
    │  
-27 │ ╭     pub def add_i64(left: i64, right: i64) -> i64:
+27 │ ╭     pub fn add_i64(left: i64, right: i64) -> i64:
 28 │ │         return left + right
    │ ╰───────────────────────────^ attributes hash: 15670709155046980275
    │  
@@ -5733,7 +5733,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:30:5
    │  
-30 │ ╭     pub def add_i32(left: i32, right: i32) -> i32:
+30 │ ╭     pub fn add_i32(left: i32, right: i32) -> i32:
 31 │ │         return left + right
    │ ╰───────────────────────────^ attributes hash: 10002014413139784460
    │  
@@ -5768,7 +5768,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:33:5
    │  
-33 │ ╭     pub def add_i16(left: i16, right: i16) -> i16:
+33 │ ╭     pub fn add_i16(left: i16, right: i16) -> i16:
 34 │ │         return left + right
    │ ╰───────────────────────────^ attributes hash: 14880727723016896879
    │  
@@ -5803,7 +5803,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:36:5
    │  
-36 │ ╭     pub def add_i8(left: i8, right: i8) -> i8:
+36 │ ╭     pub fn add_i8(left: i8, right: i8) -> i8:
 37 │ │         return left + right
    │ ╰───────────────────────────^ attributes hash: 10129070409897498921
    │  
@@ -5838,7 +5838,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:39:5
    │  
-39 │ ╭     pub def sub_u256(left: u256, right: u256) -> u256:
+39 │ ╭     pub fn sub_u256(left: u256, right: u256) -> u256:
 40 │ │         return left - right
    │ ╰───────────────────────────^ attributes hash: 14816601299519204212
    │  
@@ -5873,7 +5873,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:42:5
    │  
-42 │ ╭     pub def sub_u128(left: u128, right: u128) -> u128:
+42 │ ╭     pub fn sub_u128(left: u128, right: u128) -> u128:
 43 │ │         return left - right
    │ ╰───────────────────────────^ attributes hash: 7070501674638744154
    │  
@@ -5908,7 +5908,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:45:5
    │  
-45 │ ╭     pub def sub_u64(left: u64, right: u64) -> u64:
+45 │ ╭     pub fn sub_u64(left: u64, right: u64) -> u64:
 46 │ │         return left - right
    │ ╰───────────────────────────^ attributes hash: 17352673244420037729
    │  
@@ -5943,7 +5943,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:48:5
    │  
-48 │ ╭     pub def sub_u32(left: u32, right: u32) -> u32:
+48 │ ╭     pub fn sub_u32(left: u32, right: u32) -> u32:
 49 │ │         return left - right
    │ ╰───────────────────────────^ attributes hash: 12071447203220772600
    │  
@@ -5978,7 +5978,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:51:5
    │  
-51 │ ╭     pub def sub_u16(left: u16, right: u16) -> u16:
+51 │ ╭     pub fn sub_u16(left: u16, right: u16) -> u16:
 52 │ │         return left - right
    │ ╰───────────────────────────^ attributes hash: 1743038422738133482
    │  
@@ -6013,7 +6013,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:54:5
    │  
-54 │ ╭     pub def sub_u8(left: u8, right: u8) -> u8:
+54 │ ╭     pub fn sub_u8(left: u8, right: u8) -> u8:
 55 │ │         return left - right
    │ ╰───────────────────────────^ attributes hash: 4818790736524167171
    │  
@@ -6048,7 +6048,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:57:5
    │  
-57 │ ╭     pub def sub_i256(left: i256, right: i256) -> i256:
+57 │ ╭     pub fn sub_i256(left: i256, right: i256) -> i256:
 58 │ │         return left - right
    │ ╰───────────────────────────^ attributes hash: 12229189579119788355
    │  
@@ -6083,7 +6083,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:60:5
    │  
-60 │ ╭     pub def sub_i128(left: i128, right: i128) -> i128:
+60 │ ╭     pub fn sub_i128(left: i128, right: i128) -> i128:
 61 │ │         return left - right
    │ ╰───────────────────────────^ attributes hash: 13765693292309698687
    │  
@@ -6118,7 +6118,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:63:5
    │  
-63 │ ╭     pub def sub_i64(left: i64, right: i64) -> i64:
+63 │ ╭     pub fn sub_i64(left: i64, right: i64) -> i64:
 64 │ │         return left - right
    │ ╰───────────────────────────^ attributes hash: 7957807061698228226
    │  
@@ -6153,7 +6153,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:66:5
    │  
-66 │ ╭     pub def sub_i32(left: i32, right: i32) -> i32:
+66 │ ╭     pub fn sub_i32(left: i32, right: i32) -> i32:
 67 │ │         return left - right
    │ ╰───────────────────────────^ attributes hash: 13018369201660858470
    │  
@@ -6188,7 +6188,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:69:5
    │  
-69 │ ╭     pub def sub_i16(left: i16, right: i16) -> i16:
+69 │ ╭     pub fn sub_i16(left: i16, right: i16) -> i16:
 70 │ │         return left - right
    │ ╰───────────────────────────^ attributes hash: 257871892211482221
    │  
@@ -6223,7 +6223,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:72:5
    │  
-72 │ ╭     pub def sub_i8(left: i8, right: i8) -> i8:
+72 │ ╭     pub fn sub_i8(left: i8, right: i8) -> i8:
 73 │ │         return left - right
    │ ╰───────────────────────────^ attributes hash: 13553478495336995018
    │  
@@ -6258,7 +6258,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:75:5
    │  
-75 │ ╭     pub def div_u256(left: u256, right: u256) -> u256:
+75 │ ╭     pub fn div_u256(left: u256, right: u256) -> u256:
 76 │ │         return left / right
    │ ╰───────────────────────────^ attributes hash: 14371756250518810762
    │  
@@ -6293,7 +6293,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:78:5
    │  
-78 │ ╭     pub def div_u128(left: u128, right: u128) -> u128:
+78 │ ╭     pub fn div_u128(left: u128, right: u128) -> u128:
 79 │ │         return left / right
    │ ╰───────────────────────────^ attributes hash: 1685714878950287378
    │  
@@ -6328,7 +6328,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:81:5
    │  
-81 │ ╭     pub def div_u64(left: u64, right: u64) -> u64:
+81 │ ╭     pub fn div_u64(left: u64, right: u64) -> u64:
 82 │ │         return left / right
    │ ╰───────────────────────────^ attributes hash: 14173651579601049190
    │  
@@ -6363,7 +6363,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:84:5
    │  
-84 │ ╭     pub def div_u32(left: u32, right: u32) -> u32:
+84 │ ╭     pub fn div_u32(left: u32, right: u32) -> u32:
 85 │ │         return left / right
    │ ╰───────────────────────────^ attributes hash: 6103706028515359229
    │  
@@ -6398,7 +6398,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:87:5
    │  
-87 │ ╭     pub def div_u16(left: u16, right: u16) -> u16:
+87 │ ╭     pub fn div_u16(left: u16, right: u16) -> u16:
 88 │ │         return left / right
    │ ╰───────────────────────────^ attributes hash: 10676121748343885176
    │  
@@ -6433,7 +6433,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:90:5
    │  
-90 │ ╭     pub def div_u8(left: u8, right: u8) -> u8:
+90 │ ╭     pub fn div_u8(left: u8, right: u8) -> u8:
 91 │ │         return left / right
    │ ╰───────────────────────────^ attributes hash: 1070558499603504836
    │  
@@ -6468,7 +6468,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:93:5
    │  
-93 │ ╭     pub def div_i256(left: i256, right: i256) -> i256:
+93 │ ╭     pub fn div_i256(left: i256, right: i256) -> i256:
 94 │ │         return left / right
    │ ╰───────────────────────────^ attributes hash: 5617465495507584415
    │  
@@ -6503,7 +6503,7 @@ note:
 note: 
    ┌─ features/checked_arithmetic.fe:96:5
    │  
-96 │ ╭     pub def div_i128(left: i128, right: i128) -> i128:
+96 │ ╭     pub fn div_i128(left: i128, right: i128) -> i128:
 97 │ │         return left / right
    │ ╰───────────────────────────^ attributes hash: 15337438690986146047
    │  
@@ -6538,7 +6538,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:99:5
     │  
- 99 │ ╭     pub def div_i64(left: i64, right: i64) -> i64:
+ 99 │ ╭     pub fn div_i64(left: i64, right: i64) -> i64:
 100 │ │         return left / right
     │ ╰───────────────────────────^ attributes hash: 16436516269786093580
     │  
@@ -6573,7 +6573,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:102:5
     │  
-102 │ ╭     pub def div_i32(left: i32, right: i32) -> i32:
+102 │ ╭     pub fn div_i32(left: i32, right: i32) -> i32:
 103 │ │         return left / right
     │ ╰───────────────────────────^ attributes hash: 16528645550499187682
     │  
@@ -6608,7 +6608,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:105:5
     │  
-105 │ ╭     pub def div_i16(left: i16, right: i16) -> i16:
+105 │ ╭     pub fn div_i16(left: i16, right: i16) -> i16:
 106 │ │         return left / right
     │ ╰───────────────────────────^ attributes hash: 10380041430520877234
     │  
@@ -6643,7 +6643,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:108:5
     │  
-108 │ ╭     pub def div_i8(left: i8, right: i8) -> i8:
+108 │ ╭     pub fn div_i8(left: i8, right: i8) -> i8:
 109 │ │         return left / right
     │ ╰───────────────────────────^ attributes hash: 11252141968970107708
     │  
@@ -6678,7 +6678,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:111:5
     │  
-111 │ ╭     pub def mul_u256(left: u256, right: u256) -> u256:
+111 │ ╭     pub fn mul_u256(left: u256, right: u256) -> u256:
 112 │ │         return left * right
     │ ╰───────────────────────────^ attributes hash: 3745359816974034234
     │  
@@ -6713,7 +6713,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:114:5
     │  
-114 │ ╭     pub def mul_u128(left: u128, right: u128) -> u128:
+114 │ ╭     pub fn mul_u128(left: u128, right: u128) -> u128:
 115 │ │         return left * right
     │ ╰───────────────────────────^ attributes hash: 9947397205405135006
     │  
@@ -6748,7 +6748,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:117:5
     │  
-117 │ ╭     pub def mul_u64(left: u64, right: u64) -> u64:
+117 │ ╭     pub fn mul_u64(left: u64, right: u64) -> u64:
 118 │ │         return left * right
     │ ╰───────────────────────────^ attributes hash: 13478923250665499349
     │  
@@ -6783,7 +6783,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:120:5
     │  
-120 │ ╭     pub def mul_u32(left: u32, right: u32) -> u32:
+120 │ ╭     pub fn mul_u32(left: u32, right: u32) -> u32:
 121 │ │         return left * right
     │ ╰───────────────────────────^ attributes hash: 17534546174739646606
     │  
@@ -6818,7 +6818,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:123:5
     │  
-123 │ ╭     pub def mul_u16(left: u16, right: u16) -> u16:
+123 │ ╭     pub fn mul_u16(left: u16, right: u16) -> u16:
 124 │ │         return left * right
     │ ╰───────────────────────────^ attributes hash: 9465480078989010813
     │  
@@ -6853,7 +6853,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:126:5
     │  
-126 │ ╭     pub def mul_u8(left: u8, right: u8) -> u8:
+126 │ ╭     pub fn mul_u8(left: u8, right: u8) -> u8:
 127 │ │         return left * right
     │ ╰───────────────────────────^ attributes hash: 14280308261136175623
     │  
@@ -6888,7 +6888,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:129:5
     │  
-129 │ ╭     pub def mul_i256(left: i256, right: i256) -> i256:
+129 │ ╭     pub fn mul_i256(left: i256, right: i256) -> i256:
 130 │ │         return left * right
     │ ╰───────────────────────────^ attributes hash: 15225784505481526704
     │  
@@ -6923,7 +6923,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:132:5
     │  
-132 │ ╭     pub def mul_i128(left: i128, right: i128) -> i128:
+132 │ ╭     pub fn mul_i128(left: i128, right: i128) -> i128:
 133 │ │         return left * right
     │ ╰───────────────────────────^ attributes hash: 3848549597141689293
     │  
@@ -6958,7 +6958,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:135:5
     │  
-135 │ ╭     pub def mul_i64(left: i64, right: i64) -> i64:
+135 │ ╭     pub fn mul_i64(left: i64, right: i64) -> i64:
 136 │ │         return left * right
     │ ╰───────────────────────────^ attributes hash: 1185149926424286851
     │  
@@ -6993,7 +6993,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:138:5
     │  
-138 │ ╭     pub def mul_i32(left: i32, right: i32) -> i32:
+138 │ ╭     pub fn mul_i32(left: i32, right: i32) -> i32:
 139 │ │         return left * right
     │ ╰───────────────────────────^ attributes hash: 10305345316516407265
     │  
@@ -7028,7 +7028,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:141:5
     │  
-141 │ ╭     pub def mul_i16(left: i16, right: i16) -> i16:
+141 │ ╭     pub fn mul_i16(left: i16, right: i16) -> i16:
 142 │ │         return left * right
     │ ╰───────────────────────────^ attributes hash: 10071654339587410486
     │  
@@ -7063,7 +7063,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:144:5
     │  
-144 │ ╭     pub def mul_i8(left: i8, right: i8) -> i8:
+144 │ ╭     pub fn mul_i8(left: i8, right: i8) -> i8:
 145 │ │         return left * right
     │ ╰───────────────────────────^ attributes hash: 13715950072099296664
     │  
@@ -7098,7 +7098,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:147:5
     │  
-147 │ ╭     pub def mod_u256(left: u256, right: u256) -> u256:
+147 │ ╭     pub fn mod_u256(left: u256, right: u256) -> u256:
 148 │ │         return left % right
     │ ╰───────────────────────────^ attributes hash: 10111899857524235093
     │  
@@ -7133,7 +7133,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:150:5
     │  
-150 │ ╭     pub def mod_u128(left: u128, right: u128) -> u128:
+150 │ ╭     pub fn mod_u128(left: u128, right: u128) -> u128:
 151 │ │         return left % right
     │ ╰───────────────────────────^ attributes hash: 12379900529098907437
     │  
@@ -7168,7 +7168,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:153:5
     │  
-153 │ ╭     pub def mod_u64(left: u64, right: u64) -> u64:
+153 │ ╭     pub fn mod_u64(left: u64, right: u64) -> u64:
 154 │ │         return left % right
     │ ╰───────────────────────────^ attributes hash: 11848518905809479323
     │  
@@ -7203,7 +7203,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:156:5
     │  
-156 │ ╭     pub def mod_u32(left: u32, right: u32) -> u32:
+156 │ ╭     pub fn mod_u32(left: u32, right: u32) -> u32:
 157 │ │         return left % right
     │ ╰───────────────────────────^ attributes hash: 11056990072323369423
     │  
@@ -7238,7 +7238,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:159:5
     │  
-159 │ ╭     pub def mod_u16(left: u16, right: u16) -> u16:
+159 │ ╭     pub fn mod_u16(left: u16, right: u16) -> u16:
 160 │ │         return left % right
     │ ╰───────────────────────────^ attributes hash: 3760501747649529936
     │  
@@ -7273,7 +7273,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:162:5
     │  
-162 │ ╭     pub def mod_u8(left: u8, right: u8) -> u8:
+162 │ ╭     pub fn mod_u8(left: u8, right: u8) -> u8:
 163 │ │         return left % right
     │ ╰───────────────────────────^ attributes hash: 2272547533674616507
     │  
@@ -7308,7 +7308,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:165:5
     │  
-165 │ ╭     pub def mod_i256(left: i256, right: i256) -> i256:
+165 │ ╭     pub fn mod_i256(left: i256, right: i256) -> i256:
 166 │ │         return left % right
     │ ╰───────────────────────────^ attributes hash: 9644694072584234922
     │  
@@ -7343,7 +7343,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:168:5
     │  
-168 │ ╭     pub def mod_i128(left: i128, right: i128) -> i128:
+168 │ ╭     pub fn mod_i128(left: i128, right: i128) -> i128:
 169 │ │         return left % right
     │ ╰───────────────────────────^ attributes hash: 13761715580057780642
     │  
@@ -7378,7 +7378,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:171:5
     │  
-171 │ ╭     pub def mod_i64(left: i64, right: i64) -> i64:
+171 │ ╭     pub fn mod_i64(left: i64, right: i64) -> i64:
 172 │ │         return left % right
     │ ╰───────────────────────────^ attributes hash: 16363634215680787363
     │  
@@ -7413,7 +7413,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:174:5
     │  
-174 │ ╭     pub def mod_i32(left: i32, right: i32) -> i32:
+174 │ ╭     pub fn mod_i32(left: i32, right: i32) -> i32:
 175 │ │         return left % right
     │ ╰───────────────────────────^ attributes hash: 16598291529520649262
     │  
@@ -7448,7 +7448,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:177:5
     │  
-177 │ ╭     pub def mod_i16(left: i16, right: i16) -> i16:
+177 │ ╭     pub fn mod_i16(left: i16, right: i16) -> i16:
 178 │ │         return left % right
     │ ╰───────────────────────────^ attributes hash: 11233660643854913281
     │  
@@ -7483,7 +7483,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:180:5
     │  
-180 │ ╭     pub def mod_i8(left: i8, right: i8) -> i8:
+180 │ ╭     pub fn mod_i8(left: i8, right: i8) -> i8:
 181 │ │         return left % right
     │ ╰───────────────────────────^ attributes hash: 16753401524237726220
     │  
@@ -7518,7 +7518,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:183:5
     │  
-183 │ ╭     pub def pow_u256(left: u256, right: u256) -> u256:
+183 │ ╭     pub fn pow_u256(left: u256, right: u256) -> u256:
 184 │ │         return left ** right
     │ ╰────────────────────────────^ attributes hash: 17681820589282768588
     │  
@@ -7553,7 +7553,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:186:5
     │  
-186 │ ╭     pub def pow_u128(left: u128, right: u128) -> u128:
+186 │ ╭     pub fn pow_u128(left: u128, right: u128) -> u128:
 187 │ │         return left ** right
     │ ╰────────────────────────────^ attributes hash: 10496927115278826718
     │  
@@ -7588,7 +7588,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:189:5
     │  
-189 │ ╭     pub def pow_u64(left: u64, right: u64) -> u64:
+189 │ ╭     pub fn pow_u64(left: u64, right: u64) -> u64:
 190 │ │         return left ** right
     │ ╰────────────────────────────^ attributes hash: 892432340673291606
     │  
@@ -7623,7 +7623,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:192:5
     │  
-192 │ ╭     pub def pow_u32(left: u32, right: u32) -> u32:
+192 │ ╭     pub fn pow_u32(left: u32, right: u32) -> u32:
 193 │ │         return left ** right
     │ ╰────────────────────────────^ attributes hash: 10414269044683952460
     │  
@@ -7658,7 +7658,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:195:5
     │  
-195 │ ╭     pub def pow_u16(left: u16, right: u16) -> u16:
+195 │ ╭     pub fn pow_u16(left: u16, right: u16) -> u16:
 196 │ │         return left ** right
     │ ╰────────────────────────────^ attributes hash: 16191199069321703809
     │  
@@ -7693,7 +7693,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:198:5
     │  
-198 │ ╭     pub def pow_u8(left: u8, right: u8) -> u8:
+198 │ ╭     pub fn pow_u8(left: u8, right: u8) -> u8:
 199 │ │         return left ** right
     │ ╰────────────────────────────^ attributes hash: 18008352716252837013
     │  
@@ -7728,7 +7728,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:201:5
     │  
-201 │ ╭     pub def pow_i256(left: i256, right: u256) -> i256:
+201 │ ╭     pub fn pow_i256(left: i256, right: u256) -> i256:
 202 │ │         return left ** right
     │ ╰────────────────────────────^ attributes hash: 12900139596973197578
     │  
@@ -7763,7 +7763,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:204:5
     │  
-204 │ ╭     pub def pow_i128(left: i128, right: u128) -> i128:
+204 │ ╭     pub fn pow_i128(left: i128, right: u128) -> i128:
 205 │ │         return left ** right
     │ ╰────────────────────────────^ attributes hash: 3073059711841352980
     │  
@@ -7798,7 +7798,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:207:5
     │  
-207 │ ╭     pub def pow_i64(left: i64, right: u64) -> i64:
+207 │ ╭     pub fn pow_i64(left: i64, right: u64) -> i64:
 208 │ │         return left ** right
     │ ╰────────────────────────────^ attributes hash: 3317894102069286567
     │  
@@ -7833,7 +7833,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:210:5
     │  
-210 │ ╭     pub def pow_i32(left: i32, right: u32) -> i32:
+210 │ ╭     pub fn pow_i32(left: i32, right: u32) -> i32:
 211 │ │         return left ** right
     │ ╰────────────────────────────^ attributes hash: 7493996493148764012
     │  
@@ -7868,7 +7868,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:213:5
     │  
-213 │ ╭     pub def pow_i16(left: i16, right: u16) -> i16:
+213 │ ╭     pub fn pow_i16(left: i16, right: u16) -> i16:
 214 │ │         return left ** right
     │ ╰────────────────────────────^ attributes hash: 16918450004819271149
     │  
@@ -7903,7 +7903,7 @@ note:
 note: 
     ┌─ features/checked_arithmetic.fe:216:5
     │  
-216 │ ╭     pub def pow_i8(left: i8, right: u8) -> i8:
+216 │ ╭     pub fn pow_i8(left: i8, right: u8) -> i8:
 217 │ │         return left ** right
     │ ╰────────────────────────────^ attributes hash: 16648877690197604059
     │  
@@ -7940,10 +7940,10 @@ note:
     │  
   1 │ ╭ contract CheckedArithmetic:
   2 │ │ 
-  3 │ │     pub def add_u256(left: u256, right: u256) -> u256:
+  3 │ │     pub fn add_u256(left: u256, right: u256) -> u256:
   4 │ │         return left + right
     · │
-216 │ │     pub def pow_i8(left: i8, right: u8) -> i8:
+216 │ │     pub fn pow_i8(left: i8, right: u8) -> i8:
 217 │ │         return left ** right
     │ ╰────────────────────────────^ attributes hash: 2074199165904993523
     │  
@@ -9901,22 +9901,10 @@ note:
       }
 
 note: 
-  ┌─ features/checked_arithmetic.fe:3:28
+  ┌─ features/checked_arithmetic.fe:3:27
   │
-3 │     pub def add_u256(left: u256, right: u256) -> u256:
-  │                            ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/checked_arithmetic.fe:3:41
-  │
-3 │     pub def add_u256(left: u256, right: u256) -> u256:
-  │                                         ^^^^ attributes hash: 4293763436908729629
+3 │     pub fn add_u256(left: u256, right: u256) -> u256:
+  │                           ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -9925,10 +9913,10 @@ note:
     )
 
 note: 
-  ┌─ features/checked_arithmetic.fe:3:50
+  ┌─ features/checked_arithmetic.fe:3:40
   │
-3 │     pub def add_u256(left: u256, right: u256) -> u256:
-  │                                                  ^^^^ attributes hash: 4293763436908729629
+3 │     pub fn add_u256(left: u256, right: u256) -> u256:
+  │                                        ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -9937,10 +9925,22 @@ note:
     )
 
 note: 
-  ┌─ features/checked_arithmetic.fe:6:28
+  ┌─ features/checked_arithmetic.fe:3:49
   │
-6 │     pub def add_u128(left: u128, right: u128) -> u128:
-  │                            ^^^^ attributes hash: 6162263163478414243
+3 │     pub fn add_u256(left: u256, right: u256) -> u256:
+  │                                                 ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/checked_arithmetic.fe:6:27
+  │
+6 │     pub fn add_u128(left: u128, right: u128) -> u128:
+  │                           ^^^^ attributes hash: 6162263163478414243
   │
   = Base(
         Numeric(
@@ -9949,22 +9949,10 @@ note:
     )
 
 note: 
-  ┌─ features/checked_arithmetic.fe:6:41
+  ┌─ features/checked_arithmetic.fe:6:40
   │
-6 │     pub def add_u128(left: u128, right: u128) -> u128:
-  │                                         ^^^^ attributes hash: 6162263163478414243
-  │
-  = Base(
-        Numeric(
-            U128,
-        ),
-    )
-
-note: 
-  ┌─ features/checked_arithmetic.fe:6:50
-  │
-6 │     pub def add_u128(left: u128, right: u128) -> u128:
-  │                                                  ^^^^ attributes hash: 6162263163478414243
+6 │     pub fn add_u128(left: u128, right: u128) -> u128:
+  │                                        ^^^^ attributes hash: 6162263163478414243
   │
   = Base(
         Numeric(
@@ -9973,10 +9961,22 @@ note:
     )
 
 note: 
-  ┌─ features/checked_arithmetic.fe:9:27
+  ┌─ features/checked_arithmetic.fe:6:49
   │
-9 │     pub def add_u64(left: u64, right: u64) -> u64:
-  │                           ^^^ attributes hash: 9157081425890653064
+6 │     pub fn add_u128(left: u128, right: u128) -> u128:
+  │                                                 ^^^^ attributes hash: 6162263163478414243
+  │
+  = Base(
+        Numeric(
+            U128,
+        ),
+    )
+
+note: 
+  ┌─ features/checked_arithmetic.fe:9:26
+  │
+9 │     pub fn add_u64(left: u64, right: u64) -> u64:
+  │                          ^^^ attributes hash: 9157081425890653064
   │
   = Base(
         Numeric(
@@ -9985,22 +9985,10 @@ note:
     )
 
 note: 
-  ┌─ features/checked_arithmetic.fe:9:39
+  ┌─ features/checked_arithmetic.fe:9:38
   │
-9 │     pub def add_u64(left: u64, right: u64) -> u64:
-  │                                       ^^^ attributes hash: 9157081425890653064
-  │
-  = Base(
-        Numeric(
-            U64,
-        ),
-    )
-
-note: 
-  ┌─ features/checked_arithmetic.fe:9:47
-  │
-9 │     pub def add_u64(left: u64, right: u64) -> u64:
-  │                                               ^^^ attributes hash: 9157081425890653064
+9 │     pub fn add_u64(left: u64, right: u64) -> u64:
+  │                                      ^^^ attributes hash: 9157081425890653064
   │
   = Base(
         Numeric(
@@ -10009,10 +9997,22 @@ note:
     )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:12:27
+  ┌─ features/checked_arithmetic.fe:9:46
+  │
+9 │     pub fn add_u64(left: u64, right: u64) -> u64:
+  │                                              ^^^ attributes hash: 9157081425890653064
+  │
+  = Base(
+        Numeric(
+            U64,
+        ),
+    )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:12:26
    │
-12 │     pub def add_u32(left: u32, right: u32) -> u32:
-   │                           ^^^ attributes hash: 6988938628910073395
+12 │     pub fn add_u32(left: u32, right: u32) -> u32:
+   │                          ^^^ attributes hash: 6988938628910073395
    │
    = Base(
          Numeric(
@@ -10021,22 +10021,10 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:12:39
+   ┌─ features/checked_arithmetic.fe:12:38
    │
-12 │     pub def add_u32(left: u32, right: u32) -> u32:
-   │                                       ^^^ attributes hash: 6988938628910073395
-   │
-   = Base(
-         Numeric(
-             U32,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:12:47
-   │
-12 │     pub def add_u32(left: u32, right: u32) -> u32:
-   │                                               ^^^ attributes hash: 6988938628910073395
+12 │     pub fn add_u32(left: u32, right: u32) -> u32:
+   │                                      ^^^ attributes hash: 6988938628910073395
    │
    = Base(
          Numeric(
@@ -10045,10 +10033,22 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:15:27
+   ┌─ features/checked_arithmetic.fe:12:46
    │
-15 │     pub def add_u16(left: u16, right: u16) -> u16:
-   │                           ^^^ attributes hash: 10482216811962112628
+12 │     pub fn add_u32(left: u32, right: u32) -> u32:
+   │                                              ^^^ attributes hash: 6988938628910073395
+   │
+   = Base(
+         Numeric(
+             U32,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:15:26
+   │
+15 │     pub fn add_u16(left: u16, right: u16) -> u16:
+   │                          ^^^ attributes hash: 10482216811962112628
    │
    = Base(
          Numeric(
@@ -10057,22 +10057,10 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:15:39
+   ┌─ features/checked_arithmetic.fe:15:38
    │
-15 │     pub def add_u16(left: u16, right: u16) -> u16:
-   │                                       ^^^ attributes hash: 10482216811962112628
-   │
-   = Base(
-         Numeric(
-             U16,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:15:47
-   │
-15 │     pub def add_u16(left: u16, right: u16) -> u16:
-   │                                               ^^^ attributes hash: 10482216811962112628
+15 │     pub fn add_u16(left: u16, right: u16) -> u16:
+   │                                      ^^^ attributes hash: 10482216811962112628
    │
    = Base(
          Numeric(
@@ -10081,10 +10069,22 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:18:26
+   ┌─ features/checked_arithmetic.fe:15:46
    │
-18 │     pub def add_u8(left: u8, right: u8) -> u8:
-   │                          ^^ attributes hash: 3165084411644393001
+15 │     pub fn add_u16(left: u16, right: u16) -> u16:
+   │                                              ^^^ attributes hash: 10482216811962112628
+   │
+   = Base(
+         Numeric(
+             U16,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:18:25
+   │
+18 │     pub fn add_u8(left: u8, right: u8) -> u8:
+   │                         ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -10093,22 +10093,10 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:18:37
+   ┌─ features/checked_arithmetic.fe:18:36
    │
-18 │     pub def add_u8(left: u8, right: u8) -> u8:
-   │                                     ^^ attributes hash: 3165084411644393001
-   │
-   = Base(
-         Numeric(
-             U8,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:18:44
-   │
-18 │     pub def add_u8(left: u8, right: u8) -> u8:
-   │                                            ^^ attributes hash: 3165084411644393001
+18 │     pub fn add_u8(left: u8, right: u8) -> u8:
+   │                                    ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -10117,10 +10105,22 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:21:28
+   ┌─ features/checked_arithmetic.fe:18:43
    │
-21 │     pub def add_i256(left: i256, right: i256) -> i256:
-   │                            ^^^^ attributes hash: 11707372354960146103
+18 │     pub fn add_u8(left: u8, right: u8) -> u8:
+   │                                           ^^ attributes hash: 3165084411644393001
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:21:27
+   │
+21 │     pub fn add_i256(left: i256, right: i256) -> i256:
+   │                           ^^^^ attributes hash: 11707372354960146103
    │
    = Base(
          Numeric(
@@ -10129,22 +10129,10 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:21:41
+   ┌─ features/checked_arithmetic.fe:21:40
    │
-21 │     pub def add_i256(left: i256, right: i256) -> i256:
-   │                                         ^^^^ attributes hash: 11707372354960146103
-   │
-   = Base(
-         Numeric(
-             I256,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:21:50
-   │
-21 │     pub def add_i256(left: i256, right: i256) -> i256:
-   │                                                  ^^^^ attributes hash: 11707372354960146103
+21 │     pub fn add_i256(left: i256, right: i256) -> i256:
+   │                                        ^^^^ attributes hash: 11707372354960146103
    │
    = Base(
          Numeric(
@@ -10153,10 +10141,22 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:24:28
+   ┌─ features/checked_arithmetic.fe:21:49
    │
-24 │     pub def add_i128(left: i128, right: i128) -> i128:
-   │                            ^^^^ attributes hash: 1662973713176693737
+21 │     pub fn add_i256(left: i256, right: i256) -> i256:
+   │                                                 ^^^^ attributes hash: 11707372354960146103
+   │
+   = Base(
+         Numeric(
+             I256,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:24:27
+   │
+24 │     pub fn add_i128(left: i128, right: i128) -> i128:
+   │                           ^^^^ attributes hash: 1662973713176693737
    │
    = Base(
          Numeric(
@@ -10165,22 +10165,10 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:24:41
+   ┌─ features/checked_arithmetic.fe:24:40
    │
-24 │     pub def add_i128(left: i128, right: i128) -> i128:
-   │                                         ^^^^ attributes hash: 1662973713176693737
-   │
-   = Base(
-         Numeric(
-             I128,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:24:50
-   │
-24 │     pub def add_i128(left: i128, right: i128) -> i128:
-   │                                                  ^^^^ attributes hash: 1662973713176693737
+24 │     pub fn add_i128(left: i128, right: i128) -> i128:
+   │                                        ^^^^ attributes hash: 1662973713176693737
    │
    = Base(
          Numeric(
@@ -10189,10 +10177,22 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:27:27
+   ┌─ features/checked_arithmetic.fe:24:49
    │
-27 │     pub def add_i64(left: i64, right: i64) -> i64:
-   │                           ^^^ attributes hash: 4061011363657204065
+24 │     pub fn add_i128(left: i128, right: i128) -> i128:
+   │                                                 ^^^^ attributes hash: 1662973713176693737
+   │
+   = Base(
+         Numeric(
+             I128,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:27:26
+   │
+27 │     pub fn add_i64(left: i64, right: i64) -> i64:
+   │                          ^^^ attributes hash: 4061011363657204065
    │
    = Base(
          Numeric(
@@ -10201,22 +10201,10 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:27:39
+   ┌─ features/checked_arithmetic.fe:27:38
    │
-27 │     pub def add_i64(left: i64, right: i64) -> i64:
-   │                                       ^^^ attributes hash: 4061011363657204065
-   │
-   = Base(
-         Numeric(
-             I64,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:27:47
-   │
-27 │     pub def add_i64(left: i64, right: i64) -> i64:
-   │                                               ^^^ attributes hash: 4061011363657204065
+27 │     pub fn add_i64(left: i64, right: i64) -> i64:
+   │                                      ^^^ attributes hash: 4061011363657204065
    │
    = Base(
          Numeric(
@@ -10225,10 +10213,22 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:30:27
+   ┌─ features/checked_arithmetic.fe:27:46
    │
-30 │     pub def add_i32(left: i32, right: i32) -> i32:
-   │                           ^^^ attributes hash: 3989691230564290788
+27 │     pub fn add_i64(left: i64, right: i64) -> i64:
+   │                                              ^^^ attributes hash: 4061011363657204065
+   │
+   = Base(
+         Numeric(
+             I64,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:30:26
+   │
+30 │     pub fn add_i32(left: i32, right: i32) -> i32:
+   │                          ^^^ attributes hash: 3989691230564290788
    │
    = Base(
          Numeric(
@@ -10237,22 +10237,10 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:30:39
+   ┌─ features/checked_arithmetic.fe:30:38
    │
-30 │     pub def add_i32(left: i32, right: i32) -> i32:
-   │                                       ^^^ attributes hash: 3989691230564290788
-   │
-   = Base(
-         Numeric(
-             I32,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:30:47
-   │
-30 │     pub def add_i32(left: i32, right: i32) -> i32:
-   │                                               ^^^ attributes hash: 3989691230564290788
+30 │     pub fn add_i32(left: i32, right: i32) -> i32:
+   │                                      ^^^ attributes hash: 3989691230564290788
    │
    = Base(
          Numeric(
@@ -10261,406 +10249,10 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:33:27
+   ┌─ features/checked_arithmetic.fe:30:46
    │
-33 │     pub def add_i16(left: i16, right: i16) -> i16:
-   │                           ^^^ attributes hash: 13881948389070133681
-   │
-   = Base(
-         Numeric(
-             I16,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:33:39
-   │
-33 │     pub def add_i16(left: i16, right: i16) -> i16:
-   │                                       ^^^ attributes hash: 13881948389070133681
-   │
-   = Base(
-         Numeric(
-             I16,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:33:47
-   │
-33 │     pub def add_i16(left: i16, right: i16) -> i16:
-   │                                               ^^^ attributes hash: 13881948389070133681
-   │
-   = Base(
-         Numeric(
-             I16,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:36:26
-   │
-36 │     pub def add_i8(left: i8, right: i8) -> i8:
-   │                          ^^ attributes hash: 15894395880381322973
-   │
-   = Base(
-         Numeric(
-             I8,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:36:37
-   │
-36 │     pub def add_i8(left: i8, right: i8) -> i8:
-   │                                     ^^ attributes hash: 15894395880381322973
-   │
-   = Base(
-         Numeric(
-             I8,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:36:44
-   │
-36 │     pub def add_i8(left: i8, right: i8) -> i8:
-   │                                            ^^ attributes hash: 15894395880381322973
-   │
-   = Base(
-         Numeric(
-             I8,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:39:28
-   │
-39 │     pub def sub_u256(left: u256, right: u256) -> u256:
-   │                            ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:39:41
-   │
-39 │     pub def sub_u256(left: u256, right: u256) -> u256:
-   │                                         ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:39:50
-   │
-39 │     pub def sub_u256(left: u256, right: u256) -> u256:
-   │                                                  ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:42:28
-   │
-42 │     pub def sub_u128(left: u128, right: u128) -> u128:
-   │                            ^^^^ attributes hash: 6162263163478414243
-   │
-   = Base(
-         Numeric(
-             U128,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:42:41
-   │
-42 │     pub def sub_u128(left: u128, right: u128) -> u128:
-   │                                         ^^^^ attributes hash: 6162263163478414243
-   │
-   = Base(
-         Numeric(
-             U128,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:42:50
-   │
-42 │     pub def sub_u128(left: u128, right: u128) -> u128:
-   │                                                  ^^^^ attributes hash: 6162263163478414243
-   │
-   = Base(
-         Numeric(
-             U128,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:45:27
-   │
-45 │     pub def sub_u64(left: u64, right: u64) -> u64:
-   │                           ^^^ attributes hash: 9157081425890653064
-   │
-   = Base(
-         Numeric(
-             U64,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:45:39
-   │
-45 │     pub def sub_u64(left: u64, right: u64) -> u64:
-   │                                       ^^^ attributes hash: 9157081425890653064
-   │
-   = Base(
-         Numeric(
-             U64,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:45:47
-   │
-45 │     pub def sub_u64(left: u64, right: u64) -> u64:
-   │                                               ^^^ attributes hash: 9157081425890653064
-   │
-   = Base(
-         Numeric(
-             U64,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:48:27
-   │
-48 │     pub def sub_u32(left: u32, right: u32) -> u32:
-   │                           ^^^ attributes hash: 6988938628910073395
-   │
-   = Base(
-         Numeric(
-             U32,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:48:39
-   │
-48 │     pub def sub_u32(left: u32, right: u32) -> u32:
-   │                                       ^^^ attributes hash: 6988938628910073395
-   │
-   = Base(
-         Numeric(
-             U32,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:48:47
-   │
-48 │     pub def sub_u32(left: u32, right: u32) -> u32:
-   │                                               ^^^ attributes hash: 6988938628910073395
-   │
-   = Base(
-         Numeric(
-             U32,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:51:27
-   │
-51 │     pub def sub_u16(left: u16, right: u16) -> u16:
-   │                           ^^^ attributes hash: 10482216811962112628
-   │
-   = Base(
-         Numeric(
-             U16,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:51:39
-   │
-51 │     pub def sub_u16(left: u16, right: u16) -> u16:
-   │                                       ^^^ attributes hash: 10482216811962112628
-   │
-   = Base(
-         Numeric(
-             U16,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:51:47
-   │
-51 │     pub def sub_u16(left: u16, right: u16) -> u16:
-   │                                               ^^^ attributes hash: 10482216811962112628
-   │
-   = Base(
-         Numeric(
-             U16,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:54:26
-   │
-54 │     pub def sub_u8(left: u8, right: u8) -> u8:
-   │                          ^^ attributes hash: 3165084411644393001
-   │
-   = Base(
-         Numeric(
-             U8,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:54:37
-   │
-54 │     pub def sub_u8(left: u8, right: u8) -> u8:
-   │                                     ^^ attributes hash: 3165084411644393001
-   │
-   = Base(
-         Numeric(
-             U8,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:54:44
-   │
-54 │     pub def sub_u8(left: u8, right: u8) -> u8:
-   │                                            ^^ attributes hash: 3165084411644393001
-   │
-   = Base(
-         Numeric(
-             U8,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:57:28
-   │
-57 │     pub def sub_i256(left: i256, right: i256) -> i256:
-   │                            ^^^^ attributes hash: 11707372354960146103
-   │
-   = Base(
-         Numeric(
-             I256,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:57:41
-   │
-57 │     pub def sub_i256(left: i256, right: i256) -> i256:
-   │                                         ^^^^ attributes hash: 11707372354960146103
-   │
-   = Base(
-         Numeric(
-             I256,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:57:50
-   │
-57 │     pub def sub_i256(left: i256, right: i256) -> i256:
-   │                                                  ^^^^ attributes hash: 11707372354960146103
-   │
-   = Base(
-         Numeric(
-             I256,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:60:28
-   │
-60 │     pub def sub_i128(left: i128, right: i128) -> i128:
-   │                            ^^^^ attributes hash: 1662973713176693737
-   │
-   = Base(
-         Numeric(
-             I128,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:60:41
-   │
-60 │     pub def sub_i128(left: i128, right: i128) -> i128:
-   │                                         ^^^^ attributes hash: 1662973713176693737
-   │
-   = Base(
-         Numeric(
-             I128,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:60:50
-   │
-60 │     pub def sub_i128(left: i128, right: i128) -> i128:
-   │                                                  ^^^^ attributes hash: 1662973713176693737
-   │
-   = Base(
-         Numeric(
-             I128,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:63:27
-   │
-63 │     pub def sub_i64(left: i64, right: i64) -> i64:
-   │                           ^^^ attributes hash: 4061011363657204065
-   │
-   = Base(
-         Numeric(
-             I64,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:63:39
-   │
-63 │     pub def sub_i64(left: i64, right: i64) -> i64:
-   │                                       ^^^ attributes hash: 4061011363657204065
-   │
-   = Base(
-         Numeric(
-             I64,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:63:47
-   │
-63 │     pub def sub_i64(left: i64, right: i64) -> i64:
-   │                                               ^^^ attributes hash: 4061011363657204065
-   │
-   = Base(
-         Numeric(
-             I64,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:66:27
-   │
-66 │     pub def sub_i32(left: i32, right: i32) -> i32:
-   │                           ^^^ attributes hash: 3989691230564290788
+30 │     pub fn add_i32(left: i32, right: i32) -> i32:
+   │                                              ^^^ attributes hash: 3989691230564290788
    │
    = Base(
          Numeric(
@@ -10669,10 +10261,406 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:66:39
+   ┌─ features/checked_arithmetic.fe:33:26
    │
-66 │     pub def sub_i32(left: i32, right: i32) -> i32:
-   │                                       ^^^ attributes hash: 3989691230564290788
+33 │     pub fn add_i16(left: i16, right: i16) -> i16:
+   │                          ^^^ attributes hash: 13881948389070133681
+   │
+   = Base(
+         Numeric(
+             I16,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:33:38
+   │
+33 │     pub fn add_i16(left: i16, right: i16) -> i16:
+   │                                      ^^^ attributes hash: 13881948389070133681
+   │
+   = Base(
+         Numeric(
+             I16,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:33:46
+   │
+33 │     pub fn add_i16(left: i16, right: i16) -> i16:
+   │                                              ^^^ attributes hash: 13881948389070133681
+   │
+   = Base(
+         Numeric(
+             I16,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:36:25
+   │
+36 │     pub fn add_i8(left: i8, right: i8) -> i8:
+   │                         ^^ attributes hash: 15894395880381322973
+   │
+   = Base(
+         Numeric(
+             I8,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:36:36
+   │
+36 │     pub fn add_i8(left: i8, right: i8) -> i8:
+   │                                    ^^ attributes hash: 15894395880381322973
+   │
+   = Base(
+         Numeric(
+             I8,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:36:43
+   │
+36 │     pub fn add_i8(left: i8, right: i8) -> i8:
+   │                                           ^^ attributes hash: 15894395880381322973
+   │
+   = Base(
+         Numeric(
+             I8,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:39:27
+   │
+39 │     pub fn sub_u256(left: u256, right: u256) -> u256:
+   │                           ^^^^ attributes hash: 4293763436908729629
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:39:40
+   │
+39 │     pub fn sub_u256(left: u256, right: u256) -> u256:
+   │                                        ^^^^ attributes hash: 4293763436908729629
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:39:49
+   │
+39 │     pub fn sub_u256(left: u256, right: u256) -> u256:
+   │                                                 ^^^^ attributes hash: 4293763436908729629
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:42:27
+   │
+42 │     pub fn sub_u128(left: u128, right: u128) -> u128:
+   │                           ^^^^ attributes hash: 6162263163478414243
+   │
+   = Base(
+         Numeric(
+             U128,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:42:40
+   │
+42 │     pub fn sub_u128(left: u128, right: u128) -> u128:
+   │                                        ^^^^ attributes hash: 6162263163478414243
+   │
+   = Base(
+         Numeric(
+             U128,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:42:49
+   │
+42 │     pub fn sub_u128(left: u128, right: u128) -> u128:
+   │                                                 ^^^^ attributes hash: 6162263163478414243
+   │
+   = Base(
+         Numeric(
+             U128,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:45:26
+   │
+45 │     pub fn sub_u64(left: u64, right: u64) -> u64:
+   │                          ^^^ attributes hash: 9157081425890653064
+   │
+   = Base(
+         Numeric(
+             U64,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:45:38
+   │
+45 │     pub fn sub_u64(left: u64, right: u64) -> u64:
+   │                                      ^^^ attributes hash: 9157081425890653064
+   │
+   = Base(
+         Numeric(
+             U64,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:45:46
+   │
+45 │     pub fn sub_u64(left: u64, right: u64) -> u64:
+   │                                              ^^^ attributes hash: 9157081425890653064
+   │
+   = Base(
+         Numeric(
+             U64,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:48:26
+   │
+48 │     pub fn sub_u32(left: u32, right: u32) -> u32:
+   │                          ^^^ attributes hash: 6988938628910073395
+   │
+   = Base(
+         Numeric(
+             U32,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:48:38
+   │
+48 │     pub fn sub_u32(left: u32, right: u32) -> u32:
+   │                                      ^^^ attributes hash: 6988938628910073395
+   │
+   = Base(
+         Numeric(
+             U32,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:48:46
+   │
+48 │     pub fn sub_u32(left: u32, right: u32) -> u32:
+   │                                              ^^^ attributes hash: 6988938628910073395
+   │
+   = Base(
+         Numeric(
+             U32,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:51:26
+   │
+51 │     pub fn sub_u16(left: u16, right: u16) -> u16:
+   │                          ^^^ attributes hash: 10482216811962112628
+   │
+   = Base(
+         Numeric(
+             U16,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:51:38
+   │
+51 │     pub fn sub_u16(left: u16, right: u16) -> u16:
+   │                                      ^^^ attributes hash: 10482216811962112628
+   │
+   = Base(
+         Numeric(
+             U16,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:51:46
+   │
+51 │     pub fn sub_u16(left: u16, right: u16) -> u16:
+   │                                              ^^^ attributes hash: 10482216811962112628
+   │
+   = Base(
+         Numeric(
+             U16,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:54:25
+   │
+54 │     pub fn sub_u8(left: u8, right: u8) -> u8:
+   │                         ^^ attributes hash: 3165084411644393001
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:54:36
+   │
+54 │     pub fn sub_u8(left: u8, right: u8) -> u8:
+   │                                    ^^ attributes hash: 3165084411644393001
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:54:43
+   │
+54 │     pub fn sub_u8(left: u8, right: u8) -> u8:
+   │                                           ^^ attributes hash: 3165084411644393001
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:57:27
+   │
+57 │     pub fn sub_i256(left: i256, right: i256) -> i256:
+   │                           ^^^^ attributes hash: 11707372354960146103
+   │
+   = Base(
+         Numeric(
+             I256,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:57:40
+   │
+57 │     pub fn sub_i256(left: i256, right: i256) -> i256:
+   │                                        ^^^^ attributes hash: 11707372354960146103
+   │
+   = Base(
+         Numeric(
+             I256,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:57:49
+   │
+57 │     pub fn sub_i256(left: i256, right: i256) -> i256:
+   │                                                 ^^^^ attributes hash: 11707372354960146103
+   │
+   = Base(
+         Numeric(
+             I256,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:60:27
+   │
+60 │     pub fn sub_i128(left: i128, right: i128) -> i128:
+   │                           ^^^^ attributes hash: 1662973713176693737
+   │
+   = Base(
+         Numeric(
+             I128,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:60:40
+   │
+60 │     pub fn sub_i128(left: i128, right: i128) -> i128:
+   │                                        ^^^^ attributes hash: 1662973713176693737
+   │
+   = Base(
+         Numeric(
+             I128,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:60:49
+   │
+60 │     pub fn sub_i128(left: i128, right: i128) -> i128:
+   │                                                 ^^^^ attributes hash: 1662973713176693737
+   │
+   = Base(
+         Numeric(
+             I128,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:63:26
+   │
+63 │     pub fn sub_i64(left: i64, right: i64) -> i64:
+   │                          ^^^ attributes hash: 4061011363657204065
+   │
+   = Base(
+         Numeric(
+             I64,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:63:38
+   │
+63 │     pub fn sub_i64(left: i64, right: i64) -> i64:
+   │                                      ^^^ attributes hash: 4061011363657204065
+   │
+   = Base(
+         Numeric(
+             I64,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:63:46
+   │
+63 │     pub fn sub_i64(left: i64, right: i64) -> i64:
+   │                                              ^^^ attributes hash: 4061011363657204065
+   │
+   = Base(
+         Numeric(
+             I64,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:66:26
+   │
+66 │     pub fn sub_i32(left: i32, right: i32) -> i32:
+   │                          ^^^ attributes hash: 3989691230564290788
    │
    = Base(
          Numeric(
@@ -10681,10 +10669,10 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:66:47
+   ┌─ features/checked_arithmetic.fe:66:38
    │
-66 │     pub def sub_i32(left: i32, right: i32) -> i32:
-   │                                               ^^^ attributes hash: 3989691230564290788
+66 │     pub fn sub_i32(left: i32, right: i32) -> i32:
+   │                                      ^^^ attributes hash: 3989691230564290788
    │
    = Base(
          Numeric(
@@ -10693,10 +10681,22 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:69:27
+   ┌─ features/checked_arithmetic.fe:66:46
    │
-69 │     pub def sub_i16(left: i16, right: i16) -> i16:
-   │                           ^^^ attributes hash: 13881948389070133681
+66 │     pub fn sub_i32(left: i32, right: i32) -> i32:
+   │                                              ^^^ attributes hash: 3989691230564290788
+   │
+   = Base(
+         Numeric(
+             I32,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:69:26
+   │
+69 │     pub fn sub_i16(left: i16, right: i16) -> i16:
+   │                          ^^^ attributes hash: 13881948389070133681
    │
    = Base(
          Numeric(
@@ -10705,22 +10705,10 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:69:39
+   ┌─ features/checked_arithmetic.fe:69:38
    │
-69 │     pub def sub_i16(left: i16, right: i16) -> i16:
-   │                                       ^^^ attributes hash: 13881948389070133681
-   │
-   = Base(
-         Numeric(
-             I16,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:69:47
-   │
-69 │     pub def sub_i16(left: i16, right: i16) -> i16:
-   │                                               ^^^ attributes hash: 13881948389070133681
+69 │     pub fn sub_i16(left: i16, right: i16) -> i16:
+   │                                      ^^^ attributes hash: 13881948389070133681
    │
    = Base(
          Numeric(
@@ -10729,10 +10717,22 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:72:26
+   ┌─ features/checked_arithmetic.fe:69:46
    │
-72 │     pub def sub_i8(left: i8, right: i8) -> i8:
-   │                          ^^ attributes hash: 15894395880381322973
+69 │     pub fn sub_i16(left: i16, right: i16) -> i16:
+   │                                              ^^^ attributes hash: 13881948389070133681
+   │
+   = Base(
+         Numeric(
+             I16,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:72:25
+   │
+72 │     pub fn sub_i8(left: i8, right: i8) -> i8:
+   │                         ^^ attributes hash: 15894395880381322973
    │
    = Base(
          Numeric(
@@ -10741,22 +10741,10 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:72:37
+   ┌─ features/checked_arithmetic.fe:72:36
    │
-72 │     pub def sub_i8(left: i8, right: i8) -> i8:
-   │                                     ^^ attributes hash: 15894395880381322973
-   │
-   = Base(
-         Numeric(
-             I8,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:72:44
-   │
-72 │     pub def sub_i8(left: i8, right: i8) -> i8:
-   │                                            ^^ attributes hash: 15894395880381322973
+72 │     pub fn sub_i8(left: i8, right: i8) -> i8:
+   │                                    ^^ attributes hash: 15894395880381322973
    │
    = Base(
          Numeric(
@@ -10765,10 +10753,22 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:75:28
+   ┌─ features/checked_arithmetic.fe:72:43
    │
-75 │     pub def div_u256(left: u256, right: u256) -> u256:
-   │                            ^^^^ attributes hash: 4293763436908729629
+72 │     pub fn sub_i8(left: i8, right: i8) -> i8:
+   │                                           ^^ attributes hash: 15894395880381322973
+   │
+   = Base(
+         Numeric(
+             I8,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:75:27
+   │
+75 │     pub fn div_u256(left: u256, right: u256) -> u256:
+   │                           ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -10777,22 +10777,10 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:75:41
+   ┌─ features/checked_arithmetic.fe:75:40
    │
-75 │     pub def div_u256(left: u256, right: u256) -> u256:
-   │                                         ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:75:50
-   │
-75 │     pub def div_u256(left: u256, right: u256) -> u256:
-   │                                                  ^^^^ attributes hash: 4293763436908729629
+75 │     pub fn div_u256(left: u256, right: u256) -> u256:
+   │                                        ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -10801,10 +10789,22 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:78:28
+   ┌─ features/checked_arithmetic.fe:75:49
    │
-78 │     pub def div_u128(left: u128, right: u128) -> u128:
-   │                            ^^^^ attributes hash: 6162263163478414243
+75 │     pub fn div_u256(left: u256, right: u256) -> u256:
+   │                                                 ^^^^ attributes hash: 4293763436908729629
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:78:27
+   │
+78 │     pub fn div_u128(left: u128, right: u128) -> u128:
+   │                           ^^^^ attributes hash: 6162263163478414243
    │
    = Base(
          Numeric(
@@ -10813,22 +10813,10 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:78:41
+   ┌─ features/checked_arithmetic.fe:78:40
    │
-78 │     pub def div_u128(left: u128, right: u128) -> u128:
-   │                                         ^^^^ attributes hash: 6162263163478414243
-   │
-   = Base(
-         Numeric(
-             U128,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:78:50
-   │
-78 │     pub def div_u128(left: u128, right: u128) -> u128:
-   │                                                  ^^^^ attributes hash: 6162263163478414243
+78 │     pub fn div_u128(left: u128, right: u128) -> u128:
+   │                                        ^^^^ attributes hash: 6162263163478414243
    │
    = Base(
          Numeric(
@@ -10837,10 +10825,22 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:81:27
+   ┌─ features/checked_arithmetic.fe:78:49
    │
-81 │     pub def div_u64(left: u64, right: u64) -> u64:
-   │                           ^^^ attributes hash: 9157081425890653064
+78 │     pub fn div_u128(left: u128, right: u128) -> u128:
+   │                                                 ^^^^ attributes hash: 6162263163478414243
+   │
+   = Base(
+         Numeric(
+             U128,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:81:26
+   │
+81 │     pub fn div_u64(left: u64, right: u64) -> u64:
+   │                          ^^^ attributes hash: 9157081425890653064
    │
    = Base(
          Numeric(
@@ -10849,22 +10849,10 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:81:39
+   ┌─ features/checked_arithmetic.fe:81:38
    │
-81 │     pub def div_u64(left: u64, right: u64) -> u64:
-   │                                       ^^^ attributes hash: 9157081425890653064
-   │
-   = Base(
-         Numeric(
-             U64,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:81:47
-   │
-81 │     pub def div_u64(left: u64, right: u64) -> u64:
-   │                                               ^^^ attributes hash: 9157081425890653064
+81 │     pub fn div_u64(left: u64, right: u64) -> u64:
+   │                                      ^^^ attributes hash: 9157081425890653064
    │
    = Base(
          Numeric(
@@ -10873,10 +10861,22 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:84:27
+   ┌─ features/checked_arithmetic.fe:81:46
    │
-84 │     pub def div_u32(left: u32, right: u32) -> u32:
-   │                           ^^^ attributes hash: 6988938628910073395
+81 │     pub fn div_u64(left: u64, right: u64) -> u64:
+   │                                              ^^^ attributes hash: 9157081425890653064
+   │
+   = Base(
+         Numeric(
+             U64,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:84:26
+   │
+84 │     pub fn div_u32(left: u32, right: u32) -> u32:
+   │                          ^^^ attributes hash: 6988938628910073395
    │
    = Base(
          Numeric(
@@ -10885,22 +10885,10 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:84:39
+   ┌─ features/checked_arithmetic.fe:84:38
    │
-84 │     pub def div_u32(left: u32, right: u32) -> u32:
-   │                                       ^^^ attributes hash: 6988938628910073395
-   │
-   = Base(
-         Numeric(
-             U32,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:84:47
-   │
-84 │     pub def div_u32(left: u32, right: u32) -> u32:
-   │                                               ^^^ attributes hash: 6988938628910073395
+84 │     pub fn div_u32(left: u32, right: u32) -> u32:
+   │                                      ^^^ attributes hash: 6988938628910073395
    │
    = Base(
          Numeric(
@@ -10909,10 +10897,22 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:87:27
+   ┌─ features/checked_arithmetic.fe:84:46
    │
-87 │     pub def div_u16(left: u16, right: u16) -> u16:
-   │                           ^^^ attributes hash: 10482216811962112628
+84 │     pub fn div_u32(left: u32, right: u32) -> u32:
+   │                                              ^^^ attributes hash: 6988938628910073395
+   │
+   = Base(
+         Numeric(
+             U32,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:87:26
+   │
+87 │     pub fn div_u16(left: u16, right: u16) -> u16:
+   │                          ^^^ attributes hash: 10482216811962112628
    │
    = Base(
          Numeric(
@@ -10921,22 +10921,10 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:87:39
+   ┌─ features/checked_arithmetic.fe:87:38
    │
-87 │     pub def div_u16(left: u16, right: u16) -> u16:
-   │                                       ^^^ attributes hash: 10482216811962112628
-   │
-   = Base(
-         Numeric(
-             U16,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:87:47
-   │
-87 │     pub def div_u16(left: u16, right: u16) -> u16:
-   │                                               ^^^ attributes hash: 10482216811962112628
+87 │     pub fn div_u16(left: u16, right: u16) -> u16:
+   │                                      ^^^ attributes hash: 10482216811962112628
    │
    = Base(
          Numeric(
@@ -10945,10 +10933,22 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:90:26
+   ┌─ features/checked_arithmetic.fe:87:46
    │
-90 │     pub def div_u8(left: u8, right: u8) -> u8:
-   │                          ^^ attributes hash: 3165084411644393001
+87 │     pub fn div_u16(left: u16, right: u16) -> u16:
+   │                                              ^^^ attributes hash: 10482216811962112628
+   │
+   = Base(
+         Numeric(
+             U16,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:90:25
+   │
+90 │     pub fn div_u8(left: u8, right: u8) -> u8:
+   │                         ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -10957,22 +10957,10 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:90:37
+   ┌─ features/checked_arithmetic.fe:90:36
    │
-90 │     pub def div_u8(left: u8, right: u8) -> u8:
-   │                                     ^^ attributes hash: 3165084411644393001
-   │
-   = Base(
-         Numeric(
-             U8,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:90:44
-   │
-90 │     pub def div_u8(left: u8, right: u8) -> u8:
-   │                                            ^^ attributes hash: 3165084411644393001
+90 │     pub fn div_u8(left: u8, right: u8) -> u8:
+   │                                    ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -10981,10 +10969,22 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:93:28
+   ┌─ features/checked_arithmetic.fe:90:43
    │
-93 │     pub def div_i256(left: i256, right: i256) -> i256:
-   │                            ^^^^ attributes hash: 11707372354960146103
+90 │     pub fn div_u8(left: u8, right: u8) -> u8:
+   │                                           ^^ attributes hash: 3165084411644393001
+   │
+   = Base(
+         Numeric(
+             U8,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:93:27
+   │
+93 │     pub fn div_i256(left: i256, right: i256) -> i256:
+   │                           ^^^^ attributes hash: 11707372354960146103
    │
    = Base(
          Numeric(
@@ -10993,22 +10993,10 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:93:41
+   ┌─ features/checked_arithmetic.fe:93:40
    │
-93 │     pub def div_i256(left: i256, right: i256) -> i256:
-   │                                         ^^^^ attributes hash: 11707372354960146103
-   │
-   = Base(
-         Numeric(
-             I256,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:93:50
-   │
-93 │     pub def div_i256(left: i256, right: i256) -> i256:
-   │                                                  ^^^^ attributes hash: 11707372354960146103
+93 │     pub fn div_i256(left: i256, right: i256) -> i256:
+   │                                        ^^^^ attributes hash: 11707372354960146103
    │
    = Base(
          Numeric(
@@ -11017,10 +11005,22 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:96:28
+   ┌─ features/checked_arithmetic.fe:93:49
    │
-96 │     pub def div_i128(left: i128, right: i128) -> i128:
-   │                            ^^^^ attributes hash: 1662973713176693737
+93 │     pub fn div_i256(left: i256, right: i256) -> i256:
+   │                                                 ^^^^ attributes hash: 11707372354960146103
+   │
+   = Base(
+         Numeric(
+             I256,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:96:27
+   │
+96 │     pub fn div_i128(left: i128, right: i128) -> i128:
+   │                           ^^^^ attributes hash: 1662973713176693737
    │
    = Base(
          Numeric(
@@ -11029,22 +11029,10 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:96:41
+   ┌─ features/checked_arithmetic.fe:96:40
    │
-96 │     pub def div_i128(left: i128, right: i128) -> i128:
-   │                                         ^^^^ attributes hash: 1662973713176693737
-   │
-   = Base(
-         Numeric(
-             I128,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:96:50
-   │
-96 │     pub def div_i128(left: i128, right: i128) -> i128:
-   │                                                  ^^^^ attributes hash: 1662973713176693737
+96 │     pub fn div_i128(left: i128, right: i128) -> i128:
+   │                                        ^^^^ attributes hash: 1662973713176693737
    │
    = Base(
          Numeric(
@@ -11053,10 +11041,22 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:99:27
+   ┌─ features/checked_arithmetic.fe:96:49
    │
-99 │     pub def div_i64(left: i64, right: i64) -> i64:
-   │                           ^^^ attributes hash: 4061011363657204065
+96 │     pub fn div_i128(left: i128, right: i128) -> i128:
+   │                                                 ^^^^ attributes hash: 1662973713176693737
+   │
+   = Base(
+         Numeric(
+             I128,
+         ),
+     )
+
+note: 
+   ┌─ features/checked_arithmetic.fe:99:26
+   │
+99 │     pub fn div_i64(left: i64, right: i64) -> i64:
+   │                          ^^^ attributes hash: 4061011363657204065
    │
    = Base(
          Numeric(
@@ -11065,22 +11065,10 @@ note:
      )
 
 note: 
-   ┌─ features/checked_arithmetic.fe:99:39
+   ┌─ features/checked_arithmetic.fe:99:38
    │
-99 │     pub def div_i64(left: i64, right: i64) -> i64:
-   │                                       ^^^ attributes hash: 4061011363657204065
-   │
-   = Base(
-         Numeric(
-             I64,
-         ),
-     )
-
-note: 
-   ┌─ features/checked_arithmetic.fe:99:47
-   │
-99 │     pub def div_i64(left: i64, right: i64) -> i64:
-   │                                               ^^^ attributes hash: 4061011363657204065
+99 │     pub fn div_i64(left: i64, right: i64) -> i64:
+   │                                      ^^^ attributes hash: 4061011363657204065
    │
    = Base(
          Numeric(
@@ -11089,10 +11077,22 @@ note:
      )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:102:27
+   ┌─ features/checked_arithmetic.fe:99:46
+   │
+99 │     pub fn div_i64(left: i64, right: i64) -> i64:
+   │                                              ^^^ attributes hash: 4061011363657204065
+   │
+   = Base(
+         Numeric(
+             I64,
+         ),
+     )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:102:26
     │
-102 │     pub def div_i32(left: i32, right: i32) -> i32:
-    │                           ^^^ attributes hash: 3989691230564290788
+102 │     pub fn div_i32(left: i32, right: i32) -> i32:
+    │                          ^^^ attributes hash: 3989691230564290788
     │
     = Base(
           Numeric(
@@ -11101,22 +11101,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:102:39
+    ┌─ features/checked_arithmetic.fe:102:38
     │
-102 │     pub def div_i32(left: i32, right: i32) -> i32:
-    │                                       ^^^ attributes hash: 3989691230564290788
-    │
-    = Base(
-          Numeric(
-              I32,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:102:47
-    │
-102 │     pub def div_i32(left: i32, right: i32) -> i32:
-    │                                               ^^^ attributes hash: 3989691230564290788
+102 │     pub fn div_i32(left: i32, right: i32) -> i32:
+    │                                      ^^^ attributes hash: 3989691230564290788
     │
     = Base(
           Numeric(
@@ -11125,10 +11113,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:105:27
+    ┌─ features/checked_arithmetic.fe:102:46
     │
-105 │     pub def div_i16(left: i16, right: i16) -> i16:
-    │                           ^^^ attributes hash: 13881948389070133681
+102 │     pub fn div_i32(left: i32, right: i32) -> i32:
+    │                                              ^^^ attributes hash: 3989691230564290788
+    │
+    = Base(
+          Numeric(
+              I32,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:105:26
+    │
+105 │     pub fn div_i16(left: i16, right: i16) -> i16:
+    │                          ^^^ attributes hash: 13881948389070133681
     │
     = Base(
           Numeric(
@@ -11137,22 +11137,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:105:39
+    ┌─ features/checked_arithmetic.fe:105:38
     │
-105 │     pub def div_i16(left: i16, right: i16) -> i16:
-    │                                       ^^^ attributes hash: 13881948389070133681
-    │
-    = Base(
-          Numeric(
-              I16,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:105:47
-    │
-105 │     pub def div_i16(left: i16, right: i16) -> i16:
-    │                                               ^^^ attributes hash: 13881948389070133681
+105 │     pub fn div_i16(left: i16, right: i16) -> i16:
+    │                                      ^^^ attributes hash: 13881948389070133681
     │
     = Base(
           Numeric(
@@ -11161,10 +11149,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:108:26
+    ┌─ features/checked_arithmetic.fe:105:46
     │
-108 │     pub def div_i8(left: i8, right: i8) -> i8:
-    │                          ^^ attributes hash: 15894395880381322973
+105 │     pub fn div_i16(left: i16, right: i16) -> i16:
+    │                                              ^^^ attributes hash: 13881948389070133681
+    │
+    = Base(
+          Numeric(
+              I16,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:108:25
+    │
+108 │     pub fn div_i8(left: i8, right: i8) -> i8:
+    │                         ^^ attributes hash: 15894395880381322973
     │
     = Base(
           Numeric(
@@ -11173,22 +11173,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:108:37
+    ┌─ features/checked_arithmetic.fe:108:36
     │
-108 │     pub def div_i8(left: i8, right: i8) -> i8:
-    │                                     ^^ attributes hash: 15894395880381322973
-    │
-    = Base(
-          Numeric(
-              I8,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:108:44
-    │
-108 │     pub def div_i8(left: i8, right: i8) -> i8:
-    │                                            ^^ attributes hash: 15894395880381322973
+108 │     pub fn div_i8(left: i8, right: i8) -> i8:
+    │                                    ^^ attributes hash: 15894395880381322973
     │
     = Base(
           Numeric(
@@ -11197,10 +11185,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:111:28
+    ┌─ features/checked_arithmetic.fe:108:43
     │
-111 │     pub def mul_u256(left: u256, right: u256) -> u256:
-    │                            ^^^^ attributes hash: 4293763436908729629
+108 │     pub fn div_i8(left: i8, right: i8) -> i8:
+    │                                           ^^ attributes hash: 15894395880381322973
+    │
+    = Base(
+          Numeric(
+              I8,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:111:27
+    │
+111 │     pub fn mul_u256(left: u256, right: u256) -> u256:
+    │                           ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
           Numeric(
@@ -11209,22 +11209,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:111:41
+    ┌─ features/checked_arithmetic.fe:111:40
     │
-111 │     pub def mul_u256(left: u256, right: u256) -> u256:
-    │                                         ^^^^ attributes hash: 4293763436908729629
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:111:50
-    │
-111 │     pub def mul_u256(left: u256, right: u256) -> u256:
-    │                                                  ^^^^ attributes hash: 4293763436908729629
+111 │     pub fn mul_u256(left: u256, right: u256) -> u256:
+    │                                        ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
           Numeric(
@@ -11233,10 +11221,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:114:28
+    ┌─ features/checked_arithmetic.fe:111:49
     │
-114 │     pub def mul_u128(left: u128, right: u128) -> u128:
-    │                            ^^^^ attributes hash: 6162263163478414243
+111 │     pub fn mul_u256(left: u256, right: u256) -> u256:
+    │                                                 ^^^^ attributes hash: 4293763436908729629
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:114:27
+    │
+114 │     pub fn mul_u128(left: u128, right: u128) -> u128:
+    │                           ^^^^ attributes hash: 6162263163478414243
     │
     = Base(
           Numeric(
@@ -11245,22 +11245,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:114:41
+    ┌─ features/checked_arithmetic.fe:114:40
     │
-114 │     pub def mul_u128(left: u128, right: u128) -> u128:
-    │                                         ^^^^ attributes hash: 6162263163478414243
-    │
-    = Base(
-          Numeric(
-              U128,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:114:50
-    │
-114 │     pub def mul_u128(left: u128, right: u128) -> u128:
-    │                                                  ^^^^ attributes hash: 6162263163478414243
+114 │     pub fn mul_u128(left: u128, right: u128) -> u128:
+    │                                        ^^^^ attributes hash: 6162263163478414243
     │
     = Base(
           Numeric(
@@ -11269,10 +11257,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:117:27
+    ┌─ features/checked_arithmetic.fe:114:49
     │
-117 │     pub def mul_u64(left: u64, right: u64) -> u64:
-    │                           ^^^ attributes hash: 9157081425890653064
+114 │     pub fn mul_u128(left: u128, right: u128) -> u128:
+    │                                                 ^^^^ attributes hash: 6162263163478414243
+    │
+    = Base(
+          Numeric(
+              U128,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:117:26
+    │
+117 │     pub fn mul_u64(left: u64, right: u64) -> u64:
+    │                          ^^^ attributes hash: 9157081425890653064
     │
     = Base(
           Numeric(
@@ -11281,22 +11281,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:117:39
+    ┌─ features/checked_arithmetic.fe:117:38
     │
-117 │     pub def mul_u64(left: u64, right: u64) -> u64:
-    │                                       ^^^ attributes hash: 9157081425890653064
-    │
-    = Base(
-          Numeric(
-              U64,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:117:47
-    │
-117 │     pub def mul_u64(left: u64, right: u64) -> u64:
-    │                                               ^^^ attributes hash: 9157081425890653064
+117 │     pub fn mul_u64(left: u64, right: u64) -> u64:
+    │                                      ^^^ attributes hash: 9157081425890653064
     │
     = Base(
           Numeric(
@@ -11305,10 +11293,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:120:27
+    ┌─ features/checked_arithmetic.fe:117:46
     │
-120 │     pub def mul_u32(left: u32, right: u32) -> u32:
-    │                           ^^^ attributes hash: 6988938628910073395
+117 │     pub fn mul_u64(left: u64, right: u64) -> u64:
+    │                                              ^^^ attributes hash: 9157081425890653064
+    │
+    = Base(
+          Numeric(
+              U64,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:120:26
+    │
+120 │     pub fn mul_u32(left: u32, right: u32) -> u32:
+    │                          ^^^ attributes hash: 6988938628910073395
     │
     = Base(
           Numeric(
@@ -11317,22 +11317,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:120:39
+    ┌─ features/checked_arithmetic.fe:120:38
     │
-120 │     pub def mul_u32(left: u32, right: u32) -> u32:
-    │                                       ^^^ attributes hash: 6988938628910073395
-    │
-    = Base(
-          Numeric(
-              U32,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:120:47
-    │
-120 │     pub def mul_u32(left: u32, right: u32) -> u32:
-    │                                               ^^^ attributes hash: 6988938628910073395
+120 │     pub fn mul_u32(left: u32, right: u32) -> u32:
+    │                                      ^^^ attributes hash: 6988938628910073395
     │
     = Base(
           Numeric(
@@ -11341,10 +11329,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:123:27
+    ┌─ features/checked_arithmetic.fe:120:46
     │
-123 │     pub def mul_u16(left: u16, right: u16) -> u16:
-    │                           ^^^ attributes hash: 10482216811962112628
+120 │     pub fn mul_u32(left: u32, right: u32) -> u32:
+    │                                              ^^^ attributes hash: 6988938628910073395
+    │
+    = Base(
+          Numeric(
+              U32,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:123:26
+    │
+123 │     pub fn mul_u16(left: u16, right: u16) -> u16:
+    │                          ^^^ attributes hash: 10482216811962112628
     │
     = Base(
           Numeric(
@@ -11353,22 +11353,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:123:39
+    ┌─ features/checked_arithmetic.fe:123:38
     │
-123 │     pub def mul_u16(left: u16, right: u16) -> u16:
-    │                                       ^^^ attributes hash: 10482216811962112628
-    │
-    = Base(
-          Numeric(
-              U16,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:123:47
-    │
-123 │     pub def mul_u16(left: u16, right: u16) -> u16:
-    │                                               ^^^ attributes hash: 10482216811962112628
+123 │     pub fn mul_u16(left: u16, right: u16) -> u16:
+    │                                      ^^^ attributes hash: 10482216811962112628
     │
     = Base(
           Numeric(
@@ -11377,10 +11365,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:126:26
+    ┌─ features/checked_arithmetic.fe:123:46
     │
-126 │     pub def mul_u8(left: u8, right: u8) -> u8:
-    │                          ^^ attributes hash: 3165084411644393001
+123 │     pub fn mul_u16(left: u16, right: u16) -> u16:
+    │                                              ^^^ attributes hash: 10482216811962112628
+    │
+    = Base(
+          Numeric(
+              U16,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:126:25
+    │
+126 │     pub fn mul_u8(left: u8, right: u8) -> u8:
+    │                         ^^ attributes hash: 3165084411644393001
     │
     = Base(
           Numeric(
@@ -11389,22 +11389,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:126:37
+    ┌─ features/checked_arithmetic.fe:126:36
     │
-126 │     pub def mul_u8(left: u8, right: u8) -> u8:
-    │                                     ^^ attributes hash: 3165084411644393001
-    │
-    = Base(
-          Numeric(
-              U8,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:126:44
-    │
-126 │     pub def mul_u8(left: u8, right: u8) -> u8:
-    │                                            ^^ attributes hash: 3165084411644393001
+126 │     pub fn mul_u8(left: u8, right: u8) -> u8:
+    │                                    ^^ attributes hash: 3165084411644393001
     │
     = Base(
           Numeric(
@@ -11413,10 +11401,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:129:28
+    ┌─ features/checked_arithmetic.fe:126:43
     │
-129 │     pub def mul_i256(left: i256, right: i256) -> i256:
-    │                            ^^^^ attributes hash: 11707372354960146103
+126 │     pub fn mul_u8(left: u8, right: u8) -> u8:
+    │                                           ^^ attributes hash: 3165084411644393001
+    │
+    = Base(
+          Numeric(
+              U8,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:129:27
+    │
+129 │     pub fn mul_i256(left: i256, right: i256) -> i256:
+    │                           ^^^^ attributes hash: 11707372354960146103
     │
     = Base(
           Numeric(
@@ -11425,22 +11425,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:129:41
+    ┌─ features/checked_arithmetic.fe:129:40
     │
-129 │     pub def mul_i256(left: i256, right: i256) -> i256:
-    │                                         ^^^^ attributes hash: 11707372354960146103
-    │
-    = Base(
-          Numeric(
-              I256,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:129:50
-    │
-129 │     pub def mul_i256(left: i256, right: i256) -> i256:
-    │                                                  ^^^^ attributes hash: 11707372354960146103
+129 │     pub fn mul_i256(left: i256, right: i256) -> i256:
+    │                                        ^^^^ attributes hash: 11707372354960146103
     │
     = Base(
           Numeric(
@@ -11449,406 +11437,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:132:28
+    ┌─ features/checked_arithmetic.fe:129:49
     │
-132 │     pub def mul_i128(left: i128, right: i128) -> i128:
-    │                            ^^^^ attributes hash: 1662973713176693737
-    │
-    = Base(
-          Numeric(
-              I128,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:132:41
-    │
-132 │     pub def mul_i128(left: i128, right: i128) -> i128:
-    │                                         ^^^^ attributes hash: 1662973713176693737
-    │
-    = Base(
-          Numeric(
-              I128,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:132:50
-    │
-132 │     pub def mul_i128(left: i128, right: i128) -> i128:
-    │                                                  ^^^^ attributes hash: 1662973713176693737
-    │
-    = Base(
-          Numeric(
-              I128,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:135:27
-    │
-135 │     pub def mul_i64(left: i64, right: i64) -> i64:
-    │                           ^^^ attributes hash: 4061011363657204065
-    │
-    = Base(
-          Numeric(
-              I64,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:135:39
-    │
-135 │     pub def mul_i64(left: i64, right: i64) -> i64:
-    │                                       ^^^ attributes hash: 4061011363657204065
-    │
-    = Base(
-          Numeric(
-              I64,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:135:47
-    │
-135 │     pub def mul_i64(left: i64, right: i64) -> i64:
-    │                                               ^^^ attributes hash: 4061011363657204065
-    │
-    = Base(
-          Numeric(
-              I64,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:138:27
-    │
-138 │     pub def mul_i32(left: i32, right: i32) -> i32:
-    │                           ^^^ attributes hash: 3989691230564290788
-    │
-    = Base(
-          Numeric(
-              I32,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:138:39
-    │
-138 │     pub def mul_i32(left: i32, right: i32) -> i32:
-    │                                       ^^^ attributes hash: 3989691230564290788
-    │
-    = Base(
-          Numeric(
-              I32,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:138:47
-    │
-138 │     pub def mul_i32(left: i32, right: i32) -> i32:
-    │                                               ^^^ attributes hash: 3989691230564290788
-    │
-    = Base(
-          Numeric(
-              I32,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:141:27
-    │
-141 │     pub def mul_i16(left: i16, right: i16) -> i16:
-    │                           ^^^ attributes hash: 13881948389070133681
-    │
-    = Base(
-          Numeric(
-              I16,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:141:39
-    │
-141 │     pub def mul_i16(left: i16, right: i16) -> i16:
-    │                                       ^^^ attributes hash: 13881948389070133681
-    │
-    = Base(
-          Numeric(
-              I16,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:141:47
-    │
-141 │     pub def mul_i16(left: i16, right: i16) -> i16:
-    │                                               ^^^ attributes hash: 13881948389070133681
-    │
-    = Base(
-          Numeric(
-              I16,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:144:26
-    │
-144 │     pub def mul_i8(left: i8, right: i8) -> i8:
-    │                          ^^ attributes hash: 15894395880381322973
-    │
-    = Base(
-          Numeric(
-              I8,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:144:37
-    │
-144 │     pub def mul_i8(left: i8, right: i8) -> i8:
-    │                                     ^^ attributes hash: 15894395880381322973
-    │
-    = Base(
-          Numeric(
-              I8,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:144:44
-    │
-144 │     pub def mul_i8(left: i8, right: i8) -> i8:
-    │                                            ^^ attributes hash: 15894395880381322973
-    │
-    = Base(
-          Numeric(
-              I8,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:147:28
-    │
-147 │     pub def mod_u256(left: u256, right: u256) -> u256:
-    │                            ^^^^ attributes hash: 4293763436908729629
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:147:41
-    │
-147 │     pub def mod_u256(left: u256, right: u256) -> u256:
-    │                                         ^^^^ attributes hash: 4293763436908729629
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:147:50
-    │
-147 │     pub def mod_u256(left: u256, right: u256) -> u256:
-    │                                                  ^^^^ attributes hash: 4293763436908729629
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:150:28
-    │
-150 │     pub def mod_u128(left: u128, right: u128) -> u128:
-    │                            ^^^^ attributes hash: 6162263163478414243
-    │
-    = Base(
-          Numeric(
-              U128,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:150:41
-    │
-150 │     pub def mod_u128(left: u128, right: u128) -> u128:
-    │                                         ^^^^ attributes hash: 6162263163478414243
-    │
-    = Base(
-          Numeric(
-              U128,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:150:50
-    │
-150 │     pub def mod_u128(left: u128, right: u128) -> u128:
-    │                                                  ^^^^ attributes hash: 6162263163478414243
-    │
-    = Base(
-          Numeric(
-              U128,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:153:27
-    │
-153 │     pub def mod_u64(left: u64, right: u64) -> u64:
-    │                           ^^^ attributes hash: 9157081425890653064
-    │
-    = Base(
-          Numeric(
-              U64,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:153:39
-    │
-153 │     pub def mod_u64(left: u64, right: u64) -> u64:
-    │                                       ^^^ attributes hash: 9157081425890653064
-    │
-    = Base(
-          Numeric(
-              U64,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:153:47
-    │
-153 │     pub def mod_u64(left: u64, right: u64) -> u64:
-    │                                               ^^^ attributes hash: 9157081425890653064
-    │
-    = Base(
-          Numeric(
-              U64,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:156:27
-    │
-156 │     pub def mod_u32(left: u32, right: u32) -> u32:
-    │                           ^^^ attributes hash: 6988938628910073395
-    │
-    = Base(
-          Numeric(
-              U32,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:156:39
-    │
-156 │     pub def mod_u32(left: u32, right: u32) -> u32:
-    │                                       ^^^ attributes hash: 6988938628910073395
-    │
-    = Base(
-          Numeric(
-              U32,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:156:47
-    │
-156 │     pub def mod_u32(left: u32, right: u32) -> u32:
-    │                                               ^^^ attributes hash: 6988938628910073395
-    │
-    = Base(
-          Numeric(
-              U32,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:159:27
-    │
-159 │     pub def mod_u16(left: u16, right: u16) -> u16:
-    │                           ^^^ attributes hash: 10482216811962112628
-    │
-    = Base(
-          Numeric(
-              U16,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:159:39
-    │
-159 │     pub def mod_u16(left: u16, right: u16) -> u16:
-    │                                       ^^^ attributes hash: 10482216811962112628
-    │
-    = Base(
-          Numeric(
-              U16,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:159:47
-    │
-159 │     pub def mod_u16(left: u16, right: u16) -> u16:
-    │                                               ^^^ attributes hash: 10482216811962112628
-    │
-    = Base(
-          Numeric(
-              U16,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:162:26
-    │
-162 │     pub def mod_u8(left: u8, right: u8) -> u8:
-    │                          ^^ attributes hash: 3165084411644393001
-    │
-    = Base(
-          Numeric(
-              U8,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:162:37
-    │
-162 │     pub def mod_u8(left: u8, right: u8) -> u8:
-    │                                     ^^ attributes hash: 3165084411644393001
-    │
-    = Base(
-          Numeric(
-              U8,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:162:44
-    │
-162 │     pub def mod_u8(left: u8, right: u8) -> u8:
-    │                                            ^^ attributes hash: 3165084411644393001
-    │
-    = Base(
-          Numeric(
-              U8,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:165:28
-    │
-165 │     pub def mod_i256(left: i256, right: i256) -> i256:
-    │                            ^^^^ attributes hash: 11707372354960146103
+129 │     pub fn mul_i256(left: i256, right: i256) -> i256:
+    │                                                 ^^^^ attributes hash: 11707372354960146103
     │
     = Base(
           Numeric(
@@ -11857,34 +11449,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:165:41
+    ┌─ features/checked_arithmetic.fe:132:27
     │
-165 │     pub def mod_i256(left: i256, right: i256) -> i256:
-    │                                         ^^^^ attributes hash: 11707372354960146103
-    │
-    = Base(
-          Numeric(
-              I256,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:165:50
-    │
-165 │     pub def mod_i256(left: i256, right: i256) -> i256:
-    │                                                  ^^^^ attributes hash: 11707372354960146103
-    │
-    = Base(
-          Numeric(
-              I256,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:168:28
-    │
-168 │     pub def mod_i128(left: i128, right: i128) -> i128:
-    │                            ^^^^ attributes hash: 1662973713176693737
+132 │     pub fn mul_i128(left: i128, right: i128) -> i128:
+    │                           ^^^^ attributes hash: 1662973713176693737
     │
     = Base(
           Numeric(
@@ -11893,22 +11461,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:168:41
+    ┌─ features/checked_arithmetic.fe:132:40
     │
-168 │     pub def mod_i128(left: i128, right: i128) -> i128:
-    │                                         ^^^^ attributes hash: 1662973713176693737
-    │
-    = Base(
-          Numeric(
-              I128,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:168:50
-    │
-168 │     pub def mod_i128(left: i128, right: i128) -> i128:
-    │                                                  ^^^^ attributes hash: 1662973713176693737
+132 │     pub fn mul_i128(left: i128, right: i128) -> i128:
+    │                                        ^^^^ attributes hash: 1662973713176693737
     │
     = Base(
           Numeric(
@@ -11917,10 +11473,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:171:27
+    ┌─ features/checked_arithmetic.fe:132:49
     │
-171 │     pub def mod_i64(left: i64, right: i64) -> i64:
-    │                           ^^^ attributes hash: 4061011363657204065
+132 │     pub fn mul_i128(left: i128, right: i128) -> i128:
+    │                                                 ^^^^ attributes hash: 1662973713176693737
+    │
+    = Base(
+          Numeric(
+              I128,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:135:26
+    │
+135 │     pub fn mul_i64(left: i64, right: i64) -> i64:
+    │                          ^^^ attributes hash: 4061011363657204065
     │
     = Base(
           Numeric(
@@ -11929,22 +11497,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:171:39
+    ┌─ features/checked_arithmetic.fe:135:38
     │
-171 │     pub def mod_i64(left: i64, right: i64) -> i64:
-    │                                       ^^^ attributes hash: 4061011363657204065
-    │
-    = Base(
-          Numeric(
-              I64,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:171:47
-    │
-171 │     pub def mod_i64(left: i64, right: i64) -> i64:
-    │                                               ^^^ attributes hash: 4061011363657204065
+135 │     pub fn mul_i64(left: i64, right: i64) -> i64:
+    │                                      ^^^ attributes hash: 4061011363657204065
     │
     = Base(
           Numeric(
@@ -11953,10 +11509,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:174:27
+    ┌─ features/checked_arithmetic.fe:135:46
     │
-174 │     pub def mod_i32(left: i32, right: i32) -> i32:
-    │                           ^^^ attributes hash: 3989691230564290788
+135 │     pub fn mul_i64(left: i64, right: i64) -> i64:
+    │                                              ^^^ attributes hash: 4061011363657204065
+    │
+    = Base(
+          Numeric(
+              I64,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:138:26
+    │
+138 │     pub fn mul_i32(left: i32, right: i32) -> i32:
+    │                          ^^^ attributes hash: 3989691230564290788
     │
     = Base(
           Numeric(
@@ -11965,22 +11533,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:174:39
+    ┌─ features/checked_arithmetic.fe:138:38
     │
-174 │     pub def mod_i32(left: i32, right: i32) -> i32:
-    │                                       ^^^ attributes hash: 3989691230564290788
-    │
-    = Base(
-          Numeric(
-              I32,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:174:47
-    │
-174 │     pub def mod_i32(left: i32, right: i32) -> i32:
-    │                                               ^^^ attributes hash: 3989691230564290788
+138 │     pub fn mul_i32(left: i32, right: i32) -> i32:
+    │                                      ^^^ attributes hash: 3989691230564290788
     │
     = Base(
           Numeric(
@@ -11989,10 +11545,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:177:27
+    ┌─ features/checked_arithmetic.fe:138:46
     │
-177 │     pub def mod_i16(left: i16, right: i16) -> i16:
-    │                           ^^^ attributes hash: 13881948389070133681
+138 │     pub fn mul_i32(left: i32, right: i32) -> i32:
+    │                                              ^^^ attributes hash: 3989691230564290788
+    │
+    = Base(
+          Numeric(
+              I32,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:141:26
+    │
+141 │     pub fn mul_i16(left: i16, right: i16) -> i16:
+    │                          ^^^ attributes hash: 13881948389070133681
     │
     = Base(
           Numeric(
@@ -12001,22 +11569,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:177:39
+    ┌─ features/checked_arithmetic.fe:141:38
     │
-177 │     pub def mod_i16(left: i16, right: i16) -> i16:
-    │                                       ^^^ attributes hash: 13881948389070133681
-    │
-    = Base(
-          Numeric(
-              I16,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:177:47
-    │
-177 │     pub def mod_i16(left: i16, right: i16) -> i16:
-    │                                               ^^^ attributes hash: 13881948389070133681
+141 │     pub fn mul_i16(left: i16, right: i16) -> i16:
+    │                                      ^^^ attributes hash: 13881948389070133681
     │
     = Base(
           Numeric(
@@ -12025,10 +11581,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:180:26
+    ┌─ features/checked_arithmetic.fe:141:46
     │
-180 │     pub def mod_i8(left: i8, right: i8) -> i8:
-    │                          ^^ attributes hash: 15894395880381322973
+141 │     pub fn mul_i16(left: i16, right: i16) -> i16:
+    │                                              ^^^ attributes hash: 13881948389070133681
+    │
+    = Base(
+          Numeric(
+              I16,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:144:25
+    │
+144 │     pub fn mul_i8(left: i8, right: i8) -> i8:
+    │                         ^^ attributes hash: 15894395880381322973
     │
     = Base(
           Numeric(
@@ -12037,22 +11605,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:180:37
+    ┌─ features/checked_arithmetic.fe:144:36
     │
-180 │     pub def mod_i8(left: i8, right: i8) -> i8:
-    │                                     ^^ attributes hash: 15894395880381322973
-    │
-    = Base(
-          Numeric(
-              I8,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:180:44
-    │
-180 │     pub def mod_i8(left: i8, right: i8) -> i8:
-    │                                            ^^ attributes hash: 15894395880381322973
+144 │     pub fn mul_i8(left: i8, right: i8) -> i8:
+    │                                    ^^ attributes hash: 15894395880381322973
     │
     = Base(
           Numeric(
@@ -12061,10 +11617,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:183:28
+    ┌─ features/checked_arithmetic.fe:144:43
     │
-183 │     pub def pow_u256(left: u256, right: u256) -> u256:
-    │                            ^^^^ attributes hash: 4293763436908729629
+144 │     pub fn mul_i8(left: i8, right: i8) -> i8:
+    │                                           ^^ attributes hash: 15894395880381322973
+    │
+    = Base(
+          Numeric(
+              I8,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:147:27
+    │
+147 │     pub fn mod_u256(left: u256, right: u256) -> u256:
+    │                           ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
           Numeric(
@@ -12073,22 +11641,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:183:41
+    ┌─ features/checked_arithmetic.fe:147:40
     │
-183 │     pub def pow_u256(left: u256, right: u256) -> u256:
-    │                                         ^^^^ attributes hash: 4293763436908729629
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:183:50
-    │
-183 │     pub def pow_u256(left: u256, right: u256) -> u256:
-    │                                                  ^^^^ attributes hash: 4293763436908729629
+147 │     pub fn mod_u256(left: u256, right: u256) -> u256:
+    │                                        ^^^^ attributes hash: 4293763436908729629
     │
     = Base(
           Numeric(
@@ -12097,10 +11653,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:186:28
+    ┌─ features/checked_arithmetic.fe:147:49
     │
-186 │     pub def pow_u128(left: u128, right: u128) -> u128:
-    │                            ^^^^ attributes hash: 6162263163478414243
+147 │     pub fn mod_u256(left: u256, right: u256) -> u256:
+    │                                                 ^^^^ attributes hash: 4293763436908729629
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:150:27
+    │
+150 │     pub fn mod_u128(left: u128, right: u128) -> u128:
+    │                           ^^^^ attributes hash: 6162263163478414243
     │
     = Base(
           Numeric(
@@ -12109,22 +11677,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:186:41
+    ┌─ features/checked_arithmetic.fe:150:40
     │
-186 │     pub def pow_u128(left: u128, right: u128) -> u128:
-    │                                         ^^^^ attributes hash: 6162263163478414243
-    │
-    = Base(
-          Numeric(
-              U128,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:186:50
-    │
-186 │     pub def pow_u128(left: u128, right: u128) -> u128:
-    │                                                  ^^^^ attributes hash: 6162263163478414243
+150 │     pub fn mod_u128(left: u128, right: u128) -> u128:
+    │                                        ^^^^ attributes hash: 6162263163478414243
     │
     = Base(
           Numeric(
@@ -12133,10 +11689,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:189:27
+    ┌─ features/checked_arithmetic.fe:150:49
     │
-189 │     pub def pow_u64(left: u64, right: u64) -> u64:
-    │                           ^^^ attributes hash: 9157081425890653064
+150 │     pub fn mod_u128(left: u128, right: u128) -> u128:
+    │                                                 ^^^^ attributes hash: 6162263163478414243
+    │
+    = Base(
+          Numeric(
+              U128,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:153:26
+    │
+153 │     pub fn mod_u64(left: u64, right: u64) -> u64:
+    │                          ^^^ attributes hash: 9157081425890653064
     │
     = Base(
           Numeric(
@@ -12145,22 +11713,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:189:39
+    ┌─ features/checked_arithmetic.fe:153:38
     │
-189 │     pub def pow_u64(left: u64, right: u64) -> u64:
-    │                                       ^^^ attributes hash: 9157081425890653064
-    │
-    = Base(
-          Numeric(
-              U64,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:189:47
-    │
-189 │     pub def pow_u64(left: u64, right: u64) -> u64:
-    │                                               ^^^ attributes hash: 9157081425890653064
+153 │     pub fn mod_u64(left: u64, right: u64) -> u64:
+    │                                      ^^^ attributes hash: 9157081425890653064
     │
     = Base(
           Numeric(
@@ -12169,10 +11725,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:192:27
+    ┌─ features/checked_arithmetic.fe:153:46
     │
-192 │     pub def pow_u32(left: u32, right: u32) -> u32:
-    │                           ^^^ attributes hash: 6988938628910073395
+153 │     pub fn mod_u64(left: u64, right: u64) -> u64:
+    │                                              ^^^ attributes hash: 9157081425890653064
+    │
+    = Base(
+          Numeric(
+              U64,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:156:26
+    │
+156 │     pub fn mod_u32(left: u32, right: u32) -> u32:
+    │                          ^^^ attributes hash: 6988938628910073395
     │
     = Base(
           Numeric(
@@ -12181,22 +11749,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:192:39
+    ┌─ features/checked_arithmetic.fe:156:38
     │
-192 │     pub def pow_u32(left: u32, right: u32) -> u32:
-    │                                       ^^^ attributes hash: 6988938628910073395
-    │
-    = Base(
-          Numeric(
-              U32,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:192:47
-    │
-192 │     pub def pow_u32(left: u32, right: u32) -> u32:
-    │                                               ^^^ attributes hash: 6988938628910073395
+156 │     pub fn mod_u32(left: u32, right: u32) -> u32:
+    │                                      ^^^ attributes hash: 6988938628910073395
     │
     = Base(
           Numeric(
@@ -12205,10 +11761,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:195:27
+    ┌─ features/checked_arithmetic.fe:156:46
     │
-195 │     pub def pow_u16(left: u16, right: u16) -> u16:
-    │                           ^^^ attributes hash: 10482216811962112628
+156 │     pub fn mod_u32(left: u32, right: u32) -> u32:
+    │                                              ^^^ attributes hash: 6988938628910073395
+    │
+    = Base(
+          Numeric(
+              U32,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:159:26
+    │
+159 │     pub fn mod_u16(left: u16, right: u16) -> u16:
+    │                          ^^^ attributes hash: 10482216811962112628
     │
     = Base(
           Numeric(
@@ -12217,22 +11785,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:195:39
+    ┌─ features/checked_arithmetic.fe:159:38
     │
-195 │     pub def pow_u16(left: u16, right: u16) -> u16:
-    │                                       ^^^ attributes hash: 10482216811962112628
-    │
-    = Base(
-          Numeric(
-              U16,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:195:47
-    │
-195 │     pub def pow_u16(left: u16, right: u16) -> u16:
-    │                                               ^^^ attributes hash: 10482216811962112628
+159 │     pub fn mod_u16(left: u16, right: u16) -> u16:
+    │                                      ^^^ attributes hash: 10482216811962112628
     │
     = Base(
           Numeric(
@@ -12241,10 +11797,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:198:26
+    ┌─ features/checked_arithmetic.fe:159:46
     │
-198 │     pub def pow_u8(left: u8, right: u8) -> u8:
-    │                          ^^ attributes hash: 3165084411644393001
+159 │     pub fn mod_u16(left: u16, right: u16) -> u16:
+    │                                              ^^^ attributes hash: 10482216811962112628
+    │
+    = Base(
+          Numeric(
+              U16,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:162:25
+    │
+162 │     pub fn mod_u8(left: u8, right: u8) -> u8:
+    │                         ^^ attributes hash: 3165084411644393001
     │
     = Base(
           Numeric(
@@ -12253,22 +11821,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:198:37
+    ┌─ features/checked_arithmetic.fe:162:36
     │
-198 │     pub def pow_u8(left: u8, right: u8) -> u8:
-    │                                     ^^ attributes hash: 3165084411644393001
-    │
-    = Base(
-          Numeric(
-              U8,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:198:44
-    │
-198 │     pub def pow_u8(left: u8, right: u8) -> u8:
-    │                                            ^^ attributes hash: 3165084411644393001
+162 │     pub fn mod_u8(left: u8, right: u8) -> u8:
+    │                                    ^^ attributes hash: 3165084411644393001
     │
     = Base(
           Numeric(
@@ -12277,10 +11833,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:201:28
+    ┌─ features/checked_arithmetic.fe:162:43
     │
-201 │     pub def pow_i256(left: i256, right: u256) -> i256:
-    │                            ^^^^ attributes hash: 11707372354960146103
+162 │     pub fn mod_u8(left: u8, right: u8) -> u8:
+    │                                           ^^ attributes hash: 3165084411644393001
+    │
+    = Base(
+          Numeric(
+              U8,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:165:27
+    │
+165 │     pub fn mod_i256(left: i256, right: i256) -> i256:
+    │                           ^^^^ attributes hash: 11707372354960146103
     │
     = Base(
           Numeric(
@@ -12289,22 +11857,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:201:41
+    ┌─ features/checked_arithmetic.fe:165:40
     │
-201 │     pub def pow_i256(left: i256, right: u256) -> i256:
-    │                                         ^^^^ attributes hash: 4293763436908729629
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:201:50
-    │
-201 │     pub def pow_i256(left: i256, right: u256) -> i256:
-    │                                                  ^^^^ attributes hash: 11707372354960146103
+165 │     pub fn mod_i256(left: i256, right: i256) -> i256:
+    │                                        ^^^^ attributes hash: 11707372354960146103
     │
     = Base(
           Numeric(
@@ -12313,10 +11869,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:204:28
+    ┌─ features/checked_arithmetic.fe:165:49
     │
-204 │     pub def pow_i128(left: i128, right: u128) -> i128:
-    │                            ^^^^ attributes hash: 1662973713176693737
+165 │     pub fn mod_i256(left: i256, right: i256) -> i256:
+    │                                                 ^^^^ attributes hash: 11707372354960146103
+    │
+    = Base(
+          Numeric(
+              I256,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:168:27
+    │
+168 │     pub fn mod_i128(left: i128, right: i128) -> i128:
+    │                           ^^^^ attributes hash: 1662973713176693737
     │
     = Base(
           Numeric(
@@ -12325,22 +11893,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:204:41
+    ┌─ features/checked_arithmetic.fe:168:40
     │
-204 │     pub def pow_i128(left: i128, right: u128) -> i128:
-    │                                         ^^^^ attributes hash: 6162263163478414243
-    │
-    = Base(
-          Numeric(
-              U128,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:204:50
-    │
-204 │     pub def pow_i128(left: i128, right: u128) -> i128:
-    │                                                  ^^^^ attributes hash: 1662973713176693737
+168 │     pub fn mod_i128(left: i128, right: i128) -> i128:
+    │                                        ^^^^ attributes hash: 1662973713176693737
     │
     = Base(
           Numeric(
@@ -12349,10 +11905,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:207:27
+    ┌─ features/checked_arithmetic.fe:168:49
     │
-207 │     pub def pow_i64(left: i64, right: u64) -> i64:
-    │                           ^^^ attributes hash: 4061011363657204065
+168 │     pub fn mod_i128(left: i128, right: i128) -> i128:
+    │                                                 ^^^^ attributes hash: 1662973713176693737
+    │
+    = Base(
+          Numeric(
+              I128,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:171:26
+    │
+171 │     pub fn mod_i64(left: i64, right: i64) -> i64:
+    │                          ^^^ attributes hash: 4061011363657204065
     │
     = Base(
           Numeric(
@@ -12361,22 +11929,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:207:39
+    ┌─ features/checked_arithmetic.fe:171:38
     │
-207 │     pub def pow_i64(left: i64, right: u64) -> i64:
-    │                                       ^^^ attributes hash: 9157081425890653064
-    │
-    = Base(
-          Numeric(
-              U64,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:207:47
-    │
-207 │     pub def pow_i64(left: i64, right: u64) -> i64:
-    │                                               ^^^ attributes hash: 4061011363657204065
+171 │     pub fn mod_i64(left: i64, right: i64) -> i64:
+    │                                      ^^^ attributes hash: 4061011363657204065
     │
     = Base(
           Numeric(
@@ -12385,10 +11941,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:210:27
+    ┌─ features/checked_arithmetic.fe:171:46
     │
-210 │     pub def pow_i32(left: i32, right: u32) -> i32:
-    │                           ^^^ attributes hash: 3989691230564290788
+171 │     pub fn mod_i64(left: i64, right: i64) -> i64:
+    │                                              ^^^ attributes hash: 4061011363657204065
+    │
+    = Base(
+          Numeric(
+              I64,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:174:26
+    │
+174 │     pub fn mod_i32(left: i32, right: i32) -> i32:
+    │                          ^^^ attributes hash: 3989691230564290788
     │
     = Base(
           Numeric(
@@ -12397,22 +11965,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:210:39
+    ┌─ features/checked_arithmetic.fe:174:38
     │
-210 │     pub def pow_i32(left: i32, right: u32) -> i32:
-    │                                       ^^^ attributes hash: 6988938628910073395
-    │
-    = Base(
-          Numeric(
-              U32,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:210:47
-    │
-210 │     pub def pow_i32(left: i32, right: u32) -> i32:
-    │                                               ^^^ attributes hash: 3989691230564290788
+174 │     pub fn mod_i32(left: i32, right: i32) -> i32:
+    │                                      ^^^ attributes hash: 3989691230564290788
     │
     = Base(
           Numeric(
@@ -12421,10 +11977,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:213:27
+    ┌─ features/checked_arithmetic.fe:174:46
     │
-213 │     pub def pow_i16(left: i16, right: u16) -> i16:
-    │                           ^^^ attributes hash: 13881948389070133681
+174 │     pub fn mod_i32(left: i32, right: i32) -> i32:
+    │                                              ^^^ attributes hash: 3989691230564290788
+    │
+    = Base(
+          Numeric(
+              I32,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:177:26
+    │
+177 │     pub fn mod_i16(left: i16, right: i16) -> i16:
+    │                          ^^^ attributes hash: 13881948389070133681
     │
     = Base(
           Numeric(
@@ -12433,22 +12001,10 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:213:39
+    ┌─ features/checked_arithmetic.fe:177:38
     │
-213 │     pub def pow_i16(left: i16, right: u16) -> i16:
-    │                                       ^^^ attributes hash: 10482216811962112628
-    │
-    = Base(
-          Numeric(
-              U16,
-          ),
-      )
-
-note: 
-    ┌─ features/checked_arithmetic.fe:213:47
-    │
-213 │     pub def pow_i16(left: i16, right: u16) -> i16:
-    │                                               ^^^ attributes hash: 13881948389070133681
+177 │     pub fn mod_i16(left: i16, right: i16) -> i16:
+    │                                      ^^^ attributes hash: 13881948389070133681
     │
     = Base(
           Numeric(
@@ -12457,10 +12013,22 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:216:26
+    ┌─ features/checked_arithmetic.fe:177:46
     │
-216 │     pub def pow_i8(left: i8, right: u8) -> i8:
-    │                          ^^ attributes hash: 15894395880381322973
+177 │     pub fn mod_i16(left: i16, right: i16) -> i16:
+    │                                              ^^^ attributes hash: 13881948389070133681
+    │
+    = Base(
+          Numeric(
+              I16,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:180:25
+    │
+180 │     pub fn mod_i8(left: i8, right: i8) -> i8:
+    │                         ^^ attributes hash: 15894395880381322973
     │
     = Base(
           Numeric(
@@ -12469,10 +12037,214 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:216:37
+    ┌─ features/checked_arithmetic.fe:180:36
     │
-216 │     pub def pow_i8(left: i8, right: u8) -> i8:
-    │                                     ^^ attributes hash: 3165084411644393001
+180 │     pub fn mod_i8(left: i8, right: i8) -> i8:
+    │                                    ^^ attributes hash: 15894395880381322973
+    │
+    = Base(
+          Numeric(
+              I8,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:180:43
+    │
+180 │     pub fn mod_i8(left: i8, right: i8) -> i8:
+    │                                           ^^ attributes hash: 15894395880381322973
+    │
+    = Base(
+          Numeric(
+              I8,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:183:27
+    │
+183 │     pub fn pow_u256(left: u256, right: u256) -> u256:
+    │                           ^^^^ attributes hash: 4293763436908729629
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:183:40
+    │
+183 │     pub fn pow_u256(left: u256, right: u256) -> u256:
+    │                                        ^^^^ attributes hash: 4293763436908729629
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:183:49
+    │
+183 │     pub fn pow_u256(left: u256, right: u256) -> u256:
+    │                                                 ^^^^ attributes hash: 4293763436908729629
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:186:27
+    │
+186 │     pub fn pow_u128(left: u128, right: u128) -> u128:
+    │                           ^^^^ attributes hash: 6162263163478414243
+    │
+    = Base(
+          Numeric(
+              U128,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:186:40
+    │
+186 │     pub fn pow_u128(left: u128, right: u128) -> u128:
+    │                                        ^^^^ attributes hash: 6162263163478414243
+    │
+    = Base(
+          Numeric(
+              U128,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:186:49
+    │
+186 │     pub fn pow_u128(left: u128, right: u128) -> u128:
+    │                                                 ^^^^ attributes hash: 6162263163478414243
+    │
+    = Base(
+          Numeric(
+              U128,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:189:26
+    │
+189 │     pub fn pow_u64(left: u64, right: u64) -> u64:
+    │                          ^^^ attributes hash: 9157081425890653064
+    │
+    = Base(
+          Numeric(
+              U64,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:189:38
+    │
+189 │     pub fn pow_u64(left: u64, right: u64) -> u64:
+    │                                      ^^^ attributes hash: 9157081425890653064
+    │
+    = Base(
+          Numeric(
+              U64,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:189:46
+    │
+189 │     pub fn pow_u64(left: u64, right: u64) -> u64:
+    │                                              ^^^ attributes hash: 9157081425890653064
+    │
+    = Base(
+          Numeric(
+              U64,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:192:26
+    │
+192 │     pub fn pow_u32(left: u32, right: u32) -> u32:
+    │                          ^^^ attributes hash: 6988938628910073395
+    │
+    = Base(
+          Numeric(
+              U32,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:192:38
+    │
+192 │     pub fn pow_u32(left: u32, right: u32) -> u32:
+    │                                      ^^^ attributes hash: 6988938628910073395
+    │
+    = Base(
+          Numeric(
+              U32,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:192:46
+    │
+192 │     pub fn pow_u32(left: u32, right: u32) -> u32:
+    │                                              ^^^ attributes hash: 6988938628910073395
+    │
+    = Base(
+          Numeric(
+              U32,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:195:26
+    │
+195 │     pub fn pow_u16(left: u16, right: u16) -> u16:
+    │                          ^^^ attributes hash: 10482216811962112628
+    │
+    = Base(
+          Numeric(
+              U16,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:195:38
+    │
+195 │     pub fn pow_u16(left: u16, right: u16) -> u16:
+    │                                      ^^^ attributes hash: 10482216811962112628
+    │
+    = Base(
+          Numeric(
+              U16,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:195:46
+    │
+195 │     pub fn pow_u16(left: u16, right: u16) -> u16:
+    │                                              ^^^ attributes hash: 10482216811962112628
+    │
+    = Base(
+          Numeric(
+              U16,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:198:25
+    │
+198 │     pub fn pow_u8(left: u8, right: u8) -> u8:
+    │                         ^^ attributes hash: 3165084411644393001
     │
     = Base(
           Numeric(
@@ -12481,10 +12253,238 @@ note:
       )
 
 note: 
-    ┌─ features/checked_arithmetic.fe:216:44
+    ┌─ features/checked_arithmetic.fe:198:36
     │
-216 │     pub def pow_i8(left: i8, right: u8) -> i8:
-    │                                            ^^ attributes hash: 15894395880381322973
+198 │     pub fn pow_u8(left: u8, right: u8) -> u8:
+    │                                    ^^ attributes hash: 3165084411644393001
+    │
+    = Base(
+          Numeric(
+              U8,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:198:43
+    │
+198 │     pub fn pow_u8(left: u8, right: u8) -> u8:
+    │                                           ^^ attributes hash: 3165084411644393001
+    │
+    = Base(
+          Numeric(
+              U8,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:201:27
+    │
+201 │     pub fn pow_i256(left: i256, right: u256) -> i256:
+    │                           ^^^^ attributes hash: 11707372354960146103
+    │
+    = Base(
+          Numeric(
+              I256,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:201:40
+    │
+201 │     pub fn pow_i256(left: i256, right: u256) -> i256:
+    │                                        ^^^^ attributes hash: 4293763436908729629
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:201:49
+    │
+201 │     pub fn pow_i256(left: i256, right: u256) -> i256:
+    │                                                 ^^^^ attributes hash: 11707372354960146103
+    │
+    = Base(
+          Numeric(
+              I256,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:204:27
+    │
+204 │     pub fn pow_i128(left: i128, right: u128) -> i128:
+    │                           ^^^^ attributes hash: 1662973713176693737
+    │
+    = Base(
+          Numeric(
+              I128,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:204:40
+    │
+204 │     pub fn pow_i128(left: i128, right: u128) -> i128:
+    │                                        ^^^^ attributes hash: 6162263163478414243
+    │
+    = Base(
+          Numeric(
+              U128,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:204:49
+    │
+204 │     pub fn pow_i128(left: i128, right: u128) -> i128:
+    │                                                 ^^^^ attributes hash: 1662973713176693737
+    │
+    = Base(
+          Numeric(
+              I128,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:207:26
+    │
+207 │     pub fn pow_i64(left: i64, right: u64) -> i64:
+    │                          ^^^ attributes hash: 4061011363657204065
+    │
+    = Base(
+          Numeric(
+              I64,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:207:38
+    │
+207 │     pub fn pow_i64(left: i64, right: u64) -> i64:
+    │                                      ^^^ attributes hash: 9157081425890653064
+    │
+    = Base(
+          Numeric(
+              U64,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:207:46
+    │
+207 │     pub fn pow_i64(left: i64, right: u64) -> i64:
+    │                                              ^^^ attributes hash: 4061011363657204065
+    │
+    = Base(
+          Numeric(
+              I64,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:210:26
+    │
+210 │     pub fn pow_i32(left: i32, right: u32) -> i32:
+    │                          ^^^ attributes hash: 3989691230564290788
+    │
+    = Base(
+          Numeric(
+              I32,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:210:38
+    │
+210 │     pub fn pow_i32(left: i32, right: u32) -> i32:
+    │                                      ^^^ attributes hash: 6988938628910073395
+    │
+    = Base(
+          Numeric(
+              U32,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:210:46
+    │
+210 │     pub fn pow_i32(left: i32, right: u32) -> i32:
+    │                                              ^^^ attributes hash: 3989691230564290788
+    │
+    = Base(
+          Numeric(
+              I32,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:213:26
+    │
+213 │     pub fn pow_i16(left: i16, right: u16) -> i16:
+    │                          ^^^ attributes hash: 13881948389070133681
+    │
+    = Base(
+          Numeric(
+              I16,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:213:38
+    │
+213 │     pub fn pow_i16(left: i16, right: u16) -> i16:
+    │                                      ^^^ attributes hash: 10482216811962112628
+    │
+    = Base(
+          Numeric(
+              U16,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:213:46
+    │
+213 │     pub fn pow_i16(left: i16, right: u16) -> i16:
+    │                                              ^^^ attributes hash: 13881948389070133681
+    │
+    = Base(
+          Numeric(
+              I16,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:216:25
+    │
+216 │     pub fn pow_i8(left: i8, right: u8) -> i8:
+    │                         ^^ attributes hash: 15894395880381322973
+    │
+    = Base(
+          Numeric(
+              I8,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:216:36
+    │
+216 │     pub fn pow_i8(left: i8, right: u8) -> i8:
+    │                                    ^^ attributes hash: 3165084411644393001
+    │
+    = Base(
+          Numeric(
+              U8,
+          ),
+      )
+
+note: 
+    ┌─ features/checked_arithmetic.fe:216:43
+    │
+216 │     pub fn pow_i8(left: i8, right: u8) -> i8:
+    │                                           ^^ attributes hash: 15894395880381322973
     │
     = Base(
           Numeric(

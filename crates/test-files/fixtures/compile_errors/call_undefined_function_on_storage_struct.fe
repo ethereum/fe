@@ -4,5 +4,5 @@ struct Something:
 contract Bar:
   thingy: Something
 
-  pub def test():
+  pub fn test():
     self.thingy.doesnt_exist()

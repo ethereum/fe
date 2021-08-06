@@ -350,7 +350,7 @@ note:
 note: 
    ┌─ features/strings.fe:11:5
    │  
-11 │ ╭     pub def __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
+11 │ ╭     pub fn __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
 12 │ │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
    │ ╰─────────────────────────────────────────────────────────────────────────────────^ attributes hash: 124105727539844571
    │  
@@ -405,7 +405,7 @@ note:
 note: 
    ┌─ features/strings.fe:14:5
    │  
-14 │ ╭     pub def bar(s1: String<100>, s2: String<100>) -> String<100>:
+14 │ ╭     pub fn bar(s1: String<100>, s2: String<100>) -> String<100>:
 15 │ │         return s2
    │ ╰─────────────────^ attributes hash: 592417751978733882
    │  
@@ -440,7 +440,7 @@ note:
 note: 
    ┌─ features/strings.fe:17:5
    │  
-17 │ ╭     pub def return_static_string() -> String<43>:
+17 │ ╭     pub fn return_static_string() -> String<43>:
 18 │ │         return "The quick brown fox jumps over the lazy dog"
    │ ╰────────────────────────────────────────────────────────────^ attributes hash: 6307523210129738943
    │  
@@ -458,7 +458,7 @@ note:
 note: 
    ┌─ features/strings.fe:20:5
    │  
-20 │ ╭     pub def return_casted_static_string() -> String<100>:
+20 │ ╭     pub fn return_casted_static_string() -> String<100>:
 21 │ │         return String<100>("foo")
    │ ╰─────────────────────────────────^ attributes hash: 7348697589190351231
    │  
@@ -476,7 +476,7 @@ note:
 note: 
    ┌─ features/strings.fe:23:5
    │  
-23 │ ╭     pub def return_with_newline() -> String<16>:
+23 │ ╭     pub fn return_with_newline() -> String<16>:
 24 │ │         return "foo
 25 │ │         balu"
    │ ╰─────────────^ attributes hash: 14350780978254754932
@@ -863,10 +863,10 @@ note:
     )
 
 note: 
-   ┌─ features/strings.fe:11:26
+   ┌─ features/strings.fe:11:25
    │
-11 │     pub def __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
-   │                          ^^^^^^^^^^ attributes hash: 14777032492858574931
+11 │     pub fn __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
+   │                         ^^^^^^^^^^ attributes hash: 14777032492858574931
    │
    = String(
          FeString {
@@ -875,20 +875,20 @@ note:
      )
 
 note: 
-   ┌─ features/strings.fe:11:41
+   ┌─ features/strings.fe:11:40
    │
-11 │     pub def __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
-   │                                         ^^^^^^^ attributes hash: 928477466454064117
+11 │     pub fn __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
+   │                                        ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
      )
 
 note: 
-   ┌─ features/strings.fe:11:54
+   ┌─ features/strings.fe:11:53
    │
-11 │     pub def __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
-   │                                                      ^^^^^^^^^^ attributes hash: 16414369909362201519
+11 │     pub fn __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
+   │                                                     ^^^^^^^^^^ attributes hash: 16414369909362201519
    │
    = String(
          FeString {
@@ -897,10 +897,10 @@ note:
      )
 
 note: 
-   ┌─ features/strings.fe:11:69
+   ┌─ features/strings.fe:11:68
    │
-11 │     pub def __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
-   │                                                                     ^^^^ attributes hash: 4293763436908729629
+11 │     pub fn __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
+   │                                                                    ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -909,22 +909,10 @@ note:
      )
 
 note: 
-   ┌─ features/strings.fe:11:79
+   ┌─ features/strings.fe:11:78
    │
-11 │     pub def __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
-   │                                                                               ^^^^^^^^^^^ attributes hash: 8213016172125664751
-   │
-   = String(
-         FeString {
-             max_size: 100,
-         },
-     )
-
-note: 
-   ┌─ features/strings.fe:14:21
-   │
-14 │     pub def bar(s1: String<100>, s2: String<100>) -> String<100>:
-   │                     ^^^^^^^^^^^ attributes hash: 8213016172125664751
+11 │     pub fn __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
+   │                                                                              ^^^^^^^^^^^ attributes hash: 8213016172125664751
    │
    = String(
          FeString {
@@ -933,22 +921,10 @@ note:
      )
 
 note: 
-   ┌─ features/strings.fe:14:38
+   ┌─ features/strings.fe:14:20
    │
-14 │     pub def bar(s1: String<100>, s2: String<100>) -> String<100>:
-   │                                      ^^^^^^^^^^^ attributes hash: 8213016172125664751
-   │
-   = String(
-         FeString {
-             max_size: 100,
-         },
-     )
-
-note: 
-   ┌─ features/strings.fe:14:54
-   │
-14 │     pub def bar(s1: String<100>, s2: String<100>) -> String<100>:
-   │                                                      ^^^^^^^^^^^ attributes hash: 8213016172125664751
+14 │     pub fn bar(s1: String<100>, s2: String<100>) -> String<100>:
+   │                    ^^^^^^^^^^^ attributes hash: 8213016172125664751
    │
    = String(
          FeString {
@@ -957,10 +933,34 @@ note:
      )
 
 note: 
-   ┌─ features/strings.fe:17:39
+   ┌─ features/strings.fe:14:37
    │
-17 │     pub def return_static_string() -> String<43>:
-   │                                       ^^^^^^^^^^ attributes hash: 1032948852269419831
+14 │     pub fn bar(s1: String<100>, s2: String<100>) -> String<100>:
+   │                                     ^^^^^^^^^^^ attributes hash: 8213016172125664751
+   │
+   = String(
+         FeString {
+             max_size: 100,
+         },
+     )
+
+note: 
+   ┌─ features/strings.fe:14:53
+   │
+14 │     pub fn bar(s1: String<100>, s2: String<100>) -> String<100>:
+   │                                                     ^^^^^^^^^^^ attributes hash: 8213016172125664751
+   │
+   = String(
+         FeString {
+             max_size: 100,
+         },
+     )
+
+note: 
+   ┌─ features/strings.fe:17:38
+   │
+17 │     pub fn return_static_string() -> String<43>:
+   │                                      ^^^^^^^^^^ attributes hash: 1032948852269419831
    │
    = String(
          FeString {
@@ -969,10 +969,10 @@ note:
      )
 
 note: 
-   ┌─ features/strings.fe:20:46
+   ┌─ features/strings.fe:20:45
    │
-20 │     pub def return_casted_static_string() -> String<100>:
-   │                                              ^^^^^^^^^^^ attributes hash: 8213016172125664751
+20 │     pub fn return_casted_static_string() -> String<100>:
+   │                                             ^^^^^^^^^^^ attributes hash: 8213016172125664751
    │
    = String(
          FeString {
@@ -981,10 +981,10 @@ note:
      )
 
 note: 
-   ┌─ features/strings.fe:23:38
+   ┌─ features/strings.fe:23:37
    │
-23 │     pub def return_with_newline() -> String<16>:
-   │                                      ^^^^^^^^^^ attributes hash: 7943909822945469766
+23 │     pub fn return_with_newline() -> String<16>:
+   │                                     ^^^^^^^^^^ attributes hash: 7943909822945469766
    │
    = String(
          FeString {

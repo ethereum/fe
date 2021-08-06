@@ -4,5 +4,5 @@ struct House:
 
 contract Foo:
 
-    pub def bar():
+    pub fn bar():
         my_house: House = House(price=false, vacant=100, bar=address(0))

@@ -53,7 +53,7 @@ note:
 note: 
   ┌─ features/return_identity_u8.fe:2:5
   │  
-2 │ ╭     pub def bar(x: u8) -> u8:
+2 │ ╭     pub fn bar(x: u8) -> u8:
 3 │ │         return x
   │ ╰────────────────^ attributes hash: 17244020794146224787
   │  
@@ -81,7 +81,7 @@ note:
   ┌─ features/return_identity_u8.fe:1:1
   │  
 1 │ ╭ contract Foo:
-2 │ │     pub def bar(x: u8) -> u8:
+2 │ │     pub fn bar(x: u8) -> u8:
 3 │ │         return x
   │ ╰────────────────^ attributes hash: 8015096199478648806
   │  
@@ -114,10 +114,10 @@ note:
     }
 
 note: 
-  ┌─ features/return_identity_u8.fe:2:20
+  ┌─ features/return_identity_u8.fe:2:19
   │
-2 │     pub def bar(x: u8) -> u8:
-  │                    ^^ attributes hash: 3165084411644393001
+2 │     pub fn bar(x: u8) -> u8:
+  │                   ^^ attributes hash: 3165084411644393001
   │
   = Base(
         Numeric(
@@ -126,10 +126,10 @@ note:
     )
 
 note: 
-  ┌─ features/return_identity_u8.fe:2:27
+  ┌─ features/return_identity_u8.fe:2:26
   │
-2 │     pub def bar(x: u8) -> u8:
-  │                           ^^ attributes hash: 3165084411644393001
+2 │     pub fn bar(x: u8) -> u8:
+  │                          ^^ attributes hash: 3165084411644393001
   │
   = Base(
         Numeric(

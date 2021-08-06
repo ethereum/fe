@@ -202,7 +202,7 @@ note:
 note: 
   ┌─ features/u128_u128_map.fe:4:5
   │  
-4 │ ╭     pub def read_bar(key: u128) -> u128:
+4 │ ╭     pub fn read_bar(key: u128) -> u128:
 5 │ │         return self.bar[key]
   │ ╰────────────────────────────^ attributes hash: 2198999376665281933
   │  
@@ -229,7 +229,7 @@ note:
 note: 
   ┌─ features/u128_u128_map.fe:7:5
   │  
-7 │ ╭     pub def write_bar(key: u128, value: u128):
+7 │ ╭     pub fn write_bar(key: u128, value: u128):
 8 │ │         self.bar[key] = value
   │ ╰─────────────────────────────^ attributes hash: 1223918627362086657
   │  
@@ -265,9 +265,9 @@ note:
 1 │ ╭ contract Foo:
 2 │ │     pub bar: Map<u128, u128>
 3 │ │ 
-4 │ │     pub def read_bar(key: u128) -> u128:
+4 │ │     pub fn read_bar(key: u128) -> u128:
   · │
-7 │ │     pub def write_bar(key: u128, value: u128):
+7 │ │     pub fn write_bar(key: u128, value: u128):
 8 │ │         self.bar[key] = value
   │ ╰─────────────────────────────^ attributes hash: 5524013194389757103
   │  
@@ -325,9 +325,33 @@ note:
     }
 
 note: 
-  ┌─ features/u128_u128_map.fe:4:27
+  ┌─ features/u128_u128_map.fe:4:26
   │
-4 │     pub def read_bar(key: u128) -> u128:
+4 │     pub fn read_bar(key: u128) -> u128:
+  │                          ^^^^ attributes hash: 6162263163478414243
+  │
+  = Base(
+        Numeric(
+            U128,
+        ),
+    )
+
+note: 
+  ┌─ features/u128_u128_map.fe:4:35
+  │
+4 │     pub fn read_bar(key: u128) -> u128:
+  │                                   ^^^^ attributes hash: 6162263163478414243
+  │
+  = Base(
+        Numeric(
+            U128,
+        ),
+    )
+
+note: 
+  ┌─ features/u128_u128_map.fe:7:27
+  │
+7 │     pub fn write_bar(key: u128, value: u128):
   │                           ^^^^ attributes hash: 6162263163478414243
   │
   = Base(
@@ -337,34 +361,10 @@ note:
     )
 
 note: 
-  ┌─ features/u128_u128_map.fe:4:36
+  ┌─ features/u128_u128_map.fe:7:40
   │
-4 │     pub def read_bar(key: u128) -> u128:
-  │                                    ^^^^ attributes hash: 6162263163478414243
-  │
-  = Base(
-        Numeric(
-            U128,
-        ),
-    )
-
-note: 
-  ┌─ features/u128_u128_map.fe:7:28
-  │
-7 │     pub def write_bar(key: u128, value: u128):
-  │                            ^^^^ attributes hash: 6162263163478414243
-  │
-  = Base(
-        Numeric(
-            U128,
-        ),
-    )
-
-note: 
-  ┌─ features/u128_u128_map.fe:7:41
-  │
-7 │     pub def write_bar(key: u128, value: u128):
-  │                                         ^^^^ attributes hash: 6162263163478414243
+7 │     pub fn write_bar(key: u128, value: u128):
+  │                                        ^^^^ attributes hash: 6162263163478414243
   │
   = Base(
         Numeric(

@@ -1,12 +1,12 @@
 ---
-source: parser/tests/cases/errors.rs
-expression: "err_string(stringify!(struct_bad_field_name), types::parse_struct_def, true,\n           \"struct f:\\n pub def\")"
+source: crates/parser/tests/cases/errors.rs
+expression: "err_string(stringify!(struct_bad_field_name), types::parse_struct_def, true,\n           \"struct f:\\n pub fn\")"
 
 ---
 error: failed to parse field definition
   ┌─ struct_bad_field_name:2:6
   │
-2 │  pub def
-  │      ^^^ Unexpected token. Expected a name
+2 │  pub fn
+  │      ^^ Unexpected token. Expected a name
 
 

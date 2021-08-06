@@ -62,9 +62,9 @@ mod tests {
     #[test]
     fn basic() {
         check(
-            "contract Foo:\n  x: u32\n  def f() -> u32: not x",
+            "contract Foo:\n  x: u32\n  fn f() -> u32: not x",
             &[
-                Contract, Name, Colon, Newline, Name, Colon, Name, Newline, Def, Name, ParenOpen,
+                Contract, Name, Colon, Newline, Name, Colon, Name, Newline, Fn, Name, ParenOpen,
                 ParenClose, Arrow, Name, Colon, Not, Name,
             ],
         );

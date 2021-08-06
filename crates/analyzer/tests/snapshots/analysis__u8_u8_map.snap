@@ -202,7 +202,7 @@ note:
 note: 
   ┌─ features/u8_u8_map.fe:4:5
   │  
-4 │ ╭     pub def read_bar(key: u8) -> u8:
+4 │ ╭     pub fn read_bar(key: u8) -> u8:
 5 │ │         return self.bar[key]
   │ ╰────────────────────────────^ attributes hash: 4735810328520573444
   │  
@@ -229,7 +229,7 @@ note:
 note: 
   ┌─ features/u8_u8_map.fe:7:5
   │  
-7 │ ╭     pub def write_bar(key: u8, value: u8):
+7 │ ╭     pub fn write_bar(key: u8, value: u8):
 8 │ │         self.bar[key] = value
   │ ╰─────────────────────────────^ attributes hash: 12302297343297635301
   │  
@@ -265,9 +265,9 @@ note:
 1 │ ╭ contract Foo:
 2 │ │     pub bar: Map<u8, u8>
 3 │ │ 
-4 │ │     pub def read_bar(key: u8) -> u8:
+4 │ │     pub fn read_bar(key: u8) -> u8:
   · │
-7 │ │     pub def write_bar(key: u8, value: u8):
+7 │ │     pub fn write_bar(key: u8, value: u8):
 8 │ │         self.bar[key] = value
   │ ╰─────────────────────────────^ attributes hash: 5349499630302604765
   │  
@@ -325,9 +325,33 @@ note:
     }
 
 note: 
-  ┌─ features/u8_u8_map.fe:4:27
+  ┌─ features/u8_u8_map.fe:4:26
   │
-4 │     pub def read_bar(key: u8) -> u8:
+4 │     pub fn read_bar(key: u8) -> u8:
+  │                          ^^ attributes hash: 3165084411644393001
+  │
+  = Base(
+        Numeric(
+            U8,
+        ),
+    )
+
+note: 
+  ┌─ features/u8_u8_map.fe:4:33
+  │
+4 │     pub fn read_bar(key: u8) -> u8:
+  │                                 ^^ attributes hash: 3165084411644393001
+  │
+  = Base(
+        Numeric(
+            U8,
+        ),
+    )
+
+note: 
+  ┌─ features/u8_u8_map.fe:7:27
+  │
+7 │     pub fn write_bar(key: u8, value: u8):
   │                           ^^ attributes hash: 3165084411644393001
   │
   = Base(
@@ -337,34 +361,10 @@ note:
     )
 
 note: 
-  ┌─ features/u8_u8_map.fe:4:34
+  ┌─ features/u8_u8_map.fe:7:38
   │
-4 │     pub def read_bar(key: u8) -> u8:
-  │                                  ^^ attributes hash: 3165084411644393001
-  │
-  = Base(
-        Numeric(
-            U8,
-        ),
-    )
-
-note: 
-  ┌─ features/u8_u8_map.fe:7:28
-  │
-7 │     pub def write_bar(key: u8, value: u8):
-  │                            ^^ attributes hash: 3165084411644393001
-  │
-  = Base(
-        Numeric(
-            U8,
-        ),
-    )
-
-note: 
-  ┌─ features/u8_u8_map.fe:7:39
-  │
-7 │     pub def write_bar(key: u8, value: u8):
-  │                                       ^^ attributes hash: 3165084411644393001
+7 │     pub fn write_bar(key: u8, value: u8):
+  │                                      ^^ attributes hash: 3165084411644393001
   │
   = Base(
         Numeric(

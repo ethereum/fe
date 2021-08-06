@@ -8,7 +8,7 @@ error: a contract with the same name already exists
   │  
 6 │ ╭ contract Foo:
 7 │ │ 
-8 │ │     pub def bar():
+8 │ │     pub fn bar():
 9 │ │         pass
   │ ╰────────────^ Conflicting definition of contract `Foo`
   │  

@@ -76,7 +76,7 @@ note:
 note: 
   ┌─ features/return_i128_cast.fe:2:5
   │  
-2 │ ╭     pub def bar() -> i128:
+2 │ ╭     pub fn bar() -> i128:
 3 │ │         return i128(-3)
   │ ╰───────────────────────^ attributes hash: 15885647765624010011
   │  
@@ -95,7 +95,7 @@ note:
   ┌─ features/return_i128_cast.fe:1:1
   │  
 1 │ ╭ contract Foo:
-2 │ │     pub def bar() -> i128:
+2 │ │     pub fn bar() -> i128:
 3 │ │         return i128(-3)
   │ ╰───────────────────────^ attributes hash: 7832835924028497188
   │  
@@ -133,10 +133,10 @@ note:
     }
 
 note: 
-  ┌─ features/return_i128_cast.fe:2:22
+  ┌─ features/return_i128_cast.fe:2:21
   │
-2 │     pub def bar() -> i128:
-  │                      ^^^^ attributes hash: 1662973713176693737
+2 │     pub fn bar() -> i128:
+  │                     ^^^^ attributes hash: 1662973713176693737
   │
   = Base(
         Numeric(

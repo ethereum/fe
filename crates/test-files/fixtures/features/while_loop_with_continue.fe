@@ -1,5 +1,5 @@
 contract Foo:
-    pub def bar() -> u256:
+    pub fn bar() -> u256:
         i: u256 = 0
         counter: u256 = 0
 

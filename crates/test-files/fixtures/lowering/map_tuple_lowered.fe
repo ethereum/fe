@@ -9,7 +9,7 @@ struct tuple_address_tuple_u256_u8__:
 contract Foo:
     tuples: Map<u256, tuple_address_tuple_u256_u8__>
 
-    pub def bar(x: u256) -> u256:
+    pub fn bar(x: u256) -> u256:
         self.tuples[0] = tuple_address_tuple_u256_u8__(
           item0 = address(100),
           item1 = tuple_u256_u8_(item0 = x, item1 = 5),
