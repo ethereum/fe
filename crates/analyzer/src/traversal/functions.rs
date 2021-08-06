@@ -174,7 +174,7 @@ fn all_paths_return_or_revert(block: &[Node<fe::FuncStmt>]) -> bool {
                 or_else,
             } => {
                 let body_returns = all_paths_return_or_revert(body);
-                let or_else_returns = or_else.is_empty() || all_paths_return_or_revert(or_else);
+                let or_else_returns = all_paths_return_or_revert(or_else);
                 if body_returns && or_else_returns {
                     return true;
                 }

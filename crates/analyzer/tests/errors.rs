@@ -180,6 +180,7 @@ test_file! { issue_451 }
 test_file! { mismatch_return_type }
 test_file! { missing_return }
 test_file! { missing_return_in_else }
+test_file! { missing_return_after_if }
 test_file! { needs_mem_copy }
 test_file! { not_callable }
 test_file! { not_in_scope }
