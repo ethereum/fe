@@ -2,7 +2,7 @@
 
 > **<sup>Syntax</sup>**\
 > _Function_ :\
-> &nbsp;&nbsp; _FunctionQualifiers_ `def` [IDENTIFIER]\
+> &nbsp;&nbsp; _FunctionQualifiers_ `fn` [IDENTIFIER]\
 > &nbsp;&nbsp; &nbsp;&nbsp; `(` _FunctionParameters_<sup>?</sup> `)`\
 > &nbsp;&nbsp; &nbsp;&nbsp; _FunctionReturnType_<sup>?</sup>\
 > &nbsp;&nbsp; &nbsp;&nbsp; `:` [NEWLINE]\
@@ -39,9 +39,9 @@
 > &nbsp;&nbsp; `->` [_Type_]
 
 
-A _function_ consists of a code block, along with a name and a set of parameters.
-Other than a name, all these are optional. Functions are declared with the
-keyword `def`. Functions may declare a set of *input* [*variables*][variables]
+A _function_ definition consists of name and code block along with an optional
+list of parameters and return value. Functions are declared with the
+keyword `fn`. Functions may declare a set of *input* [*variables*][variables]
 as parameters, through which the caller passes arguments into the function, and
 the *output* [*type*][type] of the value the function will return to its caller
 on completion.

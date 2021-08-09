@@ -25,7 +25,7 @@ Its one value is also called *unit* or *the unit value*.
 
 Some examples of tuple types:
 
-* `()` (unit)
+* `()` (also known as the *unit* or *zero-sized type*)
 * `(u8, u8)`
 * `(bool, i32)`
 * `(i32, bool)` (different type from the previous example)
