@@ -2,6 +2,7 @@ use crate::names::abi as abi_names;
 use crate::operations::abi as abi_operations;
 use crate::types::{to_abi_types, AbiDecodeLocation};
 use fe_analyzer::namespace::types::FixedSize;
+use fe_analyzer::AnalyzerDb;
 use yultsur::*;
 
 /// Builds a constructor for a contract with no init function.
@@ -19,6 +20,7 @@ pub fn build() -> yul::Code {
 /// We include the entire contact runtime inside of the constructor (without the
 /// ABI dispatcher), run the init function, and return the contract code.
 pub fn build_with_init(
+    db: &dyn AnalyzerDb,
     contract_name: &str,
     init_func: yul::Statement,
     init_params: Vec<FixedSize>,
@@ -32,7 +34,7 @@ pub fn build_with_init(
         statements! {}
     } else {
         let decode_expr = abi_operations::decode_data(
-            &to_abi_types(&init_params),
+            &to_abi_types(db, &init_params),
             expression! { params_start_mem },
             expression! { params_end_mem },
             AbiDecodeLocation::Memory,

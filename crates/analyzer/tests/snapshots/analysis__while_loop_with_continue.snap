@@ -1,298 +1,8 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/while_loop_with_continue.fe\", &src, &context)"
+expression: "build_snapshot(\"features/while_loop_with_continue.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "bar",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:3:23
-  │
-3 │         let i: u256 = 0
-  │                       ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:4:29
-  │
-4 │         let counter: u256 = 0
-  │                             ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:6:15
-  │
-6 │         while i < 2:
-  │               ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:6:19
-  │
-6 │         while i < 2:
-  │                   ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:6:15
-  │
-6 │         while i < 2:
-  │               ^^^^^ attributes hash: 519621297275845584
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:7:13
-  │
-7 │             i = i + 1
-  │             ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:7:17
-  │
-7 │             i = i + 1
-  │                 ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:7:21
-  │
-7 │             i = i + 1
-  │                     ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:7:17
-  │
-7 │             i = i + 1
-  │                 ^^^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:8:16
-  │
-8 │             if i == 1:
-  │                ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:8:21
-  │
-8 │             if i == 1:
-  │                     ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:8:16
-  │
-8 │             if i == 1:
-  │                ^^^^^^ attributes hash: 519621297275845584
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-   ┌─ features/while_loop_with_continue.fe:10:13
-   │
-10 │             counter = counter + 1
-   │             ^^^^^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/while_loop_with_continue.fe:10:23
-   │
-10 │             counter = counter + 1
-   │                       ^^^^^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/while_loop_with_continue.fe:10:33
-   │
-10 │             counter = counter + 1
-   │                                 ^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/while_loop_with_continue.fe:10:23
-   │
-10 │             counter = counter + 1
-   │                       ^^^^^^^^^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/while_loop_with_continue.fe:11:16
-   │
-11 │         return counter
-   │                ^^^^^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
 note: 
    ┌─ features/while_loop_with_continue.fe:2:5
    │  
@@ -303,108 +13,131 @@ note:
    · │
 10 │ │             counter = counter + 1
 11 │ │         return counter
-   │ ╰──────────────────────^ attributes hash: 5931278080780939395
+   │ ╰──────────────────────^ attributes hash: 4553090961241945225
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "bar",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 U256,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
              ),
          ),
      }
 
 note: 
-  ┌─ features/while_loop_with_continue.fe:3:9
+  ┌─ features/while_loop_with_continue.fe:3:23
   │
 3 │         let i: u256 = 0
-  │         ^^^^^^^^^^^^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+  │                       ^ u256: Value => None
 
 note: 
-  ┌─ features/while_loop_with_continue.fe:4:9
+  ┌─ features/while_loop_with_continue.fe:4:29
   │
 4 │         let counter: u256 = 0
-  │         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+  │                             ^ u256: Value => None
 
 note: 
-   ┌─ features/while_loop_with_continue.fe:1:1
-   │  
- 1 │ ╭ contract Foo:
- 2 │ │     pub fn bar() -> u256:
- 3 │ │         let i: u256 = 0
- 4 │ │         let counter: u256 = 0
-   · │
-10 │ │             counter = counter + 1
-11 │ │         return counter
-   │ ╰──────────────────────^ attributes hash: 5268314470252829497
-   │  
-   = ContractAttributes {
-         public_functions: [
-             FunctionAttributes {
-                 is_public: true,
-                 name: "bar",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         U256,
-                     ),
-                 ),
-             },
-         ],
-         init_function: None,
-         events: [],
-         structs: [],
-         external_contracts: [],
-     }
+  ┌─ features/while_loop_with_continue.fe:6:15
+  │
+6 │         while i < 2:
+  │               ^ u256: Value => None
 
 note: 
-  ┌─ features/while_loop_with_continue.fe:2:21
+  ┌─ features/while_loop_with_continue.fe:6:19
   │
-2 │     pub fn bar() -> u256:
-  │                     ^^^^ attributes hash: 4293763436908729629
+6 │         while i < 2:
+  │                   ^ u256: Value => None
+
+note: 
+  ┌─ features/while_loop_with_continue.fe:6:15
   │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+6 │         while i < 2:
+  │               ^^^^^ bool: Value => None
+
+note: 
+  ┌─ features/while_loop_with_continue.fe:7:13
+  │
+7 │             i = i + 1
+  │             ^ u256: Value => None
+
+note: 
+  ┌─ features/while_loop_with_continue.fe:7:17
+  │
+7 │             i = i + 1
+  │                 ^ u256: Value => None
+
+note: 
+  ┌─ features/while_loop_with_continue.fe:7:21
+  │
+7 │             i = i + 1
+  │                     ^ u256: Value => None
+
+note: 
+  ┌─ features/while_loop_with_continue.fe:7:17
+  │
+7 │             i = i + 1
+  │                 ^^^^^ u256: Value => None
+
+note: 
+  ┌─ features/while_loop_with_continue.fe:8:16
+  │
+8 │             if i == 1:
+  │                ^ u256: Value => None
+
+note: 
+  ┌─ features/while_loop_with_continue.fe:8:21
+  │
+8 │             if i == 1:
+  │                     ^ u256: Value => None
+
+note: 
+  ┌─ features/while_loop_with_continue.fe:8:16
+  │
+8 │             if i == 1:
+  │                ^^^^^^ bool: Value => None
+
+note: 
+   ┌─ features/while_loop_with_continue.fe:10:13
+   │
+10 │             counter = counter + 1
+   │             ^^^^^^^ u256: Value => None
+
+note: 
+   ┌─ features/while_loop_with_continue.fe:10:23
+   │
+10 │             counter = counter + 1
+   │                       ^^^^^^^ u256: Value => None
+
+note: 
+   ┌─ features/while_loop_with_continue.fe:10:33
+   │
+10 │             counter = counter + 1
+   │                                 ^ u256: Value => None
+
+note: 
+   ┌─ features/while_loop_with_continue.fe:10:23
+   │
+10 │             counter = counter + 1
+   │                       ^^^^^^^^^^^ u256: Value => None
+
+note: 
+   ┌─ features/while_loop_with_continue.fe:11:16
+   │
+11 │         return counter
+   │                ^^^^^^^ u256: Value => None
 
 note: 
   ┌─ features/while_loop_with_continue.fe:3:16
   │
 3 │         let i: u256 = 0
-  │                ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+  │                ^^^^ u256
 
 note: 
   ┌─ features/while_loop_with_continue.fe:4:22
   │
 4 │         let counter: u256 = 0
-  │                      ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+  │                      ^^^^ u256
 
 

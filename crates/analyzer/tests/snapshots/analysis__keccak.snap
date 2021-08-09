@@ -1,217 +1,36 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/keccak.fe\", &src, &context)"
+expression: "build_snapshot(\"features/keccak.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Keccak": Contract(
-            Contract {
-                name: "Keccak",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "return_hash_from_foo",
-                        params: [
-                            (
-                                "val",
-                                Array(
-                                    Array {
-                                        size: 3,
-                                        inner: Numeric(
-                                            U8,
-                                        ),
-                                    },
-                                ),
-                            ),
-                        ],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "return_hash_from_u256",
-                        params: [
-                            (
-                                "val",
-                                Array(
-                                    Array {
-                                        size: 32,
-                                        inner: Numeric(
-                                            U8,
-                                        ),
-                                    },
-                                ),
-                            ),
-                        ],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "return_hash_from_u8",
-                        params: [
-                            (
-                                "val",
-                                Array(
-                                    Array {
-                                        size: 1,
-                                        inner: Numeric(
-                                            U8,
-                                        ),
-                                    },
-                                ),
-                            ),
-                        ],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
-note: 
-  ┌─ features/keccak.fe:4:26
-  │
-4 │         return keccak256(val)
-  │                          ^^^ attributes hash: 2524810310946938483
-  │
-  = ExpressionAttributes {
-        typ: Array(
-            Array {
-                size: 1,
-                inner: Numeric(
-                    U8,
-                ),
-            },
-        ),
-        location: Memory,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/keccak.fe:4:16
-  │
-4 │         return keccak256(val)
-  │                ^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/keccak.fe:7:26
-  │
-7 │         return keccak256(val)
-  │                          ^^^ attributes hash: 10885289746449225458
-  │
-  = ExpressionAttributes {
-        typ: Array(
-            Array {
-                size: 3,
-                inner: Numeric(
-                    U8,
-                ),
-            },
-        ),
-        location: Memory,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/keccak.fe:7:16
-  │
-7 │         return keccak256(val)
-  │                ^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-   ┌─ features/keccak.fe:10:26
-   │
-10 │         return keccak256(val)
-   │                          ^^^ attributes hash: 14564496740404757886
-   │
-   = ExpressionAttributes {
-         typ: Array(
-             Array {
-                 size: 32,
-                 inner: Numeric(
-                     U8,
-                 ),
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/keccak.fe:10:16
-   │
-10 │         return keccak256(val)
-   │                ^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
 note: 
   ┌─ features/keccak.fe:3:5
   │  
 3 │ ╭     pub fn return_hash_from_u8(val: u8[1]) -> u256:
 4 │ │         return keccak256(val)
-  │ ╰─────────────────────────────^ attributes hash: 5798954565869390433
+  │ ╰─────────────────────────────^ attributes hash: 3365860038500136191
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "return_hash_from_u8",
+  = FunctionSignature {
         params: [
-            (
-                "val",
-                Array(
-                    Array {
-                        size: 1,
-                        inner: Numeric(
-                            U8,
-                        ),
-                    },
+            FunctionParam {
+                name: "val",
+                typ: Ok(
+                    Array(
+                        Array {
+                            size: 1,
+                            inner: Numeric(
+                                U8,
+                            ),
+                        },
+                    ),
                 ),
-            ),
+            },
         ],
-        return_type: Base(
-            Numeric(
-                U256,
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U256,
+                ),
             ),
         ),
     }
@@ -221,27 +40,29 @@ note:
   │  
 6 │ ╭     pub fn return_hash_from_foo(val: u8[3]) -> u256:
 7 │ │         return keccak256(val)
-  │ ╰─────────────────────────────^ attributes hash: 5850254381851319635
+  │ ╰─────────────────────────────^ attributes hash: 14368707390067541026
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "return_hash_from_foo",
+  = FunctionSignature {
         params: [
-            (
-                "val",
-                Array(
-                    Array {
-                        size: 3,
-                        inner: Numeric(
-                            U8,
-                        ),
-                    },
+            FunctionParam {
+                name: "val",
+                typ: Ok(
+                    Array(
+                        Array {
+                            size: 3,
+                            inner: Numeric(
+                                U8,
+                            ),
+                        },
+                    ),
                 ),
-            ),
+            },
         ],
-        return_type: Base(
-            Numeric(
-                U256,
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U256,
+                ),
             ),
         ),
     }
@@ -251,117 +72,68 @@ note:
    │  
  9 │ ╭     pub fn return_hash_from_u256(val: u8[32]) -> u256:
 10 │ │         return keccak256(val)
-   │ ╰─────────────────────────────^ attributes hash: 16112773291209779444
+   │ ╰─────────────────────────────^ attributes hash: 2195893687340139662
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "return_hash_from_u256",
+   = FunctionSignature {
          params: [
-             (
-                 "val",
-                 Array(
-                     Array {
-                         size: 32,
-                         inner: Numeric(
-                             U8,
-                         ),
-                     },
+             FunctionParam {
+                 name: "val",
+                 typ: Ok(
+                     Array(
+                         Array {
+                             size: 32,
+                             inner: Numeric(
+                                 U8,
+                             ),
+                         },
+                     ),
                  ),
-             ),
+             },
          ],
-         return_type: Base(
-             Numeric(
-                 U256,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
              ),
          ),
      }
 
 note: 
-   ┌─ features/keccak.fe:1:1
-   │  
- 1 │ ╭ contract Keccak:
- 2 │ │ 
- 3 │ │     pub fn return_hash_from_u8(val: u8[1]) -> u256:
- 4 │ │         return keccak256(val)
-   · │
- 9 │ │     pub fn return_hash_from_u256(val: u8[32]) -> u256:
-10 │ │         return keccak256(val)
-   │ ╰─────────────────────────────^ attributes hash: 3261690256665819075
-   │  
-   = ContractAttributes {
-         public_functions: [
-             FunctionAttributes {
-                 is_public: true,
-                 name: "return_hash_from_foo",
-                 params: [
-                     (
-                         "val",
-                         Array(
-                             Array {
-                                 size: 3,
-                                 inner: Numeric(
-                                     U8,
-                                 ),
-                             },
-                         ),
-                     ),
-                 ],
-                 return_type: Base(
-                     Numeric(
-                         U256,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "return_hash_from_u256",
-                 params: [
-                     (
-                         "val",
-                         Array(
-                             Array {
-                                 size: 32,
-                                 inner: Numeric(
-                                     U8,
-                                 ),
-                             },
-                         ),
-                     ),
-                 ],
-                 return_type: Base(
-                     Numeric(
-                         U256,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "return_hash_from_u8",
-                 params: [
-                     (
-                         "val",
-                         Array(
-                             Array {
-                                 size: 1,
-                                 inner: Numeric(
-                                     U8,
-                                 ),
-                             },
-                         ),
-                     ),
-                 ],
-                 return_type: Base(
-                     Numeric(
-                         U256,
-                     ),
-                 ),
-             },
-         ],
-         init_function: None,
-         events: [],
-         structs: [],
-         external_contracts: [],
-     }
+  ┌─ features/keccak.fe:4:26
+  │
+4 │         return keccak256(val)
+  │                          ^^^ u8[1]: Memory => None
+
+note: 
+  ┌─ features/keccak.fe:4:16
+  │
+4 │         return keccak256(val)
+  │                ^^^^^^^^^^^^^^ u256: Value => None
+
+note: 
+  ┌─ features/keccak.fe:7:26
+  │
+7 │         return keccak256(val)
+  │                          ^^^ u8[3]: Memory => None
+
+note: 
+  ┌─ features/keccak.fe:7:16
+  │
+7 │         return keccak256(val)
+  │                ^^^^^^^^^^^^^^ u256: Value => None
+
+note: 
+   ┌─ features/keccak.fe:10:26
+   │
+10 │         return keccak256(val)
+   │                          ^^^ u8[32]: Memory => None
+
+note: 
+   ┌─ features/keccak.fe:10:16
+   │
+10 │         return keccak256(val)
+   │                ^^^^^^^^^^^^^^ u256: Value => None
 
 note: 
   ┌─ features/keccak.fe:4:16
@@ -392,122 +164,5 @@ note:
    = BuiltinFunction {
          func: Keccak256,
      }
-
-note: 
-  ┌─ features/keccak.fe:3:37
-  │
-3 │     pub fn return_hash_from_u8(val: u8[1]) -> u256:
-  │                                     ^^ attributes hash: 3165084411644393001
-  │
-  = Base(
-        Numeric(
-            U8,
-        ),
-    )
-
-note: 
-  ┌─ features/keccak.fe:3:37
-  │
-3 │     pub fn return_hash_from_u8(val: u8[1]) -> u256:
-  │                                     ^^^^^ attributes hash: 13595831996294261326
-  │
-  = Array(
-        Array {
-            size: 1,
-            inner: Numeric(
-                U8,
-            ),
-        },
-    )
-
-note: 
-  ┌─ features/keccak.fe:3:47
-  │
-3 │     pub fn return_hash_from_u8(val: u8[1]) -> u256:
-  │                                               ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/keccak.fe:6:38
-  │
-6 │     pub fn return_hash_from_foo(val: u8[3]) -> u256:
-  │                                      ^^ attributes hash: 3165084411644393001
-  │
-  = Base(
-        Numeric(
-            U8,
-        ),
-    )
-
-note: 
-  ┌─ features/keccak.fe:6:38
-  │
-6 │     pub fn return_hash_from_foo(val: u8[3]) -> u256:
-  │                                      ^^^^^ attributes hash: 15652834185157224248
-  │
-  = Array(
-        Array {
-            size: 3,
-            inner: Numeric(
-                U8,
-            ),
-        },
-    )
-
-note: 
-  ┌─ features/keccak.fe:6:48
-  │
-6 │     pub fn return_hash_from_foo(val: u8[3]) -> u256:
-  │                                                ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/keccak.fe:9:39
-  │
-9 │     pub fn return_hash_from_u256(val: u8[32]) -> u256:
-  │                                       ^^ attributes hash: 3165084411644393001
-  │
-  = Base(
-        Numeric(
-            U8,
-        ),
-    )
-
-note: 
-  ┌─ features/keccak.fe:9:39
-  │
-9 │     pub fn return_hash_from_u256(val: u8[32]) -> u256:
-  │                                       ^^^^^^ attributes hash: 9627106547151124155
-  │
-  = Array(
-        Array {
-            size: 32,
-            inner: Numeric(
-                U8,
-            ),
-        },
-    )
-
-note: 
-  ┌─ features/keccak.fe:9:50
-  │
-9 │     pub fn return_hash_from_u256(val: u8[32]) -> u256:
-  │                                                  ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
 
 

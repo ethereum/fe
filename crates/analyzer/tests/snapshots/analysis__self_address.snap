@@ -1,91 +1,28 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/self_address.fe\", &src, &context)"
+expression: "build_snapshot(\"features/self_address.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "my_address",
-                        params: [],
-                        return_type: Base(
-                            Address,
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
-note: 
-  ┌─ features/self_address.fe:3:16
-  │
-3 │         return self.address
-  │                ^^^^^^^^^^^^ attributes hash: 16804606599831072828
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Address,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
 note: 
   ┌─ features/self_address.fe:2:5
   │  
 2 │ ╭     pub fn my_address() -> address:
 3 │ │         return self.address
-  │ ╰───────────────────────────^ attributes hash: 5878119386966346495
+  │ ╰───────────────────────────^ attributes hash: 2195077967527136217
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "my_address",
+  = FunctionSignature {
         params: [],
-        return_type: Base(
-            Address,
+        return_type: Ok(
+            Base(
+                Address,
+            ),
         ),
     }
 
 note: 
-  ┌─ features/self_address.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │     pub fn my_address() -> address:
-3 │ │         return self.address
-  │ ╰───────────────────────────^ attributes hash: 3093591092683506781
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "my_address",
-                params: [],
-                return_type: Base(
-                    Address,
-                ),
-            },
-        ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [],
-    }
-
-note: 
-  ┌─ features/self_address.fe:2:28
+  ┌─ features/self_address.fe:3:16
   │
-2 │     pub fn my_address() -> address:
-  │                            ^^^^^^^ attributes hash: 928477466454064117
-  │
-  = Base(
-        Address,
-    )
+3 │         return self.address
+  │                ^^^^^^^^^^^^ address: Value => None
 
 

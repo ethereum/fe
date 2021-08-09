@@ -245,10 +245,10 @@ pub fn deploy_contract(
     let mut files = FileStore::new();
     let id = files.add_file(fixture, src);
 
-    let compiled_module = match driver::compile(src, id, true, true) {
+    let compiled_module = match driver::compile(src, true, true) {
         Ok(module) => module,
         Err(error) => {
-            fe_common::diagnostics::print_diagnostics(&error.0, &files);
+            fe_common::diagnostics::print_diagnostics(&error.0, id, &files);
             panic!("failed to compile module: {}", fixture)
         }
     };
@@ -448,10 +448,10 @@ pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> Contr
     let mut files = FileStore::new();
     let src = test_files::fixture(fixture);
     let id = files.add_file(fixture, src);
-    let compiled_module = match driver::compile(src, id, true, true) {
+    let compiled_module = match driver::compile(src, true, true) {
         Ok(module) => module,
         Err(err) => {
-            print_diagnostics(&err.0, &files);
+            print_diagnostics(&err.0, id, &files);
             panic!("failed to compile fixture: {}", fixture);
         }
     };

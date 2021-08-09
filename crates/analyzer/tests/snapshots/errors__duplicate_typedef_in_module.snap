@@ -3,12 +3,13 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, &src)"
 
 ---
-error: a type definition with the same name already exists
-  ┌─ compile_errors/duplicate_typedef_in_module.fe:4:1
+error: duplicate type name
+  ┌─ compile_errors/duplicate_typedef_in_module.fe:2:1
   │
+2 │ type bar = u8
+  │ ^^^^^^^^^^^^^ `bar` first defined here
+3 │ 
 4 │ type bar = u8
-  │ ^^^^^^^^^^^^^ Conflicting definition of `bar`
-  │
-  = Note: Give one of the `bar` definitions a different name
+  │ ------------- `bar` redefined here
 
 

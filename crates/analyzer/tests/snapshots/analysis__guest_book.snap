@@ -1,240 +1,19 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"demos/guest_book.fe\", &src, &context)"
+expression: "build_snapshot(\"demos/guest_book.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "GuestBook": Contract(
-            Contract {
-                name: "GuestBook",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_msg",
-                        params: [
-                            (
-                                "addr",
-                                Base(
-                                    Address,
-                                ),
-                            ),
-                        ],
-                        return_type: String(
-                            FeString {
-                                max_size: 100,
-                            },
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "sign",
-                        params: [
-                            (
-                                "book_msg",
-                                String(
-                                    FeString {
-                                        max_size: 100,
-                                    },
-                                ),
-                            ),
-                        ],
-                        return_type: Base(
-                            Unit,
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
+note: 
+  ┌─ demos/guest_book.fe:5:5
+  │
+5 │     messages: Map<address, String<100>>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, String<100>>
 
 note: 
-   ┌─ demos/guest_book.fe:13:9
-   │
-13 │         self.messages[msg.sender] = book_msg
-   │         ^^^^^^^^^^^^^ attributes hash: 5346682534978568605
-   │
-   = ExpressionAttributes {
-         typ: Map(
-             Map {
-                 key: Address,
-                 value: String(
-                     FeString {
-                         max_size: 100,
-                     },
-                 ),
-             },
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: None,
-     }
-
-note: 
-   ┌─ demos/guest_book.fe:13:23
-   │
-13 │         self.messages[msg.sender] = book_msg
-   │                       ^^^^^^^^^^ attributes hash: 16804606599831072828
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ demos/guest_book.fe:13:9
-   │
-13 │         self.messages[msg.sender] = book_msg
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12167297811474832651
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 100,
-             },
-         ),
-         location: Storage {
-             nonce: None,
-         },
-         move_location: None,
-     }
-
-note: 
-   ┌─ demos/guest_book.fe:13:37
-   │
-13 │         self.messages[msg.sender] = book_msg
-   │                                     ^^^^^^^^ attributes hash: 4797497344445665156
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 100,
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ demos/guest_book.fe:16:30
-   │
-16 │         emit Signed(book_msg=book_msg)
-   │                              ^^^^^^^^ attributes hash: 4797497344445665156
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 100,
-             },
-         ),
-         location: Memory,
-         move_location: None,
-     }
-
-note: 
-   ┌─ demos/guest_book.fe:21:16
-   │
-21 │         return self.messages[addr].to_mem()
-   │                ^^^^^^^^^^^^^ attributes hash: 5346682534978568605
-   │
-   = ExpressionAttributes {
-         typ: Map(
-             Map {
-                 key: Address,
-                 value: String(
-                     FeString {
-                         max_size: 100,
-                     },
-                 ),
-             },
-         ),
-         location: Storage {
-             nonce: Some(
-                 0,
-             ),
-         },
-         move_location: None,
-     }
-
-note: 
-   ┌─ demos/guest_book.fe:21:30
-   │
-21 │         return self.messages[addr].to_mem()
-   │                              ^^^^ attributes hash: 16804606599831072828
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ demos/guest_book.fe:21:16
-   │
-21 │         return self.messages[addr].to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 12167297811474832651
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 100,
-             },
-         ),
-         location: Storage {
-             nonce: None,
-         },
-         move_location: None,
-     }
-
-note: 
-   ┌─ demos/guest_book.fe:21:16
-   │
-21 │         return self.messages[addr].to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5537329139837609854
-   │
-   = ExpressionAttributes {
-         typ: String(
-             FeString {
-                 max_size: 100,
-             },
-         ),
-         location: Storage {
-             nonce: None,
-         },
-         move_location: Some(
-             Memory,
-         ),
-     }
-
-note: 
-   ┌─ demos/guest_book.fe:16:9
-   │
-16 │         emit Signed(book_msg=book_msg)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9556729338567466879
-   │
-   = EventDef {
-         name: "Signed",
-         fields: [
-             (
-                 "book_msg",
-                 String(
-                     FeString {
-                         max_size: 100,
-                     },
-                 ),
-             ),
-         ],
-         indexed_fields: [],
-     }
+  ┌─ demos/guest_book.fe:9:9
+  │
+9 │         book_msg: String<100>
+  │         ^^^^^^^^^^^^^^^^^^^^^ String<100>
 
 note: 
    ┌─ demos/guest_book.fe:11:5
@@ -245,23 +24,25 @@ note:
 14 │ │ 
 15 │ │         # Emit the `Signed` event
 16 │ │         emit Signed(book_msg=book_msg)
-   │ ╰──────────────────────────────────────^ attributes hash: 586413225975811935
+   │ ╰──────────────────────────────────────^ attributes hash: 4052420453933544886
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "sign",
+   = FunctionSignature {
          params: [
-             (
-                 "book_msg",
-                 String(
-                     FeString {
-                         max_size: 100,
-                     },
+             FunctionParam {
+                 name: "book_msg",
+                 typ: Ok(
+                     String(
+                         FeString {
+                             max_size: 100,
+                         },
+                     ),
                  ),
-             ),
+             },
          ],
-         return_type: Base(
-             Unit,
+         return_type: Ok(
+             Base(
+                 Unit,
+             ),
          ),
      }
 
@@ -272,94 +53,103 @@ note:
 19 │ │         # Copying data from storage to memory
 20 │ │         # has to be done explicitly via `to_mem()`
 21 │ │         return self.messages[addr].to_mem()
-   │ ╰───────────────────────────────────────────^ attributes hash: 17848855580416875690
+   │ ╰───────────────────────────────────────────^ attributes hash: 10372952195383146305
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_msg",
+   = FunctionSignature {
          params: [
-             (
-                 "addr",
-                 Base(
-                     Address,
+             FunctionParam {
+                 name: "addr",
+                 typ: Ok(
+                     Base(
+                         Address,
+                     ),
                  ),
-             ),
-         ],
-         return_type: String(
-             FeString {
-                 max_size: 100,
              },
+         ],
+         return_type: Ok(
+             String(
+                 FeString {
+                     max_size: 100,
+                 },
+             ),
          ),
      }
 
 note: 
-   ┌─ demos/guest_book.fe:2:1
-   │  
- 2 │ ╭ contract GuestBook:
- 3 │ │     # Strings are generic over a constant number
- 4 │ │     # that restricts its maximum size
- 5 │ │     messages: Map<address, String<100>>
-   · │
-20 │ │         # has to be done explicitly via `to_mem()`
-21 │ │         return self.messages[addr].to_mem()
-   │ ╰───────────────────────────────────────────^ attributes hash: 9853337215152345802
-   │  
-   = ContractAttributes {
-         public_functions: [
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_msg",
-                 params: [
-                     (
-                         "addr",
-                         Base(
-                             Address,
-                         ),
+   ┌─ demos/guest_book.fe:13:9
+   │
+13 │         self.messages[msg.sender] = book_msg
+   │         ^^^^^^^^^^^^^ Map<address, String<100>>: Storage { nonce: Some(0) } => None
+
+note: 
+   ┌─ demos/guest_book.fe:13:23
+   │
+13 │         self.messages[msg.sender] = book_msg
+   │                       ^^^^^^^^^^ address: Value => None
+
+note: 
+   ┌─ demos/guest_book.fe:13:9
+   │
+13 │         self.messages[msg.sender] = book_msg
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: None } => None
+
+note: 
+   ┌─ demos/guest_book.fe:13:37
+   │
+13 │         self.messages[msg.sender] = book_msg
+   │                                     ^^^^^^^^ String<100>: Memory => None
+
+note: 
+   ┌─ demos/guest_book.fe:16:30
+   │
+16 │         emit Signed(book_msg=book_msg)
+   │                              ^^^^^^^^ String<100>: Memory => None
+
+note: 
+   ┌─ demos/guest_book.fe:21:16
+   │
+21 │         return self.messages[addr].to_mem()
+   │                ^^^^^^^^^^^^^ Map<address, String<100>>: Storage { nonce: Some(0) } => None
+
+note: 
+   ┌─ demos/guest_book.fe:21:30
+   │
+21 │         return self.messages[addr].to_mem()
+   │                              ^^^^ address: Value => None
+
+note: 
+   ┌─ demos/guest_book.fe:21:16
+   │
+21 │         return self.messages[addr].to_mem()
+   │                ^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: None } => None
+
+note: 
+   ┌─ demos/guest_book.fe:21:16
+   │
+21 │         return self.messages[addr].to_mem()
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: None } => Some(Memory)
+
+note: 
+   ┌─ demos/guest_book.fe:16:9
+   │
+16 │         emit Signed(book_msg=book_msg)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 3840771212935086148
+   │
+   = Event {
+         name: "Signed",
+         fields: [
+             EventField {
+                 name: "book_msg",
+                 typ: Ok(
+                     String(
+                         FeString {
+                             max_size: 100,
+                         },
                      ),
-                 ],
-                 return_type: String(
-                     FeString {
-                         max_size: 100,
-                     },
                  ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "sign",
-                 params: [
-                     (
-                         "book_msg",
-                         String(
-                             FeString {
-                                 max_size: 100,
-                             },
-                         ),
-                     ),
-                 ],
-                 return_type: Base(
-                     Unit,
-                 ),
+                 is_indexed: false,
              },
          ],
-         init_function: None,
-         events: [
-             EventDef {
-                 name: "Signed",
-                 fields: [
-                     (
-                         "book_msg",
-                         String(
-                             FeString {
-                                 max_size: 100,
-                             },
-                         ),
-                     ),
-                 ],
-                 indexed_fields: [],
-             },
-         ],
-         structs: [],
-         external_contracts: [],
      }
 
 note: 
@@ -369,112 +159,5 @@ note:
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
    │
    = ValueAttribute
-
-note: 
-  ┌─ demos/guest_book.fe:8:5
-  │  
-8 │ ╭     event Signed:
-9 │ │         book_msg: String<100>
-  │ ╰─────────────────────────────^ attributes hash: 9556729338567466879
-  │  
-  = EventDef {
-        name: "Signed",
-        fields: [
-            (
-                "book_msg",
-                String(
-                    FeString {
-                        max_size: 100,
-                    },
-                ),
-            ),
-        ],
-        indexed_fields: [],
-    }
-
-note: 
-  ┌─ demos/guest_book.fe:9:19
-  │
-9 │         book_msg: String<100>
-  │                   ^^^^^^^^^^^ attributes hash: 8213016172125664751
-  │
-  = String(
-        FeString {
-            max_size: 100,
-        },
-    )
-
-note: 
-   ┌─ demos/guest_book.fe:11:27
-   │
-11 │     pub fn sign(book_msg: String<100>):
-   │                           ^^^^^^^^^^^ attributes hash: 8213016172125664751
-   │
-   = String(
-         FeString {
-             max_size: 100,
-         },
-     )
-
-note: 
-   ┌─ demos/guest_book.fe:18:26
-   │
-18 │     pub fn get_msg(addr: address) -> String<100>:
-   │                          ^^^^^^^ attributes hash: 928477466454064117
-   │
-   = Base(
-         Address,
-     )
-
-note: 
-   ┌─ demos/guest_book.fe:18:38
-   │
-18 │     pub fn get_msg(addr: address) -> String<100>:
-   │                                      ^^^^^^^^^^^ attributes hash: 8213016172125664751
-   │
-   = String(
-         FeString {
-             max_size: 100,
-         },
-     )
-
-note: 
-  ┌─ demos/guest_book.fe:5:19
-  │
-5 │     messages: Map<address, String<100>>
-  │                   ^^^^^^^ attributes hash: 928477466454064117
-  │
-  = Base(
-        Address,
-    )
-
-note: 
-  ┌─ demos/guest_book.fe:5:28
-  │
-5 │     messages: Map<address, String<100>>
-  │                            ^^^^^^^^^^^ attributes hash: 8213016172125664751
-  │
-  = String(
-        FeString {
-            max_size: 100,
-        },
-    )
-
-note: 
-  ┌─ demos/guest_book.fe:5:15
-  │
-5 │     messages: Map<address, String<100>>
-  │               ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18158295928067305552
-  │
-  = Map(
-        Map {
-            key: Address,
-            value: String(
-                FeString {
-                    max_size: 100,
-                },
-            ),
-        },
-    )
 
 

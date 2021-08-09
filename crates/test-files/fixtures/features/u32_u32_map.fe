@@ -1,5 +1,5 @@
 contract Foo:
-    pub bar: Map<u32, u32>
+    bar: Map<u32, u32>
 
     pub fn read_bar(key: u32) -> u32:
         return self.bar[key]

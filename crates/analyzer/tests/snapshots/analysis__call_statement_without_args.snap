@@ -1,197 +1,27 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/call_statement_without_args.fe\", &src, &context)"
+expression: "build_snapshot(\"features/call_statement_without_args.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "bar",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
 note: 
-  ┌─ features/call_statement_without_args.fe:5:9
+  ┌─ features/call_statement_without_args.fe:2:5
   │
-5 │         self.baz[0] = 100
-  │         ^^^^^^^^ attributes hash: 7500259330345281063
-  │
-  = ExpressionAttributes {
-        typ: Map(
-            Map {
-                key: Numeric(
-                    U256,
-                ),
-                value: Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-            },
-        ),
-        location: Storage {
-            nonce: Some(
-                0,
-            ),
-        },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/call_statement_without_args.fe:5:18
-  │
-5 │         self.baz[0] = 100
-  │                  ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/call_statement_without_args.fe:5:9
-  │
-5 │         self.baz[0] = 100
-  │         ^^^^^^^^^^^ attributes hash: 6410008273718378934
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Storage {
-            nonce: None,
-        },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/call_statement_without_args.fe:5:23
-  │
-5 │         self.baz[0] = 100
-  │                       ^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/call_statement_without_args.fe:8:9
-  │
-8 │         self.assign()
-  │         ^^^^^^^^^^^^^ attributes hash: 4703226498732669424
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Unit,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/call_statement_without_args.fe:9:16
-  │
-9 │         return self.baz[0]
-  │                ^^^^^^^^ attributes hash: 7500259330345281063
-  │
-  = ExpressionAttributes {
-        typ: Map(
-            Map {
-                key: Numeric(
-                    U256,
-                ),
-                value: Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-            },
-        ),
-        location: Storage {
-            nonce: Some(
-                0,
-            ),
-        },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/call_statement_without_args.fe:9:25
-  │
-9 │         return self.baz[0]
-  │                         ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/call_statement_without_args.fe:9:16
-  │
-9 │         return self.baz[0]
-  │                ^^^^^^^^^^^ attributes hash: 2750573035226013709
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Storage {
-            nonce: None,
-        },
-        move_location: Some(
-            Value,
-        ),
-    }
+2 │     baz: Map<u256, u256>
+  │     ^^^^^^^^^^^^^^^^^^^^ Map<u256, u256>
 
 note: 
   ┌─ features/call_statement_without_args.fe:4:5
   │  
 4 │ ╭     fn assign():
 5 │ │         self.baz[0] = 100
-  │ ╰─────────────────────────^ attributes hash: 5313045008842383154
+  │ ╰─────────────────────────^ attributes hash: 17883060253504188551
   │  
-  = FunctionAttributes {
-        is_public: false,
-        name: "assign",
+  = FunctionSignature {
         params: [],
-        return_type: Base(
-            Unit,
+        return_type: Ok(
+            Base(
+                Unit,
+            ),
         ),
     }
 
@@ -201,49 +31,66 @@ note:
 7 │ ╭     pub fn bar() -> u256:
 8 │ │         self.assign()
 9 │ │         return self.baz[0]
-  │ ╰──────────────────────────^ attributes hash: 5931278080780939395
+  │ ╰──────────────────────────^ attributes hash: 4553090961241945225
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "bar",
+  = FunctionSignature {
         params: [],
-        return_type: Base(
-            Numeric(
-                U256,
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U256,
+                ),
             ),
         ),
     }
 
 note: 
-  ┌─ features/call_statement_without_args.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │     baz: Map<u256, u256>
-3 │ │ 
-4 │ │     fn assign():
-  · │
-8 │ │         self.assign()
-9 │ │         return self.baz[0]
-  │ ╰──────────────────────────^ attributes hash: 5268314470252829497
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "bar",
-                params: [],
-                return_type: Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-            },
-        ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [],
-    }
+  ┌─ features/call_statement_without_args.fe:5:9
+  │
+5 │         self.baz[0] = 100
+  │         ^^^^^^^^ Map<u256, u256>: Storage { nonce: Some(0) } => None
+
+note: 
+  ┌─ features/call_statement_without_args.fe:5:18
+  │
+5 │         self.baz[0] = 100
+  │                  ^ u256: Value => None
+
+note: 
+  ┌─ features/call_statement_without_args.fe:5:9
+  │
+5 │         self.baz[0] = 100
+  │         ^^^^^^^^^^^ u256: Storage { nonce: None } => None
+
+note: 
+  ┌─ features/call_statement_without_args.fe:5:23
+  │
+5 │         self.baz[0] = 100
+  │                       ^^^ u256: Value => None
+
+note: 
+  ┌─ features/call_statement_without_args.fe:8:9
+  │
+8 │         self.assign()
+  │         ^^^^^^^^^^^^^ (): Value => None
+
+note: 
+  ┌─ features/call_statement_without_args.fe:9:16
+  │
+9 │         return self.baz[0]
+  │                ^^^^^^^^ Map<u256, u256>: Storage { nonce: Some(0) } => None
+
+note: 
+  ┌─ features/call_statement_without_args.fe:9:25
+  │
+9 │         return self.baz[0]
+  │                         ^ u256: Value => None
+
+note: 
+  ┌─ features/call_statement_without_args.fe:9:16
+  │
+9 │         return self.baz[0]
+  │                ^^^^^^^^^^^ u256: Storage { nonce: None } => Some(Value)
 
 note: 
   ┌─ features/call_statement_without_args.fe:8:9
@@ -254,60 +101,5 @@ note:
   = SelfAttribute {
         func_name: "assign",
     }
-
-note: 
-  ┌─ features/call_statement_without_args.fe:7:21
-  │
-7 │     pub fn bar() -> u256:
-  │                     ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/call_statement_without_args.fe:2:14
-  │
-2 │     baz: Map<u256, u256>
-  │              ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/call_statement_without_args.fe:2:20
-  │
-2 │     baz: Map<u256, u256>
-  │                    ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/call_statement_without_args.fe:2:10
-  │
-2 │     baz: Map<u256, u256>
-  │          ^^^^^^^^^^^^^^^ attributes hash: 8678458200954633740
-  │
-  = Map(
-        Map {
-            key: Numeric(
-                U256,
-            ),
-            value: Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        },
-    )
 
 

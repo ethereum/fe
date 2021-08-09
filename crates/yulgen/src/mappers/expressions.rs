@@ -1,9 +1,11 @@
+use crate::context::FnContext;
+use crate::names;
 use crate::operations::{
     abi as abi_operations, contracts as contract_operations, data as data_operations,
     structs as struct_operations,
 };
-use crate::types::{AbiType, EvmSized};
-use crate::{names, Context};
+use crate::types::AsAbiType;
+use crate::types::EvmSized;
 use builtins::{BlockField, ChainField, MsgField, Object, TxField};
 use fe_analyzer::builtins;
 use fe_analyzer::builtins::{ContractTypeMethod, GlobalMethod};
@@ -19,7 +21,7 @@ use std::str::FromStr;
 use yultsur::*;
 
 /// Builds a Yul expression from a Fe expression.
-pub fn expr(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
+pub fn expr(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
     let expression = match &exp.kind {
         fe::Expr::Name(_) => expr_name(exp),
         fe::Expr::Num(_) => expr_num(exp),
@@ -35,15 +37,14 @@ pub fn expr(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
         fe::Expr::List { .. } => panic!("list expressions should be lowered"),
         fe::Expr::Tuple { .. } => panic!("tuple expressions should be lowered"),
         fe::Expr::Str(val) => {
-            context.string_literals.insert(val.clone());
+            context.contract.string_literals.insert(val.clone());
             expr_str(exp)
         }
         fe::Expr::Unit => expression! { 0x0 },
     };
 
     let attributes = context
-        .analysis
-        .get_expression(exp)
+        .expression_attributes(exp)
         .expect("missing expression attributes");
     match (
         attributes.location.to_owned(),
@@ -71,118 +72,113 @@ fn move_expression(
     }
 }
 
-fn expr_call(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
-    if let fe::Expr::Call {
-        args,
-        generic_args: _,
-        func,
-    } = &exp.kind
-    {
-        if let Some(call_type) = context.analysis.get_call(func) {
-            let yul_args: Vec<yul::Expression> = args
-                .kind
-                .iter()
-                .map(|arg| expr(context, &arg.kind.value))
-                .collect();
+fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
+    let (args, func) = match &exp.kind {
+        fe::Expr::Call { args, func, .. } => (args, func),
+        _ => unreachable!(),
+    };
+    let call_type = context.call_type(func).expect("missing call type");
+    let yul_args: Vec<yul::Expression> = args
+        .kind
+        .iter()
+        .map(|arg| expr(context, &arg.kind.value))
+        .collect();
 
-            return match call_type {
-                CallType::BuiltinFunction { func } => match func {
-                    GlobalMethod::Keccak256 => {
-                        let first_arg = &args.kind.first().expect("Missing argument").kind.value;
-                        let attributes = context
-                            .analysis
-                            .get_expression(first_arg)
-                            .expect("missing attributes");
-                        let size =
-                            FixedSize::try_from(attributes.typ.clone()).expect("Invalid type");
-                        let func_name: &str = func.into();
+    return match call_type {
+        CallType::BuiltinFunction { func } => match func {
+            GlobalMethod::Keccak256 => {
+                let first_arg = &args.kind.first().expect("Missing argument").kind.value;
+                let attributes = context
+                    .expression_attributes(first_arg)
+                    .expect("missing attributes");
+                let size = FixedSize::try_from(attributes.typ.clone()).expect("Invalid type");
+                let func_name: &str = func.into();
 
-                        let func_name = identifier! { (func_name) };
-                        let size = identifier_expression! { (size.size()) };
-                        expression! { [func_name]([yul_args[0].to_owned()], [size]) }
-                    }
-                },
-                CallType::TypeConstructor {
-                    typ: Type::Struct(val),
-                } => struct_operations::new(val, yul_args),
-                CallType::TypeConstructor { .. } => yul_args[0].to_owned(),
-                CallType::SelfAttribute { func_name } => {
-                    let func_name = names::func_name(func_name);
-                    expression! { [func_name]([yul_args...]) }
-                }
-                CallType::ValueAttribute => {
-                    if let fe::Expr::Attribute { value, attr } = &func.kind {
-                        let value_attributes = context
-                            .analysis
-                            .get_expression(value)
-                            .expect("invalid attributes");
-
-                        return match (value_attributes.typ.to_owned(), &attr.kind) {
-                            (Type::Contract(contract), func_name) => contract_operations::call(
-                                contract,
-                                func_name,
-                                expr(context, value),
-                                yul_args,
-                            ),
-                            (typ, func_name) => {
-                                match builtins::ValueMethod::from_str(func_name)
-                                    .expect("uncaught analyzer error")
-                                {
-                                    // Copying is done in `expr(..)` based on the move location set
-                                    // in the expression's attributes, so we just map the value for
-                                    // `to_mem` and `clone`.
-                                    builtins::ValueMethod::ToMem => expr(context, value),
-                                    builtins::ValueMethod::Clone => expr(context, value),
-                                    builtins::ValueMethod::AbiEncode => match typ {
-                                        Type::Struct(struct_) => abi_operations::encode(
-                                            &[AbiType::from(&struct_)],
-                                            vec![expr(context, value)],
-                                        ),
-                                        _ => panic!("invalid attributes"),
-                                    },
-                                }
-                            }
-                        };
-                    }
-
-                    panic!("invalid attributes")
-                }
-                CallType::TypeAttribute { typ, func_name } => {
-                    match (
-                        typ,
-                        ContractTypeMethod::from_str(func_name.as_str())
-                            .expect("invalid attributes"),
-                    ) {
-                        (Type::Contract(contract), ContractTypeMethod::Create2) => {
-                            context.created_contracts.insert(contract.name.clone());
-                            contract_operations::create2(
-                                contract,
-                                yul_args[0].to_owned(),
-                                yul_args[1].to_owned(),
-                            )
-                        }
-                        (Type::Contract(contract), ContractTypeMethod::Create) => {
-                            context.created_contracts.insert(contract.name.clone());
-                            contract_operations::create(contract, yul_args[0].to_owned())
-                        }
-                        _ => panic!("invalid attributes"),
-                    }
-                }
-            };
+                let func_name = identifier! { (func_name) };
+                let size = identifier_expression! { (size.size()) };
+                expression! { [func_name]([yul_args[0].to_owned()], [size]) }
+            }
+        },
+        CallType::TypeConstructor {
+            typ: Type::Struct(val),
+        } => struct_operations::new(&val, yul_args),
+        CallType::TypeConstructor { .. } => yul_args[0].to_owned(),
+        CallType::SelfAttribute { func_name } => {
+            let func_name = names::func_name(&func_name);
+            expression! { [func_name]([yul_args...]) }
         }
-    }
+        CallType::ValueAttribute => {
+            if let fe::Expr::Attribute { value, attr } = &func.kind {
+                let value_attributes = context
+                    .expression_attributes(value)
+                    .expect("invalid attributes");
 
-    unreachable!()
+                return match (value_attributes.typ.to_owned(), &attr.kind) {
+                    (Type::Contract(contract), func_name) => contract_operations::call(
+                        contract,
+                        func_name,
+                        expr(context, value),
+                        yul_args,
+                    ),
+                    (typ, func_name) => {
+                        match builtins::ValueMethod::from_str(func_name)
+                            .expect("uncaught analyzer error")
+                        {
+                            // Copying is done in `expr(..)` based on the move location set
+                            // in the expression's attributes, so we just map the value for
+                            // `to_mem` and `clone`.
+                            builtins::ValueMethod::ToMem => expr(context, value),
+                            builtins::ValueMethod::Clone => expr(context, value),
+                            builtins::ValueMethod::AbiEncode => match typ {
+                                Type::Struct(struct_) => abi_operations::encode(
+                                    &[struct_.as_abi_type(context.db)],
+                                    vec![expr(context, value)],
+                                ),
+                                _ => panic!("invalid attributes"),
+                            },
+                        }
+                    }
+                };
+            }
+
+            panic!("invalid attributes")
+        }
+        CallType::TypeAttribute { typ, func_name } => {
+            match (
+                typ,
+                ContractTypeMethod::from_str(func_name.as_str()).expect("invalid attributes"),
+            ) {
+                (Type::Contract(contract), ContractTypeMethod::Create2) => {
+                    context
+                        .contract
+                        .created_contracts
+                        .insert(contract.name.clone());
+                    contract_operations::create2(
+                        &contract,
+                        yul_args[0].to_owned(),
+                        yul_args[1].to_owned(),
+                    )
+                }
+                (Type::Contract(contract), ContractTypeMethod::Create) => {
+                    context
+                        .contract
+                        .created_contracts
+                        .insert(contract.name.clone());
+                    contract_operations::create(&contract, yul_args[0].to_owned())
+                }
+                _ => panic!("invalid attributes"),
+            }
+        }
+    };
 }
 
-pub fn expr_comp_operation(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
+pub fn expr_comp_operation(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::CompOperation { left, op, right } = &exp.kind {
         let yul_left = expr(context, left);
         let yul_right = expr(context, right);
 
         let typ = &context
-            .analysis
-            .get_expression(left)
+            .expression_attributes(left)
             .expect("Missing `left` expression in context")
             .typ;
 
@@ -211,14 +207,13 @@ pub fn expr_comp_operation(context: &mut Context, exp: &Node<fe::Expr>) -> yul::
     unreachable!()
 }
 
-pub fn expr_bin_operation(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
+pub fn expr_bin_operation(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::BinOperation { left, op, right } = &exp.kind {
         let yul_left = expr(context, left);
         let yul_right = expr(context, right);
 
         let typ = &context
-            .analysis
-            .get_expression(left)
+            .expression_attributes(left)
             .expect("Missing `left` expression in context")
             .typ;
 
@@ -273,7 +268,7 @@ pub fn expr_bin_operation(context: &mut Context, exp: &Node<fe::Expr>) -> yul::E
     unreachable!()
 }
 
-pub fn expr_unary_operation(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
+pub fn expr_unary_operation(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::UnaryOperation { op, operand } = &exp.kind {
         let yul_operand = expr(context, operand);
 
@@ -342,26 +337,30 @@ fn expr_str(exp: &Node<fe::Expr>) -> yul::Expression {
     unreachable!()
 }
 
-fn expr_subscript(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
-    if let fe::Expr::Subscript { value, index } = &exp.kind {
-        if let Some(value_attributes) = context.analysis.get_expression(value) {
-            let value = expr(context, value);
-            let index = expr(context, index);
+fn expr_subscript(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
+    if let fe::Expr::Subscript {
+        value: value_node,
+        index: index_node,
+    } = &exp.kind
+    {
+        let value = expr(context, value_node);
+        let index = expr(context, index_node);
 
-            return match value_attributes.typ.to_owned() {
-                Type::Map(_) => data_operations::keyed_map(value, index),
-                Type::Array(array) => data_operations::indexed_array(array, value, index),
-                _ => panic!("invalid attributes"),
-            };
-        }
+        let value_attributes = context
+            .expression_attributes(value_node)
+            .expect("missing expr attributes");
 
-        panic!("missing attributes");
+        return match &value_attributes.typ {
+            Type::Map(_) => data_operations::keyed_map(value, index),
+            Type::Array(array) => data_operations::indexed_array(array.clone(), value, index),
+            _ => panic!("invalid attributes"),
+        };
     }
 
     unreachable!()
 }
 
-fn expr_attribute(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
+fn expr_attribute(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Attribute { value, attr } = &exp.kind {
         // If the given value has expression attributes, we handle it as an expression
         // by first mapping the value and then performing the expected operation
@@ -369,7 +368,7 @@ fn expr_attribute(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expressio
         //
         // If the given value does not have expression attributes, we assume it is a
         // builtin object and map it as such.
-        return if let Some(attributes) = context.analysis.get_expression(value) {
+        return if let Some(attributes) = context.expression_attributes(value).cloned() {
             let value = expr(context, value);
 
             match &attributes.typ {
@@ -411,14 +410,14 @@ fn expr_attribute(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expressio
     unreachable!()
 }
 
-fn expr_attribute_self(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
+fn expr_attribute_self(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Attribute { attr, .. } = &exp.kind {
         if let Ok(builtins::SelfField::Address) = builtins::SelfField::from_str(&attr.kind) {
             return expression! { address() };
         }
     }
 
-    if let Some(attributes) = context.analysis.get_expression(exp) {
+    if let Some(attributes) = context.expression_attributes(exp) {
         let nonce = if let Location::Storage { nonce: Some(nonce) } = attributes.location {
             nonce
         } else {
@@ -444,7 +443,7 @@ pub fn nonce_to_ptr(nonce: usize) -> yul::Expression {
     literal_expression! { (ptr) }
 }
 
-fn expr_ternary(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
+fn expr_ternary(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::Ternary {
         if_expr,
         test,
@@ -460,7 +459,7 @@ fn expr_ternary(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression 
     unreachable!()
 }
 
-fn expr_bool_operation(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
+fn expr_bool_operation(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
     if let fe::Expr::BoolOperation { left, op, right } = &exp.kind {
         let yul_left = expr(context, left);
         let yul_right = expr(context, right);

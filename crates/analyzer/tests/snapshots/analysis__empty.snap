@@ -1,44 +1,12 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/empty.fe\", &src, &context)"
+expression: "build_snapshot(\"features/empty.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Empty": Contract(
-            Contract {
-                name: "Empty",
-                functions: [],
-            },
-        ),
-    },
-}
-
 note: 
-  ┌─ features/empty.fe:1:1
-  │  
-1 │ ╭ contract Empty:
-2 │ │   lonely: u256
-  │ ╰──────────────^ attributes hash: 6468173224170614629
-  │  
-  = ContractAttributes {
-        public_functions: [],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [],
-    }
-
-note: 
-  ┌─ features/empty.fe:2:11
+  ┌─ features/empty.fe:2:3
   │
 2 │   lonely: u256
-  │           ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+  │   ^^^^^^^^^^^^ u256
 
 

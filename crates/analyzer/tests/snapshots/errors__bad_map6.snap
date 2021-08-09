@@ -3,16 +3,10 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: `map` key and value must be types
+error: `Map` key must be a type
   ┌─ [snippet]:3:14
   │
 3 │   let x: Map<10, 20>
   │              ^^ this should be a type name
-
-error: `map` key and value must be types
-  ┌─ [snippet]:3:18
-  │
-3 │   let x: Map<10, 20>
-  │                  ^^ this should be a type name
 
 

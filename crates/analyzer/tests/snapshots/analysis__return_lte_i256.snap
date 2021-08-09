@@ -1,198 +1,61 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/return_lte_i256.fe\", &src, &context)"
+expression: "build_snapshot(\"features/return_lte_i256.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "bar",
-                        params: [
-                            (
-                                "x",
-                                Base(
-                                    Numeric(
-                                        I256,
-                                    ),
-                                ),
-                            ),
-                            (
-                                "y",
-                                Base(
-                                    Numeric(
-                                        I256,
-                                    ),
-                                ),
-                            ),
-                        ],
-                        return_type: Base(
-                            Bool,
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
-note: 
-  ┌─ features/return_lte_i256.fe:3:16
-  │
-3 │         return x <= y
-  │                ^ attributes hash: 15251787519388345880
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                I256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_lte_i256.fe:3:21
-  │
-3 │         return x <= y
-  │                     ^ attributes hash: 15251787519388345880
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                I256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_lte_i256.fe:3:16
-  │
-3 │         return x <= y
-  │                ^^^^^^ attributes hash: 519621297275845584
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
 note: 
   ┌─ features/return_lte_i256.fe:2:5
   │  
 2 │ ╭     pub fn bar(x: i256, y: i256) -> bool:
 3 │ │         return x <= y
-  │ ╰─────────────────────^ attributes hash: 10096119730416209148
+  │ ╰─────────────────────^ attributes hash: 10078605265406793117
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "bar",
+  = FunctionSignature {
         params: [
-            (
-                "x",
-                Base(
-                    Numeric(
-                        I256,
-                    ),
-                ),
-            ),
-            (
-                "y",
-                Base(
-                    Numeric(
-                        I256,
-                    ),
-                ),
-            ),
-        ],
-        return_type: Base(
-            Bool,
-        ),
-    }
-
-note: 
-  ┌─ features/return_lte_i256.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │     pub fn bar(x: i256, y: i256) -> bool:
-3 │ │         return x <= y
-  │ ╰─────────────────────^ attributes hash: 10776467374755074437
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "bar",
-                params: [
-                    (
-                        "x",
-                        Base(
-                            Numeric(
-                                I256,
-                            ),
+            FunctionParam {
+                name: "x",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            I256,
                         ),
                     ),
-                    (
-                        "y",
-                        Base(
-                            Numeric(
-                                I256,
-                            ),
+                ),
+            },
+            FunctionParam {
+                name: "y",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            I256,
                         ),
                     ),
-                ],
-                return_type: Base(
-                    Bool,
                 ),
             },
         ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [],
+        return_type: Ok(
+            Base(
+                Bool,
+            ),
+        ),
     }
 
 note: 
-  ┌─ features/return_lte_i256.fe:2:19
+  ┌─ features/return_lte_i256.fe:3:16
   │
-2 │     pub fn bar(x: i256, y: i256) -> bool:
-  │                   ^^^^ attributes hash: 11707372354960146103
-  │
-  = Base(
-        Numeric(
-            I256,
-        ),
-    )
+3 │         return x <= y
+  │                ^ i256: Value => None
 
 note: 
-  ┌─ features/return_lte_i256.fe:2:28
+  ┌─ features/return_lte_i256.fe:3:21
   │
-2 │     pub fn bar(x: i256, y: i256) -> bool:
-  │                            ^^^^ attributes hash: 11707372354960146103
-  │
-  = Base(
-        Numeric(
-            I256,
-        ),
-    )
+3 │         return x <= y
+  │                     ^ i256: Value => None
 
 note: 
-  ┌─ features/return_lte_i256.fe:2:37
+  ┌─ features/return_lte_i256.fe:3:16
   │
-2 │     pub fn bar(x: i256, y: i256) -> bool:
-  │                                     ^^^^ attributes hash: 5425972608982369985
-  │
-  = Base(
-        Bool,
-    )
+3 │         return x <= y
+  │                ^^^^^^ bool: Value => None
 
 

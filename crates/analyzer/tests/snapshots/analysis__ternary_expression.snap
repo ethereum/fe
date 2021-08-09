@@ -1,219 +1,71 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/ternary_expression.fe\", &src, &context)"
+expression: "build_snapshot(\"features/ternary_expression.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "bar",
-                        params: [
-                            (
-                                "input",
-                                Base(
-                                    Numeric(
-                                        U256,
-                                    ),
-                                ),
-                            ),
-                        ],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
-note: 
-  ┌─ features/ternary_expression.fe:4:21
-  │
-4 │         return 1 if input > 5 else 0
-  │                     ^^^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/ternary_expression.fe:4:29
-  │
-4 │         return 1 if input > 5 else 0
-  │                             ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/ternary_expression.fe:4:21
-  │
-4 │         return 1 if input > 5 else 0
-  │                     ^^^^^^^^^ attributes hash: 519621297275845584
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/ternary_expression.fe:4:16
-  │
-4 │         return 1 if input > 5 else 0
-  │                ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/ternary_expression.fe:4:36
-  │
-4 │         return 1 if input > 5 else 0
-  │                                    ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/ternary_expression.fe:4:16
-  │
-4 │         return 1 if input > 5 else 0
-  │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
 note: 
   ┌─ features/ternary_expression.fe:3:5
   │  
 3 │ ╭     pub fn bar(input: u256) -> u256:
 4 │ │         return 1 if input > 5 else 0
-  │ ╰────────────────────────────────────^ attributes hash: 12628763783334799
+  │ ╰────────────────────────────────────^ attributes hash: 3019427292913193612
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "bar",
+  = FunctionSignature {
         params: [
-            (
-                "input",
-                Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-            ),
-        ],
-        return_type: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-    }
-
-note: 
-  ┌─ features/ternary_expression.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │ 
-3 │ │     pub fn bar(input: u256) -> u256:
-4 │ │         return 1 if input > 5 else 0
-  │ ╰────────────────────────────────────^ attributes hash: 6592343064660742193
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "bar",
-                params: [
-                    (
-                        "input",
-                        Base(
-                            Numeric(
-                                U256,
-                            ),
+            FunctionParam {
+                name: "input",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U256,
                         ),
-                    ),
-                ],
-                return_type: Base(
-                    Numeric(
-                        U256,
                     ),
                 ),
             },
         ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [],
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U256,
+                ),
+            ),
+        ),
     }
 
 note: 
-  ┌─ features/ternary_expression.fe:3:23
+  ┌─ features/ternary_expression.fe:4:21
   │
-3 │     pub fn bar(input: u256) -> u256:
-  │                       ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+4 │         return 1 if input > 5 else 0
+  │                     ^^^^^ u256: Value => None
 
 note: 
-  ┌─ features/ternary_expression.fe:3:32
+  ┌─ features/ternary_expression.fe:4:29
   │
-3 │     pub fn bar(input: u256) -> u256:
-  │                                ^^^^ attributes hash: 4293763436908729629
+4 │         return 1 if input > 5 else 0
+  │                             ^ u256: Value => None
+
+note: 
+  ┌─ features/ternary_expression.fe:4:21
   │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+4 │         return 1 if input > 5 else 0
+  │                     ^^^^^^^^^ bool: Value => None
+
+note: 
+  ┌─ features/ternary_expression.fe:4:16
+  │
+4 │         return 1 if input > 5 else 0
+  │                ^ u256: Value => None
+
+note: 
+  ┌─ features/ternary_expression.fe:4:36
+  │
+4 │         return 1 if input > 5 else 0
+  │                                    ^ u256: Value => None
+
+note: 
+  ┌─ features/ternary_expression.fe:4:16
+  │
+4 │         return 1 if input > 5 else 0
+  │                ^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
 
 

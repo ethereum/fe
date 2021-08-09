@@ -1,227 +1,39 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/u32_u32_map.fe\", &src, &context)"
+expression: "build_snapshot(\"features/u32_u32_map.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "read_bar",
-                        params: [
-                            (
-                                "key",
-                                Base(
-                                    Numeric(
-                                        U32,
-                                    ),
-                                ),
-                            ),
-                        ],
-                        return_type: Base(
-                            Numeric(
-                                U32,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "write_bar",
-                        params: [
-                            (
-                                "key",
-                                Base(
-                                    Numeric(
-                                        U32,
-                                    ),
-                                ),
-                            ),
-                            (
-                                "value",
-                                Base(
-                                    Numeric(
-                                        U32,
-                                    ),
-                                ),
-                            ),
-                        ],
-                        return_type: Base(
-                            Unit,
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
 note: 
-  ┌─ features/u32_u32_map.fe:5:16
+  ┌─ features/u32_u32_map.fe:2:5
   │
-5 │         return self.bar[key]
-  │                ^^^^^^^^ attributes hash: 12167518017963166890
-  │
-  = ExpressionAttributes {
-        typ: Map(
-            Map {
-                key: Numeric(
-                    U32,
-                ),
-                value: Base(
-                    Numeric(
-                        U32,
-                    ),
-                ),
-            },
-        ),
-        location: Storage {
-            nonce: Some(
-                0,
-            ),
-        },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/u32_u32_map.fe:5:25
-  │
-5 │         return self.bar[key]
-  │                         ^^^ attributes hash: 8114386917066957540
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U32,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/u32_u32_map.fe:5:16
-  │
-5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ attributes hash: 7219065259428030459
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U32,
-            ),
-        ),
-        location: Storage {
-            nonce: None,
-        },
-        move_location: Some(
-            Value,
-        ),
-    }
-
-note: 
-  ┌─ features/u32_u32_map.fe:8:9
-  │
-8 │         self.bar[key] = value
-  │         ^^^^^^^^ attributes hash: 12167518017963166890
-  │
-  = ExpressionAttributes {
-        typ: Map(
-            Map {
-                key: Numeric(
-                    U32,
-                ),
-                value: Base(
-                    Numeric(
-                        U32,
-                    ),
-                ),
-            },
-        ),
-        location: Storage {
-            nonce: Some(
-                0,
-            ),
-        },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/u32_u32_map.fe:8:18
-  │
-8 │         self.bar[key] = value
-  │                  ^^^ attributes hash: 8114386917066957540
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U32,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/u32_u32_map.fe:8:9
-  │
-8 │         self.bar[key] = value
-  │         ^^^^^^^^^^^^^ attributes hash: 62827745150568456
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U32,
-            ),
-        ),
-        location: Storage {
-            nonce: None,
-        },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/u32_u32_map.fe:8:25
-  │
-8 │         self.bar[key] = value
-  │                         ^^^^^ attributes hash: 8114386917066957540
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U32,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
+2 │     bar: Map<u32, u32>
+  │     ^^^^^^^^^^^^^^^^^^ Map<u32, u32>
 
 note: 
   ┌─ features/u32_u32_map.fe:4:5
   │  
 4 │ ╭     pub fn read_bar(key: u32) -> u32:
 5 │ │         return self.bar[key]
-  │ ╰────────────────────────────^ attributes hash: 15291246158354106364
+  │ ╰────────────────────────────^ attributes hash: 772722927452882066
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "read_bar",
+  = FunctionSignature {
         params: [
-            (
-                "key",
-                Base(
-                    Numeric(
-                        U32,
+            FunctionParam {
+                name: "key",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U32,
+                        ),
                     ),
                 ),
-            ),
+            },
         ],
-        return_type: Base(
-            Numeric(
-                U32,
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U32,
+                ),
             ),
         ),
     }
@@ -231,188 +43,78 @@ note:
   │  
 7 │ ╭     pub fn write_bar(key: u32, value: u32):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 2175522536010991558
+  │ ╰─────────────────────────────^ attributes hash: 9864815385464028269
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "write_bar",
+  = FunctionSignature {
         params: [
-            (
-                "key",
-                Base(
-                    Numeric(
-                        U32,
+            FunctionParam {
+                name: "key",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U32,
+                        ),
                     ),
                 ),
-            ),
-            (
-                "value",
-                Base(
-                    Numeric(
-                        U32,
+            },
+            FunctionParam {
+                name: "value",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U32,
+                        ),
                     ),
                 ),
-            ),
+            },
         ],
-        return_type: Base(
-            Unit,
+        return_type: Ok(
+            Base(
+                Unit,
+            ),
         ),
     }
 
 note: 
-  ┌─ features/u32_u32_map.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │     pub bar: Map<u32, u32>
-3 │ │ 
-4 │ │     pub fn read_bar(key: u32) -> u32:
-  · │
-7 │ │     pub fn write_bar(key: u32, value: u32):
-8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 15844378283353356077
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "read_bar",
-                params: [
-                    (
-                        "key",
-                        Base(
-                            Numeric(
-                                U32,
-                            ),
-                        ),
-                    ),
-                ],
-                return_type: Base(
-                    Numeric(
-                        U32,
-                    ),
-                ),
-            },
-            FunctionAttributes {
-                is_public: true,
-                name: "write_bar",
-                params: [
-                    (
-                        "key",
-                        Base(
-                            Numeric(
-                                U32,
-                            ),
-                        ),
-                    ),
-                    (
-                        "value",
-                        Base(
-                            Numeric(
-                                U32,
-                            ),
-                        ),
-                    ),
-                ],
-                return_type: Base(
-                    Unit,
-                ),
-            },
-        ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [],
-    }
+  ┌─ features/u32_u32_map.fe:5:16
+  │
+5 │         return self.bar[key]
+  │                ^^^^^^^^ Map<u32, u32>: Storage { nonce: Some(0) } => None
 
 note: 
-  ┌─ features/u32_u32_map.fe:4:26
+  ┌─ features/u32_u32_map.fe:5:25
   │
-4 │     pub fn read_bar(key: u32) -> u32:
-  │                          ^^^ attributes hash: 6988938628910073395
-  │
-  = Base(
-        Numeric(
-            U32,
-        ),
-    )
+5 │         return self.bar[key]
+  │                         ^^^ u32: Value => None
 
 note: 
-  ┌─ features/u32_u32_map.fe:4:34
+  ┌─ features/u32_u32_map.fe:5:16
   │
-4 │     pub fn read_bar(key: u32) -> u32:
-  │                                  ^^^ attributes hash: 6988938628910073395
-  │
-  = Base(
-        Numeric(
-            U32,
-        ),
-    )
+5 │         return self.bar[key]
+  │                ^^^^^^^^^^^^^ u32: Storage { nonce: None } => Some(Value)
 
 note: 
-  ┌─ features/u32_u32_map.fe:7:27
+  ┌─ features/u32_u32_map.fe:8:9
   │
-7 │     pub fn write_bar(key: u32, value: u32):
-  │                           ^^^ attributes hash: 6988938628910073395
-  │
-  = Base(
-        Numeric(
-            U32,
-        ),
-    )
+8 │         self.bar[key] = value
+  │         ^^^^^^^^ Map<u32, u32>: Storage { nonce: Some(0) } => None
 
 note: 
-  ┌─ features/u32_u32_map.fe:7:39
+  ┌─ features/u32_u32_map.fe:8:18
   │
-7 │     pub fn write_bar(key: u32, value: u32):
-  │                                       ^^^ attributes hash: 6988938628910073395
-  │
-  = Base(
-        Numeric(
-            U32,
-        ),
-    )
+8 │         self.bar[key] = value
+  │                  ^^^ u32: Value => None
 
 note: 
-  ┌─ features/u32_u32_map.fe:2:18
+  ┌─ features/u32_u32_map.fe:8:9
   │
-2 │     pub bar: Map<u32, u32>
-  │                  ^^^ attributes hash: 6988938628910073395
-  │
-  = Base(
-        Numeric(
-            U32,
-        ),
-    )
+8 │         self.bar[key] = value
+  │         ^^^^^^^^^^^^^ u32: Storage { nonce: None } => None
 
 note: 
-  ┌─ features/u32_u32_map.fe:2:23
+  ┌─ features/u32_u32_map.fe:8:25
   │
-2 │     pub bar: Map<u32, u32>
-  │                       ^^^ attributes hash: 6988938628910073395
-  │
-  = Base(
-        Numeric(
-            U32,
-        ),
-    )
-
-note: 
-  ┌─ features/u32_u32_map.fe:2:14
-  │
-2 │     pub bar: Map<u32, u32>
-  │              ^^^^^^^^^^^^^ attributes hash: 13674193641429483898
-  │
-  = Map(
-        Map {
-            key: Numeric(
-                U32,
-            ),
-            value: Base(
-                Numeric(
-                    U32,
-                ),
-            ),
-        },
-    )
+8 │         self.bar[key] = value
+  │                         ^^^^^ u32: Value => None
 
 

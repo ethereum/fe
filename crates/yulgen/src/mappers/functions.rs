@@ -1,18 +1,20 @@
 use crate::constants::PANIC_FAILED_ASSERTION;
+use crate::context::{ContractContext, FnContext};
 use crate::mappers::{assignments, declarations, expressions};
 use crate::names;
 use crate::operations::data as data_operations;
 use crate::operations::revert as revert_operations;
-use crate::types::{AbiType, EvmSized};
-use crate::Context;
+use crate::types::{AbiType, AsAbiType, EvmSized};
 use fe_analyzer::context::ExpressionAttributes;
+use fe_analyzer::namespace::items::FunctionId;
 use fe_analyzer::namespace::types::Type;
+use fe_analyzer::AnalyzerDb;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use yultsur::*;
 
 pub fn multiple_func_stmt(
-    context: &mut Context,
+    context: &mut FnContext,
     statements: &[Node<fe::FuncStmt>],
 ) -> Vec<yul::Statement> {
     statements
@@ -22,13 +24,21 @@ pub fn multiple_func_stmt(
 }
 
 /// Builds a Yul function definition from a Fe function definition.
-pub fn func_def(context: &mut Context, def: &Node<fe::Function>) -> yul::Statement {
-    let fe::Function {
-        name, args, body, ..
-    } = &def.kind;
-    let function_name = names::func_name(&name.kind);
-    let param_names = args.iter().map(|arg| func_def_arg(arg)).collect::<Vec<_>>();
-    let function_statements = multiple_func_stmt(context, body);
+pub fn func_def(
+    db: &dyn AnalyzerDb,
+    context: &mut ContractContext,
+    function: FunctionId,
+) -> yul::Statement {
+    let function_name = names::func_name(&function.name(db));
+    let param_names = function
+        .signature(db)
+        .params
+        .iter()
+        .map(|param| names::var_name(&param.name))
+        .collect::<Vec<_>>();
+
+    let mut fn_context = FnContext::new(db, context, function.body(db));
+    let function_statements = multiple_func_stmt(&mut fn_context, &function.data(db).ast.kind.body);
 
     // all user-defined functions are given a return value during lowering
     function_definition! {
@@ -38,13 +48,7 @@ pub fn func_def(context: &mut Context, def: &Node<fe::Function>) -> yul::Stateme
     }
 }
 
-fn func_def_arg(arg: &Node<fe::FunctionArg>) -> yul::Identifier {
-    let name = &arg.kind.name.kind;
-
-    names::var_name(name)
-}
-
-fn func_stmt(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
+fn func_stmt(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     match &stmt.kind {
         fe::FuncStmt::Return { .. } => func_return(context, stmt),
         fe::FuncStmt::VarDecl { .. } => declarations::var_decl(context, stmt),
@@ -63,7 +67,7 @@ fn func_stmt(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement
     }
 }
 
-fn for_loop(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
+fn for_loop(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     if let fe::FuncStmt::For { target, iter, body } = &stmt.kind {
         let iterator = expressions::expr(context, iter);
         let target_var = names::var_name(&target.kind);
@@ -71,7 +75,7 @@ fn for_loop(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement 
         return if let Some(ExpressionAttributes {
             typ: Type::Array(array),
             ..
-        }) = context.analysis.get_expression(iter)
+        }) = context.expression_attributes(iter)
         {
             let size = literal_expression! { (array.size) };
             let inner_size = literal_expression! { (array.inner.size()) };
@@ -90,7 +94,7 @@ fn for_loop(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement 
     unreachable!()
 }
 
-fn if_statement(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
+fn if_statement(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     if let fe::FuncStmt::If {
         test,
         body,
@@ -111,7 +115,7 @@ fn if_statement(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statem
     unreachable!()
 }
 
-fn expr(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
+fn expr(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     if let fe::FuncStmt::Expr { value } = &stmt.kind {
         let expr = expressions::expr(context, value);
 
@@ -121,20 +125,20 @@ fn expr(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     }
 }
 
-fn revert(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
+fn revert(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     if let fe::FuncStmt::Revert { error } = &stmt.kind {
         if let Some(error_expr) = error {
             let error_attributes = context
-                .analysis
-                .get_expression(error_expr)
-                .expect("missing expression");
+                .expression_attributes(error_expr)
+                .expect("missing expression")
+                .clone();
 
-            if let Type::Struct(_struct) = &error_attributes.typ {
-                context.revert_errors.insert(_struct.clone());
+            if let Type::Struct(struct_) = &error_attributes.typ {
+                context.contract.revert_errors.insert(struct_.clone());
 
                 revert_operations::revert(
-                    &_struct.name,
-                    &AbiType::from(_struct),
+                    &struct_.name,
+                    &struct_.as_abi_type(context.db),
                     expressions::expr(context, error_expr),
                 )
             } else {
@@ -148,7 +152,7 @@ fn revert(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     }
 }
 
-fn emit(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
+fn emit(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     if let fe::FuncStmt::Emit { args, .. } = &stmt.kind {
         let event_values = args
             .kind
@@ -156,8 +160,23 @@ fn emit(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
             .map(|arg| expressions::expr(context, &arg.kind.value))
             .collect();
 
-        if let Some(event) = context.analysis.get_emit(stmt) {
-            return data_operations::emit_event(event.to_owned(), event_values);
+        if let Some(event) = context.emitted_event(stmt) {
+            let event_fields: Vec<(AbiType, bool)> = event
+                .fields
+                .iter()
+                .map(|field| {
+                    (
+                        field
+                            .typ
+                            .clone()
+                            .expect("event field type error")
+                            .as_abi_type(context.db),
+                        field.is_indexed,
+                    )
+                })
+                .collect();
+
+            return data_operations::emit_event(&event.name, &event_fields, event_values);
         }
 
         panic!("missing event definition");
@@ -166,23 +185,24 @@ fn emit(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     unreachable!()
 }
 
-fn assert(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
+fn assert(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     if let fe::FuncStmt::Assert { test, msg } = &stmt.kind {
         let test = expressions::expr(context, test);
         match msg {
             Some(val) => {
                 let msg = expressions::expr(context, val);
                 let msg_attributes = context
-                    .analysis
-                    .get_expression(val)
-                    .expect("missing expression");
+                    .expression_attributes(val)
+                    .expect("missing expression")
+                    .clone();
 
-                if let Type::String(string) = &msg_attributes.typ {
-                    context.assert_strings.insert(string.to_owned());
+                if let Type::String(string) = msg_attributes.typ {
+                    let abi_type = string.as_abi_type(context.db);
+                    context.contract.assert_strings.insert(string);
 
                     statement! {
                         if (iszero([test])) {
-                            [revert_operations::error_revert(&AbiType::from(string), msg)]
+                            [revert_operations::error_revert(&abi_type, msg)]
                         }
                     }
                 } else {
@@ -202,7 +222,7 @@ fn assert(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     }
 }
 
-fn break_statement(_context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
+fn break_statement(_context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     if let fe::FuncStmt::Break {} = &stmt.kind {
         return statement! { break };
     }
@@ -210,7 +230,7 @@ fn break_statement(_context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::St
     unreachable!()
 }
 
-fn continue_statement(_context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
+fn continue_statement(_context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     if let fe::FuncStmt::Continue {} = &stmt.kind {
         return statement! { continue };
     }
@@ -218,7 +238,7 @@ fn continue_statement(_context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul:
     unreachable!()
 }
 
-fn func_return(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
+fn func_return(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     if let fe::FuncStmt::Return { value } = &stmt.kind {
         let value = value
             .as_ref()
@@ -234,7 +254,7 @@ fn func_return(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Stateme
     }
 }
 
-fn while_loop(context: &mut Context, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
+fn while_loop(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     if let fe::FuncStmt::While { test, body } = &stmt.kind {
         let test = expressions::expr(context, test);
         let yul_body = multiple_func_stmt(context, body);

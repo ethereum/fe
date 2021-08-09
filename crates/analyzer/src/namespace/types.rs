@@ -1,10 +1,10 @@
-use crate::errors::{AlreadyDefined, TypeError};
-use std::convert::TryFrom;
-use std::fmt;
+use crate::errors::{NotFixedSize, TypeError};
+use crate::namespace::items::{ContractId, StructId};
 
-use crate::context::FunctionAttributes;
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
+use std::convert::TryFrom;
+use std::fmt;
 use strum::IntoStaticStr;
 use vec1::Vec1;
 
@@ -30,7 +30,7 @@ pub trait SafeNames {
     fn lower_snake(&self) -> String;
 }
 
-#[derive(Clone, Debug, PartialEq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Type {
     Base(Base),
     Array(Array),
@@ -41,7 +41,7 @@ pub enum Type {
     Struct(Struct),
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum FixedSize {
     Base(Base),
     Array(Array),
@@ -59,7 +59,7 @@ pub enum Base {
     Unit,
 }
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, PartialOrd, Ord, Eq, IntoStaticStr)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash, IntoStaticStr)]
 pub enum Integer {
     U256,
     U128,
@@ -83,21 +83,30 @@ pub struct Array {
     pub inner: Base,
 }
 
-#[derive(Clone, Debug, PartialEq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Map {
     pub key: Base,
     pub value: Box<Type>,
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Tuple {
     pub items: Vec1<FixedSize>,
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
+// Struct and Contract only exist to impl Display below;
+// we could refactor code that uses Display and remove them.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Struct {
     pub name: String,
-    pub fields: Vec<(String, FixedSize)>,
+    pub id: StructId,
+    pub field_count: usize,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Contract {
+    pub name: String,
+    pub id: ContractId,
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
@@ -105,52 +114,16 @@ pub struct FeString {
     pub max_size: usize,
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
-pub struct Contract {
-    pub name: String,
-    pub functions: Vec<FunctionAttributes>,
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct FunctionSignature {
+    pub params: Vec<FunctionParam>,
+    pub return_type: Result<FixedSize, TypeError>,
 }
 
-impl Struct {
-    pub fn new(name: &str) -> Struct {
-        Struct {
-            name: name.to_string(),
-            fields: vec![],
-        }
-    }
-
-    /// Return `true` if the struct does not have any fields, otherwise return `false`
-    pub fn is_empty(&self) -> bool {
-        self.fields.is_empty()
-    }
-
-    /// Add a field to the struct
-    pub fn add_field(&mut self, name: &str, value: &FixedSize) -> Result<(), AlreadyDefined> {
-        if self.fields.iter().any(|(fname, _)| fname == name) {
-            Err(AlreadyDefined)
-        } else {
-            self.fields.push((name.to_string(), value.clone()));
-            Ok(())
-        }
-    }
-
-    /// Return the type of the given field name
-    pub fn get_field_type(&self, name: &str) -> Option<&FixedSize> {
-        self.fields
-            .iter()
-            .find(|(nm, _)| nm == name)
-            .map(|(_, typ)| typ)
-    }
-
-    /// Return the types of all fields
-    pub fn get_field_types(&self) -> Vec<FixedSize> {
-        self.fields.iter().cloned().map(|(_, typ)| typ).collect()
-    }
-
-    /// Return the index of the given field name
-    pub fn get_field_index(&self, name: &str) -> Option<usize> {
-        self.fields.iter().position(|(field, _)| field == name)
-    }
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct FunctionParam {
+    pub name: String,
+    pub typ: Result<FixedSize, TypeError>,
 }
 
 impl Integer {
@@ -209,6 +182,36 @@ impl Integer {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Event {
+    pub name: String,
+    pub fields: Vec<EventField>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct EventField {
+    pub name: String,
+    pub typ: Result<FixedSize, TypeError>,
+    pub is_indexed: bool,
+}
+
+impl FunctionSignature {
+    /// # Panics
+    /// Panics if any param type is an `Err`
+    pub fn param_types(&self) -> Vec<FixedSize> {
+        self.params
+            .iter()
+            .map(|param| param.typ.clone().expect("fn param type error"))
+            .collect()
+    }
+
+    /// # Panics
+    /// Panics if the return type is an `Err`
+    pub fn expect_return_type(&self) -> FixedSize {
+        self.return_type.clone().expect("fn return type error")
+    }
+}
+
 impl Type {
     pub fn is_signed_integer(&self) -> bool {
         if let Type::Base(Base::Numeric(integer)) = &self {
@@ -220,9 +223,35 @@ impl Type {
     pub fn unit() -> Self {
         Type::Base(Base::Unit)
     }
+    pub fn is_unit(&self) -> bool {
+        *self == Type::Base(Base::Unit)
+    }
+
+    pub fn is_fixed_size(&self) -> bool {
+        match self {
+            Type::Array(_) => true,
+            Type::Base(_) => true,
+            Type::Tuple(_) => true,
+            Type::String(_) => true,
+            Type::Struct(_) => true,
+            Type::Contract(_) => true,
+            Type::Map(_) => false,
+        }
+    }
 
     pub fn int(int_type: Integer) -> Self {
         Type::Base(Base::Numeric(int_type))
+    }
+
+    pub fn generic_arg_type(&self, idx: usize) -> Option<Type> {
+        match self {
+            Type::Map(Map { key, value }) => match idx {
+                0 => Some(Type::Base(*key)),
+                1 => Some((**value).clone()),
+                _ => None,
+            },
+            _ => None,
+        }
     }
 }
 
@@ -363,16 +392,16 @@ impl From<FeString> for FixedSize {
 }
 
 impl TryFrom<Type> for FixedSize {
-    type Error = TypeError;
+    type Error = NotFixedSize;
 
-    fn try_from(value: Type) -> Result<Self, TypeError> {
+    fn try_from(value: Type) -> Result<Self, NotFixedSize> {
         match value {
             Type::Array(array) => Ok(FixedSize::Array(array)),
             Type::Base(base) => Ok(FixedSize::Base(base)),
             Type::Tuple(tuple) => Ok(FixedSize::Tuple(tuple)),
             Type::String(string) => Ok(FixedSize::String(string)),
             Type::Struct(val) => Ok(FixedSize::Struct(val)),
-            Type::Map(_) => Err(TypeError),
+            Type::Map(_) => Err(NotFixedSize),
             Type::Contract(contract) => Ok(FixedSize::Contract(contract)),
         }
     }

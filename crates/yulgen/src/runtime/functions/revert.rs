@@ -1,6 +1,6 @@
 use crate::names;
 use crate::operations::abi as abi_operations;
-use crate::types::{to_abi_selector_names, AbiType};
+use crate::types::AbiType;
 use yultsur::*;
 
 /// Generate a YUL function to revert with the `Error` signature and the
@@ -28,11 +28,18 @@ pub fn revert(name: &str, typ: &AbiType) -> yul::Statement {
             AbiType::Tuple { components } => components,
             typ => vec![typ],
         };
-        let selector = fe_abi::utils::func_selector(name, &to_abi_selector_names(&selector_params));
+        let selector = fe_abi::utils::func_selector(
+            name,
+            &selector_params
+                .iter()
+                .map(|abi_type| abi_type.selector_name())
+                .collect::<Vec<_>>(),
+        );
         literal_expression! { (selector) }
     };
-    let encode_val = abi_operations::encode(&[typ.to_owned()], vec![expression! { val }]);
-    let encoding_size = abi_operations::encoding_size(&[typ.to_owned()], vec![expression! { val }]);
+    let val_expr = vec![expression! { val }];
+    let encoding_size = abi_operations::encoding_size(&[typ.to_owned()], &val_expr);
+    let encode_val = abi_operations::encode(&[typ.to_owned()], val_expr);
 
     function_definition! {
         function [func_name](val) {

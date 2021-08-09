@@ -1,47 +1,44 @@
 use crate::constructor;
+use crate::context::ContractContext;
 use crate::mappers::functions;
 use crate::runtime;
-use crate::{AnalyzerContext, Context};
+use fe_analyzer::namespace::items::ContractId;
+use fe_analyzer::AnalyzerDb;
 use fe_common::utils::keccak;
-use fe_parser::ast as fe;
-use fe_parser::node::Node;
 use std::collections::HashMap;
 use yultsur::*;
 
 /// Builds a Yul object from a Fe contract.
 pub fn contract_def(
-    analysis: &AnalyzerContext,
-    stmt: &Node<fe::Contract>,
+    db: &dyn AnalyzerDb,
+    contract: ContractId,
     contracts: &HashMap<String, yul::Object>,
 ) -> yul::Object {
-    let fe::Contract { name, body, .. } = &stmt.kind;
-    let contract_name = &name.kind;
-    let mut init_function = None;
-    let mut user_functions = vec![];
+    let contract_name = contract.name(db);
+    let mut context = ContractContext::default();
 
-    let mut context = Context::new(analysis);
+    let init_function = contract.functions(db).get("__init__").map(|id| {
+        (
+            functions::func_def(db, &mut context, *id),
+            id.signature(db)
+                .params
+                .iter()
+                .map(|param| param.typ.clone().expect("fn param type error"))
+                .collect(),
+        )
+    });
 
-    // map user defined functions
-    for stmt in body.iter() {
-        match stmt {
-            fe::ContractStmt::Function(def) => {
-                let yulfn = functions::func_def(&mut context, def);
-
-                if def.kind.name.kind == "__init__" {
-                    let attributes = analysis
-                        .get_function(def)
-                        .expect("missing function attributes");
-                    init_function = Some((yulfn, attributes.param_types()))
-                } else {
-                    user_functions.push(yulfn)
-                }
-            }
-            fe::ContractStmt::Event(_) => {}
-        }
-    }
+    let user_functions = contract
+        .functions(db)
+        .iter()
+        .filter_map(|(name, function)| match name.as_str() {
+            "__init__" => None,
+            _ => Some(functions::func_def(db, &mut context, *function)),
+        })
+        .collect::<Vec<_>>();
 
     // build the set of functions needed during runtime
-    let runtime_functions = runtime::build_with_abi_dispatcher(&context, stmt);
+    let runtime_functions = runtime::build_with_abi_dispatcher(db, &context, contract);
 
     // build data objects for static strings (also for constants in the future)
     let data = context
@@ -85,9 +82,11 @@ pub fn contract_def(
     // user-defined functions can be called from `__init__`.
     let (constructor_code, constructor_objects) =
         if let Some((init_func, init_params)) = init_function {
-            let init_runtime_functions = [runtime::build(&context, stmt), user_functions].concat();
+            let init_runtime_functions =
+                [runtime::build(db, &context, contract), user_functions].concat();
             let constructor_code = constructor::build_with_init(
-                contract_name,
+                db,
+                &contract_name,
                 init_func,
                 init_params,
                 init_runtime_functions,

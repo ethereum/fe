@@ -3,13 +3,15 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, &src)"
 
 ---
-error: a struct with the same name already exists
-  ┌─ compile_errors/duplicate_struct_in_module.fe:4:1
-  │  
-4 │ ╭ struct MyStruct:
-5 │ │     foo: u8
-  │ ╰───────────^ Conflicting definition of struct `MyStruct`
-  │  
-  = Note: Give one of the `MyStruct` structs a different name
+error: duplicate type name
+  ┌─ compile_errors/duplicate_struct_in_module.fe:1:1
+  │    
+1 │ ╭   struct MyStruct:
+2 │ │       foo: u8
+  │ ╰─────────────^ `MyStruct` first defined here
+3 │     
+4 │   ╭ struct MyStruct:
+5 │   │     foo: u8
+  │   ╰───────────' `MyStruct` redefined here
 
 

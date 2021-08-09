@@ -1,12 +1,19 @@
-use fe_analyzer::context::Context;
-use fe_analyzer::errors::AnalyzerError;
-use fe_common::diagnostics::{diagnostics_string, print_diagnostics, CsLabel, Diagnostic};
-use fe_common::files::{FileStore, SourceFileId};
+use fe_analyzer::context;
+use fe_analyzer::namespace::items;
+use fe_analyzer::namespace::types::{Event, FixedSize, FunctionSignature, Type};
+use fe_analyzer::{AnalyzerDb, Db};
+use fe_common::diagnostics::{diagnostics_string, print_diagnostics, Diagnostic, Label, Severity};
+use fe_common::files::FileStore;
+use fe_parser::node::NodeId;
 use fe_parser::node::Span;
+use indexmap::IndexMap;
 use insta::assert_snapshot;
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashMap;
 use std::fmt::Debug;
+use std::fmt::Display;
 use std::hash::{Hash, Hasher};
+use std::rc::Rc;
 use wasm_bindgen_test::wasm_bindgen_test;
 
 macro_rules! test_analysis {
@@ -17,31 +24,32 @@ macro_rules! test_analysis {
             let mut files = FileStore::new();
             let src = test_files::fixture($path);
             let id = files.add_file($path, src);
-            let fe_module = match fe_parser::parse_file(&src, id) {
+            let fe_module = match fe_parser::parse_file(&src) {
                 Ok((module, _)) => module,
                 Err(diags) => {
-                    print_diagnostics(&diags, &files);
+                    print_diagnostics(&diags, id, &files);
                     panic!("parsing failed");
                 }
             };
-            match fe_analyzer::analyze(&fe_module, id) {
-                Ok(context) => {
-                    if cfg!(target_arch = "wasm32") {
-                        // NOTE: If this assertion fails, the generation of the output diff
-                        //  is very slow on wasm, and may result in an out-of-memory error
-                        //  for larger diffs. I recommend commenting out all tests but one.
-                        fe_common::assert_snapshot_wasm!(
-                            concat!("snapshots/analysis__", stringify!($name), ".snap"),
-                            build_snapshot($path, &src, &context)
-                        );
-                    } else {
-                        assert_snapshot!(build_snapshot($path, &src, &context));
-                    }
-                }
-                Err(AnalyzerError(diagnostics)) => {
-                    print_diagnostics(&diagnostics, &files);
-                    panic!("analysis failed");
-                }
+
+            let db = Db::default();
+            let module = db.intern_module(Rc::new(items::Module { ast: fe_module }));
+            let diagnostics = module.diagnostics(&db);
+            if !diagnostics.is_empty() {
+                print_diagnostics(&diagnostics, id, &files);
+                panic!("analysis failed")
+            }
+
+            if cfg!(target_arch = "wasm32") {
+                // NOTE: If this assertion fails, the generation of the output diff
+                //  is very slow on wasm, and may result in an out-of-memory error
+                //  for larger diffs. I recommend commenting out all tests but one.
+                fe_common::assert_snapshot_wasm!(
+                    concat!("snapshots/analysis__", stringify!($name), ".snap"),
+                    build_snapshot($path, &src, module, &db)
+                );
+            } else {
+                assert_snapshot!(build_snapshot($path, &src, module, &db));
             }
         }
     };
@@ -149,53 +157,179 @@ test_analysis! { while_loop_with_continue, "features/while_loop_with_continue.fe
 test_analysis! { abi_encoding_stress, "stress/abi_encoding_stress.fe"}
 test_analysis! { data_copying_stress, "stress/data_copying_stress.fe"}
 test_analysis! { tuple_stress, "stress/tuple_stress.fe"}
+test_analysis! { type_aliases, "features/type_aliases.fe"}
 
-fn build_snapshot(path: &str, src: &str, context: &Context) -> String {
+fn build_snapshot(path: &str, src: &str, module: items::ModuleId, db: &dyn AnalyzerDb) -> String {
     let mut file_store = FileStore::new();
     let id = file_store.add_file(path, src);
 
+    // contract and struct types aren't worth printing
+    let type_aliases = module
+        .all_type_defs(db)
+        .iter()
+        .filter_map(|def| match def {
+            items::TypeDefId::Alias(alias) => {
+                Some((alias.data(db).ast.span, alias.typ(db).unwrap()))
+            }
+            _ => None,
+        })
+        .collect::<Vec<(Span, Type)>>();
+
+    let struct_fields: Vec<(Span, Type)> = module
+        .all_structs(db)
+        .iter()
+        .map(|struc| {
+            struc
+                .all_fields(db)
+                .iter()
+                .map(|field| (field.data(db).ast.span, field.typ(db).unwrap().into()))
+                .collect::<Vec<_>>()
+        })
+        .flatten()
+        .collect();
+
+    let contract_ids = module.all_contracts(db);
+    let contract_fields: Vec<(Span, Type)> = contract_ids
+        .iter()
+        .map(|contract| {
+            contract
+                .all_fields(db)
+                .iter()
+                .map(|field| (field.data(db).ast.span, field.typ(db).unwrap()))
+                .collect::<Vec<_>>()
+        })
+        .flatten()
+        .collect();
+    let event_fields = contract_ids
+        .iter()
+        .map(|contract| {
+            contract
+                .all_events(db)
+                .iter()
+                .map(|event| {
+                    // Event field spans are a bit of a hassle right now
+                    event
+                        .data(db)
+                        .ast
+                        .kind
+                        .fields
+                        .iter()
+                        .map(|node| node.span)
+                        .zip(
+                            event
+                                .typ(db)
+                                .fields
+                                .iter()
+                                .map(|field| field.typ.clone().unwrap()),
+                        )
+                        .collect::<Vec<(Span, FixedSize)>>()
+                })
+                .flatten()
+                .collect::<Vec<(Span, FixedSize)>>()
+        })
+        .flatten()
+        .collect::<Vec<(Span, FixedSize)>>();
+
+    let all_function_ids: Vec<items::FunctionId> = contract_ids
+        .iter()
+        .map(|contract| contract.all_functions(db).as_ref().clone())
+        .flatten()
+        .collect();
+
+    let function_sigs = all_function_ids
+        .iter()
+        .map(|fun| (fun.data(db).ast.span, fun.signature(db)))
+        .collect::<Vec<(Span, Rc<FunctionSignature>)>>();
+
+    let all_function_bodies: Vec<Rc<context::FunctionBody>> =
+        all_function_ids.iter().map(|func| func.body(db)).collect();
+
+    let expressions = all_function_bodies
+        .iter()
+        .map(|body| lookup_spans(&body.expressions, &body.spans))
+        .flatten()
+        .collect::<Vec<_>>();
+    let emits = all_function_bodies
+        .iter()
+        .map(|body| {
+            lookup_spans(&body.emits, &body.spans)
+                .into_iter()
+                .map(|(span, eventid)| (span, eventid.typ(db)))
+                .collect::<Vec<(Span, Rc<Event>)>>()
+        })
+        .flatten()
+        .collect::<Vec<_>>();
+    let declarations = all_function_bodies
+        .iter()
+        .map(|body| lookup_spans(&body.var_decl_types, &body.spans))
+        .flatten()
+        .collect::<Vec<_>>();
+    let calls = all_function_bodies
+        .iter()
+        .map(|body| lookup_spans(&body.calls, &body.spans))
+        .flatten()
+        .collect::<Vec<_>>();
+
     let diagnostics = [
-        build_diagnostics(id, &context.get_spanned_expressions()),
-        build_diagnostics(id, &context.get_spanned_emits()),
-        build_diagnostics(id, &context.get_spanned_functions()),
-        build_diagnostics(id, &context.get_spanned_declarations()),
-        build_diagnostics(id, &context.get_spanned_contracts()),
-        build_diagnostics(id, &context.get_spanned_calls()),
-        build_diagnostics(id, &context.get_spanned_events()),
-        build_diagnostics(id, &context.get_spanned_type_descs()),
+        build_display_diagnostics(&type_aliases),
+        build_display_diagnostics(&struct_fields),
+        build_display_diagnostics(&contract_fields),
+        build_display_diagnostics(&event_fields),
+        build_debug_diagnostics(&function_sigs),
+        build_display_diagnostics(&expressions),
+        build_debug_diagnostics(&emits),
+        build_display_diagnostics(&declarations),
+        build_debug_diagnostics(&calls),
     ]
     .concat();
 
-    format!(
-        "{:#?}\n\n{}",
-        context
-            .get_module()
-            .expect("context is missing module attributes"),
-        diagnostics_string(&diagnostics, &file_store)
-    )
+    diagnostics_string(&diagnostics, id, &file_store)
 }
 
-fn build_diagnostics<T: Debug>(
-    file_id: SourceFileId,
-    spanned_attributes: &[(Span, T)],
-) -> Vec<Diagnostic> {
+fn lookup_spans<T: Clone>(
+    node_attrs: &IndexMap<NodeId, T>,
+    spans: &HashMap<NodeId, Span>,
+) -> Vec<(Span, T)> {
+    node_attrs
+        .iter()
+        .map(|(id, attr)| (*spans.get(id).unwrap(), attr.clone()))
+        .collect()
+}
+
+fn build_debug_diagnostics<T: Debug>(spanned_attributes: &[(Span, T)]) -> Vec<Diagnostic> {
     spanned_attributes
         .iter()
-        .map(|(span, attributes)| build_attributes_diagnostic(file_id, span, attributes))
+        .map(|(span, attributes)| build_debug_diagnostic(*span, attributes))
         .collect::<Vec<_>>()
 }
 
-fn build_attributes_diagnostic<T: Debug>(
-    file_id: SourceFileId,
-    span: &Span,
-    attributes: &T,
-) -> Diagnostic {
+fn build_debug_diagnostic<T: Debug>(span: Span, attributes: &T) -> Diagnostic {
     // Hash the attributes and label the span with it.
-    let label = CsLabel::primary(file_id, span.start..span.end)
-        .with_message(format!("attributes hash: {}", hash(attributes)));
-    Diagnostic::note()
-        .with_labels(vec![label])
-        .with_notes(vec![format!("{:#?}", attributes)])
+    let label = Label::primary(span, format!("attributes hash: {}", hash(attributes)));
+    Diagnostic {
+        severity: Severity::Note,
+        message: String::new(),
+        labels: vec![label],
+        notes: vec![format!("{:#?}", attributes)],
+    }
+}
+
+fn build_display_diagnostics<T: Display>(spanned_attributes: &[(Span, T)]) -> Vec<Diagnostic> {
+    spanned_attributes
+        .iter()
+        .map(|(span, attributes)| build_display_diagnostic(*span, attributes))
+        .collect::<Vec<_>>()
+}
+
+fn build_display_diagnostic<T: Display>(span: Span, attributes: &T) -> Diagnostic {
+    // Hash the attributes and label the span with it.
+    let label = Label::primary(span, format!("{}", attributes));
+    Diagnostic {
+        severity: Severity::Note,
+        message: String::new(),
+        labels: vec![label],
+        notes: vec![],
+    }
 }
 
 fn hash<T: Debug>(item: &T) -> u64 {

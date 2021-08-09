@@ -1,7 +1,6 @@
 use crate::operations::abi as abi_operations;
-use crate::types::{to_abi_selector_names, to_abi_types, EvmSized};
-use fe_analyzer::namespace::events::EventDef;
-use fe_analyzer::namespace::types::{Array, FixedSize};
+use crate::types::{AbiType, EvmSized};
+use fe_analyzer::namespace::types::Array;
 use yultsur::*;
 
 /// Loads a value of the given type from storage.
@@ -71,33 +70,44 @@ pub fn mcopym<T: EvmSized>(typ: T, ptr: yul::Expression) -> yul::Expression {
 }
 
 /// Logs an event.
-pub fn emit_event(event: EventDef, vals: Vec<yul::Expression>) -> yul::Statement {
-    // the first topic is the hash of the event signature
-    let topic_0 = fe_abi::utils::event_topic(
-        &event.name,
-        &to_abi_selector_names(&event.all_field_types()),
-    );
-    let mut topics = vec![literal_expression! { (topic_0) }];
+pub fn emit_event(
+    event_name: &str,
+    fields: &[(AbiType, bool)], // is_idx
+    vals: Vec<yul::Expression>,
+) -> yul::Statement {
+    // (abi_type, is_idx)
+    let topics = {
+        // the first topic is the hash of the event signature
+        let topic_0 = fe_abi::utils::event_topic(
+            event_name,
+            &fields
+                .iter()
+                .map(|(abi_type, _)| abi_type.selector_name())
+                .collect::<Vec<_>>(),
+        );
+        let mut topics = vec![literal_expression! { (topic_0) }];
 
-    let (field_vals, field_types): (Vec<yul::Expression>, Vec<FixedSize>) = event
-        .non_indexed_field_types_with_index()
-        .into_iter()
-        .map(|(index, typ)| (vals[index].to_owned(), typ))
+        // Types will be relevant here when we implement indexed array values.
+        // For now we assume these are all base type values and therefore do not need to
+        // be hashed.
+        let mut idx_field_vals = fields
+            .iter()
+            .zip(vals.iter())
+            .filter_map(|((_field_type, is_idx), val)| is_idx.then(|| val.clone()))
+            .collect::<Vec<_>>();
+
+        topics.append(&mut idx_field_vals);
+        topics
+    };
+
+    let (non_idx_field_types, non_idx_field_vals): (Vec<_>, Vec<_>) = fields
+        .iter()
+        .zip(vals.iter())
+        .filter_map(|((abi_type, is_idx), val)| (!is_idx).then(|| (abi_type.clone(), val.clone())))
         .unzip();
 
-    // field types will be relevant when we implement indexed array values
-    let (mut indexed_field_vals, _): (Vec<yul::Expression>, Vec<FixedSize>) = event
-        .indexed_field_types_with_index()
-        .into_iter()
-        .map(|(index, typ)| (vals[index].to_owned(), typ))
-        .unzip();
-
-    let encoding = abi_operations::encode(&to_abi_types(&field_types), field_vals);
-    let encoding_size = abi_operations::encoding_size(&to_abi_types(&field_types), vals);
-
-    // for now we assume these are all base type values and therefore do not need to
-    // be hashed
-    topics.append(&mut indexed_field_vals);
+    let encoding_size = abi_operations::encoding_size(&non_idx_field_types, &non_idx_field_vals);
+    let encoding = abi_operations::encode(&non_idx_field_types, non_idx_field_vals);
 
     let log_func = identifier! { (format!("log{}", topics.len())) };
 

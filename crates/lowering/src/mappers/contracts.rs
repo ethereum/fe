@@ -1,89 +1,105 @@
-use crate::context::Context;
+use crate::context::{ContractContext, ModuleContext};
 use crate::mappers::{functions, types};
 use crate::names;
 use crate::utils::ZeroSpanNode;
+use fe_analyzer::namespace::items::{ContractFieldId, ContractId, EventId};
 use fe_analyzer::namespace::types::{Array, FixedSize};
-use fe_parser::ast as fe;
+use fe_parser::ast;
 use fe_parser::node::Node;
 
 /// Lowers a contract definition.
-pub fn contract_def(context: &mut Context, stmt: Node<fe::Contract>) -> Node<fe::Contract> {
-    let fe::Contract { name, fields, body } = stmt.kind;
-
-    let lowered_fields = fields
-        .into_iter()
-        .map(|field| contract_field(context, field))
+pub fn contract_def(module: &mut ModuleContext, contract: ContractId) -> Node<ast::Contract> {
+    let mut context = ContractContext::new(module);
+    let fields = contract
+        .all_fields(context.db())
+        .iter()
+        .map(|field| contract_field(&mut context, *field))
         .collect();
 
-    let lowered_body = body
-        .into_iter()
-        .map(|stmt| match stmt {
-            fe::ContractStmt::Event(def) => fe::ContractStmt::Event(event_def(context, def)),
-            fe::ContractStmt::Function(def) => {
-                fe::ContractStmt::Function(functions::func_def(context, def))
-            }
-        })
+    let events = contract
+        .all_events(context.db())
+        .iter()
+        .map(|event| ast::ContractStmt::Event(event_def(&mut context, *event)))
+        .collect();
+    let functions = contract
+        .all_functions(context.db())
+        .iter()
+        .map(|function| ast::ContractStmt::Function(functions::func_def(&mut context, *function)))
         .collect();
 
     let func_defs_from_list_expr = context
         .list_expressions
         .iter()
-        .map(|expr| fe::ContractStmt::Function(list_expr_to_fn_def(expr).into_node()))
-        .collect::<Vec<fe::ContractStmt>>();
+        .map(|expr| ast::ContractStmt::Function(list_expr_to_fn_def(expr).into_node()))
+        .collect::<Vec<ast::ContractStmt>>();
 
+    let node = &contract.data(context.db()).ast;
     Node::new(
-        fe::Contract {
-            name,
-            fields: lowered_fields,
-            body: [lowered_body, func_defs_from_list_expr].concat(),
+        ast::Contract {
+            name: node.kind.name.clone(),
+            fields,
+            body: [events, functions, func_defs_from_list_expr].concat(),
         },
-        stmt.span,
+        node.span,
     )
 }
 
-fn contract_field(context: &mut Context, field: Node<fe::Field>) -> Node<fe::Field> {
+fn contract_field(context: &mut ContractContext, field: ContractFieldId) -> Node<ast::Field> {
+    let node = &field.data(context.db()).ast;
+    let typ = field.typ(context.db()).expect("contract field type error");
     Node::new(
-        fe::Field {
-            is_pub: field.kind.is_pub,
-            is_const: field.kind.is_const,
-            name: field.kind.name,
-            typ: types::type_desc(context, field.kind.typ),
-            value: field.kind.value,
+        ast::Field {
+            is_pub: node.kind.is_pub,
+            is_const: node.kind.is_const,
+            name: node.kind.name.clone(),
+            typ: types::type_desc1(&mut context.module, node.kind.typ.clone(), &typ),
+            value: node.kind.value.clone(),
         },
-        field.span,
+        node.span,
     )
 }
 
-fn event_def(context: &mut Context, stmt: Node<fe::Event>) -> Node<fe::Event> {
-    let fe::Event { name, fields } = stmt.kind;
-    let lowered_fields = fields
-        .into_iter()
-        .map(|field| {
-            Node::new(
-                fe::EventField {
-                    is_idx: field.kind.is_idx,
-                    name: field.kind.name,
-                    typ: types::type_desc(context, field.kind.typ),
-                },
-                field.span,
-            )
+fn event_def(context: &mut ContractContext, event: EventId) -> Node<ast::Event> {
+    let ast_fields = &event.data(context.db()).ast.kind.fields;
+    let fields = event
+        .typ(context.db())
+        .fields
+        .iter()
+        .zip(ast_fields.iter())
+        .map(|(field, node)| {
+            ast::EventField {
+                is_idx: field.is_indexed,
+                name: field.name.clone().into_node(),
+                typ: types::type_desc1(
+                    context.module,
+                    node.kind.typ.clone(),
+                    &field
+                        .typ
+                        .as_ref()
+                        .expect("event field type error")
+                        .clone()
+                        .into(),
+                ),
+            }
+            .into_node()
         })
         .collect();
 
+    let node = &event.data(context.db()).ast;
     Node::new(
-        fe::Event {
-            name,
-            fields: lowered_fields,
+        ast::Event {
+            name: node.kind.name.clone(),
+            fields,
         },
-        stmt.span,
+        node.span,
     )
 }
 
-fn list_expr_to_fn_def(array: &Array) -> fe::Function {
+fn list_expr_to_fn_def(array: &Array) -> ast::Function {
     // Built the AST nodes for the function arguments
     let args = (0..array.size)
         .map(|index| {
-            fe::FunctionArg {
+            ast::FunctionArg {
                 name: format!("val{}", index).into_node(),
                 typ: names::fixed_size_type_desc(&FixedSize::Base(array.inner)).into_node(),
             }
@@ -93,8 +109,8 @@ fn list_expr_to_fn_def(array: &Array) -> fe::Function {
 
     // Build the AST node for the array declaration
     let var_decl_name = "generated_array";
-    let var_decl = fe::FuncStmt::VarDecl {
-        target: fe::VarDeclTarget::Name(var_decl_name.to_string()).into_node(),
+    let var_decl = ast::FuncStmt::VarDecl {
+        target: ast::VarDeclTarget::Name(var_decl_name.to_string()).into_node(),
         typ: names::fixed_size_type_desc(&FixedSize::Array(array.clone())).into_node(),
         value: None,
     }
@@ -103,21 +119,21 @@ fn list_expr_to_fn_def(array: &Array) -> fe::Function {
     // Build the AST nodes for the individual assignments of array slots
     let assignments = (0..array.size)
         .map(|index| {
-            fe::FuncStmt::Assign {
-                target: fe::Expr::Subscript {
-                    value: fe::Expr::Name(var_decl_name.to_string()).into_boxed_node(),
-                    index: fe::Expr::Num(index.to_string()).into_boxed_node(),
+            ast::FuncStmt::Assign {
+                target: ast::Expr::Subscript {
+                    value: ast::Expr::Name(var_decl_name.to_string()).into_boxed_node(),
+                    index: ast::Expr::Num(index.to_string()).into_boxed_node(),
                 }
                 .into_node(),
-                value: fe::Expr::Name(format!("val{}", index)).into_node(),
+                value: ast::Expr::Name(format!("val{}", index)).into_node(),
             }
             .into_node()
         })
         .collect::<Vec<_>>();
 
     // Build the AST node for the return statement
-    let return_stmt = fe::FuncStmt::Return {
-        value: Some(fe::Expr::Name(var_decl_name.to_string()).into_node()),
+    let return_stmt = ast::FuncStmt::Return {
+        value: Some(ast::Expr::Name(var_decl_name.to_string()).into_node()),
     }
     .into_node();
 
@@ -125,7 +141,7 @@ fn list_expr_to_fn_def(array: &Array) -> fe::Function {
         Some(names::fixed_size_type_desc(&FixedSize::Array(array.clone())).into_node());
 
     // Put it all together in one AST node that holds the entire function definition
-    fe::Function {
+    ast::Function {
         is_pub: false,
         name: names::list_expr_generator_fn_name(array).into_node(),
         args,

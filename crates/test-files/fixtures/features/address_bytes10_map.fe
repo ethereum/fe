@@ -1,5 +1,5 @@
 contract Foo:
-    pub bar: Map<address, u8[10]>
+    bar: Map<address, u8[10]>
 
     pub fn read_bar(key: address) -> u8[10]:
         return self.bar[key].to_mem()

@@ -3,13 +3,15 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, &src)"
 
 ---
-error: an event with the same name already exists
-  ┌─ compile_errors/duplicate_event_in_contract.fe:5:5
-  │  
-5 │ ╭     event MyEvent:
-6 │ │         idx addr1: address
-  │ ╰──────────────────────────^ Conflicting definition of event `MyEvent`
-  │  
-  = Note: Give one of the `MyEvent` events a different name
+error: duplicate event names in `contract Foo`
+  ┌─ compile_errors/duplicate_event_in_contract.fe:2:5
+  │    
+2 │ ╭       event MyEvent:
+3 │ │           idx addr1: address
+  │ ╰────────────────────────────^ `MyEvent` first defined here
+4 │     
+5 │   ╭     event MyEvent:
+6 │   │         idx addr1: address
+  │   ╰──────────────────────────' `MyEvent` redefined here
 
 

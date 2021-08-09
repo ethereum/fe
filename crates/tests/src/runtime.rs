@@ -1,11 +1,11 @@
 //! Tests for the Fe runtime
 
 #![cfg(feature = "solc-backend")]
-use fe_yulgen::runtime::functions;
-use yultsur::*;
 
-use fe_analyzer::namespace::types::{Base, FixedSize, Integer, Struct};
 use fe_compiler_test_utils::*;
+use fe_yulgen::runtime::functions;
+use fe_yulgen::types::AbiType;
+use yultsur::*;
 
 macro_rules! assert_eq {
     ($a:tt, $b:tt) => {
@@ -297,18 +297,15 @@ fn test_runtime_set_zero() {
 
 #[test]
 fn test_runtime_house_struct() {
-    let mut house = Struct::new("House");
-    house
-        .add_field("price", &FixedSize::Base(Base::Numeric(Integer::U256)))
-        .unwrap();
-    house
-        .add_field("size", &FixedSize::Base(Base::Numeric(Integer::U256)))
-        .unwrap();
-    house
-        .add_field("rooms", &FixedSize::Base(Base::Numeric(Integer::U8)))
-        .unwrap();
-    house.add_field("vacant", &FixedSize::bool()).unwrap();
-    let house_api = functions::structs::struct_apis(house);
+    let house_api = functions::structs::struct_apis(
+        "House",
+        &[
+            ("price".to_string(), AbiType::Uint { size: 32 }),
+            ("size".to_string(), AbiType::Uint { size: 32 }),
+            ("rooms".to_string(), AbiType::Uint { size: 1 }),
+            ("vacant".to_string(), AbiType::Bool),
+        ],
+    );
 
     with_executor(&|mut executor| {
         Runtime::new().with_functions([functions::std(), house_api.clone()].concat()).with_test_statements(

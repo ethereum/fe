@@ -1,30 +1,32 @@
-use crate::context::Context;
+use crate::context::{ContractContext, FnContext};
 use crate::mappers::expressions;
 use crate::mappers::types;
 use crate::utils::ZeroSpanNode;
+use fe_analyzer::namespace::items::FunctionId;
+use fe_analyzer::namespace::types::Type;
+use fe_analyzer::namespace::types::TypeDowncast;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 
 /// Lowers a function definition.
-pub fn func_def(context: &mut Context, def: Node<fe::Function>) -> Node<fe::Function> {
-    let fe::Function {
-        is_pub,
-        name,
-        args,
-        return_type,
-        body,
-    } = def.kind;
-    // The return type is lowered if it exists. If there is no return type, we set it to the unit type.
-    let lowered_return_type = return_type
-        .map(|return_type| types::type_desc(context, return_type))
-        .unwrap_or_else(|| fe::TypeDesc::Unit.into_node());
+pub fn func_def(contract: &mut ContractContext, function: FunctionId) -> Node<fe::Function> {
+    let mut context = FnContext::new(contract, function.body(contract.db()));
 
+    let node = &function.data(context.db()).ast;
+    let fe::Function {
+        is_pub, name, body, ..
+    } = &node.kind;
+
+    let signature = function.signature(context.db());
+
+    let return_type = signature
+        .return_type
+        .as_ref()
+        .expect("fn return type error");
     let lowered_body = {
-        let mut lowered_body = multiple_stmts(context, body);
+        let mut lowered_body = multiple_stmts(&mut context, body.clone());
         // append `return ()` to the body if there is no return
-        if lowered_return_type.kind == fe::TypeDesc::Unit
-            && !is_last_statement_return(&lowered_body)
-        {
+        if return_type.is_unit() && !is_last_statement_return(&lowered_body) {
             lowered_body.push(
                 fe::FuncStmt::Return {
                     value: Some(fe::Expr::Unit.into_node()),
@@ -35,43 +37,60 @@ pub fn func_def(context: &mut Context, def: Node<fe::Function>) -> Node<fe::Func
         lowered_body
     };
 
-    let lowered_args = args
-        .into_iter()
-        .map(|arg| {
-            Node::new(
-                fe::FunctionArg {
-                    name: arg.kind.name,
-                    typ: types::type_desc(context, arg.kind.typ),
-                },
-                arg.span,
-            )
+    let args = node
+        .kind
+        .args
+        .iter()
+        .zip(
+            signature
+                .params
+                .iter()
+                .map(|param| param.typ.clone().expect("fn param type error").into()),
+        )
+        .map(|(pnode, ptype)| {
+            fe::FunctionArg {
+                name: pnode.kind.name.clone(),
+                typ: types::type_desc1(&mut contract.module, pnode.kind.typ.clone(), &ptype),
+            }
+            .into_node()
         })
         .collect();
 
     let lowered_function = fe::Function {
-        is_pub,
-        name,
-        args: lowered_args,
-        return_type: Some(lowered_return_type),
+        is_pub: *is_pub,
+        name: name.clone(),
+        args,
+        return_type: Some(types::type_desc(
+            contract.module,
+            &return_type.clone().into(),
+        )),
         body: lowered_body,
     };
 
-    Node::new(lowered_function, def.span)
+    Node::new(lowered_function, node.span)
 }
 
-fn func_stmt(context: &mut Context, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::FuncStmt>> {
+fn func_stmt(context: &mut FnContext, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::FuncStmt>> {
     let lowered_kinds = match stmt.kind {
         fe::FuncStmt::Return { value } => stmt_return(context, value),
-        fe::FuncStmt::VarDecl { target, typ, value } => match target.kind {
-            fe::VarDeclTarget::Name(_) => vec![fe::FuncStmt::VarDecl {
-                target,
-                typ: types::type_desc(context, typ),
-                value: expressions::optional_expr(context, value),
-            }],
-            fe::VarDeclTarget::Tuple(_) => {
-                lower_tuple_destructuring(context, target, typ, value, stmt.span)
+        fe::FuncStmt::VarDecl { target, typ, value } => {
+            let typ = context
+                .var_decl_type(&typ)
+                .expect("missing var decl type")
+                .clone()
+                .into();
+
+            match target.kind {
+                fe::VarDeclTarget::Name(_) => vec![fe::FuncStmt::VarDecl {
+                    target,
+                    typ: types::type_desc(context.contract.module, &typ),
+                    value: expressions::optional_expr(context, value),
+                }],
+                fe::VarDeclTarget::Tuple(_) => {
+                    lower_tuple_destructuring(context, target, &typ, value, stmt.span)
+                }
             }
-        },
+        }
         fe::FuncStmt::Assign { target, value } => vec![fe::FuncStmt::Assign {
             target: expressions::expr(context, target),
             value: expressions::expr(context, value),
@@ -122,7 +141,7 @@ fn func_stmt(context: &mut Context, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::Fu
 }
 
 fn multiple_stmts(
-    context: &mut Context,
+    context: &mut FnContext,
     stmts: Vec<Node<fe::FuncStmt>>,
 ) -> Vec<Node<fe::FuncStmt>> {
     stmts
@@ -133,7 +152,7 @@ fn multiple_stmts(
 }
 
 fn stmt_aug_assign(
-    context: &mut Context,
+    context: &mut FnContext,
     target: Node<fe::Expr>,
     op: Node<fe::BinOperator>,
     value: Node<fe::Expr>,
@@ -158,7 +177,7 @@ fn stmt_aug_assign(
     }]
 }
 
-fn stmt_return(context: &mut Context, value: Option<Node<fe::Expr>>) -> Vec<fe::FuncStmt> {
+fn stmt_return(context: &mut FnContext, value: Option<Node<fe::Expr>>) -> Vec<fe::FuncStmt> {
     if let Some(value) = value {
         // lower a return statement that contains a value (e.g. `return true` or `return ()`)
         vec![fe::FuncStmt::Return {
@@ -193,17 +212,17 @@ fn is_last_statement_return(stmts: &[Node<fe::FuncStmt>]) -> bool {
 /// y: bool = $tmp_tuple_0.item1
 /// ```
 fn lower_tuple_destructuring(
-    context: &mut Context,
+    context: &mut FnContext,
     target: Node<fe::VarDeclTarget>,
-    typ: Node<fe::TypeDesc>,
+    typ: &Type,
     value: Option<Node<fe::Expr>>,
     span: fe_common::Span,
 ) -> Vec<fe::FuncStmt> {
     let mut stmts = vec![];
-    let tmp_tuple = context.module.make_unique_name("tmp_tuple");
+    let tmp_tuple = context.make_unique_name("tmp_tuple");
     stmts.push(fe::FuncStmt::VarDecl {
         target: Node::new(fe::VarDeclTarget::Name(tmp_tuple.clone()), span),
-        typ: types::type_desc(context, typ.clone()),
+        typ: types::type_desc(&mut context.contract.module, typ),
         value: expressions::optional_expr(context, value),
     });
 
@@ -220,9 +239,9 @@ fn lower_tuple_destructuring(
 }
 
 fn declare_tuple_items(
-    context: &mut Context,
+    context: &mut FnContext,
     target: Node<fe::VarDeclTarget>,
-    typ: Node<fe::TypeDesc>,
+    typ: &Type,
     tmp_tuple: &str,
     indices: &mut Vec<usize>,
     span: fe_common::Span,
@@ -243,19 +262,27 @@ fn declare_tuple_items(
 
             stmts.push(fe::FuncStmt::VarDecl {
                 target,
-                typ,
+                typ: types::type_desc(&mut context.contract.module, typ),
                 value: expressions::optional_expr(context, Some(value)),
             });
         }
 
         fe::VarDeclTarget::Tuple(items) => {
-            let items_typ = match typ.kind {
-                fe::TypeDesc::Tuple { items } => items,
-                _ => unreachable!(),
-            };
+            let items_typ = &typ
+                .as_tuple()
+                .expect("tuple declaration type mismatch")
+                .items;
             for (index, (target, typ)) in items.into_iter().zip(items_typ.into_iter()).enumerate() {
                 indices.push(index);
-                declare_tuple_items(context, target, typ, tmp_tuple, indices, span, stmts);
+                declare_tuple_items(
+                    context,
+                    target,
+                    &typ.clone().into(),
+                    tmp_tuple,
+                    indices,
+                    span,
+                    stmts,
+                );
                 indices.pop().unwrap();
             }
         }

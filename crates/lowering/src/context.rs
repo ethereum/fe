@@ -1,24 +1,67 @@
-use fe_analyzer::context::Context as AnalyzerContext;
-use fe_analyzer::namespace::types::{Array, Tuple};
+use fe_analyzer::context::{ExpressionAttributes, FunctionBody};
+use fe_analyzer::namespace::types::{Array, FixedSize, Tuple};
+use fe_analyzer::AnalyzerDb;
+use fe_parser::ast;
+use fe_parser::node::Node;
 use indexmap::IndexSet;
-use std::collections::BTreeSet;
+use std::rc::Rc;
 
-pub struct ModuleContext<'a> {
-    pub analysis: &'a AnalyzerContext,
+pub struct ModuleContext<'db> {
+    pub db: &'db dyn AnalyzerDb,
+    /// Tuples that are used in the module
+    tuples: IndexSet<Tuple>,
+}
 
-    /// Tuples that were used inside of a module,
-    /// and the generated name of the resulting struct.
-    pub tuples: IndexSet<Tuple>,
+impl<'db> ModuleContext<'db> {
+    pub fn new(db: &'db dyn AnalyzerDb) -> Self {
+        Self {
+            db,
+            tuples: IndexSet::new(),
+        }
+    }
 
-    /// Holds fresh id for [`ModuleContext::make_unique_name`]
+    pub fn add_tuple(&mut self, tuple: Tuple) {
+        self.tuples.insert(tuple);
+    }
+
+    pub fn into_tuples(self) -> IndexSet<Tuple> {
+        self.tuples
+    }
+}
+
+pub struct ContractContext<'a, 'db> {
+    pub module: &'a mut ModuleContext<'db>,
+
+    /// List expressions that are used in the contract
+    pub list_expressions: IndexSet<Array>,
+}
+
+impl<'a, 'db> ContractContext<'a, 'db> {
+    pub fn new(module: &'a mut ModuleContext<'db>) -> Self {
+        Self {
+            module,
+            list_expressions: IndexSet::new(),
+        }
+    }
+
+    pub fn db(&self) -> &'db dyn AnalyzerDb {
+        self.module.db
+    }
+}
+
+pub struct FnContext<'a, 'b, 'db> {
+    pub contract: &'a mut ContractContext<'b, 'db>,
+    pub body: Rc<FunctionBody>,
+
+    /// Holds fresh id for [`FnContext::make_unique_name`]
     fresh_id: u64,
 }
 
-impl<'a> ModuleContext<'a> {
-    pub fn new(analysis: &'a AnalyzerContext) -> Self {
+impl<'a, 'b, 'db> FnContext<'a, 'b, 'db> {
+    pub fn new(contract: &'a mut ContractContext<'b, 'db>, body: Rc<FunctionBody>) -> Self {
         Self {
-            analysis,
-            tuples: IndexSet::new(),
+            contract,
+            body,
             fresh_id: 0,
         }
     }
@@ -29,20 +72,21 @@ impl<'a> ModuleContext<'a> {
         self.fresh_id += 1;
         format!("${}_{}", name, id)
     }
+
+    pub fn db(&self) -> &'db dyn AnalyzerDb {
+        self.contract.db()
+    }
+
+    pub fn expression_attributes(&self, node: &Node<ast::Expr>) -> Option<&ExpressionAttributes> {
+        self.body.expressions.get(&node.id)
+    }
+    pub fn var_decl_type(&self, node: &Node<ast::TypeDesc>) -> Option<&FixedSize> {
+        self.body.var_decl_types.get(&node.id)
+    }
 }
 
-// This is contract context, but it's used all over so it has a short name.
-pub struct Context<'a, 'b> {
-    pub module: &'a mut ModuleContext<'b>,
-    /// List expressions that the contract uses
-    pub list_expressions: BTreeSet<Array>,
-}
-
-impl<'a, 'b> Context<'a, 'b> {
-    pub fn new(module: &'a mut ModuleContext<'b>) -> Self {
-        Self {
-            module,
-            list_expressions: BTreeSet::new(),
-        }
+impl<'a, 'b, 'db> AsMut<ModuleContext<'db>> for FnContext<'a, 'b, 'db> {
+    fn as_mut(&mut self) -> &mut ModuleContext<'db> {
+        self.contract.module
     }
 }

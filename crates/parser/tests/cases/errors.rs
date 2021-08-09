@@ -10,7 +10,7 @@ where
 {
     let mut files = fe_common::files::FileStore::new();
     let id = files.add_file(test_name, src);
-    let mut parser = Parser::new(src, id);
+    let mut parser = Parser::new(src);
 
     if should_fail != parse_fn(&mut parser).is_err() {
         panic!(
@@ -18,7 +18,7 @@ where
             if should_fail { "" } else { "not " }
         );
     }
-    diagnostics_string(&parser.diagnostics, &files)
+    diagnostics_string(&parser.diagnostics, id, &files)
 }
 
 macro_rules! test_parse_err {

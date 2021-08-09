@@ -7,35 +7,29 @@
 pub mod builtins;
 pub mod constants;
 pub mod context;
+mod db;
 pub mod errors;
 pub mod namespace;
 mod operations;
 mod traversal;
 
-use crate::errors::{AnalyzerError, FatalError};
-use context::Context;
-use fe_common::files::SourceFileId;
-use fe_parser::ast as fe;
+pub use db::{AnalyzerDb, Db};
+use fe_common::diagnostics::Diagnostic;
+use fe_parser::ast;
+use namespace::items;
+use std::rc::Rc;
 
-/// Performs semantic analysis of the source program and returns a `Context`
-/// instance.
-pub fn analyze(module: &fe::Module, file_id: SourceFileId) -> Result<Context, AnalyzerError> {
-    let mut context = Context::new(file_id);
-    let result = traversal::module::module(&mut context, module);
+/// Performs semantic analysis of the source program
+pub fn analyze(
+    db: &dyn AnalyzerDb,
+    module: ast::Module,
+) -> Result<items::ModuleId, Vec<Diagnostic>> {
+    let module_id = db.intern_module(Rc::new(items::Module { ast: module }));
 
-    match result {
-        Ok(()) => {
-            if context.diagnostics.is_empty() {
-                Ok(context)
-            } else {
-                Err(AnalyzerError(context.diagnostics))
-            }
-        }
-        Err(FatalError) => {
-            if context.diagnostics.is_empty() {
-                panic!("Expected at least one error")
-            }
-            Err(AnalyzerError(context.diagnostics))
-        }
+    let diagnostics = module_id.diagnostics(db);
+    if diagnostics.is_empty() {
+        Ok(module_id)
+    } else {
+        Err(diagnostics)
     }
 }

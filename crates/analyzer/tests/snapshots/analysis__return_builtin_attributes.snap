@@ -1,255 +1,21 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/return_builtin_attributes.fe\", &src, &context)"
+expression: "build_snapshot(\"features/return_builtin_attributes.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "chainid",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "coinbase",
-                        params: [],
-                        return_type: Base(
-                            Address,
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "difficulty",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "gas_price",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "number",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "origin",
-                        params: [],
-                        return_type: Base(
-                            Address,
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "sender",
-                        params: [],
-                        return_type: Base(
-                            Address,
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "timestamp",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "value",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
-note: 
-  ┌─ features/return_builtin_attributes.fe:3:16
-  │
-3 │         return block.coinbase
-  │                ^^^^^^^^^^^^^^ attributes hash: 16804606599831072828
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Address,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_builtin_attributes.fe:6:16
-  │
-6 │         return block.difficulty
-  │                ^^^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_builtin_attributes.fe:9:16
-  │
-9 │         return block.number
-  │                ^^^^^^^^^^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-   ┌─ features/return_builtin_attributes.fe:12:16
-   │
-12 │         return block.timestamp
-   │                ^^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/return_builtin_attributes.fe:15:16
-   │
-15 │         return chain.id
-   │                ^^^^^^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/return_builtin_attributes.fe:18:16
-   │
-18 │         return msg.sender
-   │                ^^^^^^^^^^ attributes hash: 16804606599831072828
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/return_builtin_attributes.fe:21:16
-   │
-21 │         return msg.value
-   │                ^^^^^^^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/return_builtin_attributes.fe:24:16
-   │
-24 │         return tx.origin
-   │                ^^^^^^^^^ attributes hash: 16804606599831072828
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/return_builtin_attributes.fe:27:16
-   │
-27 │         return tx.gas_price
-   │                ^^^^^^^^^^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
 note: 
   ┌─ features/return_builtin_attributes.fe:2:5
   │  
 2 │ ╭     pub fn coinbase() -> address:
 3 │ │         return block.coinbase
-  │ ╰─────────────────────────────^ attributes hash: 14236702025715162870
+  │ ╰─────────────────────────────^ attributes hash: 2195077967527136217
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "coinbase",
+  = FunctionSignature {
         params: [],
-        return_type: Base(
-            Address,
+        return_type: Ok(
+            Base(
+                Address,
+            ),
         ),
     }
 
@@ -258,15 +24,15 @@ note:
   │  
 5 │ ╭     pub fn difficulty() -> u256:
 6 │ │         return block.difficulty
-  │ ╰───────────────────────────────^ attributes hash: 395804245798811562
+  │ ╰───────────────────────────────^ attributes hash: 4553090961241945225
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "difficulty",
+  = FunctionSignature {
         params: [],
-        return_type: Base(
-            Numeric(
-                U256,
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U256,
+                ),
             ),
         ),
     }
@@ -276,15 +42,15 @@ note:
   │  
 8 │ ╭     pub fn number() -> u256:
 9 │ │         return block.number
-  │ ╰───────────────────────────^ attributes hash: 13502509436137580732
+  │ ╰───────────────────────────^ attributes hash: 4553090961241945225
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "number",
+  = FunctionSignature {
         params: [],
-        return_type: Base(
-            Numeric(
-                U256,
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U256,
+                ),
             ),
         ),
     }
@@ -294,15 +60,15 @@ note:
    │  
 11 │ ╭     pub fn timestamp() -> u256:
 12 │ │         return block.timestamp
-   │ ╰──────────────────────────────^ attributes hash: 9693391023913544731
+   │ ╰──────────────────────────────^ attributes hash: 4553090961241945225
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "timestamp",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 U256,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
              ),
          ),
      }
@@ -312,15 +78,15 @@ note:
    │  
 14 │ ╭     pub fn chainid() -> u256:
 15 │ │         return chain.id
-   │ ╰───────────────────────^ attributes hash: 7517237141748927745
+   │ ╰───────────────────────^ attributes hash: 4553090961241945225
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "chainid",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 U256,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
              ),
          ),
      }
@@ -330,14 +96,14 @@ note:
    │  
 17 │ ╭     pub fn sender() -> address:
 18 │ │         return msg.sender
-   │ ╰─────────────────────────^ attributes hash: 17090816601893651171
+   │ ╰─────────────────────────^ attributes hash: 2195077967527136217
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "sender",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Address,
+         return_type: Ok(
+             Base(
+                 Address,
+             ),
          ),
      }
 
@@ -346,15 +112,15 @@ note:
    │  
 20 │ ╭     pub fn value() -> u256:
 21 │ │         return msg.value
-   │ ╰────────────────────────^ attributes hash: 5291020722804961877
+   │ ╰────────────────────────^ attributes hash: 4553090961241945225
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "value",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 U256,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
              ),
          ),
      }
@@ -364,14 +130,14 @@ note:
    │  
 23 │ ╭     pub fn origin() -> address:
 24 │ │         return tx.origin
-   │ ╰────────────────────────^ attributes hash: 7062743268108112920
+   │ ╰────────────────────────^ attributes hash: 2195077967527136217
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "origin",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Address,
+         return_type: Ok(
+             Base(
+                 Address,
+             ),
          ),
      }
 
@@ -380,224 +146,71 @@ note:
    │  
 26 │ ╭     pub fn gas_price() -> u256:
 27 │ │         return tx.gas_price
-   │ ╰───────────────────────────^ attributes hash: 11855694450174249973
+   │ ╰───────────────────────────^ attributes hash: 4553090961241945225
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "gas_price",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 U256,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
              ),
          ),
      }
 
 note: 
-   ┌─ features/return_builtin_attributes.fe:1:1
-   │  
- 1 │ ╭ contract Foo:
- 2 │ │     pub fn coinbase() -> address:
- 3 │ │         return block.coinbase
- 4 │ │ 
-   · │
-26 │ │     pub fn gas_price() -> u256:
-27 │ │         return tx.gas_price
-   │ ╰───────────────────────────^ attributes hash: 5537984652586834693
-   │  
-   = ContractAttributes {
-         public_functions: [
-             FunctionAttributes {
-                 is_public: true,
-                 name: "chainid",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         U256,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "coinbase",
-                 params: [],
-                 return_type: Base(
-                     Address,
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "difficulty",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         U256,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "gas_price",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         U256,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "number",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         U256,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "origin",
-                 params: [],
-                 return_type: Base(
-                     Address,
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "sender",
-                 params: [],
-                 return_type: Base(
-                     Address,
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "timestamp",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         U256,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "value",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         U256,
-                     ),
-                 ),
-             },
-         ],
-         init_function: None,
-         events: [],
-         structs: [],
-         external_contracts: [],
-     }
-
-note: 
-  ┌─ features/return_builtin_attributes.fe:2:26
+  ┌─ features/return_builtin_attributes.fe:3:16
   │
-2 │     pub fn coinbase() -> address:
-  │                          ^^^^^^^ attributes hash: 928477466454064117
+3 │         return block.coinbase
+  │                ^^^^^^^^^^^^^^ address: Value => None
+
+note: 
+  ┌─ features/return_builtin_attributes.fe:6:16
   │
-  = Base(
-        Address,
-    )
+6 │         return block.difficulty
+  │                ^^^^^^^^^^^^^^^^ u256: Value => None
 
 note: 
-  ┌─ features/return_builtin_attributes.fe:5:28
+  ┌─ features/return_builtin_attributes.fe:9:16
   │
-5 │     pub fn difficulty() -> u256:
-  │                            ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+9 │         return block.number
+  │                ^^^^^^^^^^^^ u256: Value => None
 
 note: 
-  ┌─ features/return_builtin_attributes.fe:8:24
-  │
-8 │     pub fn number() -> u256:
-  │                        ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+   ┌─ features/return_builtin_attributes.fe:12:16
+   │
+12 │         return block.timestamp
+   │                ^^^^^^^^^^^^^^^ u256: Value => None
 
 note: 
-   ┌─ features/return_builtin_attributes.fe:11:27
+   ┌─ features/return_builtin_attributes.fe:15:16
    │
-11 │     pub fn timestamp() -> u256:
-   │                           ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
+15 │         return chain.id
+   │                ^^^^^^^^ u256: Value => None
 
 note: 
-   ┌─ features/return_builtin_attributes.fe:14:25
+   ┌─ features/return_builtin_attributes.fe:18:16
    │
-14 │     pub fn chainid() -> u256:
-   │                         ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
+18 │         return msg.sender
+   │                ^^^^^^^^^^ address: Value => None
 
 note: 
-   ┌─ features/return_builtin_attributes.fe:17:24
+   ┌─ features/return_builtin_attributes.fe:21:16
    │
-17 │     pub fn sender() -> address:
-   │                        ^^^^^^^ attributes hash: 928477466454064117
-   │
-   = Base(
-         Address,
-     )
+21 │         return msg.value
+   │                ^^^^^^^^^ u256: Value => None
 
 note: 
-   ┌─ features/return_builtin_attributes.fe:20:23
+   ┌─ features/return_builtin_attributes.fe:24:16
    │
-20 │     pub fn value() -> u256:
-   │                       ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
+24 │         return tx.origin
+   │                ^^^^^^^^^ address: Value => None
 
 note: 
-   ┌─ features/return_builtin_attributes.fe:23:24
+   ┌─ features/return_builtin_attributes.fe:27:16
    │
-23 │     pub fn origin() -> address:
-   │                        ^^^^^^^ attributes hash: 928477466454064117
-   │
-   = Base(
-         Address,
-     )
-
-note: 
-   ┌─ features/return_builtin_attributes.fe:26:27
-   │
-26 │     pub fn gas_price() -> u256:
-   │                           ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
+27 │         return tx.gas_price
+   │                ^^^^^^^^^^^^ u256: Value => None
 
 
