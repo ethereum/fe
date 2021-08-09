@@ -55,7 +55,7 @@ A function header ends with a colon (`:`) after which the function body begins.
 For example, this is a simple function:
 
 ```python
-def answer_to_life_the_universe_and_everything() -> u256:
+fn answer_to_life_the_universe_and_everything() -> u256:
     return 42
 ```
 

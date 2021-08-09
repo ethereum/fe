@@ -11,7 +11,7 @@ The return statement is denoted with the keyword `return`. A `return` statement 
 An example of a `return` statement without explicit use of an expression:
 
 ```python
-def transfer(to: address, value: u256):
+fn transfer(to: address, value: u256):
     if not self.in_whitelist(to):
         return
 ```
@@ -19,7 +19,7 @@ def transfer(to: address, value: u256):
 The above can also be written in a slightly more verbose form:
 
 ```python
-  def transfer(to: address, value: u256) -> ():
+  fn transfer(to: address, value: u256) -> ():
       if not self.in_whitelist(to):
           return ()
 ```

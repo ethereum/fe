@@ -11,6 +11,6 @@ Fe knows two different types of visibility for functions and state variables: `p
 For example, this is a function that can be called externally from a transaction:
 
 ```python
-pub def answer_to_life_the_universe_and_everything() -> u256:
+pub fn answer_to_life_the_universe_and_everything() -> u256:
     return 42
 ```

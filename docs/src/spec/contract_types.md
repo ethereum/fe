@@ -11,11 +11,11 @@ Example:
 
 ```python 
 contract Foo:
-    pub def get_my_num() -> u256:
+    pub fn get_my_num() -> u256:
         return 42
 
 contract FooFactory:
-    pub def create2_foo() -> address:
+    pub fn create2_foo() -> address:
         # `0` is the value being sent and `52` is the address salt
         foo: Foo = Foo.create2(0, 52)
         return address(foo)

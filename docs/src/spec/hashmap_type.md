@@ -18,16 +18,16 @@ contract Foo:
     bar: Map<address, Map<address, u256>>
     baz: Map<address, Map<u256, bool>>
 
-    pub def read_bar(a: address, b: address) -> u256:
+    pub fn read_bar(a: address, b: address) -> u256:
         return self.bar[a][b]
 
-    pub def write_bar(a: address, b: address, value: u256):
+    pub fn write_bar(a: address, b: address, value: u256):
         self.bar[a][b] = value
 
-    pub def read_baz(a: address, b: u256) -> bool:
+    pub fn read_baz(a: address, b: u256) -> bool:
         return self.baz[a][b]
 
-    pub def write_baz(a: address, b: u256, value: bool):
+    pub fn write_baz(a: address, b: u256, value: bool):
         self.baz[a][b] = value
 ```
 

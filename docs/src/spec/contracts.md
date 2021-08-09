@@ -35,11 +35,11 @@ contract GuestBook:
     event Signed:
         book_msg: String<100>
 
-    pub def sign(book_msg: String<100>):
+    pub fn sign(book_msg: String<100>):
         self.messages[msg.sender] = book_msg
         emit Signed(book_msg=book_msg)
 
-    pub def get_msg(addr: address) -> String<100>:
+    pub fn get_msg(addr: address) -> String<100>:
         return self.messages[addr].to_mem()
 ```
 

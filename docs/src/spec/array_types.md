@@ -16,7 +16,7 @@ contract Foo:
   # An array in storage
   bar: u8[10]
 
-  def do_something():
+  fn do_something():
     # An array in memory
     values: u256[3] = [10, 100, 100]
 ```

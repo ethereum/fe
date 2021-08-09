@@ -13,7 +13,7 @@ Example:
 ```python
 contract Foo:
 
-  def bar():
+  fn bar():
     single_byte_string: String<1> = "a"
     # Casting is needed because the type inferred from "foo" is String<3>
     longer_string: String<100> = String<100>("foo")
