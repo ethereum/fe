@@ -19,7 +19,7 @@ contract Example:
   # A Rectangle in storage
   area: Rectangle
 
-  def do_something():
+  fn do_something():
     # A rectangle in memory
     square: Rectangle = Rectangle(width=10, length=10)
 ```

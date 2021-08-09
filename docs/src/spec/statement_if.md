@@ -18,7 +18,7 @@ Example:
 ```python
 contract Foo:
 
-    pub def bar(val: u256) -> u256:
+    pub fn bar(val: u256) -> u256:
         if val > 5:
             return 1
         else:

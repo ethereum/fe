@@ -23,7 +23,7 @@ event Transfer:
     idx receiver: address
     value: u256
 
-def transfer(to : address, value : u256):
+fn transfer(to : address, value : u256):
    # Heavy logic here
    # All done, log the event for listeners
    emit Transfer(msg.sender, _to, _value)

@@ -20,7 +20,7 @@ be used as the names of:
 > KW_CONST          : `const`\
 > KW_CONTINUE       : `continue`\
 > KW_CONST          : `contract`\
-> KW_DEF            : `def`\
+> KW_FN             : `fn`\
 > KW_ELIF           : `elif`\
 > KW_ELSE           : `else`\
 > KW_EMIT           : `emit`\
