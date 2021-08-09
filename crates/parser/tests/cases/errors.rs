@@ -81,6 +81,7 @@ test_parse_err! { emit_bad_call, functions::parse_stmt, true, "emit MyEvent(1)()
 test_parse_err! { expr_bad_prefix, expressions::parse_expr, true, "*x + 1" }
 test_parse_err! { for_no_in, functions::parse_stmt, true, "for x:\n pass" }
 test_parse_err! { fn_no_args, |par| functions::parse_fn_def(par, None), false, "fn f:\n  return 5" }
+test_parse_err! { fn_def_kw, contracts::parse_contract_def, true, "contract C:\n pub def f(x: u8):\n  return x" }
 test_parse_err! { if_no_body, functions::parse_stmt, true, "if x:\nelse:\n x" }
 test_parse_err! { import_bad_name, module::parse_simple_import, true, "import x as 123" }
 test_parse_err! { module_bad_stmt, module::parse_module, true, "if x:\n y" }

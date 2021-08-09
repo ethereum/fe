@@ -94,7 +94,7 @@ fn parse_fn_param_list(par: &mut Parser) -> ParseResult<Node<Vec<Node<FunctionAr
                 par.expect_with_notes(
                     TokenKind::Colon,
                     "failed to parse function parameter",
-                    || {
+                    |_| {
                         vec![
                             "Note: parameter name must be followed by a colon and a type description"
                                 .into(),

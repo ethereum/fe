@@ -1,0 +1,17 @@
+---
+source: crates/parser/tests/cases/errors.rs
+expression: "err_string(stringify!(fn_def_kw), contracts::parse_contract_def, true,\n           \"contract C:\\n pub def f(x: u8):\\n  return x\")"
+
+---
+error: failed to parse field definition
+  ┌─ fn_def_kw:2:10
+  │
+2 │  pub def f(x: u8):
+  │          ^ Unexpected token. Expected `:`
+  │
+  = Hint: use `fn` to define a function
+  = Example: `pub fn f( ...`
+  = Note: field name must be followed by a colon and a type description
+  = Example: pub def: address
+
+

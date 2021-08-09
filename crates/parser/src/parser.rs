@@ -208,7 +208,7 @@ impl<'a> Parser<'a> {
         expected: TokenKind,
         message: S,
     ) -> ParseResult<Token<'a>> {
-        self.expect_with_notes(expected, message, Vec::new)
+        self.expect_with_notes(expected, message, |_| Vec::new())
     }
 
     /// Like [`Parser::expect`], but with additional notes to be appended to the
@@ -223,7 +223,7 @@ impl<'a> Parser<'a> {
     ) -> ParseResult<Token<'a>>
     where
         Str: Into<String>,
-        NotesFn: FnOnce() -> Vec<String>,
+        NotesFn: FnOnce(&Token) -> Vec<String>,
     {
         let tok = self.next()?;
         if tok.kind == expected {
@@ -240,7 +240,7 @@ impl<'a> Parser<'a> {
             self.fancy_error(
                 message.into(),
                 vec![Label::primary(tok.span, label)],
-                notes_fn(),
+                notes_fn(&tok),
             );
             Err(ParseFailed)
         }

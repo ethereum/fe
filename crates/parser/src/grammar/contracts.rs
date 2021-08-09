@@ -34,7 +34,7 @@ pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<Contract>> {
     let contract_name = par.expect_with_notes(
         TokenKind::Name,
         "failed to parse contract definition",
-        || vec!["Note: `contract` must be followed by a name, which must start with a letter and contain only letters, numbers, or underscores".into()],
+        |_| vec!["Note: `contract` must be followed by a name, which must start with a letter and contain only letters, numbers, or underscores".into()],
     )?;
 
     let header_span = contract_tok.span + contract_name.span;
