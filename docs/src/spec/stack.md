@@ -3,11 +3,10 @@
 The following can be stored on the stack:
 
 - base type values
-- pointers to sequence type values
+- pointers to reference type values
 
 The size of each value stored on the stack must not exceed 256 bits. Since all base types are less
-than or equal to 256 bits in size, we store them on the stack. Pointers to values stored in memory
-may also be stored on the stack.
+than or equal to 256 bits in size, we store them on the stack. Pointers to values stored in memory or storage may also be stored on the stack.
 
 Example:
 

@@ -26,8 +26,7 @@ contract Example:
 
 All fields of struct types are always initialized.
 
-The memory layout of a `struct` is undefined by default to allow for compiler
-optimizations like field reordering.
+The data layout of a `struct` is not part of its external API and may be changed in any release.
 
 The fields of a `struct` may be qualified by [visibility modifiers], to allow
 access to data in a struct outside a module.

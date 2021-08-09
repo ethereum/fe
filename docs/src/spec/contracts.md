@@ -24,11 +24,11 @@
 > &nbsp;&nbsp; [IDENTIFIER] `:` [_Type_]
 
 
-A _contract_ in Fe is a collection of code that resides at a specific address on the Ethereum blockchain. It is defined with the keyword `contract`.
+ A _contract_ is a piece of EVM Code associated with an Account. See *Appendix A.* in the [Yellow Paper](https://ethereum.github.io/yellowpaper/paper.pdf) for more info. In Fe, a contract is denoted using the `contract` keyword. A contract definition adds a new contract type to the module. This [contract type] may be used for calling existing contracts with the same interface or initializing new contracts with the create methods.
 
 An example of a `contract`:
 
-```
+```python
 contract GuestBook:
     messages: Map<address, String<100>>
 
@@ -50,6 +50,7 @@ contract GuestBook:
 [_Visibility_]: visibility_and_privacy.md
 [_Type_]: types.md
 [type]: types.md
+[contract type]: contract_types.md
 [_Function_]: function_item_types.md
 [_Struct_]: structs.md
 [_Event_]: events.md
