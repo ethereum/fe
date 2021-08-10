@@ -610,11 +610,11 @@ fn strings() {
 
         harness.test_function(
             &mut executor,
-            "return_with_newline",
+            "return_special_chars",
             &[],
             Some(&string_token(
-                "foo
-        balu",
+                "\n\"'\r\t
+        foo\\",
             )),
         );
 

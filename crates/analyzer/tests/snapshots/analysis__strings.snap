@@ -48,21 +48,21 @@ ModuleAttributes {
                     },
                     FunctionAttributes {
                         is_public: true,
-                        name: "return_static_string",
+                        name: "return_special_chars",
                         params: [],
                         return_type: String(
                             FeString {
-                                max_size: 43,
+                                max_size: 18,
                             },
                         ),
                     },
                     FunctionAttributes {
                         is_public: true,
-                        name: "return_with_newline",
+                        name: "return_static_string",
                         params: [],
                         return_type: String(
                             FeString {
-                                max_size: 16,
+                                max_size: 43,
                             },
                         ),
                     },
@@ -265,15 +265,15 @@ note:
 note: 
    ┌─ features/strings.fe:24:16
    │  
-24 │           return "foo
+24 │           return "\n\"'\r\t
    │ ╭────────────────^
-25 │ │         balu"
-   │ ╰─────────────^ attributes hash: 15759196394724794690
+25 │ │         foo\\"
+   │ ╰──────────────^ attributes hash: 8914016678750927048
    │  
    = ExpressionAttributes {
          typ: String(
              FeString {
-                 max_size: 16,
+                 max_size: 18,
              },
          ),
          location: Memory,
@@ -476,18 +476,18 @@ note:
 note: 
    ┌─ features/strings.fe:23:5
    │  
-23 │ ╭     pub fn return_with_newline() -> String<16>:
-24 │ │         return "foo
-25 │ │         balu"
-   │ ╰─────────────^ attributes hash: 14350780978254754932
+23 │ ╭     pub fn return_special_chars() -> String<18>:
+24 │ │         return "\n\"'\r\t
+25 │ │         foo\\"
+   │ ╰──────────────^ attributes hash: 3302929827714971617
    │  
    = FunctionAttributes {
          is_public: true,
-         name: "return_with_newline",
+         name: "return_special_chars",
          params: [],
          return_type: String(
              FeString {
-                 max_size: 16,
+                 max_size: 18,
              },
          ),
      }
@@ -500,9 +500,9 @@ note:
  3 │ │         s2: String<26>
  4 │ │         u: u256
    · │
-24 │ │         return "foo
-25 │ │         balu"
-   │ ╰─────────────^ attributes hash: 5325600778331999631
+24 │ │         return "\n\"'\r\t
+25 │ │         foo\\"
+   │ ╰──────────────^ attributes hash: 8739500757351151956
    │  
    = ContractAttributes {
          public_functions: [
@@ -545,21 +545,21 @@ note:
              },
              FunctionAttributes {
                  is_public: true,
-                 name: "return_static_string",
+                 name: "return_special_chars",
                  params: [],
                  return_type: String(
                      FeString {
-                         max_size: 43,
+                         max_size: 18,
                      },
                  ),
              },
              FunctionAttributes {
                  is_public: true,
-                 name: "return_with_newline",
+                 name: "return_static_string",
                  params: [],
                  return_type: String(
                      FeString {
-                         max_size: 16,
+                         max_size: 43,
                      },
                  ),
              },
@@ -981,14 +981,14 @@ note:
      )
 
 note: 
-   ┌─ features/strings.fe:23:37
+   ┌─ features/strings.fe:23:38
    │
-23 │     pub fn return_with_newline() -> String<16>:
-   │                                     ^^^^^^^^^^ attributes hash: 7943909822945469766
+23 │     pub fn return_special_chars() -> String<18>:
+   │                                      ^^^^^^^^^^ attributes hash: 4025072116050215860
    │
    = String(
          FeString {
-             max_size: 16,
+             max_size: 18,
          },
      )
 

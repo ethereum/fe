@@ -19,6 +19,7 @@ use fe_parser::ast::UnaryOperator;
 use fe_parser::node::Node;
 use num_bigint::BigInt;
 use std::convert::TryFrom;
+use std::ops::RangeInclusive;
 use std::rc::Rc;
 use std::str::FromStr;
 use vec1::Vec1;
@@ -46,7 +47,7 @@ pub fn expr(
         fe::Expr::Call { .. } => expr_call(scope, context, exp),
         fe::Expr::List { elts } => expr_list(scope, context, elts, expected_type.as_array()),
         fe::Expr::Tuple { .. } => expr_tuple(scope, context, exp, expected_type.as_tuple()),
-        fe::Expr::Str(_) => expr_str(exp),
+        fe::Expr::Str(_) => expr_str(context, exp),
         fe::Expr::Unit => Ok(ExpressionAttributes::new(Type::unit(), Location::Value)),
     }?;
 
@@ -321,8 +322,15 @@ fn expr_name(
     unreachable!()
 }
 
-fn expr_str(exp: &Node<fe::Expr>) -> Result<ExpressionAttributes, FatalError> {
+fn expr_str(
+    context: &mut Context,
+    exp: &Node<fe::Expr>,
+) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Str(string) = &exp.kind {
+        if !is_valid_string(string) {
+            context.error("String contains invalid byte sequence", exp.span, "")
+        };
+
         return Ok(ExpressionAttributes::new(
             Type::String(FeString {
                 max_size: string.len(),
@@ -332,6 +340,25 @@ fn expr_str(exp: &Node<fe::Expr>) -> Result<ExpressionAttributes, FatalError> {
     }
 
     unreachable!()
+}
+
+fn is_valid_string(val: &str) -> bool {
+    const ALLOWED_SPECIAL_CHARS: [u8; 3] = [
+        9u8,  // Tab
+        10u8, // Newline
+        13u8, // Carriage return
+    ];
+
+    const PRINTABLE_ASCII: RangeInclusive<u8> = 31u8..=126u8;
+
+    for x in val.as_bytes() {
+        if ALLOWED_SPECIAL_CHARS.contains(x) || PRINTABLE_ASCII.contains(x) {
+            continue;
+        } else {
+            return false;
+        }
+    }
+    true
 }
 
 fn expr_bool(exp: &Node<fe::Expr>) -> Result<ExpressionAttributes, FatalError> {

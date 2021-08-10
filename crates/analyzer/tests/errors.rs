@@ -134,6 +134,7 @@ test_stmt! { undefined_name, "x: u16 = y\nz: u16 = y" }
 test_stmt! { undefined_type, "x: foobar = 10" }
 test_stmt! { unexpected_return, "return 1" }
 test_stmt! { revert_reason_not_struct, "revert 1" }
+test_stmt! { invalid_ascii, "String<2>(\"ä\")" }
 
 test_file! { bad_tuple_attr1 }
 test_file! { bad_tuple_attr2 }
