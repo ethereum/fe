@@ -1,3 +1,4 @@
+use fe_analyzer::namespace::types::{Base, FixedSize};
 use fe_yulgen::constructor;
 use fe_yulgen::names::abi as abi_names;
 use fe_yulgen::operations::{abi as abi_operations, data as data_operations};
@@ -106,10 +107,10 @@ test_yulgen! {
     abi_functions::decode_component_bytes(26, AbiDecodeLocation::Calldata)
 }
 
-fn struct_bool_bool_fields() -> Vec<(String, AbiType)> {
+fn struct_bool_bool_fields() -> Vec<(String, FixedSize)> {
     vec![
-        ("bar".into(), AbiType::Bool),
-        ("bar2".into(), AbiType::Bool),
+        ("bar".into(), FixedSize::Base(Base::Bool)),
+        ("bar2".into(), FixedSize::Base(Base::Bool)),
     ]
 }
 
@@ -120,7 +121,7 @@ test_yulgen! {
 }
 test_yulgen! {
     struct_new_gen_function,
-    structs_functions::generate_new_fn("Foo", &[("bar".into(), AbiType::Bool), ("bar2".into(), AbiType::Bool)])
+    structs_functions::generate_new_fn("Foo", &struct_bool_bool_fields())
 }
 test_yulgen! {
     struct_getter_gen_bar_function,

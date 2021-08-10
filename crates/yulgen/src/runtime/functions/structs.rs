@@ -1,13 +1,10 @@
 use crate::names;
-use crate::types::AbiType;
 use crate::types::EvmSized;
+use fe_analyzer::namespace::types::FixedSize;
 use yultsur::*;
 
-/// Generate a YUL function that can be used to create an instance of
-/// `struct_type`
-pub fn generate_new_fn(struct_name: &str, fields: &[(String, AbiType)]) -> yul::Statement {
-    // need struct name, field names (in order)
-
+/// Generate a YUL function that can be used to create an instance of a struct
+pub fn generate_new_fn(struct_name: &str, fields: &[(String, FixedSize)]) -> yul::Statement {
     let function_name = names::struct_new_call(struct_name);
 
     if fields.is_empty() {
@@ -59,13 +56,12 @@ pub fn generate_new_fn(struct_name: &str, fields: &[(String, AbiType)]) -> yul::
     }
 }
 
-/// Generate a YUL function that can be used to read a property of `struct_`
+/// Generate a YUL function that can be used to read a property of a struct
 pub fn generate_get_fn(
     struct_name: &str,
-    (field_name, field_type): &(String, AbiType),
+    (field_name, field_type): &(String, FixedSize),
     field_index: usize,
 ) -> yul::Statement {
-    // need struct name, field index, field abi type
     let function_name = names::struct_getter_call(struct_name, field_name);
 
     // The value of each field occupies 32 bytes. This includes values with sizes
@@ -84,7 +80,7 @@ pub fn generate_get_fn(
 }
 
 /// Builds a set of functions used to interact with structs used in a contract
-pub fn struct_apis(name: &str, fields: &[(String, AbiType)]) -> Vec<yul::Statement> {
+pub fn struct_apis(name: &str, fields: &[(String, FixedSize)]) -> Vec<yul::Statement> {
     [
         vec![generate_new_fn(name, fields)],
         fields

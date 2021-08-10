@@ -175,7 +175,7 @@ pub fn build(
                 .map(|(name, id)| {
                     (
                         name.to_string(),
-                        id.typ(db).expect("struct field type error").as_abi_type(db),
+                        id.typ(db).expect("struct field type error"),
                     )
                 })
                 .collect::<Vec<_>>();

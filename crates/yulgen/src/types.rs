@@ -170,21 +170,6 @@ impl AbiType {
     }
 }
 
-impl EvmSized for AbiType {
-    fn size(&self) -> usize {
-        match self {
-            AbiType::StaticArray { inner, size } => inner.size() * size,
-            AbiType::Tuple { components } => components.iter().map(|typ| typ.size()).sum(),
-            AbiType::Uint { size } => *size,
-            AbiType::Int { size } => *size,
-            AbiType::Bool => 1,
-            AbiType::Address => 32,
-            AbiType::String { max_size } => *max_size,
-            AbiType::Bytes { size } => *size,
-        }
-    }
-}
-
 pub trait AsAbiType {
     fn as_abi_type(&self, db: &dyn AnalyzerDb) -> AbiType;
 }

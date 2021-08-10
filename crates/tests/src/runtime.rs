@@ -2,9 +2,9 @@
 
 #![cfg(feature = "solc-backend")]
 
+use fe_analyzer::namespace::types::{Base, FixedSize, Integer};
 use fe_compiler_test_utils::*;
 use fe_yulgen::runtime::functions;
-use fe_yulgen::types::AbiType;
 use yultsur::*;
 
 macro_rules! assert_eq {
@@ -300,10 +300,19 @@ fn test_runtime_house_struct() {
     let house_api = functions::structs::struct_apis(
         "House",
         &[
-            ("price".to_string(), AbiType::Uint { size: 32 }),
-            ("size".to_string(), AbiType::Uint { size: 32 }),
-            ("rooms".to_string(), AbiType::Uint { size: 1 }),
-            ("vacant".to_string(), AbiType::Bool),
+            (
+                "price".to_string(),
+                FixedSize::Base(Base::Numeric(Integer::U256)),
+            ),
+            (
+                "size".to_string(),
+                FixedSize::Base(Base::Numeric(Integer::U256)),
+            ),
+            (
+                "rooms".to_string(),
+                FixedSize::Base(Base::Numeric(Integer::U8)),
+            ),
+            ("vacant".to_string(), FixedSize::Base(Base::Bool)),
         ],
     );
 
