@@ -1,0 +1,9 @@
+
+contract Foo:
+  val: u8
+  fn do_private_thingz():
+     self.val = 100
+
+contract Bar:
+  fn test():
+    Foo(address(0)).do_private_thingz()

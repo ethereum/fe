@@ -1,0 +1,12 @@
+contract Foo:
+    pub fn __init__():
+        pass
+
+    pub fn bar():
+        pass
+
+    pub fn __init__():
+        1 + 2
+
+    pub fn __init__():
+        3 + 4

@@ -65,21 +65,6 @@ pub fn function_signature(
         })
         .collect();
 
-    // `__init__` must be `pub`.
-    if def.name.kind == "__init__" && !def.is_pub {
-        scope.fancy_error(
-            "`__init__` function is not public",
-            vec![Label::primary(
-                node.span,
-                "`__init__` function must be public",
-            )],
-            vec![
-                "Hint: Add the `pub` modifier.".to_string(),
-                "Example: `pub fn __init__():`".to_string(),
-            ],
-        );
-    }
-
     let return_type = def
         .return_type
         .as_ref()

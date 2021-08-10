@@ -846,12 +846,34 @@ fn expr_call_args(
         .collect::<Result<Vec<_>, _>>()
 }
 
+fn check_for_call_to_init_fn(
+    scope: &mut BlockScope,
+    name: &str,
+    span: Span,
+) -> Result<(), FatalError> {
+    if name == "__init__" {
+        scope.fancy_error(
+            "`__init__()` is not directly callable",
+            vec![Label::primary(span, "")],
+            vec![
+                "Note: `__init__` is the constructor function, and can't be called at runtime."
+                    .into(),
+            ],
+        );
+        Err(FatalError::new())
+    } else {
+        Ok(())
+    }
+}
+
 fn expr_call_self_attribute(
     scope: &mut BlockScope,
     func_name: &str,
     name_span: Span,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, FatalError> {
+    check_for_call_to_init_fn(scope, func_name, name_span)?;
+
     if let Some(func) = scope.root.contract_function(func_name) {
         let sig = func.signature(scope.root.db);
         validate_arg_count(scope, func_name, name_span, args, sig.params.len());
@@ -1060,6 +1082,8 @@ fn expr_call_type_attribute(
             vec![format!("Note: Consider using a dedicated factory contract to create instances of `{}`", contract_name)]);
     };
 
+    // TODO: we should check for SomeContract.__init__() here and suggest create/create2
+
     match (typ.clone(), ContractTypeMethod::from_str(func_name)) {
         (Type::Contract(contract), Ok(ContractTypeMethod::Create2)) => {
             validate_arg_count(scope, func_name, name_span, args, 2);
@@ -1121,7 +1145,9 @@ fn expr_call_contract_attribute(
     name_span: Span,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, FatalError> {
-    if let Some(function) = contract.id.function(scope.db(), func_name) {
+    check_for_call_to_init_fn(scope, func_name, name_span)?;
+
+    if let Some(function) = contract.id.public_function(scope.db(), func_name) {
         let sig = function.signature(scope.db());
         let return_type = sig.return_type.clone()?;
 
@@ -1130,6 +1156,22 @@ fn expr_call_contract_attribute(
 
         let location = Location::assign_location(&return_type);
         Ok(ExpressionAttributes::new(return_type.into(), location))
+    } else if let Some(function) = contract.id.function(scope.db(), func_name) {
+        scope.fancy_error(
+            &format!(
+                "The function `{}` on `contract {}` is private",
+                func_name, contract.name
+            ),
+            vec![
+                Label::primary(name_span, "this function is not `pub`"),
+                Label::secondary(
+                    function.data(scope.db()).ast.span,
+                    format!("`{}` is defined here", func_name),
+                ),
+            ],
+            vec![],
+        );
+        Err(FatalError::new())
     } else {
         scope.fancy_error(
             &format!(

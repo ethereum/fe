@@ -17,9 +17,9 @@ pub fn contract_def(
     let contract_name = contract.name(db);
     let mut context = ContractContext::default();
 
-    let init_function = contract.functions(db).get("__init__").map(|id| {
+    let init_function = contract.init_function(db).map(|id| {
         (
-            functions::func_def(db, &mut context, *id),
+            functions::func_def(db, &mut context, id),
             id.signature(db)
                 .params
                 .iter()
@@ -30,11 +30,8 @@ pub fn contract_def(
 
     let user_functions = contract
         .functions(db)
-        .iter()
-        .filter_map(|(name, function)| match name.as_str() {
-            "__init__" => None,
-            _ => Some(functions::func_def(db, &mut context, *function)),
-        })
+        .values()
+        .map(|func| functions::func_def(db, &mut context, *func))
         .collect::<Vec<_>>();
 
     // build the set of functions needed during runtime

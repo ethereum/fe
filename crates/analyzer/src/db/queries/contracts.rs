@@ -5,6 +5,7 @@ use crate::namespace::items::{self, ContractFieldId, ContractId, EventId, Functi
 use crate::namespace::scopes::ItemScope;
 use crate::namespace::types;
 use crate::traversal::types::type_desc;
+use fe_common::diagnostics::Label;
 use fe_parser::ast;
 use indexmap::map::{Entry, IndexMap};
 
@@ -36,9 +37,11 @@ pub fn contract_function_map(
 
     for func in contract.all_functions(db).iter() {
         let def = &func.data(db).ast;
-        let name = def.name().to_string();
+        if def.name() == "__init__" {
+            continue;
+        }
 
-        match map.entry(name) {
+        match map.entry(def.name().to_string()) {
             Entry::Occupied(entry) => {
                 scope.duplicate_name_error(
                     &format!(
@@ -58,6 +61,71 @@ pub fn contract_function_map(
     Analysis {
         value: Rc::new(map),
         diagnostics: Rc::new(scope.diagnostics),
+    }
+}
+
+pub fn contract_public_function_map(
+    db: &dyn AnalyzerDb,
+    contract: ContractId,
+) -> Rc<IndexMap<String, FunctionId>> {
+    Rc::new(
+        contract
+            .functions(db)
+            .iter()
+            .filter_map(|(name, func)| func.is_public(db).then(|| (name.clone(), *func)))
+            .collect(),
+    )
+}
+
+pub fn contract_init_function(
+    db: &dyn AnalyzerDb,
+    contract: ContractId,
+) -> Analysis<Option<FunctionId>> {
+    let all_fns = contract.all_functions(db);
+    let mut init_fns = all_fns.iter().filter_map(|func| {
+        let def = &func.data(db).ast;
+        (def.name() == "__init__").then(|| (func, def.span))
+    });
+
+    let mut diagnostics = vec![];
+
+    let first_def = init_fns.next();
+    if let Some((_, dupe_span)) = init_fns.next() {
+        let mut labels = vec![
+            Label::primary(first_def.unwrap().1, "`__init__` first defined here"),
+            Label::secondary(dupe_span, "`init` redefined here"),
+        ];
+        for (_, dupe_span) in init_fns {
+            labels.push(Label::secondary(dupe_span, "`init` redefined here"));
+        }
+        diagnostics.push(errors::fancy_error(
+            &format!(
+                "`fn __init__()` is defined multiple times in `contract {}`",
+                contract.name(db),
+            ),
+            labels,
+            vec![],
+        ));
+    }
+
+    if let Some((id, span)) = first_def {
+        // `__init__` must be `pub`.
+        // Return type is checked in `queries::functions::function_signature`.
+        if !id.data(db).ast.kind.is_pub {
+            diagnostics.push(errors::fancy_error(
+                "`__init__` function is not public",
+                vec![Label::primary(span, "`__init__` function must be public")],
+                vec![
+                    "Hint: Add the `pub` modifier.".to_string(),
+                    "Example: `pub fn __init__():`".to_string(),
+                ],
+            ));
+        }
+    }
+
+    Analysis {
+        value: first_def.map(|(id, _span)| *id),
+        diagnostics: Rc::new(diagnostics),
     }
 }
 

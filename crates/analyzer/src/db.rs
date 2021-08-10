@@ -45,6 +45,7 @@ pub trait AnalyzerDb {
     #[salsa::interned]
     fn intern_event(&self, data: Rc<items::Event>) -> EventId;
 
+    // Module
     #[salsa::invoke(queries::module::module_all_type_defs)]
     fn module_all_type_defs(&self, module: ModuleId) -> Rc<Vec<TypeDefId>>;
     #[salsa::invoke(queries::module::module_type_def_map)]
@@ -61,14 +62,21 @@ pub trait AnalyzerDb {
     #[salsa::invoke(queries::module::module_structs)]
     fn module_structs(&self, module: ModuleId) -> Rc<Vec<StructId>>;
 
+    // Contract
     #[salsa::invoke(queries::contracts::contract_all_functions)]
     fn contract_all_functions(&self, id: ContractId) -> Rc<Vec<FunctionId>>;
     #[salsa::invoke(queries::contracts::contract_function_map)]
     fn contract_function_map(&self, id: ContractId) -> Analysis<Rc<IndexMap<String, FunctionId>>>;
+    #[salsa::invoke(queries::contracts::contract_public_function_map)]
+    fn contract_public_function_map(&self, id: ContractId) -> Rc<IndexMap<String, FunctionId>>;
+    #[salsa::invoke(queries::contracts::contract_init_function)]
+    fn contract_init_function(&self, id: ContractId) -> Analysis<Option<FunctionId>>;
+
     #[salsa::invoke(queries::contracts::contract_all_events)]
     fn contract_all_events(&self, id: ContractId) -> Rc<Vec<EventId>>;
     #[salsa::invoke(queries::contracts::contract_event_map)]
     fn contract_event_map(&self, id: ContractId) -> Analysis<Rc<IndexMap<String, EventId>>>;
+
     #[salsa::invoke(queries::contracts::contract_all_fields)]
     fn contract_all_fields(&self, id: ContractId) -> Rc<Vec<ContractFieldId>>;
     #[salsa::invoke(queries::contracts::contract_field_map)]
@@ -80,11 +88,13 @@ pub trait AnalyzerDb {
         field: ContractFieldId,
     ) -> Analysis<Result<types::Type, TypeError>>;
 
+    // Function
     #[salsa::invoke(queries::functions::function_signature)]
     fn function_signature(&self, id: FunctionId) -> Analysis<Rc<types::FunctionSignature>>;
     #[salsa::invoke(queries::functions::function_body)]
     fn function_body(&self, id: FunctionId) -> Analysis<Rc<FunctionBody>>;
 
+    // Struct
     #[salsa::invoke(queries::structs::struct_type)]
     fn struct_type(&self, id: StructId) -> Rc<types::Struct>;
     #[salsa::invoke(queries::structs::struct_all_fields)]
@@ -97,9 +107,11 @@ pub trait AnalyzerDb {
         field: StructFieldId,
     ) -> Analysis<Result<types::FixedSize, TypeError>>;
 
+    // Event
     #[salsa::invoke(queries::events::event_type)]
     fn event_type(&self, event: EventId) -> Analysis<Rc<types::Event>>;
 
+    // Type alias
     #[salsa::invoke(queries::types::type_alias_type)]
     #[salsa::cycle(queries::types::type_alias_type_cycle)]
     fn type_alias_type(&self, id: TypeAliasId) -> Analysis<Result<types::Type, TypeError>>;

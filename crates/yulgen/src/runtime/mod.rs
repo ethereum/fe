@@ -38,9 +38,9 @@ pub fn build(
         .concat();
 
     let public_functions: Vec<Rc<FunctionSignature>> = contract
-        .all_functions(db)
-        .iter()
-        .filter_map(|func| func.is_public(db).then(|| func.signature(db)))
+        .public_functions(db)
+        .values()
+        .map(|func| func.signature(db))
         .collect();
 
     let encoding = {
@@ -134,7 +134,7 @@ pub fn build(
             })
             .collect();
 
-        let init_params_batch = if let Some(init_fn) = contract.function(db, "__init__") {
+        let init_params_batch = if let Some(init_fn) = contract.init_function(db) {
             let sig = init_fn.signature(db);
             vec![(
                 to_abi_types(db, &sig.param_types()),
@@ -218,27 +218,25 @@ pub fn build_with_abi_dispatcher(
     contract: ContractId,
 ) -> Vec<yul::Statement> {
     let public_functions = contract
-        .functions(db)
+        .public_functions(db)
         .iter()
-        .filter_map(|(name, id)| {
-            (name != "__init__" && id.is_public(db)).then(|| {
-                let sig = id.signature(db);
-                let return_type = sig.return_type.clone().expect("fn return type error");
-                let return_type = (!return_type.is_unit()).then(|| return_type.as_abi_type(db));
-                let param_types = sig
-                    .params
-                    .iter()
-                    .map(|param| {
-                        param
-                            .typ
-                            .clone()
-                            .expect("fn param type error")
-                            .as_abi_type(db)
-                    })
-                    .collect::<Vec<_>>();
+        .map(|(name, id)| {
+            let sig = id.signature(db);
+            let return_type = sig.return_type.clone().expect("fn return type error");
+            let return_type = (!return_type.is_unit()).then(|| return_type.as_abi_type(db));
+            let param_types = sig
+                .params
+                .iter()
+                .map(|param| {
+                    param
+                        .typ
+                        .clone()
+                        .expect("fn param type error")
+                        .as_abi_type(db)
+                })
+                .collect::<Vec<_>>();
 
-                (name.to_string(), param_types, return_type)
-            })
+            (name.to_string(), param_types, return_type)
         })
         .collect::<Vec<_>>();
 

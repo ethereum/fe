@@ -152,6 +152,7 @@ test_file! { call_keccak_with_wrong_type }
 test_file! { call_undefined_function_on_external_contract }
 test_file! { call_undefined_function_on_memory_struct }
 test_file! { call_undefined_function_on_storage_struct }
+test_file! { call_non_pub_fn_on_external_contract }
 test_file! { cannot_move }
 test_file! { cannot_move2 }
 test_file! { circular_dependency_create }
@@ -203,6 +204,9 @@ test_file! { struct_call_bad_args }
 test_file! { struct_call_without_kw_args }
 test_file! { non_pub_init }
 test_file! { init_wrong_return_type }
+test_file! { init_duplicate_def }
+test_file! { init_call_on_self }
+test_file! { init_call_on_external_contract }
 test_file! { abi_encode_u256 }
 test_file! { abi_encode_from_storage }
 test_file! { assert_sto_msg_no_copy }

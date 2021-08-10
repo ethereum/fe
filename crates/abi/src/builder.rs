@@ -3,7 +3,7 @@ use crate::elements::{
     ModuleAbis,
 };
 use crate::AbiError;
-use fe_analyzer::namespace::items::{ContractId, ModuleId};
+use fe_analyzer::namespace::items::{ContractId, FunctionId, ModuleId};
 use fe_analyzer::namespace::types;
 use fe_analyzer::AnalyzerDb;
 
@@ -50,55 +50,52 @@ fn contract_def(db: &dyn AnalyzerDb, contract: ContractId) -> Contract {
         })
         .collect();
 
-    let functions = contract
-        .functions(db)
+    let mut functions = contract
+        .public_functions(db)
         .iter()
-        .filter_map(|(name, func)| {
-            if func.is_public(db) {
-                let sig = func.signature(db);
-                let (name, func_type) = match name.as_str() {
-                    "__init__" => ("".to_owned(), FuncType::Constructor),
-                    _ => (name.to_owned(), FuncType::Function),
-                };
+        .map(|(name, func)| function_def(db, name, *func, FuncType::Function))
+        .collect::<Vec<_>>();
 
-                let inputs = sig
-                    .params
-                    .iter()
-                    .map(|param| {
-                        let typ = param.typ.clone().expect("function parameter type error");
+    if let Some(init_fn) = contract.init_function(db) {
+        functions.push(function_def(db, "", init_fn, FuncType::Constructor));
+    }
 
-                        FuncInput {
-                            name: param.name.to_owned(),
-                            typ: typ.abi_json_name(),
-                            components: components(db, &typ),
-                        }
-                    })
-                    .collect();
+    Contract { events, functions }
+}
 
-                let return_type = sig.return_type.clone().expect("function return type error");
-                let outputs = if return_type.is_unit() {
-                    vec![]
-                } else {
-                    vec![FuncOutput {
-                        name: "".to_string(),
-                        typ: return_type.abi_json_name(),
-                        components: components(db, &return_type),
-                    }]
-                };
+fn function_def(db: &dyn AnalyzerDb, name: &str, fn_id: FunctionId, typ: FuncType) -> Function {
+    let sig = fn_id.signature(db);
+    let inputs = sig
+        .params
+        .iter()
+        .map(|param| {
+            let typ = param.typ.clone().expect("function parameter type error");
 
-                Some(Function {
-                    name,
-                    typ: func_type,
-                    inputs,
-                    outputs,
-                })
-            } else {
-                None
+            FuncInput {
+                name: param.name.to_owned(),
+                typ: typ.abi_json_name(),
+                components: components(db, &typ),
             }
         })
         .collect();
 
-    Contract { events, functions }
+    let return_type = sig.return_type.clone().expect("function return type error");
+    let outputs = if return_type.is_unit() {
+        vec![]
+    } else {
+        vec![FuncOutput {
+            name: "".to_string(),
+            typ: return_type.abi_json_name(),
+            components: components(db, &return_type),
+        }]
+    };
+
+    Function {
+        name: name.to_string(),
+        typ,
+        inputs,
+        outputs,
+    }
 }
 
 fn components(db: &dyn AnalyzerDb, typ: &types::FixedSize) -> Vec<Component> {
@@ -157,13 +154,13 @@ mod tests {
             assert_eq!(abi.events[0].name, "Food");
             // function count
             assert_eq!(abi.functions.len(), 2);
-            // __init__
-            assert_eq!(abi.functions[0].name, "");
-            assert_eq!(abi.functions[0].inputs[0].typ, "address",);
             // bar
-            assert_eq!(abi.functions[1].name, "bar",);
-            assert_eq!(abi.functions[1].inputs[0].typ, "uint256",);
-            assert_eq!(abi.functions[1].outputs[0].typ, "uint256[10]",);
+            assert_eq!(abi.functions[0].name, "bar",);
+            assert_eq!(abi.functions[0].inputs[0].typ, "uint256",);
+            assert_eq!(abi.functions[0].outputs[0].typ, "uint256[10]",);
+            // __init__ always comes after normal functions
+            assert_eq!(abi.functions[1].name, "");
+            assert_eq!(abi.functions[1].inputs[0].typ, "address",);
         } else {
             panic!("contract \"Foo\" not found in module")
         }

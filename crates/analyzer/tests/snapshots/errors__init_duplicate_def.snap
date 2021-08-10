@@ -1,0 +1,21 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: `fn __init__()` is defined multiple times in `contract Foo`
+   ┌─ compile_errors/init_duplicate_def.fe:2:5
+   │      
+ 2 │ ╭         pub fn __init__():
+ 3 │ │             pass
+   │ ╰────────────────^ `__init__` first defined here
+   · │    
+ 8 │   ╭       pub fn __init__():
+ 9 │   │           1 + 2
+   │   ╰───────────────' `init` redefined here
+10 │       
+11 │     ╭     pub fn __init__():
+12 │     │         3 + 4
+   │     ╰─────────────' `init` redefined here
+
+

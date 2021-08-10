@@ -218,28 +218,46 @@ impl ContractId {
         Some((field.typ(db), index))
     }
 
-    pub fn function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
-        self.functions(db).get(name).copied()
+    pub fn init_function(&self, db: &dyn AnalyzerDb) -> Option<FunctionId> {
+        db.contract_init_function(*self).value
     }
 
+    /// User functions, public and not. Excludes `__init__`.
     pub fn functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, FunctionId>> {
         db.contract_function_map(*self).value
     }
 
-    /// All functions, including duplicates
+    /// Lookup a function by name. Searches all user functions, private or not. Excludes init function.
+    pub fn function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
+        self.functions(db).get(name).copied()
+    }
+
+    /// Excludes `__init__`.
+    pub fn public_functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, FunctionId>> {
+        db.contract_public_function_map(*self)
+    }
+
+    /// Lookup a function by name. Matches on public and private functions, excludes init function.
+    pub fn public_function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
+        self.public_functions(db).get(name).copied()
+    }
+
+    /// A `Vec` of every function defined in the contract, including duplicates and the init function.
     pub fn all_functions(&self, db: &dyn AnalyzerDb) -> Rc<Vec<FunctionId>> {
         db.contract_all_functions(*self)
     }
 
+    /// Lookup an event by name.
     pub fn event(&self, db: &dyn AnalyzerDb, name: &str) -> Option<EventId> {
         self.events(db).get(name).copied()
     }
 
+    /// A map of events defined within the contract.
     pub fn events(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, EventId>> {
         db.contract_event_map(*self).value
     }
 
-    /// All events, including duplicates
+    /// A `Vec` of all events defined within the contract, including those with duplicate names.
     pub fn all_events(&self, db: &dyn AnalyzerDb) -> Rc<Vec<EventId>> {
         db.contract_all_events(*self)
     }
@@ -258,6 +276,7 @@ impl ContractId {
             .for_each(|event| event.sink_diagnostics(db, sink));
 
         // functions
+        db.contract_init_function(*self).sink_diagnostics(sink);
         db.contract_function_map(*self).sink_diagnostics(sink);
         db.contract_all_functions(*self)
             .iter()
