@@ -1,0 +1,15 @@
+---
+source: crates/parser/tests/cases/errors.rs
+expression: "err_string(stringify!(stmt_vardecl_missing_type_annotation_2),\n           functions::parse_stmt, true, \"let x\")"
+
+---
+error: failed to parse variable declaration
+  ┌─ stmt_vardecl_missing_type_annotation_2:1:5
+  │
+1 │ let x
+  │     ^ Must be followed by type annotation
+  │
+  = The left side of a variable declaration can be either a name
+    or a non-empty tuple.
+
+
