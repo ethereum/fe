@@ -5,5 +5,5 @@ contract Foo:
 contract FooFactory:
     pub def create2_foo() -> address:
         # value and salt
-        foo: Foo = Foo.create2(0, 52)
+        let foo: Foo = Foo.create2(0, 52)
         return address(foo)

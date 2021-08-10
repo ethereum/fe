@@ -431,10 +431,10 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:32:34
+   ┌─ stress/data_copying_stress.fe:32:38
    │
-32 │         my_2nd_array: u256[10] = my_array
-   │                                  ^^^^^^^^ attributes hash: 12880944358712268851
+32 │         let my_2nd_array: u256[10] = my_array
+   │                                      ^^^^^^^^ attributes hash: 12880944358712268851
    │
    = ExpressionAttributes {
          typ: Array(
@@ -450,10 +450,10 @@ note:
      }
 
 note: 
-   ┌─ stress/data_copying_stress.fe:33:34
+   ┌─ stress/data_copying_stress.fe:33:38
    │
-33 │         my_3rd_array: u256[10] = my_2nd_array
-   │                                  ^^^^^^^^^^^^ attributes hash: 12880944358712268851
+33 │         let my_3rd_array: u256[10] = my_2nd_array
+   │                                      ^^^^^^^^^^^^ attributes hash: 12880944358712268851
    │
    = ExpressionAttributes {
          typ: Array(
@@ -2198,8 +2198,8 @@ note:
    ┌─ stress/data_copying_stress.fe:31:5
    │  
 31 │ ╭     pub def multiple_references_shared_memory(my_array: u256[10]):
-32 │ │         my_2nd_array: u256[10] = my_array
-33 │ │         my_3rd_array: u256[10] = my_2nd_array
+32 │ │         let my_2nd_array: u256[10] = my_array
+33 │ │         let my_3rd_array: u256[10] = my_2nd_array
 34 │ │ 
    · │
 43 │ │         assert my_2nd_array[3] == 50
@@ -2332,7 +2332,7 @@ note:
    ┌─ stress/data_copying_stress.fe:57:5
    │  
 57 │ ╭     pub def assign_my_nums_and_return() -> u256[5]:
-58 │ │         my_nums_mem: u256[5]
+58 │ │         let my_nums_mem: u256[5]
 59 │ │         self.my_nums[0] = 42
 60 │ │         self.my_nums[1] = 26
    · │
@@ -2451,8 +2451,8 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:32:9
    │
-32 │         my_2nd_array: u256[10] = my_array
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17323625354857110317
+32 │         let my_2nd_array: u256[10] = my_array
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17323625354857110317
    │
    = Array(
          Array {
@@ -2466,8 +2466,8 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:33:9
    │
-33 │         my_3rd_array: u256[10] = my_2nd_array
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17323625354857110317
+33 │         let my_3rd_array: u256[10] = my_2nd_array
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17323625354857110317
    │
    = Array(
          Array {
@@ -2481,8 +2481,8 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:58:9
    │
-58 │         my_nums_mem: u256[5]
-   │         ^^^^^^^^^^^^^^^^^^^^ attributes hash: 12285037458725956106
+58 │         let my_nums_mem: u256[5]
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12285037458725956106
    │
    = Array(
          Array {
@@ -3255,10 +3255,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:32:23
+   ┌─ stress/data_copying_stress.fe:32:27
    │
-32 │         my_2nd_array: u256[10] = my_array
-   │                       ^^^^ attributes hash: 17942395924573474124
+32 │         let my_2nd_array: u256[10] = my_array
+   │                           ^^^^ attributes hash: 17942395924573474124
    │
    = Base(
          Numeric(
@@ -3267,10 +3267,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:32:23
+   ┌─ stress/data_copying_stress.fe:32:27
    │
-32 │         my_2nd_array: u256[10] = my_array
-   │                       ^^^^^^^^ attributes hash: 17323625354857110317
+32 │         let my_2nd_array: u256[10] = my_array
+   │                           ^^^^^^^^ attributes hash: 17323625354857110317
    │
    = Array(
          Array {
@@ -3282,10 +3282,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:33:23
+   ┌─ stress/data_copying_stress.fe:33:27
    │
-33 │         my_3rd_array: u256[10] = my_2nd_array
-   │                       ^^^^ attributes hash: 17942395924573474124
+33 │         let my_3rd_array: u256[10] = my_2nd_array
+   │                           ^^^^ attributes hash: 17942395924573474124
    │
    = Base(
          Numeric(
@@ -3294,10 +3294,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:33:23
+   ┌─ stress/data_copying_stress.fe:33:27
    │
-33 │         my_3rd_array: u256[10] = my_2nd_array
-   │                       ^^^^^^^^ attributes hash: 17323625354857110317
+33 │         let my_3rd_array: u256[10] = my_2nd_array
+   │                           ^^^^^^^^ attributes hash: 17323625354857110317
    │
    = Array(
          Array {
@@ -3309,10 +3309,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:58:22
+   ┌─ stress/data_copying_stress.fe:58:26
    │
-58 │         my_nums_mem: u256[5]
-   │                      ^^^^ attributes hash: 17942395924573474124
+58 │         let my_nums_mem: u256[5]
+   │                          ^^^^ attributes hash: 17942395924573474124
    │
    = Base(
          Numeric(
@@ -3321,10 +3321,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:58:22
+   ┌─ stress/data_copying_stress.fe:58:26
    │
-58 │         my_nums_mem: u256[5]
-   │                      ^^^^^^^ attributes hash: 12285037458725956106
+58 │         let my_nums_mem: u256[5]
+   │                          ^^^^^^^ attributes hash: 12285037458725956106
    │
    = Array(
          Array {

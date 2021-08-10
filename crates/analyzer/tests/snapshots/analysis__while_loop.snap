@@ -26,10 +26,10 @@ ModuleAttributes {
 }
 
 note: 
-  ┌─ features/while_loop.fe:3:21
+  ┌─ features/while_loop.fe:3:25
   │
-3 │         val: u256 = 0
-  │                     ^ attributes hash: 16797824492585953824
+3 │         let val: u256 = 0
+  │                         ^ attributes hash: 16797824492585953824
   │
   = ExpressionAttributes {
         typ: Base(
@@ -249,7 +249,7 @@ note:
   ┌─ features/while_loop.fe:2:5
   │  
 2 │ ╭     pub def bar() -> u256:
-3 │ │         val: u256 = 0
+3 │ │         let val: u256 = 0
 4 │ │         while val < 2:
 5 │ │             val = val + 1
 6 │ │             if val == 2:
@@ -271,8 +271,8 @@ note:
 note: 
   ┌─ features/while_loop.fe:3:9
   │
-3 │         val: u256 = 0
-  │         ^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+3 │         let val: u256 = 0
+  │         ^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
   │
   = Base(
         Numeric(
@@ -285,7 +285,7 @@ note:
   │  
 1 │ ╭ contract Foo:
 2 │ │     pub def bar() -> u256:
-3 │ │         val: u256 = 0
+3 │ │         let val: u256 = 0
 4 │ │         while val < 2:
   · │
 7 │ │                 val = 3
@@ -324,10 +324,10 @@ note:
     )
 
 note: 
-  ┌─ features/while_loop.fe:3:14
+  ┌─ features/while_loop.fe:3:18
   │
-3 │         val: u256 = 0
-  │              ^^^^ attributes hash: 17942395924573474124
+3 │         let val: u256 = 0
+  │                  ^^^^ attributes hash: 17942395924573474124
   │
   = Base(
         Numeric(

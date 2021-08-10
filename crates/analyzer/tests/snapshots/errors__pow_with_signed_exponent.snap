@@ -3,10 +3,10 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: The right hand side of this operation must be unsigned
+error: cannot find value `exp` in this scope
   ┌─ [snippet]:5:11
   │
 5 │   base ** exp
-  │           ^^^ incompatible signed numeric
+  │           ^^^ undefined
 
 

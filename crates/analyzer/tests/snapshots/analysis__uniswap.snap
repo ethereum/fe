@@ -2458,26 +2458,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:125:33
+    ┌─ demos/uniswap.fe:125:37
     │
-125 │         block_timestamp: u256 = block.timestamp % 2**32
-    │                                 ^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:125:51
-    │
-125 │         block_timestamp: u256 = block.timestamp % 2**32
-    │                                                   ^ attributes hash: 16797824492585953824
+125 │         let block_timestamp: u256 = block.timestamp % 2**32
+    │                                     ^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -2490,26 +2474,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:125:54
+    ┌─ demos/uniswap.fe:125:55
     │
-125 │         block_timestamp: u256 = block.timestamp % 2**32
-    │                                                      ^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:125:51
-    │
-125 │         block_timestamp: u256 = block.timestamp % 2**32
-    │                                                   ^^^^^ attributes hash: 16797824492585953824
+125 │         let block_timestamp: u256 = block.timestamp % 2**32
+    │                                                       ^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -2522,26 +2490,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:125:33
+    ┌─ demos/uniswap.fe:125:58
     │
-125 │         block_timestamp: u256 = block.timestamp % 2**32
-    │                                 ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:127:30
-    │
-127 │         time_elapsed: u256 = block_timestamp - self.block_timestamp_last # overflow is desired
-    │                              ^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+125 │         let block_timestamp: u256 = block.timestamp % 2**32
+    │                                                          ^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -2554,10 +2506,58 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:127:48
+    ┌─ demos/uniswap.fe:125:55
     │
-127 │         time_elapsed: u256 = block_timestamp - self.block_timestamp_last # overflow is desired
-    │                                                ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6371053836336388098
+125 │         let block_timestamp: u256 = block.timestamp % 2**32
+    │                                                       ^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:125:37
+    │
+125 │         let block_timestamp: u256 = block.timestamp % 2**32
+    │                                     ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:127:34
+    │
+127 │         let time_elapsed: u256 = block_timestamp - self.block_timestamp_last # overflow is desired
+    │                                  ^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:127:52
+    │
+127 │         let time_elapsed: u256 = block_timestamp - self.block_timestamp_last # overflow is desired
+    │                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6371053836336388098
     │
     = ExpressionAttributes {
           typ: Base(
@@ -2576,10 +2576,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:127:30
+    ┌─ demos/uniswap.fe:127:34
     │
-127 │         time_elapsed: u256 = block_timestamp - self.block_timestamp_last # overflow is desired
-    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+127 │         let time_elapsed: u256 = block_timestamp - self.block_timestamp_last # overflow is desired
+    │                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3186,10 +3186,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:140:44
+    ┌─ demos/uniswap.fe:140:48
     │
-140 │         fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                                            ^^^^^^^^^^^^ attributes hash: 10795788383055974872
+140 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+    │                                                ^^^^^^^^^^^^ attributes hash: 10795788383055974872
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3206,10 +3206,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:140:27
+    ┌─ demos/uniswap.fe:140:31
     │
-140 │         fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2682470432657360711
+140 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2682470432657360711
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -3301,24 +3301,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:140:27
+    ┌─ demos/uniswap.fe:140:31
     │
-140 │         fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16366719240912622931
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Address,
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:141:24
-    │
-141 │         fee_on: bool = fee_to != address(0)
-    │                        ^^^^^^ attributes hash: 16366719240912622931
+140 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3329,10 +3315,24 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:141:42
+    ┌─ demos/uniswap.fe:141:28
     │
-141 │         fee_on: bool = fee_to != address(0)
-    │                                          ^ attributes hash: 16797824492585953824
+141 │         let fee_on: bool = fee_to != address(0)
+    │                            ^^^^^^ attributes hash: 16366719240912622931
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Address,
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:141:46
+    │
+141 │         let fee_on: bool = fee_to != address(0)
+    │                                              ^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3345,10 +3345,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:141:34
+    ┌─ demos/uniswap.fe:141:38
     │
-141 │         fee_on: bool = fee_to != address(0)
-    │                                  ^^^^^^^^^^ attributes hash: 16366719240912622931
+141 │         let fee_on: bool = fee_to != address(0)
+    │                                      ^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3359,10 +3359,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:141:24
+    ┌─ demos/uniswap.fe:141:28
     │
-141 │         fee_on: bool = fee_to != address(0)
-    │                        ^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+141 │         let fee_on: bool = fee_to != address(0)
+    │                            ^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3373,10 +3373,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:142:24
+    ┌─ demos/uniswap.fe:142:28
     │
-142 │         k_last: u256 = self.k_last # gas savings
-    │                        ^^^^^^^^^^^ attributes hash: 12467918549696538113
+142 │         let k_last: u256 = self.k_last # gas savings
+    │                            ^^^^^^^^^^^ attributes hash: 12467918549696538113
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3455,26 +3455,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:145:42
+    ┌─ demos/uniswap.fe:145:46
     │
-145 │                 root_k: u256 = self.sqrt(reserve0 * reserve1)
-    │                                          ^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:145:53
-    │
-145 │                 root_k: u256 = self.sqrt(reserve0 * reserve1)
-    │                                                     ^^^^^^^^ attributes hash: 16797824492585953824
+145 │                 let root_k: u256 = self.sqrt(reserve0 * reserve1)
+    │                                              ^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3487,26 +3471,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:145:42
+    ┌─ demos/uniswap.fe:145:57
     │
-145 │                 root_k: u256 = self.sqrt(reserve0 * reserve1)
-    │                                          ^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:145:32
-    │
-145 │                 root_k: u256 = self.sqrt(reserve0 * reserve1)
-    │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+145 │                 let root_k: u256 = self.sqrt(reserve0 * reserve1)
+    │                                                         ^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3519,10 +3487,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:146:47
+    ┌─ demos/uniswap.fe:145:46
     │
-146 │                 root_k_last: u256 = self.sqrt(k_last)
-    │                                               ^^^^^^ attributes hash: 16797824492585953824
+145 │                 let root_k: u256 = self.sqrt(reserve0 * reserve1)
+    │                                              ^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3535,10 +3503,42 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:146:37
+    ┌─ demos/uniswap.fe:145:36
     │
-146 │                 root_k_last: u256 = self.sqrt(k_last)
-    │                                     ^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+145 │                 let root_k: u256 = self.sqrt(reserve0 * reserve1)
+    │                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:146:51
+    │
+146 │                 let root_k_last: u256 = self.sqrt(k_last)
+    │                                                   ^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:146:41
+    │
+146 │                 let root_k_last: u256 = self.sqrt(k_last)
+    │                                         ^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3597,10 +3597,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:148:39
+    ┌─ demos/uniswap.fe:148:43
     │
-148 │                     numerator: u256 = self.total_supply * root_k - root_k_last
-    │                                       ^^^^^^^^^^^^^^^^^ attributes hash: 5126058488677760853
+148 │                     let numerator: u256 = self.total_supply * root_k - root_k_last
+    │                                           ^^^^^^^^^^^^^^^^^ attributes hash: 5126058488677760853
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3619,26 +3619,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:148:59
+    ┌─ demos/uniswap.fe:148:63
     │
-148 │                     numerator: u256 = self.total_supply * root_k - root_k_last
-    │                                                           ^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:148:39
-    │
-148 │                     numerator: u256 = self.total_supply * root_k - root_k_last
-    │                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+148 │                     let numerator: u256 = self.total_supply * root_k - root_k_last
+    │                                                               ^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3651,26 +3635,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:148:68
+    ┌─ demos/uniswap.fe:148:43
     │
-148 │                     numerator: u256 = self.total_supply * root_k - root_k_last
-    │                                                                    ^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:148:39
-    │
-148 │                     numerator: u256 = self.total_supply * root_k - root_k_last
-    │                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+148 │                     let numerator: u256 = self.total_supply * root_k - root_k_last
+    │                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3683,26 +3651,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:149:41
+    ┌─ demos/uniswap.fe:148:72
     │
-149 │                     denominator: u256 = root_k * 5 + root_k_last
-    │                                         ^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:149:50
-    │
-149 │                     denominator: u256 = root_k * 5 + root_k_last
-    │                                                  ^ attributes hash: 16797824492585953824
+148 │                     let numerator: u256 = self.total_supply * root_k - root_k_last
+    │                                                                        ^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3715,10 +3667,26 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:149:41
+    ┌─ demos/uniswap.fe:148:43
     │
-149 │                     denominator: u256 = root_k * 5 + root_k_last
-    │                                         ^^^^^^^^^^ attributes hash: 16797824492585953824
+148 │                     let numerator: u256 = self.total_supply * root_k - root_k_last
+    │                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:149:45
+    │
+149 │                     let denominator: u256 = root_k * 5 + root_k_last
+    │                                             ^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3733,8 +3701,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:149:54
     │
-149 │                     denominator: u256 = root_k * 5 + root_k_last
-    │                                                      ^^^^^^^^^^^ attributes hash: 16797824492585953824
+149 │                     let denominator: u256 = root_k * 5 + root_k_last
+    │                                                      ^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3747,26 +3715,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:149:41
+    ┌─ demos/uniswap.fe:149:45
     │
-149 │                     denominator: u256 = root_k * 5 + root_k_last
-    │                                         ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:150:39
-    │
-150 │                     liquidity: u256 = numerator / denominator
-    │                                       ^^^^^^^^^ attributes hash: 16797824492585953824
+149 │                     let denominator: u256 = root_k * 5 + root_k_last
+    │                                             ^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3779,10 +3731,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:150:51
+    ┌─ demos/uniswap.fe:149:58
     │
-150 │                     liquidity: u256 = numerator / denominator
-    │                                                   ^^^^^^^^^^^ attributes hash: 16797824492585953824
+149 │                     let denominator: u256 = root_k * 5 + root_k_last
+    │                                                          ^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3795,10 +3747,58 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:150:39
+    ┌─ demos/uniswap.fe:149:45
     │
-150 │                     liquidity: u256 = numerator / denominator
-    │                                       ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+149 │                     let denominator: u256 = root_k * 5 + root_k_last
+    │                                             ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:150:43
+    │
+150 │                     let liquidity: u256 = numerator / denominator
+    │                                           ^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:150:55
+    │
+150 │                     let liquidity: u256 = numerator / denominator
+    │                                                       ^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:150:43
+    │
+150 │                     let liquidity: u256 = numerator / denominator
+    │                                           ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -3997,10 +3997,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:160:35
+    ┌─ demos/uniswap.fe:160:39
     │
-160 │         MINIMUM_LIQUIDITY: u256 = 1000
-    │                                   ^^^^ attributes hash: 16797824492585953824
+160 │         let MINIMUM_LIQUIDITY: u256 = 1000
+    │                                       ^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4013,10 +4013,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:161:26
+    ┌─ demos/uniswap.fe:161:30
     │
-161 │         reserve0: u256 = self.reserve0
-    │                          ^^^^^^^^^^^^^ attributes hash: 16880951683415213473
+161 │         let reserve0: u256 = self.reserve0
+    │                              ^^^^^^^^^^^^^ attributes hash: 16880951683415213473
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4035,10 +4035,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:162:26
+    ┌─ demos/uniswap.fe:162:30
     │
-162 │         reserve1: u256 = self.reserve1
-    │                          ^^^^^^^^^^^^^ attributes hash: 12418118303529001266
+162 │         let reserve1: u256 = self.reserve1
+    │                              ^^^^^^^^^^^^^ attributes hash: 12418118303529001266
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4057,10 +4057,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:163:32
+    ┌─ demos/uniswap.fe:163:36
     │
-163 │         balance0: u256 = ERC20(self.token0).balanceOf(self.address)
-    │                                ^^^^^^^^^^^ attributes hash: 14552118647532869459
+163 │         let balance0: u256 = ERC20(self.token0).balanceOf(self.address)
+    │                                    ^^^^^^^^^^^ attributes hash: 14552118647532869459
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4077,10 +4077,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:163:26
+    ┌─ demos/uniswap.fe:163:30
     │
-163 │         balance0: u256 = ERC20(self.token0).balanceOf(self.address)
-    │                          ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
+163 │         let balance0: u256 = ERC20(self.token0).balanceOf(self.address)
+    │                              ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -4135,10 +4135,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:163:55
+    ┌─ demos/uniswap.fe:163:59
     │
-163 │         balance0: u256 = ERC20(self.token0).balanceOf(self.address)
-    │                                                       ^^^^^^^^^^^^ attributes hash: 16366719240912622931
+163 │         let balance0: u256 = ERC20(self.token0).balanceOf(self.address)
+    │                                                           ^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4149,10 +4149,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:163:26
+    ┌─ demos/uniswap.fe:163:30
     │
-163 │         balance0: u256 = ERC20(self.token0).balanceOf(self.address)
-    │                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+163 │         let balance0: u256 = ERC20(self.token0).balanceOf(self.address)
+    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4165,10 +4165,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:164:32
+    ┌─ demos/uniswap.fe:164:36
     │
-164 │         balance1: u256 = ERC20(self.token1).balanceOf(self.address)
-    │                                ^^^^^^^^^^^ attributes hash: 6763598575633575517
+164 │         let balance1: u256 = ERC20(self.token1).balanceOf(self.address)
+    │                                    ^^^^^^^^^^^ attributes hash: 6763598575633575517
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4185,10 +4185,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:164:26
+    ┌─ demos/uniswap.fe:164:30
     │
-164 │         balance1: u256 = ERC20(self.token1).balanceOf(self.address)
-    │                          ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
+164 │         let balance1: u256 = ERC20(self.token1).balanceOf(self.address)
+    │                              ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -4243,10 +4243,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:164:55
+    ┌─ demos/uniswap.fe:164:59
     │
-164 │         balance1: u256 = ERC20(self.token1).balanceOf(self.address)
-    │                                                       ^^^^^^^^^^^^ attributes hash: 16366719240912622931
+164 │         let balance1: u256 = ERC20(self.token1).balanceOf(self.address)
+    │                                                           ^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4257,26 +4257,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:164:26
+    ┌─ demos/uniswap.fe:164:30
     │
-164 │         balance1: u256 = ERC20(self.token1).balanceOf(self.address)
-    │                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:165:25
-    │
-165 │         amount0: u256 = balance0 - self.reserve0
-    │                         ^^^^^^^^ attributes hash: 16797824492585953824
+164 │         let balance1: u256 = ERC20(self.token1).balanceOf(self.address)
+    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4289,10 +4273,26 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:165:36
+    ┌─ demos/uniswap.fe:165:29
     │
-165 │         amount0: u256 = balance0 - self.reserve0
-    │                                    ^^^^^^^^^^^^^ attributes hash: 16880951683415213473
+165 │         let amount0: u256 = balance0 - self.reserve0
+    │                             ^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:165:40
+    │
+165 │         let amount0: u256 = balance0 - self.reserve0
+    │                                        ^^^^^^^^^^^^^ attributes hash: 16880951683415213473
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4311,26 +4311,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:165:25
+    ┌─ demos/uniswap.fe:165:29
     │
-165 │         amount0: u256 = balance0 - self.reserve0
-    │                         ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:166:25
-    │
-166 │         amount1: u256 = balance1 - self.reserve1
-    │                         ^^^^^^^^ attributes hash: 16797824492585953824
+165 │         let amount0: u256 = balance0 - self.reserve0
+    │                             ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4343,10 +4327,26 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:166:36
+    ┌─ demos/uniswap.fe:166:29
     │
-166 │         amount1: u256 = balance1 - self.reserve1
-    │                                    ^^^^^^^^^^^^^ attributes hash: 12418118303529001266
+166 │         let amount1: u256 = balance1 - self.reserve1
+    │                             ^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:166:40
+    │
+166 │         let amount1: u256 = balance1 - self.reserve1
+    │                                        ^^^^^^^^^^^^^ attributes hash: 12418118303529001266
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4365,26 +4365,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:166:25
+    ┌─ demos/uniswap.fe:166:29
     │
-166 │         amount1: u256 = balance1 - self.reserve1
-    │                         ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:168:39
-    │
-168 │         fee_on: bool = self._mint_fee(reserve0, reserve1)
-    │                                       ^^^^^^^^ attributes hash: 16797824492585953824
+166 │         let amount1: u256 = balance1 - self.reserve1
+    │                             ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4397,10 +4381,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:168:49
+    ┌─ demos/uniswap.fe:168:43
     │
-168 │         fee_on: bool = self._mint_fee(reserve0, reserve1)
-    │                                                 ^^^^^^^^ attributes hash: 16797824492585953824
+168 │         let fee_on: bool = self._mint_fee(reserve0, reserve1)
+    │                                           ^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4413,10 +4397,26 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:168:24
+    ┌─ demos/uniswap.fe:168:53
     │
-168 │         fee_on: bool = self._mint_fee(reserve0, reserve1)
-    │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+168 │         let fee_on: bool = self._mint_fee(reserve0, reserve1)
+    │                                                     ^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:168:28
+    │
+168 │         let fee_on: bool = self._mint_fee(reserve0, reserve1)
+    │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4427,10 +4427,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:169:30
+    ┌─ demos/uniswap.fe:169:34
     │
-169 │         total_supply: u256 = self.total_supply # gas savings, must be defined here since totalSupply can update in _mintFee
-    │                              ^^^^^^^^^^^^^^^^^ attributes hash: 5126058488677760853
+169 │         let total_supply: u256 = self.total_supply # gas savings, must be defined here since totalSupply can update in _mintFee
+    │                                  ^^^^^^^^^^^^^^^^^ attributes hash: 5126058488677760853
     │
     = ExpressionAttributes {
           typ: Base(
@@ -4449,10 +4449,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:170:27
+    ┌─ demos/uniswap.fe:170:31
     │
-170 │         liquidity: u256 = 0
-    │                           ^ attributes hash: 16797824492585953824
+170 │         let liquidity: u256 = 0
+    │                               ^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5203,10 +5203,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:190:26
+    ┌─ demos/uniswap.fe:190:30
     │
-190 │         reserve0: u256 = self.reserve0
-    │                          ^^^^^^^^^^^^^ attributes hash: 16880951683415213473
+190 │         let reserve0: u256 = self.reserve0
+    │                              ^^^^^^^^^^^^^ attributes hash: 16880951683415213473
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5225,10 +5225,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:191:26
+    ┌─ demos/uniswap.fe:191:30
     │
-191 │         reserve1: u256 = self.reserve1
-    │                          ^^^^^^^^^^^^^ attributes hash: 12418118303529001266
+191 │         let reserve1: u256 = self.reserve1
+    │                              ^^^^^^^^^^^^^ attributes hash: 12418118303529001266
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5247,10 +5247,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:192:31
+    ┌─ demos/uniswap.fe:192:35
     │
-192 │         token0: ERC20 = ERC20(self.token0)
-    │                               ^^^^^^^^^^^ attributes hash: 14552118647532869459
+192 │         let token0: ERC20 = ERC20(self.token0)
+    │                                   ^^^^^^^^^^^ attributes hash: 14552118647532869459
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5267,10 +5267,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:192:25
+    ┌─ demos/uniswap.fe:192:29
     │
-192 │         token0: ERC20 = ERC20(self.token0)
-    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
+192 │         let token0: ERC20 = ERC20(self.token0)
+    │                             ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -5325,10 +5325,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:193:31
+    ┌─ demos/uniswap.fe:193:35
     │
-193 │         token1: ERC20 = ERC20(self.token1)
-    │                               ^^^^^^^^^^^ attributes hash: 6763598575633575517
+193 │         let token1: ERC20 = ERC20(self.token1)
+    │                                   ^^^^^^^^^^^ attributes hash: 6763598575633575517
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5345,68 +5345,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:193:25
+    ┌─ demos/uniswap.fe:193:29
     │
-193 │         token1: ERC20 = ERC20(self.token1)
-    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
-    │
-    = ExpressionAttributes {
-          typ: Contract(
-              Contract {
-                  name: "ERC20",
-                  functions: [
-                      FunctionAttributes {
-                          is_public: true,
-                          name: "balanceOf",
-                          params: [
-                              (
-                                  "account",
-                                  Base(
-                                      Address,
-                                  ),
-                              ),
-                          ],
-                          return_type: Base(
-                              Numeric(
-                                  U256,
-                              ),
-                          ),
-                      },
-                      FunctionAttributes {
-                          is_public: true,
-                          name: "transfer",
-                          params: [
-                              (
-                                  "recipient",
-                                  Base(
-                                      Address,
-                                  ),
-                              ),
-                              (
-                                  "amount",
-                                  Base(
-                                      Numeric(
-                                          U256,
-                                      ),
-                                  ),
-                              ),
-                          ],
-                          return_type: Base(
-                              Bool,
-                          ),
-                      },
-                  ],
-              },
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:194:26
-    │
-194 │         balance0: u256 = token0.balanceOf(self.address)
-    │                          ^^^^^^ attributes hash: 16734680361006464993
+193 │         let token1: ERC20 = ERC20(self.token1)
+    │                             ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -5461,10 +5403,68 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:194:43
+    ┌─ demos/uniswap.fe:194:30
     │
-194 │         balance0: u256 = token0.balanceOf(self.address)
-    │                                           ^^^^^^^^^^^^ attributes hash: 16366719240912622931
+194 │         let balance0: u256 = token0.balanceOf(self.address)
+    │                              ^^^^^^ attributes hash: 16734680361006464993
+    │
+    = ExpressionAttributes {
+          typ: Contract(
+              Contract {
+                  name: "ERC20",
+                  functions: [
+                      FunctionAttributes {
+                          is_public: true,
+                          name: "balanceOf",
+                          params: [
+                              (
+                                  "account",
+                                  Base(
+                                      Address,
+                                  ),
+                              ),
+                          ],
+                          return_type: Base(
+                              Numeric(
+                                  U256,
+                              ),
+                          ),
+                      },
+                      FunctionAttributes {
+                          is_public: true,
+                          name: "transfer",
+                          params: [
+                              (
+                                  "recipient",
+                                  Base(
+                                      Address,
+                                  ),
+                              ),
+                              (
+                                  "amount",
+                                  Base(
+                                      Numeric(
+                                          U256,
+                                      ),
+                                  ),
+                              ),
+                          ],
+                          return_type: Base(
+                              Bool,
+                          ),
+                      },
+                  ],
+              },
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:194:47
+    │
+194 │         let balance0: u256 = token0.balanceOf(self.address)
+    │                                               ^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5475,10 +5475,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:194:26
+    ┌─ demos/uniswap.fe:194:30
     │
-194 │         balance0: u256 = token0.balanceOf(self.address)
-    │                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+194 │         let balance0: u256 = token0.balanceOf(self.address)
+    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5491,10 +5491,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:195:26
+    ┌─ demos/uniswap.fe:195:30
     │
-195 │         balance1: u256 = token1.balanceOf(self.address)
-    │                          ^^^^^^ attributes hash: 16734680361006464993
+195 │         let balance1: u256 = token1.balanceOf(self.address)
+    │                              ^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -5549,10 +5549,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:195:43
+    ┌─ demos/uniswap.fe:195:47
     │
-195 │         balance1: u256 = token1.balanceOf(self.address)
-    │                                           ^^^^^^^^^^^^ attributes hash: 16366719240912622931
+195 │         let balance1: u256 = token1.balanceOf(self.address)
+    │                                               ^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5563,10 +5563,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:195:26
+    ┌─ demos/uniswap.fe:195:30
     │
-195 │         balance1: u256 = token1.balanceOf(self.address)
-    │                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+195 │         let balance1: u256 = token1.balanceOf(self.address)
+    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5579,10 +5579,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:196:27
+    ┌─ demos/uniswap.fe:196:31
     │
-196 │         liquidity: u256 = self.balances[self.address]
-    │                           ^^^^^^^^^^^^^ attributes hash: 16295847970515239570
+196 │         let liquidity: u256 = self.balances[self.address]
+    │                               ^^^^^^^^^^^^^ attributes hash: 16295847970515239570
     │
     = ExpressionAttributes {
           typ: Map(
@@ -5604,10 +5604,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:196:41
+    ┌─ demos/uniswap.fe:196:45
     │
-196 │         liquidity: u256 = self.balances[self.address]
-    │                                         ^^^^^^^^^^^^ attributes hash: 16366719240912622931
+196 │         let liquidity: u256 = self.balances[self.address]
+    │                                             ^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5618,10 +5618,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:196:27
+    ┌─ demos/uniswap.fe:196:31
     │
-196 │         liquidity: u256 = self.balances[self.address]
-    │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9781479072077703403
+196 │         let liquidity: u256 = self.balances[self.address]
+    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9781479072077703403
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5638,26 +5638,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:198:39
+    ┌─ demos/uniswap.fe:198:43
     │
-198 │         fee_on: bool = self._mint_fee(reserve0, reserve1)
-    │                                       ^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:198:49
-    │
-198 │         fee_on: bool = self._mint_fee(reserve0, reserve1)
-    │                                                 ^^^^^^^^ attributes hash: 16797824492585953824
+198 │         let fee_on: bool = self._mint_fee(reserve0, reserve1)
+    │                                           ^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5670,10 +5654,26 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:198:24
+    ┌─ demos/uniswap.fe:198:53
     │
-198 │         fee_on: bool = self._mint_fee(reserve0, reserve1)
-    │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+198 │         let fee_on: bool = self._mint_fee(reserve0, reserve1)
+    │                                                     ^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:198:28
+    │
+198 │         let fee_on: bool = self._mint_fee(reserve0, reserve1)
+    │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5684,10 +5684,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:199:30
+    ┌─ demos/uniswap.fe:199:34
     │
-199 │         total_supply: u256 = self.total_supply # gas savings, must be defined here since total_supply can update in _mintFee
-    │                              ^^^^^^^^^^^^^^^^^ attributes hash: 5126058488677760853
+199 │         let total_supply: u256 = self.total_supply # gas savings, must be defined here since total_supply can update in _mintFee
+    │                                  ^^^^^^^^^^^^^^^^^ attributes hash: 5126058488677760853
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5706,26 +5706,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:200:26
+    ┌─ demos/uniswap.fe:200:30
     │
-200 │         amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
-    │                          ^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:200:38
-    │
-200 │         amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
-    │                                      ^^^^^^^^ attributes hash: 16797824492585953824
+200 │         let amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
+    │                              ^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5738,26 +5722,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:200:25
+    ┌─ demos/uniswap.fe:200:42
     │
-200 │         amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
-    │                         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:200:50
-    │
-200 │         amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
-    │                                                  ^^^^^^^^^^^^ attributes hash: 16797824492585953824
+200 │         let amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
+    │                                          ^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5770,26 +5738,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:200:25
+    ┌─ demos/uniswap.fe:200:29
     │
-200 │         amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
-    │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:201:26
-    │
-201 │         amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
-    │                          ^^^^^^^^^ attributes hash: 16797824492585953824
+200 │         let amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
+    │                             ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5802,26 +5754,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:201:38
+    ┌─ demos/uniswap.fe:200:54
     │
-201 │         amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
-    │                                      ^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:201:25
-    │
-201 │         amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
-    │                         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+200 │         let amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
+    │                                                      ^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5834,10 +5770,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:201:50
+    ┌─ demos/uniswap.fe:200:29
     │
-201 │         amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
-    │                                                  ^^^^^^^^^^^^ attributes hash: 16797824492585953824
+200 │         let amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
+    │                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -5850,10 +5786,74 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:201:25
+    ┌─ demos/uniswap.fe:201:30
     │
-201 │         amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
-    │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+201 │         let amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
+    │                              ^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:201:42
+    │
+201 │         let amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
+    │                                          ^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:201:29
+    │
+201 │         let amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
+    │                             ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:201:54
+    │
+201 │         let amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
+    │                                                      ^^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:201:29
+    │
+201 │         let amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
+    │                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6845,10 +6845,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:222:26
+    ┌─ demos/uniswap.fe:222:30
     │
-222 │         reserve0: u256 = self.reserve0
-    │                          ^^^^^^^^^^^^^ attributes hash: 16880951683415213473
+222 │         let reserve0: u256 = self.reserve0
+    │                              ^^^^^^^^^^^^^ attributes hash: 16880951683415213473
     │
     = ExpressionAttributes {
           typ: Base(
@@ -6867,10 +6867,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:223:26
+    ┌─ demos/uniswap.fe:223:30
     │
-223 │         reserve1: u256 = self.reserve1
-    │                          ^^^^^^^^^^^^^ attributes hash: 12418118303529001266
+223 │         let reserve1: u256 = self.reserve1
+    │                              ^^^^^^^^^^^^^ attributes hash: 12418118303529001266
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7011,10 +7011,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:226:31
+    ┌─ demos/uniswap.fe:226:35
     │
-226 │         token0: ERC20 = ERC20(self.token0)
-    │                               ^^^^^^^^^^^ attributes hash: 14552118647532869459
+226 │         let token0: ERC20 = ERC20(self.token0)
+    │                                   ^^^^^^^^^^^ attributes hash: 14552118647532869459
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7031,10 +7031,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:226:25
+    ┌─ demos/uniswap.fe:226:29
     │
-226 │         token0: ERC20 = ERC20(self.token0)
-    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
+226 │         let token0: ERC20 = ERC20(self.token0)
+    │                             ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -7089,10 +7089,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:227:31
+    ┌─ demos/uniswap.fe:227:35
     │
-227 │         token1: ERC20 = ERC20(self.token1)
-    │                               ^^^^^^^^^^^ attributes hash: 6763598575633575517
+227 │         let token1: ERC20 = ERC20(self.token1)
+    │                                   ^^^^^^^^^^^ attributes hash: 6763598575633575517
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7109,10 +7109,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:227:25
+    ┌─ demos/uniswap.fe:227:29
     │
-227 │         token1: ERC20 = ERC20(self.token1)
-    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
+227 │         let token1: ERC20 = ERC20(self.token1)
+    │                             ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -7693,98 +7693,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:240:26
+    ┌─ demos/uniswap.fe:240:30
     │
-240 │         balance0: u256 = token0.balanceOf(self.address)
-    │                          ^^^^^^ attributes hash: 16734680361006464993
-    │
-    = ExpressionAttributes {
-          typ: Contract(
-              Contract {
-                  name: "ERC20",
-                  functions: [
-                      FunctionAttributes {
-                          is_public: true,
-                          name: "balanceOf",
-                          params: [
-                              (
-                                  "account",
-                                  Base(
-                                      Address,
-                                  ),
-                              ),
-                          ],
-                          return_type: Base(
-                              Numeric(
-                                  U256,
-                              ),
-                          ),
-                      },
-                      FunctionAttributes {
-                          is_public: true,
-                          name: "transfer",
-                          params: [
-                              (
-                                  "recipient",
-                                  Base(
-                                      Address,
-                                  ),
-                              ),
-                              (
-                                  "amount",
-                                  Base(
-                                      Numeric(
-                                          U256,
-                                      ),
-                                  ),
-                              ),
-                          ],
-                          return_type: Base(
-                              Bool,
-                          ),
-                      },
-                  ],
-              },
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:240:43
-    │
-240 │         balance0: u256 = token0.balanceOf(self.address)
-    │                                           ^^^^^^^^^^^^ attributes hash: 16366719240912622931
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Address,
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:240:26
-    │
-240 │         balance0: u256 = token0.balanceOf(self.address)
-    │                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:241:26
-    │
-241 │         balance1: u256 = token1.balanceOf(self.address)
-    │                          ^^^^^^ attributes hash: 16734680361006464993
+240 │         let balance0: u256 = token0.balanceOf(self.address)
+    │                              ^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -7839,10 +7751,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:241:43
+    ┌─ demos/uniswap.fe:240:47
     │
-241 │         balance1: u256 = token1.balanceOf(self.address)
-    │                                           ^^^^^^^^^^^^ attributes hash: 16366719240912622931
+240 │         let balance0: u256 = token0.balanceOf(self.address)
+    │                                               ^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7853,26 +7765,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:241:26
+    ┌─ demos/uniswap.fe:240:30
     │
-241 │         balance1: u256 = token1.balanceOf(self.address)
-    │                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:243:67
-    │
-243 │         amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
-    │                                                                   ^^^^^^^^ attributes hash: 16797824492585953824
+240 │         let balance0: u256 = token0.balanceOf(self.address)
+    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7885,10 +7781,82 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:243:78
+    ┌─ demos/uniswap.fe:241:30
     │
-243 │         amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
-    │                                                                              ^^^^^^^^ attributes hash: 16797824492585953824
+241 │         let balance1: u256 = token1.balanceOf(self.address)
+    │                              ^^^^^^ attributes hash: 16734680361006464993
+    │
+    = ExpressionAttributes {
+          typ: Contract(
+              Contract {
+                  name: "ERC20",
+                  functions: [
+                      FunctionAttributes {
+                          is_public: true,
+                          name: "balanceOf",
+                          params: [
+                              (
+                                  "account",
+                                  Base(
+                                      Address,
+                                  ),
+                              ),
+                          ],
+                          return_type: Base(
+                              Numeric(
+                                  U256,
+                              ),
+                          ),
+                      },
+                      FunctionAttributes {
+                          is_public: true,
+                          name: "transfer",
+                          params: [
+                              (
+                                  "recipient",
+                                  Base(
+                                      Address,
+                                  ),
+                              ),
+                              (
+                                  "amount",
+                                  Base(
+                                      Numeric(
+                                          U256,
+                                      ),
+                                  ),
+                              ),
+                          ],
+                          return_type: Base(
+                              Bool,
+                          ),
+                      },
+                  ],
+              },
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:241:47
+    │
+241 │         let balance1: u256 = token1.balanceOf(self.address)
+    │                                               ^^^^^^^^^^^^ attributes hash: 16366719240912622931
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Address,
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:241:30
+    │
+241 │         let balance1: u256 = token1.balanceOf(self.address)
+    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7901,26 +7869,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:243:89
+    ┌─ demos/uniswap.fe:243:71
     │
-243 │         amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
-    │                                                                                         ^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:243:78
-    │
-243 │         amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
-    │                                                                              ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+243 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+    │                                                                       ^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7933,10 +7885,58 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:243:67
+    ┌─ demos/uniswap.fe:243:82
     │
-243 │         amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
-    │                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+243 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+    │                                                                                  ^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:243:93
+    │
+243 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+    │                                                                                             ^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:243:82
+    │
+243 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+    │                                                                                  ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:243:71
+    │
+243 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+    │                                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7947,26 +7947,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:243:28
+    ┌─ demos/uniswap.fe:243:32
     │
-243 │         amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
-    │                            ^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:243:40
-    │
-243 │         amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
-    │                                        ^^^^^^^^ attributes hash: 16797824492585953824
+243 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+    │                                ^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -7979,26 +7963,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:243:51
+    ┌─ demos/uniswap.fe:243:44
     │
-243 │         amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
-    │                                                   ^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:243:39
-    │
-243 │         amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
-    │                                       ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+243 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+    │                                            ^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8011,26 +7979,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:243:28
+    ┌─ demos/uniswap.fe:243:55
     │
-243 │         amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
-    │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:243:106
-    │
-243 │         amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
-    │                                                                                                          ^ attributes hash: 16797824492585953824
+243 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+    │                                                       ^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8043,26 +7995,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:243:28
+    ┌─ demos/uniswap.fe:243:43
     │
-243 │         amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
-    │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:244:67
-    │
-244 │         amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │                                                                   ^^^^^^^^ attributes hash: 16797824492585953824
+243 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+    │                                           ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8075,26 +8011,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:244:78
+    ┌─ demos/uniswap.fe:243:32
     │
-244 │         amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │                                                                              ^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:244:89
-    │
-244 │         amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │                                                                                         ^^^^^^^^^^^ attributes hash: 16797824492585953824
+243 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+    │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8107,10 +8027,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:244:78
+    ┌─ demos/uniswap.fe:243:110
     │
-244 │         amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │                                                                              ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+243 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+    │                                                                                                              ^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8123,10 +8043,90 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:244:67
+    ┌─ demos/uniswap.fe:243:32
     │
-244 │         amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+243 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+    │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:244:71
+    │
+244 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
+    │                                                                       ^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:244:82
+    │
+244 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
+    │                                                                                  ^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:244:93
+    │
+244 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
+    │                                                                                             ^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:244:82
+    │
+244 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
+    │                                                                                  ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:244:71
+    │
+244 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
+    │                                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8137,26 +8137,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:244:28
+    ┌─ demos/uniswap.fe:244:32
     │
-244 │         amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │                            ^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:244:40
-    │
-244 │         amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │                                        ^^^^^^^^ attributes hash: 16797824492585953824
+244 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
+    │                                ^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8169,26 +8153,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:244:51
+    ┌─ demos/uniswap.fe:244:44
     │
-244 │         amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │                                                   ^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:244:39
-    │
-244 │         amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │                                       ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+244 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
+    │                                            ^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8201,26 +8169,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:244:28
+    ┌─ demos/uniswap.fe:244:55
     │
-244 │         amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:244:106
-    │
-244 │         amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │                                                                                                          ^ attributes hash: 16797824492585953824
+244 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
+    │                                                       ^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8233,10 +8185,58 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:244:28
+    ┌─ demos/uniswap.fe:244:43
     │
-244 │         amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+244 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
+    │                                           ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:244:32
+    │
+244 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
+    │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:244:110
+    │
+244 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
+    │                                                                                                              ^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:244:32
+    │
+244 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
+    │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8371,26 +8371,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:248:35
+    ┌─ demos/uniswap.fe:248:39
     │
-248 │         balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
-    │                                   ^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:248:46
-    │
-248 │         balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
-    │                                              ^^^^ attributes hash: 16797824492585953824
+248 │         let balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
+    │                                       ^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8403,26 +8387,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:248:35
+    ┌─ demos/uniswap.fe:248:50
     │
-248 │         balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
-    │                                   ^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:248:53
-    │
-248 │         balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
-    │                                                     ^^^^^^^^^^ attributes hash: 16797824492585953824
+248 │         let balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
+    │                                                  ^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8435,26 +8403,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:248:66
+    ┌─ demos/uniswap.fe:248:39
     │
-248 │         balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
-    │                                                                  ^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:248:53
-    │
-248 │         balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
-    │                                                     ^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+248 │         let balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
+    │                                       ^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8467,26 +8419,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:248:35
+    ┌─ demos/uniswap.fe:248:57
     │
-248 │         balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
-    │                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:249:35
-    │
-249 │         balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
-    │                                   ^^^^^^^^ attributes hash: 16797824492585953824
+248 │         let balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
+    │                                                         ^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8499,26 +8435,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:249:46
+    ┌─ demos/uniswap.fe:248:70
     │
-249 │         balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
-    │                                              ^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:249:35
-    │
-249 │         balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
-    │                                   ^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+248 │         let balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
+    │                                                                      ^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8531,26 +8451,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:249:53
+    ┌─ demos/uniswap.fe:248:57
     │
-249 │         balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
-    │                                                     ^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:249:66
-    │
-249 │         balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
-    │                                                                  ^ attributes hash: 16797824492585953824
+248 │         let balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
+    │                                                         ^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8563,10 +8467,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:249:53
+    ┌─ demos/uniswap.fe:248:39
     │
-249 │         balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
-    │                                                     ^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+248 │         let balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
+    │                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8579,10 +8483,106 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:249:35
+    ┌─ demos/uniswap.fe:249:39
     │
-249 │         balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
-    │                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+249 │         let balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
+    │                                       ^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:249:50
+    │
+249 │         let balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
+    │                                                  ^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:249:39
+    │
+249 │         let balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
+    │                                       ^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:249:57
+    │
+249 │         let balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
+    │                                                         ^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:249:70
+    │
+249 │         let balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
+    │                                                                      ^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:249:57
+    │
+249 │         let balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
+    │                                                         ^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:249:39
+    │
+249 │         let balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
+    │                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8923,10 +8923,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:258:31
+    ┌─ demos/uniswap.fe:258:35
     │
-258 │         token0: ERC20 = ERC20(self.token0) # gas savings
-    │                               ^^^^^^^^^^^ attributes hash: 14552118647532869459
+258 │         let token0: ERC20 = ERC20(self.token0) # gas savings
+    │                                   ^^^^^^^^^^^ attributes hash: 14552118647532869459
     │
     = ExpressionAttributes {
           typ: Base(
@@ -8943,10 +8943,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:258:25
+    ┌─ demos/uniswap.fe:258:29
     │
-258 │         token0: ERC20 = ERC20(self.token0) # gas savings
-    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
+258 │         let token0: ERC20 = ERC20(self.token0) # gas savings
+    │                             ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -9001,10 +9001,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:259:31
+    ┌─ demos/uniswap.fe:259:35
     │
-259 │         token1: ERC20 = ERC20(self.token1) # gas savings
-    │                               ^^^^^^^^^^^ attributes hash: 6763598575633575517
+259 │         let token1: ERC20 = ERC20(self.token1) # gas savings
+    │                                   ^^^^^^^^^^^ attributes hash: 6763598575633575517
     │
     = ExpressionAttributes {
           typ: Base(
@@ -9021,10 +9021,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:259:25
+    ┌─ demos/uniswap.fe:259:29
     │
-259 │         token1: ERC20 = ERC20(self.token1) # gas savings
-    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
+259 │         let token1: ERC20 = ERC20(self.token1) # gas savings
+    │                             ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -9503,10 +9503,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:266:31
+    ┌─ demos/uniswap.fe:266:35
     │
-266 │         token0: ERC20 = ERC20(self.token0)
-    │                               ^^^^^^^^^^^ attributes hash: 14552118647532869459
+266 │         let token0: ERC20 = ERC20(self.token0)
+    │                                   ^^^^^^^^^^^ attributes hash: 14552118647532869459
     │
     = ExpressionAttributes {
           typ: Base(
@@ -9523,10 +9523,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:266:25
+    ┌─ demos/uniswap.fe:266:29
     │
-266 │         token0: ERC20 = ERC20(self.token0)
-    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
+266 │         let token0: ERC20 = ERC20(self.token0)
+    │                             ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -9581,10 +9581,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:267:31
+    ┌─ demos/uniswap.fe:267:35
     │
-267 │         token1: ERC20 = ERC20(self.token1)
-    │                               ^^^^^^^^^^^ attributes hash: 6763598575633575517
+267 │         let token1: ERC20 = ERC20(self.token1)
+    │                                   ^^^^^^^^^^^ attributes hash: 6763598575633575517
     │
     = ExpressionAttributes {
           typ: Base(
@@ -9601,10 +9601,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:267:25
+    ┌─ demos/uniswap.fe:267:29
     │
-267 │         token1: ERC20 = ERC20(self.token1)
-    │                         ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
+267 │         let token1: ERC20 = ERC20(self.token1)
+    │                             ^^^^^^^^^^^^^^^^^^ attributes hash: 16734680361006464993
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -9971,42 +9971,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:274:23
+    ┌─ demos/uniswap.fe:274:27
     │
-274 │             x: u256 = val / 2 + 1
-    │                       ^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:274:29
-    │
-274 │             x: u256 = val / 2 + 1
-    │                             ^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:274:23
-    │
-274 │             x: u256 = val / 2 + 1
-    │                       ^^^^^^^ attributes hash: 16797824492585953824
+274 │             let x: u256 = val / 2 + 1
+    │                           ^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10021,7 +9989,7 @@ note:
 note: 
     ┌─ demos/uniswap.fe:274:33
     │
-274 │             x: u256 = val / 2 + 1
+274 │             let x: u256 = val / 2 + 1
     │                                 ^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
@@ -10035,10 +10003,42 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:274:23
+    ┌─ demos/uniswap.fe:274:27
     │
-274 │             x: u256 = val / 2 + 1
-    │                       ^^^^^^^^^^^ attributes hash: 16797824492585953824
+274 │             let x: u256 = val / 2 + 1
+    │                           ^^^^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:274:37
+    │
+274 │             let x: u256 = val / 2 + 1
+    │                                     ^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:274:27
+    │
+274 │             let x: u256 = val / 2 + 1
+    │                           ^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10597,24 +10597,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:315:38
+    ┌─ demos/uniswap.fe:315:42
     │
-315 │         token0: address = token_a if token_a < token_b else token_b
-    │                                      ^^^^^^^ attributes hash: 16366719240912622931
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Address,
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:315:48
-    │
-315 │         token0: address = token_a if token_a < token_b else token_b
-    │                                                ^^^^^^^ attributes hash: 16366719240912622931
+315 │         let token0: address = token_a if token_a < token_b else token_b
+    │                                          ^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10625,10 +10611,24 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:315:38
+    ┌─ demos/uniswap.fe:315:52
     │
-315 │         token0: address = token_a if token_a < token_b else token_b
-    │                                      ^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+315 │         let token0: address = token_a if token_a < token_b else token_b
+    │                                                    ^^^^^^^ attributes hash: 16366719240912622931
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Address,
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:315:42
+    │
+315 │         let token0: address = token_a if token_a < token_b else token_b
+    │                                          ^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10639,24 +10639,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:315:27
+    ┌─ demos/uniswap.fe:315:31
     │
-315 │         token0: address = token_a if token_a < token_b else token_b
-    │                           ^^^^^^^ attributes hash: 16366719240912622931
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Address,
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:315:61
-    │
-315 │         token0: address = token_a if token_a < token_b else token_b
-    │                                                             ^^^^^^^ attributes hash: 16366719240912622931
+315 │         let token0: address = token_a if token_a < token_b else token_b
+    │                               ^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10667,24 +10653,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:315:27
+    ┌─ demos/uniswap.fe:315:65
     │
-315 │         token0: address = token_a if token_a < token_b else token_b
-    │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16366719240912622931
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Address,
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:316:38
-    │
-316 │         token1: address = token_a if token_a > token_b else token_b
-    │                                      ^^^^^^^ attributes hash: 16366719240912622931
+315 │         let token0: address = token_a if token_a < token_b else token_b
+    │                                                                 ^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10695,10 +10667,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:316:48
+    ┌─ demos/uniswap.fe:315:31
     │
-316 │         token1: address = token_a if token_a > token_b else token_b
-    │                                                ^^^^^^^ attributes hash: 16366719240912622931
+315 │         let token0: address = token_a if token_a < token_b else token_b
+    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10709,10 +10681,38 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:316:38
+    ┌─ demos/uniswap.fe:316:42
     │
-316 │         token1: address = token_a if token_a > token_b else token_b
-    │                                      ^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+316 │         let token1: address = token_a if token_a > token_b else token_b
+    │                                          ^^^^^^^ attributes hash: 16366719240912622931
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Address,
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:316:52
+    │
+316 │         let token1: address = token_a if token_a > token_b else token_b
+    │                                                    ^^^^^^^ attributes hash: 16366719240912622931
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Address,
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:316:42
+    │
+316 │         let token1: address = token_a if token_a > token_b else token_b
+    │                                          ^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10723,24 +10723,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:316:27
+    ┌─ demos/uniswap.fe:316:31
     │
-316 │         token1: address = token_a if token_a > token_b else token_b
-    │                           ^^^^^^^ attributes hash: 16366719240912622931
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Address,
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:316:61
-    │
-316 │         token1: address = token_a if token_a > token_b else token_b
-    │                                                             ^^^^^^^ attributes hash: 16366719240912622931
+316 │         let token1: address = token_a if token_a > token_b else token_b
+    │                               ^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10751,10 +10737,24 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:316:27
+    ┌─ demos/uniswap.fe:316:65
     │
-316 │         token1: address = token_a if token_a > token_b else token_b
-    │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16366719240912622931
+316 │         let token1: address = token_a if token_a > token_b else token_b
+    │                                                                 ^^^^^^^ attributes hash: 16366719240912622931
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Address,
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:316:31
+    │
+316 │         let token1: address = token_a if token_a > token_b else token_b
+    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -10994,24 +10994,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:320:33
+    ┌─ demos/uniswap.fe:320:37
     │
-320 │         salt: u256 = keccak256((token0, token1).abi_encode())
-    │                                 ^^^^^^ attributes hash: 16366719240912622931
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Address,
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:320:41
-    │
-320 │         salt: u256 = keccak256((token0, token1).abi_encode())
-    │                                         ^^^^^^ attributes hash: 16366719240912622931
+320 │         let salt: u256 = keccak256((token0, token1).abi_encode())
+    │                                     ^^^^^^ attributes hash: 16366719240912622931
     │
     = ExpressionAttributes {
           typ: Base(
@@ -11022,10 +11008,24 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:320:32
+    ┌─ demos/uniswap.fe:320:45
     │
-320 │         salt: u256 = keccak256((token0, token1).abi_encode())
-    │                                ^^^^^^^^^^^^^^^^ attributes hash: 9028867466715729072
+320 │         let salt: u256 = keccak256((token0, token1).abi_encode())
+    │                                             ^^^^^^ attributes hash: 16366719240912622931
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Address,
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:320:36
+    │
+320 │         let salt: u256 = keccak256((token0, token1).abi_encode())
+    │                                    ^^^^^^^^^^^^^^^^ attributes hash: 9028867466715729072
     │
     = ExpressionAttributes {
           typ: Tuple(
@@ -11045,10 +11045,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:320:32
+    ┌─ demos/uniswap.fe:320:36
     │
-320 │         salt: u256 = keccak256((token0, token1).abi_encode())
-    │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14154226366475970246
+320 │         let salt: u256 = keccak256((token0, token1).abi_encode())
+    │                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14154226366475970246
     │
     = ExpressionAttributes {
           typ: Array(
@@ -11064,26 +11064,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:320:22
+    ┌─ demos/uniswap.fe:320:26
     │
-320 │         salt: u256 = keccak256((token0, token1).abi_encode())
-    │                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
-    │
-    = ExpressionAttributes {
-          typ: Base(
-              Numeric(
-                  U256,
-              ),
-          ),
-          location: Value,
-          move_location: None,
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:321:53
-    │
-321 │         pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
-    │                                                     ^ attributes hash: 16797824492585953824
+320 │         let salt: u256 = keccak256((token0, token1).abi_encode())
+    │                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -11096,10 +11080,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:321:56
+    ┌─ demos/uniswap.fe:321:57
     │
-321 │         pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
-    │                                                        ^^^^ attributes hash: 16797824492585953824
+321 │         let pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
+    │                                                         ^ attributes hash: 16797824492585953824
     │
     = ExpressionAttributes {
           typ: Base(
@@ -11112,10 +11096,26 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:321:31
+    ┌─ demos/uniswap.fe:321:60
     │
-321 │         pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
-    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14208569303922594645
+321 │         let pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
+    │                                                            ^^^^ attributes hash: 16797824492585953824
+    │
+    = ExpressionAttributes {
+          typ: Base(
+              Numeric(
+                  U256,
+              ),
+          ),
+          location: Value,
+          move_location: None,
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:321:35
+    │
+321 │         let pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
+    │                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14208569303922594645
     │
     = ExpressionAttributes {
           typ: Contract(
@@ -14567,7 +14567,7 @@ note:
     │  
 123 │ ╭     def _update(balance0: u256, balance1: u256, reserve0: u256, reserve1: u256):
 124 │ │         # changed from u32s
-125 │ │         block_timestamp: u256 = block.timestamp % 2**32
+125 │ │         let block_timestamp: u256 = block.timestamp % 2**32
 126 │ │         # TODO: reproduce desired overflow (https://github.com/ethereum/fe/issues/286)
     · │
 135 │ │         self.block_timestamp_last = block_timestamp
@@ -14620,9 +14620,9 @@ note:
     ┌─ demos/uniswap.fe:139:5
     │  
 139 │ ╭     def _mint_fee(reserve0: u256, reserve1: u256) -> bool:
-140 │ │         fee_to: address = UniswapV2Factory(self.factory).fee_to()
-141 │ │         fee_on: bool = fee_to != address(0)
-142 │ │         k_last: u256 = self.k_last # gas savings
+140 │ │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+141 │ │         let fee_on: bool = fee_to != address(0)
+142 │ │         let k_last: u256 = self.k_last # gas savings
     · │
 155 │ │ 
 156 │ │         return fee_on
@@ -14658,9 +14658,9 @@ note:
     ┌─ demos/uniswap.fe:159:5
     │  
 159 │ ╭     pub def mint(to: address) -> u256:
-160 │ │         MINIMUM_LIQUIDITY: u256 = 1000
-161 │ │         reserve0: u256 = self.reserve0
-162 │ │         reserve1: u256 = self.reserve1
+160 │ │         let MINIMUM_LIQUIDITY: u256 = 1000
+161 │ │         let reserve0: u256 = self.reserve0
+162 │ │         let reserve1: u256 = self.reserve1
     · │
 185 │ │         emit Mint(sender=msg.sender, amount0, amount1)
 186 │ │         return liquidity
@@ -14688,9 +14688,9 @@ note:
     ┌─ demos/uniswap.fe:189:5
     │  
 189 │ ╭     pub def burn(to: address) -> (u256, u256):
-190 │ │         reserve0: u256 = self.reserve0
-191 │ │         reserve1: u256 = self.reserve1
-192 │ │         token0: ERC20 = ERC20(self.token0)
+190 │ │         let reserve0: u256 = self.reserve0
+191 │ │         let reserve1: u256 = self.reserve1
+192 │ │         let token0: ERC20 = ERC20(self.token0)
     · │
 214 │ │         emit Burn(sender=msg.sender, amount0, amount1, to)
 215 │ │         return (amount0, amount1)
@@ -14730,8 +14730,8 @@ note:
     │  
 220 │ ╭     pub def swap(amount0_out: u256, amount1_out: u256, to: address):
 221 │ │         assert amount0_out > 0 or amount1_out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT"
-222 │ │         reserve0: u256 = self.reserve0
-223 │ │         reserve1: u256 = self.reserve1
+222 │ │         let reserve0: u256 = self.reserve0
+223 │ │         let reserve1: u256 = self.reserve1
     · │
 253 │ │         self._update(balance0, balance1, reserve0, reserve1)
 254 │ │         emit Swap(sender=msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
@@ -14773,8 +14773,8 @@ note:
     ┌─ demos/uniswap.fe:257:5
     │  
 257 │ ╭     pub def skim(to: address):
-258 │ │         token0: ERC20 = ERC20(self.token0) # gas savings
-259 │ │         token1: ERC20 = ERC20(self.token1) # gas savings
+258 │ │         let token0: ERC20 = ERC20(self.token0) # gas savings
+259 │ │         let token1: ERC20 = ERC20(self.token1) # gas savings
 260 │ │ 
 261 │ │         token0.transfer(to, token0.balanceOf(self.address) - self.reserve0)
 262 │ │         token1.transfer(to, token1.balanceOf(self.address) - self.reserve1)
@@ -14800,8 +14800,8 @@ note:
     ┌─ demos/uniswap.fe:265:5
     │  
 265 │ ╭     pub def sync():
-266 │ │         token0: ERC20 = ERC20(self.token0)
-267 │ │         token1: ERC20 = ERC20(self.token1)
+266 │ │         let token0: ERC20 = ERC20(self.token0)
+267 │ │         let token1: ERC20 = ERC20(self.token1)
 268 │ │         self._update(token0.balanceOf(self.address), token1.balanceOf(self.address), self.reserve0, self.reserve1)
     │ ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 3209711833240093660
     │  
@@ -14818,7 +14818,7 @@ note:
     ┌─ demos/uniswap.fe:270:5
     │  
 270 │ ╭     def sqrt(val: u256) -> u256:
-271 │ │         z: u256
+271 │ │         let z: u256
 272 │ │         if (val > 3):
 273 │ │             z = val
     · │
@@ -14960,7 +14960,7 @@ note:
 312 │ ╭     pub def create_pair(token_a: address, token_b: address) -> address:
 313 │ │         assert token_a != token_b, "UniswapV2: IDENTICAL_ADDRESSES"
 314 │ │ 
-315 │ │         token0: address = token_a if token_a < token_b else token_b
+315 │ │         let token0: address = token_a if token_a < token_b else token_b
     · │
 329 │ │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
 330 │ │         return address(pair)
@@ -15039,8 +15039,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:125:9
     │
-125 │         block_timestamp: u256 = block.timestamp % 2**32
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+125 │         let block_timestamp: u256 = block.timestamp % 2**32
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15051,8 +15051,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:127:9
     │
-127 │         time_elapsed: u256 = block_timestamp - self.block_timestamp_last # overflow is desired
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+127 │         let time_elapsed: u256 = block_timestamp - self.block_timestamp_last # overflow is desired
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15063,8 +15063,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:140:9
     │
-140 │         fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16931239362436195516
+140 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -15073,8 +15073,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:141:9
     │
-141 │         fee_on: bool = fee_to != address(0)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8311861578736502650
+141 │         let fee_on: bool = fee_to != address(0)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8311861578736502650
     │
     = Base(
           Bool,
@@ -15083,8 +15083,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:142:9
     │
-142 │         k_last: u256 = self.k_last # gas savings
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+142 │         let k_last: u256 = self.k_last # gas savings
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15095,8 +15095,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:145:17
     │
-145 │                 root_k: u256 = self.sqrt(reserve0 * reserve1)
-    │                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+145 │                 let root_k: u256 = self.sqrt(reserve0 * reserve1)
+    │                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15107,8 +15107,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:146:17
     │
-146 │                 root_k_last: u256 = self.sqrt(k_last)
-    │                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+146 │                 let root_k_last: u256 = self.sqrt(k_last)
+    │                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15119,8 +15119,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:148:21
     │
-148 │                     numerator: u256 = self.total_supply * root_k - root_k_last
-    │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+148 │                     let numerator: u256 = self.total_supply * root_k - root_k_last
+    │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15131,8 +15131,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:149:21
     │
-149 │                     denominator: u256 = root_k * 5 + root_k_last
-    │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+149 │                     let denominator: u256 = root_k * 5 + root_k_last
+    │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15143,8 +15143,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:150:21
     │
-150 │                     liquidity: u256 = numerator / denominator
-    │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+150 │                     let liquidity: u256 = numerator / denominator
+    │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15155,8 +15155,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:160:9
     │
-160 │         MINIMUM_LIQUIDITY: u256 = 1000
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+160 │         let MINIMUM_LIQUIDITY: u256 = 1000
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15167,8 +15167,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:161:9
     │
-161 │         reserve0: u256 = self.reserve0
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+161 │         let reserve0: u256 = self.reserve0
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15179,8 +15179,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:162:9
     │
-162 │         reserve1: u256 = self.reserve1
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+162 │         let reserve1: u256 = self.reserve1
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15191,8 +15191,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:163:9
     │
-163 │         balance0: u256 = ERC20(self.token0).balanceOf(self.address)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+163 │         let balance0: u256 = ERC20(self.token0).balanceOf(self.address)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15203,8 +15203,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:164:9
     │
-164 │         balance1: u256 = ERC20(self.token1).balanceOf(self.address)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+164 │         let balance1: u256 = ERC20(self.token1).balanceOf(self.address)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15215,8 +15215,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:165:9
     │
-165 │         amount0: u256 = balance0 - self.reserve0
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+165 │         let amount0: u256 = balance0 - self.reserve0
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15227,8 +15227,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:166:9
     │
-166 │         amount1: u256 = balance1 - self.reserve1
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+166 │         let amount1: u256 = balance1 - self.reserve1
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15239,8 +15239,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:168:9
     │
-168 │         fee_on: bool = self._mint_fee(reserve0, reserve1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8311861578736502650
+168 │         let fee_on: bool = self._mint_fee(reserve0, reserve1)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8311861578736502650
     │
     = Base(
           Bool,
@@ -15249,8 +15249,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:169:9
     │
-169 │         total_supply: u256 = self.total_supply # gas savings, must be defined here since totalSupply can update in _mintFee
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+169 │         let total_supply: u256 = self.total_supply # gas savings, must be defined here since totalSupply can update in _mintFee
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15261,8 +15261,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:170:9
     │
-170 │         liquidity: u256 = 0
-    │         ^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+170 │         let liquidity: u256 = 0
+    │         ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15273,8 +15273,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:190:9
     │
-190 │         reserve0: u256 = self.reserve0
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+190 │         let reserve0: u256 = self.reserve0
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15285,8 +15285,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:191:9
     │
-191 │         reserve1: u256 = self.reserve1
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+191 │         let reserve1: u256 = self.reserve1
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15297,8 +15297,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:192:9
     │
-192 │         token0: ERC20 = ERC20(self.token0)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
+192 │         let token0: ERC20 = ERC20(self.token0)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
     │
     = Contract(
           Contract {
@@ -15351,8 +15351,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:193:9
     │
-193 │         token1: ERC20 = ERC20(self.token1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
+193 │         let token1: ERC20 = ERC20(self.token1)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
     │
     = Contract(
           Contract {
@@ -15405,8 +15405,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:194:9
     │
-194 │         balance0: u256 = token0.balanceOf(self.address)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+194 │         let balance0: u256 = token0.balanceOf(self.address)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15417,8 +15417,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:195:9
     │
-195 │         balance1: u256 = token1.balanceOf(self.address)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+195 │         let balance1: u256 = token1.balanceOf(self.address)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15429,8 +15429,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:196:9
     │
-196 │         liquidity: u256 = self.balances[self.address]
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+196 │         let liquidity: u256 = self.balances[self.address]
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15441,8 +15441,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:198:9
     │
-198 │         fee_on: bool = self._mint_fee(reserve0, reserve1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8311861578736502650
+198 │         let fee_on: bool = self._mint_fee(reserve0, reserve1)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8311861578736502650
     │
     = Base(
           Bool,
@@ -15451,8 +15451,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:199:9
     │
-199 │         total_supply: u256 = self.total_supply # gas savings, must be defined here since total_supply can update in _mintFee
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+199 │         let total_supply: u256 = self.total_supply # gas savings, must be defined here since total_supply can update in _mintFee
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15463,8 +15463,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:200:9
     │
-200 │         amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+200 │         let amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15475,8 +15475,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:201:9
     │
-201 │         amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+201 │         let amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15487,8 +15487,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:222:9
     │
-222 │         reserve0: u256 = self.reserve0
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+222 │         let reserve0: u256 = self.reserve0
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15499,8 +15499,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:223:9
     │
-223 │         reserve1: u256 = self.reserve1
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+223 │         let reserve1: u256 = self.reserve1
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15511,8 +15511,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:226:9
     │
-226 │         token0: ERC20 = ERC20(self.token0)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
+226 │         let token0: ERC20 = ERC20(self.token0)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
     │
     = Contract(
           Contract {
@@ -15565,8 +15565,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:227:9
     │
-227 │         token1: ERC20 = ERC20(self.token1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
+227 │         let token1: ERC20 = ERC20(self.token1)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
     │
     = Contract(
           Contract {
@@ -15619,8 +15619,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:240:9
     │
-240 │         balance0: u256 = token0.balanceOf(self.address)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+240 │         let balance0: u256 = token0.balanceOf(self.address)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15631,8 +15631,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:241:9
     │
-241 │         balance1: u256 = token1.balanceOf(self.address)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+241 │         let balance1: u256 = token1.balanceOf(self.address)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15643,8 +15643,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:243:9
     │
-243 │         amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+243 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15655,8 +15655,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:244:9
     │
-244 │         amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+244 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15667,8 +15667,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:248:9
     │
-248 │         balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+248 │         let balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15679,8 +15679,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:249:9
     │
-249 │         balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+249 │         let balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15691,8 +15691,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:258:9
     │
-258 │         token0: ERC20 = ERC20(self.token0) # gas savings
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
+258 │         let token0: ERC20 = ERC20(self.token0) # gas savings
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
     │
     = Contract(
           Contract {
@@ -15745,8 +15745,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:259:9
     │
-259 │         token1: ERC20 = ERC20(self.token1) # gas savings
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
+259 │         let token1: ERC20 = ERC20(self.token1) # gas savings
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
     │
     = Contract(
           Contract {
@@ -15799,8 +15799,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:266:9
     │
-266 │         token0: ERC20 = ERC20(self.token0)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
+266 │         let token0: ERC20 = ERC20(self.token0)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
     │
     = Contract(
           Contract {
@@ -15853,8 +15853,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:267:9
     │
-267 │         token1: ERC20 = ERC20(self.token1)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
+267 │         let token1: ERC20 = ERC20(self.token1)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16090334921223932666
     │
     = Contract(
           Contract {
@@ -15907,8 +15907,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:271:9
     │
-271 │         z: u256
-    │         ^^^^^^^ attributes hash: 17942395924573474124
+271 │         let z: u256
+    │         ^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15919,8 +15919,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:274:13
     │
-274 │             x: u256 = val / 2 + 1
-    │             ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+274 │             let x: u256 = val / 2 + 1
+    │             ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15931,8 +15931,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:315:9
     │
-315 │         token0: address = token_a if token_a < token_b else token_b
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16931239362436195516
+315 │         let token0: address = token_a if token_a < token_b else token_b
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -15941,8 +15941,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:316:9
     │
-316 │         token1: address = token_a if token_a > token_b else token_b
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16931239362436195516
+316 │         let token1: address = token_a if token_a > token_b else token_b
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
@@ -15951,8 +15951,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:320:9
     │
-320 │         salt: u256 = keccak256((token0, token1).abi_encode())
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+320 │         let salt: u256 = keccak256((token0, token1).abi_encode())
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -15963,8 +15963,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:321:9
     │
-321 │         pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13101972698481963745
+321 │         let pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
+    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13101972698481963745
     │
     = Contract(
           Contract {
@@ -17792,18 +17792,18 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:140:27
+    ┌─ demos/uniswap.fe:140:31
     │
-140 │         fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+140 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+    │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
     │
     = ValueAttribute
 
 note: 
-    ┌─ demos/uniswap.fe:140:27
+    ┌─ demos/uniswap.fe:140:31
     │
-140 │         fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                           ^^^^^^^^^^^^^^^^ attributes hash: 16400890784664137154
+140 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+    │                               ^^^^^^^^^^^^^^^^ attributes hash: 16400890784664137154
     │
     = TypeConstructor {
           typ: Contract(
@@ -17893,10 +17893,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:141:34
+    ┌─ demos/uniswap.fe:141:38
     │
-141 │         fee_on: bool = fee_to != address(0)
-    │                                  ^^^^^^^ attributes hash: 12543456546113081273
+141 │         let fee_on: bool = fee_to != address(0)
+    │                                      ^^^^^^^ attributes hash: 12543456546113081273
     │
     = TypeConstructor {
           typ: Base(
@@ -17905,20 +17905,20 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:145:32
+    ┌─ demos/uniswap.fe:145:36
     │
-145 │                 root_k: u256 = self.sqrt(reserve0 * reserve1)
-    │                                ^^^^^^^^^ attributes hash: 10928421685292136472
+145 │                 let root_k: u256 = self.sqrt(reserve0 * reserve1)
+    │                                    ^^^^^^^^^ attributes hash: 10928421685292136472
     │
     = SelfAttribute {
           func_name: "sqrt",
       }
 
 note: 
-    ┌─ demos/uniswap.fe:146:37
+    ┌─ demos/uniswap.fe:146:41
     │
-146 │                 root_k_last: u256 = self.sqrt(k_last)
-    │                                     ^^^^^^^^^ attributes hash: 10928421685292136472
+146 │                 let root_k_last: u256 = self.sqrt(k_last)
+    │                                         ^^^^^^^^^ attributes hash: 10928421685292136472
     │
     = SelfAttribute {
           func_name: "sqrt",
@@ -17935,18 +17935,18 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:163:26
+    ┌─ demos/uniswap.fe:163:30
     │
-163 │         balance0: u256 = ERC20(self.token0).balanceOf(self.address)
-    │                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+163 │         let balance0: u256 = ERC20(self.token0).balanceOf(self.address)
+    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
     │
     = ValueAttribute
 
 note: 
-    ┌─ demos/uniswap.fe:163:26
+    ┌─ demos/uniswap.fe:163:30
     │
-163 │         balance0: u256 = ERC20(self.token0).balanceOf(self.address)
-    │                          ^^^^^ attributes hash: 17643750814894473408
+163 │         let balance0: u256 = ERC20(self.token0).balanceOf(self.address)
+    │                              ^^^^^ attributes hash: 17643750814894473408
     │
     = TypeConstructor {
           typ: Contract(
@@ -17999,18 +17999,18 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:164:26
+    ┌─ demos/uniswap.fe:164:30
     │
-164 │         balance1: u256 = ERC20(self.token1).balanceOf(self.address)
-    │                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+164 │         let balance1: u256 = ERC20(self.token1).balanceOf(self.address)
+    │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
     │
     = ValueAttribute
 
 note: 
-    ┌─ demos/uniswap.fe:164:26
+    ┌─ demos/uniswap.fe:164:30
     │
-164 │         balance1: u256 = ERC20(self.token1).balanceOf(self.address)
-    │                          ^^^^^ attributes hash: 17643750814894473408
+164 │         let balance1: u256 = ERC20(self.token1).balanceOf(self.address)
+    │                              ^^^^^ attributes hash: 17643750814894473408
     │
     = TypeConstructor {
           typ: Contract(
@@ -18063,10 +18063,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:168:24
+    ┌─ demos/uniswap.fe:168:28
     │
-168 │         fee_on: bool = self._mint_fee(reserve0, reserve1)
-    │                        ^^^^^^^^^^^^^^ attributes hash: 13246624443285848464
+168 │         let fee_on: bool = self._mint_fee(reserve0, reserve1)
+    │                            ^^^^^^^^^^^^^^ attributes hash: 13246624443285848464
     │
     = SelfAttribute {
           func_name: "_mint_fee",
@@ -18135,66 +18135,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:192:25
+    ┌─ demos/uniswap.fe:192:29
     │
-192 │         token0: ERC20 = ERC20(self.token0)
-    │                         ^^^^^ attributes hash: 17643750814894473408
-    │
-    = TypeConstructor {
-          typ: Contract(
-              Contract {
-                  name: "ERC20",
-                  functions: [
-                      FunctionAttributes {
-                          is_public: true,
-                          name: "balanceOf",
-                          params: [
-                              (
-                                  "account",
-                                  Base(
-                                      Address,
-                                  ),
-                              ),
-                          ],
-                          return_type: Base(
-                              Numeric(
-                                  U256,
-                              ),
-                          ),
-                      },
-                      FunctionAttributes {
-                          is_public: true,
-                          name: "transfer",
-                          params: [
-                              (
-                                  "recipient",
-                                  Base(
-                                      Address,
-                                  ),
-                              ),
-                              (
-                                  "amount",
-                                  Base(
-                                      Numeric(
-                                          U256,
-                                      ),
-                                  ),
-                              ),
-                          ],
-                          return_type: Base(
-                              Bool,
-                          ),
-                      },
-                  ],
-              },
-          ),
-      }
-
-note: 
-    ┌─ demos/uniswap.fe:193:25
-    │
-193 │         token1: ERC20 = ERC20(self.token1)
-    │                         ^^^^^ attributes hash: 17643750814894473408
+192 │         let token0: ERC20 = ERC20(self.token0)
+    │                             ^^^^^ attributes hash: 17643750814894473408
     │
     = TypeConstructor {
           typ: Contract(
@@ -18247,26 +18191,82 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:194:26
+    ┌─ demos/uniswap.fe:193:29
     │
-194 │         balance0: u256 = token0.balanceOf(self.address)
-    │                          ^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+193 │         let token1: ERC20 = ERC20(self.token1)
+    │                             ^^^^^ attributes hash: 17643750814894473408
+    │
+    = TypeConstructor {
+          typ: Contract(
+              Contract {
+                  name: "ERC20",
+                  functions: [
+                      FunctionAttributes {
+                          is_public: true,
+                          name: "balanceOf",
+                          params: [
+                              (
+                                  "account",
+                                  Base(
+                                      Address,
+                                  ),
+                              ),
+                          ],
+                          return_type: Base(
+                              Numeric(
+                                  U256,
+                              ),
+                          ),
+                      },
+                      FunctionAttributes {
+                          is_public: true,
+                          name: "transfer",
+                          params: [
+                              (
+                                  "recipient",
+                                  Base(
+                                      Address,
+                                  ),
+                              ),
+                              (
+                                  "amount",
+                                  Base(
+                                      Numeric(
+                                          U256,
+                                      ),
+                                  ),
+                              ),
+                          ],
+                          return_type: Base(
+                              Bool,
+                          ),
+                      },
+                  ],
+              },
+          ),
+      }
+
+note: 
+    ┌─ demos/uniswap.fe:194:30
+    │
+194 │         let balance0: u256 = token0.balanceOf(self.address)
+    │                              ^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
     │
     = ValueAttribute
 
 note: 
-    ┌─ demos/uniswap.fe:195:26
+    ┌─ demos/uniswap.fe:195:30
     │
-195 │         balance1: u256 = token1.balanceOf(self.address)
-    │                          ^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+195 │         let balance1: u256 = token1.balanceOf(self.address)
+    │                              ^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
     │
     = ValueAttribute
 
 note: 
-    ┌─ demos/uniswap.fe:198:24
+    ┌─ demos/uniswap.fe:198:28
     │
-198 │         fee_on: bool = self._mint_fee(reserve0, reserve1)
-    │                        ^^^^^^^^^^^^^^ attributes hash: 13246624443285848464
+198 │         let fee_on: bool = self._mint_fee(reserve0, reserve1)
+    │                            ^^^^^^^^^^^^^^ attributes hash: 13246624443285848464
     │
     = SelfAttribute {
           func_name: "_mint_fee",
@@ -18325,10 +18325,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:226:25
+    ┌─ demos/uniswap.fe:226:29
     │
-226 │         token0: ERC20 = ERC20(self.token0)
-    │                         ^^^^^ attributes hash: 17643750814894473408
+226 │         let token0: ERC20 = ERC20(self.token0)
+    │                             ^^^^^ attributes hash: 17643750814894473408
     │
     = TypeConstructor {
           typ: Contract(
@@ -18381,10 +18381,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:227:25
+    ┌─ demos/uniswap.fe:227:29
     │
-227 │         token1: ERC20 = ERC20(self.token1)
-    │                         ^^^^^ attributes hash: 17643750814894473408
+227 │         let token1: ERC20 = ERC20(self.token1)
+    │                             ^^^^^ attributes hash: 17643750814894473408
     │
     = TypeConstructor {
           typ: Contract(
@@ -18477,18 +18477,18 @@ note:
     = ValueAttribute
 
 note: 
-    ┌─ demos/uniswap.fe:240:26
+    ┌─ demos/uniswap.fe:240:30
     │
-240 │         balance0: u256 = token0.balanceOf(self.address)
-    │                          ^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+240 │         let balance0: u256 = token0.balanceOf(self.address)
+    │                              ^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
     │
     = ValueAttribute
 
 note: 
-    ┌─ demos/uniswap.fe:241:26
+    ┌─ demos/uniswap.fe:241:30
     │
-241 │         balance1: u256 = token1.balanceOf(self.address)
-    │                          ^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+241 │         let balance1: u256 = token1.balanceOf(self.address)
+    │                              ^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
     │
     = ValueAttribute
 
@@ -18503,10 +18503,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:258:25
+    ┌─ demos/uniswap.fe:258:29
     │
-258 │         token0: ERC20 = ERC20(self.token0) # gas savings
-    │                         ^^^^^ attributes hash: 17643750814894473408
+258 │         let token0: ERC20 = ERC20(self.token0) # gas savings
+    │                             ^^^^^ attributes hash: 17643750814894473408
     │
     = TypeConstructor {
           typ: Contract(
@@ -18559,10 +18559,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:259:25
+    ┌─ demos/uniswap.fe:259:29
     │
-259 │         token1: ERC20 = ERC20(self.token1) # gas savings
-    │                         ^^^^^ attributes hash: 17643750814894473408
+259 │         let token1: ERC20 = ERC20(self.token1) # gas savings
+    │                             ^^^^^ attributes hash: 17643750814894473408
     │
     = TypeConstructor {
           typ: Contract(
@@ -18647,10 +18647,10 @@ note:
     = ValueAttribute
 
 note: 
-    ┌─ demos/uniswap.fe:266:25
+    ┌─ demos/uniswap.fe:266:29
     │
-266 │         token0: ERC20 = ERC20(self.token0)
-    │                         ^^^^^ attributes hash: 17643750814894473408
+266 │         let token0: ERC20 = ERC20(self.token0)
+    │                             ^^^^^ attributes hash: 17643750814894473408
     │
     = TypeConstructor {
           typ: Contract(
@@ -18703,10 +18703,10 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:267:25
+    ┌─ demos/uniswap.fe:267:29
     │
-267 │         token1: ERC20 = ERC20(self.token1)
-    │                         ^^^^^ attributes hash: 17643750814894473408
+267 │         let token1: ERC20 = ERC20(self.token1)
+    │                             ^^^^^ attributes hash: 17643750814894473408
     │
     = TypeConstructor {
           typ: Contract(
@@ -18809,28 +18809,28 @@ note:
       }
 
 note: 
-    ┌─ demos/uniswap.fe:320:22
+    ┌─ demos/uniswap.fe:320:26
     │
-320 │         salt: u256 = keccak256((token0, token1).abi_encode())
-    │                      ^^^^^^^^^ attributes hash: 13646096770106105413
+320 │         let salt: u256 = keccak256((token0, token1).abi_encode())
+    │                          ^^^^^^^^^ attributes hash: 13646096770106105413
     │
     = BuiltinFunction {
           func: Keccak256,
       }
 
 note: 
-    ┌─ demos/uniswap.fe:320:32
+    ┌─ demos/uniswap.fe:320:36
     │
-320 │         salt: u256 = keccak256((token0, token1).abi_encode())
-    │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+320 │         let salt: u256 = keccak256((token0, token1).abi_encode())
+    │                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
     │
     = ValueAttribute
 
 note: 
-    ┌─ demos/uniswap.fe:321:31
+    ┌─ demos/uniswap.fe:321:35
     │
-321 │         pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
-    │                               ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6121931892408705938
+321 │         let pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
+    │                                   ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6121931892408705938
     │
     = TypeAttribute {
           typ: Contract(
@@ -20790,77 +20790,9 @@ note:
      )
 
 note: 
-    ┌─ demos/uniswap.fe:125:26
+    ┌─ demos/uniswap.fe:125:30
     │
-125 │         block_timestamp: u256 = block.timestamp % 2**32
-    │                          ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:127:23
-    │
-127 │         time_elapsed: u256 = block_timestamp - self.block_timestamp_last # overflow is desired
-    │                       ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:140:17
-    │
-140 │         fee_to: address = UniswapV2Factory(self.factory).fee_to()
-    │                 ^^^^^^^ attributes hash: 16931239362436195516
-    │
-    = Base(
-          Address,
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:141:17
-    │
-141 │         fee_on: bool = fee_to != address(0)
-    │                 ^^^^ attributes hash: 8311861578736502650
-    │
-    = Base(
-          Bool,
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:142:17
-    │
-142 │         k_last: u256 = self.k_last # gas savings
-    │                 ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:145:25
-    │
-145 │                 root_k: u256 = self.sqrt(reserve0 * reserve1)
-    │                         ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:146:30
-    │
-146 │                 root_k_last: u256 = self.sqrt(k_last)
+125 │         let block_timestamp: u256 = block.timestamp % 2**32
     │                              ^^^^ attributes hash: 17942395924573474124
     │
     = Base(
@@ -20870,10 +20802,10 @@ note:
       )
 
 note: 
-    ┌─ demos/uniswap.fe:148:32
+    ┌─ demos/uniswap.fe:127:27
     │
-148 │                     numerator: u256 = self.total_supply * root_k - root_k_last
-    │                                ^^^^ attributes hash: 17942395924573474124
+127 │         let time_elapsed: u256 = block_timestamp - self.block_timestamp_last # overflow is desired
+    │                           ^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -20882,9 +20814,53 @@ note:
       )
 
 note: 
-    ┌─ demos/uniswap.fe:149:34
+    ┌─ demos/uniswap.fe:140:21
     │
-149 │                     denominator: u256 = root_k * 5 + root_k_last
+140 │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+    │                     ^^^^^^^ attributes hash: 16931239362436195516
+    │
+    = Base(
+          Address,
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:141:21
+    │
+141 │         let fee_on: bool = fee_to != address(0)
+    │                     ^^^^ attributes hash: 8311861578736502650
+    │
+    = Base(
+          Bool,
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:142:21
+    │
+142 │         let k_last: u256 = self.k_last # gas savings
+    │                     ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:145:29
+    │
+145 │                 let root_k: u256 = self.sqrt(reserve0 * reserve1)
+    │                             ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:146:34
+    │
+146 │                 let root_k_last: u256 = self.sqrt(k_last)
     │                                  ^^^^ attributes hash: 17942395924573474124
     │
     = Base(
@@ -20894,9 +20870,45 @@ note:
       )
 
 note: 
-    ┌─ demos/uniswap.fe:150:32
+    ┌─ demos/uniswap.fe:148:36
     │
-150 │                     liquidity: u256 = numerator / denominator
+148 │                     let numerator: u256 = self.total_supply * root_k - root_k_last
+    │                                    ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:149:38
+    │
+149 │                     let denominator: u256 = root_k * 5 + root_k_last
+    │                                      ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:150:36
+    │
+150 │                     let liquidity: u256 = numerator / denominator
+    │                                    ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:160:32
+    │
+160 │         let MINIMUM_LIQUIDITY: u256 = 1000
     │                                ^^^^ attributes hash: 17942395924573474124
     │
     = Base(
@@ -20906,103 +20918,9 @@ note:
       )
 
 note: 
-    ┌─ demos/uniswap.fe:160:28
+    ┌─ demos/uniswap.fe:161:23
     │
-160 │         MINIMUM_LIQUIDITY: u256 = 1000
-    │                            ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:161:19
-    │
-161 │         reserve0: u256 = self.reserve0
-    │                   ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:162:19
-    │
-162 │         reserve1: u256 = self.reserve1
-    │                   ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:163:19
-    │
-163 │         balance0: u256 = ERC20(self.token0).balanceOf(self.address)
-    │                   ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:164:19
-    │
-164 │         balance1: u256 = ERC20(self.token1).balanceOf(self.address)
-    │                   ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:165:18
-    │
-165 │         amount0: u256 = balance0 - self.reserve0
-    │                  ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:166:18
-    │
-166 │         amount1: u256 = balance1 - self.reserve1
-    │                  ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:168:17
-    │
-168 │         fee_on: bool = self._mint_fee(reserve0, reserve1)
-    │                 ^^^^ attributes hash: 8311861578736502650
-    │
-    = Base(
-          Bool,
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:169:23
-    │
-169 │         total_supply: u256 = self.total_supply # gas savings, must be defined here since totalSupply can update in _mintFee
+161 │         let reserve0: u256 = self.reserve0
     │                       ^^^^ attributes hash: 17942395924573474124
     │
     = Base(
@@ -21012,199 +20930,9 @@ note:
       )
 
 note: 
-    ┌─ demos/uniswap.fe:170:20
+    ┌─ demos/uniswap.fe:162:23
     │
-170 │         liquidity: u256 = 0
-    │                    ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:190:19
-    │
-190 │         reserve0: u256 = self.reserve0
-    │                   ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:191:19
-    │
-191 │         reserve1: u256 = self.reserve1
-    │                   ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:192:17
-    │
-192 │         token0: ERC20 = ERC20(self.token0)
-    │                 ^^^^^ attributes hash: 3621211662183276994
-    │
-    = Contract(
-          Contract {
-              name: "ERC20",
-              functions: [
-                  FunctionAttributes {
-                      is_public: true,
-                      name: "balanceOf",
-                      params: [
-                          (
-                              "account",
-                              Base(
-                                  Address,
-                              ),
-                          ),
-                      ],
-                      return_type: Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  },
-                  FunctionAttributes {
-                      is_public: true,
-                      name: "transfer",
-                      params: [
-                          (
-                              "recipient",
-                              Base(
-                                  Address,
-                              ),
-                          ),
-                          (
-                              "amount",
-                              Base(
-                                  Numeric(
-                                      U256,
-                                  ),
-                              ),
-                          ),
-                      ],
-                      return_type: Base(
-                          Bool,
-                      ),
-                  },
-              ],
-          },
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:193:17
-    │
-193 │         token1: ERC20 = ERC20(self.token1)
-    │                 ^^^^^ attributes hash: 3621211662183276994
-    │
-    = Contract(
-          Contract {
-              name: "ERC20",
-              functions: [
-                  FunctionAttributes {
-                      is_public: true,
-                      name: "balanceOf",
-                      params: [
-                          (
-                              "account",
-                              Base(
-                                  Address,
-                              ),
-                          ),
-                      ],
-                      return_type: Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  },
-                  FunctionAttributes {
-                      is_public: true,
-                      name: "transfer",
-                      params: [
-                          (
-                              "recipient",
-                              Base(
-                                  Address,
-                              ),
-                          ),
-                          (
-                              "amount",
-                              Base(
-                                  Numeric(
-                                      U256,
-                                  ),
-                              ),
-                          ),
-                      ],
-                      return_type: Base(
-                          Bool,
-                      ),
-                  },
-              ],
-          },
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:194:19
-    │
-194 │         balance0: u256 = token0.balanceOf(self.address)
-    │                   ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:195:19
-    │
-195 │         balance1: u256 = token1.balanceOf(self.address)
-    │                   ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:196:20
-    │
-196 │         liquidity: u256 = self.balances[self.address]
-    │                    ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:198:17
-    │
-198 │         fee_on: bool = self._mint_fee(reserve0, reserve1)
-    │                 ^^^^ attributes hash: 8311861578736502650
-    │
-    = Base(
-          Bool,
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:199:23
-    │
-199 │         total_supply: u256 = self.total_supply # gas savings, must be defined here since total_supply can update in _mintFee
+162 │         let reserve1: u256 = self.reserve1
     │                       ^^^^ attributes hash: 17942395924573474124
     │
     = Base(
@@ -21214,22 +20942,10 @@ note:
       )
 
 note: 
-    ┌─ demos/uniswap.fe:200:18
+    ┌─ demos/uniswap.fe:163:23
     │
-200 │         amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
-    │                  ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:201:18
-    │
-201 │         amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
-    │                  ^^^^ attributes hash: 17942395924573474124
+163 │         let balance0: u256 = ERC20(self.token0).balanceOf(self.address)
+    │                       ^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -21238,22 +20954,10 @@ note:
       )
 
 note: 
-    ┌─ demos/uniswap.fe:222:19
+    ┌─ demos/uniswap.fe:164:23
     │
-222 │         reserve0: u256 = self.reserve0
-    │                   ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:223:19
-    │
-223 │         reserve1: u256 = self.reserve1
-    │                   ^^^^ attributes hash: 17942395924573474124
+164 │         let balance1: u256 = ERC20(self.token1).balanceOf(self.address)
+    │                       ^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -21262,10 +20966,92 @@ note:
       )
 
 note: 
-    ┌─ demos/uniswap.fe:226:17
+    ┌─ demos/uniswap.fe:165:22
     │
-226 │         token0: ERC20 = ERC20(self.token0)
-    │                 ^^^^^ attributes hash: 3621211662183276994
+165 │         let amount0: u256 = balance0 - self.reserve0
+    │                      ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:166:22
+    │
+166 │         let amount1: u256 = balance1 - self.reserve1
+    │                      ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:168:21
+    │
+168 │         let fee_on: bool = self._mint_fee(reserve0, reserve1)
+    │                     ^^^^ attributes hash: 8311861578736502650
+    │
+    = Base(
+          Bool,
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:169:27
+    │
+169 │         let total_supply: u256 = self.total_supply # gas savings, must be defined here since totalSupply can update in _mintFee
+    │                           ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:170:24
+    │
+170 │         let liquidity: u256 = 0
+    │                        ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:190:23
+    │
+190 │         let reserve0: u256 = self.reserve0
+    │                       ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:191:23
+    │
+191 │         let reserve1: u256 = self.reserve1
+    │                       ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:192:21
+    │
+192 │         let token0: ERC20 = ERC20(self.token0)
+    │                     ^^^^^ attributes hash: 3621211662183276994
     │
     = Contract(
           Contract {
@@ -21316,136 +21102,10 @@ note:
       )
 
 note: 
-    ┌─ demos/uniswap.fe:227:17
+    ┌─ demos/uniswap.fe:193:21
     │
-227 │         token1: ERC20 = ERC20(self.token1)
-    │                 ^^^^^ attributes hash: 3621211662183276994
-    │
-    = Contract(
-          Contract {
-              name: "ERC20",
-              functions: [
-                  FunctionAttributes {
-                      is_public: true,
-                      name: "balanceOf",
-                      params: [
-                          (
-                              "account",
-                              Base(
-                                  Address,
-                              ),
-                          ),
-                      ],
-                      return_type: Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  },
-                  FunctionAttributes {
-                      is_public: true,
-                      name: "transfer",
-                      params: [
-                          (
-                              "recipient",
-                              Base(
-                                  Address,
-                              ),
-                          ),
-                          (
-                              "amount",
-                              Base(
-                                  Numeric(
-                                      U256,
-                                  ),
-                              ),
-                          ),
-                      ],
-                      return_type: Base(
-                          Bool,
-                      ),
-                  },
-              ],
-          },
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:240:19
-    │
-240 │         balance0: u256 = token0.balanceOf(self.address)
-    │                   ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:241:19
-    │
-241 │         balance1: u256 = token1.balanceOf(self.address)
-    │                   ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:243:21
-    │
-243 │         amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
-    │                     ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:244:21
-    │
-244 │         amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
-    │                     ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:248:28
-    │
-248 │         balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
-    │                            ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:249:28
-    │
-249 │         balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
-    │                            ^^^^ attributes hash: 17942395924573474124
-    │
-    = Base(
-          Numeric(
-              U256,
-          ),
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:258:17
-    │
-258 │         token0: ERC20 = ERC20(self.token0) # gas savings
-    │                 ^^^^^ attributes hash: 3621211662183276994
+193 │         let token1: ERC20 = ERC20(self.token1)
+    │                     ^^^^^ attributes hash: 3621211662183276994
     │
     = Contract(
           Contract {
@@ -21496,172 +21156,10 @@ note:
       )
 
 note: 
-    ┌─ demos/uniswap.fe:259:17
+    ┌─ demos/uniswap.fe:194:23
     │
-259 │         token1: ERC20 = ERC20(self.token1) # gas savings
-    │                 ^^^^^ attributes hash: 3621211662183276994
-    │
-    = Contract(
-          Contract {
-              name: "ERC20",
-              functions: [
-                  FunctionAttributes {
-                      is_public: true,
-                      name: "balanceOf",
-                      params: [
-                          (
-                              "account",
-                              Base(
-                                  Address,
-                              ),
-                          ),
-                      ],
-                      return_type: Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  },
-                  FunctionAttributes {
-                      is_public: true,
-                      name: "transfer",
-                      params: [
-                          (
-                              "recipient",
-                              Base(
-                                  Address,
-                              ),
-                          ),
-                          (
-                              "amount",
-                              Base(
-                                  Numeric(
-                                      U256,
-                                  ),
-                              ),
-                          ),
-                      ],
-                      return_type: Base(
-                          Bool,
-                      ),
-                  },
-              ],
-          },
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:266:17
-    │
-266 │         token0: ERC20 = ERC20(self.token0)
-    │                 ^^^^^ attributes hash: 3621211662183276994
-    │
-    = Contract(
-          Contract {
-              name: "ERC20",
-              functions: [
-                  FunctionAttributes {
-                      is_public: true,
-                      name: "balanceOf",
-                      params: [
-                          (
-                              "account",
-                              Base(
-                                  Address,
-                              ),
-                          ),
-                      ],
-                      return_type: Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  },
-                  FunctionAttributes {
-                      is_public: true,
-                      name: "transfer",
-                      params: [
-                          (
-                              "recipient",
-                              Base(
-                                  Address,
-                              ),
-                          ),
-                          (
-                              "amount",
-                              Base(
-                                  Numeric(
-                                      U256,
-                                  ),
-                              ),
-                          ),
-                      ],
-                      return_type: Base(
-                          Bool,
-                      ),
-                  },
-              ],
-          },
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:267:17
-    │
-267 │         token1: ERC20 = ERC20(self.token1)
-    │                 ^^^^^ attributes hash: 3621211662183276994
-    │
-    = Contract(
-          Contract {
-              name: "ERC20",
-              functions: [
-                  FunctionAttributes {
-                      is_public: true,
-                      name: "balanceOf",
-                      params: [
-                          (
-                              "account",
-                              Base(
-                                  Address,
-                              ),
-                          ),
-                      ],
-                      return_type: Base(
-                          Numeric(
-                              U256,
-                          ),
-                      ),
-                  },
-                  FunctionAttributes {
-                      is_public: true,
-                      name: "transfer",
-                      params: [
-                          (
-                              "recipient",
-                              Base(
-                                  Address,
-                              ),
-                          ),
-                          (
-                              "amount",
-                              Base(
-                                  Numeric(
-                                      U256,
-                                  ),
-                              ),
-                          ),
-                      ],
-                      return_type: Base(
-                          Bool,
-                      ),
-                  },
-              ],
-          },
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:271:12
-    │
-271 │         z: u256
-    │            ^^^^ attributes hash: 17942395924573474124
+194 │         let balance0: u256 = token0.balanceOf(self.address)
+    │                       ^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -21670,10 +21168,512 @@ note:
       )
 
 note: 
-    ┌─ demos/uniswap.fe:274:16
+    ┌─ demos/uniswap.fe:195:23
     │
-274 │             x: u256 = val / 2 + 1
+195 │         let balance1: u256 = token1.balanceOf(self.address)
+    │                       ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:196:24
+    │
+196 │         let liquidity: u256 = self.balances[self.address]
+    │                        ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:198:21
+    │
+198 │         let fee_on: bool = self._mint_fee(reserve0, reserve1)
+    │                     ^^^^ attributes hash: 8311861578736502650
+    │
+    = Base(
+          Bool,
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:199:27
+    │
+199 │         let total_supply: u256 = self.total_supply # gas savings, must be defined here since total_supply can update in _mintFee
+    │                           ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:200:22
+    │
+200 │         let amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
+    │                      ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:201:22
+    │
+201 │         let amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
+    │                      ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:222:23
+    │
+222 │         let reserve0: u256 = self.reserve0
+    │                       ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:223:23
+    │
+223 │         let reserve1: u256 = self.reserve1
+    │                       ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:226:21
+    │
+226 │         let token0: ERC20 = ERC20(self.token0)
+    │                     ^^^^^ attributes hash: 3621211662183276994
+    │
+    = Contract(
+          Contract {
+              name: "ERC20",
+              functions: [
+                  FunctionAttributes {
+                      is_public: true,
+                      name: "balanceOf",
+                      params: [
+                          (
+                              "account",
+                              Base(
+                                  Address,
+                              ),
+                          ),
+                      ],
+                      return_type: Base(
+                          Numeric(
+                              U256,
+                          ),
+                      ),
+                  },
+                  FunctionAttributes {
+                      is_public: true,
+                      name: "transfer",
+                      params: [
+                          (
+                              "recipient",
+                              Base(
+                                  Address,
+                              ),
+                          ),
+                          (
+                              "amount",
+                              Base(
+                                  Numeric(
+                                      U256,
+                                  ),
+                              ),
+                          ),
+                      ],
+                      return_type: Base(
+                          Bool,
+                      ),
+                  },
+              ],
+          },
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:227:21
+    │
+227 │         let token1: ERC20 = ERC20(self.token1)
+    │                     ^^^^^ attributes hash: 3621211662183276994
+    │
+    = Contract(
+          Contract {
+              name: "ERC20",
+              functions: [
+                  FunctionAttributes {
+                      is_public: true,
+                      name: "balanceOf",
+                      params: [
+                          (
+                              "account",
+                              Base(
+                                  Address,
+                              ),
+                          ),
+                      ],
+                      return_type: Base(
+                          Numeric(
+                              U256,
+                          ),
+                      ),
+                  },
+                  FunctionAttributes {
+                      is_public: true,
+                      name: "transfer",
+                      params: [
+                          (
+                              "recipient",
+                              Base(
+                                  Address,
+                              ),
+                          ),
+                          (
+                              "amount",
+                              Base(
+                                  Numeric(
+                                      U256,
+                                  ),
+                              ),
+                          ),
+                      ],
+                      return_type: Base(
+                          Bool,
+                      ),
+                  },
+              ],
+          },
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:240:23
+    │
+240 │         let balance0: u256 = token0.balanceOf(self.address)
+    │                       ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:241:23
+    │
+241 │         let balance1: u256 = token1.balanceOf(self.address)
+    │                       ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:243:25
+    │
+243 │         let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+    │                         ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:244:25
+    │
+244 │         let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
+    │                         ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:248:32
+    │
+248 │         let balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
+    │                                ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:249:32
+    │
+249 │         let balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
+    │                                ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:258:21
+    │
+258 │         let token0: ERC20 = ERC20(self.token0) # gas savings
+    │                     ^^^^^ attributes hash: 3621211662183276994
+    │
+    = Contract(
+          Contract {
+              name: "ERC20",
+              functions: [
+                  FunctionAttributes {
+                      is_public: true,
+                      name: "balanceOf",
+                      params: [
+                          (
+                              "account",
+                              Base(
+                                  Address,
+                              ),
+                          ),
+                      ],
+                      return_type: Base(
+                          Numeric(
+                              U256,
+                          ),
+                      ),
+                  },
+                  FunctionAttributes {
+                      is_public: true,
+                      name: "transfer",
+                      params: [
+                          (
+                              "recipient",
+                              Base(
+                                  Address,
+                              ),
+                          ),
+                          (
+                              "amount",
+                              Base(
+                                  Numeric(
+                                      U256,
+                                  ),
+                              ),
+                          ),
+                      ],
+                      return_type: Base(
+                          Bool,
+                      ),
+                  },
+              ],
+          },
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:259:21
+    │
+259 │         let token1: ERC20 = ERC20(self.token1) # gas savings
+    │                     ^^^^^ attributes hash: 3621211662183276994
+    │
+    = Contract(
+          Contract {
+              name: "ERC20",
+              functions: [
+                  FunctionAttributes {
+                      is_public: true,
+                      name: "balanceOf",
+                      params: [
+                          (
+                              "account",
+                              Base(
+                                  Address,
+                              ),
+                          ),
+                      ],
+                      return_type: Base(
+                          Numeric(
+                              U256,
+                          ),
+                      ),
+                  },
+                  FunctionAttributes {
+                      is_public: true,
+                      name: "transfer",
+                      params: [
+                          (
+                              "recipient",
+                              Base(
+                                  Address,
+                              ),
+                          ),
+                          (
+                              "amount",
+                              Base(
+                                  Numeric(
+                                      U256,
+                                  ),
+                              ),
+                          ),
+                      ],
+                      return_type: Base(
+                          Bool,
+                      ),
+                  },
+              ],
+          },
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:266:21
+    │
+266 │         let token0: ERC20 = ERC20(self.token0)
+    │                     ^^^^^ attributes hash: 3621211662183276994
+    │
+    = Contract(
+          Contract {
+              name: "ERC20",
+              functions: [
+                  FunctionAttributes {
+                      is_public: true,
+                      name: "balanceOf",
+                      params: [
+                          (
+                              "account",
+                              Base(
+                                  Address,
+                              ),
+                          ),
+                      ],
+                      return_type: Base(
+                          Numeric(
+                              U256,
+                          ),
+                      ),
+                  },
+                  FunctionAttributes {
+                      is_public: true,
+                      name: "transfer",
+                      params: [
+                          (
+                              "recipient",
+                              Base(
+                                  Address,
+                              ),
+                          ),
+                          (
+                              "amount",
+                              Base(
+                                  Numeric(
+                                      U256,
+                                  ),
+                              ),
+                          ),
+                      ],
+                      return_type: Base(
+                          Bool,
+                      ),
+                  },
+              ],
+          },
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:267:21
+    │
+267 │         let token1: ERC20 = ERC20(self.token1)
+    │                     ^^^^^ attributes hash: 3621211662183276994
+    │
+    = Contract(
+          Contract {
+              name: "ERC20",
+              functions: [
+                  FunctionAttributes {
+                      is_public: true,
+                      name: "balanceOf",
+                      params: [
+                          (
+                              "account",
+                              Base(
+                                  Address,
+                              ),
+                          ),
+                      ],
+                      return_type: Base(
+                          Numeric(
+                              U256,
+                          ),
+                      ),
+                  },
+                  FunctionAttributes {
+                      is_public: true,
+                      name: "transfer",
+                      params: [
+                          (
+                              "recipient",
+                              Base(
+                                  Address,
+                              ),
+                          ),
+                          (
+                              "amount",
+                              Base(
+                                  Numeric(
+                                      U256,
+                                  ),
+                              ),
+                          ),
+                      ],
+                      return_type: Base(
+                          Bool,
+                      ),
+                  },
+              ],
+          },
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:271:16
+    │
+271 │         let z: u256
     │                ^^^^ attributes hash: 17942395924573474124
+    │
+    = Base(
+          Numeric(
+              U256,
+          ),
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:274:20
+    │
+274 │             let x: u256 = val / 2 + 1
+    │                    ^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -21802,30 +21802,30 @@ note:
       )
 
 note: 
-    ┌─ demos/uniswap.fe:315:17
+    ┌─ demos/uniswap.fe:315:21
     │
-315 │         token0: address = token_a if token_a < token_b else token_b
-    │                 ^^^^^^^ attributes hash: 16931239362436195516
-    │
-    = Base(
-          Address,
-      )
-
-note: 
-    ┌─ demos/uniswap.fe:316:17
-    │
-316 │         token1: address = token_a if token_a > token_b else token_b
-    │                 ^^^^^^^ attributes hash: 16931239362436195516
+315 │         let token0: address = token_a if token_a < token_b else token_b
+    │                     ^^^^^^^ attributes hash: 16931239362436195516
     │
     = Base(
           Address,
       )
 
 note: 
-    ┌─ demos/uniswap.fe:320:15
+    ┌─ demos/uniswap.fe:316:21
     │
-320 │         salt: u256 = keccak256((token0, token1).abi_encode())
-    │               ^^^^ attributes hash: 17942395924573474124
+316 │         let token1: address = token_a if token_a > token_b else token_b
+    │                     ^^^^^^^ attributes hash: 16931239362436195516
+    │
+    = Base(
+          Address,
+      )
+
+note: 
+    ┌─ demos/uniswap.fe:320:19
+    │
+320 │         let salt: u256 = keccak256((token0, token1).abi_encode())
+    │                   ^^^^ attributes hash: 17942395924573474124
     │
     = Base(
           Numeric(
@@ -21834,10 +21834,10 @@ note:
       )
 
 note: 
-    ┌─ demos/uniswap.fe:321:15
+    ┌─ demos/uniswap.fe:321:19
     │
-321 │         pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
-    │               ^^^^^^^^^^^^^ attributes hash: 8136175709061532011
+321 │         let pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
+    │                   ^^^^^^^^^^^^^ attributes hash: 8136175709061532011
     │
     = Contract(
           Contract {

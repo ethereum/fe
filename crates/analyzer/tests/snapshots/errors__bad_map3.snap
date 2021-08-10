@@ -4,11 +4,11 @@ expression: "error_string(\"[snippet]\", &src)"
 
 ---
 error: `Map` expects 2 arguments, but 0 were provided
-  ┌─ [snippet]:3:6
+  ┌─ [snippet]:3:10
   │
-3 │   x: Map<>
-  │      ^^^-- supplied 0 arguments
-  │      │   
-  │      expects 2 arguments
+3 │   let x: Map<>
+  │          ^^^-- supplied 0 arguments
+  │          │   
+  │          expects 2 arguments
 
 

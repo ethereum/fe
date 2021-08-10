@@ -5,4 +5,4 @@ struct House:
 contract Foo:
 
     pub def bar():
-        my_house: House = House(true, price=1000000)
+        let my_house: House = House(true, price=1000000)

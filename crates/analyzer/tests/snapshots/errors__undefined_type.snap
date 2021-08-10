@@ -4,9 +4,9 @@ expression: "error_string(\"[snippet]\", &src)"
 
 ---
 error: undefined type
-  ┌─ [snippet]:3:6
+  ┌─ [snippet]:3:10
   │
-3 │   x: foobar = 10
-  │      ^^^^^^ this type name has not been defined
+3 │   let x: foobar = 10
+  │          ^^^^^^ this type name has not been defined
 
 

@@ -1,15 +1,14 @@
 ---
-source: parser/tests/cases/errors.rs
+source: crates/parser/tests/cases/errors.rs
 expression: "err_string(stringify!(stmt_vardecl_tuple), functions::parse_stmt, true,\n           \"(a, x+1) : u256\")"
 
 ---
-error: failed to parse variable declaration
-  ┌─ stmt_vardecl_tuple:1:5
+error: Variable declaration must begin with `let`
+  ┌─ stmt_vardecl_tuple:1:1
   │
 1 │ (a, x+1) : u256
-  │     ^^^ invalid variable declaration target
+  │ ^^^^^^^^ invalid variable declaration
   │
-  = The left side of a variable declaration can be either a name
-    or a non-empty tuple.
+  = Example: `let x: u8 = 1`
 
 

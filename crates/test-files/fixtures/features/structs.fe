@@ -42,7 +42,7 @@ contract Foo:
         assert self.my_house.vacant
 
     pub def bar() -> u256:
-        building: House = House(
+        let building: House = House(
             price=300,
             size=500,
             rooms=u8(20),
@@ -65,7 +65,7 @@ contract Foo:
         return building.size
 
     pub def encode_house() -> u8[128]:
-        house: House = House(
+        let house: House = House(
             price=300,
             size=500,
             rooms=u8(20),
@@ -74,7 +74,7 @@ contract Foo:
         return house.abi_encode()
 
     pub def hashed_house() -> u256:
-        house: House = House(
+        let house: House = House(
             price=300,
             size=500,
             rooms=u8(20),

@@ -199,6 +199,8 @@ pub enum TokenKind {
     GtGtEq,
     #[token("->")]
     Arrow,
+    #[token("let")]
+    Let,
 }
 
 impl TokenKind {
@@ -234,6 +236,7 @@ impl TokenKind {
             Contract => "contract",
             Def => "def",
             Const => "const",
+            Let => "let",
             Elif => "elif",
             Else => "else",
             Emit => "emit",

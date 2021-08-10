@@ -4,15 +4,15 @@ expression: "error_string(\"[snippet]\", &src)"
 
 ---
 error: cannot find value `y` in this scope
-  ┌─ [snippet]:3:12
+  ┌─ [snippet]:3:16
   │
-3 │   x: u16 = y
-  │            ^ undefined
+3 │   let x: u16 = y
+  │                ^ undefined
 
 error: cannot find value `y` in this scope
-  ┌─ [snippet]:4:12
+  ┌─ [snippet]:4:16
   │
-4 │   z: u16 = y
-  │            ^ undefined
+4 │   let z: u16 = y
+  │                ^ undefined
 
 

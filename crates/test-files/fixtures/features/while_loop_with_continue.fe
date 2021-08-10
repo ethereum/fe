@@ -1,7 +1,7 @@
 contract Foo:
     pub def bar() -> u256:
-        i: u256 = 0
-        counter: u256 = 0
+        let i: u256 = 0
+        let counter: u256 = 0
 
         while i < 2:
             i = i + 1

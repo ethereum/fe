@@ -560,7 +560,7 @@ note:
    ┌─ features/events.fe:28:5
    │  
 28 │ ╭     pub def emit_addresses(addr1: address, addr2: address):
-29 │ │         addrs: address[2]
+29 │ │         let addrs: address[2]
 30 │ │         addrs[0] = addr1
 31 │ │         addrs[1] = addr2
 32 │ │         emit Addresses(addrs)
@@ -591,8 +591,8 @@ note:
 note: 
    ┌─ features/events.fe:29:9
    │
-29 │         addrs: address[2]
-   │         ^^^^^^^^^^^^^^^^^ attributes hash: 16566349279731954343
+29 │         let addrs: address[2]
+   │         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16566349279731954343
    │
    = Array(
          Array {
@@ -1136,20 +1136,20 @@ note:
      )
 
 note: 
-   ┌─ features/events.fe:29:16
+   ┌─ features/events.fe:29:20
    │
-29 │         addrs: address[2]
-   │                ^^^^^^^ attributes hash: 16931239362436195516
+29 │         let addrs: address[2]
+   │                    ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
      )
 
 note: 
-   ┌─ features/events.fe:29:16
+   ┌─ features/events.fe:29:20
    │
-29 │         addrs: address[2]
-   │                ^^^^^^^^^^ attributes hash: 16566349279731954343
+29 │         let addrs: address[2]
+   │                    ^^^^^^^^^^ attributes hash: 16566349279731954343
    │
    = Array(
          Array {

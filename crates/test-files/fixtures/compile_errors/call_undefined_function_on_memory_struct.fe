@@ -3,5 +3,5 @@ struct Something:
 
 contract Bar:
   pub def test():
-    thingy: Something = Something(val=u8(1))
+    let thingy: Something = Something(val=u8(1))
     thingy.doesnt_exist()

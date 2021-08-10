@@ -4,9 +4,9 @@ expression: "error_string(\"[snippet]\", &src)"
 
 ---
 error: type mismatch
-  ┌─ [snippet]:4:16
+  ┌─ [snippet]:4:20
   │
-4 │   y: u16 = u16(x)
-  │                ^ expected a number literal
+4 │   let y: u16 = u16(x)
+  │                    ^ expected a number literal
 
 

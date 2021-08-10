@@ -122,9 +122,9 @@ contract UniswapV2Pair:
     # update reserves and, on the first call per block, price accumulators
     def _update(balance0: u256, balance1: u256, reserve0: u256, reserve1: u256):
         # changed from u32s
-        block_timestamp: u256 = block.timestamp % 2**32
+        let block_timestamp: u256 = block.timestamp % 2**32
         # TODO: reproduce desired overflow (https://github.com/ethereum/fe/issues/286)
-        time_elapsed: u256 = block_timestamp - self.block_timestamp_last # overflow is desired
+        let time_elapsed: u256 = block_timestamp - self.block_timestamp_last # overflow is desired
         if time_elapsed > 0 and reserve0 != 0 and reserve1 != 0:
             # `*` never overflows, and + overflow is desired
             self.price0_cumulative_last = self.price0_cumulative_last + (reserve1 / reserve0) * time_elapsed
@@ -137,17 +137,17 @@ contract UniswapV2Pair:
 
     # if fee is on, mint liquidity equivalent to 1/6th of the growth in sqrt(k)
     def _mint_fee(reserve0: u256, reserve1: u256) -> bool:
-        fee_to: address = UniswapV2Factory(self.factory).fee_to()
-        fee_on: bool = fee_to != address(0)
-        k_last: u256 = self.k_last # gas savings
+        let fee_to: address = UniswapV2Factory(self.factory).fee_to()
+        let fee_on: bool = fee_to != address(0)
+        let k_last: u256 = self.k_last # gas savings
         if fee_on:
             if k_last != 0:
-                root_k: u256 = self.sqrt(reserve0 * reserve1)
-                root_k_last: u256 = self.sqrt(k_last)
+                let root_k: u256 = self.sqrt(reserve0 * reserve1)
+                let root_k_last: u256 = self.sqrt(k_last)
                 if root_k > root_k_last:
-                    numerator: u256 = self.total_supply * root_k - root_k_last
-                    denominator: u256 = root_k * 5 + root_k_last
-                    liquidity: u256 = numerator / denominator
+                    let numerator: u256 = self.total_supply * root_k - root_k_last
+                    let denominator: u256 = root_k * 5 + root_k_last
+                    let liquidity: u256 = numerator / denominator
                     if liquidity > 0:
                         self._mint(fee_to, liquidity)
         elif k_last != 0:
@@ -157,17 +157,17 @@ contract UniswapV2Pair:
 
     # this low-level function should be called from a contract which performs important safety checks
     pub def mint(to: address) -> u256:
-        MINIMUM_LIQUIDITY: u256 = 1000
-        reserve0: u256 = self.reserve0
-        reserve1: u256 = self.reserve1
-        balance0: u256 = ERC20(self.token0).balanceOf(self.address)
-        balance1: u256 = ERC20(self.token1).balanceOf(self.address)
-        amount0: u256 = balance0 - self.reserve0
-        amount1: u256 = balance1 - self.reserve1
+        let MINIMUM_LIQUIDITY: u256 = 1000
+        let reserve0: u256 = self.reserve0
+        let reserve1: u256 = self.reserve1
+        let balance0: u256 = ERC20(self.token0).balanceOf(self.address)
+        let balance1: u256 = ERC20(self.token1).balanceOf(self.address)
+        let amount0: u256 = balance0 - self.reserve0
+        let amount1: u256 = balance1 - self.reserve1
 
-        fee_on: bool = self._mint_fee(reserve0, reserve1)
-        total_supply: u256 = self.total_supply # gas savings, must be defined here since totalSupply can update in _mintFee
-        liquidity: u256 = 0
+        let fee_on: bool = self._mint_fee(reserve0, reserve1)
+        let total_supply: u256 = self.total_supply # gas savings, must be defined here since totalSupply can update in _mintFee
+        let liquidity: u256 = 0
         if total_supply == 0:
             liquidity = self.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
             self._mint(address(0), MINIMUM_LIQUIDITY) # permanently lock the first MINIMUM_LIQUIDITY tokens
@@ -187,18 +187,18 @@ contract UniswapV2Pair:
 
     # this low-level function should be called from a contract which performs important safety checks
     pub def burn(to: address) -> (u256, u256):
-        reserve0: u256 = self.reserve0
-        reserve1: u256 = self.reserve1
-        token0: ERC20 = ERC20(self.token0)
-        token1: ERC20 = ERC20(self.token1)
-        balance0: u256 = token0.balanceOf(self.address)
-        balance1: u256 = token1.balanceOf(self.address)
-        liquidity: u256 = self.balances[self.address]
+        let reserve0: u256 = self.reserve0
+        let reserve1: u256 = self.reserve1
+        let token0: ERC20 = ERC20(self.token0)
+        let token1: ERC20 = ERC20(self.token1)
+        let balance0: u256 = token0.balanceOf(self.address)
+        let balance1: u256 = token1.balanceOf(self.address)
+        let liquidity: u256 = self.balances[self.address]
 
-        fee_on: bool = self._mint_fee(reserve0, reserve1)
-        total_supply: u256 = self.total_supply # gas savings, must be defined here since total_supply can update in _mintFee
-        amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
-        amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
+        let fee_on: bool = self._mint_fee(reserve0, reserve1)
+        let total_supply: u256 = self.total_supply # gas savings, must be defined here since total_supply can update in _mintFee
+        let amount0: u256 = (liquidity * balance0) / total_supply # using balances ensures pro-rata distribution
+        let amount1: u256 = (liquidity * balance1) / total_supply # using balances ensures pro-rata distribution
         assert amount0 > 0 and amount1 > 0, "UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED"
         self._burn(self.address, liquidity)
         token0.transfer(to, amount0)
@@ -219,12 +219,12 @@ contract UniswapV2Pair:
     # pub def swap(amount0_out: u256, amount1_out: u256, to: address, data: bytes):
     pub def swap(amount0_out: u256, amount1_out: u256, to: address):
         assert amount0_out > 0 or amount1_out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT"
-        reserve0: u256 = self.reserve0
-        reserve1: u256 = self.reserve1
+        let reserve0: u256 = self.reserve0
+        let reserve1: u256 = self.reserve1
         assert amount0_out < reserve0 and amount1_out < reserve1, "UniswapV2: INSUFFICIENT_LIQUIDITY"
 
-        token0: ERC20 = ERC20(self.token0)
-        token1: ERC20 = ERC20(self.token1)
+        let token0: ERC20 = ERC20(self.token0)
+        let token1: ERC20 = ERC20(self.token1)
 
         # TODO: we should be using `token0.address` (https://github.com/ethereum/fe/issues/287)
         assert to != address(token0) and to != address(token1), "UniswapV2: INVALID_TO"
@@ -237,16 +237,16 @@ contract UniswapV2Pair:
 #        if data.length > 0:
 #            IUniswapV2Callee(to).uniswapV2Call(msg.sender, amount0_out, amount1_out, data)
 
-        balance0: u256 = token0.balanceOf(self.address)
-        balance1: u256 = token1.balanceOf(self.address)
+        let balance0: u256 = token0.balanceOf(self.address)
+        let balance1: u256 = token1.balanceOf(self.address)
 
-        amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
-        amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
+        let amount0_in: u256 = balance0 - (reserve0 - amount0_out) if balance0 > reserve0 - amount0_out else 0
+        let amount1_in: u256 = balance1 - (reserve1 - amount1_out) if balance1 > reserve1 - amount1_out else 0
 
         assert amount0_in > 0 or amount1_in > 0, "UniswapV2: INSUFFICIENT_INPUT_AMOUNT"
 
-        balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
-        balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
+        let balance0_adjusted: u256 = balance0 * 1000 - amount0_in * 3
+        let balance1_adjusted: u256 = balance1 * 1000 - amount1_in * 3
 
         assert balance0_adjusted * balance1_adjusted >= reserve0 * reserve1 * 1000000, "UniswapV2: K"
 
@@ -255,23 +255,23 @@ contract UniswapV2Pair:
 
     # force balances to match reserves
     pub def skim(to: address):
-        token0: ERC20 = ERC20(self.token0) # gas savings
-        token1: ERC20 = ERC20(self.token1) # gas savings
+        let token0: ERC20 = ERC20(self.token0) # gas savings
+        let token1: ERC20 = ERC20(self.token1) # gas savings
 
         token0.transfer(to, token0.balanceOf(self.address) - self.reserve0)
         token1.transfer(to, token1.balanceOf(self.address) - self.reserve1)
 
     # force reserves to match balances
     pub def sync():
-        token0: ERC20 = ERC20(self.token0)
-        token1: ERC20 = ERC20(self.token1)
+        let token0: ERC20 = ERC20(self.token0)
+        let token1: ERC20 = ERC20(self.token1)
         self._update(token0.balanceOf(self.address), token1.balanceOf(self.address), self.reserve0, self.reserve1)
 
     def sqrt(val: u256) -> u256:
-        z: u256
+        let z: u256
         if (val > 3):
             z = val
-            x: u256 = val / 2 + 1
+            let x: u256 = val / 2 + 1
             while (x < z):
                 z = x
                 x = (val / x + x) / 2
@@ -312,13 +312,13 @@ contract UniswapV2Factory:
     pub def create_pair(token_a: address, token_b: address) -> address:
         assert token_a != token_b, "UniswapV2: IDENTICAL_ADDRESSES"
 
-        token0: address = token_a if token_a < token_b else token_b
-        token1: address = token_a if token_a > token_b else token_b
+        let token0: address = token_a if token_a < token_b else token_b
+        let token1: address = token_a if token_a > token_b else token_b
         assert token0 != address(0), "UniswapV2: ZERO_ADDRESS"
         assert self.pairs[token0][token1] == address(0), "UniswapV2: PAIR_EXISTS"
 
-        salt: u256 = keccak256((token0, token1).abi_encode())
-        pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
+        let salt: u256 = keccak256((token0, token1).abi_encode())
+        let pair: UniswapV2Pair = UniswapV2Pair.create2(0, salt)
         pair.initialize(token0, token1)
 
         self.pairs[token0][token1] = address(pair)

@@ -2,8 +2,8 @@ contract Foo:
 
     pub def bar() -> u256:
         if true:
-            y: u256 = 1
+            let y: u256 = 1
             return y
         else:
-            y: u256 = 1
+            let y: u256 = 1
             return y

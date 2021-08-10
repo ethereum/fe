@@ -57,26 +57,10 @@ note:
     }
 
 note: 
-  ┌─ features/create2_contract.fe:8:32
+  ┌─ features/create2_contract.fe:8:36
   │
-8 │         foo: Foo = Foo.create2(0, 52)
-  │                                ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/create2_contract.fe:8:35
-  │
-8 │         foo: Foo = Foo.create2(0, 52)
-  │                                   ^^ attributes hash: 16797824492585953824
+8 │         let foo: Foo = Foo.create2(0, 52)
+  │                                    ^ attributes hash: 16797824492585953824
   │
   = ExpressionAttributes {
         typ: Base(
@@ -89,10 +73,26 @@ note:
     }
 
 note: 
-  ┌─ features/create2_contract.fe:8:20
+  ┌─ features/create2_contract.fe:8:39
   │
-8 │         foo: Foo = Foo.create2(0, 52)
-  │                    ^^^^^^^^^^^^^^^^^^ attributes hash: 8552961459538575979
+8 │         let foo: Foo = Foo.create2(0, 52)
+  │                                       ^^ attributes hash: 16797824492585953824
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/create2_contract.fe:8:24
+  │
+8 │         let foo: Foo = Foo.create2(0, 52)
+  │                        ^^^^^^^^^^^^^^^^^^ attributes hash: 8552961459538575979
   │
   = ExpressionAttributes {
         typ: Contract(
@@ -181,7 +181,7 @@ note:
   │  
 6 │ ╭     pub def create2_foo() -> address:
 7 │ │         # value and salt
-8 │ │         foo: Foo = Foo.create2(0, 52)
+8 │ │         let foo: Foo = Foo.create2(0, 52)
 9 │ │         return address(foo)
   │ ╰───────────────────────────^ attributes hash: 15788904857074118116
   │  
@@ -197,8 +197,8 @@ note:
 note: 
   ┌─ features/create2_contract.fe:8:9
   │
-8 │         foo: Foo = Foo.create2(0, 52)
-  │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11013990582171916248
+8 │         let foo: Foo = Foo.create2(0, 52)
+  │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11013990582171916248
   │
   = Contract(
         Contract {
@@ -265,7 +265,7 @@ note:
 5 │ ╭ contract FooFactory:
 6 │ │     pub def create2_foo() -> address:
 7 │ │         # value and salt
-8 │ │         foo: Foo = Foo.create2(0, 52)
+8 │ │         let foo: Foo = Foo.create2(0, 52)
 9 │ │         return address(foo)
   │ ╰───────────────────────────^ attributes hash: 9489720864976305437
   │  
@@ -303,10 +303,10 @@ note:
     }
 
 note: 
-  ┌─ features/create2_contract.fe:8:20
+  ┌─ features/create2_contract.fe:8:24
   │
-8 │         foo: Foo = Foo.create2(0, 52)
-  │                    ^^^^^^^^^^^ attributes hash: 7190587645396562862
+8 │         let foo: Foo = Foo.create2(0, 52)
+  │                        ^^^^^^^^^^^ attributes hash: 7190587645396562862
   │
   = TypeAttribute {
         typ: Contract(
@@ -364,10 +364,10 @@ note:
     )
 
 note: 
-  ┌─ features/create2_contract.fe:8:14
+  ┌─ features/create2_contract.fe:8:18
   │
-8 │         foo: Foo = Foo.create2(0, 52)
-  │              ^^^ attributes hash: 2324270301873557290
+8 │         let foo: Foo = Foo.create2(0, 52)
+  │                  ^^^ attributes hash: 2324270301873557290
   │
   = Contract(
         Contract {

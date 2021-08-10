@@ -4,5 +4,5 @@ contract Foo:
 
 contract FooFactory:
     pub def create_foo() -> address:
-        foo: Foo = Foo.create(0)
+        let foo: Foo = Foo.create(0)
         return address(foo)

@@ -51,7 +51,7 @@ contract Foo:
         return self.my_num
 
     pub def add_from_mem(a: u256, b: u256) -> u256:
-        my_array: u256[10]
+        let my_array: u256[10]
         my_array[7] = a
         my_array[7] = my_array[7] + b
         return my_array[7]

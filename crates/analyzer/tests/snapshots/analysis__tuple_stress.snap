@@ -865,10 +865,10 @@ note:
      }
 
 note: 
-   ┌─ stress/tuple_stress.fe:34:24
+   ┌─ stress/tuple_stress.fe:34:28
    │
-34 │         my_num: u256 = self.my_sto_tuple.item0
-   │                        ^^^^^^^^^^^^^^^^^ attributes hash: 5427295442955120331
+34 │         let my_num: u256 = self.my_sto_tuple.item0
+   │                            ^^^^^^^^^^^^^^^^^ attributes hash: 5427295442955120331
    │
    = ExpressionAttributes {
          typ: Tuple(
@@ -896,10 +896,10 @@ note:
      }
 
 note: 
-   ┌─ stress/tuple_stress.fe:34:24
+   ┌─ stress/tuple_stress.fe:34:28
    │
-34 │         my_num: u256 = self.my_sto_tuple.item0
-   │                        ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
+34 │         let my_num: u256 = self.my_sto_tuple.item0
+   │                            ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4679040613115932727
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1043,10 +1043,10 @@ note:
      }
 
 note: 
-   ┌─ stress/tuple_stress.fe:35:43
+   ┌─ stress/tuple_stress.fe:35:47
    │  
-35 │           my_tuple: (u256, bool, address) = (
-   │ ╭───────────────────────────────────────────^
+35 │           let my_tuple: (u256, bool, address) = (
+   │ ╭───────────────────────────────────────────────^
 36 │ │             self.my_sto_tuple.item0,
 37 │ │             true and false,
 38 │ │             address(26)
@@ -1470,8 +1470,8 @@ note:
    ┌─ stress/tuple_stress.fe:33:5
    │  
 33 │ ╭     pub def build_tuple_and_emit():
-34 │ │         my_num: u256 = self.my_sto_tuple.item0
-35 │ │         my_tuple: (u256, bool, address) = (
+34 │ │         let my_num: u256 = self.my_sto_tuple.item0
+35 │ │         let my_tuple: (u256, bool, address) = (
 36 │ │             self.my_sto_tuple.item0,
    · │
 39 │ │         )
@@ -1532,8 +1532,8 @@ note:
 note: 
    ┌─ stress/tuple_stress.fe:34:9
    │
-34 │         my_num: u256 = self.my_sto_tuple.item0
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+34 │         let my_num: u256 = self.my_sto_tuple.item0
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
    │
    = Base(
          Numeric(
@@ -1544,7 +1544,7 @@ note:
 note: 
    ┌─ stress/tuple_stress.fe:35:9
    │  
-35 │ ╭         my_tuple: (u256, bool, address) = (
+35 │ ╭         let my_tuple: (u256, bool, address) = (
 36 │ │             self.my_sto_tuple.item0,
 37 │ │             true and false,
 38 │ │             address(26)
@@ -2570,22 +2570,10 @@ note:
     )
 
 note: 
-   ┌─ stress/tuple_stress.fe:34:17
+   ┌─ stress/tuple_stress.fe:34:21
    │
-34 │         my_num: u256 = self.my_sto_tuple.item0
-   │                 ^^^^ attributes hash: 17942395924573474124
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
-
-note: 
-   ┌─ stress/tuple_stress.fe:35:20
-   │
-35 │         my_tuple: (u256, bool, address) = (
-   │                    ^^^^ attributes hash: 17942395924573474124
+34 │         let my_num: u256 = self.my_sto_tuple.item0
+   │                     ^^^^ attributes hash: 17942395924573474124
    │
    = Base(
          Numeric(
@@ -2594,30 +2582,42 @@ note:
      )
 
 note: 
-   ┌─ stress/tuple_stress.fe:35:26
+   ┌─ stress/tuple_stress.fe:35:24
    │
-35 │         my_tuple: (u256, bool, address) = (
-   │                          ^^^^ attributes hash: 8311861578736502650
+35 │         let my_tuple: (u256, bool, address) = (
+   │                        ^^^^ attributes hash: 17942395924573474124
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ stress/tuple_stress.fe:35:30
+   │
+35 │         let my_tuple: (u256, bool, address) = (
+   │                              ^^^^ attributes hash: 8311861578736502650
    │
    = Base(
          Bool,
      )
 
 note: 
-   ┌─ stress/tuple_stress.fe:35:32
+   ┌─ stress/tuple_stress.fe:35:36
    │
-35 │         my_tuple: (u256, bool, address) = (
-   │                                ^^^^^^^ attributes hash: 16931239362436195516
+35 │         let my_tuple: (u256, bool, address) = (
+   │                                    ^^^^^^^ attributes hash: 16931239362436195516
    │
    = Base(
          Address,
      )
 
 note: 
-   ┌─ stress/tuple_stress.fe:35:19
+   ┌─ stress/tuple_stress.fe:35:23
    │
-35 │         my_tuple: (u256, bool, address) = (
-   │                   ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13223894189960686356
+35 │         let my_tuple: (u256, bool, address) = (
+   │                       ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 13223894189960686356
    │
    = Tuple(
          Tuple {

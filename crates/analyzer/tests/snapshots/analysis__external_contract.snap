@@ -464,10 +464,10 @@ note:
      }
 
 note: 
-   ┌─ features/external_contract.fe:24:24
+   ┌─ features/external_contract.fe:24:28
    │
-24 │         foo: Foo = Foo(foo_address)
-   │                        ^^^^^^^^^^^ attributes hash: 16366719240912622931
+24 │         let foo: Foo = Foo(foo_address)
+   │                            ^^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -478,10 +478,10 @@ note:
      }
 
 note: 
-   ┌─ features/external_contract.fe:24:20
+   ┌─ features/external_contract.fe:24:24
    │
-24 │         foo: Foo = Foo(foo_address)
-   │                    ^^^^^^^^^^^^^^^^ attributes hash: 7045153914799271565
+24 │         let foo: Foo = Foo(foo_address)
+   │                        ^^^^^^^^^^^^^^^^ attributes hash: 7045153914799271565
    │
    = ExpressionAttributes {
          typ: Contract(
@@ -705,10 +705,10 @@ note:
      }
 
 note: 
-   ┌─ features/external_contract.fe:32:24
+   ┌─ features/external_contract.fe:32:28
    │
-32 │         foo: Foo = Foo(foo_address)
-   │                        ^^^^^^^^^^^ attributes hash: 16366719240912622931
+32 │         let foo: Foo = Foo(foo_address)
+   │                            ^^^^^^^^^^^ attributes hash: 16366719240912622931
    │
    = ExpressionAttributes {
          typ: Base(
@@ -719,10 +719,10 @@ note:
      }
 
 note: 
-   ┌─ features/external_contract.fe:32:20
+   ┌─ features/external_contract.fe:32:24
    │
-32 │         foo: Foo = Foo(foo_address)
-   │                    ^^^^^^^^^^^^^^^^ attributes hash: 7045153914799271565
+32 │         let foo: Foo = Foo(foo_address)
+   │                        ^^^^^^^^^^^^^^^^ attributes hash: 7045153914799271565
    │
    = ExpressionAttributes {
          typ: Contract(
@@ -1018,7 +1018,7 @@ note:
    ┌─ features/external_contract.fe:10:5
    │  
 10 │ ╭     pub def build_array(a: u256, b: u256) -> u256[3]:
-11 │ │         my_array: u256[3]
+11 │ │         let my_array: u256[3]
 12 │ │         my_array[0] = a
 13 │ │         my_array[1] = a * b
 14 │ │         my_array[2] = b
@@ -1064,7 +1064,7 @@ note:
 20 │ │         my_num: u256,
 21 │ │         my_addrs: address[5],
    · │
-24 │ │         foo: Foo = Foo(foo_address)
+24 │ │         let foo: Foo = Foo(foo_address)
 25 │ │         foo.emit_event(my_num, my_addrs, my_string)
    │ ╰───────────────────────────────────────────────────^ attributes hash: 15540531040497604947
    │  
@@ -1117,7 +1117,7 @@ note:
 29 │ │          a: u256,
 30 │ │          b: u256,
 31 │ │     ) -> u256[3]:
-32 │ │         foo: Foo = Foo(foo_address)
+32 │ │         let foo: Foo = Foo(foo_address)
 33 │ │         return foo.build_array(a, b)
    │ ╰────────────────────────────────────^ attributes hash: 17961685809848126830
    │  
@@ -1161,8 +1161,8 @@ note:
 note: 
    ┌─ features/external_contract.fe:11:9
    │
-11 │         my_array: u256[3]
-   │         ^^^^^^^^^^^^^^^^^ attributes hash: 5963828201795370982
+11 │         let my_array: u256[3]
+   │         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5963828201795370982
    │
    = Array(
          Array {
@@ -1176,8 +1176,8 @@ note:
 note: 
    ┌─ features/external_contract.fe:24:9
    │
-24 │         foo: Foo = Foo(foo_address)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 649988358200888429
+24 │         let foo: Foo = Foo(foo_address)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 649988358200888429
    │
    = Contract(
          Contract {
@@ -1254,8 +1254,8 @@ note:
 note: 
    ┌─ features/external_contract.fe:32:9
    │
-32 │         foo: Foo = Foo(foo_address)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 649988358200888429
+32 │         let foo: Foo = Foo(foo_address)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 649988358200888429
    │
    = Contract(
          Contract {
@@ -1537,7 +1537,7 @@ note:
 19 │ │         foo_address: address,
 20 │ │         my_num: u256,
    · │
-32 │ │         foo: Foo = Foo(foo_address)
+32 │ │         let foo: Foo = Foo(foo_address)
 33 │ │         return foo.build_array(a, b)
    │ ╰────────────────────────────────────^ attributes hash: 13297917713247410406
    │  
@@ -1697,10 +1697,10 @@ note:
      }
 
 note: 
-   ┌─ features/external_contract.fe:24:20
+   ┌─ features/external_contract.fe:24:24
    │
-24 │         foo: Foo = Foo(foo_address)
-   │                    ^^^ attributes hash: 11173587274812739149
+24 │         let foo: Foo = Foo(foo_address)
+   │                        ^^^ attributes hash: 11173587274812739149
    │
    = TypeConstructor {
          typ: Contract(
@@ -1785,10 +1785,10 @@ note:
    = ValueAttribute
 
 note: 
-   ┌─ features/external_contract.fe:32:20
+   ┌─ features/external_contract.fe:32:24
    │
-32 │         foo: Foo = Foo(foo_address)
-   │                    ^^^ attributes hash: 11173587274812739149
+32 │         let foo: Foo = Foo(foo_address)
+   │                        ^^^ attributes hash: 11173587274812739149
    │
    = TypeConstructor {
          typ: Contract(
@@ -2178,10 +2178,10 @@ note:
      )
 
 note: 
-   ┌─ features/external_contract.fe:11:19
+   ┌─ features/external_contract.fe:11:23
    │
-11 │         my_array: u256[3]
-   │                   ^^^^ attributes hash: 17942395924573474124
+11 │         let my_array: u256[3]
+   │                       ^^^^ attributes hash: 17942395924573474124
    │
    = Base(
          Numeric(
@@ -2190,10 +2190,10 @@ note:
      )
 
 note: 
-   ┌─ features/external_contract.fe:11:19
+   ┌─ features/external_contract.fe:11:23
    │
-11 │         my_array: u256[3]
-   │                   ^^^^^^^ attributes hash: 5963828201795370982
+11 │         let my_array: u256[3]
+   │                       ^^^^^^^ attributes hash: 5963828201795370982
    │
    = Array(
          Array {
@@ -2205,10 +2205,10 @@ note:
      )
 
 note: 
-   ┌─ features/external_contract.fe:24:14
+   ┌─ features/external_contract.fe:24:18
    │
-24 │         foo: Foo = Foo(foo_address)
-   │              ^^^ attributes hash: 18327896826829233347
+24 │         let foo: Foo = Foo(foo_address)
+   │                  ^^^ attributes hash: 18327896826829233347
    │
    = Contract(
          Contract {
@@ -2283,10 +2283,10 @@ note:
      )
 
 note: 
-   ┌─ features/external_contract.fe:32:14
+   ┌─ features/external_contract.fe:32:18
    │
-32 │         foo: Foo = Foo(foo_address)
-   │              ^^^ attributes hash: 18327896826829233347
+32 │         let foo: Foo = Foo(foo_address)
+   │                  ^^^ attributes hash: 18327896826829233347
    │
    = Contract(
          Contract {
