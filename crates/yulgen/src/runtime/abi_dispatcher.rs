@@ -1,6 +1,6 @@
 use crate::names::abi as abi_names;
 use crate::operations::abi as abi_operations;
-use crate::types::{AbiDecodeLocation, AbiType};
+use crate::types::{to_abi_selector_names, AbiDecodeLocation, AbiType};
 use fe_abi::utils as abi_utils;
 use yultsur::*;
 
@@ -69,11 +69,7 @@ fn dispatch_arm((name, params, return_type): (String, Vec<AbiType>, Option<AbiTy
 }
 
 fn selector(name: &str, params: &[AbiType]) -> yul::Literal {
-    let params = params
-        .iter()
-        .map(|typ| typ.selector_name())
-        .collect::<Vec<_>>();
-    literal! { (abi_utils::func_selector(name, &params)) }
+    literal! { (abi_utils::func_selector(name, &to_abi_selector_names(params))) }
 }
 
 #[cfg(test)]

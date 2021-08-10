@@ -104,11 +104,8 @@ pub fn to_abi_types(db: &dyn AnalyzerDb, types: &[impl AsAbiType]) -> Vec<AbiTyp
     types.iter().map(|typ| typ.as_abi_type(db)).collect()
 }
 
-pub fn to_abi_selector_names(db: &dyn AnalyzerDb, types: &[impl AsAbiType]) -> Vec<String> {
-    types
-        .iter()
-        .map(|typ| typ.as_abi_type(db).selector_name())
-        .collect()
+pub fn to_abi_selector_names(types: &[AbiType]) -> Vec<String> {
+    types.iter().map(|typ| typ.selector_name()).collect()
 }
 
 impl AbiType {

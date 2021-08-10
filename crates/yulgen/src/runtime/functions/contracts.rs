@@ -1,8 +1,7 @@
 use crate::names;
 use crate::names::abi as abi_names;
 use crate::operations::abi as abi_operations;
-use crate::types::AsAbiType;
-use crate::types::{to_abi_types, AbiDecodeLocation};
+use crate::types::{to_abi_selector_names, to_abi_types, AbiDecodeLocation, AsAbiType};
 use fe_abi::utils as abi_utils;
 use fe_analyzer::namespace::items::ContractId;
 use fe_analyzer::AnalyzerDb;
@@ -32,13 +31,7 @@ pub fn calls(db: &dyn AnalyzerDb, contract: ContractId) -> Vec<yul::Statement> {
             let (param_idents, param_exprs) = abi_names::vals("param", signature.params.len());
             // the function selector must be added to the first 4 bytes of the calldata
             let selector = {
-                let selector = abi_utils::func_selector(
-                    name,
-                    &param_types
-                        .iter()
-                        .map(|abi_typ| abi_typ.selector_name())
-                        .collect::<Vec<_>>(),
-                );
+                let selector = abi_utils::func_selector(name, &to_abi_selector_names(&param_types));
                 literal_expression! { (selector) }
             };
 
