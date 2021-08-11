@@ -237,7 +237,7 @@ fn parse_var_decl(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
                     "Must be followed by type annotation",
                 )],
                 vec![
-                    "The left side of a variable declaration can be either a name\nor a non-empty tuple."
+                    "Example: `let x: u8 = 1`"
                         .into(),
                 ],
             );
@@ -270,18 +270,6 @@ fn parse_expr_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
                 ],
             );
             return Err(ParseFailed);
-            // par.next()?;
-
-            // let target = expr_to_vardecl_target(par, expr)?;
-            // let typ = parse_type_desc(par)?;
-            // let value = if par.peek() == Some(Eq) {
-            //     par.next()?;
-            //     Some(parse_expr(par)?)
-            // } else {
-            //     None
-            // };
-            // let span = target.span + typ.span + value.as_ref();
-            // Node::new(FuncStmt::VarDecl { target, typ, value }, span)
 
 
         }
