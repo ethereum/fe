@@ -20,6 +20,9 @@ contract Foo:
     pub fn read_my_tuple_item2(my_tuple: (u256, bool, address)) -> address:
         return my_tuple.item2
 
+    pub fn read_my_tuple_item10(my_tuple: (u256, u256, u256, u256, u256, u256, u256, u256, u256, u256, address)) -> address:
+            return my_tuple.item10
+
     pub fn emit_my_event(my_tuple: (u256, bool, address)):
         emit MyEvent(my_tuple)
 
