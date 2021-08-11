@@ -20,6 +20,6 @@ contract Foo:
     pub fn return_casted_static_string() -> String<100>:
         return String<100>("foo")
 
-    pub fn return_with_newline() -> String<16>:
-        return "foo
-        balu"
+    pub fn return_special_chars() -> String<18>:
+        return "\n\"'\r\t
+        foo\\"

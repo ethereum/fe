@@ -47,7 +47,13 @@ fn normalize_object(obj: yul::Object) -> yul::Object {
         .into_iter()
         .map(|data| yul::Data {
             name: data.name,
-            value: data.value.replace('\n', "\\\\n"),
+            value: data
+                .value
+                .replace('\\', "\\\\\\\\")
+                .replace('\n', "\\\\n")
+                .replace("\"", "\\\\\"")
+                .replace('\r', "\\\\r")
+                .replace('\t', "\\\\t"),
         })
         .collect::<Vec<_>>();
     yul::Object {

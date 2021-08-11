@@ -30,6 +30,7 @@
         * [`return` Statement](spec/statement_return.md)
         * [`if` Statement](spec/statement_if.md)
     * [Expressions](spec/expressions.md)
+        * [Literal expressions](spec/expr-literal.md)
         * [Arithmetic Operators](spec/arithmetic_operators.md)
         * [Comparision Operators](spec/comparision_operators.md)
     * [Type System](spec/type_system.md)

@@ -133,6 +133,8 @@ test_stmt! { undefined_generic_type, "let x: foobar<u256> = 10" }
 test_stmt! { undefined_name, "let x: u16 = y\nlet z: u16 = y" }
 test_stmt! { undefined_type, "let x: foobar = 10" }
 test_stmt! { unexpected_return, "return 1" }
+test_stmt! { revert_reason_not_struct, "revert 1" }
+test_stmt! { invalid_ascii, "String<2>(\"ä\")" }
 
 test_file! { bad_tuple_attr1 }
 test_file! { bad_tuple_attr2 }
@@ -191,7 +193,6 @@ test_file! { return_call_to_fn_without_return }
 test_file! { return_from_init }
 test_file! { return_lt_mixed_types }
 
-test_stmt! { revert_reason_not_stuct, "revert 1" }
 test_file! { strict_boolean_if_else }
 test_file! { struct_call_bad_args }
 test_file! { struct_call_without_kw_args }
