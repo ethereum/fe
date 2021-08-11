@@ -1,4 +1,4 @@
 contract Foo:
-    def bar() -> ():
+    fn bar() -> ():
         pass
         return ()

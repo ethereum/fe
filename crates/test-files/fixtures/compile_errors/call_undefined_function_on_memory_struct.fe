@@ -2,6 +2,6 @@ struct Something:
   val: u8
 
 contract Bar:
-  pub def test():
+  pub fn test():
     let thingy: Something = Something(val=u8(1))
     thingy.doesnt_exist()

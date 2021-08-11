@@ -6,4 +6,5 @@ expression: "abi_functions::decode_component_bool(AbiDecodeLocation::Memory)"
 function abi_decode_component_bool_mem(head_start, offset) -> return_val {
     let ptr := add(head_start, offset)
     return_val := mload(ptr)
+    if iszero(is_left_padded(255, return_val)) { revert_with_Panic_uint256(153) }
 }

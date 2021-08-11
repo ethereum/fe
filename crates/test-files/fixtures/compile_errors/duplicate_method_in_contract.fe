@@ -1,7 +1,7 @@
 contract Foo:
 
-    pub def bar():
+    pub fn bar():
         pass
 
-    pub def bar():
+    pub fn bar():
         pass

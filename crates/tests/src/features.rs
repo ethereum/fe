@@ -5,7 +5,6 @@ use evm_runtime::Handler;
 use primitive_types::{H160, U256};
 use rstest::rstest;
 use std::collections::BTreeMap;
-use std::iter;
 
 use fe_common::utils::keccak;
 use fe_compiler_test_utils::*;
@@ -55,25 +54,24 @@ fn test_revert() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, "revert.fe", "Foo", &[]);
 
-        let exit = harness.capture_call(&mut executor, "bar", &[]);
-
-        assert!(matches!(
-            exit,
-            evm::Capture::Exit((evm::ExitReason::Revert(_), _))
-        ));
-
-        let exit2 = harness.capture_call(&mut executor, "revert_custom_error", &[]);
+        validate_revert(harness.capture_call(&mut executor, "bar", &[]), &[]);
 
         validate_revert(
-            exit2,
-            &encode_error("Error(uint256,bool)", &[uint_token(1), bool_token(true)]),
+            harness.capture_call(&mut executor, "revert_custom_error", &[]),
+            &encode_revert("Error(uint256,bool)", &[uint_token(1), bool_token(true)]),
         );
 
-        let exit3 = harness.capture_call(&mut executor, "revert_other_error", &[]);
+        validate_revert(
+            harness.capture_call(&mut executor, "revert_other_error", &[]),
+            &encode_revert(
+                "OtherError(uint256,bool)",
+                &[uint_token(1), bool_token(true)],
+            ),
+        );
 
         validate_revert(
-            exit3,
-            &encode_error(
+            harness.capture_call(&mut executor, "revert_other_error_from_sto", &[]),
+            &encode_revert(
                 "OtherError(uint256,bool)",
                 &[uint_token(1), bool_token(true)],
             ),
@@ -86,56 +84,57 @@ fn test_assert() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, "assert.fe", "Foo", &[]);
 
-        let exit1 = harness.capture_call(&mut executor, "bar", &[uint_token(4)]);
+        validate_revert(
+            harness.capture_call(&mut executor, "assert_sto_bool", &[]),
+            &encoded_panic_assert(),
+        );
 
-        match exit1 {
-            evm::Capture::Exit((evm::ExitReason::Revert(_), output)) => assert_eq!(output.len(), 0),
-            _ => panic!("Did not revert correctly"),
-        }
+        validate_revert(
+            harness.capture_call(&mut executor, "assert_sto_string_msg", &[]),
+            &encode_error_reason("hello"),
+        );
 
-        let exit2 = harness.capture_call(&mut executor, "bar", &[uint_token(42)]);
+        validate_revert(
+            harness.capture_call(&mut executor, "bar", &[uint_token(4)]),
+            &encoded_panic_assert(),
+        );
 
         assert!(matches!(
-            exit2,
+            harness.capture_call(&mut executor, "bar", &[uint_token(42)]),
             evm::Capture::Exit((evm::ExitReason::Succeed(_), _))
         ));
 
-        let exit3 =
-            harness.capture_call(&mut executor, "revert_with_static_string", &[uint_token(4)]);
-
-        match exit3 {
-            evm::Capture::Exit((evm::ExitReason::Revert(_), output)) => {
-                assert_eq!(output, encode_error_reason("Must be greater than five"))
-            }
-            _ => panic!("Did not revert correctly"),
-        }
-
-        let reason = "A very looooooooooooooong reason that consumes multiple words";
-        let exit4 = harness.capture_call(
-            &mut executor,
-            "revert_with",
-            &[uint_token(4), string_token(&reason)],
+        validate_revert(
+            harness.capture_call(&mut executor, "revert_with_static_string", &[uint_token(4)]),
+            &encode_error_reason("Must be greater than five"),
         );
 
-        match exit4 {
-            evm::Capture::Exit((evm::ExitReason::Revert(_), output)) => {
-                assert_eq!(output, encode_error_reason(reason))
-            }
-            _ => panic!("Did not revert correctly"),
-        }
+        let reason = "A very looooooooooooooong reason that consumes multiple words";
+
+        validate_revert(
+            harness.capture_call(
+                &mut executor,
+                "revert_with",
+                &[uint_token(4), string_token(reason)],
+            ),
+            &encode_error_reason(reason),
+        );
     })
 }
 
 #[rstest(fixture_file, input, expected,
     case("for_loop_with_static_array.fe", &[], uint_token(30)),
+    case("for_loop_with_static_array_from_sto.fe", &[], uint_token(6)),
     case("for_loop_with_break.fe", &[], uint_token(15)),
     case("for_loop_with_continue.fe", &[], uint_token(17)),
     case("while_loop_with_continue.fe", &[], uint_token(1)),
     case("while_loop.fe", &[], uint_token(3)),
+    case("while_loop_test_from_sto.fe", &[], uint_token(42)),
     case("while_loop_with_break.fe", &[], uint_token(1)),
     case("while_loop_with_break_2.fe", &[], uint_token(1)),
     case("if_statement.fe", &[uint_token(6)], uint_token(1)),
     case("if_statement.fe", &[uint_token(4)], uint_token(0)),
+    case("if_statement_test_from_sto.fe", &[], uint_token(42)),
     case("if_statement_2.fe", &[uint_token(6)], uint_token(1)),
     case("if_statement_with_block_declaration.fe", &[], uint_token(1)),
     case("ternary_expression.fe", &[uint_token(6)], uint_token(1)),
@@ -275,7 +274,7 @@ fn return_array() {
             &mut executor,
             "bar",
             &[uint_token(42)],
-            Some(&u256_array_token(&[0, 0, 0, 42, 0])),
+            Some(&uint_array_token(&[0, 0, 0, 42, 0])),
         )
     })
 }
@@ -289,7 +288,7 @@ fn multi_param() {
             &mut executor,
             "bar",
             &[uint_token(4), uint_token(42), uint_token(420)],
-            Some(&u256_array_token(&[4, 42, 420])),
+            Some(&uint_array_token(&[4, 42, 420])),
         )
     })
 }
@@ -317,7 +316,7 @@ fn test_map(fixture_file: &str) {
         harness.test_function(
             &mut executor,
             "write_bar",
-            &[uint_token(420), uint_token(12)],
+            &[uint_token(26), uint_token(12)],
             None,
         );
 
@@ -331,7 +330,7 @@ fn test_map(fixture_file: &str) {
         harness.test_function(
             &mut executor,
             "read_bar",
-            &[uint_token(420)],
+            &[uint_token(26)],
             Some(&uint_token(12)),
         );
     })
@@ -529,12 +528,7 @@ fn events() {
         let addr1 = address_token("1234000000000000000000000000000000005678");
         let addr2 = address_token("9123000000000000000000000000000000004567");
         let addr_array = ethabi::Token::FixedArray(vec![addr1.clone(), addr2.clone()]);
-        let bytes = bytes_token(
-            iter::repeat("ten bytes.")
-                .take(10)
-                .collect::<String>()
-                .as_str(),
-        );
+        let bytes = bytes_token(&"ten bytes.".repeat(10));
 
         harness.test_function(&mut executor, "emit_nums", &[], None);
         harness.test_function(&mut executor, "emit_bases", &[addr1.clone()], None);
@@ -614,6 +608,16 @@ fn strings() {
             Some(&string_token("foo")),
         );
 
+        harness.test_function(
+            &mut executor,
+            "return_with_newline",
+            &[],
+            Some(&string_token(
+                "foo
+        balu",
+            )),
+        );
+
         harness.events_emitted(
             executor,
             &[(
@@ -672,7 +676,7 @@ fn sized_vals_in_sto() {
         let harness = deploy_contract(&mut executor, "sized_vals_in_sto.fe", "Foo", &[]);
 
         let num = uint_token(68);
-        let nums = u256_array_token(&(0..42).into_iter().collect::<Vec<_>>());
+        let nums = uint_array_token(&(0..42).into_iter().collect::<Vec<_>>());
         let string = string_token("there are 26 protons in fe");
 
         harness.test_function(&mut executor, "write_num", &[num.clone()], None);
@@ -703,10 +707,12 @@ fn checked_arithmetic() {
             // ADDITION
 
             // unsigned: max_value + 1 fails
+
             harness.test_function_reverts(
                 &mut executor,
                 &format!("add_u{}", config.size),
                 &[config.u_max.clone(), uint_token(1)],
+                &encoded_over_or_underflow(),
             );
 
             // unsigned: max_value + 0 works
@@ -722,6 +728,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("add_i{}", config.size),
                 &[config.i_max.clone(), int_token(1)],
+                &encoded_over_or_underflow(),
             );
 
             // signed: max_value + 0 works
@@ -737,6 +744,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("add_i{}", config.size),
                 &[config.i_min.clone(), int_token(-1)],
+                &encoded_over_or_underflow(),
             );
 
             // signed: min_value + 0 works
@@ -753,6 +761,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("sub_u{}", config.size),
                 &[config.u_min.clone(), uint_token(1)],
+                &encoded_over_or_underflow(),
             );
 
             // unsigned: min_value - 0 works
@@ -768,6 +777,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("sub_i{}", config.size),
                 &[config.i_min.clone(), int_token(1)],
+                &encoded_over_or_underflow(),
             );
 
             // signed: min_value - 0 works
@@ -783,6 +793,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("sub_i{}", config.size),
                 &[config.i_max.clone(), int_token(-1)],
+                &encoded_over_or_underflow(),
             );
 
             // signed: max_value - -0 works
@@ -799,6 +810,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("div_u{}", config.size),
                 &[config.u_max.clone(), uint_token(0)],
+                &encoded_div_or_mod_by_zero(),
             );
 
             // unsigned: 3 / 2 works
@@ -814,6 +826,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("div_i{}", config.size),
                 &[config.i_max.clone(), int_token(0)],
+                &encoded_div_or_mod_by_zero(),
             );
 
             // signed: min_value / -1 fails
@@ -821,6 +834,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("div_i{}", config.size),
                 &[config.i_min.clone(), int_token(-1)],
+                &encoded_over_or_underflow(),
             );
 
             // signed: 3 / -2 works
@@ -837,6 +851,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("pow_u{}", config.size),
                 &[config.u_max.clone(), uint_token(2)],
+                &encoded_over_or_underflow(),
             );
 
             // unsigned: 2 ** (bit_len-1) works
@@ -854,6 +869,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("pow_i{}", config.size),
                 &[config.i_max.clone(), uint_token(2)],
+                &encoded_over_or_underflow(),
             );
 
             // signed: min ** 3 fails (underflow)
@@ -861,6 +877,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("pow_i{}", config.size),
                 &[config.i_min.clone(), uint_token(3)],
+                &encoded_over_or_underflow(),
             );
 
             // signed: 2 ** (bit_len-2) works
@@ -889,6 +906,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("mod_u{}", config.size),
                 &[config.u_max.clone(), uint_token(0)],
+                &encoded_div_or_mod_by_zero(),
             );
 
             // unsigned: max_value % 2 works
@@ -904,6 +922,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("mod_i{}", config.size),
                 &[config.i_max.clone(), int_token(0)],
+                &encoded_div_or_mod_by_zero(),
             );
 
             // unsigned: max_value % 2 works
@@ -936,6 +955,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("mul_u{}", config.size),
                 &[config.u_max.clone(), uint_token(2)],
+                &encoded_over_or_underflow(),
             );
 
             // unsigned: max_value * 1 works
@@ -951,6 +971,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("mul_i{}", config.size),
                 &[config.i_max.clone(), int_token(2)],
+                &encoded_over_or_underflow(),
             );
 
             // signed: max_value * 1 works
@@ -966,6 +987,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("mul_i{}", config.size),
                 &[config.i_max.clone(), int_token(-2)],
+                &encoded_over_or_underflow(),
             );
 
             // signed: min_value * -2 fails
@@ -973,6 +995,7 @@ fn checked_arithmetic() {
                 &mut executor,
                 &format!("mul_i{}", config.size),
                 &[config.i_min.clone(), int_token(-2)],
+                &encoded_over_or_underflow(),
             );
 
             harness.test_function(
@@ -1061,7 +1084,7 @@ fn keccak() {
             "return_hash_from_foo",
             &[bytes_token("foo")],
             Some(&ethabi::Token::Uint(
-                keccak::full_as_bytes(&"foo".as_bytes()).into(),
+                keccak::full_as_bytes("foo".as_bytes()).into(),
             )),
         );
     });
@@ -1130,7 +1153,7 @@ fn external_contract() {
             &mut executor,
             "call_build_array",
             &[foo_address, uint_token(a), uint_token(b)],
-            Some(&u256_array_token(&[a, c, b])),
+            Some(&uint_array_token(&[a, c, b])),
         );
 
         foo_harness.events_emitted(executor, &[("MyEvent", &[my_num, my_addrs, my_string])]);
@@ -1276,5 +1299,223 @@ fn tuple_destructuring() {
             &[uint_token(1), bool_token(false)],
             Some(&uint_token(1)),
         );
+    });
+}
+
+#[test]
+fn abi_decode_checks() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "abi_decode_checks.fe", "Foo", &[]);
+        let revert_data = encoded_invalid_abi_data();
+
+        // decode_u256
+        {
+            let input = [uint_token(99999999)];
+            let data = harness.build_calldata("decode_u256", &input);
+
+            // add a byte
+            let mut tampered_data = data.clone();
+            tampered_data.push(42);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+
+            // remove last 8 bytes
+            let mut tampered_data = data.clone();
+            tampered_data.truncate(data.len() - 8);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+        }
+
+        // decode_u128_bool
+        {
+            let input = [uint_token(99999999), bool_token(true)];
+            let data = harness.build_calldata("decode_u128_bool", &input);
+
+            // add a byte
+            let mut tampered_data = data.clone();
+            tampered_data.push(42);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+
+            // place non-zero byte in padded region of `u128`
+            let mut tampered_data = data.clone();
+            // 4 bytes past end of selector (4 + 4)
+            tampered_data[9] = 26;
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+
+            // place non-zero byte in padded region of u128
+            let mut tampered_data = data;
+            // 8 bytes past end of u128 (4 + 32 + 8)
+            tampered_data[44] = 1;
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+        }
+
+        // decode_u256_bytes_tuple_array
+        {
+            let head_size = 32 + 32 + 64 + (26 * 32);
+            let input = [
+                uint_token(99999999),
+                bytes_token(&"ten bytes.".repeat(10)),
+                tuple_token(&[address_token("a"), uint_token(42)]),
+                int_array_token(&(-10..16).collect::<Vec<_>>()),
+            ];
+            let data = harness.build_calldata("decode_u256_bytes_tuple_array", &input);
+
+            // add a byte
+            let mut tampered_data = data.clone();
+            tampered_data.push(42);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+
+            // remove a byte
+            let mut tampered_data = data.clone();
+            tampered_data.truncate(tampered_data.len() - 1);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+
+            // give invalid length to bytes. it expects 100, we give 99
+            let mut tampered_data = data.clone();
+            // final byte in data size location for bytes[100]
+            let byte_index = 4 + head_size + 31;
+            tampered_data[byte_index] = 99;
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+
+            // place non-zero byte in padded region of bytes
+            let mut tampered_data = data.clone();
+            // the first byte directly following the bytes' data
+            let byte_index = 4 + head_size + 32 + 100;
+            tampered_data[byte_index] = 128; // set the first bit to `1`
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+
+            // place non-zero byte in padded region of bytes
+            let mut tampered_data = data.clone();
+            // the first byte directly following the bytes' data
+            let byte_index = 4 + head_size + 32 + 127;
+            tampered_data[byte_index] = 1; // set the last bit to `1`
+                                           // sanity check
+            assert_eq!(tampered_data.len(), byte_index + 1);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+
+            // place non-zero byte in padded region of the tuple
+            let mut tampered_data = data.clone();
+            // first byte in the address padding
+            let byte_index = 4 + 32 + 32;
+            // set the last bit in the address padding to `1`
+            tampered_data[byte_index] = 128;
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+
+            // place non-zero byte in padded region of the tuple
+            let mut tampered_data = data.clone();
+            // last byte in the address padding
+            let byte_index = 4 + 32 + 32 + 11;
+            // set the last bit in the address padding to `1`
+            tampered_data[byte_index] = 1;
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+
+            // place non-zero byte in padded region of the tuple
+            let mut tampered_data = data.clone();
+            // 5 bytes past the end of address
+            let byte_index = 4 + 32 + 32 + 32 + 5;
+            tampered_data[byte_index] = 26;
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+
+            // place zero byte in padded region of a negative int
+            let mut tampered_data = data.clone();
+            // index 2 of array and 0 bytes in
+            let byte_index = 4 + 32 + 32 + 64 + (2 * 32);
+            tampered_data[byte_index] = 0;
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+
+            // place non-zero byte in padded region of a positive int
+            let mut tampered_data = data;
+            // index 12 of array and 4 bytes in
+            let byte_index = 4 + 32 + 32 + 64 + (12 * 32 + 4);
+            tampered_data[byte_index] = 26;
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+        }
+
+        // decode_string_address_bytes_bool
+        {
+            let func_name = "decode_string_address_bytes_bool";
+            let input = [
+                string_token("hello Fe"),
+                address_token("baddad"),
+                bytes_token(&"ten bytes.".repeat(100)),
+                bool_token(true),
+            ];
+            let data = harness.build_calldata(func_name, &input);
+
+            let head_size = 32 + 32 + 32 + 32;
+            let string_data_size = 64;
+            let string_size = 8;
+            let bytes_data_size = 32 + 1024;
+            let bytes_size = 1000;
+
+            // add 100 bytes
+            let mut tampered_data = data.clone();
+            tampered_data.append(vec![42; 100].as_mut());
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+
+            // remove 20 bytes
+            let mut tampered_data = data.clone();
+            tampered_data.truncate(tampered_data.len() - 20);
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+
+            // set string length to value that extends beyond the next data offset
+            let mut tampered_data = data.clone();
+            let byte_index = 4 + head_size + 31;
+            // data section would now occupy 64 + 32 bytes, instead of 32 + 32 bytes
+            // this would break the equivalence of string's `data_offset + data_size` and
+            // the bytes' `data_offset`, making the encoding invalid
+            tampered_data[byte_index] = 33;
+            // the string length is completely valid otherwise. 32 for example will not revert
+            // tampered_data[byte_index] = 32;
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+
+            // place non-zero byte in padded region of the string
+            let mut tampered_data = data.clone();
+            // last byte in string encoding
+            let byte_index = 4 + head_size + string_data_size - 1;
+            // set last bit to 1
+            tampered_data[byte_index] = 1;
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+
+            // place non-zero byte in padded region of the string
+            let mut tampered_data = data.clone();
+            // first byte in padded section of string encoding
+            let byte_index = 4 + head_size + 32 + string_size;
+            // set first bit to 1
+            tampered_data[byte_index] = 128;
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+
+            // place non-zero byte in padded region of the bytes
+            let mut tampered_data = data.clone();
+            // last byte in bytes encoding
+            let byte_index = 4 + head_size + string_data_size + bytes_data_size - 1;
+            // set last bit to 1
+            tampered_data[byte_index] = 1;
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+
+            // place non-zero byte in padded region of the bytes
+            let mut tampered_data = data;
+            // first byte in padded section of string encoding
+            let byte_index = 4 + head_size + string_data_size + 32 + bytes_size;
+            // set first bit to 1
+            tampered_data[byte_index] = 128;
+            harness.test_call_reverts(&mut executor, tampered_data, &revert_data);
+
+            // invalid since bytes has size 990 instead of 1000
+            let invalid_input = [
+                string_token("hello Fe"),
+                address_token("baddad"),
+                bytes_token(&"ten bytes.".repeat(99)),
+                bool_token(true),
+            ];
+            harness.test_function_reverts(&mut executor, func_name, &invalid_input, &revert_data);
+
+            // invalid since string has size 100, which is greater than 80
+            let invalid_input = [
+                string_token(&"hello Fe..".repeat(10)),
+                address_token("baddad"),
+                bytes_token(&"ten bytes.".repeat(100)),
+                bool_token(true),
+            ];
+            harness.test_function_reverts(&mut executor, func_name, &invalid_input, &revert_data);
+        }
     });
 }

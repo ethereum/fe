@@ -43,12 +43,12 @@ pub fn type_desc(
                         desc.span,
                         "this type name has not been defined",
                     );
-                    return Err(FatalError);
+                    return Err(FatalError::new());
                 }
             }
         },
         fe::TypeDesc::Array { typ, dimension } => {
-            if let Type::Base(base) = type_desc(scope, context, &typ)? {
+            if let Type::Base(base) = type_desc(scope, context, typ)? {
                 Type::Array(Array {
                     inner: base,
                     size: *dimension,
@@ -59,22 +59,22 @@ pub fn type_desc(
                     typ.span,
                     "can't be stored in an array",
                 );
-                return Err(FatalError);
+                return Err(FatalError::new());
             }
         }
         fe::TypeDesc::Generic { base, args } => match base.kind.as_str() {
             "Map" => {
-                validate_arg_count(context, &base.kind, base.span, &args, 2);
+                validate_arg_count(context, &base.kind, base.span, args, 2);
                 if args.kind.len() < 2 {
-                    return Err(FatalError);
+                    return Err(FatalError::new());
                 }
                 match &args.kind[..2] {
                     [fe::GenericArg::TypeDesc(from), fe::GenericArg::TypeDesc(to)] => {
-                        let key_type = type_desc(scope, context, &from)?;
+                        let key_type = type_desc(scope, context, from)?;
                         if let Type::Base(base) = key_type {
                             Type::Map(Map {
                                 key: base,
-                                value: Box::new(type_desc(scope, context, &to)?),
+                                value: Box::new(type_desc(scope, context, to)?),
                             })
                         } else {
                             context.error(
@@ -82,7 +82,7 @@ pub fn type_desc(
                                 from.span,
                                 "this can't be used as a map key",
                             );
-                            return Err(FatalError);
+                            return Err(FatalError::new());
                         }
                     }
                     _ => {
@@ -95,7 +95,7 @@ pub fn type_desc(
                                 );
                             }
                         }
-                        return Err(FatalError);
+                        return Err(FatalError::new());
                     }
                 }
             }
@@ -107,7 +107,7 @@ pub fn type_desc(
                         vec![Label::primary(args.span, "invalid type parameter")],
                         vec!["Example: String<100>".into()],
                     );
-                    return Err(FatalError);
+                    return Err(FatalError::new());
                 }
             },
             _ => {
@@ -116,14 +116,14 @@ pub fn type_desc(
                     base.span,
                     "this type name has not been defined",
                 );
-                return Err(FatalError);
+                return Err(FatalError::new());
             }
         },
         fe::TypeDesc::Tuple { items } => Type::Tuple(Tuple {
             items: Vec1::try_from_vec(
                 items
                     .iter()
-                    .map(|typ| type_desc_fixed_size(scope, context, &typ))
+                    .map(|typ| type_desc_fixed_size(scope, context, typ))
                     .collect::<Result<_, _>>()?,
             )
             .expect("tuple is empty"),
@@ -144,7 +144,7 @@ pub fn type_desc_fixed_size(
     match FixedSize::try_from(type_desc(scope, context, desc)?) {
         Err(TypeError) => {
             context.error("Expected a value with a fixed size", desc.span, "");
-            Err(FatalError)
+            Err(FatalError::new())
         }
         Ok(val) => Ok(val),
     }

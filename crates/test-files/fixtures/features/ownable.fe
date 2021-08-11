@@ -5,18 +5,18 @@ contract Ownable:
     idx previousOwner: address
     idx newOwner: address
 
-  pub def __init__():
+  pub fn __init__():
     self._owner = msg.sender
 
-  pub def owner() -> address:
+  pub fn owner() -> address:
     return self._owner
 
-  pub def renounceOwnership():
+  pub fn renounceOwnership():
     assert msg.sender == self._owner
     self._owner = address(0)
     emit OwnershipTransferred(previousOwner=msg.sender, newOwner=address(0))
 
-  pub def transferOwnership(newOwner: address):
+  pub fn transferOwnership(newOwner: address):
     assert msg.sender == self._owner
     assert newOwner != address(0)
     self._owner = newOwner

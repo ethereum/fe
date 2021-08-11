@@ -67,7 +67,7 @@ note:
   ┌─ features/return_unit.fe:7:12
   │
 7 │     return ()
-  │            ^^ attributes hash: 513065555763557710
+  │            ^^ attributes hash: 4703226498732669424
   │
   = ExpressionAttributes {
         typ: Base(
@@ -81,7 +81,7 @@ note:
    ┌─ features/return_unit.fe:13:12
    │
 13 │     return ()
-   │            ^^ attributes hash: 513065555763557710
+   │            ^^ attributes hash: 4703226498732669424
    │
    = ExpressionAttributes {
          typ: Base(
@@ -94,9 +94,9 @@ note:
 note: 
   ┌─ features/return_unit.fe:3:3
   │  
-3 │ ╭   pub def explicit_return_a1():
+3 │ ╭   pub fn explicit_return_a1():
 4 │ │     return
-  │ ╰──────────^ attributes hash: 15075410168300747903
+  │ ╰──────────^ attributes hash: 5791311006351266482
   │  
   = FunctionAttributes {
         is_public: true,
@@ -110,9 +110,9 @@ note:
 note: 
   ┌─ features/return_unit.fe:6:3
   │  
-6 │ ╭   pub def explicit_return_a2():
+6 │ ╭   pub fn explicit_return_a2():
 7 │ │     return ()
-  │ ╰─────────────^ attributes hash: 16304827799292902014
+  │ ╰─────────────^ attributes hash: 7401482087876001729
   │  
   = FunctionAttributes {
         is_public: true,
@@ -126,9 +126,9 @@ note:
 note: 
    ┌─ features/return_unit.fe:9:3
    │  
- 9 │ ╭   pub def explicit_return_b1() -> ():
+ 9 │ ╭   pub fn explicit_return_b1() -> ():
 10 │ │     return
-   │ ╰──────────^ attributes hash: 15035223921056621731
+   │ ╰──────────^ attributes hash: 13379095857536426648
    │  
    = FunctionAttributes {
          is_public: true,
@@ -142,9 +142,9 @@ note:
 note: 
    ┌─ features/return_unit.fe:12:3
    │  
-12 │ ╭   pub def explicit_return_b2() -> ():
+12 │ ╭   pub fn explicit_return_b2() -> ():
 13 │ │     return ()
-   │ ╰─────────────^ attributes hash: 2893054146685256717
+   │ ╰─────────────^ attributes hash: 9023250647845281327
    │  
    = FunctionAttributes {
          is_public: true,
@@ -158,9 +158,9 @@ note:
 note: 
    ┌─ features/return_unit.fe:15:3
    │  
-15 │ ╭   pub def implicit_a1():
+15 │ ╭   pub fn implicit_a1():
 16 │ │     pass
-   │ ╰────────^ attributes hash: 12364371827553425931
+   │ ╰────────^ attributes hash: 8980588580621881414
    │  
    = FunctionAttributes {
          is_public: true,
@@ -174,9 +174,9 @@ note:
 note: 
    ┌─ features/return_unit.fe:18:3
    │  
-18 │ ╭   pub def implicit_a2() -> ():
+18 │ ╭   pub fn implicit_a2() -> ():
 19 │ │     pass
-   │ ╰────────^ attributes hash: 12198633077641647917
+   │ ╰────────^ attributes hash: 7195504655642471963
    │  
    = FunctionAttributes {
          is_public: true,
@@ -192,12 +192,12 @@ note:
    │  
  1 │ ╭ contract Foo:
  2 │ │ 
- 3 │ │   pub def explicit_return_a1():
+ 3 │ │   pub fn explicit_return_a1():
  4 │ │     return
    · │
-18 │ │   pub def implicit_a2() -> ():
+18 │ │   pub fn implicit_a2() -> ():
 19 │ │     pass
-   │ ╰────────^ attributes hash: 7602391269202270144
+   │ ╰────────^ attributes hash: 10194917932447029127
    │  
    = ContractAttributes {
          public_functions: [
@@ -257,30 +257,30 @@ note:
      }
 
 note: 
-  ┌─ features/return_unit.fe:9:35
+  ┌─ features/return_unit.fe:9:34
   │
-9 │   pub def explicit_return_b1() -> ():
-  │                                   ^^ attributes hash: 574436082528610497
+9 │   pub fn explicit_return_b1() -> ():
+  │                                  ^^ attributes hash: 9544957739497455515
   │
   = Base(
         Unit,
     )
 
 note: 
-   ┌─ features/return_unit.fe:12:35
+   ┌─ features/return_unit.fe:12:34
    │
-12 │   pub def explicit_return_b2() -> ():
-   │                                   ^^ attributes hash: 574436082528610497
+12 │   pub fn explicit_return_b2() -> ():
+   │                                  ^^ attributes hash: 9544957739497455515
    │
    = Base(
          Unit,
      )
 
 note: 
-   ┌─ features/return_unit.fe:18:28
+   ┌─ features/return_unit.fe:18:27
    │
-18 │   pub def implicit_a2() -> ():
-   │                            ^^ attributes hash: 574436082528610497
+18 │   pub fn implicit_a2() -> ():
+   │                           ^^ attributes hash: 9544957739497455515
    │
    = Base(
          Unit,

@@ -88,7 +88,7 @@ pub fn check_assign_target(context: &mut Context, expr: &Node<fe::Expr>) -> Resu
             context.fancy_error("invalid assignment target",
                                              vec![Label::primary(expr.span, "")],
                                              vec!["The left side of an assignment can be a variable name, attribute, subscript, or tuple.".into()]);
-            Err(FatalError)
+            Err(FatalError::new())
         }
     }
 }

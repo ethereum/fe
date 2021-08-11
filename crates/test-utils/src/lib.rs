@@ -60,17 +60,27 @@ impl ContractHarness {
         name: &str,
         input: &[ethabi::Token],
     ) -> evm::Capture<(evm::ExitReason, Vec<u8>), std::convert::Infallible> {
-        let function = &self.abi.functions[name][0];
+        let input = self.build_calldata(name, input);
+        self.capture_call_raw_bytes(executor, input)
+    }
 
+    pub fn build_calldata(&self, name: &str, input: &[ethabi::Token]) -> Vec<u8> {
+        let function = &self.abi.functions[name][0];
+        function
+            .encode_input(input)
+            .unwrap_or_else(|_| panic!("Unable to encode input for {}", name))
+    }
+
+    pub fn capture_call_raw_bytes(
+        &self,
+        executor: &mut Executor,
+        input: Vec<u8>,
+    ) -> evm::Capture<(evm::ExitReason, Vec<u8>), std::convert::Infallible> {
         let context = evm::Context {
             address: self.address,
             caller: self.caller,
             apparent_value: self.value,
         };
-
-        let input = function
-            .encode_input(input)
-            .unwrap_or_else(|_| panic!("Unable to encode input for {}", name));
 
         executor.call(self.address, None, input, None, false, context)
     }
@@ -94,7 +104,7 @@ impl ContractHarness {
     ) -> Option<ethabi::Token> {
         let function = &self.abi.functions[name][0];
 
-        match self.capture_call(executor, name, &input) {
+        match self.capture_call(executor, name, input) {
             evm::Capture::Exit((ExitReason::Succeed(_), output)) => function
                 .decode_output(&output)
                 .unwrap_or_else(|_| panic!("unable to decode output of {}: {:?}", name, &output))
@@ -109,11 +119,13 @@ impl ContractHarness {
         executor: &mut Executor,
         name: &str,
         input: &[ethabi::Token],
+        revert_data: &[u8],
     ) {
-        match self.capture_call(executor, name, input) {
-            evm::Capture::Exit((ExitReason::Revert(_), _)) => {}
-            _ => panic!("function did not revert"),
-        }
+        validate_revert(self.capture_call(executor, name, input), revert_data)
+    }
+
+    pub fn test_call_reverts(&self, executor: &mut Executor, input: Vec<u8>, revert_data: &[u8]) {
+        validate_revert(self.capture_call_raw_bytes(executor, input), revert_data)
     }
 
     // Executor must be passed by value to get emitted events.
@@ -146,8 +158,9 @@ impl ContractHarness {
                 .collect::<Vec<_>>();
 
             if !outputs_for_event.iter().any(|v| v == expected_output) {
+                println!("raw logs dump: {:?}", raw_logs);
                 panic!(
-                    "no {} logs matching: {:?}\nfound: {:?}",
+                    "no \"{}\" logs matching: {:?}\nfound: {:?}",
                     name, expected_output, outputs_for_event
                 )
             }
@@ -204,6 +217,22 @@ pub fn validate_revert(
     };
 }
 
+pub fn encoded_panic_assert() -> Vec<u8> {
+    encode_revert("Panic(uint256)", &[uint_token(0x01)])
+}
+
+pub fn encoded_over_or_underflow() -> Vec<u8> {
+    encode_revert("Panic(uint256)", &[uint_token(0x11)])
+}
+
+pub fn encoded_div_or_mod_by_zero() -> Vec<u8> {
+    encode_revert("Panic(uint256)", &[uint_token(0x12)])
+}
+
+pub fn encoded_invalid_abi_data() -> Vec<u8> {
+    encode_revert("Panic(uint256)", &[uint_token(0x99)])
+}
+
 #[allow(dead_code)]
 #[cfg(feature = "solc-backend")]
 pub fn deploy_contract(
@@ -216,7 +245,7 @@ pub fn deploy_contract(
     let mut files = FileStore::new();
     let id = files.add_file(fixture, src);
 
-    let compiled_module = match driver::compile(&src, id, true, true) {
+    let compiled_module = match driver::compile(src, id, true, true) {
         Ok(module) => module,
         Err(error) => {
             fe_common::diagnostics::print_diagnostics(&error.0, &files);
@@ -257,11 +286,11 @@ pub fn deploy_solidity_contract(
 
 #[allow(dead_code)]
 pub fn encode_error_reason(reason: &str) -> Vec<u8> {
-    encode_error("Error(string)", &[string_token(reason)])
+    encode_revert("Error(string)", &[string_token(reason)])
 }
 
 #[allow(dead_code)]
-pub fn encode_error(selector: &str, input: &[ethabi::Token]) -> Vec<u8> {
+pub fn encode_revert(selector: &str, input: &[ethabi::Token]) -> Vec<u8> {
     let mut data = String::new();
     for param in input {
         let encoded = match param {
@@ -353,7 +382,7 @@ pub fn compile_solidity_contract(
         }
       }
     "#;
-    let solc_config = solc_config.replace("{src}", &solidity_src);
+    let solc_config = solc_config.replace("{src}", solidity_src);
 
     let raw_output = solc::compile(&solc_config);
 
@@ -419,7 +448,7 @@ pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> Contr
     let mut files = FileStore::new();
     let src = test_files::fixture(fixture);
     let id = files.add_file(fixture, src);
-    let compiled_module = match driver::compile(&src, id, true, true) {
+    let compiled_module = match driver::compile(src, id, true, true) {
         Ok(module) => module,
         Err(err) => {
             print_diagnostics(&err.0, &files);
@@ -497,7 +526,7 @@ impl Runtime {
 
     #[cfg(feature = "solc-backend")]
     pub fn execute(&self, executor: &mut Executor) -> ExecutionOutput {
-        let (exit_reason, data) = execute_runtime_functions(executor, &self);
+        let (exit_reason, data) = execute_runtime_functions(executor, self);
         ExecutionOutput::new(exit_reason, data)
     }
 }
@@ -606,8 +635,13 @@ pub fn bytes_token(s: &str) -> ethabi::Token {
 }
 
 #[allow(dead_code)]
-pub fn u256_array_token(v: &[u64]) -> ethabi::Token {
+pub fn uint_array_token(v: &[u64]) -> ethabi::Token {
     ethabi::Token::FixedArray(v.iter().map(|n| uint_token(*n)).collect())
+}
+
+#[allow(dead_code)]
+pub fn int_array_token(v: &[i64]) -> ethabi::Token {
+    ethabi::Token::FixedArray(v.iter().map(|n| int_token(*n)).collect())
 }
 
 #[allow(dead_code)]

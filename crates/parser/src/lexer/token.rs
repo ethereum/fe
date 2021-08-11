@@ -67,8 +67,8 @@ pub enum TokenKind {
     Continue,
     #[token("contract")]
     Contract,
-    #[token("def")]
-    Def,
+    #[token("fn")]
+    Fn,
     #[token("const")]
     Const,
     #[token("elif")]
@@ -234,7 +234,7 @@ impl TokenKind {
             Break => "break",
             Continue => "continue",
             Contract => "contract",
-            Def => "def",
+            Fn => "fn",
             Const => "const",
             Let => "let",
             Elif => "elif",

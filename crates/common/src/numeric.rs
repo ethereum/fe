@@ -54,7 +54,7 @@ impl<'a> Literal<'a> {
 
     /// Parse the numeric literal to `T`.
     pub fn parse<T: num_traits::Num>(&self) -> Result<T, T::FromStrRadixErr> {
-        T::from_str_radix(&self.num, self.radix.as_num())
+        T::from_str_radix(self.num, self.radix.as_num())
     }
 
     /// Returns radix of the numeric literal.

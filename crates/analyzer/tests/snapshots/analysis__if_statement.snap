@@ -38,7 +38,7 @@ note:
   ┌─ features/if_statement.fe:4:12
   │
 4 │         if input > 5:
-  │            ^^^^^ attributes hash: 16797824492585953824
+  │            ^^^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -54,7 +54,7 @@ note:
   ┌─ features/if_statement.fe:4:20
   │
 4 │         if input > 5:
-  │                    ^ attributes hash: 16797824492585953824
+  │                    ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -70,7 +70,7 @@ note:
   ┌─ features/if_statement.fe:4:12
   │
 4 │         if input > 5:
-  │            ^^^^^^^^^ attributes hash: 10866140763116710699
+  │            ^^^^^^^^^ attributes hash: 519621297275845584
   │
   = ExpressionAttributes {
         typ: Base(
@@ -84,7 +84,7 @@ note:
   ┌─ features/if_statement.fe:5:20
   │
 5 │             return 1
-  │                    ^ attributes hash: 16797824492585953824
+  │                    ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -100,7 +100,7 @@ note:
   ┌─ features/if_statement.fe:7:20
   │
 7 │             return 0
-  │                    ^ attributes hash: 16797824492585953824
+  │                    ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -115,12 +115,12 @@ note:
 note: 
   ┌─ features/if_statement.fe:3:5
   │  
-3 │ ╭     pub def bar(input: u256) -> u256:
+3 │ ╭     pub fn bar(input: u256) -> u256:
 4 │ │         if input > 5:
 5 │ │             return 1
 6 │ │         else:
 7 │ │             return 0
-  │ ╰────────────────────^ attributes hash: 7333905096283030004
+  │ ╰────────────────────^ attributes hash: 12628763783334799
   │  
   = FunctionAttributes {
         is_public: true,
@@ -147,12 +147,12 @@ note:
   │  
 1 │ ╭ contract Foo:
 2 │ │ 
-3 │ │     pub def bar(input: u256) -> u256:
+3 │ │     pub fn bar(input: u256) -> u256:
 4 │ │         if input > 5:
 5 │ │             return 1
 6 │ │         else:
 7 │ │             return 0
-  │ ╰────────────────────^ attributes hash: 600014852149833207
+  │ ╰────────────────────^ attributes hash: 6592343064660742193
   │  
   = ContractAttributes {
         public_functions: [
@@ -183,10 +183,10 @@ note:
     }
 
 note: 
-  ┌─ features/if_statement.fe:3:24
+  ┌─ features/if_statement.fe:3:23
   │
-3 │     pub def bar(input: u256) -> u256:
-  │                        ^^^^ attributes hash: 17942395924573474124
+3 │     pub fn bar(input: u256) -> u256:
+  │                       ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -195,10 +195,10 @@ note:
     )
 
 note: 
-  ┌─ features/if_statement.fe:3:33
+  ┌─ features/if_statement.fe:3:32
   │
-3 │     pub def bar(input: u256) -> u256:
-  │                                 ^^^^ attributes hash: 17942395924573474124
+3 │     pub fn bar(input: u256) -> u256:
+  │                                ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(

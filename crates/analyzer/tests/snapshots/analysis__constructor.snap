@@ -29,7 +29,7 @@ note:
   ┌─ features/constructor.fe:5:9
   │
 5 │         self.bar[42] = baz + bing
-  │         ^^^^^^^^ attributes hash: 11084999791471164417
+  │         ^^^^^^^^ attributes hash: 7500259330345281063
   │
   = ExpressionAttributes {
         typ: Map(
@@ -56,7 +56,7 @@ note:
   ┌─ features/constructor.fe:5:18
   │
 5 │         self.bar[42] = baz + bing
-  │                  ^^ attributes hash: 16797824492585953824
+  │                  ^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -72,7 +72,7 @@ note:
   ┌─ features/constructor.fe:5:9
   │
 5 │         self.bar[42] = baz + bing
-  │         ^^^^^^^^^^^^ attributes hash: 5973407925075462624
+  │         ^^^^^^^^^^^^ attributes hash: 6410008273718378934
   │
   = ExpressionAttributes {
         typ: Base(
@@ -90,7 +90,7 @@ note:
   ┌─ features/constructor.fe:5:24
   │
 5 │         self.bar[42] = baz + bing
-  │                        ^^^ attributes hash: 16797824492585953824
+  │                        ^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -106,7 +106,7 @@ note:
   ┌─ features/constructor.fe:5:30
   │
 5 │         self.bar[42] = baz + bing
-  │                              ^^^^ attributes hash: 16797824492585953824
+  │                              ^^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -122,7 +122,7 @@ note:
   ┌─ features/constructor.fe:5:24
   │
 5 │         self.bar[42] = baz + bing
-  │                        ^^^^^^^^^^ attributes hash: 16797824492585953824
+  │                        ^^^^^^^^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -138,7 +138,7 @@ note:
   ┌─ features/constructor.fe:8:16
   │
 8 │         return self.bar[42]
-  │                ^^^^^^^^ attributes hash: 11084999791471164417
+  │                ^^^^^^^^ attributes hash: 7500259330345281063
   │
   = ExpressionAttributes {
         typ: Map(
@@ -165,7 +165,7 @@ note:
   ┌─ features/constructor.fe:8:25
   │
 8 │         return self.bar[42]
-  │                         ^^ attributes hash: 16797824492585953824
+  │                         ^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -181,7 +181,7 @@ note:
   ┌─ features/constructor.fe:8:16
   │
 8 │         return self.bar[42]
-  │                ^^^^^^^^^^^^ attributes hash: 9781479072077703403
+  │                ^^^^^^^^^^^^ attributes hash: 2750573035226013709
   │
   = ExpressionAttributes {
         typ: Base(
@@ -200,9 +200,9 @@ note:
 note: 
   ┌─ features/constructor.fe:4:5
   │  
-4 │ ╭     pub def __init__(baz: u256, bing: u256):
+4 │ ╭     pub fn __init__(baz: u256, bing: u256):
 5 │ │         self.bar[42] = baz + bing
-  │ ╰─────────────────────────────────^ attributes hash: 4139836880422079599
+  │ ╰─────────────────────────────────^ attributes hash: 13081080872766212737
   │  
   = FunctionAttributes {
         is_public: true,
@@ -233,9 +233,9 @@ note:
 note: 
   ┌─ features/constructor.fe:7:5
   │  
-7 │ ╭     pub def read_bar() -> u256:
+7 │ ╭     pub fn read_bar() -> u256:
 8 │ │         return self.bar[42]
-  │ ╰───────────────────────────^ attributes hash: 4138000309877767632
+  │ ╰───────────────────────────^ attributes hash: 14729662030811563737
   │  
   = FunctionAttributes {
         is_public: true,
@@ -254,11 +254,11 @@ note:
 1 │ ╭ contract Foo:
 2 │ │     bar: Map<u256, u256>
 3 │ │ 
-4 │ │     pub def __init__(baz: u256, bing: u256):
+4 │ │     pub fn __init__(baz: u256, bing: u256):
   · │
-7 │ │     pub def read_bar() -> u256:
+7 │ │     pub fn read_bar() -> u256:
 8 │ │         return self.bar[42]
-  │ ╰───────────────────────────^ attributes hash: 4710039523682408782
+  │ ╰───────────────────────────^ attributes hash: 1581399891614554711
   │  
   = ContractAttributes {
         public_functions: [
@@ -306,22 +306,10 @@ note:
     }
 
 note: 
-  ┌─ features/constructor.fe:4:27
+  ┌─ features/constructor.fe:4:26
   │
-4 │     pub def __init__(baz: u256, bing: u256):
-  │                           ^^^^ attributes hash: 17942395924573474124
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/constructor.fe:4:39
-  │
-4 │     pub def __init__(baz: u256, bing: u256):
-  │                                       ^^^^ attributes hash: 17942395924573474124
+4 │     pub fn __init__(baz: u256, bing: u256):
+  │                          ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -330,10 +318,22 @@ note:
     )
 
 note: 
-  ┌─ features/constructor.fe:7:27
+  ┌─ features/constructor.fe:4:38
   │
-7 │     pub def read_bar() -> u256:
-  │                           ^^^^ attributes hash: 17942395924573474124
+4 │     pub fn __init__(baz: u256, bing: u256):
+  │                                      ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/constructor.fe:7:26
+  │
+7 │     pub fn read_bar() -> u256:
+  │                          ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -345,7 +345,7 @@ note:
   ┌─ features/constructor.fe:2:14
   │
 2 │     bar: Map<u256, u256>
-  │              ^^^^ attributes hash: 17942395924573474124
+  │              ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -357,7 +357,7 @@ note:
   ┌─ features/constructor.fe:2:20
   │
 2 │     bar: Map<u256, u256>
-  │                    ^^^^ attributes hash: 17942395924573474124
+  │                    ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -369,7 +369,7 @@ note:
   ┌─ features/constructor.fe:2:10
   │
 2 │     bar: Map<u256, u256>
-  │          ^^^^^^^^^^^^^^^ attributes hash: 3210256860376722957
+  │          ^^^^^^^^^^^^^^^ attributes hash: 8678458200954633740
   │
   = Map(
         Map {

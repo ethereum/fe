@@ -4,33 +4,33 @@ contract Foo:
     event MyEvent:
         my_tuple: (u256, bool, address)
 
-    pub def build_my_tuple(
+    pub fn build_my_tuple(
         my_num: u256,
         my_bool: bool,
         my_address: address
     ) -> (u256, bool, address):
         return (my_num, my_bool, my_address)
 
-    pub def read_my_tuple_item0(my_tuple: (u256, bool, address)) -> u256:
+    pub fn read_my_tuple_item0(my_tuple: (u256, bool, address)) -> u256:
         return my_tuple.item0
 
-    pub def read_my_tuple_item1(my_tuple: (u256, bool, address)) -> bool:
+    pub fn read_my_tuple_item1(my_tuple: (u256, bool, address)) -> bool:
         return my_tuple.item1
 
-    pub def read_my_tuple_item2(my_tuple: (u256, bool, address)) -> address:
+    pub fn read_my_tuple_item2(my_tuple: (u256, bool, address)) -> address:
         return my_tuple.item2
 
-    pub def emit_my_event(my_tuple: (u256, bool, address)):
+    pub fn emit_my_event(my_tuple: (u256, bool, address)):
         emit MyEvent(my_tuple)
 
-    pub def set_my_sto_tuple(my_u256: u256, my_i32: i32):
+    pub fn set_my_sto_tuple(my_u256: u256, my_i32: i32):
         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
         self.my_sto_tuple = (my_u256, my_i32)
 
-    pub def get_my_sto_tuple() -> (u256, i32):
+    pub fn get_my_sto_tuple() -> (u256, i32):
         return self.my_sto_tuple.to_mem()
 
-    pub def build_tuple_and_emit():
+    pub fn build_tuple_and_emit():
         let my_num: u256 = self.my_sto_tuple.item0
         let my_tuple: (u256, bool, address) = (
             self.my_sto_tuple.item0,
@@ -39,5 +39,5 @@ contract Foo:
         )
         self.emit_my_event(my_tuple)
 
-    pub def encode_my_tuple(my_tuple: (u256, bool, address)) -> u8[96]:
+    pub fn encode_my_tuple(my_tuple: (u256, bool, address)) -> u8[96]:
         return my_tuple.abi_encode()

@@ -2,12 +2,13 @@ use crate::operations::{
     abi as abi_operations, contracts as contract_operations, data as data_operations,
     structs as struct_operations,
 };
+use crate::types::{AbiType, EvmSized};
 use crate::{names, Context};
 use builtins::{BlockField, ChainField, MsgField, Object, TxField};
 use fe_analyzer::builtins;
 use fe_analyzer::builtins::{ContractTypeMethod, GlobalMethod};
 use fe_analyzer::context::{CallType, Location};
-use fe_analyzer::namespace::types::{Base, FeSized, FixedSize, Type};
+use fe_analyzer::namespace::types::{Base, FixedSize, Type};
 use fe_common::numeric;
 use fe_common::utils::keccak;
 use fe_parser::ast as fe;
@@ -119,12 +120,12 @@ fn expr_call(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
                         return match (value_attributes.typ.to_owned(), &attr.kind) {
                             (Type::Contract(contract), func_name) => contract_operations::call(
                                 contract,
-                                &func_name,
+                                func_name,
                                 expr(context, value),
                                 yul_args,
                             ),
                             (typ, func_name) => {
-                                match builtins::ValueMethod::from_str(&func_name)
+                                match builtins::ValueMethod::from_str(func_name)
                                     .expect("uncaught analyzer error")
                                 {
                                     // Copying is done in `expr(..)` based on the move location set
@@ -134,7 +135,7 @@ fn expr_call(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
                                     builtins::ValueMethod::Clone => expr(context, value),
                                     builtins::ValueMethod::AbiEncode => match typ {
                                         Type::Struct(struct_) => abi_operations::encode(
-                                            &[struct_],
+                                            &[AbiType::from(&struct_)],
                                             vec![expr(context, value)],
                                         ),
                                         _ => panic!("invalid attributes"),
@@ -155,14 +156,14 @@ fn expr_call(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expression {
                         (Type::Contract(contract), ContractTypeMethod::Create2) => {
                             context.created_contracts.insert(contract.name.clone());
                             contract_operations::create2(
-                                &contract,
+                                contract,
                                 yul_args[0].to_owned(),
                                 yul_args[1].to_owned(),
                             )
                         }
                         (Type::Contract(contract), ContractTypeMethod::Create) => {
                             context.created_contracts.insert(contract.name.clone());
-                            contract_operations::create(&contract, yul_args[0].to_owned())
+                            contract_operations::create(contract, yul_args[0].to_owned())
                         }
                         _ => panic!("invalid attributes"),
                     }
@@ -471,185 +472,4 @@ fn expr_bool_operation(context: &mut Context, exp: &Node<fe::Expr>) -> yul::Expr
     }
 
     unreachable!()
-}
-
-#[cfg(test)]
-#[cfg(feature = "fix-context-harness")]
-mod tests {
-    use crate::mappers::expressions::{expr, Location};
-    use fe_analyzer::namespace::types::{Array, Base, Map, Type, U256};
-    use fe_analyzer::test_utils::ContextHarness;
-    use fe_analyzer::{Context, ExpressionAttributes};
-    use fe_parser as parser;
-    use rstest::rstest;
-
-    fn map(context: &mut Context, src: &str) -> String {
-        let tokens = parser::get_parse_tokens(src).expect("Couldn't parse expression");
-        let expression = &parser::parsers::expr(&tokens[..])
-            .expect("Couldn't build expression AST")
-            .1;
-
-        expr(context, expression)
-            .expect("Couldn't map expression AST")
-            .to_string()
-    }
-
-    #[test]
-    fn map_sload_u256() {
-        let mut harness = ContextHarness::new("self.foo[3]");
-
-        harness.add_expression(
-            "3",
-            ExpressionAttributes::new(Type::Base(U256), Location::Value),
-        );
-
-        harness.add_expression(
-            "self.foo",
-            ExpressionAttributes::new(
-                Type::Map(Map {
-                    key: Base::Address,
-                    value: Box::new(Type::Base(U256)),
-                }),
-                Location::Storage { nonce: Some(0) },
-            ),
-        );
-
-        let mut attributes =
-            ExpressionAttributes::new(Type::Base(U256), Location::Storage { nonce: None });
-        attributes.move_location = Some(Location::Value);
-        harness.add_expression("self.foo[3]", attributes);
-
-        let result = map(&harness.context, &harness.src);
-
-        assert_eq!(result, "bytes_sloadn(map_value_ptr(0, 3), 32)");
-    }
-
-    #[test]
-    fn map_sload_with_array_elem() {
-        let mut harness = ContextHarness::new("self.foo_map[bar_array[index]]");
-
-        let foo_key = Base::Address;
-        let foo_value = Type::Array(Array {
-            size: 8,
-            inner: Base::Address,
-        });
-        let bar_value = Type::Base(Base::Address);
-
-        harness.add_expression(
-            "self.foo_map",
-            ExpressionAttributes::new(
-                Type::Map(Map {
-                    key: foo_key,
-                    value: Box::new(foo_value.clone()),
-                }),
-                Location::Storage { nonce: Some(0) },
-            ),
-        );
-
-        harness.add_expression(
-            "bar_array",
-            ExpressionAttributes::new(
-                Type::Array(Array {
-                    size: 100,
-                    inner: Base::Address,
-                }),
-                Location::Memory,
-            ),
-        );
-
-        harness.add_expression(
-            "index",
-            ExpressionAttributes::new(Type::Base(U256), Location::Value),
-        );
-
-        let mut attributes = ExpressionAttributes::new(bar_value, Location::Memory);
-        attributes.move_location = Some(Location::Value);
-        harness.add_expression("bar_array[index]", attributes);
-
-        let mut attributes =
-            ExpressionAttributes::new(foo_value, Location::Storage { nonce: None });
-        attributes.move_location = Some(Location::Memory);
-        harness.add_expression("self.foo_map[bar_array[index]]", attributes);
-
-        let result = map(&harness.context, &harness.src);
-
-        assert_eq!(
-            result,
-            "scopym(div(map_value_ptr(0, mloadn(add($bar_array, mul($index, 32)), 32)), 32), 256)"
-        );
-    }
-
-    #[rstest(
-        expression,
-        expected_yul,
-        typ,
-        case("block.coinbase", "coinbase()", Type::Base(Base::Address)),
-        case("block.difficulty", "difficulty()", Type::Base(U256)),
-        case("block.number", "number()", Type::Base(U256)),
-        case("block.timestamp", "timestamp()", Type::Base(U256)),
-        case("chain.id", "chainid()", Type::Base(U256)),
-        case("msg.sender", "caller()", Type::Base(Base::Address)),
-        case("msg.value", "callvalue()", Type::Base(U256)),
-        case("tx.origin", "origin()", Type::Base(Base::Address)),
-        case("tx.gas_price", "gasprice()", Type::Base(U256))
-    )]
-    fn builtin_attribute(expression: &str, expected_yul: &str, typ: Type) {
-        let mut harness = ContextHarness::new(expression);
-        harness.add_expression(expression, ExpressionAttributes::new(typ, Location::Value));
-        let result = map(&harness.context, expression);
-        assert_eq!(result, expected_yul);
-    }
-
-    #[rstest(
-        expression,
-        expected_yul,
-        case("1 + 2", "checked_add_u256(1, 2)"),
-        case("1 - 2", "checked_sub_unsigned(1, 2)"),
-        case("1 * 2", "checked_mul_u256(1, 2)"),
-        case("1 / 2", "checked_div_unsigned(1, 2)"),
-        case("1 ** 2", "checked_exp_u256(1, 2)"),
-        case("1 % 2", "checked_mod_unsigned(1, 2)"),
-        case("1 & 2", "and(1, 2)"),
-        case("1 | 2", "or(1, 2)"),
-        case("1 ^ 2", "xor(1, 2)"),
-        case("1 << 2", "shl(2, 1)"),
-        case("1 >> 2", "shr(2, 1)")
-    )]
-    fn arithmetic_expression(expression: &str, expected_yul: &str) {
-        let mut harness = ContextHarness::new(expression);
-        harness.add_expressions(
-            vec!["1", "2", expression],
-            ExpressionAttributes::new(Type::Base(U256), Location::Value),
-        );
-
-        let result = map(&harness.context, expression);
-
-        assert_eq!(result, expected_yul);
-    }
-
-    #[rstest(
-        expression,
-        expected_yul,
-        case("1 == 2", "eq(1, 2)"),
-        case("1 != 2", "iszero(eq(1, 2))"),
-        case("1 < 2", "lt(1, 2)"),
-        case("1 <= 2", "iszero(gt(1, 2))"),
-        case("1 > 2", "gt(1, 2)"),
-        case("1 >= 2", "iszero(lt(1, 2))")
-    )]
-    fn comparison_expression(expression: &str, expected_yul: &str) {
-        let mut harness = ContextHarness::new(expression);
-        harness.add_expressions(
-            vec!["1", "2"],
-            ExpressionAttributes::new(Type::Base(U256), Location::Value),
-        );
-        harness.add_expression(
-            expression,
-            ExpressionAttributes::new(Type::Base(Base::Bool), Location::Value),
-        );
-
-        let result = map(&harness.context, expression);
-
-        assert_eq!(result, expected_yul);
-    }
 }

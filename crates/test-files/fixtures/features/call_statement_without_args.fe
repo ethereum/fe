@@ -1,9 +1,9 @@
 contract Foo:
     baz: Map<u256, u256>
 
-    def assign():
+    fn assign():
         self.baz[0] = 100
 
-    pub def bar() -> u256:
+    pub fn bar() -> u256:
         self.assign()
         return self.baz[0]

@@ -1,5 +1,5 @@
 contract Foo:
-    pub def bar() -> address:
+    pub fn bar() -> address:
         let foo: Foo = Foo.create2(2, 0)
 
         return address(foo)

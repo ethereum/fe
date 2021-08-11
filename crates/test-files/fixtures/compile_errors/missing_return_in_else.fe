@@ -1,6 +1,6 @@
 contract Foo:
-    pub def bar(val: u256) -> u256:
+    pub fn bar(val: u256) -> u256:
         if val > 1:
             return 5
         else:
-            x = 1
+            let x:u256 = 1

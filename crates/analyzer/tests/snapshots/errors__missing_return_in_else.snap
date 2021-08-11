@@ -4,17 +4,11 @@ expression: "error_string(&path, &src)"
 
 ---
 error: function body is missing a return or revert statement
-  ┌─ compile_errors/missing_return_in_else.fe:2:13
+  ┌─ compile_errors/missing_return_in_else.fe:2:12
   │
-2 │     pub def bar(val: u256) -> u256:
-  │             ^^^               ---- expected function to return `u256`
-  │             │                  
-  │             all paths of this function must `return` or `revert`
-
-error: cannot find value `x` in this scope
-  ┌─ compile_errors/missing_return_in_else.fe:6:13
-  │
-6 │             x = 1
-  │             ^ undefined
+2 │     pub fn bar(val: u256) -> u256:
+  │            ^^^               ---- expected function to return `u256`
+  │            │                  
+  │            all paths of this function must `return` or `revert`
 
 

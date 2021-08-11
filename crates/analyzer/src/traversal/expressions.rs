@@ -74,19 +74,24 @@ pub fn expr_list(
 
     let inner_type = if let Some(expected) = expected_type {
         for elt in elts {
-            let attr = expr(
+            let element_attributes = assignable_expr(
                 Rc::clone(&scope),
                 context,
                 elt,
                 Some(&Type::Base(expected.inner)),
             )?;
-            if attr.typ != Type::Base(expected.inner) {
-                context.type_error("type mismatch", elt.span, &expected.inner, attr.typ);
+            if element_attributes.typ != Type::Base(expected.inner) {
+                context.type_error(
+                    "type mismatch",
+                    elt.span,
+                    &expected.inner,
+                    element_attributes.typ,
+                );
             }
         }
         expected.inner
     } else {
-        let first_attr = expr(Rc::clone(&scope), context, &elts[0], None)?;
+        let first_attr = assignable_expr(Rc::clone(&scope), context, &elts[0], None)?;
         let inner = match first_attr.typ {
             Type::Base(base) => base,
             _ => {
@@ -98,20 +103,24 @@ pub fn expr_list(
                         first_attr.typ
                     ),
                 );
-                return Err(FatalError);
+                return Err(FatalError::new());
             }
         };
 
         // Assuming every element attribute should match the attribute of 0th element
         // of list.
         for elt in &elts[1..] {
-            let attr = expr(Rc::clone(&scope), context, elt, Some(&first_attr.typ))?;
-            if attr.typ != first_attr.typ {
+            let element_attributes =
+                assignable_expr(Rc::clone(&scope), context, elt, Some(&first_attr.typ))?;
+            if element_attributes.typ != first_attr.typ {
                 context.fancy_error(
                     "array elements must have same type",
                     vec![
                         Label::primary(elts[0].span, format!("this has type `{}`", first_attr.typ)),
-                        Label::secondary(elt.span, format!("this has type `{}`", attr.typ)),
+                        Label::secondary(
+                            elt.span,
+                            format!("this has type `{}`", element_attributes.typ),
+                        ),
                     ],
                     vec![],
                 );
@@ -121,7 +130,7 @@ pub fn expr_list(
     };
 
     // TODO: Right now we are only supporting Base type arrays
-    // Potential we can support the tuples as well.
+    // Potentially we can support tuples as well.
     let array_typ = Array {
         size: elts.len(),
         inner: inner_type,
@@ -196,7 +205,7 @@ pub fn assignable_expr(
                 exp.span,
                 "this type can only be used in a contract field",
             );
-            return Err(FatalError);
+            return Err(FatalError::new());
         }
     };
     context.update_expression(exp, attributes.clone());
@@ -230,7 +239,7 @@ fn expr_tuple(
                     exp.span,
                     "",
                 );
-                return Err(FatalError);
+                return Err(FatalError::new());
             }
             Ok(val) => val,
         };
@@ -293,7 +302,7 @@ fn expr_name(
                                     exp.span,
                                     "wrong type",
                                 );
-                                return Err(FatalError);
+                                return Err(FatalError::new());
                             }
                             Ok(val) => val,
                         };
@@ -303,7 +312,7 @@ fn expr_name(
                             Location::assign_location(&fixed_size),
                         ))
                     }
-                    None => Err(FatalError),
+                    None => Err(FatalError::new()),
                 }
             }
         };
@@ -369,7 +378,7 @@ fn expr_subscript(
                         vec![Label::primary(value.span, "unsubscriptable type")],
                         vec!["Note: Only arrays and maps are subscriptable".into()],
                     );
-                    return Err(FatalError);
+                    return Err(FatalError::new());
                 }
                 Err(IndexingError::WrongIndexType) => {
                     context.fancy_error(
@@ -380,7 +389,7 @@ fn expr_subscript(
                         vec![Label::primary(index.span, "wrong index type")],
                         vec![],
                     );
-                    return Err(FatalError);
+                    return Err(FatalError::new());
                 }
                 Ok(val) => val,
             };
@@ -405,7 +414,7 @@ fn expr_attribute(
 ) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Attribute { value, attr } = &exp.kind {
         let base_type = |typ| Ok(ExpressionAttributes::new(Type::Base(typ), Location::Value));
-        let fatal_err = Err(FatalError);
+        let fatal_err = Err(FatalError::new());
 
         // If the value is a name, check if it is a builtin object and attribute.
         if let fe::Expr::Name(name) = &value.kind {
@@ -598,7 +607,7 @@ fn expr_attribute_self(
                 vec![Label::primary(attr.span, "undefined field")],
                 vec![],
             );
-            Err(FatalError)
+            Err(FatalError::new())
         }
     }
 }
@@ -617,7 +626,7 @@ fn expr_bin_operation(
         let typ = match operations::bin(&left_attributes.typ, &op.kind, &right_attributes.typ) {
             Err(err) => {
                 add_bin_operations_errors(context, left, right, err);
-                return Err(FatalError);
+                return Err(FatalError::new());
             }
             Ok(val) => val,
         };
@@ -919,7 +928,7 @@ fn expr_call_struct_constructor(
         context,
         &typ.name,
         name_span,
-        &args,
+        args,
         &typ.fields,
     )?;
 
@@ -990,7 +999,7 @@ fn expr_call_type_constructor(
                 Location::Value,
             ))
         }
-        _ => Err(FatalError),
+        _ => Err(FatalError::new()),
     }
 }
 
@@ -1041,7 +1050,7 @@ fn expr_call_self_attribute(
             vec![Label::primary(name_span, "undefined function")],
             vec![],
         );
-        Err(FatalError)
+        Err(FatalError::new())
     }
 }
 
@@ -1052,7 +1061,7 @@ fn expr_call_value_attribute(
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Attribute { value, attr } = &func.kind {
-        let value_attributes = expr(Rc::clone(&scope), context, &value, None)?;
+        let value_attributes = expr(Rc::clone(&scope), context, value, None)?;
 
         if let Type::Contract(contract) = &value_attributes.typ {
             // We must ensure the expression is loaded onto the stack.
@@ -1093,7 +1102,7 @@ fn expr_call_value_attribute(
                     vec![Label::primary(attr.span, "undefined function")],
                     vec![],
                 );
-                return Err(FatalError);
+                return Err(FatalError::new());
             }
             Ok(ValueMethod::Clone) => {
                 match value_attributes.location {
@@ -1284,7 +1293,7 @@ fn expr_call_type_attribute(
                 vec![Label::primary(name_span, "undefined function")],
                 vec![],
             );
-            Err(FatalError)
+            Err(FatalError::new())
         }
     }
 }
@@ -1326,7 +1335,7 @@ fn expr_call_contract_attribute(
             vec![Label::primary(name_span, "undefined function")],
             vec![],
         );
-        Err(FatalError)
+        Err(FatalError::new())
     }
 }
 
@@ -1349,7 +1358,7 @@ fn expr_call_type(
                 )],
                 vec![],
             );
-            Err(FatalError)
+            Err(FatalError::new())
         }
     }?;
 
@@ -1411,14 +1420,14 @@ fn expr_name_call_type(
             [fe::GenericArg::Int(len)] => Ok(CallType::TypeConstructor {
                 typ: Type::String(FeString { max_size: len.kind }),
             }),
-            _ => Err(FatalError),
+            _ => Err(FatalError::new()),
         },
         (value, _) => {
             if let Some(typ) = scope.borrow().get_module_type_def(value) {
                 Ok(CallType::TypeConstructor { typ })
             } else {
                 context.error("undefined function", name_span, "undefined");
-                Err(FatalError)
+                Err(FatalError::new())
             }
         }
     }
@@ -1431,7 +1440,7 @@ fn expr_attribute_call_type(
 ) -> Result<CallType, FatalError> {
     if let fe::Expr::Attribute { value, attr } = &exp.kind {
         if let fe::Expr::Name(name) = &value.kind {
-            match Object::from_str(&name) {
+            match Object::from_str(name) {
                 Ok(Object::Block) | Ok(Object::Chain) | Ok(Object::Msg) | Ok(Object::Tx) => {
                     context.fancy_error(
                         format!("no function `{}` exists on builtin `{}`", &attr.kind, &name),
@@ -1439,7 +1448,7 @@ fn expr_attribute_call_type(
                         vec![],
                     );
 
-                    return Err(FatalError);
+                    return Err(FatalError::new());
                 }
                 Ok(Object::Self_) => {
                     return Ok(CallType::SelfAttribute {
@@ -1449,7 +1458,7 @@ fn expr_attribute_call_type(
                 Err(_) => {}
             }
 
-            if let Some(typ) = scope.borrow().get_module_type_def(&name) {
+            if let Some(typ) = scope.borrow().get_module_type_def(name) {
                 return Ok(CallType::TypeAttribute {
                     typ,
                     func_name: attr.kind.to_string(),

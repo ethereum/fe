@@ -1,6 +1,6 @@
 ---
-source: parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(contract_def), contracts::parse_contract_def,\n           r#\"contract Foo:\n  x: address\n  pub y: u8\n  pub const z: Map<u8, address>\n  pub def foo() -> u8:\n    return 10\n  event Bar:\n    idx from: address\n\"#)"
+source: crates/parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(contract_def), contracts::parse_contract_def,\n           r#\"contract Foo:\n  x: address\n  pub y: u8\n  pub const z: Map<u8, address>\n  pub fn foo() -> u8:\n    return 10\n  event Bar:\n    idx from: address\n\"#)"
 
 ---
 Node(
@@ -134,8 +134,8 @@ Node(
           name: Node(
             kind: "foo",
             span: Span(
-              start: 81,
-              end: 84,
+              start: 80,
+              end: 83,
             ),
           ),
           args: [],
@@ -144,8 +144,8 @@ Node(
               base: "u8",
             ),
             span: Span(
-              start: 90,
-              end: 92,
+              start: 89,
+              end: 91,
             ),
           )),
           body: [
@@ -154,21 +154,21 @@ Node(
                 value: Some(Node(
                   kind: Num("10"),
                   span: Span(
-                    start: 105,
-                    end: 107,
+                    start: 104,
+                    end: 106,
                   ),
                 )),
               ),
               span: Span(
-                start: 98,
-                end: 107,
+                start: 97,
+                end: 106,
               ),
             ),
           ],
         ),
         span: Span(
           start: 73,
-          end: 107,
+          end: 106,
         ),
       )),
       Event(Node(
@@ -176,8 +176,8 @@ Node(
           name: Node(
             kind: "Bar",
             span: Span(
-              start: 116,
-              end: 119,
+              start: 115,
+              end: 118,
             ),
           ),
           fields: [
@@ -187,8 +187,8 @@ Node(
                 name: Node(
                   kind: "from",
                   span: Span(
-                    start: 129,
-                    end: 133,
+                    start: 128,
+                    end: 132,
                   ),
                 ),
                 typ: Node(
@@ -196,27 +196,27 @@ Node(
                     base: "address",
                   ),
                   span: Span(
-                    start: 135,
-                    end: 142,
+                    start: 134,
+                    end: 141,
                   ),
                 ),
               ),
               span: Span(
-                start: 125,
-                end: 142,
+                start: 124,
+                end: 141,
               ),
             ),
           ],
         ),
         span: Span(
-          start: 110,
-          end: 142,
+          start: 109,
+          end: 141,
         ),
       )),
     ],
   ),
   span: Span(
     start: 0,
-    end: 142,
+    end: 141,
   ),
 )

@@ -1,8 +1,6 @@
 //! Stress tests that test broad behavior
 
 #![cfg(feature = "solc-backend")]
-use std::iter;
-
 use fe_compiler_test_utils::*;
 
 pub fn deploy_contract(
@@ -42,8 +40,8 @@ fn data_copying_stress() {
 
         harness.test_function(&mut executor, "emit_my_event", &[], None);
 
-        let my_array = u256_array_token(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-        let my_mutated_array = u256_array_token(&[1, 2, 3, 5, 5, 6, 7, 8, 9, 10]);
+        let my_array = uint_array_token(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        let my_mutated_array = uint_array_token(&[1, 2, 3, 5, 5, 6, 7, 8, 9, 10]);
 
         let my_addrs = address_array_token(&["0", "1", "2"]);
         let my_second_addr = address_token("1");
@@ -80,7 +78,7 @@ fn data_copying_stress() {
             &mut executor,
             "assign_my_nums_and_return",
             &[],
-            Some(&u256_array_token(&[42, 26, 0, 1, 255])),
+            Some(&uint_array_token(&[42, 26, 0, 1, 255])),
         );
 
         harness.test_function(&mut executor, "set_my_addrs", &[my_addrs], None);
@@ -112,14 +110,9 @@ fn abi_encoding_stress() {
         let my_addrs = address_array_token(&["a", "b", "c", "d", "e"]);
         let my_u128 = uint_token(42);
         let my_string = string_token("my string");
-        let my_u16s = u256_array_token(&(0..255).collect::<Vec<_>>());
+        let my_u16s = uint_array_token(&(0..255).collect::<Vec<_>>());
         let my_bool = bool_token(true);
-        let my_bytes = bytes_token(
-            iter::repeat("ten bytes.")
-                .take(10)
-                .collect::<String>()
-                .as_str(),
-        );
+        let my_bytes = bytes_token(&"ten bytes.".repeat(10));
 
         harness.test_function(&mut executor, "set_my_addrs", &[my_addrs.clone()], None);
         harness.test_function(&mut executor, "get_my_addrs", &[], Some(&my_addrs));

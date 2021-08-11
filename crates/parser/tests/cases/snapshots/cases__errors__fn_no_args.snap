@@ -1,17 +1,17 @@
 ---
-source: parser/tests/cases/errors.rs
-expression: "err_string(stringify!(fn_no_args), |par| functions::parse_fn_def(par, None),\n           false, \"def f:\\n  return 5\")"
+source: crates/parser/tests/cases/errors.rs
+expression: "err_string(stringify!(fn_no_args), |par| functions::parse_fn_def(par, None),\n           false, \"fn f:\\n  return 5\")"
 
 ---
 error: function definition requires a list of parameters
-  ┌─ fn_no_args:1:5
+  ┌─ fn_no_args:1:4
   │
-1 │ def f:
-  │     ^ function name must be followed by `(`
+1 │ fn f:
+  │    ^ function name must be followed by `(`
   │
   = Note: if the function `f` takes no parameters, use an empty set of parentheses.
-  = Example: def f()
+  = Example: fn f()
   = Note: each parameter must have a name and a type.
-  = Example: def f(my_value: u256, x: bool)
+  = Example: fn f(my_value: u256, x: bool)
 
 

@@ -210,7 +210,7 @@ note:
    ┌─ stress/data_copying_stress.fe:22:9
    │
 22 │         self.my_string = my_string
-   │         ^^^^^^^^^^^^^^ attributes hash: 8000315337142872903
+   │         ^^^^^^^^^^^^^^ attributes hash: 10029528646004625581
    │
    = ExpressionAttributes {
          typ: String(
@@ -230,7 +230,7 @@ note:
    ┌─ stress/data_copying_stress.fe:22:26
    │
 22 │         self.my_string = my_string
-   │                          ^^^^^^^^^ attributes hash: 9569027785754553796
+   │                          ^^^^^^^^^ attributes hash: 12106970441914835754
    │
    = ExpressionAttributes {
          typ: String(
@@ -246,7 +246,7 @@ note:
    ┌─ stress/data_copying_stress.fe:23:9
    │
 23 │         self.my_other_string = my_other_string
-   │         ^^^^^^^^^^^^^^^^^^^^ attributes hash: 7390941099798146886
+   │         ^^^^^^^^^^^^^^^^^^^^ attributes hash: 11628039236663034784
    │
    = ExpressionAttributes {
          typ: String(
@@ -266,7 +266,7 @@ note:
    ┌─ stress/data_copying_stress.fe:23:32
    │
 23 │         self.my_other_string = my_other_string
-   │                                ^^^^^^^^^^^^^^^ attributes hash: 9569027785754553796
+   │                                ^^^^^^^^^^^^^^^ attributes hash: 12106970441914835754
    │
    = ExpressionAttributes {
          typ: String(
@@ -282,7 +282,7 @@ note:
    ┌─ stress/data_copying_stress.fe:24:9
    │
 24 │         self.my_u256 = my_u256
-   │         ^^^^^^^^^^^^ attributes hash: 5442517114445688665
+   │         ^^^^^^^^^^^^ attributes hash: 7483357330733323884
    │
    = ExpressionAttributes {
          typ: Base(
@@ -302,7 +302,7 @@ note:
    ┌─ stress/data_copying_stress.fe:24:24
    │
 24 │         self.my_u256 = my_u256
-   │                        ^^^^^^^ attributes hash: 16797824492585953824
+   │                        ^^^^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -318,7 +318,7 @@ note:
    ┌─ stress/data_copying_stress.fe:25:9
    │
 25 │         self.my_other_u256 = my_other_u256
-   │         ^^^^^^^^^^^^^^^^^^ attributes hash: 6590884947515096138
+   │         ^^^^^^^^^^^^^^^^^^ attributes hash: 2527462566517254930
    │
    = ExpressionAttributes {
          typ: Base(
@@ -338,7 +338,7 @@ note:
    ┌─ stress/data_copying_stress.fe:25:30
    │
 25 │         self.my_other_u256 = my_other_u256
-   │                              ^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+   │                              ^^^^^^^^^^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -354,7 +354,7 @@ note:
    ┌─ stress/data_copying_stress.fe:28:9
    │
 28 │         self.my_string = self.my_other_string
-   │         ^^^^^^^^^^^^^^ attributes hash: 8000315337142872903
+   │         ^^^^^^^^^^^^^^ attributes hash: 10029528646004625581
    │
    = ExpressionAttributes {
          typ: String(
@@ -374,7 +374,7 @@ note:
    ┌─ stress/data_copying_stress.fe:28:26
    │
 28 │         self.my_string = self.my_other_string
-   │                          ^^^^^^^^^^^^^^^^^^^^ attributes hash: 7390941099798146886
+   │                          ^^^^^^^^^^^^^^^^^^^^ attributes hash: 11628039236663034784
    │
    = ExpressionAttributes {
          typ: String(
@@ -394,7 +394,7 @@ note:
    ┌─ stress/data_copying_stress.fe:29:9
    │
 29 │         self.my_u256 = self.my_other_u256
-   │         ^^^^^^^^^^^^ attributes hash: 5442517114445688665
+   │         ^^^^^^^^^^^^ attributes hash: 7483357330733323884
    │
    = ExpressionAttributes {
          typ: Base(
@@ -414,7 +414,7 @@ note:
    ┌─ stress/data_copying_stress.fe:29:24
    │
 29 │         self.my_u256 = self.my_other_u256
-   │                        ^^^^^^^^^^^^^^^^^^ attributes hash: 6590884947515096138
+   │                        ^^^^^^^^^^^^^^^^^^ attributes hash: 2527462566517254930
    │
    = ExpressionAttributes {
          typ: Base(
@@ -434,7 +434,7 @@ note:
    ┌─ stress/data_copying_stress.fe:32:38
    │
 32 │         let my_2nd_array: u256[10] = my_array
-   │                                      ^^^^^^^^ attributes hash: 12880944358712268851
+   │                                      ^^^^^^^^ attributes hash: 1343256391726658592
    │
    = ExpressionAttributes {
          typ: Array(
@@ -453,7 +453,7 @@ note:
    ┌─ stress/data_copying_stress.fe:33:38
    │
 33 │         let my_3rd_array: u256[10] = my_2nd_array
-   │                                      ^^^^^^^^^^^^ attributes hash: 12880944358712268851
+   │                                      ^^^^^^^^^^^^ attributes hash: 1343256391726658592
    │
    = ExpressionAttributes {
          typ: Array(
@@ -472,7 +472,7 @@ note:
    ┌─ stress/data_copying_stress.fe:35:16
    │
 35 │         assert my_array[3] != 5
-   │                ^^^^^^^^ attributes hash: 12880944358712268851
+   │                ^^^^^^^^ attributes hash: 1343256391726658592
    │
    = ExpressionAttributes {
          typ: Array(
@@ -491,7 +491,7 @@ note:
    ┌─ stress/data_copying_stress.fe:35:25
    │
 35 │         assert my_array[3] != 5
-   │                         ^ attributes hash: 16797824492585953824
+   │                         ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -507,7 +507,7 @@ note:
    ┌─ stress/data_copying_stress.fe:35:16
    │
 35 │         assert my_array[3] != 5
-   │                ^^^^^^^^^^^ attributes hash: 11934894478308934606
+   │                ^^^^^^^^^^^ attributes hash: 14631543492293849089
    │
    = ExpressionAttributes {
          typ: Base(
@@ -525,7 +525,7 @@ note:
    ┌─ stress/data_copying_stress.fe:35:31
    │
 35 │         assert my_array[3] != 5
-   │                               ^ attributes hash: 16797824492585953824
+   │                               ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -541,7 +541,7 @@ note:
    ┌─ stress/data_copying_stress.fe:35:16
    │
 35 │         assert my_array[3] != 5
-   │                ^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -555,7 +555,7 @@ note:
    ┌─ stress/data_copying_stress.fe:36:9
    │
 36 │         my_array[3] = 5
-   │         ^^^^^^^^ attributes hash: 12880944358712268851
+   │         ^^^^^^^^ attributes hash: 1343256391726658592
    │
    = ExpressionAttributes {
          typ: Array(
@@ -574,7 +574,7 @@ note:
    ┌─ stress/data_copying_stress.fe:36:18
    │
 36 │         my_array[3] = 5
-   │                  ^ attributes hash: 16797824492585953824
+   │                  ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -590,7 +590,7 @@ note:
    ┌─ stress/data_copying_stress.fe:36:9
    │
 36 │         my_array[3] = 5
-   │         ^^^^^^^^^^^ attributes hash: 3617588353493611640
+   │         ^^^^^^^^^^^ attributes hash: 13245336599501214748
    │
    = ExpressionAttributes {
          typ: Base(
@@ -606,7 +606,7 @@ note:
    ┌─ stress/data_copying_stress.fe:36:23
    │
 36 │         my_array[3] = 5
-   │                       ^ attributes hash: 16797824492585953824
+   │                       ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -622,7 +622,7 @@ note:
    ┌─ stress/data_copying_stress.fe:37:16
    │
 37 │         assert my_array[3] == 5
-   │                ^^^^^^^^ attributes hash: 12880944358712268851
+   │                ^^^^^^^^ attributes hash: 1343256391726658592
    │
    = ExpressionAttributes {
          typ: Array(
@@ -641,7 +641,7 @@ note:
    ┌─ stress/data_copying_stress.fe:37:25
    │
 37 │         assert my_array[3] == 5
-   │                         ^ attributes hash: 16797824492585953824
+   │                         ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -657,7 +657,7 @@ note:
    ┌─ stress/data_copying_stress.fe:37:16
    │
 37 │         assert my_array[3] == 5
-   │                ^^^^^^^^^^^ attributes hash: 11934894478308934606
+   │                ^^^^^^^^^^^ attributes hash: 14631543492293849089
    │
    = ExpressionAttributes {
          typ: Base(
@@ -675,7 +675,7 @@ note:
    ┌─ stress/data_copying_stress.fe:37:31
    │
 37 │         assert my_array[3] == 5
-   │                               ^ attributes hash: 16797824492585953824
+   │                               ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -691,7 +691,7 @@ note:
    ┌─ stress/data_copying_stress.fe:37:16
    │
 37 │         assert my_array[3] == 5
-   │                ^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -705,7 +705,7 @@ note:
    ┌─ stress/data_copying_stress.fe:38:16
    │
 38 │         assert my_2nd_array[3] == 5
-   │                ^^^^^^^^^^^^ attributes hash: 12880944358712268851
+   │                ^^^^^^^^^^^^ attributes hash: 1343256391726658592
    │
    = ExpressionAttributes {
          typ: Array(
@@ -724,7 +724,7 @@ note:
    ┌─ stress/data_copying_stress.fe:38:29
    │
 38 │         assert my_2nd_array[3] == 5
-   │                             ^ attributes hash: 16797824492585953824
+   │                             ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -740,7 +740,7 @@ note:
    ┌─ stress/data_copying_stress.fe:38:16
    │
 38 │         assert my_2nd_array[3] == 5
-   │                ^^^^^^^^^^^^^^^ attributes hash: 11934894478308934606
+   │                ^^^^^^^^^^^^^^^ attributes hash: 14631543492293849089
    │
    = ExpressionAttributes {
          typ: Base(
@@ -758,7 +758,7 @@ note:
    ┌─ stress/data_copying_stress.fe:38:35
    │
 38 │         assert my_2nd_array[3] == 5
-   │                                   ^ attributes hash: 16797824492585953824
+   │                                   ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -774,7 +774,7 @@ note:
    ┌─ stress/data_copying_stress.fe:38:16
    │
 38 │         assert my_2nd_array[3] == 5
-   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -788,7 +788,7 @@ note:
    ┌─ stress/data_copying_stress.fe:39:16
    │
 39 │         assert my_3rd_array[3] == 5
-   │                ^^^^^^^^^^^^ attributes hash: 12880944358712268851
+   │                ^^^^^^^^^^^^ attributes hash: 1343256391726658592
    │
    = ExpressionAttributes {
          typ: Array(
@@ -807,7 +807,7 @@ note:
    ┌─ stress/data_copying_stress.fe:39:29
    │
 39 │         assert my_3rd_array[3] == 5
-   │                             ^ attributes hash: 16797824492585953824
+   │                             ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -823,7 +823,7 @@ note:
    ┌─ stress/data_copying_stress.fe:39:16
    │
 39 │         assert my_3rd_array[3] == 5
-   │                ^^^^^^^^^^^^^^^ attributes hash: 11934894478308934606
+   │                ^^^^^^^^^^^^^^^ attributes hash: 14631543492293849089
    │
    = ExpressionAttributes {
          typ: Base(
@@ -841,7 +841,7 @@ note:
    ┌─ stress/data_copying_stress.fe:39:35
    │
 39 │         assert my_3rd_array[3] == 5
-   │                                   ^ attributes hash: 16797824492585953824
+   │                                   ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -857,7 +857,7 @@ note:
    ┌─ stress/data_copying_stress.fe:39:16
    │
 39 │         assert my_3rd_array[3] == 5
-   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -871,7 +871,7 @@ note:
    ┌─ stress/data_copying_stress.fe:41:9
    │
 41 │         my_3rd_array[3] = 50
-   │         ^^^^^^^^^^^^ attributes hash: 12880944358712268851
+   │         ^^^^^^^^^^^^ attributes hash: 1343256391726658592
    │
    = ExpressionAttributes {
          typ: Array(
@@ -890,7 +890,7 @@ note:
    ┌─ stress/data_copying_stress.fe:41:22
    │
 41 │         my_3rd_array[3] = 50
-   │                      ^ attributes hash: 16797824492585953824
+   │                      ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -906,7 +906,7 @@ note:
    ┌─ stress/data_copying_stress.fe:41:9
    │
 41 │         my_3rd_array[3] = 50
-   │         ^^^^^^^^^^^^^^^ attributes hash: 3617588353493611640
+   │         ^^^^^^^^^^^^^^^ attributes hash: 13245336599501214748
    │
    = ExpressionAttributes {
          typ: Base(
@@ -922,7 +922,7 @@ note:
    ┌─ stress/data_copying_stress.fe:41:27
    │
 41 │         my_3rd_array[3] = 50
-   │                           ^^ attributes hash: 16797824492585953824
+   │                           ^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -938,7 +938,7 @@ note:
    ┌─ stress/data_copying_stress.fe:42:16
    │
 42 │         assert my_array[3] == 50
-   │                ^^^^^^^^ attributes hash: 12880944358712268851
+   │                ^^^^^^^^ attributes hash: 1343256391726658592
    │
    = ExpressionAttributes {
          typ: Array(
@@ -957,7 +957,7 @@ note:
    ┌─ stress/data_copying_stress.fe:42:25
    │
 42 │         assert my_array[3] == 50
-   │                         ^ attributes hash: 16797824492585953824
+   │                         ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -973,7 +973,7 @@ note:
    ┌─ stress/data_copying_stress.fe:42:16
    │
 42 │         assert my_array[3] == 50
-   │                ^^^^^^^^^^^ attributes hash: 11934894478308934606
+   │                ^^^^^^^^^^^ attributes hash: 14631543492293849089
    │
    = ExpressionAttributes {
          typ: Base(
@@ -991,7 +991,7 @@ note:
    ┌─ stress/data_copying_stress.fe:42:31
    │
 42 │         assert my_array[3] == 50
-   │                               ^^ attributes hash: 16797824492585953824
+   │                               ^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1007,7 +1007,7 @@ note:
    ┌─ stress/data_copying_stress.fe:42:16
    │
 42 │         assert my_array[3] == 50
-   │                ^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1021,7 +1021,7 @@ note:
    ┌─ stress/data_copying_stress.fe:43:16
    │
 43 │         assert my_2nd_array[3] == 50
-   │                ^^^^^^^^^^^^ attributes hash: 12880944358712268851
+   │                ^^^^^^^^^^^^ attributes hash: 1343256391726658592
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1040,7 +1040,7 @@ note:
    ┌─ stress/data_copying_stress.fe:43:29
    │
 43 │         assert my_2nd_array[3] == 50
-   │                             ^ attributes hash: 16797824492585953824
+   │                             ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1056,7 +1056,7 @@ note:
    ┌─ stress/data_copying_stress.fe:43:16
    │
 43 │         assert my_2nd_array[3] == 50
-   │                ^^^^^^^^^^^^^^^ attributes hash: 11934894478308934606
+   │                ^^^^^^^^^^^^^^^ attributes hash: 14631543492293849089
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1074,7 +1074,7 @@ note:
    ┌─ stress/data_copying_stress.fe:43:35
    │
 43 │         assert my_2nd_array[3] == 50
-   │                                   ^^ attributes hash: 16797824492585953824
+   │                                   ^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1090,7 +1090,7 @@ note:
    ┌─ stress/data_copying_stress.fe:43:16
    │
 43 │         assert my_2nd_array[3] == 50
-   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1104,7 +1104,7 @@ note:
    ┌─ stress/data_copying_stress.fe:44:16
    │
 44 │         assert my_3rd_array[3] == 50
-   │                ^^^^^^^^^^^^ attributes hash: 12880944358712268851
+   │                ^^^^^^^^^^^^ attributes hash: 1343256391726658592
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1123,7 +1123,7 @@ note:
    ┌─ stress/data_copying_stress.fe:44:29
    │
 44 │         assert my_3rd_array[3] == 50
-   │                             ^ attributes hash: 16797824492585953824
+   │                             ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1139,7 +1139,7 @@ note:
    ┌─ stress/data_copying_stress.fe:44:16
    │
 44 │         assert my_3rd_array[3] == 50
-   │                ^^^^^^^^^^^^^^^ attributes hash: 11934894478308934606
+   │                ^^^^^^^^^^^^^^^ attributes hash: 14631543492293849089
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1157,7 +1157,7 @@ note:
    ┌─ stress/data_copying_stress.fe:44:35
    │
 44 │         assert my_3rd_array[3] == 50
-   │                                   ^^ attributes hash: 16797824492585953824
+   │                                   ^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1173,7 +1173,7 @@ note:
    ┌─ stress/data_copying_stress.fe:44:16
    │
 44 │         assert my_3rd_array[3] == 50
-   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10866140763116710699
+   │                ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 519621297275845584
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1187,7 +1187,7 @@ note:
    ┌─ stress/data_copying_stress.fe:47:9
    │
 47 │         my_array[3] = 5
-   │         ^^^^^^^^ attributes hash: 12880944358712268851
+   │         ^^^^^^^^ attributes hash: 1343256391726658592
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1206,7 +1206,7 @@ note:
    ┌─ stress/data_copying_stress.fe:47:18
    │
 47 │         my_array[3] = 5
-   │                  ^ attributes hash: 16797824492585953824
+   │                  ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1222,7 +1222,7 @@ note:
    ┌─ stress/data_copying_stress.fe:47:9
    │
 47 │         my_array[3] = 5
-   │         ^^^^^^^^^^^ attributes hash: 3617588353493611640
+   │         ^^^^^^^^^^^ attributes hash: 13245336599501214748
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1238,7 +1238,7 @@ note:
    ┌─ stress/data_copying_stress.fe:47:23
    │
 47 │         my_array[3] = 5
-   │                       ^ attributes hash: 16797824492585953824
+   │                       ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1254,7 +1254,7 @@ note:
    ┌─ stress/data_copying_stress.fe:48:16
    │
 48 │         return my_array
-   │                ^^^^^^^^ attributes hash: 12880944358712268851
+   │                ^^^^^^^^ attributes hash: 1343256391726658592
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1273,7 +1273,7 @@ note:
    ┌─ stress/data_copying_stress.fe:51:16
    │
 51 │         return my_array.clone()
-   │                ^^^^^^^^ attributes hash: 12880944358712268851
+   │                ^^^^^^^^ attributes hash: 1343256391726658592
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1292,7 +1292,7 @@ note:
    ┌─ stress/data_copying_stress.fe:51:16
    │
 51 │         return my_array.clone()
-   │                ^^^^^^^^^^^^^^^^ attributes hash: 10862398269442980722
+   │                ^^^^^^^^^^^^^^^^ attributes hash: 16296884627856582323
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1313,7 +1313,7 @@ note:
    ┌─ stress/data_copying_stress.fe:54:9
    │
 54 │         my_array.clone()[3] = 5
-   │         ^^^^^^^^ attributes hash: 12880944358712268851
+   │         ^^^^^^^^ attributes hash: 1343256391726658592
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1332,7 +1332,7 @@ note:
    ┌─ stress/data_copying_stress.fe:54:9
    │
 54 │         my_array.clone()[3] = 5
-   │         ^^^^^^^^^^^^^^^^ attributes hash: 10862398269442980722
+   │         ^^^^^^^^^^^^^^^^ attributes hash: 16296884627856582323
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1353,7 +1353,7 @@ note:
    ┌─ stress/data_copying_stress.fe:54:26
    │
 54 │         my_array.clone()[3] = 5
-   │                          ^ attributes hash: 16797824492585953824
+   │                          ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1369,7 +1369,7 @@ note:
    ┌─ stress/data_copying_stress.fe:54:9
    │
 54 │         my_array.clone()[3] = 5
-   │         ^^^^^^^^^^^^^^^^^^^ attributes hash: 3617588353493611640
+   │         ^^^^^^^^^^^^^^^^^^^ attributes hash: 13245336599501214748
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1385,7 +1385,7 @@ note:
    ┌─ stress/data_copying_stress.fe:54:31
    │
 54 │         my_array.clone()[3] = 5
-   │                               ^ attributes hash: 16797824492585953824
+   │                               ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1401,7 +1401,7 @@ note:
    ┌─ stress/data_copying_stress.fe:55:16
    │
 55 │         return my_array
-   │                ^^^^^^^^ attributes hash: 12880944358712268851
+   │                ^^^^^^^^ attributes hash: 1343256391726658592
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1420,7 +1420,7 @@ note:
    ┌─ stress/data_copying_stress.fe:59:9
    │
 59 │         self.my_nums[0] = 42
-   │         ^^^^^^^^^^^^ attributes hash: 3466567958863487235
+   │         ^^^^^^^^^^^^ attributes hash: 5155475813166199113
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1443,7 +1443,7 @@ note:
    ┌─ stress/data_copying_stress.fe:59:22
    │
 59 │         self.my_nums[0] = 42
-   │                      ^ attributes hash: 16797824492585953824
+   │                      ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1459,7 +1459,7 @@ note:
    ┌─ stress/data_copying_stress.fe:59:9
    │
 59 │         self.my_nums[0] = 42
-   │         ^^^^^^^^^^^^^^^ attributes hash: 5973407925075462624
+   │         ^^^^^^^^^^^^^^^ attributes hash: 6410008273718378934
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1477,7 +1477,7 @@ note:
    ┌─ stress/data_copying_stress.fe:59:27
    │
 59 │         self.my_nums[0] = 42
-   │                           ^^ attributes hash: 16797824492585953824
+   │                           ^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1493,7 +1493,7 @@ note:
    ┌─ stress/data_copying_stress.fe:60:9
    │
 60 │         self.my_nums[1] = 26
-   │         ^^^^^^^^^^^^ attributes hash: 3466567958863487235
+   │         ^^^^^^^^^^^^ attributes hash: 5155475813166199113
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1516,7 +1516,7 @@ note:
    ┌─ stress/data_copying_stress.fe:60:22
    │
 60 │         self.my_nums[1] = 26
-   │                      ^ attributes hash: 16797824492585953824
+   │                      ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1532,7 +1532,7 @@ note:
    ┌─ stress/data_copying_stress.fe:60:9
    │
 60 │         self.my_nums[1] = 26
-   │         ^^^^^^^^^^^^^^^ attributes hash: 5973407925075462624
+   │         ^^^^^^^^^^^^^^^ attributes hash: 6410008273718378934
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1550,7 +1550,7 @@ note:
    ┌─ stress/data_copying_stress.fe:60:27
    │
 60 │         self.my_nums[1] = 26
-   │                           ^^ attributes hash: 16797824492585953824
+   │                           ^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1566,7 +1566,7 @@ note:
    ┌─ stress/data_copying_stress.fe:61:9
    │
 61 │         self.my_nums[2] = 0
-   │         ^^^^^^^^^^^^ attributes hash: 3466567958863487235
+   │         ^^^^^^^^^^^^ attributes hash: 5155475813166199113
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1589,7 +1589,7 @@ note:
    ┌─ stress/data_copying_stress.fe:61:22
    │
 61 │         self.my_nums[2] = 0
-   │                      ^ attributes hash: 16797824492585953824
+   │                      ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1605,7 +1605,7 @@ note:
    ┌─ stress/data_copying_stress.fe:61:9
    │
 61 │         self.my_nums[2] = 0
-   │         ^^^^^^^^^^^^^^^ attributes hash: 5973407925075462624
+   │         ^^^^^^^^^^^^^^^ attributes hash: 6410008273718378934
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1623,7 +1623,7 @@ note:
    ┌─ stress/data_copying_stress.fe:61:27
    │
 61 │         self.my_nums[2] = 0
-   │                           ^ attributes hash: 16797824492585953824
+   │                           ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1639,7 +1639,7 @@ note:
    ┌─ stress/data_copying_stress.fe:62:9
    │
 62 │         self.my_nums[3] = 1
-   │         ^^^^^^^^^^^^ attributes hash: 3466567958863487235
+   │         ^^^^^^^^^^^^ attributes hash: 5155475813166199113
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1662,7 +1662,7 @@ note:
    ┌─ stress/data_copying_stress.fe:62:22
    │
 62 │         self.my_nums[3] = 1
-   │                      ^ attributes hash: 16797824492585953824
+   │                      ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1678,7 +1678,7 @@ note:
    ┌─ stress/data_copying_stress.fe:62:9
    │
 62 │         self.my_nums[3] = 1
-   │         ^^^^^^^^^^^^^^^ attributes hash: 5973407925075462624
+   │         ^^^^^^^^^^^^^^^ attributes hash: 6410008273718378934
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1696,7 +1696,7 @@ note:
    ┌─ stress/data_copying_stress.fe:62:27
    │
 62 │         self.my_nums[3] = 1
-   │                           ^ attributes hash: 16797824492585953824
+   │                           ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1712,7 +1712,7 @@ note:
    ┌─ stress/data_copying_stress.fe:63:9
    │
 63 │         self.my_nums[4] = 255
-   │         ^^^^^^^^^^^^ attributes hash: 3466567958863487235
+   │         ^^^^^^^^^^^^ attributes hash: 5155475813166199113
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1735,7 +1735,7 @@ note:
    ┌─ stress/data_copying_stress.fe:63:22
    │
 63 │         self.my_nums[4] = 255
-   │                      ^ attributes hash: 16797824492585953824
+   │                      ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1751,7 +1751,7 @@ note:
    ┌─ stress/data_copying_stress.fe:63:9
    │
 63 │         self.my_nums[4] = 255
-   │         ^^^^^^^^^^^^^^^ attributes hash: 5973407925075462624
+   │         ^^^^^^^^^^^^^^^ attributes hash: 6410008273718378934
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1769,7 +1769,7 @@ note:
    ┌─ stress/data_copying_stress.fe:63:27
    │
 63 │         self.my_nums[4] = 255
-   │                           ^^^ attributes hash: 16797824492585953824
+   │                           ^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1785,7 +1785,7 @@ note:
    ┌─ stress/data_copying_stress.fe:64:9
    │
 64 │         my_nums_mem = self.my_nums.to_mem()
-   │         ^^^^^^^^^^^ attributes hash: 9322500749845443226
+   │         ^^^^^^^^^^^ attributes hash: 1409573588937423555
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1804,7 +1804,7 @@ note:
    ┌─ stress/data_copying_stress.fe:64:23
    │
 64 │         my_nums_mem = self.my_nums.to_mem()
-   │                       ^^^^^^^^^^^^ attributes hash: 3466567958863487235
+   │                       ^^^^^^^^^^^^ attributes hash: 5155475813166199113
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1827,7 +1827,7 @@ note:
    ┌─ stress/data_copying_stress.fe:64:23
    │
 64 │         my_nums_mem = self.my_nums.to_mem()
-   │                       ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9760731381216108071
+   │                       ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15877231234453755817
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1852,7 +1852,7 @@ note:
    ┌─ stress/data_copying_stress.fe:65:16
    │
 65 │         return my_nums_mem
-   │                ^^^^^^^^^^^ attributes hash: 9322500749845443226
+   │                ^^^^^^^^^^^ attributes hash: 1409573588937423555
    │
    = ExpressionAttributes {
          typ: Array(
@@ -1871,7 +1871,7 @@ note:
    ┌─ stress/data_copying_stress.fe:69:13
    │
 69 │             self.my_string.to_mem(),
-   │             ^^^^^^^^^^^^^^ attributes hash: 8000315337142872903
+   │             ^^^^^^^^^^^^^^ attributes hash: 10029528646004625581
    │
    = ExpressionAttributes {
          typ: String(
@@ -1891,7 +1891,7 @@ note:
    ┌─ stress/data_copying_stress.fe:69:13
    │
 69 │             self.my_string.to_mem(),
-   │             ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14071116891056185972
+   │             ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4356329184709886438
    │
    = ExpressionAttributes {
          typ: String(
@@ -1913,7 +1913,7 @@ note:
    ┌─ stress/data_copying_stress.fe:70:13
    │
 70 │             self.my_u256.to_mem()
-   │             ^^^^^^^^^^^^ attributes hash: 5442517114445688665
+   │             ^^^^^^^^^^^^ attributes hash: 7483357330733323884
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1933,7 +1933,7 @@ note:
    ┌─ stress/data_copying_stress.fe:70:13
    │
 70 │             self.my_u256.to_mem()
-   │             ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5126058488677760853
+   │             ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2554289623849491432
    │
    = ExpressionAttributes {
          typ: Base(
@@ -1958,7 +1958,7 @@ note:
 69 │ │             self.my_string.to_mem(),
 70 │ │             self.my_u256.to_mem()
 71 │ │         )
-   │ ╰─────────^ attributes hash: 513065555763557710
+   │ ╰─────────^ attributes hash: 4703226498732669424
    │  
    = ExpressionAttributes {
          typ: Base(
@@ -1972,7 +1972,7 @@ note:
    ┌─ stress/data_copying_stress.fe:74:32
    │
 74 │         emit MyEvent(my_string=some_string, my_u256=some_u256)
-   │                                ^^^^^^^^^^^ attributes hash: 9569027785754553796
+   │                                ^^^^^^^^^^^ attributes hash: 12106970441914835754
    │
    = ExpressionAttributes {
          typ: String(
@@ -1988,7 +1988,7 @@ note:
    ┌─ stress/data_copying_stress.fe:74:53
    │
 74 │         emit MyEvent(my_string=some_string, my_u256=some_u256)
-   │                                                     ^^^^^^^^^ attributes hash: 16797824492585953824
+   │                                                     ^^^^^^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2004,7 +2004,7 @@ note:
    ┌─ stress/data_copying_stress.fe:77:9
    │
 77 │         self.my_addrs = my_addrs
-   │         ^^^^^^^^^^^^^ attributes hash: 6657393468177465028
+   │         ^^^^^^^^^^^^^ attributes hash: 17933871666284650973
    │
    = ExpressionAttributes {
          typ: Array(
@@ -2025,7 +2025,7 @@ note:
    ┌─ stress/data_copying_stress.fe:77:25
    │
 77 │         self.my_addrs = my_addrs
-   │                         ^^^^^^^^ attributes hash: 2245312459861268279
+   │                         ^^^^^^^^ attributes hash: 5465924318368089329
    │
    = ExpressionAttributes {
          typ: Array(
@@ -2042,7 +2042,7 @@ note:
    ┌─ stress/data_copying_stress.fe:80:16
    │
 80 │         return self.my_addrs[1]
-   │                ^^^^^^^^^^^^^ attributes hash: 6657393468177465028
+   │                ^^^^^^^^^^^^^ attributes hash: 17933871666284650973
    │
    = ExpressionAttributes {
          typ: Array(
@@ -2063,7 +2063,7 @@ note:
    ┌─ stress/data_copying_stress.fe:80:30
    │
 80 │         return self.my_addrs[1]
-   │                              ^ attributes hash: 16797824492585953824
+   │                              ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2079,7 +2079,7 @@ note:
    ┌─ stress/data_copying_stress.fe:80:16
    │
 80 │         return self.my_addrs[1]
-   │                ^^^^^^^^^^^^^^^^ attributes hash: 4019208676761915907
+   │                ^^^^^^^^^^^^^^^^ attributes hash: 10672237277138210964
    │
    = ExpressionAttributes {
          typ: Base(
@@ -2097,11 +2097,10 @@ note:
    ┌─ stress/data_copying_stress.fe:74:9
    │
 74 │         emit MyEvent(my_string=some_string, my_u256=some_u256)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9960040166005382103
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 2143436862180406659
    │
    = EventDef {
          name: "MyEvent",
-         topic: "0x417b479eab59fa49bedfbbb7cab907b3a81d8375cfca57da274a3d8b6c61a813",
          fields: [
              (
                  "my_string",
@@ -2126,14 +2125,14 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:16:5
    │  
-16 │ ╭     pub def set_my_vals(
+16 │ ╭     pub fn set_my_vals(
 17 │ │         my_string: String<42>,
 18 │ │         my_other_string: String<42>,
 19 │ │         my_u256: u256,
    · │
 24 │ │         self.my_u256 = my_u256
 25 │ │         self.my_other_u256 = my_other_u256
-   │ ╰──────────────────────────────────────────^ attributes hash: 6175440269983715159
+   │ ╰──────────────────────────────────────────^ attributes hash: 7219339347269990177
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2180,10 +2179,10 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:27:5
    │  
-27 │ ╭     pub def set_to_my_other_vals():
+27 │ ╭     pub fn set_to_my_other_vals():
 28 │ │         self.my_string = self.my_other_string
 29 │ │         self.my_u256 = self.my_other_u256
-   │ ╰─────────────────────────────────────────^ attributes hash: 10601154972370772075
+   │ ╰─────────────────────────────────────────^ attributes hash: 1357326605645579790
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2197,14 +2196,14 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:31:5
    │  
-31 │ ╭     pub def multiple_references_shared_memory(my_array: u256[10]):
+31 │ ╭     pub fn multiple_references_shared_memory(my_array: u256[10]):
 32 │ │         let my_2nd_array: u256[10] = my_array
 33 │ │         let my_3rd_array: u256[10] = my_2nd_array
 34 │ │ 
    · │
 43 │ │         assert my_2nd_array[3] == 50
 44 │ │         assert my_3rd_array[3] == 50
-   │ ╰────────────────────────────────────^ attributes hash: 7806718866218994516
+   │ ╰────────────────────────────────────^ attributes hash: 14083631743129149315
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2230,10 +2229,10 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:46:5
    │  
-46 │ ╭     pub def mutate_and_return(my_array: u256[10]) -> u256[10]:
+46 │ ╭     pub fn mutate_and_return(my_array: u256[10]) -> u256[10]:
 47 │ │         my_array[3] = 5
 48 │ │         return my_array
-   │ ╰───────────────────────^ attributes hash: 18274323589323311746
+   │ ╰───────────────────────^ attributes hash: 1452426951820943098
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2264,9 +2263,9 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:50:5
    │  
-50 │ ╭     pub def clone_and_return(my_array: u256[10]) -> u256[10]:
+50 │ ╭     pub fn clone_and_return(my_array: u256[10]) -> u256[10]:
 51 │ │         return my_array.clone()
-   │ ╰───────────────────────────────^ attributes hash: 2184071157907209705
+   │ ╰───────────────────────────────^ attributes hash: 5900673887566421517
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2297,10 +2296,10 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:53:5
    │  
-53 │ ╭     pub def clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
+53 │ ╭     pub fn clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
 54 │ │         my_array.clone()[3] = 5
 55 │ │         return my_array
-   │ ╰───────────────────────^ attributes hash: 5072272144677393268
+   │ ╰───────────────────────^ attributes hash: 12449666289702303146
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2331,14 +2330,14 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:57:5
    │  
-57 │ ╭     pub def assign_my_nums_and_return() -> u256[5]:
+57 │ ╭     pub fn assign_my_nums_and_return() -> u256[5]:
 58 │ │         let my_nums_mem: u256[5]
 59 │ │         self.my_nums[0] = 42
 60 │ │         self.my_nums[1] = 26
    · │
 64 │ │         my_nums_mem = self.my_nums.to_mem()
 65 │ │         return my_nums_mem
-   │ ╰──────────────────────────^ attributes hash: 14910367564057554923
+   │ ╰──────────────────────────^ attributes hash: 12153910535067940896
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2357,12 +2356,12 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:67:5
    │  
-67 │ ╭     pub def emit_my_event():
+67 │ ╭     pub fn emit_my_event():
 68 │ │         self.emit_my_event_internal(
 69 │ │             self.my_string.to_mem(),
 70 │ │             self.my_u256.to_mem()
 71 │ │         )
-   │ ╰─────────^ attributes hash: 11962324298072924216
+   │ ╰─────────^ attributes hash: 11006694017805682653
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2376,9 +2375,9 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:73:5
    │  
-73 │ ╭     def emit_my_event_internal(some_string: String<42>, some_u256: u256):
+73 │ ╭     fn emit_my_event_internal(some_string: String<42>, some_u256: u256):
 74 │ │         emit MyEvent(my_string=some_string, my_u256=some_u256)
-   │ ╰──────────────────────────────────────────────────────────────^ attributes hash: 9301243115763667579
+   │ ╰──────────────────────────────────────────────────────────────^ attributes hash: 14383530330606999137
    │  
    = FunctionAttributes {
          is_public: false,
@@ -2409,9 +2408,9 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:76:5
    │  
-76 │ ╭     pub def set_my_addrs(my_addrs: address[3]):
+76 │ ╭     pub fn set_my_addrs(my_addrs: address[3]):
 77 │ │         self.my_addrs = my_addrs
-   │ ╰────────────────────────────────^ attributes hash: 16611403743027696076
+   │ ╰────────────────────────────────^ attributes hash: 8693691706541694280
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2435,9 +2434,9 @@ note:
 note: 
    ┌─ stress/data_copying_stress.fe:79:5
    │  
-79 │ ╭     pub def get_my_second_addr() -> address:
+79 │ ╭     pub fn get_my_second_addr() -> address:
 80 │ │         return self.my_addrs[1]
-   │ ╰───────────────────────────────^ attributes hash: 8198424112402208752
+   │ ╰───────────────────────────────^ attributes hash: 1070922721708043931
    │  
    = FunctionAttributes {
          is_public: true,
@@ -2452,7 +2451,7 @@ note:
    ┌─ stress/data_copying_stress.fe:32:9
    │
 32 │         let my_2nd_array: u256[10] = my_array
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17323625354857110317
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5382577674283633330
    │
    = Array(
          Array {
@@ -2467,7 +2466,7 @@ note:
    ┌─ stress/data_copying_stress.fe:33:9
    │
 33 │         let my_3rd_array: u256[10] = my_2nd_array
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17323625354857110317
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5382577674283633330
    │
    = Array(
          Array {
@@ -2482,7 +2481,7 @@ note:
    ┌─ stress/data_copying_stress.fe:58:9
    │
 58 │         let my_nums_mem: u256[5]
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12285037458725956106
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10049365445048351196
    │
    = Array(
          Array {
@@ -2501,9 +2500,9 @@ note:
  3 │ │     my_other_string: String<42>
  4 │ │ 
    · │
-79 │ │     pub def get_my_second_addr() -> address:
+79 │ │     pub fn get_my_second_addr() -> address:
 80 │ │         return self.my_addrs[1]
-   │ ╰───────────────────────────────^ attributes hash: 13856666633291790232
+   │ ╰───────────────────────────────^ attributes hash: 6310860118106615959
    │  
    = ContractAttributes {
          public_functions: [
@@ -2703,7 +2702,6 @@ note:
          events: [
              EventDef {
                  name: "MyEvent",
-                 topic: "0x417b479eab59fa49bedfbbb7cab907b3a81d8375cfca57da274a3d8b6c61a813",
                  fields: [
                      (
                          "my_string",
@@ -2733,7 +2731,7 @@ note:
    ┌─ stress/data_copying_stress.fe:51:16
    │
 51 │         return my_array.clone()
-   │                ^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │                ^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
    │
    = ValueAttribute
 
@@ -2741,7 +2739,7 @@ note:
    ┌─ stress/data_copying_stress.fe:54:9
    │
 54 │         my_array.clone()[3] = 5
-   │         ^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │         ^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
    │
    = ValueAttribute
 
@@ -2749,7 +2747,7 @@ note:
    ┌─ stress/data_copying_stress.fe:64:23
    │
 64 │         my_nums_mem = self.my_nums.to_mem()
-   │                       ^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │                       ^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
    │
    = ValueAttribute
 
@@ -2757,7 +2755,7 @@ note:
    ┌─ stress/data_copying_stress.fe:68:9
    │
 68 │         self.emit_my_event_internal(
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12154837787726881585
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17599861255131653403
    │
    = SelfAttribute {
          func_name: "emit_my_event_internal",
@@ -2767,7 +2765,7 @@ note:
    ┌─ stress/data_copying_stress.fe:69:13
    │
 69 │             self.my_string.to_mem(),
-   │             ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │             ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
    │
    = ValueAttribute
 
@@ -2775,7 +2773,7 @@ note:
    ┌─ stress/data_copying_stress.fe:70:13
    │
 70 │             self.my_u256.to_mem()
-   │             ^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+   │             ^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
    │
    = ValueAttribute
 
@@ -2785,11 +2783,10 @@ note:
 12 │ ╭     event MyEvent:
 13 │ │         my_string: String<42>
 14 │ │         my_u256: u256
-   │ ╰─────────────────────^ attributes hash: 9960040166005382103
+   │ ╰─────────────────────^ attributes hash: 2143436862180406659
    │  
    = EventDef {
          name: "MyEvent",
-         topic: "0x417b479eab59fa49bedfbbb7cab907b3a81d8375cfca57da274a3d8b6c61a813",
          fields: [
              (
                  "my_string",
@@ -2815,7 +2812,7 @@ note:
    ┌─ stress/data_copying_stress.fe:13:20
    │
 13 │         my_string: String<42>
-   │                    ^^^^^^^^^^ attributes hash: 12783265608664719061
+   │                    ^^^^^^^^^^ attributes hash: 14777032492858574931
    │
    = String(
          FeString {
@@ -2827,7 +2824,7 @@ note:
    ┌─ stress/data_copying_stress.fe:14:18
    │
 14 │         my_u256: u256
-   │                  ^^^^ attributes hash: 17942395924573474124
+   │                  ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -2839,7 +2836,7 @@ note:
    ┌─ stress/data_copying_stress.fe:17:20
    │
 17 │         my_string: String<42>,
-   │                    ^^^^^^^^^^ attributes hash: 12783265608664719061
+   │                    ^^^^^^^^^^ attributes hash: 14777032492858574931
    │
    = String(
          FeString {
@@ -2851,7 +2848,7 @@ note:
    ┌─ stress/data_copying_stress.fe:18:26
    │
 18 │         my_other_string: String<42>,
-   │                          ^^^^^^^^^^ attributes hash: 12783265608664719061
+   │                          ^^^^^^^^^^ attributes hash: 14777032492858574931
    │
    = String(
          FeString {
@@ -2863,7 +2860,7 @@ note:
    ┌─ stress/data_copying_stress.fe:19:18
    │
 19 │         my_u256: u256,
-   │                  ^^^^ attributes hash: 17942395924573474124
+   │                  ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -2875,7 +2872,7 @@ note:
    ┌─ stress/data_copying_stress.fe:20:24
    │
 20 │         my_other_u256: u256
-   │                        ^^^^ attributes hash: 17942395924573474124
+   │                        ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -2884,10 +2881,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:31:57
+   ┌─ stress/data_copying_stress.fe:31:56
    │
-31 │     pub def multiple_references_shared_memory(my_array: u256[10]):
-   │                                                         ^^^^ attributes hash: 17942395924573474124
+31 │     pub fn multiple_references_shared_memory(my_array: u256[10]):
+   │                                                        ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -2896,10 +2893,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:31:57
+   ┌─ stress/data_copying_stress.fe:31:56
    │
-31 │     pub def multiple_references_shared_memory(my_array: u256[10]):
-   │                                                         ^^^^^^^^ attributes hash: 17323625354857110317
+31 │     pub fn multiple_references_shared_memory(my_array: u256[10]):
+   │                                                        ^^^^^^^^ attributes hash: 5382577674283633330
    │
    = Array(
          Array {
@@ -2911,10 +2908,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:46:41
+   ┌─ stress/data_copying_stress.fe:46:40
    │
-46 │     pub def mutate_and_return(my_array: u256[10]) -> u256[10]:
-   │                                         ^^^^ attributes hash: 17942395924573474124
+46 │     pub fn mutate_and_return(my_array: u256[10]) -> u256[10]:
+   │                                        ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -2923,10 +2920,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:46:41
+   ┌─ stress/data_copying_stress.fe:46:40
    │
-46 │     pub def mutate_and_return(my_array: u256[10]) -> u256[10]:
-   │                                         ^^^^^^^^ attributes hash: 17323625354857110317
+46 │     pub fn mutate_and_return(my_array: u256[10]) -> u256[10]:
+   │                                        ^^^^^^^^ attributes hash: 5382577674283633330
    │
    = Array(
          Array {
@@ -2938,10 +2935,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:46:54
+   ┌─ stress/data_copying_stress.fe:46:53
    │
-46 │     pub def mutate_and_return(my_array: u256[10]) -> u256[10]:
-   │                                                      ^^^^ attributes hash: 17942395924573474124
+46 │     pub fn mutate_and_return(my_array: u256[10]) -> u256[10]:
+   │                                                     ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -2950,10 +2947,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:46:54
+   ┌─ stress/data_copying_stress.fe:46:53
    │
-46 │     pub def mutate_and_return(my_array: u256[10]) -> u256[10]:
-   │                                                      ^^^^^^^^ attributes hash: 17323625354857110317
+46 │     pub fn mutate_and_return(my_array: u256[10]) -> u256[10]:
+   │                                                     ^^^^^^^^ attributes hash: 5382577674283633330
    │
    = Array(
          Array {
@@ -2965,10 +2962,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:50:40
+   ┌─ stress/data_copying_stress.fe:50:39
    │
-50 │     pub def clone_and_return(my_array: u256[10]) -> u256[10]:
-   │                                        ^^^^ attributes hash: 17942395924573474124
+50 │     pub fn clone_and_return(my_array: u256[10]) -> u256[10]:
+   │                                       ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -2977,10 +2974,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:50:40
+   ┌─ stress/data_copying_stress.fe:50:39
    │
-50 │     pub def clone_and_return(my_array: u256[10]) -> u256[10]:
-   │                                        ^^^^^^^^ attributes hash: 17323625354857110317
+50 │     pub fn clone_and_return(my_array: u256[10]) -> u256[10]:
+   │                                       ^^^^^^^^ attributes hash: 5382577674283633330
    │
    = Array(
          Array {
@@ -2992,10 +2989,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:50:53
+   ┌─ stress/data_copying_stress.fe:50:52
    │
-50 │     pub def clone_and_return(my_array: u256[10]) -> u256[10]:
-   │                                                     ^^^^ attributes hash: 17942395924573474124
+50 │     pub fn clone_and_return(my_array: u256[10]) -> u256[10]:
+   │                                                    ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -3004,10 +3001,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:50:53
+   ┌─ stress/data_copying_stress.fe:50:52
    │
-50 │     pub def clone_and_return(my_array: u256[10]) -> u256[10]:
-   │                                                     ^^^^^^^^ attributes hash: 17323625354857110317
+50 │     pub fn clone_and_return(my_array: u256[10]) -> u256[10]:
+   │                                                    ^^^^^^^^ attributes hash: 5382577674283633330
    │
    = Array(
          Array {
@@ -3019,10 +3016,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:53:47
+   ┌─ stress/data_copying_stress.fe:53:46
    │
-53 │     pub def clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
-   │                                               ^^^^ attributes hash: 17942395924573474124
+53 │     pub fn clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
+   │                                              ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -3031,10 +3028,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:53:47
+   ┌─ stress/data_copying_stress.fe:53:46
    │
-53 │     pub def clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
-   │                                               ^^^^^^^^ attributes hash: 17323625354857110317
+53 │     pub fn clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
+   │                                              ^^^^^^^^ attributes hash: 5382577674283633330
    │
    = Array(
          Array {
@@ -3046,10 +3043,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:53:60
+   ┌─ stress/data_copying_stress.fe:53:59
    │
-53 │     pub def clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
-   │                                                            ^^^^ attributes hash: 17942395924573474124
+53 │     pub fn clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
+   │                                                           ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -3058,10 +3055,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:53:60
+   ┌─ stress/data_copying_stress.fe:53:59
    │
-53 │     pub def clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
-   │                                                            ^^^^^^^^ attributes hash: 17323625354857110317
+53 │     pub fn clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
+   │                                                           ^^^^^^^^ attributes hash: 5382577674283633330
    │
    = Array(
          Array {
@@ -3073,10 +3070,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:57:44
+   ┌─ stress/data_copying_stress.fe:57:43
    │
-57 │     pub def assign_my_nums_and_return() -> u256[5]:
-   │                                            ^^^^ attributes hash: 17942395924573474124
+57 │     pub fn assign_my_nums_and_return() -> u256[5]:
+   │                                           ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -3085,10 +3082,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:57:44
+   ┌─ stress/data_copying_stress.fe:57:43
    │
-57 │     pub def assign_my_nums_and_return() -> u256[5]:
-   │                                            ^^^^^^^ attributes hash: 12285037458725956106
+57 │     pub fn assign_my_nums_and_return() -> u256[5]:
+   │                                           ^^^^^^^ attributes hash: 10049365445048351196
    │
    = Array(
          Array {
@@ -3100,10 +3097,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:73:45
+   ┌─ stress/data_copying_stress.fe:73:44
    │
-73 │     def emit_my_event_internal(some_string: String<42>, some_u256: u256):
-   │                                             ^^^^^^^^^^ attributes hash: 12783265608664719061
+73 │     fn emit_my_event_internal(some_string: String<42>, some_u256: u256):
+   │                                            ^^^^^^^^^^ attributes hash: 14777032492858574931
    │
    = String(
          FeString {
@@ -3112,10 +3109,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:73:68
+   ┌─ stress/data_copying_stress.fe:73:67
    │
-73 │     def emit_my_event_internal(some_string: String<42>, some_u256: u256):
-   │                                                                    ^^^^ attributes hash: 17942395924573474124
+73 │     fn emit_my_event_internal(some_string: String<42>, some_u256: u256):
+   │                                                                   ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -3124,20 +3121,20 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:76:36
+   ┌─ stress/data_copying_stress.fe:76:35
    │
-76 │     pub def set_my_addrs(my_addrs: address[3]):
-   │                                    ^^^^^^^ attributes hash: 16931239362436195516
+76 │     pub fn set_my_addrs(my_addrs: address[3]):
+   │                                   ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:76:36
+   ┌─ stress/data_copying_stress.fe:76:35
    │
-76 │     pub def set_my_addrs(my_addrs: address[3]):
-   │                                    ^^^^^^^^^^ attributes hash: 6535243094049238753
+76 │     pub fn set_my_addrs(my_addrs: address[3]):
+   │                                   ^^^^^^^^^^ attributes hash: 9612468392542700466
    │
    = Array(
          Array {
@@ -3147,10 +3144,10 @@ note:
      )
 
 note: 
-   ┌─ stress/data_copying_stress.fe:79:37
+   ┌─ stress/data_copying_stress.fe:79:36
    │
-79 │     pub def get_my_second_addr() -> address:
-   │                                     ^^^^^^^ attributes hash: 16931239362436195516
+79 │     pub fn get_my_second_addr() -> address:
+   │                                    ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
@@ -3160,7 +3157,7 @@ note:
   ┌─ stress/data_copying_stress.fe:2:16
   │
 2 │     my_string: String<42>
-  │                ^^^^^^^^^^ attributes hash: 12783265608664719061
+  │                ^^^^^^^^^^ attributes hash: 14777032492858574931
   │
   = String(
         FeString {
@@ -3172,7 +3169,7 @@ note:
   ┌─ stress/data_copying_stress.fe:3:22
   │
 3 │     my_other_string: String<42>
-  │                      ^^^^^^^^^^ attributes hash: 12783265608664719061
+  │                      ^^^^^^^^^^ attributes hash: 14777032492858574931
   │
   = String(
         FeString {
@@ -3184,7 +3181,7 @@ note:
   ┌─ stress/data_copying_stress.fe:5:14
   │
 5 │     my_u256: u256
-  │              ^^^^ attributes hash: 17942395924573474124
+  │              ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -3196,7 +3193,7 @@ note:
   ┌─ stress/data_copying_stress.fe:6:20
   │
 6 │     my_other_u256: u256
-  │                    ^^^^ attributes hash: 17942395924573474124
+  │                    ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -3208,7 +3205,7 @@ note:
   ┌─ stress/data_copying_stress.fe:8:14
   │
 8 │     my_nums: u256[5]
-  │              ^^^^ attributes hash: 17942395924573474124
+  │              ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -3220,7 +3217,7 @@ note:
   ┌─ stress/data_copying_stress.fe:8:14
   │
 8 │     my_nums: u256[5]
-  │              ^^^^^^^ attributes hash: 12285037458725956106
+  │              ^^^^^^^ attributes hash: 10049365445048351196
   │
   = Array(
         Array {
@@ -3235,7 +3232,7 @@ note:
    ┌─ stress/data_copying_stress.fe:10:15
    │
 10 │     my_addrs: address[3]
-   │               ^^^^^^^ attributes hash: 16931239362436195516
+   │               ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
@@ -3245,7 +3242,7 @@ note:
    ┌─ stress/data_copying_stress.fe:10:15
    │
 10 │     my_addrs: address[3]
-   │               ^^^^^^^^^^ attributes hash: 6535243094049238753
+   │               ^^^^^^^^^^ attributes hash: 9612468392542700466
    │
    = Array(
          Array {
@@ -3258,7 +3255,7 @@ note:
    ┌─ stress/data_copying_stress.fe:32:27
    │
 32 │         let my_2nd_array: u256[10] = my_array
-   │                           ^^^^ attributes hash: 17942395924573474124
+   │                           ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -3270,7 +3267,7 @@ note:
    ┌─ stress/data_copying_stress.fe:32:27
    │
 32 │         let my_2nd_array: u256[10] = my_array
-   │                           ^^^^^^^^ attributes hash: 17323625354857110317
+   │                           ^^^^^^^^ attributes hash: 5382577674283633330
    │
    = Array(
          Array {
@@ -3285,7 +3282,7 @@ note:
    ┌─ stress/data_copying_stress.fe:33:27
    │
 33 │         let my_3rd_array: u256[10] = my_2nd_array
-   │                           ^^^^ attributes hash: 17942395924573474124
+   │                           ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -3297,7 +3294,7 @@ note:
    ┌─ stress/data_copying_stress.fe:33:27
    │
 33 │         let my_3rd_array: u256[10] = my_2nd_array
-   │                           ^^^^^^^^ attributes hash: 17323625354857110317
+   │                           ^^^^^^^^ attributes hash: 5382577674283633330
    │
    = Array(
          Array {
@@ -3312,7 +3309,7 @@ note:
    ┌─ stress/data_copying_stress.fe:58:26
    │
 58 │         let my_nums_mem: u256[5]
-   │                          ^^^^ attributes hash: 17942395924573474124
+   │                          ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -3324,7 +3321,7 @@ note:
    ┌─ stress/data_copying_stress.fe:58:26
    │
 58 │         let my_nums_mem: u256[5]
-   │                          ^^^^^^^ attributes hash: 12285037458725956106
+   │                          ^^^^^^^ attributes hash: 10049365445048351196
    │
    = Array(
          Array {

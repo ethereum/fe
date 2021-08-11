@@ -21,7 +21,7 @@ pub struct SourceFileId(pub u128);
 impl SourceFile {
     pub fn new(name: &str, content: &str) -> Self {
         let hash = keccak::full_as_bytes(content.as_bytes());
-        let line_starts = cs::files::line_starts(&content).collect();
+        let line_starts = cs::files::line_starts(content).collect();
         Self {
             id: SourceFileId(u128::from_be_bytes(hash[..16].try_into().unwrap())),
             name: name.to_string(),
@@ -86,7 +86,7 @@ impl FileStore {
     }
 
     pub fn load_file(&mut self, path: &str) -> io::Result<(String, SourceFileId)> {
-        let content = self.loader.load_file(&Path::new(&path))?;
+        let content = self.loader.load_file(Path::new(&path))?;
         let id = self.add_file(path, &content);
         Ok((content, id))
     }

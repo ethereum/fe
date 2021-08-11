@@ -29,7 +29,7 @@ note:
   ┌─ features/call_statement_with_args_2.fe:5:9
   │
 5 │         self.baz[0] = val
-  │         ^^^^^^^^ attributes hash: 11084999791471164417
+  │         ^^^^^^^^ attributes hash: 7500259330345281063
   │
   = ExpressionAttributes {
         typ: Map(
@@ -56,7 +56,7 @@ note:
   ┌─ features/call_statement_with_args_2.fe:5:18
   │
 5 │         self.baz[0] = val
-  │                  ^ attributes hash: 16797824492585953824
+  │                  ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -72,7 +72,7 @@ note:
   ┌─ features/call_statement_with_args_2.fe:5:9
   │
 5 │         self.baz[0] = val
-  │         ^^^^^^^^^^^ attributes hash: 5973407925075462624
+  │         ^^^^^^^^^^^ attributes hash: 6410008273718378934
   │
   = ExpressionAttributes {
         typ: Base(
@@ -90,7 +90,7 @@ note:
   ┌─ features/call_statement_with_args_2.fe:5:23
   │
 5 │         self.baz[0] = val
-  │                       ^^^ attributes hash: 16797824492585953824
+  │                       ^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -106,7 +106,7 @@ note:
   ┌─ features/call_statement_with_args_2.fe:6:16
   │
 6 │         return val
-  │                ^^^ attributes hash: 16797824492585953824
+  │                ^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -122,7 +122,7 @@ note:
   ┌─ features/call_statement_with_args_2.fe:9:21
   │
 9 │         self.assign(100)
-  │                     ^^^ attributes hash: 16797824492585953824
+  │                     ^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -138,7 +138,7 @@ note:
   ┌─ features/call_statement_with_args_2.fe:9:9
   │
 9 │         self.assign(100)
-  │         ^^^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+  │         ^^^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -154,7 +154,7 @@ note:
    ┌─ features/call_statement_with_args_2.fe:10:16
    │
 10 │         return self.baz[0]
-   │                ^^^^^^^^ attributes hash: 11084999791471164417
+   │                ^^^^^^^^ attributes hash: 7500259330345281063
    │
    = ExpressionAttributes {
          typ: Map(
@@ -181,7 +181,7 @@ note:
    ┌─ features/call_statement_with_args_2.fe:10:25
    │
 10 │         return self.baz[0]
-   │                         ^ attributes hash: 16797824492585953824
+   │                         ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -197,7 +197,7 @@ note:
    ┌─ features/call_statement_with_args_2.fe:10:16
    │
 10 │         return self.baz[0]
-   │                ^^^^^^^^^^^ attributes hash: 9781479072077703403
+   │                ^^^^^^^^^^^ attributes hash: 2750573035226013709
    │
    = ExpressionAttributes {
          typ: Base(
@@ -216,10 +216,10 @@ note:
 note: 
   ┌─ features/call_statement_with_args_2.fe:4:5
   │  
-4 │ ╭     def assign(val: u256) -> u256:
+4 │ ╭     fn assign(val: u256) -> u256:
 5 │ │         self.baz[0] = val
 6 │ │         return val
-  │ ╰──────────────────^ attributes hash: 9713682623118008277
+  │ ╰──────────────────^ attributes hash: 2404992125564761668
   │  
   = FunctionAttributes {
         is_public: false,
@@ -244,10 +244,10 @@ note:
 note: 
    ┌─ features/call_statement_with_args_2.fe:8:5
    │  
- 8 │ ╭     pub def bar() -> u256:
+ 8 │ ╭     pub fn bar() -> u256:
  9 │ │         self.assign(100)
 10 │ │         return self.baz[0]
-   │ ╰──────────────────────────^ attributes hash: 2041944711719443549
+   │ ╰──────────────────────────^ attributes hash: 5931278080780939395
    │  
    = FunctionAttributes {
          is_public: true,
@@ -266,11 +266,11 @@ note:
  1 │ ╭ contract Foo:
  2 │ │     baz: Map<u256, u256>
  3 │ │ 
- 4 │ │     def assign(val: u256) -> u256:
+ 4 │ │     fn assign(val: u256) -> u256:
    · │
  9 │ │         self.assign(100)
 10 │ │         return self.baz[0]
-   │ ╰──────────────────────────^ attributes hash: 16417315723405128961
+   │ ╰──────────────────────────^ attributes hash: 5268314470252829497
    │  
    = ContractAttributes {
          public_functions: [
@@ -295,29 +295,17 @@ note:
   ┌─ features/call_statement_with_args_2.fe:9:9
   │
 9 │         self.assign(100)
-  │         ^^^^^^^^^^^ attributes hash: 15094834859003080759
+  │         ^^^^^^^^^^^ attributes hash: 13402545317341859599
   │
   = SelfAttribute {
         func_name: "assign",
     }
 
 note: 
-  ┌─ features/call_statement_with_args_2.fe:4:21
+  ┌─ features/call_statement_with_args_2.fe:4:20
   │
-4 │     def assign(val: u256) -> u256:
-  │                     ^^^^ attributes hash: 17942395924573474124
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/call_statement_with_args_2.fe:4:30
-  │
-4 │     def assign(val: u256) -> u256:
-  │                              ^^^^ attributes hash: 17942395924573474124
+4 │     fn assign(val: u256) -> u256:
+  │                    ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -326,10 +314,22 @@ note:
     )
 
 note: 
-  ┌─ features/call_statement_with_args_2.fe:8:22
+  ┌─ features/call_statement_with_args_2.fe:4:29
   │
-8 │     pub def bar() -> u256:
-  │                      ^^^^ attributes hash: 17942395924573474124
+4 │     fn assign(val: u256) -> u256:
+  │                             ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/call_statement_with_args_2.fe:8:21
+  │
+8 │     pub fn bar() -> u256:
+  │                     ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -341,7 +341,7 @@ note:
   ┌─ features/call_statement_with_args_2.fe:2:14
   │
 2 │     baz: Map<u256, u256>
-  │              ^^^^ attributes hash: 17942395924573474124
+  │              ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -353,7 +353,7 @@ note:
   ┌─ features/call_statement_with_args_2.fe:2:20
   │
 2 │     baz: Map<u256, u256>
-  │                    ^^^^ attributes hash: 17942395924573474124
+  │                    ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -365,7 +365,7 @@ note:
   ┌─ features/call_statement_with_args_2.fe:2:10
   │
 2 │     baz: Map<u256, u256>
-  │          ^^^^^^^^^^^^^^^ attributes hash: 3210256860376722957
+  │          ^^^^^^^^^^^^^^^ attributes hash: 8678458200954633740
   │
   = Map(
         Map {

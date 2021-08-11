@@ -13,7 +13,7 @@ contract Foo:
         my_string: String<42>
         my_u256: u256
 
-    pub def set_my_vals(
+    pub fn set_my_vals(
         my_string: String<42>,
         my_other_string: String<42>,
         my_u256: u256,
@@ -24,11 +24,11 @@ contract Foo:
         self.my_u256 = my_u256
         self.my_other_u256 = my_other_u256
 
-    pub def set_to_my_other_vals():
+    pub fn set_to_my_other_vals():
         self.my_string = self.my_other_string
         self.my_u256 = self.my_other_u256
 
-    pub def multiple_references_shared_memory(my_array: u256[10]):
+    pub fn multiple_references_shared_memory(my_array: u256[10]):
         let my_2nd_array: u256[10] = my_array
         let my_3rd_array: u256[10] = my_2nd_array
 
@@ -43,18 +43,18 @@ contract Foo:
         assert my_2nd_array[3] == 50
         assert my_3rd_array[3] == 50
 
-    pub def mutate_and_return(my_array: u256[10]) -> u256[10]:
+    pub fn mutate_and_return(my_array: u256[10]) -> u256[10]:
         my_array[3] = 5
         return my_array
 
-    pub def clone_and_return(my_array: u256[10]) -> u256[10]:
+    pub fn clone_and_return(my_array: u256[10]) -> u256[10]:
         return my_array.clone()
 
-    pub def clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
+    pub fn clone_mutate_and_return(my_array: u256[10]) -> u256[10]:
         my_array.clone()[3] = 5
         return my_array
 
-    pub def assign_my_nums_and_return() -> u256[5]:
+    pub fn assign_my_nums_and_return() -> u256[5]:
         let my_nums_mem: u256[5]
         self.my_nums[0] = 42
         self.my_nums[1] = 26
@@ -64,17 +64,17 @@ contract Foo:
         my_nums_mem = self.my_nums.to_mem()
         return my_nums_mem
 
-    pub def emit_my_event():
+    pub fn emit_my_event():
         self.emit_my_event_internal(
             self.my_string.to_mem(),
             self.my_u256.to_mem()
         )
 
-    def emit_my_event_internal(some_string: String<42>, some_u256: u256):
+    fn emit_my_event_internal(some_string: String<42>, some_u256: u256):
         emit MyEvent(my_string=some_string, my_u256=some_u256)
 
-    pub def set_my_addrs(my_addrs: address[3]):
+    pub fn set_my_addrs(my_addrs: address[3]):
         self.my_addrs = my_addrs
 
-    pub def get_my_second_addr() -> address:
+    pub fn get_my_second_addr() -> address:
         return self.my_addrs[1]

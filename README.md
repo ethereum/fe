@@ -18,7 +18,6 @@ Fe is a statically typed language for the Ethereum Virtual Machine (EVM). It is 
 * More precise gas estimation (as a consequence of decidability)
 * Static typing
 * Pure function support
-* Binary fixed-point math
 * Restrictions on reentrancy
 * Static looping
 * Module imports
@@ -65,16 +64,16 @@ contract GuestBook:
     event Signed:
         book_msg: BookMsg
 
-    pub def sign(book_msg: BookMsg):
+    pub fn sign(book_msg: BookMsg):
         self.guest_book[msg.sender] = book_msg
 
         emit Signed(book_msg=book_msg)
 
-    pub def get_msg(addr: address) -> BookMsg:
+    pub fn get_msg(addr: address) -> BookMsg:
         return self.guest_book[addr].to_mem()
 ```
 
-A lot more working examples can be found in our [test fixtures directory](https://github.com/ethereum/fe/tree/master/compiler/tests/fixtures).
+A lot more working examples can be found in our [test fixtures directory](https://github.com/ethereum/fe/tree/master/crates/test-files/fixtures/demos).
 
 The most advanced example that we can provide at this point is an implementation of the [Uniswap-V2 core contracts](https://github.com/ethereum/fe/blob/ec2ee41d16ec31ea0388d8fd7eb6266916d0e1f7/compiler/tests/fixtures/demos/uniswap.fe).
 

@@ -1,5 +1,5 @@
 contract Foo:
-    pub def bar():
+    pub fn bar():
         let my_array: u256[3]
         let sum: u256 = 0
         for i in my_array:

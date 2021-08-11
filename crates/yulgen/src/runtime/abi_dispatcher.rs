@@ -1,8 +1,8 @@
 use crate::names::abi as abi_names;
 use crate::operations::abi as abi_operations;
+use crate::types::{to_abi_selector_names, to_abi_types, AbiDecodeLocation, AbiType};
 use fe_abi::utils as abi_utils;
 use fe_analyzer::context::FunctionAttributes;
-use fe_analyzer::namespace::types::{AbiDecodeLocation, AbiEncoding, FixedSize};
 use yultsur::*;
 
 /// Builds a switch statement that dispatches calls to the contract.
@@ -24,7 +24,7 @@ pub fn dispatcher(attributes: &[FunctionAttributes]) -> yul::Statement {
 }
 
 fn dispatch_arm(attributes: FunctionAttributes) -> yul::Case {
-    let selector = selector(&attributes.name, &attributes.param_types());
+    let selector = selector(&attributes.name, &to_abi_types(&attributes.param_types()));
 
     let (param_idents, param_exprs) = abi_names::vals("call", attributes.params.len());
 
@@ -33,7 +33,7 @@ fn dispatch_arm(attributes: FunctionAttributes) -> yul::Case {
         statements! {}
     } else {
         let decode_expr = abi_operations::decode_data(
-            &attributes.param_types(),
+            &to_abi_types(&attributes.param_types()),
             expression! { 4 },
             expression! { calldatasize() },
             AbiDecodeLocation::Calldata,
@@ -52,17 +52,19 @@ fn dispatch_arm(attributes: FunctionAttributes) -> yul::Case {
                 (return(0, 0))
             }
         } else {
-            let encode = abi_operations::encode(
-                &[attributes.return_type.clone()],
+            let encode_expr = abi_operations::encode(
+                &[AbiType::from(&attributes.return_type)],
                 expressions! { return_val },
             );
-            let encode_size =
-                abi_operations::encode_size(&[attributes.return_type], expressions! { return_val });
+            let encoding_size = abi_operations::encoding_size(
+                &[AbiType::from(&attributes.return_type)],
+                expressions! { return_val },
+            );
             statements! {
                 (let return_val := [call])
-                (let encode_start := [encode])
-                (let encode_size := [encode_size])
-                (return(encode_start, encode_size))
+                (let encoding_start := [encode_expr])
+                (let encoding_size := [encoding_size])
+                (return(encoding_start, encoding_size))
             }
         }
     };
@@ -75,19 +77,15 @@ fn dispatch_arm(attributes: FunctionAttributes) -> yul::Case {
     }
 }
 
-fn selector(name: &str, params: &[FixedSize]) -> yul::Literal {
-    let params = params
-        .iter()
-        .map(|param| param.abi_selector_name())
-        .collect::<Vec<String>>();
-
+fn selector(name: &str, params: &[AbiType]) -> yul::Literal {
+    let params = to_abi_selector_names(params);
     literal! { (abi_utils::func_selector(name, &params)) }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::runtime::abi_dispatcher::selector;
-    use fe_analyzer::namespace::types::{FixedSize, U256};
+    use crate::types::AbiType;
 
     #[test]
     fn test_selector_literal_basic() {
@@ -97,7 +95,7 @@ mod tests {
     #[test]
     fn test_selector_literal() {
         assert_eq!(
-            selector("bar", &[FixedSize::Base(U256)]).to_string(),
+            selector("bar", &[AbiType::Uint { size: 32 }]).to_string(),
             String::from("0x0423a132"),
         )
     }

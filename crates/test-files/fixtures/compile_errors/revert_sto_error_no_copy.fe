@@ -1,0 +1,8 @@
+struct MyError:
+    pass
+
+contract Foo:
+    my_error: MyError
+
+    pub fn bar():
+        revert self.my_error

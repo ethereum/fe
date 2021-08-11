@@ -85,7 +85,7 @@ note:
   ┌─ features/keccak.fe:4:26
   │
 4 │         return keccak256(val)
-  │                          ^^^ attributes hash: 574919542176978760
+  │                          ^^^ attributes hash: 2524810310946938483
   │
   = ExpressionAttributes {
         typ: Array(
@@ -104,7 +104,7 @@ note:
   ┌─ features/keccak.fe:4:16
   │
 4 │         return keccak256(val)
-  │                ^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+  │                ^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -120,7 +120,7 @@ note:
   ┌─ features/keccak.fe:7:26
   │
 7 │         return keccak256(val)
-  │                          ^^^ attributes hash: 2476317639556092543
+  │                          ^^^ attributes hash: 10885289746449225458
   │
   = ExpressionAttributes {
         typ: Array(
@@ -139,7 +139,7 @@ note:
   ┌─ features/keccak.fe:7:16
   │
 7 │         return keccak256(val)
-  │                ^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+  │                ^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -155,7 +155,7 @@ note:
    ┌─ features/keccak.fe:10:26
    │
 10 │         return keccak256(val)
-   │                          ^^^ attributes hash: 8617270725692205871
+   │                          ^^^ attributes hash: 14564496740404757886
    │
    = ExpressionAttributes {
          typ: Array(
@@ -174,7 +174,7 @@ note:
    ┌─ features/keccak.fe:10:16
    │
 10 │         return keccak256(val)
-   │                ^^^^^^^^^^^^^^ attributes hash: 16797824492585953824
+   │                ^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -189,9 +189,9 @@ note:
 note: 
   ┌─ features/keccak.fe:3:5
   │  
-3 │ ╭     pub def return_hash_from_u8(val: u8[1]) -> u256:
+3 │ ╭     pub fn return_hash_from_u8(val: u8[1]) -> u256:
 4 │ │         return keccak256(val)
-  │ ╰─────────────────────────────^ attributes hash: 3916898137266517094
+  │ ╰─────────────────────────────^ attributes hash: 5798954565869390433
   │  
   = FunctionAttributes {
         is_public: true,
@@ -219,9 +219,9 @@ note:
 note: 
   ┌─ features/keccak.fe:6:5
   │  
-6 │ ╭     pub def return_hash_from_foo(val: u8[3]) -> u256:
+6 │ ╭     pub fn return_hash_from_foo(val: u8[3]) -> u256:
 7 │ │         return keccak256(val)
-  │ ╰─────────────────────────────^ attributes hash: 17383477138669681037
+  │ ╰─────────────────────────────^ attributes hash: 5850254381851319635
   │  
   = FunctionAttributes {
         is_public: true,
@@ -249,9 +249,9 @@ note:
 note: 
    ┌─ features/keccak.fe:9:5
    │  
- 9 │ ╭     pub def return_hash_from_u256(val: u8[32]) -> u256:
+ 9 │ ╭     pub fn return_hash_from_u256(val: u8[32]) -> u256:
 10 │ │         return keccak256(val)
-   │ ╰─────────────────────────────^ attributes hash: 15968512545592203569
+   │ ╰─────────────────────────────^ attributes hash: 16112773291209779444
    │  
    = FunctionAttributes {
          is_public: true,
@@ -281,12 +281,12 @@ note:
    │  
  1 │ ╭ contract Keccak:
  2 │ │ 
- 3 │ │     pub def return_hash_from_u8(val: u8[1]) -> u256:
+ 3 │ │     pub fn return_hash_from_u8(val: u8[1]) -> u256:
  4 │ │         return keccak256(val)
    · │
- 9 │ │     pub def return_hash_from_u256(val: u8[32]) -> u256:
+ 9 │ │     pub fn return_hash_from_u256(val: u8[32]) -> u256:
 10 │ │         return keccak256(val)
-   │ ╰─────────────────────────────^ attributes hash: 5932214619634805024
+   │ ╰─────────────────────────────^ attributes hash: 3261690256665819075
    │  
    = ContractAttributes {
          public_functions: [
@@ -367,7 +367,7 @@ note:
   ┌─ features/keccak.fe:4:16
   │
 4 │         return keccak256(val)
-  │                ^^^^^^^^^ attributes hash: 13646096770106105413
+  │                ^^^^^^^^^ attributes hash: 11888120106960716956
   │
   = BuiltinFunction {
         func: Keccak256,
@@ -377,7 +377,7 @@ note:
   ┌─ features/keccak.fe:7:16
   │
 7 │         return keccak256(val)
-  │                ^^^^^^^^^ attributes hash: 13646096770106105413
+  │                ^^^^^^^^^ attributes hash: 11888120106960716956
   │
   = BuiltinFunction {
         func: Keccak256,
@@ -387,17 +387,17 @@ note:
    ┌─ features/keccak.fe:10:16
    │
 10 │         return keccak256(val)
-   │                ^^^^^^^^^ attributes hash: 13646096770106105413
+   │                ^^^^^^^^^ attributes hash: 11888120106960716956
    │
    = BuiltinFunction {
          func: Keccak256,
      }
 
 note: 
-  ┌─ features/keccak.fe:3:38
+  ┌─ features/keccak.fe:3:37
   │
-3 │     pub def return_hash_from_u8(val: u8[1]) -> u256:
-  │                                      ^^ attributes hash: 1872326638020472004
+3 │     pub fn return_hash_from_u8(val: u8[1]) -> u256:
+  │                                     ^^ attributes hash: 3165084411644393001
   │
   = Base(
         Numeric(
@@ -406,10 +406,10 @@ note:
     )
 
 note: 
-  ┌─ features/keccak.fe:3:38
+  ┌─ features/keccak.fe:3:37
   │
-3 │     pub def return_hash_from_u8(val: u8[1]) -> u256:
-  │                                      ^^^^^ attributes hash: 16032867211949180524
+3 │     pub fn return_hash_from_u8(val: u8[1]) -> u256:
+  │                                     ^^^^^ attributes hash: 13595831996294261326
   │
   = Array(
         Array {
@@ -421,10 +421,10 @@ note:
     )
 
 note: 
-  ┌─ features/keccak.fe:3:48
+  ┌─ features/keccak.fe:3:47
   │
-3 │     pub def return_hash_from_u8(val: u8[1]) -> u256:
-  │                                                ^^^^ attributes hash: 17942395924573474124
+3 │     pub fn return_hash_from_u8(val: u8[1]) -> u256:
+  │                                               ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -433,10 +433,10 @@ note:
     )
 
 note: 
-  ┌─ features/keccak.fe:6:39
+  ┌─ features/keccak.fe:6:38
   │
-6 │     pub def return_hash_from_foo(val: u8[3]) -> u256:
-  │                                       ^^ attributes hash: 1872326638020472004
+6 │     pub fn return_hash_from_foo(val: u8[3]) -> u256:
+  │                                      ^^ attributes hash: 3165084411644393001
   │
   = Base(
         Numeric(
@@ -445,10 +445,10 @@ note:
     )
 
 note: 
-  ┌─ features/keccak.fe:6:39
+  ┌─ features/keccak.fe:6:38
   │
-6 │     pub def return_hash_from_foo(val: u8[3]) -> u256:
-  │                                       ^^^^^ attributes hash: 10356998517084871572
+6 │     pub fn return_hash_from_foo(val: u8[3]) -> u256:
+  │                                      ^^^^^ attributes hash: 15652834185157224248
   │
   = Array(
         Array {
@@ -460,10 +460,10 @@ note:
     )
 
 note: 
-  ┌─ features/keccak.fe:6:49
+  ┌─ features/keccak.fe:6:48
   │
-6 │     pub def return_hash_from_foo(val: u8[3]) -> u256:
-  │                                                 ^^^^ attributes hash: 17942395924573474124
+6 │     pub fn return_hash_from_foo(val: u8[3]) -> u256:
+  │                                                ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -472,10 +472,10 @@ note:
     )
 
 note: 
-  ┌─ features/keccak.fe:9:40
+  ┌─ features/keccak.fe:9:39
   │
-9 │     pub def return_hash_from_u256(val: u8[32]) -> u256:
-  │                                        ^^ attributes hash: 1872326638020472004
+9 │     pub fn return_hash_from_u256(val: u8[32]) -> u256:
+  │                                       ^^ attributes hash: 3165084411644393001
   │
   = Base(
         Numeric(
@@ -484,10 +484,10 @@ note:
     )
 
 note: 
-  ┌─ features/keccak.fe:9:40
+  ┌─ features/keccak.fe:9:39
   │
-9 │     pub def return_hash_from_u256(val: u8[32]) -> u256:
-  │                                        ^^^^^^ attributes hash: 15962440351507396272
+9 │     pub fn return_hash_from_u256(val: u8[32]) -> u256:
+  │                                       ^^^^^^ attributes hash: 9627106547151124155
   │
   = Array(
         Array {
@@ -499,10 +499,10 @@ note:
     )
 
 note: 
-  ┌─ features/keccak.fe:9:51
+  ┌─ features/keccak.fe:9:50
   │
-9 │     pub def return_hash_from_u256(val: u8[32]) -> u256:
-  │                                                   ^^^^ attributes hash: 17942395924573474124
+9 │     pub fn return_hash_from_u256(val: u8[32]) -> u256:
+  │                                                  ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(

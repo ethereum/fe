@@ -65,7 +65,7 @@ note:
   ┌─ features/address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
-  │                ^^^^^^^^ attributes hash: 2770757531568879882
+  │                ^^^^^^^^ attributes hash: 14262349894047807747
   │
   = ExpressionAttributes {
         typ: Map(
@@ -93,7 +93,7 @@ note:
   ┌─ features/address_bytes10_map.fe:5:25
   │
 5 │         return self.bar[key].to_mem()
-  │                         ^^^ attributes hash: 16366719240912622931
+  │                         ^^^ attributes hash: 16804606599831072828
   │
   = ExpressionAttributes {
         typ: Base(
@@ -107,7 +107,7 @@ note:
   ┌─ features/address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
-  │                ^^^^^^^^^^^^^ attributes hash: 15017106345423030301
+  │                ^^^^^^^^^^^^^ attributes hash: 13865856328928179610
   │
   = ExpressionAttributes {
         typ: Array(
@@ -128,7 +128,7 @@ note:
   ┌─ features/address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
-  │                ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 14696371145368571561
+  │                ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 6933478218209616660
   │
   = ExpressionAttributes {
         typ: Array(
@@ -151,7 +151,7 @@ note:
   ┌─ features/address_bytes10_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^ attributes hash: 2770757531568879882
+  │         ^^^^^^^^ attributes hash: 14262349894047807747
   │
   = ExpressionAttributes {
         typ: Map(
@@ -179,7 +179,7 @@ note:
   ┌─ features/address_bytes10_map.fe:8:18
   │
 8 │         self.bar[key] = value
-  │                  ^^^ attributes hash: 16366719240912622931
+  │                  ^^^ attributes hash: 16804606599831072828
   │
   = ExpressionAttributes {
         typ: Base(
@@ -193,7 +193,7 @@ note:
   ┌─ features/address_bytes10_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^^^^^^ attributes hash: 15017106345423030301
+  │         ^^^^^^^^^^^^^ attributes hash: 13865856328928179610
   │
   = ExpressionAttributes {
         typ: Array(
@@ -214,7 +214,7 @@ note:
   ┌─ features/address_bytes10_map.fe:8:25
   │
 8 │         self.bar[key] = value
-  │                         ^^^^^ attributes hash: 7164843968602962998
+  │                         ^^^^^ attributes hash: 1074839910991909444
   │
   = ExpressionAttributes {
         typ: Array(
@@ -232,9 +232,9 @@ note:
 note: 
   ┌─ features/address_bytes10_map.fe:4:5
   │  
-4 │ ╭     pub def read_bar(key: address) -> u8[10]:
+4 │ ╭     pub fn read_bar(key: address) -> u8[10]:
 5 │ │         return self.bar[key].to_mem()
-  │ ╰─────────────────────────────────────^ attributes hash: 12715690341890624622
+  │ ╰─────────────────────────────────────^ attributes hash: 2440447037781140454
   │  
   = FunctionAttributes {
         is_public: true,
@@ -260,9 +260,9 @@ note:
 note: 
   ┌─ features/address_bytes10_map.fe:7:5
   │  
-7 │ ╭     pub def write_bar(key: address, value: u8[10]):
+7 │ ╭     pub fn write_bar(key: address, value: u8[10]):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 3949910162616601530
+  │ ╰─────────────────────────────^ attributes hash: 18070047508906253544
   │  
   = FunctionAttributes {
         is_public: true,
@@ -297,11 +297,11 @@ note:
 1 │ ╭ contract Foo:
 2 │ │     pub bar: Map<address, u8[10]>
 3 │ │ 
-4 │ │     pub def read_bar(key: address) -> u8[10]:
+4 │ │     pub fn read_bar(key: address) -> u8[10]:
   · │
-7 │ │     pub def write_bar(key: address, value: u8[10]):
+7 │ │     pub fn write_bar(key: address, value: u8[10]):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 16420349973906990059
+  │ ╰─────────────────────────────^ attributes hash: 2606101441212798587
   │  
   = ContractAttributes {
         public_functions: [
@@ -362,25 +362,25 @@ note:
   ┌─ features/address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
-  │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 18270091135093349626
+  │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
   │
   = ValueAttribute
 
 note: 
-  ┌─ features/address_bytes10_map.fe:4:27
+  ┌─ features/address_bytes10_map.fe:4:26
   │
-4 │     pub def read_bar(key: address) -> u8[10]:
-  │                           ^^^^^^^ attributes hash: 16931239362436195516
+4 │     pub fn read_bar(key: address) -> u8[10]:
+  │                          ^^^^^^^ attributes hash: 928477466454064117
   │
   = Base(
         Address,
     )
 
 note: 
-  ┌─ features/address_bytes10_map.fe:4:39
+  ┌─ features/address_bytes10_map.fe:4:38
   │
-4 │     pub def read_bar(key: address) -> u8[10]:
-  │                                       ^^ attributes hash: 1872326638020472004
+4 │     pub fn read_bar(key: address) -> u8[10]:
+  │                                      ^^ attributes hash: 3165084411644393001
   │
   = Base(
         Numeric(
@@ -389,10 +389,10 @@ note:
     )
 
 note: 
-  ┌─ features/address_bytes10_map.fe:4:39
+  ┌─ features/address_bytes10_map.fe:4:38
   │
-4 │     pub def read_bar(key: address) -> u8[10]:
-  │                                       ^^^^^^ attributes hash: 9820608649806017881
+4 │     pub fn read_bar(key: address) -> u8[10]:
+  │                                      ^^^^^^ attributes hash: 599591354194261612
   │
   = Array(
         Array {
@@ -404,20 +404,20 @@ note:
     )
 
 note: 
-  ┌─ features/address_bytes10_map.fe:7:28
+  ┌─ features/address_bytes10_map.fe:7:27
   │
-7 │     pub def write_bar(key: address, value: u8[10]):
-  │                            ^^^^^^^ attributes hash: 16931239362436195516
+7 │     pub fn write_bar(key: address, value: u8[10]):
+  │                           ^^^^^^^ attributes hash: 928477466454064117
   │
   = Base(
         Address,
     )
 
 note: 
-  ┌─ features/address_bytes10_map.fe:7:44
+  ┌─ features/address_bytes10_map.fe:7:43
   │
-7 │     pub def write_bar(key: address, value: u8[10]):
-  │                                            ^^ attributes hash: 1872326638020472004
+7 │     pub fn write_bar(key: address, value: u8[10]):
+  │                                           ^^ attributes hash: 3165084411644393001
   │
   = Base(
         Numeric(
@@ -426,10 +426,10 @@ note:
     )
 
 note: 
-  ┌─ features/address_bytes10_map.fe:7:44
+  ┌─ features/address_bytes10_map.fe:7:43
   │
-7 │     pub def write_bar(key: address, value: u8[10]):
-  │                                            ^^^^^^ attributes hash: 9820608649806017881
+7 │     pub fn write_bar(key: address, value: u8[10]):
+  │                                           ^^^^^^ attributes hash: 599591354194261612
   │
   = Array(
         Array {
@@ -444,7 +444,7 @@ note:
   ┌─ features/address_bytes10_map.fe:2:18
   │
 2 │     pub bar: Map<address, u8[10]>
-  │                  ^^^^^^^ attributes hash: 16931239362436195516
+  │                  ^^^^^^^ attributes hash: 928477466454064117
   │
   = Base(
         Address,
@@ -454,7 +454,7 @@ note:
   ┌─ features/address_bytes10_map.fe:2:27
   │
 2 │     pub bar: Map<address, u8[10]>
-  │                           ^^ attributes hash: 1872326638020472004
+  │                           ^^ attributes hash: 3165084411644393001
   │
   = Base(
         Numeric(
@@ -466,7 +466,7 @@ note:
   ┌─ features/address_bytes10_map.fe:2:27
   │
 2 │     pub bar: Map<address, u8[10]>
-  │                           ^^^^^^ attributes hash: 9820608649806017881
+  │                           ^^^^^^ attributes hash: 599591354194261612
   │
   = Array(
         Array {
@@ -481,7 +481,7 @@ note:
   ┌─ features/address_bytes10_map.fe:2:14
   │
 2 │     pub bar: Map<address, u8[10]>
-  │              ^^^^^^^^^^^^^^^^^^^^ attributes hash: 13689098330234817051
+  │              ^^^^^^^^^^^^^^^^^^^^ attributes hash: 5280520398562448134
   │
   = Map(
         Map {

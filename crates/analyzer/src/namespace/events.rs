@@ -1,28 +1,27 @@
-use crate::namespace::types::{AbiEncoding, FixedSize};
-use fe_common::utils::keccak;
+use crate::namespace::types::FixedSize;
 
 #[derive(Clone, Debug, PartialEq, Hash)]
 pub struct EventDef {
     pub name: String,
-    pub topic: String,
     pub fields: Vec<(String, FixedSize)>,
     pub indexed_fields: Vec<usize>,
 }
 
 impl EventDef {
     pub fn new(name: &str, fields: Vec<(String, FixedSize)>, indexed_fields: Vec<usize>) -> Self {
-        let abi_fields = fields
-            .iter()
-            .map(|(_, typ)| typ.abi_selector_name())
-            .collect::<Vec<String>>();
-        let topic = build_event_topic(name, abi_fields);
-
         Self {
             name: name.to_string(),
-            topic,
             fields,
             indexed_fields,
         }
+    }
+
+    pub fn all_field_types(&self) -> Vec<FixedSize> {
+        self.fields
+            .to_owned()
+            .into_iter()
+            .map(|(_, typ)| typ)
+            .collect()
     }
 
     /// The event's indexed fields.
@@ -65,11 +64,6 @@ impl EventDef {
     pub fn has_field(&self, field_name: &str) -> bool {
         self.fields.iter().any(|(name, _)| name == field_name)
     }
-}
-
-fn build_event_topic(name: &str, fields: Vec<String>) -> String {
-    let signature = format!("{}({})", name, fields.join(","));
-    keccak::full(signature.as_bytes())
 }
 
 #[cfg(test)]

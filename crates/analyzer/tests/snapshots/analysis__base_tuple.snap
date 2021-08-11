@@ -53,7 +53,7 @@ note:
   ┌─ features/base_tuple.fe:3:17
   │
 3 │         return (my_num, my_bool)
-  │                 ^^^^^^ attributes hash: 16797824492585953824
+  │                 ^^^^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -69,7 +69,7 @@ note:
   ┌─ features/base_tuple.fe:3:25
   │
 3 │         return (my_num, my_bool)
-  │                         ^^^^^^^ attributes hash: 10866140763116710699
+  │                         ^^^^^^^ attributes hash: 519621297275845584
   │
   = ExpressionAttributes {
         typ: Base(
@@ -83,7 +83,7 @@ note:
   ┌─ features/base_tuple.fe:3:16
   │
 3 │         return (my_num, my_bool)
-  │                ^^^^^^^^^^^^^^^^^ attributes hash: 11698647864115949400
+  │                ^^^^^^^^^^^^^^^^^ attributes hash: 18030820229981670297
   │
   = ExpressionAttributes {
         typ: Tuple(
@@ -107,9 +107,9 @@ note:
 note: 
   ┌─ features/base_tuple.fe:2:5
   │  
-2 │ ╭     pub def bar(my_num: u256, my_bool: bool) -> (u256, bool):
+2 │ ╭     pub fn bar(my_num: u256, my_bool: bool) -> (u256, bool):
 3 │ │         return (my_num, my_bool)
-  │ ╰────────────────────────────────^ attributes hash: 13316683547811575743
+  │ ╰────────────────────────────────^ attributes hash: 6420674363920943983
   │  
   = FunctionAttributes {
         is_public: true,
@@ -150,9 +150,9 @@ note:
   ┌─ features/base_tuple.fe:1:1
   │  
 1 │ ╭ contract Foo:
-2 │ │     pub def bar(my_num: u256, my_bool: bool) -> (u256, bool):
+2 │ │     pub fn bar(my_num: u256, my_bool: bool) -> (u256, bool):
 3 │ │         return (my_num, my_bool)
-  │ ╰────────────────────────────────^ attributes hash: 15350353781433648161
+  │ ╰────────────────────────────────^ attributes hash: 4417574318379906671
   │  
   = ContractAttributes {
         public_functions: [
@@ -198,32 +198,10 @@ note:
     }
 
 note: 
-  ┌─ features/base_tuple.fe:2:25
+  ┌─ features/base_tuple.fe:2:24
   │
-2 │     pub def bar(my_num: u256, my_bool: bool) -> (u256, bool):
-  │                         ^^^^ attributes hash: 17942395924573474124
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/base_tuple.fe:2:40
-  │
-2 │     pub def bar(my_num: u256, my_bool: bool) -> (u256, bool):
-  │                                        ^^^^ attributes hash: 8311861578736502650
-  │
-  = Base(
-        Bool,
-    )
-
-note: 
-  ┌─ features/base_tuple.fe:2:50
-  │
-2 │     pub def bar(my_num: u256, my_bool: bool) -> (u256, bool):
-  │                                                  ^^^^ attributes hash: 17942395924573474124
+2 │     pub fn bar(my_num: u256, my_bool: bool) -> (u256, bool):
+  │                        ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -232,10 +210,10 @@ note:
     )
 
 note: 
-  ┌─ features/base_tuple.fe:2:56
+  ┌─ features/base_tuple.fe:2:39
   │
-2 │     pub def bar(my_num: u256, my_bool: bool) -> (u256, bool):
-  │                                                        ^^^^ attributes hash: 8311861578736502650
+2 │     pub fn bar(my_num: u256, my_bool: bool) -> (u256, bool):
+  │                                       ^^^^ attributes hash: 5425972608982369985
   │
   = Base(
         Bool,
@@ -244,8 +222,30 @@ note:
 note: 
   ┌─ features/base_tuple.fe:2:49
   │
-2 │     pub def bar(my_num: u256, my_bool: bool) -> (u256, bool):
-  │                                                 ^^^^^^^^^^^^ attributes hash: 17738700950303828394
+2 │     pub fn bar(my_num: u256, my_bool: bool) -> (u256, bool):
+  │                                                 ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/base_tuple.fe:2:55
+  │
+2 │     pub fn bar(my_num: u256, my_bool: bool) -> (u256, bool):
+  │                                                       ^^^^ attributes hash: 5425972608982369985
+  │
+  = Base(
+        Bool,
+    )
+
+note: 
+  ┌─ features/base_tuple.fe:2:48
+  │
+2 │     pub fn bar(my_num: u256, my_bool: bool) -> (u256, bool):
+  │                                                ^^^^^^^^^^^^ attributes hash: 5714318530098176491
   │
   = Tuple(
         Tuple {

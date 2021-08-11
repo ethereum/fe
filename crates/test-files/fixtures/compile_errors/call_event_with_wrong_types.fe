@@ -3,5 +3,5 @@ contract Foo:
         val_1: String<100>
         idx val_2: u8
 
-    pub def foo():
+    pub fn foo():
         emit MyEvent("foo", 1000)

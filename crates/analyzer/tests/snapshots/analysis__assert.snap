@@ -11,6 +11,22 @@ ModuleAttributes {
                 functions: [
                     FunctionAttributes {
                         is_public: true,
+                        name: "assert_sto_bool",
+                        params: [],
+                        return_type: Base(
+                            Unit,
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
+                        name: "assert_sto_string_msg",
+                        params: [],
+                        return_type: Base(
+                            Unit,
+                        ),
+                    },
+                    FunctionAttributes {
+                        is_public: true,
                         name: "bar",
                         params: [
                             (
@@ -75,56 +91,10 @@ ModuleAttributes {
 }
 
 note: 
-  ┌─ features/assert.fe:3:16
-  │
-3 │         assert baz > 5
-  │                ^^^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/assert.fe:3:22
-  │
-3 │         assert baz > 5
-  │                      ^ attributes hash: 16797824492585953824
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/assert.fe:3:16
-  │
-3 │         assert baz > 5
-  │                ^^^^^^^ attributes hash: 10866140763116710699
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/assert.fe:6:16
   │
-6 │         assert baz > 5, "Must be greater than five"
-  │                ^^^ attributes hash: 16797824492585953824
+6 │         assert baz > 5
+  │                ^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -139,8 +109,8 @@ note:
 note: 
   ┌─ features/assert.fe:6:22
   │
-6 │         assert baz > 5, "Must be greater than five"
-  │                      ^ attributes hash: 16797824492585953824
+6 │         assert baz > 5
+  │                      ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -155,8 +125,8 @@ note:
 note: 
   ┌─ features/assert.fe:6:16
   │
-6 │         assert baz > 5, "Must be greater than five"
-  │                ^^^^^^^ attributes hash: 10866140763116710699
+6 │         assert baz > 5
+  │                ^^^^^^^ attributes hash: 519621297275845584
   │
   = ExpressionAttributes {
         typ: Base(
@@ -167,26 +137,10 @@ note:
     }
 
 note: 
-  ┌─ features/assert.fe:6:25
-  │
-6 │         assert baz > 5, "Must be greater than five"
-  │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 758686948559484701
-  │
-  = ExpressionAttributes {
-        typ: String(
-            FeString {
-                max_size: 25,
-            },
-        ),
-        location: Memory,
-        move_location: None,
-    }
-
-note: 
   ┌─ features/assert.fe:9:16
   │
-9 │         assert baz > 5, reason
-  │                ^^^ attributes hash: 16797824492585953824
+9 │         assert baz > 5, "Must be greater than five"
+  │                ^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -201,8 +155,8 @@ note:
 note: 
   ┌─ features/assert.fe:9:22
   │
-9 │         assert baz > 5, reason
-  │                      ^ attributes hash: 16797824492585953824
+9 │         assert baz > 5, "Must be greater than five"
+  │                      ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -217,8 +171,8 @@ note:
 note: 
   ┌─ features/assert.fe:9:16
   │
-9 │         assert baz > 5, reason
-  │                ^^^^^^^ attributes hash: 10866140763116710699
+9 │         assert baz > 5, "Must be greater than five"
+  │                ^^^^^^^ attributes hash: 519621297275845584
   │
   = ExpressionAttributes {
         typ: Base(
@@ -231,13 +185,13 @@ note:
 note: 
   ┌─ features/assert.fe:9:25
   │
-9 │         assert baz > 5, reason
-  │                         ^^^^^^ attributes hash: 10487155938723362609
+9 │         assert baz > 5, "Must be greater than five"
+  │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16264676341784907870
   │
   = ExpressionAttributes {
         typ: String(
             FeString {
-                max_size: 1000,
+                max_size: 25,
             },
         ),
         location: Memory,
@@ -245,11 +199,217 @@ note:
     }
 
 note: 
-  ┌─ features/assert.fe:2:5
+   ┌─ features/assert.fe:12:16
+   │
+12 │         assert baz > 5, reason
+   │                ^^^ attributes hash: 1230752710897721197
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/assert.fe:12:22
+   │
+12 │         assert baz > 5, reason
+   │                      ^ attributes hash: 1230752710897721197
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Numeric(
+                 U256,
+             ),
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/assert.fe:12:16
+   │
+12 │         assert baz > 5, reason
+   │                ^^^^^^^ attributes hash: 519621297275845584
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/assert.fe:12:25
+   │
+12 │         assert baz > 5, reason
+   │                         ^^^^^^ attributes hash: 3599122874764053339
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 1000,
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/assert.fe:15:9
+   │
+15 │         self.my_bool = false
+   │         ^^^^^^^^^^^^ attributes hash: 12273323640399429874
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/assert.fe:15:24
+   │
+15 │         self.my_bool = false
+   │                        ^^^^^ attributes hash: 519621297275845584
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/assert.fe:16:16
+   │
+16 │         assert self.my_bool
+   │                ^^^^^^^^^^^^ attributes hash: 13730979586018155653
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Storage {
+             nonce: Some(
+                 0,
+             ),
+         },
+         move_location: Some(
+             Value,
+         ),
+     }
+
+note: 
+   ┌─ features/assert.fe:19:9
+   │
+19 │         self.my_string = "hello"
+   │         ^^^^^^^^^^^^^^ attributes hash: 9933875619792709288
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 5,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 1,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/assert.fe:19:26
+   │
+19 │         self.my_string = "hello"
+   │                          ^^^^^^^ attributes hash: 4232494716478429185
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 5,
+             },
+         ),
+         location: Memory,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/assert.fe:20:16
+   │
+20 │         assert false, self.my_string.to_mem()
+   │                ^^^^^ attributes hash: 519621297275845584
+   │
+   = ExpressionAttributes {
+         typ: Base(
+             Bool,
+         ),
+         location: Value,
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/assert.fe:20:23
+   │
+20 │         assert false, self.my_string.to_mem()
+   │                       ^^^^^^^^^^^^^^ attributes hash: 9933875619792709288
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 5,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 1,
+             ),
+         },
+         move_location: None,
+     }
+
+note: 
+   ┌─ features/assert.fe:20:23
+   │
+20 │         assert false, self.my_string.to_mem()
+   │                       ^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1560482948859588432
+   │
+   = ExpressionAttributes {
+         typ: String(
+             FeString {
+                 max_size: 5,
+             },
+         ),
+         location: Storage {
+             nonce: Some(
+                 1,
+             ),
+         },
+         move_location: Some(
+             Memory,
+         ),
+     }
+
+note: 
+  ┌─ features/assert.fe:5:5
   │  
-2 │ ╭     pub def bar(baz: u256):
-3 │ │         assert baz > 5
-  │ ╰──────────────────────^ attributes hash: 10099444286773984657
+5 │ ╭     pub fn bar(baz: u256):
+6 │ │         assert baz > 5
+  │ ╰──────────────────────^ attributes hash: 14705602729846184909
   │  
   = FunctionAttributes {
         is_public: true,
@@ -270,11 +430,11 @@ note:
     }
 
 note: 
-  ┌─ features/assert.fe:5:5
+  ┌─ features/assert.fe:8:5
   │  
-5 │ ╭     pub def revert_with_static_string(baz: u256):
-6 │ │         assert baz > 5, "Must be greater than five"
-  │ ╰───────────────────────────────────────────────────^ attributes hash: 5022511224749644990
+8 │ ╭     pub fn revert_with_static_string(baz: u256):
+9 │ │         assert baz > 5, "Must be greater than five"
+  │ ╰───────────────────────────────────────────────────^ attributes hash: 12915933724383760692
   │  
   = FunctionAttributes {
         is_public: true,
@@ -295,123 +455,181 @@ note:
     }
 
 note: 
-  ┌─ features/assert.fe:8:5
-  │  
-8 │ ╭     pub def revert_with(baz: u256, reason: String<1000>):
-9 │ │         assert baz > 5, reason
-  │ ╰──────────────────────────────^ attributes hash: 7270738123661022492
-  │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "revert_with",
-        params: [
-            (
-                "baz",
-                Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-            ),
-            (
-                "reason",
-                String(
-                    FeString {
-                        max_size: 1000,
-                    },
-                ),
-            ),
-        ],
-        return_type: Base(
-            Unit,
-        ),
-    }
+   ┌─ features/assert.fe:11:5
+   │  
+11 │ ╭     pub fn revert_with(baz: u256, reason: String<1000>):
+12 │ │         assert baz > 5, reason
+   │ ╰──────────────────────────────^ attributes hash: 5206967184411358358
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "revert_with",
+         params: [
+             (
+                 "baz",
+                 Base(
+                     Numeric(
+                         U256,
+                     ),
+                 ),
+             ),
+             (
+                 "reason",
+                 String(
+                     FeString {
+                         max_size: 1000,
+                     },
+                 ),
+             ),
+         ],
+         return_type: Base(
+             Unit,
+         ),
+     }
 
 note: 
-  ┌─ features/assert.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │     pub def bar(baz: u256):
-3 │ │         assert baz > 5
-4 │ │ 
-  · │
-8 │ │     pub def revert_with(baz: u256, reason: String<1000>):
-9 │ │         assert baz > 5, reason
-  │ ╰──────────────────────────────^ attributes hash: 7767111938691910304
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "bar",
-                params: [
-                    (
-                        "baz",
-                        Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    ),
-                ],
-                return_type: Base(
-                    Unit,
-                ),
-            },
-            FunctionAttributes {
-                is_public: true,
-                name: "revert_with",
-                params: [
-                    (
-                        "baz",
-                        Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    ),
-                    (
-                        "reason",
-                        String(
-                            FeString {
-                                max_size: 1000,
-                            },
-                        ),
-                    ),
-                ],
-                return_type: Base(
-                    Unit,
-                ),
-            },
-            FunctionAttributes {
-                is_public: true,
-                name: "revert_with_static_string",
-                params: [
-                    (
-                        "baz",
-                        Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    ),
-                ],
-                return_type: Base(
-                    Unit,
-                ),
-            },
-        ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [],
-    }
+   ┌─ features/assert.fe:14:5
+   │  
+14 │ ╭     pub fn assert_sto_bool():
+15 │ │         self.my_bool = false
+16 │ │         assert self.my_bool
+   │ ╰───────────────────────────^ attributes hash: 386062522787178436
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "assert_sto_bool",
+         params: [],
+         return_type: Base(
+             Unit,
+         ),
+     }
 
 note: 
-  ┌─ features/assert.fe:2:22
+   ┌─ features/assert.fe:18:5
+   │  
+18 │ ╭     pub fn assert_sto_string_msg():
+19 │ │         self.my_string = "hello"
+20 │ │         assert false, self.my_string.to_mem()
+   │ ╰─────────────────────────────────────────────^ attributes hash: 1836150226267414980
+   │  
+   = FunctionAttributes {
+         is_public: true,
+         name: "assert_sto_string_msg",
+         params: [],
+         return_type: Base(
+             Unit,
+         ),
+     }
+
+note: 
+   ┌─ features/assert.fe:1:1
+   │  
+ 1 │ ╭ contract Foo:
+ 2 │ │     my_bool: bool
+ 3 │ │     my_string: String<5>
+ 4 │ │ 
+   · │
+19 │ │         self.my_string = "hello"
+20 │ │         assert false, self.my_string.to_mem()
+   │ ╰─────────────────────────────────────────────^ attributes hash: 1872320294411724862
+   │  
+   = ContractAttributes {
+         public_functions: [
+             FunctionAttributes {
+                 is_public: true,
+                 name: "assert_sto_bool",
+                 params: [],
+                 return_type: Base(
+                     Unit,
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "assert_sto_string_msg",
+                 params: [],
+                 return_type: Base(
+                     Unit,
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "bar",
+                 params: [
+                     (
+                         "baz",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Unit,
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "revert_with",
+                 params: [
+                     (
+                         "baz",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                     (
+                         "reason",
+                         String(
+                             FeString {
+                                 max_size: 1000,
+                             },
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Unit,
+                 ),
+             },
+             FunctionAttributes {
+                 is_public: true,
+                 name: "revert_with_static_string",
+                 params: [
+                     (
+                         "baz",
+                         Base(
+                             Numeric(
+                                 U256,
+                             ),
+                         ),
+                     ),
+                 ],
+                 return_type: Base(
+                     Unit,
+                 ),
+             },
+         ],
+         init_function: None,
+         events: [],
+         structs: [],
+         external_contracts: [],
+     }
+
+note: 
+   ┌─ features/assert.fe:20:23
+   │
+20 │         assert false, self.my_string.to_mem()
+   │                       ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
+   │
+   = ValueAttribute
+
+note: 
+  ┌─ features/assert.fe:5:21
   │
-2 │     pub def bar(baz: u256):
-  │                      ^^^^ attributes hash: 17942395924573474124
+5 │     pub fn bar(baz: u256):
+  │                     ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -420,22 +638,10 @@ note:
     )
 
 note: 
-  ┌─ features/assert.fe:5:44
+  ┌─ features/assert.fe:8:43
   │
-5 │     pub def revert_with_static_string(baz: u256):
-  │                                            ^^^^ attributes hash: 17942395924573474124
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/assert.fe:8:30
-  │
-8 │     pub def revert_with(baz: u256, reason: String<1000>):
-  │                              ^^^^ attributes hash: 17942395924573474124
+8 │     pub fn revert_with_static_string(baz: u256):
+  │                                           ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -444,14 +650,48 @@ note:
     )
 
 note: 
-  ┌─ features/assert.fe:8:44
+   ┌─ features/assert.fe:11:29
+   │
+11 │     pub fn revert_with(baz: u256, reason: String<1000>):
+   │                             ^^^^ attributes hash: 4293763436908729629
+   │
+   = Base(
+         Numeric(
+             U256,
+         ),
+     )
+
+note: 
+   ┌─ features/assert.fe:11:43
+   │
+11 │     pub fn revert_with(baz: u256, reason: String<1000>):
+   │                                           ^^^^^^^^^^^^ attributes hash: 7691650642384229431
+   │
+   = String(
+         FeString {
+             max_size: 1000,
+         },
+     )
+
+note: 
+  ┌─ features/assert.fe:2:14
   │
-8 │     pub def revert_with(baz: u256, reason: String<1000>):
-  │                                            ^^^^^^^^^^^^ attributes hash: 18306761550294403845
+2 │     my_bool: bool
+  │              ^^^^ attributes hash: 5425972608982369985
+  │
+  = Base(
+        Bool,
+    )
+
+note: 
+  ┌─ features/assert.fe:3:16
+  │
+3 │     my_string: String<5>
+  │                ^^^^^^^^^ attributes hash: 4442886494745637937
   │
   = String(
         FeString {
-            max_size: 1000,
+            max_size: 5,
         },
     )
 

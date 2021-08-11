@@ -47,7 +47,7 @@ macro_rules! test_stmt {
         #[wasm_bindgen_test]
         fn $name() {
             let src = format!(
-                "contract C:\n pub def f():\n  {}",
+                "contract C:\n pub fn f():\n  {}",
                 $stmt.replace('\n', "\n  ")
             );
             if cfg!(target_arch = "wasm32") {
@@ -174,10 +174,13 @@ test_file! { invalid_string_field }
 test_file! { invalid_struct_field }
 test_file! { invalid_tuple_field }
 test_file! { invalid_tx_field }
+test_file! { invalid_var_declaration_1 }
+test_file! { invalid_var_declaration_2 }
 test_file! { issue_451 }
 test_file! { mismatch_return_type }
 test_file! { missing_return }
 test_file! { missing_return_in_else }
+test_file! { missing_return_after_if }
 test_file! { needs_mem_copy }
 test_file! { not_callable }
 test_file! { not_in_scope }
@@ -195,3 +198,6 @@ test_file! { struct_call_without_kw_args }
 test_file! { non_pub_init }
 test_file! { abi_encode_u256 }
 test_file! { abi_encode_from_storage }
+test_file! { assert_sto_msg_no_copy }
+test_file! { for_loop_sto_iter_no_copy }
+test_file! { revert_sto_error_no_copy }

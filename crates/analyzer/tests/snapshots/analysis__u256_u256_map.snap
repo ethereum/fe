@@ -63,7 +63,7 @@ note:
   ┌─ features/u256_u256_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^ attributes hash: 11084999791471164417
+  │                ^^^^^^^^ attributes hash: 7500259330345281063
   │
   = ExpressionAttributes {
         typ: Map(
@@ -90,7 +90,7 @@ note:
   ┌─ features/u256_u256_map.fe:5:25
   │
 5 │         return self.bar[key]
-  │                         ^^^ attributes hash: 16797824492585953824
+  │                         ^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -106,7 +106,7 @@ note:
   ┌─ features/u256_u256_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ attributes hash: 9781479072077703403
+  │                ^^^^^^^^^^^^^ attributes hash: 2750573035226013709
   │
   = ExpressionAttributes {
         typ: Base(
@@ -126,7 +126,7 @@ note:
   ┌─ features/u256_u256_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^ attributes hash: 11084999791471164417
+  │         ^^^^^^^^ attributes hash: 7500259330345281063
   │
   = ExpressionAttributes {
         typ: Map(
@@ -153,7 +153,7 @@ note:
   ┌─ features/u256_u256_map.fe:8:18
   │
 8 │         self.bar[key] = value
-  │                  ^^^ attributes hash: 16797824492585953824
+  │                  ^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -169,7 +169,7 @@ note:
   ┌─ features/u256_u256_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^^^^^^ attributes hash: 5973407925075462624
+  │         ^^^^^^^^^^^^^ attributes hash: 6410008273718378934
   │
   = ExpressionAttributes {
         typ: Base(
@@ -187,7 +187,7 @@ note:
   ┌─ features/u256_u256_map.fe:8:25
   │
 8 │         self.bar[key] = value
-  │                         ^^^^^ attributes hash: 16797824492585953824
+  │                         ^^^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -202,9 +202,9 @@ note:
 note: 
   ┌─ features/u256_u256_map.fe:4:5
   │  
-4 │ ╭     pub def read_bar(key: u256) -> u256:
+4 │ ╭     pub fn read_bar(key: u256) -> u256:
 5 │ │         return self.bar[key]
-  │ ╰────────────────────────────^ attributes hash: 7854779242225617252
+  │ ╰────────────────────────────^ attributes hash: 16319052968474473315
   │  
   = FunctionAttributes {
         is_public: true,
@@ -229,9 +229,9 @@ note:
 note: 
   ┌─ features/u256_u256_map.fe:7:5
   │  
-7 │ ╭     pub def write_bar(key: u256, value: u256):
+7 │ ╭     pub fn write_bar(key: u256, value: u256):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 8692354419976829910
+  │ ╰─────────────────────────────^ attributes hash: 8715478527204028100
   │  
   = FunctionAttributes {
         is_public: true,
@@ -265,11 +265,11 @@ note:
 1 │ ╭ contract Foo:
 2 │ │     pub bar: Map<u256, u256>
 3 │ │ 
-4 │ │     pub def read_bar(key: u256) -> u256:
+4 │ │     pub fn read_bar(key: u256) -> u256:
   · │
-7 │ │     pub def write_bar(key: u256, value: u256):
+7 │ │     pub fn write_bar(key: u256, value: u256):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 2585012959895436491
+  │ ╰─────────────────────────────^ attributes hash: 16017496164082489454
   │  
   = ContractAttributes {
         public_functions: [
@@ -325,22 +325,10 @@ note:
     }
 
 note: 
-  ┌─ features/u256_u256_map.fe:4:27
+  ┌─ features/u256_u256_map.fe:4:26
   │
-4 │     pub def read_bar(key: u256) -> u256:
-  │                           ^^^^ attributes hash: 17942395924573474124
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/u256_u256_map.fe:4:36
-  │
-4 │     pub def read_bar(key: u256) -> u256:
-  │                                    ^^^^ attributes hash: 17942395924573474124
+4 │     pub fn read_bar(key: u256) -> u256:
+  │                          ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -349,10 +337,10 @@ note:
     )
 
 note: 
-  ┌─ features/u256_u256_map.fe:7:28
+  ┌─ features/u256_u256_map.fe:4:35
   │
-7 │     pub def write_bar(key: u256, value: u256):
-  │                            ^^^^ attributes hash: 17942395924573474124
+4 │     pub fn read_bar(key: u256) -> u256:
+  │                                   ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -361,10 +349,22 @@ note:
     )
 
 note: 
-  ┌─ features/u256_u256_map.fe:7:41
+  ┌─ features/u256_u256_map.fe:7:27
   │
-7 │     pub def write_bar(key: u256, value: u256):
-  │                                         ^^^^ attributes hash: 17942395924573474124
+7 │     pub fn write_bar(key: u256, value: u256):
+  │                           ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/u256_u256_map.fe:7:40
+  │
+7 │     pub fn write_bar(key: u256, value: u256):
+  │                                        ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -376,7 +376,7 @@ note:
   ┌─ features/u256_u256_map.fe:2:18
   │
 2 │     pub bar: Map<u256, u256>
-  │                  ^^^^ attributes hash: 17942395924573474124
+  │                  ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -388,7 +388,7 @@ note:
   ┌─ features/u256_u256_map.fe:2:24
   │
 2 │     pub bar: Map<u256, u256>
-  │                        ^^^^ attributes hash: 17942395924573474124
+  │                        ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -400,7 +400,7 @@ note:
   ┌─ features/u256_u256_map.fe:2:14
   │
 2 │     pub bar: Map<u256, u256>
-  │              ^^^^^^^^^^^^^^^ attributes hash: 3210256860376722957
+  │              ^^^^^^^^^^^^^^^ attributes hash: 8678458200954633740
   │
   = Map(
         Map {

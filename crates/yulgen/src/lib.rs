@@ -3,6 +3,7 @@
 use fe_analyzer::context::Context as AnalyzerContext;
 use fe_parser::ast;
 use std::collections::HashMap;
+use yultsur::yul;
 
 pub mod constants;
 pub mod constructor;
@@ -11,6 +12,7 @@ mod mappers;
 pub mod names;
 pub mod operations;
 pub mod runtime;
+pub mod types;
 mod utils;
 
 pub(crate) use context::Context;
@@ -31,6 +33,31 @@ pub type NamedYulContracts = HashMap<ContractName, YulIr>;
 pub fn compile(analysis: &AnalyzerContext, module: &ast::Module) -> NamedYulContracts {
     mappers::module::module(analysis, module)
         .drain()
-        .map(|(name, object)| (name, object.to_string().replace("\"", "\\\"")))
+        .map(|(name, object)| (name, to_safe_json(object)))
         .collect::<NamedYulContracts>()
+}
+
+fn to_safe_json(obj: yul::Object) -> String {
+    normalize_object(obj).to_string().replace("\"", "\\\"")
+}
+
+fn normalize_object(obj: yul::Object) -> yul::Object {
+    let data = obj
+        .data
+        .into_iter()
+        .map(|data| yul::Data {
+            name: data.name,
+            value: data.value.replace('\n', "\\\\n"),
+        })
+        .collect::<Vec<_>>();
+    yul::Object {
+        name: obj.name,
+        code: obj.code,
+        objects: obj
+            .objects
+            .into_iter()
+            .map(normalize_object)
+            .collect::<Vec<_>>(),
+        data,
+    }
 }

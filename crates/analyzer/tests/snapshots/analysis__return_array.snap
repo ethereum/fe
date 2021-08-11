@@ -41,7 +41,7 @@ note:
   ┌─ features/return_array.fe:4:9
   │
 4 │         my_array[3] = x
-  │         ^^^^^^^^ attributes hash: 9322500749845443226
+  │         ^^^^^^^^ attributes hash: 1409573588937423555
   │
   = ExpressionAttributes {
         typ: Array(
@@ -60,7 +60,7 @@ note:
   ┌─ features/return_array.fe:4:18
   │
 4 │         my_array[3] = x
-  │                  ^ attributes hash: 16797824492585953824
+  │                  ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -76,7 +76,7 @@ note:
   ┌─ features/return_array.fe:4:9
   │
 4 │         my_array[3] = x
-  │         ^^^^^^^^^^^ attributes hash: 3617588353493611640
+  │         ^^^^^^^^^^^ attributes hash: 13245336599501214748
   │
   = ExpressionAttributes {
         typ: Base(
@@ -92,7 +92,7 @@ note:
   ┌─ features/return_array.fe:4:23
   │
 4 │         my_array[3] = x
-  │                       ^ attributes hash: 16797824492585953824
+  │                       ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -108,7 +108,7 @@ note:
   ┌─ features/return_array.fe:5:16
   │
 5 │         return my_array
-  │                ^^^^^^^^ attributes hash: 9322500749845443226
+  │                ^^^^^^^^ attributes hash: 1409573588937423555
   │
   = ExpressionAttributes {
         typ: Array(
@@ -126,11 +126,11 @@ note:
 note: 
   ┌─ features/return_array.fe:2:5
   │  
-2 │ ╭     pub def bar(x: u256) -> u256[5]:
+2 │ ╭     pub fn bar(x: u256) -> u256[5]:
 3 │ │         let my_array: u256[5]
 4 │ │         my_array[3] = x
 5 │ │         return my_array
-  │ ╰───────────────────────^ attributes hash: 3941419229809522806
+  │ ╰───────────────────────^ attributes hash: 8691335146772847108
   │  
   = FunctionAttributes {
         is_public: true,
@@ -159,7 +159,7 @@ note:
   ┌─ features/return_array.fe:3:9
   │
 3 │         let my_array: u256[5]
-  │         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12285037458725956106
+  │         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10049365445048351196
   │
   = Array(
         Array {
@@ -174,11 +174,11 @@ note:
   ┌─ features/return_array.fe:1:1
   │  
 1 │ ╭ contract Foo:
-2 │ │     pub def bar(x: u256) -> u256[5]:
+2 │ │     pub fn bar(x: u256) -> u256[5]:
 3 │ │         let my_array: u256[5]
 4 │ │         my_array[3] = x
 5 │ │         return my_array
-  │ ╰───────────────────────^ attributes hash: 17525689165764501083
+  │ ╰───────────────────────^ attributes hash: 15659954479044905237
   │  
   = ContractAttributes {
         public_functions: [
@@ -212,22 +212,10 @@ note:
     }
 
 note: 
-  ┌─ features/return_array.fe:2:20
+  ┌─ features/return_array.fe:2:19
   │
-2 │     pub def bar(x: u256) -> u256[5]:
-  │                    ^^^^ attributes hash: 17942395924573474124
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/return_array.fe:2:29
-  │
-2 │     pub def bar(x: u256) -> u256[5]:
-  │                             ^^^^ attributes hash: 17942395924573474124
+2 │     pub fn bar(x: u256) -> u256[5]:
+  │                   ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -236,10 +224,22 @@ note:
     )
 
 note: 
-  ┌─ features/return_array.fe:2:29
+  ┌─ features/return_array.fe:2:28
   │
-2 │     pub def bar(x: u256) -> u256[5]:
-  │                             ^^^^^^^ attributes hash: 12285037458725956106
+2 │     pub fn bar(x: u256) -> u256[5]:
+  │                            ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/return_array.fe:2:28
+  │
+2 │     pub fn bar(x: u256) -> u256[5]:
+  │                            ^^^^^^^ attributes hash: 10049365445048351196
   │
   = Array(
         Array {
@@ -254,7 +254,7 @@ note:
   ┌─ features/return_array.fe:3:23
   │
 3 │         let my_array: u256[5]
-  │                       ^^^^ attributes hash: 17942395924573474124
+  │                       ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -266,7 +266,7 @@ note:
   ┌─ features/return_array.fe:3:23
   │
 3 │         let my_array: u256[5]
-  │                       ^^^^^^^ attributes hash: 12285037458725956106
+  │                       ^^^^^^^ attributes hash: 10049365445048351196
   │
   = Array(
         Array {

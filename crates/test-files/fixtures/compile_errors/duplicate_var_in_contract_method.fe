@@ -1,4 +1,4 @@
 contract Foo:
-    pub def bar():
+    pub fn bar():
         let foo: u8
         let foo: u8

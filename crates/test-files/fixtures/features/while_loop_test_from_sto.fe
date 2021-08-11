@@ -1,0 +1,10 @@
+contract Foo:
+    my_bool: bool
+
+    pub fn bar() -> u256:
+        self.my_bool = false
+
+        while self.my_bool:
+            pass
+
+        return 42

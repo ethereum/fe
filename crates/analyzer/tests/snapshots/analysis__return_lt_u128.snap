@@ -44,7 +44,7 @@ note:
   ┌─ features/return_lt_u128.fe:3:16
   │
 3 │         return x < y
-  │                ^ attributes hash: 9341420026351674595
+  │                ^ attributes hash: 231358192590700262
   │
   = ExpressionAttributes {
         typ: Base(
@@ -60,7 +60,7 @@ note:
   ┌─ features/return_lt_u128.fe:3:20
   │
 3 │         return x < y
-  │                    ^ attributes hash: 9341420026351674595
+  │                    ^ attributes hash: 231358192590700262
   │
   = ExpressionAttributes {
         typ: Base(
@@ -76,7 +76,7 @@ note:
   ┌─ features/return_lt_u128.fe:3:16
   │
 3 │         return x < y
-  │                ^^^^^ attributes hash: 10866140763116710699
+  │                ^^^^^ attributes hash: 519621297275845584
   │
   = ExpressionAttributes {
         typ: Base(
@@ -89,9 +89,9 @@ note:
 note: 
   ┌─ features/return_lt_u128.fe:2:5
   │  
-2 │ ╭     pub def bar(x: u128, y: u128) -> bool:
+2 │ ╭     pub fn bar(x: u128, y: u128) -> bool:
 3 │ │         return x < y
-  │ ╰────────────────────^ attributes hash: 10676478592740150815
+  │ ╰────────────────────^ attributes hash: 3528361291410917506
   │  
   = FunctionAttributes {
         is_public: true,
@@ -123,9 +123,9 @@ note:
   ┌─ features/return_lt_u128.fe:1:1
   │  
 1 │ ╭ contract Foo:
-2 │ │     pub def bar(x: u128, y: u128) -> bool:
+2 │ │     pub fn bar(x: u128, y: u128) -> bool:
 3 │ │         return x < y
-  │ ╰────────────────────^ attributes hash: 15891020536383467597
+  │ ╰────────────────────^ attributes hash: 12747290642043583328
   │  
   = ContractAttributes {
         public_functions: [
@@ -162,22 +162,10 @@ note:
     }
 
 note: 
-  ┌─ features/return_lt_u128.fe:2:20
+  ┌─ features/return_lt_u128.fe:2:19
   │
-2 │     pub def bar(x: u128, y: u128) -> bool:
-  │                    ^^^^ attributes hash: 14909107886776088983
-  │
-  = Base(
-        Numeric(
-            U128,
-        ),
-    )
-
-note: 
-  ┌─ features/return_lt_u128.fe:2:29
-  │
-2 │     pub def bar(x: u128, y: u128) -> bool:
-  │                             ^^^^ attributes hash: 14909107886776088983
+2 │     pub fn bar(x: u128, y: u128) -> bool:
+  │                   ^^^^ attributes hash: 6162263163478414243
   │
   = Base(
         Numeric(
@@ -186,10 +174,22 @@ note:
     )
 
 note: 
-  ┌─ features/return_lt_u128.fe:2:38
+  ┌─ features/return_lt_u128.fe:2:28
   │
-2 │     pub def bar(x: u128, y: u128) -> bool:
-  │                                      ^^^^ attributes hash: 8311861578736502650
+2 │     pub fn bar(x: u128, y: u128) -> bool:
+  │                            ^^^^ attributes hash: 6162263163478414243
+  │
+  = Base(
+        Numeric(
+            U128,
+        ),
+    )
+
+note: 
+  ┌─ features/return_lt_u128.fe:2:37
+  │
+2 │     pub fn bar(x: u128, y: u128) -> bool:
+  │                                     ^^^^ attributes hash: 5425972608982369985
   │
   = Base(
         Bool,

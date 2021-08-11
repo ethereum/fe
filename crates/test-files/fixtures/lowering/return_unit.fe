@@ -1,23 +1,23 @@
 contract Foo:
-  pub def explicit_return_a1():
+  pub fn explicit_return_a1():
     return
 
-  pub def explicit_return_a2():
+  pub fn explicit_return_a2():
     return ()
 
-  pub def explicit_return_b1() -> ():
+  pub fn explicit_return_b1() -> ():
     return
 
-  pub def explicit_return_b2() -> ():
+  pub fn explicit_return_b2() -> ():
     return ()
 
-  pub def implicit_a1():
+  pub fn implicit_a1():
     pass
 
-  pub def implicit_a2() -> ():
+  pub fn implicit_a2() -> ():
     pass
 
-  pub def if_elif_else() -> ():
+  pub fn if_elif_else() -> ():
     if true:
         return ()
     elif false:
@@ -25,5 +25,5 @@ contract Foo:
     else:
         pass
 
-  pub def tuple_stmt():
+  pub fn tuple_stmt():
     ()

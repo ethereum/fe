@@ -33,7 +33,7 @@ pub fn module(context: &mut Context, module: &fe::Module) -> Result<(), FatalErr
     }
 
     for (contract, scope) in contracts.iter() {
-        contracts::contract_body(Rc::clone(&scope), context, contract)?
+        contracts::contract_body(Rc::clone(scope), context, contract)?
     }
 
     context.set_module(scope.into());
@@ -47,7 +47,7 @@ fn type_alias(
     type_alias: &Node<fe::TypeAlias>,
 ) -> Result<(), FatalError> {
     let fe::TypeAlias { name, typ } = &type_alias.kind;
-    let typ = types::type_desc(&Scope::Module(Rc::clone(&scope)), context, &typ)?;
+    let typ = types::type_desc(&Scope::Module(Rc::clone(&scope)), context, typ)?;
 
     if let Err(AlreadyDefined) = scope.borrow_mut().add_type_def(&name.kind, typ) {
         context.fancy_error(

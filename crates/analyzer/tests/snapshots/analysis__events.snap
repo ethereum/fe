@@ -89,7 +89,7 @@ note:
    ┌─ features/events.fe:20:24
    │
 20 │         emit Nums(num1=26, num2=42)
-   │                        ^^ attributes hash: 16797824492585953824
+   │                        ^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -105,7 +105,7 @@ note:
    ┌─ features/events.fe:20:33
    │
 20 │         emit Nums(num1=26, num2=42)
-   │                                 ^^ attributes hash: 16797824492585953824
+   │                                 ^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -121,7 +121,7 @@ note:
    ┌─ features/events.fe:23:24
    │
 23 │         emit Bases(num=26, addr)
-   │                        ^^ attributes hash: 16797824492585953824
+   │                        ^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -137,7 +137,7 @@ note:
    ┌─ features/events.fe:23:28
    │
 23 │         emit Bases(num=26, addr)
-   │                            ^^^^ attributes hash: 16366719240912622931
+   │                            ^^^^ attributes hash: 16804606599831072828
    │
    = ExpressionAttributes {
          typ: Base(
@@ -151,7 +151,7 @@ note:
    ┌─ features/events.fe:26:23
    │
 26 │         emit Mix(num1=26, addr, num2=42, my_bytes)
-   │                       ^^ attributes hash: 16797824492585953824
+   │                       ^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -167,7 +167,7 @@ note:
    ┌─ features/events.fe:26:27
    │
 26 │         emit Mix(num1=26, addr, num2=42, my_bytes)
-   │                           ^^^^ attributes hash: 16366719240912622931
+   │                           ^^^^ attributes hash: 16804606599831072828
    │
    = ExpressionAttributes {
          typ: Base(
@@ -181,7 +181,7 @@ note:
    ┌─ features/events.fe:26:38
    │
 26 │         emit Mix(num1=26, addr, num2=42, my_bytes)
-   │                                      ^^ attributes hash: 16797824492585953824
+   │                                      ^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -197,7 +197,7 @@ note:
    ┌─ features/events.fe:26:42
    │
 26 │         emit Mix(num1=26, addr, num2=42, my_bytes)
-   │                                          ^^^^^^^^ attributes hash: 1049948881837837287
+   │                                          ^^^^^^^^ attributes hash: 17662649307069018999
    │
    = ExpressionAttributes {
          typ: Array(
@@ -216,7 +216,7 @@ note:
    ┌─ features/events.fe:30:9
    │
 30 │         addrs[0] = addr1
-   │         ^^^^^ attributes hash: 3686325371490964417
+   │         ^^^^^ attributes hash: 894971600666618224
    │
    = ExpressionAttributes {
          typ: Array(
@@ -233,7 +233,7 @@ note:
    ┌─ features/events.fe:30:15
    │
 30 │         addrs[0] = addr1
-   │               ^ attributes hash: 16797824492585953824
+   │               ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -249,7 +249,7 @@ note:
    ┌─ features/events.fe:30:9
    │
 30 │         addrs[0] = addr1
-   │         ^^^^^^^^ attributes hash: 9951382994231729648
+   │         ^^^^^^^^ attributes hash: 7265128456914983321
    │
    = ExpressionAttributes {
          typ: Base(
@@ -263,7 +263,7 @@ note:
    ┌─ features/events.fe:30:20
    │
 30 │         addrs[0] = addr1
-   │                    ^^^^^ attributes hash: 16366719240912622931
+   │                    ^^^^^ attributes hash: 16804606599831072828
    │
    = ExpressionAttributes {
          typ: Base(
@@ -277,7 +277,7 @@ note:
    ┌─ features/events.fe:31:9
    │
 31 │         addrs[1] = addr2
-   │         ^^^^^ attributes hash: 3686325371490964417
+   │         ^^^^^ attributes hash: 894971600666618224
    │
    = ExpressionAttributes {
          typ: Array(
@@ -294,7 +294,7 @@ note:
    ┌─ features/events.fe:31:15
    │
 31 │         addrs[1] = addr2
-   │               ^ attributes hash: 16797824492585953824
+   │               ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -310,7 +310,7 @@ note:
    ┌─ features/events.fe:31:9
    │
 31 │         addrs[1] = addr2
-   │         ^^^^^^^^ attributes hash: 9951382994231729648
+   │         ^^^^^^^^ attributes hash: 7265128456914983321
    │
    = ExpressionAttributes {
          typ: Base(
@@ -324,7 +324,7 @@ note:
    ┌─ features/events.fe:31:20
    │
 31 │         addrs[1] = addr2
-   │                    ^^^^^ attributes hash: 16366719240912622931
+   │                    ^^^^^ attributes hash: 16804606599831072828
    │
    = ExpressionAttributes {
          typ: Base(
@@ -338,7 +338,7 @@ note:
    ┌─ features/events.fe:32:24
    │
 32 │         emit Addresses(addrs)
-   │                        ^^^^^ attributes hash: 3686325371490964417
+   │                        ^^^^^ attributes hash: 894971600666618224
    │
    = ExpressionAttributes {
          typ: Array(
@@ -355,11 +355,10 @@ note:
    ┌─ features/events.fe:20:9
    │
 20 │         emit Nums(num1=26, num2=42)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8999358109956579907
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4173083644535479702
    │
    = EventDef {
          name: "Nums",
-         topic: "0x3cc309fb61c8d0d1165018be6f4c8d7f7fd4ef4739dea209201fe9d06f2dc8c3",
          fields: [
              (
                  "num1",
@@ -387,11 +386,10 @@ note:
    ┌─ features/events.fe:23:9
    │
 23 │         emit Bases(num=26, addr)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17561855600704043264
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5225681472135288954
    │
    = EventDef {
          name: "Bases",
-         topic: "0x6bffe320be20b1367c958a4599064519ff8b5a775856c842306b2549283f977b",
          fields: [
              (
                  "num",
@@ -415,11 +413,10 @@ note:
    ┌─ features/events.fe:26:9
    │
 26 │         emit Mix(num1=26, addr, num2=42, my_bytes)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9889104557218684370
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9252761509683604439
    │
    = EventDef {
          name: "Mix",
-         topic: "0xb81cb79c37f55a0aac157707a5d7ce4bd0a2571eea1abfefcc3df86c9e2ac1a4",
          fields: [
              (
                  "num1",
@@ -464,11 +461,10 @@ note:
    ┌─ features/events.fe:32:9
    │
 32 │         emit Addresses(addrs)
-   │         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15520454832646706378
+   │         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 11156221068256331545
    │
    = EventDef {
          name: "Addresses",
-         topic: "0x56000a174d799384dffb63081e5f2a4875fdfb797b50719cf536d42e2aeea37f",
          fields: [
              (
                  "addrs",
@@ -486,9 +482,9 @@ note:
 note: 
    ┌─ features/events.fe:19:5
    │  
-19 │ ╭     pub def emit_nums():
+19 │ ╭     pub fn emit_nums():
 20 │ │         emit Nums(num1=26, num2=42)
-   │ ╰───────────────────────────────────^ attributes hash: 10010065695528303742
+   │ ╰───────────────────────────────────^ attributes hash: 13937999919534198787
    │  
    = FunctionAttributes {
          is_public: true,
@@ -502,9 +498,9 @@ note:
 note: 
    ┌─ features/events.fe:22:5
    │  
-22 │ ╭     pub def emit_bases(addr: address):
+22 │ ╭     pub fn emit_bases(addr: address):
 23 │ │         emit Bases(num=26, addr)
-   │ ╰────────────────────────────────^ attributes hash: 2671961406459582790
+   │ ╰────────────────────────────────^ attributes hash: 2537970720306858132
    │  
    = FunctionAttributes {
          is_public: true,
@@ -525,9 +521,9 @@ note:
 note: 
    ┌─ features/events.fe:25:5
    │  
-25 │ ╭     pub def emit_mix(addr: address, my_bytes: u8[100]):
+25 │ ╭     pub fn emit_mix(addr: address, my_bytes: u8[100]):
 26 │ │         emit Mix(num1=26, addr, num2=42, my_bytes)
-   │ ╰──────────────────────────────────────────────────^ attributes hash: 441056864264178583
+   │ ╰──────────────────────────────────────────────────^ attributes hash: 11783984183235243202
    │  
    = FunctionAttributes {
          is_public: true,
@@ -559,12 +555,12 @@ note:
 note: 
    ┌─ features/events.fe:28:5
    │  
-28 │ ╭     pub def emit_addresses(addr1: address, addr2: address):
+28 │ ╭     pub fn emit_addresses(addr1: address, addr2: address):
 29 │ │         let addrs: address[2]
 30 │ │         addrs[0] = addr1
 31 │ │         addrs[1] = addr2
 32 │ │         emit Addresses(addrs)
-   │ ╰─────────────────────────────^ attributes hash: 14180015678624153216
+   │ ╰─────────────────────────────^ attributes hash: 7494237503830318606
    │  
    = FunctionAttributes {
          is_public: true,
@@ -592,7 +588,7 @@ note:
    ┌─ features/events.fe:29:9
    │
 29 │         let addrs: address[2]
-   │         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 16566349279731954343
+   │         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 3706688745435972602
    │
    = Array(
          Array {
@@ -611,7 +607,7 @@ note:
    · │
 31 │ │         addrs[1] = addr2
 32 │ │         emit Addresses(addrs)
-   │ ╰─────────────────────────────^ attributes hash: 13256212002371768735
+   │ ╰─────────────────────────────^ attributes hash: 5589918496276372530
    │  
    = ContractAttributes {
          public_functions: [
@@ -690,7 +686,6 @@ note:
          events: [
              EventDef {
                  name: "Addresses",
-                 topic: "0x56000a174d799384dffb63081e5f2a4875fdfb797b50719cf536d42e2aeea37f",
                  fields: [
                      (
                          "addrs",
@@ -706,7 +701,6 @@ note:
              },
              EventDef {
                  name: "Bases",
-                 topic: "0x6bffe320be20b1367c958a4599064519ff8b5a775856c842306b2549283f977b",
                  fields: [
                      (
                          "num",
@@ -727,7 +721,6 @@ note:
              },
              EventDef {
                  name: "Mix",
-                 topic: "0xb81cb79c37f55a0aac157707a5d7ce4bd0a2571eea1abfefcc3df86c9e2ac1a4",
                  fields: [
                      (
                          "num1",
@@ -769,7 +762,6 @@ note:
              },
              EventDef {
                  name: "Nums",
-                 topic: "0x3cc309fb61c8d0d1165018be6f4c8d7f7fd4ef4739dea209201fe9d06f2dc8c3",
                  fields: [
                      (
                          "num1",
@@ -803,11 +795,10 @@ note:
 2 │ ╭     event Nums:
 3 │ │         idx num1: u256
 4 │ │         num2: u256
-  │ ╰──────────────────^ attributes hash: 8999358109956579907
+  │ ╰──────────────────^ attributes hash: 4173083644535479702
   │  
   = EventDef {
         name: "Nums",
-        topic: "0x3cc309fb61c8d0d1165018be6f4c8d7f7fd4ef4739dea209201fe9d06f2dc8c3",
         fields: [
             (
                 "num1",
@@ -837,11 +828,10 @@ note:
 6 │ ╭     event Bases:
 7 │ │         num: u256
 8 │ │         addr: address
-  │ ╰─────────────────────^ attributes hash: 17561855600704043264
+  │ ╰─────────────────────^ attributes hash: 5225681472135288954
   │  
   = EventDef {
         name: "Bases",
-        topic: "0x6bffe320be20b1367c958a4599064519ff8b5a775856c842306b2549283f977b",
         fields: [
             (
                 "num",
@@ -869,11 +859,10 @@ note:
 12 │ │         idx addr: address
 13 │ │         num2: u256
 14 │ │         my_bytes: u8[100]
-   │ ╰─────────────────────────^ attributes hash: 9889104557218684370
+   │ ╰─────────────────────────^ attributes hash: 9252761509683604439
    │  
    = EventDef {
          name: "Mix",
-         topic: "0xb81cb79c37f55a0aac157707a5d7ce4bd0a2571eea1abfefcc3df86c9e2ac1a4",
          fields: [
              (
                  "num1",
@@ -919,11 +908,10 @@ note:
    │  
 16 │ ╭     event Addresses:
 17 │ │         addrs: address[2]
-   │ ╰─────────────────────────^ attributes hash: 15520454832646706378
+   │ ╰─────────────────────────^ attributes hash: 11156221068256331545
    │  
    = EventDef {
          name: "Addresses",
-         topic: "0x56000a174d799384dffb63081e5f2a4875fdfb797b50719cf536d42e2aeea37f",
          fields: [
              (
                  "addrs",
@@ -942,7 +930,7 @@ note:
   ┌─ features/events.fe:3:19
   │
 3 │         idx num1: u256
-  │                   ^^^^ attributes hash: 17942395924573474124
+  │                   ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -954,7 +942,7 @@ note:
   ┌─ features/events.fe:4:15
   │
 4 │         num2: u256
-  │               ^^^^ attributes hash: 17942395924573474124
+  │               ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -966,7 +954,7 @@ note:
   ┌─ features/events.fe:7:14
   │
 7 │         num: u256
-  │              ^^^^ attributes hash: 17942395924573474124
+  │              ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -978,7 +966,7 @@ note:
   ┌─ features/events.fe:8:15
   │
 8 │         addr: address
-  │               ^^^^^^^ attributes hash: 16931239362436195516
+  │               ^^^^^^^ attributes hash: 928477466454064117
   │
   = Base(
         Address,
@@ -988,7 +976,7 @@ note:
    ┌─ features/events.fe:11:15
    │
 11 │         num1: u256
-   │               ^^^^ attributes hash: 17942395924573474124
+   │               ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -1000,7 +988,7 @@ note:
    ┌─ features/events.fe:12:19
    │
 12 │         idx addr: address
-   │                   ^^^^^^^ attributes hash: 16931239362436195516
+   │                   ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
@@ -1010,7 +998,7 @@ note:
    ┌─ features/events.fe:13:15
    │
 13 │         num2: u256
-   │               ^^^^ attributes hash: 17942395924573474124
+   │               ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -1022,7 +1010,7 @@ note:
    ┌─ features/events.fe:14:19
    │
 14 │         my_bytes: u8[100]
-   │                   ^^ attributes hash: 1872326638020472004
+   │                   ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -1034,7 +1022,7 @@ note:
    ┌─ features/events.fe:14:19
    │
 14 │         my_bytes: u8[100]
-   │                   ^^^^^^^ attributes hash: 3287218553536941062
+   │                   ^^^^^^^ attributes hash: 13273353011268797629
    │
    = Array(
          Array {
@@ -1049,7 +1037,7 @@ note:
    ┌─ features/events.fe:17:16
    │
 17 │         addrs: address[2]
-   │                ^^^^^^^ attributes hash: 16931239362436195516
+   │                ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
@@ -1059,7 +1047,7 @@ note:
    ┌─ features/events.fe:17:16
    │
 17 │         addrs: address[2]
-   │                ^^^^^^^^^^ attributes hash: 16566349279731954343
+   │                ^^^^^^^^^^ attributes hash: 3706688745435972602
    │
    = Array(
          Array {
@@ -1069,30 +1057,30 @@ note:
      )
 
 note: 
-   ┌─ features/events.fe:22:30
+   ┌─ features/events.fe:22:29
    │
-22 │     pub def emit_bases(addr: address):
-   │                              ^^^^^^^ attributes hash: 16931239362436195516
-   │
-   = Base(
-         Address,
-     )
-
-note: 
-   ┌─ features/events.fe:25:28
-   │
-25 │     pub def emit_mix(addr: address, my_bytes: u8[100]):
-   │                            ^^^^^^^ attributes hash: 16931239362436195516
+22 │     pub fn emit_bases(addr: address):
+   │                             ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
      )
 
 note: 
-   ┌─ features/events.fe:25:47
+   ┌─ features/events.fe:25:27
    │
-25 │     pub def emit_mix(addr: address, my_bytes: u8[100]):
-   │                                               ^^ attributes hash: 1872326638020472004
+25 │     pub fn emit_mix(addr: address, my_bytes: u8[100]):
+   │                           ^^^^^^^ attributes hash: 928477466454064117
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ features/events.fe:25:46
+   │
+25 │     pub fn emit_mix(addr: address, my_bytes: u8[100]):
+   │                                              ^^ attributes hash: 3165084411644393001
    │
    = Base(
          Numeric(
@@ -1101,10 +1089,10 @@ note:
      )
 
 note: 
-   ┌─ features/events.fe:25:47
+   ┌─ features/events.fe:25:46
    │
-25 │     pub def emit_mix(addr: address, my_bytes: u8[100]):
-   │                                               ^^^^^^^ attributes hash: 3287218553536941062
+25 │     pub fn emit_mix(addr: address, my_bytes: u8[100]):
+   │                                              ^^^^^^^ attributes hash: 13273353011268797629
    │
    = Array(
          Array {
@@ -1116,30 +1104,20 @@ note:
      )
 
 note: 
-   ┌─ features/events.fe:28:35
+   ┌─ features/events.fe:28:34
    │
-28 │     pub def emit_addresses(addr1: address, addr2: address):
-   │                                   ^^^^^^^ attributes hash: 16931239362436195516
-   │
-   = Base(
-         Address,
-     )
-
-note: 
-   ┌─ features/events.fe:28:51
-   │
-28 │     pub def emit_addresses(addr1: address, addr2: address):
-   │                                                   ^^^^^^^ attributes hash: 16931239362436195516
+28 │     pub fn emit_addresses(addr1: address, addr2: address):
+   │                                  ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
      )
 
 note: 
-   ┌─ features/events.fe:29:20
+   ┌─ features/events.fe:28:50
    │
-29 │         let addrs: address[2]
-   │                    ^^^^^^^ attributes hash: 16931239362436195516
+28 │     pub fn emit_addresses(addr1: address, addr2: address):
+   │                                                  ^^^^^^^ attributes hash: 928477466454064117
    │
    = Base(
          Address,
@@ -1149,7 +1127,17 @@ note:
    ┌─ features/events.fe:29:20
    │
 29 │         let addrs: address[2]
-   │                    ^^^^^^^^^^ attributes hash: 16566349279731954343
+   │                    ^^^^^^^ attributes hash: 928477466454064117
+   │
+   = Base(
+         Address,
+     )
+
+note: 
+   ┌─ features/events.fe:29:20
+   │
+29 │         let addrs: address[2]
+   │                    ^^^^^^^^^^ attributes hash: 3706688745435972602
    │
    = Array(
          Array {

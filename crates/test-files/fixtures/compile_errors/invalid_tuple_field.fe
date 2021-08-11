@@ -1,5 +1,5 @@
 contract Foo:
   val: (u256, u8)
 
-  pub def foo():
+  pub fn foo():
     self.val.item5

@@ -18,7 +18,7 @@ struct tuple_u256_tuple_u8_bool__tuple_address_tuple_u8_u8___:
 contract Foo:
     tup: tuple_u256_tuple_u8_bool__tuple_address_tuple_u8_u8___
 
-    pub def bar(x: u256) -> u8:
+    pub fn bar(x: u256) -> u8:
         self.tup = tuple_u256_tuple_u8_bool__tuple_address_tuple_u8_u8___(item0 = 1,
                             item1 = tuple_u8_bool_(item0 = 0, item1 = true),
                             item2 = tuple_address_tuple_u8_u8__(item0 = address(0),

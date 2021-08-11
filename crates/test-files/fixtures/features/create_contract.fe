@@ -1,8 +1,8 @@
 contract Foo:
-    pub def get_my_num() -> u256:
+    pub fn get_my_num() -> u256:
         return 42
 
 contract FooFactory:
-    pub def create_foo() -> address:
+    pub fn create_foo() -> address:
         let foo: Foo = Foo.create(0)
         return address(foo)

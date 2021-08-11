@@ -4,6 +4,7 @@ use crate::namespace::types::FixedSize;
 use crate::traversal::{expressions, types};
 use crate::Context;
 use fe_common::diagnostics::Label;
+use fe_common::utils::humanize::pluralize_conditionally;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use std::rc::Rc;
@@ -16,7 +17,7 @@ pub fn var_decl(
 ) -> Result<(), FatalError> {
     if let fe::FuncStmt::VarDecl { target, typ, value } = &stmt.kind {
         let declared_type =
-            types::type_desc_fixed_size(&Scope::Block(Rc::clone(&scope)), context, &typ)?;
+            types::type_desc_fixed_size(&Scope::Block(Rc::clone(&scope)), context, typ)?;
 
         if let Some(value) = value {
             let value_attributes = expressions::assignable_expr(
@@ -36,7 +37,7 @@ pub fn var_decl(
             }
         }
 
-        add_var(context, &scope, &target, declared_type.clone())?;
+        add_var(context, &scope, target, declared_type.clone())?;
         context.add_declaration(stmt, declared_type);
         return Ok(());
     }
@@ -53,7 +54,7 @@ fn add_var(
 ) -> Result<(), FatalError> {
     match (&target.kind, typ) {
         (fe::VarDeclTarget::Name(name), typ) => {
-            if let Err(AlreadyDefined) = scope.borrow_mut().add_var(&name, typ) {
+            if let Err(AlreadyDefined) = scope.borrow_mut().add_var(name, typ) {
                 context.fancy_error(
                     "a variable with the same name already exists in this scope",
                     // TODO: figure out how to include the previously defined var
@@ -71,14 +72,33 @@ fn add_var(
         }
         (fe::VarDeclTarget::Tuple(items), FixedSize::Tuple(items_ty)) => {
             let items_ty = items_ty.items;
-            if items.len() != items_ty.as_vec().len() {
-                return Err(FatalError);
+            let items_ty_len = items_ty.as_vec().len();
+            if items.len() != items_ty_len {
+                context.fancy_error(
+                    "invalid declaration",
+                    vec![Label::primary(target.span, "")],
+                    vec![format!(
+                        "Tuple declaration has {} {} but the specified tuple type has {} {}",
+                        items.len(),
+                        pluralize_conditionally("item", items.len()),
+                        items_ty_len,
+                        pluralize_conditionally("item", items_ty_len),
+                    )],
+                );
+
+                return Err(FatalError::new());
             }
             for (item, item_ty) in items.iter().zip(items_ty.into_iter()) {
                 add_var(context, scope, item, item_ty)?;
             }
             Ok(())
         }
-        _ => Err(FatalError),
+        (fe::VarDeclTarget::Tuple(_), typ) if !matches!(typ, FixedSize::Tuple(_)) => {
+            context.fancy_error("invalid declaration",
+            vec![Label::primary(target.span, "")],
+            vec![format!("Tuple declaration targets need to be declared with the tuple type but here the type is {}", typ)]);
+            Err(FatalError::new())
+        }
+        _ => Err(FatalError::new()),
     }
 }

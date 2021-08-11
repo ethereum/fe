@@ -221,11 +221,11 @@ impl BlockScope {
         loop {
             parent = match parent {
                 BlockScopeParent::Block(ref scope) => {
-                    last_block_scope = Rc::clone(&scope);
+                    last_block_scope = Rc::clone(scope);
                     scope.borrow().parent.clone()
                 }
                 BlockScopeParent::Contract(ref scope) => {
-                    return (Rc::clone(&scope), last_block_scope)
+                    return (Rc::clone(scope), last_block_scope)
                 }
             }
         }

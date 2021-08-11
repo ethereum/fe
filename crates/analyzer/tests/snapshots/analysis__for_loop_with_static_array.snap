@@ -29,7 +29,7 @@ note:
   ┌─ features/for_loop_with_static_array.fe:5:9
   │
 5 │         my_array[0] = 5
-  │         ^^^^^^^^ attributes hash: 4935018943425161537
+  │         ^^^^^^^^ attributes hash: 1956631852282662145
   │
   = ExpressionAttributes {
         typ: Array(
@@ -48,7 +48,7 @@ note:
   ┌─ features/for_loop_with_static_array.fe:5:18
   │
 5 │         my_array[0] = 5
-  │                  ^ attributes hash: 16797824492585953824
+  │                  ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -64,7 +64,7 @@ note:
   ┌─ features/for_loop_with_static_array.fe:5:9
   │
 5 │         my_array[0] = 5
-  │         ^^^^^^^^^^^ attributes hash: 3617588353493611640
+  │         ^^^^^^^^^^^ attributes hash: 13245336599501214748
   │
   = ExpressionAttributes {
         typ: Base(
@@ -80,7 +80,7 @@ note:
   ┌─ features/for_loop_with_static_array.fe:5:23
   │
 5 │         my_array[0] = 5
-  │                       ^ attributes hash: 16797824492585953824
+  │                       ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -96,7 +96,7 @@ note:
   ┌─ features/for_loop_with_static_array.fe:6:9
   │
 6 │         my_array[1] = 10
-  │         ^^^^^^^^ attributes hash: 4935018943425161537
+  │         ^^^^^^^^ attributes hash: 1956631852282662145
   │
   = ExpressionAttributes {
         typ: Array(
@@ -115,7 +115,7 @@ note:
   ┌─ features/for_loop_with_static_array.fe:6:18
   │
 6 │         my_array[1] = 10
-  │                  ^ attributes hash: 16797824492585953824
+  │                  ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -131,7 +131,7 @@ note:
   ┌─ features/for_loop_with_static_array.fe:6:9
   │
 6 │         my_array[1] = 10
-  │         ^^^^^^^^^^^ attributes hash: 3617588353493611640
+  │         ^^^^^^^^^^^ attributes hash: 13245336599501214748
   │
   = ExpressionAttributes {
         typ: Base(
@@ -147,7 +147,7 @@ note:
   ┌─ features/for_loop_with_static_array.fe:6:23
   │
 6 │         my_array[1] = 10
-  │                       ^^ attributes hash: 16797824492585953824
+  │                       ^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -163,7 +163,7 @@ note:
   ┌─ features/for_loop_with_static_array.fe:7:9
   │
 7 │         my_array[2] = 15
-  │         ^^^^^^^^ attributes hash: 4935018943425161537
+  │         ^^^^^^^^ attributes hash: 1956631852282662145
   │
   = ExpressionAttributes {
         typ: Array(
@@ -182,7 +182,7 @@ note:
   ┌─ features/for_loop_with_static_array.fe:7:18
   │
 7 │         my_array[2] = 15
-  │                  ^ attributes hash: 16797824492585953824
+  │                  ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -198,7 +198,7 @@ note:
   ┌─ features/for_loop_with_static_array.fe:7:9
   │
 7 │         my_array[2] = 15
-  │         ^^^^^^^^^^^ attributes hash: 3617588353493611640
+  │         ^^^^^^^^^^^ attributes hash: 13245336599501214748
   │
   = ExpressionAttributes {
         typ: Base(
@@ -214,7 +214,7 @@ note:
   ┌─ features/for_loop_with_static_array.fe:7:23
   │
 7 │         my_array[2] = 15
-  │                       ^^ attributes hash: 16797824492585953824
+  │                       ^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -230,7 +230,7 @@ note:
   ┌─ features/for_loop_with_static_array.fe:8:25
   │
 8 │         let sum: u256 = 0
-  │                         ^ attributes hash: 16797824492585953824
+  │                         ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -246,7 +246,7 @@ note:
   ┌─ features/for_loop_with_static_array.fe:9:18
   │
 9 │         for i in my_array:
-  │                  ^^^^^^^^ attributes hash: 4935018943425161537
+  │                  ^^^^^^^^ attributes hash: 1956631852282662145
   │
   = ExpressionAttributes {
         typ: Array(
@@ -265,7 +265,7 @@ note:
    ┌─ features/for_loop_with_static_array.fe:10:13
    │
 10 │             sum = sum + i
-   │             ^^^ attributes hash: 16797824492585953824
+   │             ^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -281,7 +281,7 @@ note:
    ┌─ features/for_loop_with_static_array.fe:10:19
    │
 10 │             sum = sum + i
-   │                   ^^^ attributes hash: 16797824492585953824
+   │                   ^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -297,7 +297,7 @@ note:
    ┌─ features/for_loop_with_static_array.fe:10:25
    │
 10 │             sum = sum + i
-   │                         ^ attributes hash: 16797824492585953824
+   │                         ^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -313,7 +313,7 @@ note:
    ┌─ features/for_loop_with_static_array.fe:10:19
    │
 10 │             sum = sum + i
-   │                   ^^^^^^^ attributes hash: 16797824492585953824
+   │                   ^^^^^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -329,7 +329,7 @@ note:
    ┌─ features/for_loop_with_static_array.fe:11:16
    │
 11 │         return sum
-   │                ^^^ attributes hash: 16797824492585953824
+   │                ^^^ attributes hash: 1230752710897721197
    │
    = ExpressionAttributes {
          typ: Base(
@@ -344,14 +344,14 @@ note:
 note: 
    ┌─ features/for_loop_with_static_array.fe:3:5
    │  
- 3 │ ╭     pub def bar() -> u256:
+ 3 │ ╭     pub fn bar() -> u256:
  4 │ │         let my_array: u256[3]
  5 │ │         my_array[0] = 5
  6 │ │         my_array[1] = 10
    · │
 10 │ │             sum = sum + i
 11 │ │         return sum
-   │ ╰──────────────────^ attributes hash: 2041944711719443549
+   │ ╰──────────────────^ attributes hash: 5931278080780939395
    │  
    = FunctionAttributes {
          is_public: true,
@@ -368,7 +368,7 @@ note:
   ┌─ features/for_loop_with_static_array.fe:4:9
   │
 4 │         let my_array: u256[3]
-  │         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5963828201795370982
+  │         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 12759010689691238080
   │
   = Array(
         Array {
@@ -383,7 +383,7 @@ note:
   ┌─ features/for_loop_with_static_array.fe:8:9
   │
 8 │         let sum: u256 = 0
-  │         ^^^^^^^^^^^^^^^^^ attributes hash: 17942395924573474124
+  │         ^^^^^^^^^^^^^^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -396,12 +396,12 @@ note:
    │  
  1 │ ╭ contract Foo:
  2 │ │ 
- 3 │ │     pub def bar() -> u256:
+ 3 │ │     pub fn bar() -> u256:
  4 │ │         let my_array: u256[3]
    · │
 10 │ │             sum = sum + i
 11 │ │         return sum
-   │ ╰──────────────────^ attributes hash: 16417315723405128961
+   │ ╰──────────────────^ attributes hash: 5268314470252829497
    │  
    = ContractAttributes {
          public_functions: [
@@ -423,22 +423,10 @@ note:
      }
 
 note: 
-  ┌─ features/for_loop_with_static_array.fe:3:22
+  ┌─ features/for_loop_with_static_array.fe:3:21
   │
-3 │     pub def bar() -> u256:
-  │                      ^^^^ attributes hash: 17942395924573474124
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/for_loop_with_static_array.fe:4:23
-  │
-4 │         let my_array: u256[3]
-  │                       ^^^^ attributes hash: 17942395924573474124
+3 │     pub fn bar() -> u256:
+  │                     ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -450,7 +438,19 @@ note:
   ┌─ features/for_loop_with_static_array.fe:4:23
   │
 4 │         let my_array: u256[3]
-  │                       ^^^^^^^ attributes hash: 5963828201795370982
+  │                       ^^^^ attributes hash: 4293763436908729629
+  │
+  = Base(
+        Numeric(
+            U256,
+        ),
+    )
+
+note: 
+  ┌─ features/for_loop_with_static_array.fe:4:23
+  │
+4 │         let my_array: u256[3]
+  │                       ^^^^^^^ attributes hash: 12759010689691238080
   │
   = Array(
         Array {
@@ -465,7 +465,7 @@ note:
   ┌─ features/for_loop_with_static_array.fe:8:18
   │
 8 │         let sum: u256 = 0
-  │                  ^^^^ attributes hash: 17942395924573474124
+  │                  ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(

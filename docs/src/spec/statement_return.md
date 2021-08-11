@@ -1,0 +1,29 @@
+# `return` statement
+
+
+> **<sup>Syntax</sup>**\
+> _ReturnStatement_ :\
+> &nbsp;&nbsp; `return` [_Expression_]<sup>?</sup>
+
+The return statement is denoted with the keyword `return`. A `return` statement leaves the current function call with a return value which is either the value of the evaluated expression (if present) or `()` (unit type) if `return` is not followed by an expression explicitly.
+
+
+An example of a `return` statement without explicit use of an expression:
+
+```python
+fn transfer(to: address, value: u256):
+    if not self.in_whitelist(to):
+        return
+```
+
+The above can also be written in a slightly more verbose form:
+
+```python
+  fn transfer(to: address, value: u256) -> ():
+      if not self.in_whitelist(to):
+          return ()
+```
+
+[_Expression_]: expressions.md
+[struct]: structs.md
+[EIP-838]: https://github.com/ethereum/EIPs/issues/838

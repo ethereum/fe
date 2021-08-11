@@ -3,5 +3,5 @@ contract Bar:
 
 contract Foo:
 
-    pub def foo():
+    pub fn foo():
         Bar.create(true)
