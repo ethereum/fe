@@ -138,6 +138,7 @@ test_stmt! { invalid_ascii, "String<2>(\"ä\")" }
 
 test_file! { bad_tuple_attr1 }
 test_file! { bad_tuple_attr2 }
+test_file! { bad_tuple_attr3 }
 test_file! { call_builtin_object }
 test_file! { call_address_with_wrong_type }
 test_file! { call_create_with_wrong_type }
