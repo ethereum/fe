@@ -52,7 +52,7 @@ fn contract_field(context: &mut ContractContext, field: ContractFieldId) -> Node
             is_pub: node.kind.is_pub,
             is_const: node.kind.is_const,
             name: node.kind.name.clone(),
-            typ: types::type_desc1(&mut context.module, node.kind.typ.clone(), &typ),
+            typ: types::type_desc(&mut context.module, node.kind.typ.clone(), &typ),
             value: node.kind.value.clone(),
         },
         node.span,
@@ -70,7 +70,7 @@ fn event_def(context: &mut ContractContext, event: EventId) -> Node<ast::Event> 
             ast::EventField {
                 is_idx: field.is_indexed,
                 name: field.name.clone().into_node(),
-                typ: types::type_desc1(
+                typ: types::type_desc(
                     context.module,
                     node.kind.typ.clone(),
                     &field

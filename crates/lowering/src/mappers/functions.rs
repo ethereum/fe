@@ -11,10 +11,13 @@ use fe_parser::node::Node;
 /// Lowers a function definition.
 pub fn func_def(contract: &mut ContractContext, function: FunctionId) -> Node<fe::Function> {
     let mut context = FnContext::new(contract, function.body(contract.db()));
-
     let node = &function.data(context.db()).ast;
     let fe::Function {
-        is_pub, name, body, ..
+        is_pub,
+        name,
+        args,
+        return_type: return_type_node,
+        body,
     } = &node.kind;
 
     let signature = function.signature(context.db());
@@ -23,6 +26,7 @@ pub fn func_def(contract: &mut ContractContext, function: FunctionId) -> Node<fe
         .return_type
         .as_ref()
         .expect("fn return type error");
+
     let lowered_body = {
         let mut lowered_body = multiple_stmts(&mut context, body.clone());
         // append `return ()` to the body if there is no return
@@ -37,9 +41,7 @@ pub fn func_def(contract: &mut ContractContext, function: FunctionId) -> Node<fe
         lowered_body
     };
 
-    let args = node
-        .kind
-        .args
+    let args = args
         .iter()
         .zip(
             signature
@@ -50,20 +52,25 @@ pub fn func_def(contract: &mut ContractContext, function: FunctionId) -> Node<fe
         .map(|(pnode, ptype)| {
             fe::FunctionArg {
                 name: pnode.kind.name.clone(),
-                typ: types::type_desc1(&mut contract.module, pnode.kind.typ.clone(), &ptype),
+                typ: types::type_desc(&mut contract.module, pnode.kind.typ.clone(), &ptype),
             }
             .into_node()
         })
         .collect();
 
+    // The return type is lowered if it exists. If there is no return type, we set it to the unit type.
+    let lowered_return_type = return_type_node
+        .clone()
+        .map(|type_desc| {
+            types::type_desc(&mut contract.module, type_desc, &return_type.clone().into())
+        })
+        .unwrap_or_else(|| fe::TypeDesc::Unit.into_node());
+
     let lowered_function = fe::Function {
         is_pub: *is_pub,
         name: name.clone(),
         args,
-        return_type: Some(types::type_desc(
-            contract.module,
-            &return_type.clone().into(),
-        )),
+        return_type: Some(lowered_return_type),
         body: lowered_body,
     };
 
@@ -74,7 +81,7 @@ fn func_stmt(context: &mut FnContext, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::
     let lowered_kinds = match stmt.kind {
         fe::FuncStmt::Return { value } => stmt_return(context, value),
         fe::FuncStmt::VarDecl { target, typ, value } => {
-            let typ = context
+            let var_type = context
                 .var_decl_type(&typ)
                 .expect("missing var decl type")
                 .clone()
@@ -83,11 +90,11 @@ fn func_stmt(context: &mut FnContext, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::
             match target.kind {
                 fe::VarDeclTarget::Name(_) => vec![fe::FuncStmt::VarDecl {
                     target,
-                    typ: types::type_desc(context.contract.module, &typ),
+                    typ: types::type_desc(context.contract.module, typ, &var_type),
                     value: expressions::optional_expr(context, value),
                 }],
                 fe::VarDeclTarget::Tuple(_) => {
-                    lower_tuple_destructuring(context, target, &typ, value, stmt.span)
+                    lower_tuple_destructuring(context, target, typ, &var_type, value, stmt.span)
                 }
             }
         }
@@ -214,6 +221,7 @@ fn is_last_statement_return(stmts: &[Node<fe::FuncStmt>]) -> bool {
 fn lower_tuple_destructuring(
     context: &mut FnContext,
     target: Node<fe::VarDeclTarget>,
+    type_desc: Node<fe::TypeDesc>,
     typ: &Type,
     value: Option<Node<fe::Expr>>,
     span: fe_common::Span,
@@ -222,17 +230,17 @@ fn lower_tuple_destructuring(
     let tmp_tuple = context.make_unique_name("tmp_tuple");
     stmts.push(fe::FuncStmt::VarDecl {
         target: Node::new(fe::VarDeclTarget::Name(tmp_tuple.clone()), span),
-        typ: types::type_desc(&mut context.contract.module, typ),
+        typ: types::type_desc(&mut context.contract.module, type_desc.clone(), typ),
         value: expressions::optional_expr(context, value),
     });
 
     declare_tuple_items(
         context,
         target,
+        type_desc,
         typ,
         &tmp_tuple,
         &mut vec![],
-        span,
         &mut stmts,
     );
     stmts
@@ -241,46 +249,53 @@ fn lower_tuple_destructuring(
 fn declare_tuple_items(
     context: &mut FnContext,
     target: Node<fe::VarDeclTarget>,
+    type_desc: Node<fe::TypeDesc>,
     typ: &Type,
     tmp_tuple: &str,
     indices: &mut Vec<usize>,
-    span: fe_common::Span,
     stmts: &mut Vec<fe::FuncStmt>,
 ) {
     match target.kind {
         fe::VarDeclTarget::Name(_) => {
-            let mut value = Node::new(fe::Expr::Name(tmp_tuple.to_string()), span);
+            let mut value = fe::Expr::Name(tmp_tuple.to_string()).into_node();
             for index in indices.iter() {
-                value = Node::new(
-                    fe::Expr::Attribute {
-                        value: value.into(),
-                        attr: Node::new(format!("item{}", index), span),
-                    },
-                    span,
-                );
+                value = fe::Expr::Attribute {
+                    value: value.into(),
+                    attr: format!("item{}", index).into_node(),
+                }
+                .into_node();
             }
 
             stmts.push(fe::FuncStmt::VarDecl {
                 target,
-                typ: types::type_desc(&mut context.contract.module, typ),
+                typ: types::type_desc(&mut context.contract.module, type_desc, typ),
                 value: expressions::optional_expr(context, Some(value)),
             });
         }
 
-        fe::VarDeclTarget::Tuple(items) => {
-            let items_typ = &typ
+        fe::VarDeclTarget::Tuple(targets) => {
+            let item_type_descs = match type_desc.kind {
+                fe::TypeDesc::Tuple { items } => items,
+                _ => unreachable!(),
+            };
+            let item_types = &typ
                 .as_tuple()
                 .expect("tuple declaration type mismatch")
                 .items;
-            for (index, (target, typ)) in items.into_iter().zip(items_typ.into_iter()).enumerate() {
+            for (index, ((target, type_desc), typ)) in targets
+                .into_iter()
+                .zip(item_type_descs.into_iter())
+                .zip(item_types.into_iter())
+                .enumerate()
+            {
                 indices.push(index);
                 declare_tuple_items(
                     context,
                     target,
+                    type_desc,
                     &typ.clone().into(),
                     tmp_tuple,
                     indices,
-                    span,
                     stmts,
                 );
                 indices.pop().unwrap();

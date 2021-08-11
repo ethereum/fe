@@ -31,7 +31,7 @@ pub fn module(db: &dyn AnalyzerDb, module: ModuleId) -> ast::Module {
             ast::ModuleStmt::TypeAlias(Node::new(
                 ast::TypeAlias {
                     name,
-                    typ: types::type_desc1(
+                    typ: types::type_desc(
                         &mut context,
                         node.kind.typ.clone(),
                         &id.typ(db).expect("type alias error"),
