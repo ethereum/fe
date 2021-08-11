@@ -4,9 +4,9 @@ expression: "error_string(\"[snippet]\", &src)"
 
 ---
 error: `map` key and value must be types
-  ┌─ [snippet]:3:19
+  ┌─ [snippet]:3:23
   │
-3 │   x: Map<address, 100>
-  │                   ^^^ this should be a type name
+3 │   let x: Map<address, 100>
+  │                       ^^^ this should be a type name
 
 

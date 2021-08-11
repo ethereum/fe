@@ -1,6 +1,6 @@
 ---
-source: parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(stmt_var_decl_tuples), functions::parse_stmt,\n           \"(a, (b, (c, d))): x\")"
+source: crates/parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(stmt_var_decl_tuples), functions::parse_stmt,\n           \"let (a, (b, (c, d))): x\")"
 
 ---
 Node(
@@ -10,8 +10,8 @@ Node(
         Node(
           kind: Name("a"),
           span: Span(
-            start: 1,
-            end: 2,
+            start: 5,
+            end: 6,
           ),
         ),
         Node(
@@ -19,8 +19,8 @@ Node(
             Node(
               kind: Name("b"),
               span: Span(
-                start: 5,
-                end: 6,
+                start: 9,
+                end: 10,
               ),
             ),
             Node(
@@ -28,33 +28,33 @@ Node(
                 Node(
                   kind: Name("c"),
                   span: Span(
-                    start: 9,
-                    end: 10,
+                    start: 13,
+                    end: 14,
                   ),
                 ),
                 Node(
                   kind: Name("d"),
                   span: Span(
-                    start: 12,
-                    end: 13,
+                    start: 16,
+                    end: 17,
                   ),
                 ),
               ]),
               span: Span(
-                start: 8,
-                end: 14,
+                start: 12,
+                end: 18,
               ),
             ),
           ]),
           span: Span(
-            start: 4,
-            end: 15,
+            start: 8,
+            end: 19,
           ),
         ),
       ]),
       span: Span(
-        start: 0,
-        end: 16,
+        start: 4,
+        end: 20,
       ),
     ),
     typ: Node(
@@ -62,14 +62,14 @@ Node(
         base: "x",
       ),
       span: Span(
-        start: 18,
-        end: 19,
+        start: 22,
+        end: 23,
       ),
     ),
     value: None,
   ),
   span: Span(
     start: 0,
-    end: 19,
+    end: 23,
   ),
 )

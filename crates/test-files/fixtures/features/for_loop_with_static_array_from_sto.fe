@@ -3,7 +3,7 @@ contract Foo:
 
     pub fn bar() -> u256:
         self.my_array = [1,2,3]
-        sum: u256 = 0
+        let sum: u256 = 0
         for i in self.my_array.to_mem():
             sum = sum + i
 

@@ -56,7 +56,7 @@ contract FooProxy:
         return self.foo.get_tuple()
 
     pub fn call_get_array():
-        my_array: u16[4] = self.foo.get_array()
+        let my_array: u16[4] = self.foo.get_array()
         assert my_array[0] == u16(1)
         assert my_array[1] == u16(2)
         assert my_array[2] == u16(3)

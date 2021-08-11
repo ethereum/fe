@@ -4,17 +4,17 @@ expression: "error_string(\"[snippet]\", &src)"
 
 ---
 error: `Map` expects 2 arguments, but 3 were provided
-  ┌─ [snippet]:3:6
+  ┌─ [snippet]:3:10
   │
-3 │   x: Map<u8, u8, u8>
-  │      ^^^ --  --  -- supplied 3 arguments
-  │      │            
-  │      expects 2 arguments
+3 │   let x: Map<u8, u8, u8>
+  │          ^^^ --  --  -- supplied 3 arguments
+  │          │            
+  │          expects 2 arguments
 
 error: Expected a value with a fixed size
-  ┌─ [snippet]:3:6
+  ┌─ [snippet]:3:10
   │
-3 │   x: Map<u8, u8, u8>
-  │      ^^^^^^^^^^^^^^^
+3 │   let x: Map<u8, u8, u8>
+  │          ^^^^^^^^^^^^^^^
 
 

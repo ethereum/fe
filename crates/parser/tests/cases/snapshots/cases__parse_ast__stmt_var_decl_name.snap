@@ -1,6 +1,6 @@
 ---
-source: parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(stmt_var_decl_name), functions::parse_stmt, \"foo: u256\")"
+source: crates/parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(stmt_var_decl_name), functions::parse_stmt,\n           \"let foo: u256 = 1\")"
 
 ---
 Node(
@@ -8,8 +8,8 @@ Node(
     target: Node(
       kind: Name("foo"),
       span: Span(
-        start: 0,
-        end: 3,
+        start: 4,
+        end: 7,
       ),
     ),
     typ: Node(
@@ -17,14 +17,20 @@ Node(
         base: "u256",
       ),
       span: Span(
-        start: 5,
-        end: 9,
+        start: 9,
+        end: 13,
       ),
     ),
-    value: None,
+    value: Some(Node(
+      kind: Num("1"),
+      span: Span(
+        start: 16,
+        end: 17,
+      ),
+    )),
   ),
   span: Span(
     start: 0,
-    end: 9,
+    end: 17,
   ),
 )

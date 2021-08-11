@@ -4,15 +4,15 @@ expression: "error_string(\"[snippet]\", &src)"
 
 ---
 error: type mismatch
-  ┌─ [snippet]:3:14
+  ┌─ [snippet]:3:18
   │
-3 │   x: u8[3] = []
-  │              ^^ this has type `u8[0]`; expected type `u8[3]`
+3 │   let x: u8[3] = []
+  │                  ^^ this has type `u8[0]`; expected type `u8[3]`
 
 error: type mismatch
-  ┌─ [snippet]:4:14
+  ┌─ [snippet]:4:18
   │
-4 │   y: u8[3] = [1, 2]
-  │              ^^^^^^ this has type `u8[2]`; expected type `u8[3]`
+4 │   let y: u8[3] = [1, 2]
+  │                  ^^^^^^ this has type `u8[2]`; expected type `u8[3]`
 
 

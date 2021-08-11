@@ -1,11 +1,11 @@
 contract Foo:
 
     pub fn bar() -> u256:
-        my_array: u256[3]
+        let my_array: u256[3]
         my_array[0] = 5
         my_array[1] = 10
         my_array[2] = 15
-        sum: u256 = 0
+        let sum: u256 = 0
         for i in my_array:
             sum = sum + i
             if sum == 15:

@@ -46,7 +46,7 @@ contract Foo:
         )
 
     pub fn bing() -> ():
-        foo: tuple_address_address_u16_i32_bool_ = tuple_address_address_u16_i32_bool_(
+        let foo: tuple_address_address_u16_i32_bool_ = tuple_address_address_u16_i32_bool_(
             item0=address(0),
             item1=address(0),
             item2=u16(0),

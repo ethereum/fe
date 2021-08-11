@@ -1612,7 +1612,7 @@ note:
    ┌─ features/aug_assign.fe:53:5
    │  
 53 │ ╭     pub fn add_from_mem(a: u256, b: u256) -> u256:
-54 │ │         my_array: u256[10]
+54 │ │         let my_array: u256[10]
 55 │ │         my_array[7] = a
 56 │ │         my_array[7] += b
 57 │ │         return my_array[7]
@@ -1649,8 +1649,8 @@ note:
 note: 
    ┌─ features/aug_assign.fe:54:9
    │
-54 │         my_array: u256[10]
-   │         ^^^^^^^^^^^^^^^^^^ attributes hash: 5382577674283633330
+54 │         let my_array: u256[10]
+   │         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5382577674283633330
    │
    = Array(
          Array {
@@ -2514,10 +2514,10 @@ note:
     )
 
 note: 
-   ┌─ features/aug_assign.fe:54:19
+   ┌─ features/aug_assign.fe:54:23
    │
-54 │         my_array: u256[10]
-   │                   ^^^^ attributes hash: 4293763436908729629
+54 │         let my_array: u256[10]
+   │                       ^^^^ attributes hash: 4293763436908729629
    │
    = Base(
          Numeric(
@@ -2526,10 +2526,10 @@ note:
      )
 
 note: 
-   ┌─ features/aug_assign.fe:54:19
+   ┌─ features/aug_assign.fe:54:23
    │
-54 │         my_array: u256[10]
-   │                   ^^^^^^^^ attributes hash: 5382577674283633330
+54 │         let my_array: u256[10]
+   │                       ^^^^^^^^ attributes hash: 5382577674283633330
    │
    = Array(
          Array {

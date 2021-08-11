@@ -1,5 +1,5 @@
 contract Foo:
     pub fn bar(x: u256) -> u256[5]:
-        my_array: u256[5]
+        let my_array: u256[5]
         my_array[3] = x
         return my_array

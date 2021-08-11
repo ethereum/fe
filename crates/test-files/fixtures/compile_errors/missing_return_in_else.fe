@@ -3,4 +3,4 @@ contract Foo:
         if val > 1:
             return 5
         else:
-            x:u256 = 1
+            let x:u256 = 1

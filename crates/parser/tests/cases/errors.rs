@@ -90,6 +90,11 @@ test_parse_err! { stmt_vardecl_attr, functions::parse_stmt, true, "f.s : u" }
 test_parse_err! { stmt_vardecl_tuple, functions::parse_stmt, true, "(a, x+1) : u256" }
 test_parse_err! { stmt_vardecl_tuple_empty, functions::parse_stmt, true, "(a, ()) : u256" }
 test_parse_err! { stmt_vardecl_subscript, functions::parse_stmt, true, "a[1] : u256" }
+test_parse_err! { stmt_vardecl_missing_type_annotation, functions::parse_stmt, true, "let x = 1" }
+test_parse_err! { stmt_vardecl_missing_type_annotation_2, functions::parse_stmt, true, "let x" }
+test_parse_err! { stmt_vardecl_missing_type_annotation_3, functions::parse_stmt, true, "let x:" }
+test_parse_err! { stmt_vardecl_invalid_type_annotation, functions::parse_stmt, true, "let x: y + z" }
+test_parse_err! { stmt_vardecl_invalid_name, functions::parse_stmt, true, "let x + y: u8" }
 
 // assert_snapshot! doesn't like the invalid escape code
 #[test]

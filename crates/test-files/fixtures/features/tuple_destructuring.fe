@@ -1,10 +1,10 @@
 contract Foo:
     pub fn bar() -> u256:
-        (x, y): (u256, bool) = (42, true)
+        let (x, y): (u256, bool) = (42, true)
         return x
 
     pub fn baz(n: u256, b: bool) -> u256:
-        (x, y): (u256, bool) = self.make_tuple(n, b)
+        let (x, y): (u256, bool) = self.make_tuple(n, b)
         return x
 
     fn make_tuple(n: u256, b: bool) -> (u256, bool):

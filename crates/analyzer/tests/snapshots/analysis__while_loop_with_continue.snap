@@ -26,10 +26,10 @@ ModuleAttributes {
 }
 
 note: 
-  ┌─ features/while_loop_with_continue.fe:3:19
+  ┌─ features/while_loop_with_continue.fe:3:23
   │
-3 │         i: u256 = 0
-  │                   ^ attributes hash: 1230752710897721197
+3 │         let i: u256 = 0
+  │                       ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -42,10 +42,10 @@ note:
     }
 
 note: 
-  ┌─ features/while_loop_with_continue.fe:4:25
+  ┌─ features/while_loop_with_continue.fe:4:29
   │
-4 │         counter: u256 = 0
-  │                         ^ attributes hash: 1230752710897721197
+4 │         let counter: u256 = 0
+  │                             ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -297,8 +297,8 @@ note:
    ┌─ features/while_loop_with_continue.fe:2:5
    │  
  2 │ ╭     pub fn bar() -> u256:
- 3 │ │         i: u256 = 0
- 4 │ │         counter: u256 = 0
+ 3 │ │         let i: u256 = 0
+ 4 │ │         let counter: u256 = 0
  5 │ │ 
    · │
 10 │ │             counter = counter + 1
@@ -319,8 +319,8 @@ note:
 note: 
   ┌─ features/while_loop_with_continue.fe:3:9
   │
-3 │         i: u256 = 0
-  │         ^^^^^^^^^^^ attributes hash: 4293763436908729629
+3 │         let i: u256 = 0
+  │         ^^^^^^^^^^^^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -331,8 +331,8 @@ note:
 note: 
   ┌─ features/while_loop_with_continue.fe:4:9
   │
-4 │         counter: u256 = 0
-  │         ^^^^^^^^^^^^^^^^^ attributes hash: 4293763436908729629
+4 │         let counter: u256 = 0
+  │         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -345,8 +345,8 @@ note:
    │  
  1 │ ╭ contract Foo:
  2 │ │     pub fn bar() -> u256:
- 3 │ │         i: u256 = 0
- 4 │ │         counter: u256 = 0
+ 3 │ │         let i: u256 = 0
+ 4 │ │         let counter: u256 = 0
    · │
 10 │ │             counter = counter + 1
 11 │ │         return counter
@@ -384,10 +384,10 @@ note:
     )
 
 note: 
-  ┌─ features/while_loop_with_continue.fe:3:12
+  ┌─ features/while_loop_with_continue.fe:3:16
   │
-3 │         i: u256 = 0
-  │            ^^^^ attributes hash: 4293763436908729629
+3 │         let i: u256 = 0
+  │                ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -396,10 +396,10 @@ note:
     )
 
 note: 
-  ┌─ features/while_loop_with_continue.fe:4:18
+  ┌─ features/while_loop_with_continue.fe:4:22
   │
-4 │         counter: u256 = 0
-  │                  ^^^^ attributes hash: 4293763436908729629
+4 │         let counter: u256 = 0
+  │                      ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(

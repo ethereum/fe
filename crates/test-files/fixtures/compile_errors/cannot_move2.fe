@@ -1,6 +1,6 @@
 contract Foo:
 
   pub fn foo():
-    x:u256[10]
-    y:u256[10]
-    c:u256[20] = x + y
+    let x:u256[10]
+    let y:u256[10]
+    let c:u256[20] = x + y

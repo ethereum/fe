@@ -57,10 +57,10 @@ note:
     }
 
 note: 
-  ┌─ features/create_contract.fe:7:31
+  ┌─ features/create_contract.fe:7:35
   │
-7 │         foo: Foo = Foo.create(0)
-  │                               ^ attributes hash: 1230752710897721197
+7 │         let foo: Foo = Foo.create(0)
+  │                                   ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -73,10 +73,10 @@ note:
     }
 
 note: 
-  ┌─ features/create_contract.fe:7:20
+  ┌─ features/create_contract.fe:7:24
   │
-7 │         foo: Foo = Foo.create(0)
-  │                    ^^^^^^^^^^^^^ attributes hash: 15904475842515523811
+7 │         let foo: Foo = Foo.create(0)
+  │                        ^^^^^^^^^^^^^ attributes hash: 15904475842515523811
   │
   = ExpressionAttributes {
         typ: Contract(
@@ -164,7 +164,7 @@ note:
   ┌─ features/create_contract.fe:6:5
   │  
 6 │ ╭     pub fn create_foo() -> address:
-7 │ │         foo: Foo = Foo.create(0)
+7 │ │         let foo: Foo = Foo.create(0)
 8 │ │         return address(foo)
   │ ╰───────────────────────────^ attributes hash: 16637425593092057151
   │  
@@ -180,8 +180,8 @@ note:
 note: 
   ┌─ features/create_contract.fe:7:9
   │
-7 │         foo: Foo = Foo.create(0)
-  │         ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18140820768229133196
+7 │         let foo: Foo = Foo.create(0)
+  │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18140820768229133196
   │
   = Contract(
         Contract {
@@ -247,7 +247,7 @@ note:
   │  
 5 │ ╭ contract FooFactory:
 6 │ │     pub fn create_foo() -> address:
-7 │ │         foo: Foo = Foo.create(0)
+7 │ │         let foo: Foo = Foo.create(0)
 8 │ │         return address(foo)
   │ ╰───────────────────────────^ attributes hash: 15481041844530195022
   │  
@@ -285,10 +285,10 @@ note:
     }
 
 note: 
-  ┌─ features/create_contract.fe:7:20
+  ┌─ features/create_contract.fe:7:24
   │
-7 │         foo: Foo = Foo.create(0)
-  │                    ^^^^^^^^^^ attributes hash: 5786702353596486570
+7 │         let foo: Foo = Foo.create(0)
+  │                        ^^^^^^^^^^ attributes hash: 5786702353596486570
   │
   = TypeAttribute {
         typ: Contract(
@@ -346,10 +346,10 @@ note:
     )
 
 note: 
-  ┌─ features/create_contract.fe:7:14
+  ┌─ features/create_contract.fe:7:18
   │
-7 │         foo: Foo = Foo.create(0)
-  │              ^^^ attributes hash: 18140820768229133196
+7 │         let foo: Foo = Foo.create(0)
+  │                  ^^^ attributes hash: 18140820768229133196
   │
   = Contract(
         Contract {

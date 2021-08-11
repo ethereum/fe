@@ -4,9 +4,9 @@ expression: "error_string(\"[snippet]\", &src)"
 
 ---
 error: literal out of range for `i8`
-  ┌─ [snippet]:3:11
+  ┌─ [snippet]:3:15
   │
-3 │   x: i8 = 128
-  │           ^^^ does not fit into type `i8`
+3 │   let x: i8 = 128
+  │               ^^^ does not fit into type `i8`
 
 

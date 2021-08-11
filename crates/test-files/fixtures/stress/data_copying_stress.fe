@@ -29,8 +29,8 @@ contract Foo:
         self.my_u256 = self.my_other_u256
 
     pub fn multiple_references_shared_memory(my_array: u256[10]):
-        my_2nd_array: u256[10] = my_array
-        my_3rd_array: u256[10] = my_2nd_array
+        let my_2nd_array: u256[10] = my_array
+        let my_3rd_array: u256[10] = my_2nd_array
 
         assert my_array[3] != 5
         my_array[3] = 5
@@ -55,7 +55,7 @@ contract Foo:
         return my_array
 
     pub fn assign_my_nums_and_return() -> u256[5]:
-        my_nums_mem: u256[5]
+        let my_nums_mem: u256[5]
         self.my_nums[0] = 42
         self.my_nums[1] = 26
         self.my_nums[2] = 0

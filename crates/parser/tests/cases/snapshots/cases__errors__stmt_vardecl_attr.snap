@@ -1,15 +1,14 @@
 ---
-source: parser/tests/cases/errors.rs
+source: crates/parser/tests/cases/errors.rs
 expression: "err_string(stringify!(stmt_vardecl_attr), functions::parse_stmt, true,\n           \"f.s : u\")"
 
 ---
-error: failed to parse variable declaration
+error: Variable declaration must begin with `let`
   ┌─ stmt_vardecl_attr:1:1
   │
 1 │ f.s : u
-  │ ^^^ invalid variable declaration target
+  │ ^^^ invalid variable declaration
   │
-  = The left side of a variable declaration can be either a name
-    or a non-empty tuple.
+  = Example: `let x: u8 = 1`
 
 

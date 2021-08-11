@@ -140,42 +140,10 @@ note:
     }
 
 note: 
-  ┌─ features/math.fe:8:23
+  ┌─ features/math.fe:8:27
   │
-8 │             x: u256 = val / 2 + 1
-  │                       ^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/math.fe:8:29
-  │
-8 │             x: u256 = val / 2 + 1
-  │                             ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/math.fe:8:23
-  │
-8 │             x: u256 = val / 2 + 1
-  │                       ^^^^^^^ attributes hash: 1230752710897721197
+8 │             let x: u256 = val / 2 + 1
+  │                           ^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -190,7 +158,7 @@ note:
 note: 
   ┌─ features/math.fe:8:33
   │
-8 │             x: u256 = val / 2 + 1
+8 │             let x: u256 = val / 2 + 1
   │                                 ^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
@@ -204,10 +172,42 @@ note:
     }
 
 note: 
-  ┌─ features/math.fe:8:23
+  ┌─ features/math.fe:8:27
   │
-8 │             x: u256 = val / 2 + 1
-  │                       ^^^^^^^^^^^ attributes hash: 1230752710897721197
+8 │             let x: u256 = val / 2 + 1
+  │                           ^^^^^^^ attributes hash: 1230752710897721197
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/math.fe:8:37
+  │
+8 │             let x: u256 = val / 2 + 1
+  │                                     ^ attributes hash: 1230752710897721197
+  │
+  = ExpressionAttributes {
+        typ: Base(
+            Numeric(
+                U256,
+            ),
+        ),
+        location: Value,
+        move_location: None,
+    }
+
+note: 
+  ┌─ features/math.fe:8:27
+  │
+8 │             let x: u256 = val / 2 + 1
+  │                           ^^^^^^^^^^^ attributes hash: 1230752710897721197
   │
   = ExpressionAttributes {
         typ: Base(
@@ -617,7 +617,7 @@ note:
    ┌─ features/math.fe:4:5
    │  
  4 │ ╭     pub fn sqrt(val: u256) -> u256:
- 5 │ │         z: u256
+ 5 │ │         let z: u256
  6 │ │         if (val > 3):
  7 │ │             z = val
    · │
@@ -683,8 +683,8 @@ note:
 note: 
   ┌─ features/math.fe:5:9
   │
-5 │         z: u256
-  │         ^^^^^^^ attributes hash: 4293763436908729629
+5 │         let z: u256
+  │         ^^^^^^^^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -695,8 +695,8 @@ note:
 note: 
   ┌─ features/math.fe:8:13
   │
-8 │             x: u256 = val / 2 + 1
-  │             ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4293763436908729629
+8 │             let x: u256 = val / 2 + 1
+  │             ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -832,10 +832,10 @@ note:
      )
 
 note: 
-  ┌─ features/math.fe:5:12
+  ┌─ features/math.fe:5:16
   │
-5 │         z: u256
-  │            ^^^^ attributes hash: 4293763436908729629
+5 │         let z: u256
+  │                ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(
@@ -844,10 +844,10 @@ note:
     )
 
 note: 
-  ┌─ features/math.fe:8:16
+  ┌─ features/math.fe:8:20
   │
-8 │             x: u256 = val / 2 + 1
-  │                ^^^^ attributes hash: 4293763436908729629
+8 │             let x: u256 = val / 2 + 1
+  │                    ^^^^ attributes hash: 4293763436908729629
   │
   = Base(
         Numeric(

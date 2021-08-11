@@ -2804,10 +2804,10 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:45:27
+   ┌─ features/structs.fe:45:31
    │  
-45 │           building: House = House(
-   │ ╭───────────────────────────^
+45 │           let building: House = House(
+   │ ╭───────────────────────────────^
 46 │ │             price=300,
 47 │ │             size=500,
 48 │ │             rooms=u8(20),
@@ -4098,10 +4098,10 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:68:24
+   ┌─ features/structs.fe:68:28
    │  
-68 │           house: House = House(
-   │ ╭────────────────────────^
+68 │           let house: House = House(
+   │ ╭────────────────────────────^
 69 │ │             price=300,
 70 │ │             size=500,
 71 │ │             rooms=u8(20),
@@ -4297,10 +4297,10 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:77:24
+   ┌─ features/structs.fe:77:28
    │  
-77 │           house: House = House(
-   │ ╭────────────────────────^
+77 │           let house: House = House(
+   │ ╭────────────────────────────^
 78 │ │             price=300,
 79 │ │             size=500,
 80 │ │             rooms=u8(20),
@@ -4458,7 +4458,7 @@ note:
    ┌─ features/structs.fe:44:5
    │  
 44 │ ╭     pub fn bar() -> u256:
-45 │ │         building: House = House(
+45 │ │         let building: House = House(
 46 │ │             price=300,
 47 │ │             size=500,
    · │
@@ -4481,7 +4481,7 @@ note:
    ┌─ features/structs.fe:67:5
    │  
 67 │ ╭     pub fn encode_house() -> u8[128]:
-68 │ │         house: House = House(
+68 │ │         let house: House = House(
 69 │ │             price=300,
 70 │ │             size=500,
    · │
@@ -4507,7 +4507,7 @@ note:
    ┌─ features/structs.fe:76:5
    │  
 76 │ ╭     pub fn hashed_house() -> u256:
-77 │ │         house: House = House(
+77 │ │         let house: House = House(
 78 │ │             price=300,
 79 │ │             size=500,
    · │
@@ -4529,7 +4529,7 @@ note:
 note: 
    ┌─ features/structs.fe:45:9
    │  
-45 │ ╭         building: House = House(
+45 │ ╭         let building: House = House(
 46 │ │             price=300,
 47 │ │             size=500,
 48 │ │             rooms=u8(20),
@@ -4578,7 +4578,7 @@ note:
 note: 
    ┌─ features/structs.fe:68:9
    │  
-68 │ ╭         house: House = House(
+68 │ ╭         let house: House = House(
 69 │ │             price=300,
 70 │ │             size=500,
 71 │ │             rooms=u8(20),
@@ -4627,7 +4627,7 @@ note:
 note: 
    ┌─ features/structs.fe:77:9
    │  
-77 │ ╭         house: House = House(
+77 │ ╭         let house: House = House(
 78 │ │             price=300,
 79 │ │             size=500,
 80 │ │             rooms=u8(20),
@@ -4916,10 +4916,10 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:45:27
+   ┌─ features/structs.fe:45:31
    │
-45 │         building: House = House(
-   │                           ^^^^^ attributes hash: 15233579221391698255
+45 │         let building: House = House(
+   │                               ^^^^^ attributes hash: 15233579221391698255
    │
    = TypeConstructor {
          typ: Struct(
@@ -5018,10 +5018,10 @@ note:
      }
 
 note: 
-   ┌─ features/structs.fe:68:24
+   ┌─ features/structs.fe:68:28
    │
-68 │         house: House = House(
-   │                        ^^^^^ attributes hash: 15233579221391698255
+68 │         let house: House = House(
+   │                            ^^^^^ attributes hash: 15233579221391698255
    │
    = TypeConstructor {
          typ: Struct(
@@ -5086,10 +5086,10 @@ note:
    = ValueAttribute
 
 note: 
-   ┌─ features/structs.fe:77:24
+   ┌─ features/structs.fe:77:28
    │
-77 │         house: House = House(
-   │                        ^^^^^ attributes hash: 15233579221391698255
+77 │         let house: House = House(
+   │                            ^^^^^ attributes hash: 15233579221391698255
    │
    = TypeConstructor {
          typ: Struct(
@@ -5305,54 +5305,10 @@ note:
     )
 
 note: 
-   ┌─ features/structs.fe:45:19
+   ┌─ features/structs.fe:45:23
    │
-45 │         building: House = House(
-   │                   ^^^^^ attributes hash: 17736702484665416424
-   │
-   = Struct(
-         Struct {
-             name: "House",
-             fields: [
-                 (
-                     "price",
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-                 (
-                     "size",
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-                 (
-                     "rooms",
-                     Base(
-                         Numeric(
-                             U8,
-                         ),
-                     ),
-                 ),
-                 (
-                     "vacant",
-                     Base(
-                         Bool,
-                     ),
-                 ),
-             ],
-         },
-     )
-
-note: 
-   ┌─ features/structs.fe:68:16
-   │
-68 │         house: House = House(
-   │                ^^^^^ attributes hash: 17736702484665416424
+45 │         let building: House = House(
+   │                       ^^^^^ attributes hash: 17736702484665416424
    │
    = Struct(
          Struct {
@@ -5393,10 +5349,54 @@ note:
      )
 
 note: 
-   ┌─ features/structs.fe:77:16
+   ┌─ features/structs.fe:68:20
    │
-77 │         house: House = House(
-   │                ^^^^^ attributes hash: 17736702484665416424
+68 │         let house: House = House(
+   │                    ^^^^^ attributes hash: 17736702484665416424
+   │
+   = Struct(
+         Struct {
+             name: "House",
+             fields: [
+                 (
+                     "price",
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 ),
+                 (
+                     "size",
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 ),
+                 (
+                     "rooms",
+                     Base(
+                         Numeric(
+                             U8,
+                         ),
+                     ),
+                 ),
+                 (
+                     "vacant",
+                     Base(
+                         Bool,
+                     ),
+                 ),
+             ],
+         },
+     )
+
+note: 
+   ┌─ features/structs.fe:77:20
+   │
+77 │         let house: House = House(
+   │                    ^^^^^ attributes hash: 17736702484665416424
    │
    = Struct(
          Struct {

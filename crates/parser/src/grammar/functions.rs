@@ -205,8 +205,42 @@ pub fn parse_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
         Revert => parse_revert_stmt(par),
         Continue | Break | Pass => parse_single_word_stmt(par),
         Emit => parse_emit_statement(par),
+        Let => parse_var_decl(par),
         _ => parse_expr_stmt(par),
     }
+}
+
+fn parse_var_decl(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
+    let let_tkn = par.assert(TokenKind::Let);
+    let expr = parse_expr(par)?;
+    let target = expr_to_vardecl_target(par, expr.clone())?;
+    let node = match par.peek() {
+        Some(TokenKind::Colon) => {
+            par.next()?;
+            let typ = parse_type_desc(par)?;
+            let value = if par.peek() == Some(TokenKind::Eq) {
+                par.next()?;
+                Some(parse_expr(par)?)
+            } else {
+                None
+            };
+            let span = let_tkn.span + target.span + typ.span + value.as_ref();
+            par.expect_newline("variable declaration")?;
+            Node::new(FuncStmt::VarDecl { target, typ, value }, span)
+        }
+        _ => {
+            par.fancy_error(
+                "failed to parse variable declaration",
+                vec![Label::primary(
+                    expr.span,
+                    "Must be followed by type annotation",
+                )],
+                vec!["Example: `let x: u8 = 1`".into()],
+            );
+            return Err(ParseFailed);
+        }
+    };
+    Ok(node)
 }
 
 /// Parse a (function) statement that begins with an expression. This might be
@@ -220,18 +254,12 @@ fn parse_expr_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
             Node::new(FuncStmt::Expr { value: expr }, span)
         }
         Some(Colon) => {
-            par.next()?;
-
-            let target = expr_to_vardecl_target(par, expr)?;
-            let typ = parse_type_desc(par)?;
-            let value = if par.peek() == Some(Eq) {
-                par.next()?;
-                Some(parse_expr(par)?)
-            } else {
-                None
-            };
-            let span = target.span + typ.span + value.as_ref();
-            Node::new(FuncStmt::VarDecl { target, typ, value }, span)
+            par.fancy_error(
+                "Variable declaration must begin with `let`",
+                vec![Label::primary(expr.span, "invalid variable declaration")],
+                vec!["Example: `let x: u8 = 1`".into()],
+            );
+            return Err(ParseFailed);
         }
         Some(Eq) => {
             par.next()?;

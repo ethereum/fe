@@ -12,7 +12,7 @@ contract Foo:
         return (999999, false, u8(42), address(26))
 
     pub fn bing():
-        foo: (address, address, u16, i32, bool) = (address(0), address(0), u16(0), i32(0), false)
+        let foo: (address, address, u16, i32, bool) = (address(0), address(0), u16(0), i32(0), false)
 
     pub fn bop(
         my_tuple1: (u256, bool),

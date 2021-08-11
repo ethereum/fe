@@ -5,4 +5,4 @@ struct House:
 contract Foo:
 
     pub fn bar():
-        my_house: House = House(price=false, vacant=100, bar=address(0))
+        let my_house: House = House(price=false, vacant=100, bar=address(0))

@@ -26,7 +26,7 @@ contract Foo:
         emit Mix(num1=26, addr, num2=42, my_bytes)
 
     pub fn emit_addresses(addr1: address, addr2: address):
-        addrs: address[2]
+        let addrs: address[2]
         addrs[0] = addr1
         addrs[1] = addr2
         emit Addresses(addrs)

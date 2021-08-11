@@ -31,8 +31,8 @@ contract Foo:
         return self.my_sto_tuple.to_mem()
 
     pub fn build_tuple_and_emit():
-        my_num: u256 = self.my_sto_tuple.item0
-        my_tuple: (u256, bool, address) = (
+        let my_num: u256 = self.my_sto_tuple.item0
+        let my_tuple: (u256, bool, address) = (
             self.my_sto_tuple.item0,
             true and false,
             address(26)
