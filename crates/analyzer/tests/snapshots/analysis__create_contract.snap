@@ -1,161 +1,22 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/create_contract.fe\", &src, &context)"
+expression: "build_snapshot(\"features/create_contract.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_my_num",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ),
-        "FooFactory": Contract(
-            Contract {
-                name: "FooFactory",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "create_foo",
-                        params: [],
-                        return_type: Base(
-                            Address,
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
-note: 
-  ┌─ features/create_contract.fe:3:16
-  │
-3 │         return 42
-  │                ^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/create_contract.fe:7:35
-  │
-7 │         let foo: Foo = Foo.create(0)
-  │                                   ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/create_contract.fe:7:24
-  │
-7 │         let foo: Foo = Foo.create(0)
-  │                        ^^^^^^^^^^^^^ attributes hash: 15904475842515523811
-  │
-  = ExpressionAttributes {
-        typ: Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_my_num",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/create_contract.fe:8:24
-  │
-8 │         return address(foo)
-  │                        ^^^ attributes hash: 15904475842515523811
-  │
-  = ExpressionAttributes {
-        typ: Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_my_num",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/create_contract.fe:8:16
-  │
-8 │         return address(foo)
-  │                ^^^^^^^^^^^^ attributes hash: 16804606599831072828
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Address,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
 note: 
   ┌─ features/create_contract.fe:2:5
   │  
 2 │ ╭     pub fn get_my_num() -> u256:
 3 │ │         return 42
-  │ ╰─────────────────^ attributes hash: 14067495107198162751
+  │ ╰─────────────────^ attributes hash: 4553090961241945225
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "get_my_num",
+  = FunctionSignature {
         params: [],
-        return_type: Base(
-            Numeric(
-                U256,
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U256,
+                ),
             ),
         ),
     }
@@ -166,146 +27,66 @@ note:
 6 │ ╭     pub fn create_foo() -> address:
 7 │ │         let foo: Foo = Foo.create(0)
 8 │ │         return address(foo)
-  │ ╰───────────────────────────^ attributes hash: 16637425593092057151
+  │ ╰───────────────────────────^ attributes hash: 2195077967527136217
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "create_foo",
+  = FunctionSignature {
         params: [],
-        return_type: Base(
-            Address,
+        return_type: Ok(
+            Base(
+                Address,
+            ),
         ),
     }
 
 note: 
-  ┌─ features/create_contract.fe:7:9
+  ┌─ features/create_contract.fe:3:16
+  │
+3 │         return 42
+  │                ^^ u256: Value => None
+
+note: 
+  ┌─ features/create_contract.fe:7:35
   │
 7 │         let foo: Foo = Foo.create(0)
-  │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18140820768229133196
-  │
-  = Contract(
-        Contract {
-            name: "Foo",
-            functions: [
-                FunctionAttributes {
-                    is_public: true,
-                    name: "get_my_num",
-                    params: [],
-                    return_type: Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                },
-            ],
-        },
-    )
-
-note: 
-  ┌─ features/create_contract.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │     pub fn get_my_num() -> u256:
-3 │ │         return 42
-  │ ╰─────────────────^ attributes hash: 11980950209948939941
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "get_my_num",
-                params: [],
-                return_type: Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-            },
-        ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [
-            Contract {
-                name: "FooFactory",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "create_foo",
-                        params: [],
-                        return_type: Base(
-                            Address,
-                        ),
-                    },
-                ],
-            },
-        ],
-    }
-
-note: 
-  ┌─ features/create_contract.fe:5:1
-  │  
-5 │ ╭ contract FooFactory:
-6 │ │     pub fn create_foo() -> address:
-7 │ │         let foo: Foo = Foo.create(0)
-8 │ │         return address(foo)
-  │ ╰───────────────────────────^ attributes hash: 15481041844530195022
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "create_foo",
-                params: [],
-                return_type: Base(
-                    Address,
-                ),
-            },
-        ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_my_num",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ],
-    }
+  │                                   ^ u256: Value => None
 
 note: 
   ┌─ features/create_contract.fe:7:24
   │
 7 │         let foo: Foo = Foo.create(0)
-  │                        ^^^^^^^^^^ attributes hash: 5786702353596486570
+  │                        ^^^^^^^^^^^^^ Foo: Value => None
+
+note: 
+  ┌─ features/create_contract.fe:8:24
+  │
+8 │         return address(foo)
+  │                        ^^^ Foo: Value => None
+
+note: 
+  ┌─ features/create_contract.fe:8:16
+  │
+8 │         return address(foo)
+  │                ^^^^^^^^^^^^ address: Value => None
+
+note: 
+  ┌─ features/create_contract.fe:7:18
+  │
+7 │         let foo: Foo = Foo.create(0)
+  │                  ^^^ Foo
+
+note: 
+  ┌─ features/create_contract.fe:7:24
+  │
+7 │         let foo: Foo = Foo.create(0)
+  │                        ^^^^^^^^^^ attributes hash: 6749875126898824118
   │
   = TypeAttribute {
         typ: Contract(
             Contract {
                 name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_my_num",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ],
+                id: ContractId(
+                    0,
+                ),
             },
         ),
         func_name: "create",
@@ -322,51 +103,5 @@ note:
             Address,
         ),
     }
-
-note: 
-  ┌─ features/create_contract.fe:2:28
-  │
-2 │     pub fn get_my_num() -> u256:
-  │                            ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/create_contract.fe:6:28
-  │
-6 │     pub fn create_foo() -> address:
-  │                            ^^^^^^^ attributes hash: 928477466454064117
-  │
-  = Base(
-        Address,
-    )
-
-note: 
-  ┌─ features/create_contract.fe:7:18
-  │
-7 │         let foo: Foo = Foo.create(0)
-  │                  ^^^ attributes hash: 18140820768229133196
-  │
-  = Contract(
-        Contract {
-            name: "Foo",
-            functions: [
-                FunctionAttributes {
-                    is_public: true,
-                    name: "get_my_num",
-                    params: [],
-                    return_type: Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                },
-            ],
-        },
-    )
 
 

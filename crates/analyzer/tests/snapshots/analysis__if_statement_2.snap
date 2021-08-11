@@ -1,131 +1,8 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/if_statement_2.fe\", &src, &context)"
+expression: "build_snapshot(\"features/if_statement_2.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "bar",
-                        params: [
-                            (
-                                "val",
-                                Base(
-                                    Numeric(
-                                        U256,
-                                    ),
-                                ),
-                            ),
-                        ],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
-note: 
-  ┌─ features/if_statement_2.fe:4:12
-  │
-4 │         if val > 5:
-  │            ^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/if_statement_2.fe:4:18
-  │
-4 │         if val > 5:
-  │                  ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/if_statement_2.fe:4:12
-  │
-4 │         if val > 5:
-  │            ^^^^^^^ attributes hash: 519621297275845584
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/if_statement_2.fe:5:20
-  │
-5 │             return 1
-  │                    ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/if_statement_2.fe:7:20
-  │
-7 │             assert true
-  │                    ^^^^ attributes hash: 519621297275845584
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/if_statement_2.fe:9:16
-  │
-9 │         return 0
-  │                ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
 note: 
   ┌─ features/if_statement_2.fe:3:5
   │  
@@ -136,90 +13,64 @@ note:
 7 │ │             assert true
 8 │ │ 
 9 │ │         return 0
-  │ ╰────────────────^ attributes hash: 8154049851694611611
+  │ ╰────────────────^ attributes hash: 6248121154456130073
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "bar",
+  = FunctionSignature {
         params: [
-            (
-                "val",
-                Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-            ),
-        ],
-        return_type: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-    }
-
-note: 
-  ┌─ features/if_statement_2.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │ 
-3 │ │     pub fn bar(val: u256) -> u256:
-4 │ │         if val > 5:
-  · │
-8 │ │ 
-9 │ │         return 0
-  │ ╰────────────────^ attributes hash: 13799818761261950138
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "bar",
-                params: [
-                    (
-                        "val",
-                        Base(
-                            Numeric(
-                                U256,
-                            ),
+            FunctionParam {
+                name: "val",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U256,
                         ),
-                    ),
-                ],
-                return_type: Base(
-                    Numeric(
-                        U256,
                     ),
                 ),
             },
         ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [],
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U256,
+                ),
+            ),
+        ),
     }
 
 note: 
-  ┌─ features/if_statement_2.fe:3:21
+  ┌─ features/if_statement_2.fe:4:12
   │
-3 │     pub fn bar(val: u256) -> u256:
-  │                     ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+4 │         if val > 5:
+  │            ^^^ u256: Value => None
 
 note: 
-  ┌─ features/if_statement_2.fe:3:30
+  ┌─ features/if_statement_2.fe:4:18
   │
-3 │     pub fn bar(val: u256) -> u256:
-  │                              ^^^^ attributes hash: 4293763436908729629
+4 │         if val > 5:
+  │                  ^ u256: Value => None
+
+note: 
+  ┌─ features/if_statement_2.fe:4:12
   │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+4 │         if val > 5:
+  │            ^^^^^^^ bool: Value => None
+
+note: 
+  ┌─ features/if_statement_2.fe:5:20
+  │
+5 │             return 1
+  │                    ^ u256: Value => None
+
+note: 
+  ┌─ features/if_statement_2.fe:7:20
+  │
+7 │             assert true
+  │                    ^^^^ bool: Value => None
+
+note: 
+  ┌─ features/if_statement_2.fe:9:16
+  │
+9 │         return 0
+  │                ^ u256: Value => None
 
 

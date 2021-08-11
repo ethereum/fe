@@ -3,17 +3,17 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, &src)"
 
 ---
-error: More than three indexed fields.
+error: more than three indexed fields in `event MyEvent`
   ┌─ compile_errors/indexed_event.fe:3:9
   │
 3 │         idx addr1: address
-  │         ^^^^^^^^^^^^^^^^^^ Indexed field
+  │         ^^^^^^^^^^^^^^^^^^
 4 │         idx addr2: address
-  │         ^^^^^^^^^^^^^^^^^^ Indexed field
+  │         ^^^^^^^^^^^^^^^^^^
 5 │         idx addr3: address
-  │         ^^^^^^^^^^^^^^^^^^ Indexed field
+  │         ^^^^^^^^^^^^^^^^^^
 6 │         idx addr4: address
-  │         ^^^^^^^^^^^^^^^^^^ Indexed field
+  │         ^^^^^^^^^^^^^^^^^^ 4 indexed fields
   │
   = Note: Remove the `idx` keyword from at least 1 field.
 

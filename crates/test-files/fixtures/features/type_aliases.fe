@@ -1,0 +1,28 @@
+type Posts = Map<PostId, PostBody>
+type Scoreboard = Map<PostId, Score>
+type AuthorPosts = Map<Author, PostId>
+
+type Author = address
+type Score = u64
+type PostId = u256
+type PostBody = String<32>
+
+contract Forum:
+    posts: Posts
+    authors: AuthorPosts
+    scoreboard: Scoreboard
+
+    pub fn post(body: PostBody):
+        # id: PostId = keccak256(body.abi_encode())
+        let id: PostId = 0
+        self.posts[id] = body
+        self.authors[msg.sender]
+        self.scoreboard[id] = 0
+
+    pub fn upvote(id: PostId) -> Score:
+        let score: Score = self.scoreboard[id] + 1
+        self.scoreboard[id] = score
+        return score
+
+    pub fn get_post(id: PostId) -> PostBody:
+        return self.posts[id].to_mem()

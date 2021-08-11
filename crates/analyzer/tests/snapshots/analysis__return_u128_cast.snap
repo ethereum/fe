@@ -1,106 +1,37 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/return_u128_cast.fe\", &src, &context)"
+expression: "build_snapshot(\"features/return_u128_cast.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "bar",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U128,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
-note: 
-  ┌─ features/return_u128_cast.fe:3:21
-  │
-3 │         return u128(42)
-  │                     ^^ attributes hash: 231358192590700262
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U128,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_u128_cast.fe:3:16
-  │
-3 │         return u128(42)
-  │                ^^^^^^^^ attributes hash: 231358192590700262
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U128,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
 note: 
   ┌─ features/return_u128_cast.fe:2:5
   │  
 2 │ ╭     pub fn bar() -> u128:
 3 │ │         return u128(42)
-  │ ╰───────────────────────^ attributes hash: 4920591771509650479
+  │ ╰───────────────────────^ attributes hash: 16590220569563418042
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "bar",
+  = FunctionSignature {
         params: [],
-        return_type: Base(
-            Numeric(
-                U128,
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U128,
+                ),
             ),
         ),
     }
 
 note: 
-  ┌─ features/return_u128_cast.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │     pub fn bar() -> u128:
-3 │ │         return u128(42)
-  │ ╰───────────────────────^ attributes hash: 16090706136231416671
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "bar",
-                params: [],
-                return_type: Base(
-                    Numeric(
-                        U128,
-                    ),
-                ),
-            },
-        ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [],
-    }
+  ┌─ features/return_u128_cast.fe:3:21
+  │
+3 │         return u128(42)
+  │                     ^^ u128: Value => None
+
+note: 
+  ┌─ features/return_u128_cast.fe:3:16
+  │
+3 │         return u128(42)
+  │                ^^^^^^^^ u128: Value => None
 
 note: 
   ┌─ features/return_u128_cast.fe:3:16
@@ -115,17 +46,5 @@ note:
             ),
         ),
     }
-
-note: 
-  ┌─ features/return_u128_cast.fe:2:21
-  │
-2 │     pub fn bar() -> u128:
-  │                     ^^^^ attributes hash: 6162263163478414243
-  │
-  = Base(
-        Numeric(
-            U128,
-        ),
-    )
 
 

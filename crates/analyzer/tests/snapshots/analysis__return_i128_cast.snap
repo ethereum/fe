@@ -1,122 +1,43 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/return_i128_cast.fe\", &src, &context)"
+expression: "build_snapshot(\"features/return_i128_cast.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "bar",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                I128,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
-note: 
-  ┌─ features/return_i128_cast.fe:3:22
-  │
-3 │         return i128(-3)
-  │                      ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_i128_cast.fe:3:21
-  │
-3 │         return i128(-3)
-  │                     ^^ attributes hash: 7454845908456114205
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                I128,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_i128_cast.fe:3:16
-  │
-3 │         return i128(-3)
-  │                ^^^^^^^^ attributes hash: 7454845908456114205
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                I128,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
 note: 
   ┌─ features/return_i128_cast.fe:2:5
   │  
 2 │ ╭     pub fn bar() -> i128:
 3 │ │         return i128(-3)
-  │ ╰───────────────────────^ attributes hash: 15885647765624010011
+  │ ╰───────────────────────^ attributes hash: 12139568508098609638
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "bar",
+  = FunctionSignature {
         params: [],
-        return_type: Base(
-            Numeric(
-                I128,
+        return_type: Ok(
+            Base(
+                Numeric(
+                    I128,
+                ),
             ),
         ),
     }
 
 note: 
-  ┌─ features/return_i128_cast.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │     pub fn bar() -> i128:
-3 │ │         return i128(-3)
-  │ ╰───────────────────────^ attributes hash: 7832835924028497188
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "bar",
-                params: [],
-                return_type: Base(
-                    Numeric(
-                        I128,
-                    ),
-                ),
-            },
-        ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [],
-    }
+  ┌─ features/return_i128_cast.fe:3:22
+  │
+3 │         return i128(-3)
+  │                      ^ u256: Value => None
+
+note: 
+  ┌─ features/return_i128_cast.fe:3:21
+  │
+3 │         return i128(-3)
+  │                     ^^ i128: Value => None
+
+note: 
+  ┌─ features/return_i128_cast.fe:3:16
+  │
+3 │         return i128(-3)
+  │                ^^^^^^^^ i128: Value => None
 
 note: 
   ┌─ features/return_i128_cast.fe:3:16
@@ -131,17 +52,5 @@ note:
             ),
         ),
     }
-
-note: 
-  ┌─ features/return_i128_cast.fe:2:21
-  │
-2 │     pub fn bar() -> i128:
-  │                     ^^^^ attributes hash: 1662973713176693737
-  │
-  = Base(
-        Numeric(
-            I128,
-        ),
-    )
 
 

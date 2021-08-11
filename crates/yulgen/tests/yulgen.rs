@@ -1,6 +1,4 @@
-use fe_analyzer::context::FunctionAttributes;
-use fe_analyzer::namespace::events::EventDef;
-use fe_analyzer::namespace::types::{Base, FeString, FixedSize, Integer, Struct, U256};
+use fe_analyzer::namespace::types::{Base, FixedSize};
 use fe_yulgen::constructor;
 use fe_yulgen::names::abi as abi_names;
 use fe_yulgen::operations::{abi as abi_operations, data as data_operations};
@@ -33,34 +31,23 @@ macro_rules! test_yulgen {
 // constructor
 test_yulgen! { constructor_no_init,  constructor::build() }
 
-fn function_attributes() -> Vec<FunctionAttributes> {
+fn functions() -> Vec<(String, Vec<AbiType>, Option<AbiType>)> {
     vec![
-        FunctionAttributes {
-            is_public: true,
-            name: "hello_world".to_string(),
-            params: vec![],
-            return_type: FixedSize::String(FeString { max_size: 42 }),
-        },
-        FunctionAttributes {
-            is_public: true,
-            name: "add".to_string(),
-            params: vec![
-                (
-                    "a".to_string(),
-                    FixedSize::Base(Base::Numeric(Integer::U256)),
-                ),
-                (
-                    "b".to_string(),
-                    FixedSize::Base(Base::Numeric(Integer::U256)),
-                ),
-            ],
-            return_type: FixedSize::Base(Base::Numeric(Integer::U256)),
-        },
+        (
+            "hello_world".to_string(),
+            vec![],
+            Some(AbiType::String { max_size: 42 }),
+        ),
+        (
+            "add".to_string(),
+            vec![AbiType::Uint { size: 32 }, AbiType::Uint { size: 32 }],
+            Some(AbiType::Uint { size: 32 }),
+        ),
     ]
 }
 
 // ABI dispatcher
-test_yulgen! { abi_dispatcher,  abi_dispatcher::dispatcher(&function_attributes()) }
+test_yulgen! { abi_dispatcher,  abi_dispatcher::dispatcher(functions()) }
 
 // ABI encoding functions
 test_yulgen! {
@@ -120,61 +107,39 @@ test_yulgen! {
     abi_functions::decode_component_bytes(26, AbiDecodeLocation::Calldata)
 }
 
-fn struct_bool_bool() -> Struct {
-    let mut val = Struct::new("Foo");
-    val.add_field("bar", &FixedSize::bool()).unwrap();
-    val.add_field("bar2", &FixedSize::bool()).unwrap();
-    val
+fn struct_bool_bool_fields() -> Vec<(String, FixedSize)> {
+    vec![
+        ("bar".into(), FixedSize::Base(Base::Bool)),
+        ("bar2".into(), FixedSize::Base(Base::Bool)),
+    ]
 }
 
 // struct functions
 test_yulgen! {
     struct_empty_function,
-    structs_functions::generate_new_fn(&Struct::new("Foo"))
+    structs_functions::generate_new_fn("Foo", &[])
 }
 test_yulgen! {
     struct_new_gen_function,
-    structs_functions::generate_new_fn(&struct_bool_bool())
+    structs_functions::generate_new_fn("Foo", &struct_bool_bool_fields())
 }
 test_yulgen! {
     struct_getter_gen_bar_function,
-    structs_functions::generate_get_fn(&struct_bool_bool(), &struct_bool_bool().fields[0].0)
+    structs_functions::generate_get_fn("Foo", &struct_bool_bool_fields()[0], 0)
 }
 test_yulgen! {
     struct_getter_gen_bar2_function,
-    structs_functions::generate_get_fn(&struct_bool_bool(), &struct_bool_bool().fields[1].0)
-}
-
-fn event_no_indexed() -> EventDef {
-    EventDef::new(
-        "MyEvent",
-        vec![
-            ("my_u256".to_string(), FixedSize::Base(U256)),
-            ("my_addr".to_string(), FixedSize::Base(Base::Address)),
-        ],
-        vec![],
-    )
-}
-
-fn event_one_indexed() -> EventDef {
-    EventDef::new(
-        "MyEvent",
-        vec![
-            ("my_u256".to_string(), FixedSize::Base(U256)),
-            ("my_addr".to_string(), FixedSize::Base(Base::Address)),
-        ],
-        vec![0],
-    )
+    structs_functions::generate_get_fn("Foo", &struct_bool_bool_fields()[1], 1)
 }
 
 // data operations
 test_yulgen! {
     emit_event_no_indexed_operation,
-    data_operations::emit_event(event_no_indexed(), vec![expression! { 26 }, expression! { 0x42 }])
+    data_operations::emit_event("MyEvent", &[(AbiType::Uint { size: 32 }, false), (AbiType::Address, false)], vec![expression! { 26 }, expression! { 0x42 }])
 }
 test_yulgen! {
     emit_event_one_indexed_operation,
-    data_operations::emit_event(event_one_indexed(), vec![expression! { 26 }, expression! { 0x42 }])
+    data_operations::emit_event("MyEvent", &[(AbiType::Uint { size: 32 }, true), (AbiType::Address, false)], vec![expression! { 26 }, expression! { 0x42 }])
 }
 test_yulgen! {
     sum_operation,
@@ -188,7 +153,7 @@ test_yulgen! {
 }
 test_yulgen! {
     encode_size_u256_operation,
-    abi_operations::encoding_size(&[AbiType::Uint { size: 32 }], vec![expression! { 42 }])
+    abi_operations::encoding_size(&[AbiType::Uint { size: 32 }], &[expression! { 42 }])
 }
 test_yulgen! {
     decode_string_calldata_operation,

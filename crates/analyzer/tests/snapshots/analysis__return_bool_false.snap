@@ -1,91 +1,28 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/return_bool_false.fe\", &src, &context)"
+expression: "build_snapshot(\"features/return_bool_false.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "bar",
-                        params: [],
-                        return_type: Base(
-                            Bool,
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
-note: 
-  ┌─ features/return_bool_false.fe:3:16
-  │
-3 │         return false
-  │                ^^^^^ attributes hash: 519621297275845584
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
 note: 
   ┌─ features/return_bool_false.fe:2:5
   │  
 2 │ ╭     pub fn bar() -> bool:
 3 │ │         return false
-  │ ╰────────────────────^ attributes hash: 188693131368690235
+  │ ╰────────────────────^ attributes hash: 9286995118813931448
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "bar",
+  = FunctionSignature {
         params: [],
-        return_type: Base(
-            Bool,
+        return_type: Ok(
+            Base(
+                Bool,
+            ),
         ),
     }
 
 note: 
-  ┌─ features/return_bool_false.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │     pub fn bar() -> bool:
-3 │ │         return false
-  │ ╰────────────────────^ attributes hash: 18133019889970139528
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "bar",
-                params: [],
-                return_type: Base(
-                    Bool,
-                ),
-            },
-        ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [],
-    }
-
-note: 
-  ┌─ features/return_bool_false.fe:2:21
+  ┌─ features/return_bool_false.fe:3:16
   │
-2 │     pub fn bar() -> bool:
-  │                     ^^^^ attributes hash: 5425972608982369985
-  │
-  = Base(
-        Bool,
-    )
+3 │         return false
+  │                ^^^^^ bool: Value => None
 
 

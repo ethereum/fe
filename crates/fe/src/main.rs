@@ -92,11 +92,11 @@ pub fn main() {
     }
     let (content, id) = file.unwrap();
 
-    let compiled_module = match fe_driver::compile(&content, id, with_bytecode, optimize) {
+    let compiled_module = match fe_driver::compile(&content, with_bytecode, optimize) {
         Ok(module) => module,
         Err(error) => {
             eprintln!("Unable to compile {}.", input_file);
-            print_diagnostics(&error.0, &files);
+            print_diagnostics(&error.0, id, &files);
             std::process::exit(1)
         }
     };

@@ -1,86 +1,22 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/return_u256_from_called_fn.fe\", &src, &context)"
+expression: "build_snapshot(\"features/return_u256_from_called_fn.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "bar",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "foo",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
-note: 
-  ┌─ features/return_u256_from_called_fn.fe:5:16
-  │
-5 │         return self.foo()
-  │                ^^^^^^^^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_u256_from_called_fn.fe:8:16
-  │
-8 │         return 42
-  │                ^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
 note: 
   ┌─ features/return_u256_from_called_fn.fe:4:5
   │  
 4 │ ╭     pub fn bar() -> u256:
 5 │ │         return self.foo()
-  │ ╰─────────────────────────^ attributes hash: 5931278080780939395
+  │ ╰─────────────────────────^ attributes hash: 4553090961241945225
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "bar",
+  = FunctionSignature {
         params: [],
-        return_type: Base(
-            Numeric(
-                U256,
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U256,
+                ),
             ),
         ),
     }
@@ -90,59 +26,30 @@ note:
   │  
 7 │ ╭     pub fn foo() -> u256:
 8 │ │         return 42
-  │ ╰─────────────────^ attributes hash: 11232535930816367115
+  │ ╰─────────────────^ attributes hash: 4553090961241945225
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "foo",
+  = FunctionSignature {
         params: [],
-        return_type: Base(
-            Numeric(
-                U256,
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U256,
+                ),
             ),
         ),
     }
 
 note: 
-  ┌─ features/return_u256_from_called_fn.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │ 
-3 │ │     # We intentionally define `bar` before `foo` to test that order isn't important
-4 │ │     pub fn bar() -> u256:
-  · │
-7 │ │     pub fn foo() -> u256:
-8 │ │         return 42
-  │ ╰─────────────────^ attributes hash: 3955389950047773850
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "bar",
-                params: [],
-                return_type: Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-            },
-            FunctionAttributes {
-                is_public: true,
-                name: "foo",
-                params: [],
-                return_type: Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-            },
-        ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [],
-    }
+  ┌─ features/return_u256_from_called_fn.fe:5:16
+  │
+5 │         return self.foo()
+  │                ^^^^^^^^^^ u256: Value => None
+
+note: 
+  ┌─ features/return_u256_from_called_fn.fe:8:16
+  │
+8 │         return 42
+  │                ^^ u256: Value => None
 
 note: 
   ┌─ features/return_u256_from_called_fn.fe:5:16
@@ -153,29 +60,5 @@ note:
   = SelfAttribute {
         func_name: "foo",
     }
-
-note: 
-  ┌─ features/return_u256_from_called_fn.fe:4:21
-  │
-4 │     pub fn bar() -> u256:
-  │                     ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/return_u256_from_called_fn.fe:7:21
-  │
-7 │     pub fn foo() -> u256:
-  │                     ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
 
 

@@ -1,5 +1,5 @@
+use fe_analyzer::Db;
 use fe_common::diagnostics::Diagnostic;
-use fe_common::files::SourceFileId;
 use fe_parser::parse_file;
 #[cfg(feature = "solc-backend")]
 use serde_json::Value;
@@ -29,7 +29,6 @@ pub struct CompileError(pub Vec<Diagnostic>);
 /// Bytecode pass. This is useful when debugging invalid Yul code.
 pub fn compile(
     src: &str,
-    file_id: SourceFileId,
     _with_bytecode: bool,
     _optimize: bool,
 ) -> Result<CompiledModule, CompileError> {
@@ -37,33 +36,33 @@ pub fn compile(
 
     let mut errors = vec![];
 
-    let (fe_module, parser_diagnostics) = parse_file(src, file_id).map_err(CompileError)?;
+    let (fe_module, parser_diagnostics) = parse_file(src).map_err(CompileError)?;
     errors.extend(parser_diagnostics.into_iter());
 
-    // analyze source code
-    let analysis = match fe_analyzer::analyze(&fe_module, file_id) {
-        Ok(_) if !errors.is_empty() => return Err(CompileError(errors)),
-        Ok(analysis) => analysis,
-        Err(err) => {
-            errors.extend(err.0.into_iter());
+    let src_ast = format!("{:#?}", &fe_module);
+
+    let db = Db::default();
+    let module_id = match fe_analyzer::analyze(&db, fe_module) {
+        Ok(module_id) => module_id,
+        Err(diagnostics) => {
+            errors.extend(diagnostics.into_iter());
             return Err(CompileError(errors));
         }
     };
 
-    assert!(errors.is_empty());
-
     // build abi
-    let json_abis = fe_abi::build(&analysis, &fe_module).expect("failed to generate abi");
+    let json_abis = fe_abi::build(&db, module_id).expect("failed to generate abi");
 
     // lower the AST
-    let lowered_fe_module = fe_lowering::lower(&analysis, fe_module.clone());
+    let lowered_module = fe_lowering::lower(&db, module_id);
+    let lowered_ast = format!("{:#?}", &lowered_module);
 
     // analyze the lowered AST
-    let analysis =
-        fe_analyzer::analyze(&lowered_fe_module, file_id).expect("failed to analyze lowered AST");
+    let lowered_module_id =
+        fe_analyzer::analyze(&db, lowered_module).expect("failed to analyze lowered AST");
 
     // compile to yul
-    let yul_contracts = fe_yulgen::compile(&analysis, &lowered_fe_module);
+    let yul_contracts = fe_yulgen::compile(&db, lowered_module_id);
 
     // compile to bytecode if required
     #[cfg(feature = "solc-backend")]
@@ -112,8 +111,8 @@ pub fn compile(
         .collect::<HashMap<_, _>>();
 
     Ok(CompiledModule {
-        src_ast: format!("{:#?}", fe_module),
-        lowered_ast: format!("{:#?}", lowered_fe_module),
+        src_ast,
+        lowered_ast,
         contracts,
     })
 }

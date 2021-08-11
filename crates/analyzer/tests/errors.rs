@@ -1,6 +1,6 @@
 //! Tests for contracts that should cause compile errors
 
-use fe_analyzer::errors::AnalyzerError;
+use fe_analyzer::Db;
 use fe_common::diagnostics::{diagnostics_string, print_diagnostics};
 use fe_common::files::FileStore;
 use insta::assert_snapshot;
@@ -10,16 +10,19 @@ fn error_string(path: &str, src: &str) -> String {
     let mut files = FileStore::new();
     let id = files.add_file(path, src);
 
-    let fe_module = match fe_parser::parse_file(src, id) {
+    let fe_module = match fe_parser::parse_file(src) {
         Ok((module, _)) => module,
         Err(diags) => {
-            print_diagnostics(&diags, &files);
+            print_diagnostics(&diags, id, &files);
             panic!("parsing failed");
         }
     };
-    let AnalyzerError(diagnostics) = fe_analyzer::analyze(&fe_module, id).unwrap_err();
 
-    diagnostics_string(&diagnostics, &files)
+    let db = Db::default();
+    match fe_analyzer::analyze(&db, fe_module) {
+        Ok(_) => panic!("expected analysis to fail with an error"),
+        Err(diags) => diagnostics_string(&diags, id, &files),
+    }
 }
 
 macro_rules! test_file {
@@ -149,10 +152,12 @@ test_file! { call_keccak_with_wrong_type }
 test_file! { call_undefined_function_on_external_contract }
 test_file! { call_undefined_function_on_memory_struct }
 test_file! { call_undefined_function_on_storage_struct }
+test_file! { call_non_pub_fn_on_external_contract }
 test_file! { cannot_move }
 test_file! { cannot_move2 }
 test_file! { circular_dependency_create }
 test_file! { circular_dependency_create2 }
+test_file! { circular_type_alias }
 test_file! { duplicate_arg_in_contract_method }
 test_file! { duplicate_contract_in_module }
 test_file! { duplicate_event_in_contract }
@@ -198,6 +203,10 @@ test_file! { strict_boolean_if_else }
 test_file! { struct_call_bad_args }
 test_file! { struct_call_without_kw_args }
 test_file! { non_pub_init }
+test_file! { init_wrong_return_type }
+test_file! { init_duplicate_def }
+test_file! { init_call_on_self }
+test_file! { init_call_on_external_contract }
 test_file! { abi_encode_u256 }
 test_file! { abi_encode_from_storage }
 test_file! { assert_sto_msg_no_copy }

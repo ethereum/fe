@@ -1,0 +1,12 @@
+contract Foo:
+  pub fn __init__():
+    pass
+  pub fn f():
+    pass
+
+
+contract Bar:
+  fn b():
+    let foo: Foo = Foo(address(0))
+    foo.f()
+    foo.__init__()

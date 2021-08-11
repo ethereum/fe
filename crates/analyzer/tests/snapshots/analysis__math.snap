@@ -1,618 +1,8 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/math.fe\", &src, &context)"
+expression: "build_snapshot(\"features/math.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Math": Contract(
-            Contract {
-                name: "Math",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "min",
-                        params: [
-                            (
-                                "x",
-                                Base(
-                                    Numeric(
-                                        U256,
-                                    ),
-                                ),
-                            ),
-                            (
-                                "y",
-                                Base(
-                                    Numeric(
-                                        U256,
-                                    ),
-                                ),
-                            ),
-                        ],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "sqrt",
-                        params: [
-                            (
-                                "val",
-                                Base(
-                                    Numeric(
-                                        U256,
-                                    ),
-                                ),
-                            ),
-                        ],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
-note: 
-  ┌─ features/math.fe:6:13
-  │
-6 │         if (val > 3):
-  │             ^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/math.fe:6:19
-  │
-6 │         if (val > 3):
-  │                   ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/math.fe:6:12
-  │
-6 │         if (val > 3):
-  │            ^^^^^^^^^ attributes hash: 519621297275845584
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/math.fe:7:13
-  │
-7 │             z = val
-  │             ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/math.fe:7:17
-  │
-7 │             z = val
-  │                 ^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/math.fe:8:27
-  │
-8 │             let x: u256 = val / 2 + 1
-  │                           ^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/math.fe:8:33
-  │
-8 │             let x: u256 = val / 2 + 1
-  │                                 ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/math.fe:8:27
-  │
-8 │             let x: u256 = val / 2 + 1
-  │                           ^^^^^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/math.fe:8:37
-  │
-8 │             let x: u256 = val / 2 + 1
-  │                                     ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/math.fe:8:27
-  │
-8 │             let x: u256 = val / 2 + 1
-  │                           ^^^^^^^^^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/math.fe:9:20
-  │
-9 │             while (x < z):
-  │                    ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/math.fe:9:24
-  │
-9 │             while (x < z):
-  │                        ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/math.fe:9:19
-  │
-9 │             while (x < z):
-  │                   ^^^^^^^ attributes hash: 519621297275845584
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-   ┌─ features/math.fe:10:17
-   │
-10 │                 z = x
-   │                 ^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:10:21
-   │
-10 │                 z = x
-   │                     ^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:11:17
-   │
-11 │                 x = (val / x + x) / 2
-   │                 ^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:11:22
-   │
-11 │                 x = (val / x + x) / 2
-   │                      ^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:11:28
-   │
-11 │                 x = (val / x + x) / 2
-   │                            ^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:11:22
-   │
-11 │                 x = (val / x + x) / 2
-   │                      ^^^^^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:11:32
-   │
-11 │                 x = (val / x + x) / 2
-   │                                ^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:11:21
-   │
-11 │                 x = (val / x + x) / 2
-   │                     ^^^^^^^^^^^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:11:37
-   │
-11 │                 x = (val / x + x) / 2
-   │                                     ^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:11:21
-   │
-11 │                 x = (val / x + x) / 2
-   │                     ^^^^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:12:15
-   │
-12 │         elif (val != 0):
-   │               ^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:12:22
-   │
-12 │         elif (val != 0):
-   │                      ^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:12:14
-   │
-12 │         elif (val != 0):
-   │              ^^^^^^^^^^ attributes hash: 519621297275845584
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:13:13
-   │
-13 │             z = 1
-   │             ^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:13:17
-   │
-13 │             z = 1
-   │                 ^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:14:16
-   │
-14 │         return z
-   │                ^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:17:21
-   │
-17 │         return x if x < y else y
-   │                     ^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:17:25
-   │
-17 │         return x if x < y else y
-   │                         ^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:17:21
-   │
-17 │         return x if x < y else y
-   │                     ^^^^^ attributes hash: 519621297275845584
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:17:16
-   │
-17 │         return x if x < y else y
-   │                ^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:17:32
-   │
-17 │         return x if x < y else y
-   │                                ^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/math.fe:17:16
-   │
-17 │         return x if x < y else y
-   │                ^^^^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
 note: 
    ┌─ features/math.fe:4:5
    │  
@@ -623,24 +13,26 @@ note:
    · │
 13 │ │             z = 1
 14 │ │         return z
-   │ ╰────────────────^ attributes hash: 8873323314516084292
+   │ ╰────────────────^ attributes hash: 6248121154456130073
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "sqrt",
+   = FunctionSignature {
          params: [
-             (
-                 "val",
-                 Base(
-                     Numeric(
-                         U256,
+             FunctionParam {
+                 name: "val",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
                      ),
                  ),
-             ),
+             },
          ],
-         return_type: Base(
-             Numeric(
-                 U256,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
              ),
          ),
      }
@@ -650,209 +42,260 @@ note:
    │  
 16 │ ╭     pub fn min(x: u256, y: u256) -> u256:
 17 │ │         return x if x < y else y
-   │ ╰────────────────────────────────^ attributes hash: 15188649441906735855
+   │ ╰────────────────────────────────^ attributes hash: 11686109986999089900
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "min",
+   = FunctionSignature {
          params: [
-             (
-                 "x",
-                 Base(
-                     Numeric(
-                         U256,
+             FunctionParam {
+                 name: "x",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
                      ),
                  ),
-             ),
-             (
-                 "y",
-                 Base(
-                     Numeric(
-                         U256,
+             },
+             FunctionParam {
+                 name: "y",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
                      ),
                  ),
-             ),
+             },
          ],
-         return_type: Base(
-             Numeric(
-                 U256,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
              ),
          ),
      }
 
 note: 
-  ┌─ features/math.fe:5:9
+  ┌─ features/math.fe:6:13
   │
-5 │         let z: u256
-  │         ^^^^^^^^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+6 │         if (val > 3):
+  │             ^^^ u256: Value => None
 
 note: 
-  ┌─ features/math.fe:8:13
+  ┌─ features/math.fe:6:19
+  │
+6 │         if (val > 3):
+  │                   ^ u256: Value => None
+
+note: 
+  ┌─ features/math.fe:6:12
+  │
+6 │         if (val > 3):
+  │            ^^^^^^^^^ bool: Value => None
+
+note: 
+  ┌─ features/math.fe:7:13
+  │
+7 │             z = val
+  │             ^ u256: Value => None
+
+note: 
+  ┌─ features/math.fe:7:17
+  │
+7 │             z = val
+  │                 ^^^ u256: Value => None
+
+note: 
+  ┌─ features/math.fe:8:27
   │
 8 │             let x: u256 = val / 2 + 1
-  │             ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4293763436908729629
+  │                           ^^^ u256: Value => None
+
+note: 
+  ┌─ features/math.fe:8:33
   │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+8 │             let x: u256 = val / 2 + 1
+  │                                 ^ u256: Value => None
 
 note: 
-   ┌─ features/math.fe:1:1
-   │  
- 1 │ ╭ contract Math:
- 2 │ │ 
- 3 │ │     # https://github.com/Uniswap/uniswap-v2-core/blob/4dd59067c76dea4a0e8e4bfdda41877a6b16dedc/contracts/libraries/Math.sol#L11-L22
- 4 │ │     pub fn sqrt(val: u256) -> u256:
-   · │
-16 │ │     pub fn min(x: u256, y: u256) -> u256:
-17 │ │         return x if x < y else y
-   │ ╰────────────────────────────────^ attributes hash: 16726610421548447936
-   │  
-   = ContractAttributes {
-         public_functions: [
-             FunctionAttributes {
-                 is_public: true,
-                 name: "min",
-                 params: [
-                     (
-                         "x",
-                         Base(
-                             Numeric(
-                                 U256,
-                             ),
-                         ),
-                     ),
-                     (
-                         "y",
-                         Base(
-                             Numeric(
-                                 U256,
-                             ),
-                         ),
-                     ),
-                 ],
-                 return_type: Base(
-                     Numeric(
-                         U256,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "sqrt",
-                 params: [
-                     (
-                         "val",
-                         Base(
-                             Numeric(
-                                 U256,
-                             ),
-                         ),
-                     ),
-                 ],
-                 return_type: Base(
-                     Numeric(
-                         U256,
-                     ),
-                 ),
-             },
-         ],
-         init_function: None,
-         events: [],
-         structs: [],
-         external_contracts: [],
-     }
-
-note: 
-  ┌─ features/math.fe:4:22
+  ┌─ features/math.fe:8:27
   │
-4 │     pub fn sqrt(val: u256) -> u256:
-  │                      ^^^^ attributes hash: 4293763436908729629
+8 │             let x: u256 = val / 2 + 1
+  │                           ^^^^^^^ u256: Value => None
+
+note: 
+  ┌─ features/math.fe:8:37
   │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+8 │             let x: u256 = val / 2 + 1
+  │                                     ^ u256: Value => None
 
 note: 
-  ┌─ features/math.fe:4:31
+  ┌─ features/math.fe:8:27
   │
-4 │     pub fn sqrt(val: u256) -> u256:
-  │                               ^^^^ attributes hash: 4293763436908729629
+8 │             let x: u256 = val / 2 + 1
+  │                           ^^^^^^^^^^^ u256: Value => None
+
+note: 
+  ┌─ features/math.fe:9:20
   │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+9 │             while (x < z):
+  │                    ^ u256: Value => None
 
 note: 
-   ┌─ features/math.fe:16:19
-   │
-16 │     pub fn min(x: u256, y: u256) -> u256:
-   │                   ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
+  ┌─ features/math.fe:9:24
+  │
+9 │             while (x < z):
+  │                        ^ u256: Value => None
 
 note: 
-   ┌─ features/math.fe:16:28
-   │
-16 │     pub fn min(x: u256, y: u256) -> u256:
-   │                            ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
+  ┌─ features/math.fe:9:19
+  │
+9 │             while (x < z):
+  │                   ^^^^^^^ bool: Value => None
 
 note: 
-   ┌─ features/math.fe:16:37
+   ┌─ features/math.fe:10:17
    │
-16 │     pub fn min(x: u256, y: u256) -> u256:
-   │                                     ^^^^ attributes hash: 4293763436908729629
+10 │                 z = x
+   │                 ^ u256: Value => None
+
+note: 
+   ┌─ features/math.fe:10:21
    │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
+10 │                 z = x
+   │                     ^ u256: Value => None
+
+note: 
+   ┌─ features/math.fe:11:17
+   │
+11 │                 x = (val / x + x) / 2
+   │                 ^ u256: Value => None
+
+note: 
+   ┌─ features/math.fe:11:22
+   │
+11 │                 x = (val / x + x) / 2
+   │                      ^^^ u256: Value => None
+
+note: 
+   ┌─ features/math.fe:11:28
+   │
+11 │                 x = (val / x + x) / 2
+   │                            ^ u256: Value => None
+
+note: 
+   ┌─ features/math.fe:11:22
+   │
+11 │                 x = (val / x + x) / 2
+   │                      ^^^^^^^ u256: Value => None
+
+note: 
+   ┌─ features/math.fe:11:32
+   │
+11 │                 x = (val / x + x) / 2
+   │                                ^ u256: Value => None
+
+note: 
+   ┌─ features/math.fe:11:21
+   │
+11 │                 x = (val / x + x) / 2
+   │                     ^^^^^^^^^^^^^ u256: Value => None
+
+note: 
+   ┌─ features/math.fe:11:37
+   │
+11 │                 x = (val / x + x) / 2
+   │                                     ^ u256: Value => None
+
+note: 
+   ┌─ features/math.fe:11:21
+   │
+11 │                 x = (val / x + x) / 2
+   │                     ^^^^^^^^^^^^^^^^^ u256: Value => None
+
+note: 
+   ┌─ features/math.fe:12:15
+   │
+12 │         elif (val != 0):
+   │               ^^^ u256: Value => None
+
+note: 
+   ┌─ features/math.fe:12:22
+   │
+12 │         elif (val != 0):
+   │                      ^ u256: Value => None
+
+note: 
+   ┌─ features/math.fe:12:14
+   │
+12 │         elif (val != 0):
+   │              ^^^^^^^^^^ bool: Value => None
+
+note: 
+   ┌─ features/math.fe:13:13
+   │
+13 │             z = 1
+   │             ^ u256: Value => None
+
+note: 
+   ┌─ features/math.fe:13:17
+   │
+13 │             z = 1
+   │                 ^ u256: Value => None
+
+note: 
+   ┌─ features/math.fe:14:16
+   │
+14 │         return z
+   │                ^ u256: Value => None
+
+note: 
+   ┌─ features/math.fe:17:21
+   │
+17 │         return x if x < y else y
+   │                     ^ u256: Value => None
+
+note: 
+   ┌─ features/math.fe:17:25
+   │
+17 │         return x if x < y else y
+   │                         ^ u256: Value => None
+
+note: 
+   ┌─ features/math.fe:17:21
+   │
+17 │         return x if x < y else y
+   │                     ^^^^^ bool: Value => None
+
+note: 
+   ┌─ features/math.fe:17:16
+   │
+17 │         return x if x < y else y
+   │                ^ u256: Value => None
+
+note: 
+   ┌─ features/math.fe:17:32
+   │
+17 │         return x if x < y else y
+   │                                ^ u256: Value => None
+
+note: 
+   ┌─ features/math.fe:17:16
+   │
+17 │         return x if x < y else y
+   │                ^^^^^^^^^^^^^^^^^ u256: Value => None
 
 note: 
   ┌─ features/math.fe:5:16
   │
 5 │         let z: u256
-  │                ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+  │                ^^^^ u256
 
 note: 
   ┌─ features/math.fe:8:20
   │
 8 │             let x: u256 = val / 2 + 1
-  │                    ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+  │                    ^^^^ u256
 
 

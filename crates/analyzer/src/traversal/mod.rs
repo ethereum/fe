@@ -1,9 +1,8 @@
 mod assignments;
-mod contracts;
+mod call_args;
 mod declarations;
 mod expressions;
-mod functions;
-pub mod module;
-mod structs;
-mod types;
+pub mod functions;
+pub mod pragma;
+pub mod types;
 mod utils;

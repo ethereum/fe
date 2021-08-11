@@ -1,16 +1,12 @@
 use crate::names::abi as abi_names;
 use crate::operations::abi as abi_operations;
-use crate::types::{to_abi_selector_names, to_abi_types, AbiDecodeLocation, AbiType};
+use crate::types::{to_abi_selector_names, AbiDecodeLocation, AbiType};
 use fe_abi::utils as abi_utils;
-use fe_analyzer::context::FunctionAttributes;
 use yultsur::*;
 
 /// Builds a switch statement that dispatches calls to the contract.
-pub fn dispatcher(attributes: &[FunctionAttributes]) -> yul::Statement {
-    let arms = attributes
-        .iter()
-        .map(|arm| dispatch_arm(arm.to_owned()))
-        .collect::<Vec<_>>();
+pub fn dispatcher(functions: Vec<(String, Vec<AbiType>, Option<AbiType>)>) -> yul::Statement {
+    let arms = functions.into_iter().map(dispatch_arm).collect::<Vec<_>>();
 
     if arms.is_empty() {
         statement! { return(0, 0) }
@@ -23,17 +19,17 @@ pub fn dispatcher(attributes: &[FunctionAttributes]) -> yul::Statement {
     }
 }
 
-fn dispatch_arm(attributes: FunctionAttributes) -> yul::Case {
-    let selector = selector(&attributes.name, &to_abi_types(&attributes.param_types()));
+fn dispatch_arm((name, params, return_type): (String, Vec<AbiType>, Option<AbiType>)) -> yul::Case {
+    let selector = selector(&name, &params);
 
-    let (param_idents, param_exprs) = abi_names::vals("call", attributes.params.len());
+    let (param_idents, param_exprs) = abi_names::vals("call", params.len());
 
     // If there are no params, we create an empty vector.
-    let maybe_decode_params = if attributes.params.is_empty() {
+    let maybe_decode_params = if params.is_empty() {
         statements! {}
     } else {
         let decode_expr = abi_operations::decode_data(
-            &to_abi_types(&attributes.param_types()),
+            &params,
             expression! { 4 },
             expression! { calldatasize() },
             AbiDecodeLocation::Calldata,
@@ -44,27 +40,22 @@ fn dispatch_arm(attributes: FunctionAttributes) -> yul::Case {
     // If the function returns a unit value, we call the function and return
     // nothing. Otherwise, we encode the value and return it.
     let call_and_maybe_encode_return = {
-        let name = identifier! { (format!("$${}", attributes.name)) };
+        let name = identifier! { (format!("$${}", name)) };
         let call = expression! { [name]([param_exprs...]) };
-        if attributes.return_type.is_unit() {
+        if let Some(return_type) = return_type {
+            let return_expr = expressions! { return_val };
+            let encoding_size = abi_operations::encoding_size(&[return_type.clone()], &return_expr);
+            let encode_expr = abi_operations::encode(&[return_type], return_expr);
+            statements! {
+                (let return_val := [call])
+                    (let encoding_start := [encode_expr])
+                    (let encoding_size := [encoding_size])
+                    (return(encoding_start, encoding_size))
+            }
+        } else {
             statements! {
                 (pop([call]))
                 (return(0, 0))
-            }
-        } else {
-            let encode_expr = abi_operations::encode(
-                &[AbiType::from(&attributes.return_type)],
-                expressions! { return_val },
-            );
-            let encoding_size = abi_operations::encoding_size(
-                &[AbiType::from(&attributes.return_type)],
-                expressions! { return_val },
-            );
-            statements! {
-                (let return_val := [call])
-                (let encoding_start := [encode_expr])
-                (let encoding_size := [encoding_size])
-                (return(encoding_start, encoding_size))
             }
         }
     };
@@ -78,8 +69,7 @@ fn dispatch_arm(attributes: FunctionAttributes) -> yul::Case {
 }
 
 fn selector(name: &str, params: &[AbiType]) -> yul::Literal {
-    let params = to_abi_selector_names(params);
-    literal! { (abi_utils::func_selector(name, &params)) }
+    literal! { (abi_utils::func_selector(name, &to_abi_selector_names(params))) }
 }
 
 #[cfg(test)]

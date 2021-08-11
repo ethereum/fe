@@ -1,117 +1,36 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/return_i256.fe\", &src, &context)"
+expression: "build_snapshot(\"features/return_i256.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "bar",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                I256,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
-note: 
-  ┌─ features/return_i256.fe:3:17
-  │
-3 │         return -3
-  │                 ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_i256.fe:3:16
-  │
-3 │         return -3
-  │                ^^ attributes hash: 15251787519388345880
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                I256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
 note: 
   ┌─ features/return_i256.fe:2:5
   │  
 2 │ ╭     pub fn bar() -> i256:
 3 │ │         return -3
-  │ ╰─────────────────^ attributes hash: 15263507459917957771
+  │ ╰─────────────────^ attributes hash: 15881191383768803801
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "bar",
+  = FunctionSignature {
         params: [],
-        return_type: Base(
-            Numeric(
-                I256,
+        return_type: Ok(
+            Base(
+                Numeric(
+                    I256,
+                ),
             ),
         ),
     }
 
 note: 
-  ┌─ features/return_i256.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │     pub fn bar() -> i256:
-3 │ │         return -3
-  │ ╰─────────────────^ attributes hash: 560590712416349446
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "bar",
-                params: [],
-                return_type: Base(
-                    Numeric(
-                        I256,
-                    ),
-                ),
-            },
-        ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [],
-    }
+  ┌─ features/return_i256.fe:3:17
+  │
+3 │         return -3
+  │                 ^ u256: Value => None
 
 note: 
-  ┌─ features/return_i256.fe:2:21
+  ┌─ features/return_i256.fe:3:16
   │
-2 │     pub fn bar() -> i256:
-  │                     ^^^^ attributes hash: 11707372354960146103
-  │
-  = Base(
-        Numeric(
-            I256,
-        ),
-    )
+3 │         return -3
+  │                ^^ i256: Value => None
 
 

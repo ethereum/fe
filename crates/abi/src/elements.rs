@@ -1,5 +1,4 @@
 use crate::errors::AbiError;
-use fe_analyzer::context::FunctionAttributes;
 use fe_analyzer::namespace::types::{Array, Base, FeString, FixedSize, Integer, Struct, Tuple};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
@@ -75,9 +74,6 @@ pub struct AbiComponent {
 pub trait JsonAbi {
     /// Name of the type as it appears in the Json ABI.
     fn abi_json_name(&self) -> String;
-
-    /// The components of an ABI tuple.
-    fn abi_components(&self) -> Vec<AbiComponent>;
 }
 
 impl JsonAbi for FixedSize {
@@ -89,17 +85,6 @@ impl JsonAbi for FixedSize {
             FixedSize::String(string) => string.abi_json_name(),
             FixedSize::Contract(_) => "address".to_string(),
             FixedSize::Struct(val) => val.abi_json_name(),
-        }
-    }
-
-    fn abi_components(&self) -> Vec<AbiComponent> {
-        match self {
-            FixedSize::Array(array) => array.abi_components(),
-            FixedSize::Base(base) => base.abi_components(),
-            FixedSize::Tuple(tuple) => tuple.abi_components(),
-            FixedSize::String(string) => string.abi_components(),
-            FixedSize::Contract(_) => vec![],
-            FixedSize::Struct(val) => val.abi_components(),
         }
     }
 }
@@ -124,10 +109,6 @@ impl JsonAbi for Base {
             Base::Unit => panic!("unit type is not abi encodable"),
         }
     }
-
-    fn abi_components(&self) -> Vec<AbiComponent> {
-        vec![]
-    }
 }
 
 impl JsonAbi for Array {
@@ -138,26 +119,11 @@ impl JsonAbi for Array {
             format!("{}[{}]", self.inner.abi_json_name(), self.size)
         }
     }
-
-    fn abi_components(&self) -> Vec<AbiComponent> {
-        vec![]
-    }
 }
 
 impl JsonAbi for Struct {
     fn abi_json_name(&self) -> String {
         "tuple".to_string()
-    }
-
-    fn abi_components(&self) -> Vec<AbiComponent> {
-        self.fields
-            .iter()
-            .map(|(name, typ)| AbiComponent {
-                name: name.to_owned(),
-                typ: typ.abi_json_name(),
-                components: vec![],
-            })
-            .collect()
     }
 }
 
@@ -165,27 +131,11 @@ impl JsonAbi for Tuple {
     fn abi_json_name(&self) -> String {
         "tuple".to_string()
     }
-
-    fn abi_components(&self) -> Vec<AbiComponent> {
-        self.items
-            .iter()
-            .enumerate()
-            .map(|(index, item)| AbiComponent {
-                name: format!("item{}", index),
-                typ: item.abi_json_name(),
-                components: vec![],
-            })
-            .collect()
-    }
 }
 
 impl JsonAbi for FeString {
     fn abi_json_name(&self) -> String {
         "string".to_string()
-    }
-
-    fn abi_components(&self) -> Vec<AbiComponent> {
-        vec![]
     }
 }
 
@@ -238,9 +188,9 @@ pub struct Function {
 /// Component of an ABI tuple.
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub struct Component {
-    name: String,
+    pub name: String,
     #[serde(rename = "type")]
-    typ: String,
+    pub typ: String,
 }
 
 impl From<AbiComponent> for Component {
@@ -308,55 +258,6 @@ pub enum StateMutability {
     View,
     Nonpayable,
     Payable,
-}
-
-impl From<FunctionAttributes> for Function {
-    fn from(attributes: FunctionAttributes) -> Self {
-        let name = attributes.name;
-
-        let (name, typ) = match name.as_str() {
-            "__init__" => ("".to_string(), FuncType::Constructor),
-            _ => (name, FuncType::Function),
-        };
-
-        let inputs = attributes
-            .params
-            .iter()
-            .map(|(name, typ)| FuncInput {
-                name: name.to_owned(),
-                typ: typ.abi_json_name(),
-                components: typ
-                    .abi_components()
-                    .iter()
-                    .map(|component| Component::from(component.to_owned()))
-                    .collect(),
-            })
-            .collect();
-
-        let return_type = &attributes.return_type;
-        let outputs = if return_type.is_unit() {
-            vec![]
-        } else {
-            let components = return_type
-                .abi_components()
-                .into_iter()
-                .map(Component::from)
-                .collect();
-
-            vec![FuncOutput {
-                name: "".to_string(),
-                typ: return_type.abi_json_name(),
-                components,
-            }]
-        };
-
-        Self {
-            name,
-            typ,
-            inputs,
-            outputs,
-        }
-    }
 }
 
 #[cfg(test)]

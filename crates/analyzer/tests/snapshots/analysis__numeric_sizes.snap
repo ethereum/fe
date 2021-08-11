@@ -1,1138 +1,22 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/numeric_sizes.fe\", &src, &context)"
+expression: "build_snapshot(\"features/numeric_sizes.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_i128_max",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                I128,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_i128_min",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                I128,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_i16_max",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                I16,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_i16_min",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                I16,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_i256_max",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                I256,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_i256_min",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                I256,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_i32_max",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                I32,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_i32_min",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                I32,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_i64_max",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                I64,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_i64_min",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                I64,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_i8_max",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                I8,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_i8_min",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                I8,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_u128_max",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U128,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_u128_min",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U128,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_u16_max",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U16,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_u16_min",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U16,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_u256_max",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_u256_min",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_u32_max",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U32,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_u32_min",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U32,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_u64_max",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U64,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_u64_min",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U64,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_u8_max",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U8,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "get_u8_min",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U8,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
-note: 
-  ┌─ features/numeric_sizes.fe:4:19
-  │
-4 │         return u8(0)
-  │                   ^ attributes hash: 11226462071603862164
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U8,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/numeric_sizes.fe:4:16
-  │
-4 │         return u8(0)
-  │                ^^^^^ attributes hash: 11226462071603862164
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U8,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/numeric_sizes.fe:7:20
-  │
-7 │         return u16(0)
-  │                    ^ attributes hash: 1434400102836480875
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U16,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/numeric_sizes.fe:7:16
-  │
-7 │         return u16(0)
-  │                ^^^^^^ attributes hash: 1434400102836480875
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U16,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-   ┌─ features/numeric_sizes.fe:10:20
-   │
-10 │         return u32(0)
-   │                    ^ attributes hash: 8114386917066957540
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:10:16
-   │
-10 │         return u32(0)
-   │                ^^^^^^ attributes hash: 8114386917066957540
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:13:20
-   │
-13 │         return u64(0)
-   │                    ^ attributes hash: 18134665206326494843
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:13:16
-   │
-13 │         return u64(0)
-   │                ^^^^^^ attributes hash: 18134665206326494843
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:16:21
-   │
-16 │         return u128(0)
-   │                     ^ attributes hash: 231358192590700262
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:16:16
-   │
-16 │         return u128(0)
-   │                ^^^^^^^ attributes hash: 231358192590700262
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:19:21
-   │
-19 │         return u256(0)
-   │                     ^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:19:16
-   │
-19 │         return u256(0)
-   │                ^^^^^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:22:20
-   │
-22 │         return i8(-128)
-   │                    ^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:22:19
-   │
-22 │         return i8(-128)
-   │                   ^^^^ attributes hash: 6720198376222228094
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:22:16
-   │
-22 │         return i8(-128)
-   │                ^^^^^^^^ attributes hash: 6720198376222228094
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:25:21
-   │
-25 │         return i16(-32768)
-   │                     ^^^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:25:20
-   │
-25 │         return i16(-32768)
-   │                    ^^^^^^ attributes hash: 17413650603257084367
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I16,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:25:16
-   │
-25 │         return i16(-32768)
-   │                ^^^^^^^^^^^ attributes hash: 17413650603257084367
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I16,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:28:21
-   │
-28 │         return i32(-2147483648)
-   │                     ^^^^^^^^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:28:20
-   │
-28 │         return i32(-2147483648)
-   │                    ^^^^^^^^^^^ attributes hash: 16606532750379249980
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:28:16
-   │
-28 │         return i32(-2147483648)
-   │                ^^^^^^^^^^^^^^^^ attributes hash: 16606532750379249980
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:31:21
-   │
-31 │         return i64(-9223372036854775808)
-   │                     ^^^^^^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:31:20
-   │
-31 │         return i64(-9223372036854775808)
-   │                    ^^^^^^^^^^^^^^^^^^^^ attributes hash: 9118369605090770275
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:31:16
-   │
-31 │         return i64(-9223372036854775808)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9118369605090770275
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:34:22
-   │
-34 │         return i128(-170141183460469231731687303715884105728)
-   │                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:34:21
-   │
-34 │         return i128(-170141183460469231731687303715884105728)
-   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7454845908456114205
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:34:16
-   │
-34 │         return i128(-170141183460469231731687303715884105728)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7454845908456114205
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:37:22
-   │
-37 │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
-   │                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:37:21
-   │
-37 │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
-   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15251787519388345880
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:37:16
-   │
-37 │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15251787519388345880
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:40:19
-   │
-40 │         return u8(255)
-   │                   ^^^ attributes hash: 11226462071603862164
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:40:16
-   │
-40 │         return u8(255)
-   │                ^^^^^^^ attributes hash: 11226462071603862164
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:43:20
-   │
-43 │         return u16(65535)
-   │                    ^^^^^ attributes hash: 1434400102836480875
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U16,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:43:16
-   │
-43 │         return u16(65535)
-   │                ^^^^^^^^^^ attributes hash: 1434400102836480875
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U16,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:46:20
-   │
-46 │         return u32(4294967295)
-   │                    ^^^^^^^^^^ attributes hash: 8114386917066957540
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:46:16
-   │
-46 │         return u32(4294967295)
-   │                ^^^^^^^^^^^^^^^ attributes hash: 8114386917066957540
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:49:20
-   │
-49 │         return u64(18446744073709551615)
-   │                    ^^^^^^^^^^^^^^^^^^^^ attributes hash: 18134665206326494843
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:49:16
-   │
-49 │         return u64(18446744073709551615)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 18134665206326494843
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:52:21
-   │
-52 │         return u128(340282366920938463463374607431768211455)
-   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 231358192590700262
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:52:16
-   │
-52 │         return u128(340282366920938463463374607431768211455)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 231358192590700262
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:55:21
-   │
-55 │         return u256(115792089237316195423570985008687907853269984665640564039457584007913129639935)
-   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:55:16
-   │
-55 │         return u256(115792089237316195423570985008687907853269984665640564039457584007913129639935)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:58:19
-   │
-58 │         return i8(127)
-   │                   ^^^ attributes hash: 6720198376222228094
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:58:16
-   │
-58 │         return i8(127)
-   │                ^^^^^^^ attributes hash: 6720198376222228094
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I8,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:61:20
-   │
-61 │         return i16(32767)
-   │                    ^^^^^ attributes hash: 17413650603257084367
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I16,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:61:16
-   │
-61 │         return i16(32767)
-   │                ^^^^^^^^^^ attributes hash: 17413650603257084367
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I16,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:64:20
-   │
-64 │         return i32(2147483647)
-   │                    ^^^^^^^^^^ attributes hash: 16606532750379249980
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:64:16
-   │
-64 │         return i32(2147483647)
-   │                ^^^^^^^^^^^^^^^ attributes hash: 16606532750379249980
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I32,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:67:20
-   │
-67 │         return i64(9223372036854775807)
-   │                    ^^^^^^^^^^^^^^^^^^^ attributes hash: 9118369605090770275
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:67:16
-   │
-67 │         return i64(9223372036854775807)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9118369605090770275
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I64,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:70:21
-   │
-70 │         return i128(170141183460469231731687303715884105727)
-   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7454845908456114205
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:70:16
-   │
-70 │         return i128(170141183460469231731687303715884105727)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 7454845908456114205
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I128,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:73:21
-   │
-73 │         return i256(57896044618658097711785492504343953926634992332820282019728792003956564819967)
-   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15251787519388345880
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/numeric_sizes.fe:73:16
-   │
-73 │         return i256(57896044618658097711785492504343953926634992332820282019728792003956564819967)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15251787519388345880
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 I256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
 note: 
   ┌─ features/numeric_sizes.fe:3:5
   │  
 3 │ ╭     pub fn get_u8_min() -> u8:
 4 │ │         return u8(0)
-  │ ╰────────────────────^ attributes hash: 6995428194682390116
+  │ ╰────────────────────^ attributes hash: 207849059327209983
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "get_u8_min",
+  = FunctionSignature {
         params: [],
-        return_type: Base(
-            Numeric(
-                U8,
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U8,
+                ),
             ),
         ),
     }
@@ -1142,15 +26,15 @@ note:
   │  
 6 │ ╭     pub fn get_u16_min() -> u16:
 7 │ │         return u16(0)
-  │ ╰─────────────────────^ attributes hash: 2838263676376455366
+  │ ╰─────────────────────^ attributes hash: 14687888308893756364
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "get_u16_min",
+  = FunctionSignature {
         params: [],
-        return_type: Base(
-            Numeric(
-                U16,
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U16,
+                ),
             ),
         ),
     }
@@ -1160,15 +44,15 @@ note:
    │  
  9 │ ╭     pub fn get_u32_min() -> u32:
 10 │ │         return u32(0)
-   │ ╰─────────────────────^ attributes hash: 322952388551971906
+   │ ╰─────────────────────^ attributes hash: 11298375382964468330
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_u32_min",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 U32,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U32,
+                 ),
              ),
          ),
      }
@@ -1178,15 +62,15 @@ note:
    │  
 12 │ ╭     pub fn get_u64_min() -> u64:
 13 │ │         return u64(0)
-   │ ╰─────────────────────^ attributes hash: 13875007191301975542
+   │ ╰─────────────────────^ attributes hash: 16659579683950699712
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_u64_min",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 U64,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U64,
+                 ),
              ),
          ),
      }
@@ -1196,15 +80,15 @@ note:
    │  
 15 │ ╭     pub fn get_u128_min() -> u128:
 16 │ │         return u128(0)
-   │ ╰──────────────────────^ attributes hash: 9391599967850205865
+   │ ╰──────────────────────^ attributes hash: 16590220569563418042
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_u128_min",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 U128,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U128,
+                 ),
              ),
          ),
      }
@@ -1214,15 +98,15 @@ note:
    │  
 18 │ ╭     pub fn get_u256_min() -> u256:
 19 │ │         return u256(0)
-   │ ╰──────────────────────^ attributes hash: 8588104625554559569
+   │ ╰──────────────────────^ attributes hash: 4553090961241945225
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_u256_min",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 U256,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
              ),
          ),
      }
@@ -1232,15 +116,15 @@ note:
    │  
 21 │ ╭     pub fn get_i8_min() -> i8:
 22 │ │         return i8(-128)
-   │ ╰───────────────────────^ attributes hash: 1266509792243332442
+   │ ╰───────────────────────^ attributes hash: 18050713998756114952
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_i8_min",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 I8,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     I8,
+                 ),
              ),
          ),
      }
@@ -1250,15 +134,15 @@ note:
    │  
 24 │ ╭     pub fn get_i16_min() -> i16:
 25 │ │         return i16(-32768)
-   │ ╰──────────────────────────^ attributes hash: 14798369852055093449
+   │ ╰──────────────────────────^ attributes hash: 18297427199653836949
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_i16_min",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 I16,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     I16,
+                 ),
              ),
          ),
      }
@@ -1268,15 +152,15 @@ note:
    │  
 27 │ ╭     pub fn get_i32_min() -> i32:
 28 │ │         return i32(-2147483648)
-   │ ╰───────────────────────────────^ attributes hash: 2061201610096487583
+   │ ╰───────────────────────────────^ attributes hash: 1981451737012009869
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_i32_min",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 I32,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     I32,
+                 ),
              ),
          ),
      }
@@ -1286,15 +170,15 @@ note:
    │  
 30 │ ╭     pub fn get_i64_min() -> i64:
 31 │ │         return i64(-9223372036854775808)
-   │ ╰────────────────────────────────────────^ attributes hash: 8459903797219276501
+   │ ╰────────────────────────────────────────^ attributes hash: 11756888780421166692
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_i64_min",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 I64,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     I64,
+                 ),
              ),
          ),
      }
@@ -1304,15 +188,15 @@ note:
    │  
 33 │ ╭     pub fn get_i128_min() -> i128:
 34 │ │         return i128(-170141183460469231731687303715884105728)
-   │ ╰─────────────────────────────────────────────────────────────^ attributes hash: 253255752698928727
+   │ ╰─────────────────────────────────────────────────────────────^ attributes hash: 12139568508098609638
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_i128_min",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 I128,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     I128,
+                 ),
              ),
          ),
      }
@@ -1322,15 +206,15 @@ note:
    │  
 36 │ ╭     pub fn get_i256_min() -> i256:
 37 │ │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
-   │ ╰───────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 16017284136939712400
+   │ ╰───────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 15881191383768803801
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_i256_min",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 I256,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     I256,
+                 ),
              ),
          ),
      }
@@ -1340,15 +224,15 @@ note:
    │  
 39 │ ╭     pub fn get_u8_max() -> u8:
 40 │ │         return u8(255)
-   │ ╰──────────────────────^ attributes hash: 7400929229443602562
+   │ ╰──────────────────────^ attributes hash: 207849059327209983
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_u8_max",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 U8,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U8,
+                 ),
              ),
          ),
      }
@@ -1358,15 +242,15 @@ note:
    │  
 42 │ ╭     pub fn get_u16_max() -> u16:
 43 │ │         return u16(65535)
-   │ ╰─────────────────────────^ attributes hash: 6913051000362992525
+   │ ╰─────────────────────────^ attributes hash: 14687888308893756364
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_u16_max",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 U16,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U16,
+                 ),
              ),
          ),
      }
@@ -1376,15 +260,15 @@ note:
    │  
 45 │ ╭     pub fn get_u32_max() -> u32:
 46 │ │         return u32(4294967295)
-   │ ╰──────────────────────────────^ attributes hash: 16261550837818257483
+   │ ╰──────────────────────────────^ attributes hash: 11298375382964468330
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_u32_max",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 U32,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U32,
+                 ),
              ),
          ),
      }
@@ -1394,15 +278,15 @@ note:
    │  
 48 │ ╭     pub fn get_u64_max() -> u64:
 49 │ │         return u64(18446744073709551615)
-   │ ╰────────────────────────────────────────^ attributes hash: 18239870623570949439
+   │ ╰────────────────────────────────────────^ attributes hash: 16659579683950699712
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_u64_max",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 U64,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U64,
+                 ),
              ),
          ),
      }
@@ -1412,15 +296,15 @@ note:
    │  
 51 │ ╭     pub fn get_u128_max() -> u128:
 52 │ │         return u128(340282366920938463463374607431768211455)
-   │ ╰────────────────────────────────────────────────────────────^ attributes hash: 15700063741217205486
+   │ ╰────────────────────────────────────────────────────────────^ attributes hash: 16590220569563418042
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_u128_max",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 U128,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U128,
+                 ),
              ),
          ),
      }
@@ -1430,15 +314,15 @@ note:
    │  
 54 │ ╭     pub fn get_u256_max() -> u256:
 55 │ │         return u256(115792089237316195423570985008687907853269984665640564039457584007913129639935)
-   │ ╰───────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 209281296004520625
+   │ ╰───────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 4553090961241945225
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_u256_max",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 U256,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
              ),
          ),
      }
@@ -1448,15 +332,15 @@ note:
    │  
 57 │ ╭     pub fn get_i8_max() -> i8:
 58 │ │         return i8(127)
-   │ ╰──────────────────────^ attributes hash: 9681123675927065691
+   │ ╰──────────────────────^ attributes hash: 18050713998756114952
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_i8_max",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 I8,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     I8,
+                 ),
              ),
          ),
      }
@@ -1466,15 +350,15 @@ note:
    │  
 60 │ ╭     pub fn get_i16_max() -> i16:
 61 │ │         return i16(32767)
-   │ ╰─────────────────────────^ attributes hash: 5373478465350472253
+   │ ╰─────────────────────────^ attributes hash: 18297427199653836949
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_i16_max",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 I16,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     I16,
+                 ),
              ),
          ),
      }
@@ -1484,15 +368,15 @@ note:
    │  
 63 │ ╭     pub fn get_i32_max() -> i32:
 64 │ │         return i32(2147483647)
-   │ ╰──────────────────────────────^ attributes hash: 13122812297018512726
+   │ ╰──────────────────────────────^ attributes hash: 1981451737012009869
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_i32_max",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 I32,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     I32,
+                 ),
              ),
          ),
      }
@@ -1502,15 +386,15 @@ note:
    │  
 66 │ ╭     pub fn get_i64_max() -> i64:
 67 │ │         return i64(9223372036854775807)
-   │ ╰───────────────────────────────────────^ attributes hash: 9557084851025627868
+   │ ╰───────────────────────────────────────^ attributes hash: 11756888780421166692
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_i64_max",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 I64,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     I64,
+                 ),
              ),
          ),
      }
@@ -1520,15 +404,15 @@ note:
    │  
 69 │ ╭     pub fn get_i128_max() -> i128:
 70 │ │         return i128(170141183460469231731687303715884105727)
-   │ ╰────────────────────────────────────────────────────────────^ attributes hash: 5484830478795923248
+   │ ╰────────────────────────────────────────────────────────────^ attributes hash: 12139568508098609638
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_i128_max",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 I128,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     I128,
+                 ),
              ),
          ),
      }
@@ -1538,279 +422,342 @@ note:
    │  
 72 │ ╭     pub fn get_i256_max() -> i256:
 73 │ │         return i256(57896044618658097711785492504343953926634992332820282019728792003956564819967)
-   │ ╰──────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 10879036864228745934
+   │ ╰──────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 15881191383768803801
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "get_i256_max",
+   = FunctionSignature {
          params: [],
-         return_type: Base(
-             Numeric(
-                 I256,
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     I256,
+                 ),
              ),
          ),
      }
 
 note: 
-   ┌─ features/numeric_sizes.fe:1:1
-   │  
- 1 │ ╭ contract Foo:
- 2 │ │ 
- 3 │ │     pub fn get_u8_min() -> u8:
- 4 │ │         return u8(0)
-   · │
-72 │ │     pub fn get_i256_max() -> i256:
-73 │ │         return i256(57896044618658097711785492504343953926634992332820282019728792003956564819967)
-   │ ╰──────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 2447683512024167482
-   │  
-   = ContractAttributes {
-         public_functions: [
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_i128_max",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         I128,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_i128_min",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         I128,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_i16_max",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         I16,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_i16_min",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         I16,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_i256_max",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         I256,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_i256_min",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         I256,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_i32_max",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         I32,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_i32_min",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         I32,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_i64_max",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         I64,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_i64_min",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         I64,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_i8_max",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         I8,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_i8_min",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         I8,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_u128_max",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         U128,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_u128_min",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         U128,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_u16_max",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         U16,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_u16_min",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         U16,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_u256_max",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         U256,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_u256_min",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         U256,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_u32_max",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         U32,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_u32_min",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         U32,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_u64_max",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         U64,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_u64_min",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         U64,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_u8_max",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         U8,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "get_u8_min",
-                 params: [],
-                 return_type: Base(
-                     Numeric(
-                         U8,
-                     ),
-                 ),
-             },
-         ],
-         init_function: None,
-         events: [],
-         structs: [],
-         external_contracts: [],
-     }
+  ┌─ features/numeric_sizes.fe:4:19
+  │
+4 │         return u8(0)
+  │                   ^ u8: Value => None
+
+note: 
+  ┌─ features/numeric_sizes.fe:4:16
+  │
+4 │         return u8(0)
+  │                ^^^^^ u8: Value => None
+
+note: 
+  ┌─ features/numeric_sizes.fe:7:20
+  │
+7 │         return u16(0)
+  │                    ^ u16: Value => None
+
+note: 
+  ┌─ features/numeric_sizes.fe:7:16
+  │
+7 │         return u16(0)
+  │                ^^^^^^ u16: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:10:20
+   │
+10 │         return u32(0)
+   │                    ^ u32: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:10:16
+   │
+10 │         return u32(0)
+   │                ^^^^^^ u32: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:13:20
+   │
+13 │         return u64(0)
+   │                    ^ u64: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:13:16
+   │
+13 │         return u64(0)
+   │                ^^^^^^ u64: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:16:21
+   │
+16 │         return u128(0)
+   │                     ^ u128: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:16:16
+   │
+16 │         return u128(0)
+   │                ^^^^^^^ u128: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:19:21
+   │
+19 │         return u256(0)
+   │                     ^ u256: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:19:16
+   │
+19 │         return u256(0)
+   │                ^^^^^^^ u256: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:22:20
+   │
+22 │         return i8(-128)
+   │                    ^^^ u256: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:22:19
+   │
+22 │         return i8(-128)
+   │                   ^^^^ i8: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:22:16
+   │
+22 │         return i8(-128)
+   │                ^^^^^^^^ i8: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:25:21
+   │
+25 │         return i16(-32768)
+   │                     ^^^^^ u256: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:25:20
+   │
+25 │         return i16(-32768)
+   │                    ^^^^^^ i16: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:25:16
+   │
+25 │         return i16(-32768)
+   │                ^^^^^^^^^^^ i16: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:28:21
+   │
+28 │         return i32(-2147483648)
+   │                     ^^^^^^^^^^ u256: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:28:20
+   │
+28 │         return i32(-2147483648)
+   │                    ^^^^^^^^^^^ i32: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:28:16
+   │
+28 │         return i32(-2147483648)
+   │                ^^^^^^^^^^^^^^^^ i32: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:31:21
+   │
+31 │         return i64(-9223372036854775808)
+   │                     ^^^^^^^^^^^^^^^^^^^ u256: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:31:20
+   │
+31 │         return i64(-9223372036854775808)
+   │                    ^^^^^^^^^^^^^^^^^^^^ i64: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:31:16
+   │
+31 │         return i64(-9223372036854775808)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^ i64: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:34:22
+   │
+34 │         return i128(-170141183460469231731687303715884105728)
+   │                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:34:21
+   │
+34 │         return i128(-170141183460469231731687303715884105728)
+   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i128: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:34:16
+   │
+34 │         return i128(-170141183460469231731687303715884105728)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i128: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:37:22
+   │
+37 │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
+   │                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:37:21
+   │
+37 │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
+   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i256: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:37:16
+   │
+37 │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i256: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:40:19
+   │
+40 │         return u8(255)
+   │                   ^^^ u8: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:40:16
+   │
+40 │         return u8(255)
+   │                ^^^^^^^ u8: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:43:20
+   │
+43 │         return u16(65535)
+   │                    ^^^^^ u16: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:43:16
+   │
+43 │         return u16(65535)
+   │                ^^^^^^^^^^ u16: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:46:20
+   │
+46 │         return u32(4294967295)
+   │                    ^^^^^^^^^^ u32: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:46:16
+   │
+46 │         return u32(4294967295)
+   │                ^^^^^^^^^^^^^^^ u32: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:49:20
+   │
+49 │         return u64(18446744073709551615)
+   │                    ^^^^^^^^^^^^^^^^^^^^ u64: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:49:16
+   │
+49 │         return u64(18446744073709551615)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^ u64: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:52:21
+   │
+52 │         return u128(340282366920938463463374607431768211455)
+   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u128: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:52:16
+   │
+52 │         return u128(340282366920938463463374607431768211455)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u128: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:55:21
+   │
+55 │         return u256(115792089237316195423570985008687907853269984665640564039457584007913129639935)
+   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:55:16
+   │
+55 │         return u256(115792089237316195423570985008687907853269984665640564039457584007913129639935)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:58:19
+   │
+58 │         return i8(127)
+   │                   ^^^ i8: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:58:16
+   │
+58 │         return i8(127)
+   │                ^^^^^^^ i8: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:61:20
+   │
+61 │         return i16(32767)
+   │                    ^^^^^ i16: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:61:16
+   │
+61 │         return i16(32767)
+   │                ^^^^^^^^^^ i16: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:64:20
+   │
+64 │         return i32(2147483647)
+   │                    ^^^^^^^^^^ i32: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:64:16
+   │
+64 │         return i32(2147483647)
+   │                ^^^^^^^^^^^^^^^ i32: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:67:20
+   │
+67 │         return i64(9223372036854775807)
+   │                    ^^^^^^^^^^^^^^^^^^^ i64: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:67:16
+   │
+67 │         return i64(9223372036854775807)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^ i64: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:70:21
+   │
+70 │         return i128(170141183460469231731687303715884105727)
+   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i128: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:70:16
+   │
+70 │         return i128(170141183460469231731687303715884105727)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i128: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:73:21
+   │
+73 │         return i256(57896044618658097711785492504343953926634992332820282019728792003956564819967)
+   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i256: Value => None
+
+note: 
+   ┌─ features/numeric_sizes.fe:73:16
+   │
+73 │         return i256(57896044618658097711785492504343953926634992332820282019728792003956564819967)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i256: Value => None
 
 note: 
   ┌─ features/numeric_sizes.fe:4:16
@@ -2147,293 +1094,5 @@ note:
              ),
          ),
      }
-
-note: 
-  ┌─ features/numeric_sizes.fe:3:28
-  │
-3 │     pub fn get_u8_min() -> u8:
-  │                            ^^ attributes hash: 3165084411644393001
-  │
-  = Base(
-        Numeric(
-            U8,
-        ),
-    )
-
-note: 
-  ┌─ features/numeric_sizes.fe:6:29
-  │
-6 │     pub fn get_u16_min() -> u16:
-  │                             ^^^ attributes hash: 10482216811962112628
-  │
-  = Base(
-        Numeric(
-            U16,
-        ),
-    )
-
-note: 
-  ┌─ features/numeric_sizes.fe:9:29
-  │
-9 │     pub fn get_u32_min() -> u32:
-  │                             ^^^ attributes hash: 6988938628910073395
-  │
-  = Base(
-        Numeric(
-            U32,
-        ),
-    )
-
-note: 
-   ┌─ features/numeric_sizes.fe:12:29
-   │
-12 │     pub fn get_u64_min() -> u64:
-   │                             ^^^ attributes hash: 9157081425890653064
-   │
-   = Base(
-         Numeric(
-             U64,
-         ),
-     )
-
-note: 
-   ┌─ features/numeric_sizes.fe:15:30
-   │
-15 │     pub fn get_u128_min() -> u128:
-   │                              ^^^^ attributes hash: 6162263163478414243
-   │
-   = Base(
-         Numeric(
-             U128,
-         ),
-     )
-
-note: 
-   ┌─ features/numeric_sizes.fe:18:30
-   │
-18 │     pub fn get_u256_min() -> u256:
-   │                              ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
-
-note: 
-   ┌─ features/numeric_sizes.fe:21:28
-   │
-21 │     pub fn get_i8_min() -> i8:
-   │                            ^^ attributes hash: 15894395880381322973
-   │
-   = Base(
-         Numeric(
-             I8,
-         ),
-     )
-
-note: 
-   ┌─ features/numeric_sizes.fe:24:29
-   │
-24 │     pub fn get_i16_min() -> i16:
-   │                             ^^^ attributes hash: 13881948389070133681
-   │
-   = Base(
-         Numeric(
-             I16,
-         ),
-     )
-
-note: 
-   ┌─ features/numeric_sizes.fe:27:29
-   │
-27 │     pub fn get_i32_min() -> i32:
-   │                             ^^^ attributes hash: 3989691230564290788
-   │
-   = Base(
-         Numeric(
-             I32,
-         ),
-     )
-
-note: 
-   ┌─ features/numeric_sizes.fe:30:29
-   │
-30 │     pub fn get_i64_min() -> i64:
-   │                             ^^^ attributes hash: 4061011363657204065
-   │
-   = Base(
-         Numeric(
-             I64,
-         ),
-     )
-
-note: 
-   ┌─ features/numeric_sizes.fe:33:30
-   │
-33 │     pub fn get_i128_min() -> i128:
-   │                              ^^^^ attributes hash: 1662973713176693737
-   │
-   = Base(
-         Numeric(
-             I128,
-         ),
-     )
-
-note: 
-   ┌─ features/numeric_sizes.fe:36:30
-   │
-36 │     pub fn get_i256_min() -> i256:
-   │                              ^^^^ attributes hash: 11707372354960146103
-   │
-   = Base(
-         Numeric(
-             I256,
-         ),
-     )
-
-note: 
-   ┌─ features/numeric_sizes.fe:39:28
-   │
-39 │     pub fn get_u8_max() -> u8:
-   │                            ^^ attributes hash: 3165084411644393001
-   │
-   = Base(
-         Numeric(
-             U8,
-         ),
-     )
-
-note: 
-   ┌─ features/numeric_sizes.fe:42:29
-   │
-42 │     pub fn get_u16_max() -> u16:
-   │                             ^^^ attributes hash: 10482216811962112628
-   │
-   = Base(
-         Numeric(
-             U16,
-         ),
-     )
-
-note: 
-   ┌─ features/numeric_sizes.fe:45:29
-   │
-45 │     pub fn get_u32_max() -> u32:
-   │                             ^^^ attributes hash: 6988938628910073395
-   │
-   = Base(
-         Numeric(
-             U32,
-         ),
-     )
-
-note: 
-   ┌─ features/numeric_sizes.fe:48:29
-   │
-48 │     pub fn get_u64_max() -> u64:
-   │                             ^^^ attributes hash: 9157081425890653064
-   │
-   = Base(
-         Numeric(
-             U64,
-         ),
-     )
-
-note: 
-   ┌─ features/numeric_sizes.fe:51:30
-   │
-51 │     pub fn get_u128_max() -> u128:
-   │                              ^^^^ attributes hash: 6162263163478414243
-   │
-   = Base(
-         Numeric(
-             U128,
-         ),
-     )
-
-note: 
-   ┌─ features/numeric_sizes.fe:54:30
-   │
-54 │     pub fn get_u256_max() -> u256:
-   │                              ^^^^ attributes hash: 4293763436908729629
-   │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
-
-note: 
-   ┌─ features/numeric_sizes.fe:57:28
-   │
-57 │     pub fn get_i8_max() -> i8:
-   │                            ^^ attributes hash: 15894395880381322973
-   │
-   = Base(
-         Numeric(
-             I8,
-         ),
-     )
-
-note: 
-   ┌─ features/numeric_sizes.fe:60:29
-   │
-60 │     pub fn get_i16_max() -> i16:
-   │                             ^^^ attributes hash: 13881948389070133681
-   │
-   = Base(
-         Numeric(
-             I16,
-         ),
-     )
-
-note: 
-   ┌─ features/numeric_sizes.fe:63:29
-   │
-63 │     pub fn get_i32_max() -> i32:
-   │                             ^^^ attributes hash: 3989691230564290788
-   │
-   = Base(
-         Numeric(
-             I32,
-         ),
-     )
-
-note: 
-   ┌─ features/numeric_sizes.fe:66:29
-   │
-66 │     pub fn get_i64_max() -> i64:
-   │                             ^^^ attributes hash: 4061011363657204065
-   │
-   = Base(
-         Numeric(
-             I64,
-         ),
-     )
-
-note: 
-   ┌─ features/numeric_sizes.fe:69:30
-   │
-69 │     pub fn get_i128_max() -> i128:
-   │                              ^^^^ attributes hash: 1662973713176693737
-   │
-   = Base(
-         Numeric(
-             I128,
-         ),
-     )
-
-note: 
-   ┌─ features/numeric_sizes.fe:72:30
-   │
-72 │     pub fn get_i256_max() -> i256:
-   │                              ^^^^ attributes hash: 11707372354960146103
-   │
-   = Base(
-         Numeric(
-             I256,
-         ),
-     )
 
 

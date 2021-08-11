@@ -1,8 +1,7 @@
-use crate::context::Context;
-use crate::errors::{FatalError, TypeError};
-use crate::namespace::scopes::Scope;
+use crate::context::AnalyzerContext;
+use crate::errors::TypeError;
 use crate::namespace::types::{Array, Base, FeString, FixedSize, Integer, Map, Tuple, Type};
-use crate::traversal::expressions::validate_arg_count;
+use crate::traversal::call_args::validate_arg_count;
 use fe_common::diagnostics::Label;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
@@ -11,10 +10,9 @@ use vec1::Vec1;
 
 /// Maps a type description node to an enum type.
 pub fn type_desc(
-    scope: &Scope,
-    context: &mut Context,
+    context: &mut dyn AnalyzerContext,
     desc: &Node<fe::TypeDesc>,
-) -> Result<Type, FatalError> {
+) -> Result<Type, TypeError> {
     use Base::*;
     use Integer::*;
 
@@ -35,20 +33,20 @@ pub fn type_desc(
             "bool" => Type::Base(Bool),
             "address" => Type::Base(Address),
             base => {
-                if let Some(typ) = scope.module_scope().borrow().type_defs.get(base) {
-                    typ.clone()
+                if let Some(typ) = context.resolve_type(base) {
+                    typ?
                 } else {
                     context.error(
                         "undefined type",
                         desc.span,
                         "this type name has not been defined",
                     );
-                    return Err(FatalError::new());
+                    return Err(TypeError);
                 }
             }
         },
         fe::TypeDesc::Array { typ, dimension } => {
-            if let Type::Base(base) = type_desc(scope, context, typ)? {
+            if let Type::Base(base) = type_desc(context, typ)? {
                 Type::Array(Array {
                     inner: base,
                     size: *dimension,
@@ -59,45 +57,54 @@ pub fn type_desc(
                     typ.span,
                     "can't be stored in an array",
                 );
-                return Err(FatalError::new());
+                return Err(TypeError);
             }
         }
         fe::TypeDesc::Generic { base, args } => match base.kind.as_str() {
             "Map" => {
                 validate_arg_count(context, &base.kind, base.span, args, 2);
-                if args.kind.len() < 2 {
-                    return Err(FatalError::new());
-                }
-                match &args.kind[..2] {
-                    [fe::GenericArg::TypeDesc(from), fe::GenericArg::TypeDesc(to)] => {
-                        let key_type = type_desc(scope, context, from)?;
-                        if let Type::Base(base) = key_type {
-                            Type::Map(Map {
-                                key: base,
-                                value: Box::new(type_desc(scope, context, to)?),
-                            })
-                        } else {
-                            context.error(
-                                "`map` key must be a primitive type",
-                                from.span,
-                                "this can't be used as a map key",
-                            );
-                            return Err(FatalError::new());
-                        }
-                    }
-                    _ => {
-                        for arg in &args.kind[..2] {
-                            if let fe::GenericArg::Int(node) = arg {
+
+                let key = match args.kind.get(0) {
+                    Some(fe::GenericArg::TypeDesc(type_node)) => {
+                        match type_desc(context, type_node)? {
+                            Type::Base(base) => base,
+                            _ => {
                                 context.error(
-                                    "`map` key and value must be types",
-                                    node.span,
-                                    "this should be a type name",
+                                    "`Map` key must be a primitive type",
+                                    type_node.span,
+                                    "this can't be used as a Map key",
                                 );
+                                return Err(TypeError);
                             }
                         }
-                        return Err(FatalError::new());
                     }
-                }
+                    Some(fe::GenericArg::Int(node)) => {
+                        context.error(
+                            "`Map` key must be a type",
+                            node.span,
+                            "this should be a type name",
+                        );
+                        return Err(TypeError);
+                    }
+                    None => return Err(TypeError),
+                };
+                let value = match args.kind.get(1) {
+                    Some(fe::GenericArg::TypeDesc(type_node)) => type_desc(context, type_node)?,
+                    Some(fe::GenericArg::Int(node)) => {
+                        context.error(
+                            "`Map` value must be a type",
+                            node.span,
+                            "this should be a type name",
+                        );
+                        return Err(TypeError);
+                    }
+                    None => return Err(TypeError),
+                };
+
+                Type::Map(Map {
+                    key,
+                    value: Box::new(value),
+                })
             }
             "String" => match &args.kind[..] {
                 [fe::GenericArg::Int(len)] => Type::String(FeString { max_size: len.kind }),
@@ -107,7 +114,7 @@ pub fn type_desc(
                         vec![Label::primary(args.span, "invalid type parameter")],
                         vec!["Example: String<100>".into()],
                     );
-                    return Err(FatalError::new());
+                    return Err(TypeError);
                 }
             },
             _ => {
@@ -116,36 +123,30 @@ pub fn type_desc(
                     base.span,
                     "this type name has not been defined",
                 );
-                return Err(FatalError::new());
+                return Err(TypeError);
             }
         },
-        fe::TypeDesc::Tuple { items } => Type::Tuple(Tuple {
-            items: Vec1::try_from_vec(
-                items
-                    .iter()
-                    .map(|typ| type_desc_fixed_size(scope, context, typ))
-                    .collect::<Result<_, _>>()?,
-            )
-            .expect("tuple is empty"),
-        }),
+        fe::TypeDesc::Tuple { items } => {
+            let types = items
+                .iter()
+                .map(|typ| match FixedSize::try_from(type_desc(context, typ)?) {
+                    Ok(typ) => Ok(typ),
+                    Err(_) => {
+                        context.error(
+                            "tuple elements must have fixed size",
+                            typ.span,
+                            "this can't be stored in a tuple",
+                        );
+                        Err(TypeError)
+                    }
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            Type::Tuple(Tuple {
+                items: Vec1::try_from_vec(types).expect("tuple is empty"),
+            })
+        }
         fe::TypeDesc::Unit => Type::unit(),
     };
 
-    context.add_type_desc(desc, typ.clone());
     Ok(typ)
-}
-
-/// Maps a type description node to a fixed size enum type.
-pub fn type_desc_fixed_size(
-    scope: &Scope,
-    context: &mut Context,
-    desc: &Node<fe::TypeDesc>,
-) -> Result<FixedSize, FatalError> {
-    match FixedSize::try_from(type_desc(scope, context, desc)?) {
-        Err(TypeError) => {
-            context.error("Expected a value with a fixed size", desc.span, "");
-            Err(FatalError::new())
-        }
-        Ok(val) => Ok(val),
-    }
 }

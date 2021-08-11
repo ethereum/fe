@@ -1,140 +1,41 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/return_identity_u32.fe\", &src, &context)"
+expression: "build_snapshot(\"features/return_identity_u32.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "bar",
-                        params: [
-                            (
-                                "x",
-                                Base(
-                                    Numeric(
-                                        U32,
-                                    ),
-                                ),
-                            ),
-                        ],
-                        return_type: Base(
-                            Numeric(
-                                U32,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
-note: 
-  ┌─ features/return_identity_u32.fe:3:16
-  │
-3 │         return x
-  │                ^ attributes hash: 8114386917066957540
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U32,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
 note: 
   ┌─ features/return_identity_u32.fe:2:5
   │  
 2 │ ╭     pub fn bar(x: u32) -> u32:
 3 │ │         return x
-  │ ╰────────────────^ attributes hash: 10036473910648764226
+  │ ╰────────────────^ attributes hash: 13920885540407638237
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "bar",
+  = FunctionSignature {
         params: [
-            (
-                "x",
-                Base(
-                    Numeric(
-                        U32,
-                    ),
-                ),
-            ),
-        ],
-        return_type: Base(
-            Numeric(
-                U32,
-            ),
-        ),
-    }
-
-note: 
-  ┌─ features/return_identity_u32.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │     pub fn bar(x: u32) -> u32:
-3 │ │         return x
-  │ ╰────────────────^ attributes hash: 14079273923618819418
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "bar",
-                params: [
-                    (
-                        "x",
-                        Base(
-                            Numeric(
-                                U32,
-                            ),
+            FunctionParam {
+                name: "x",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U32,
                         ),
-                    ),
-                ],
-                return_type: Base(
-                    Numeric(
-                        U32,
                     ),
                 ),
             },
         ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [],
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U32,
+                ),
+            ),
+        ),
     }
 
 note: 
-  ┌─ features/return_identity_u32.fe:2:19
+  ┌─ features/return_identity_u32.fe:3:16
   │
-2 │     pub fn bar(x: u32) -> u32:
-  │                   ^^^ attributes hash: 6988938628910073395
-  │
-  = Base(
-        Numeric(
-            U32,
-        ),
-    )
-
-note: 
-  ┌─ features/return_identity_u32.fe:2:27
-  │
-2 │     pub fn bar(x: u32) -> u32:
-  │                           ^^^ attributes hash: 6988938628910073395
-  │
-  = Base(
-        Numeric(
-            U32,
-        ),
-    )
+3 │         return x
+  │                ^ u32: Value => None
 
 

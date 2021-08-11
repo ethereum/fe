@@ -1,581 +1,51 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/nested_map.fe\", &src, &context)"
+expression: "build_snapshot(\"features/nested_map.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "read_bar",
-                        params: [
-                            (
-                                "a",
-                                Base(
-                                    Address,
-                                ),
-                            ),
-                            (
-                                "b",
-                                Base(
-                                    Address,
-                                ),
-                            ),
-                        ],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "read_baz",
-                        params: [
-                            (
-                                "a",
-                                Base(
-                                    Address,
-                                ),
-                            ),
-                            (
-                                "b",
-                                Base(
-                                    Numeric(
-                                        U256,
-                                    ),
-                                ),
-                            ),
-                        ],
-                        return_type: Base(
-                            Bool,
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "write_bar",
-                        params: [
-                            (
-                                "a",
-                                Base(
-                                    Address,
-                                ),
-                            ),
-                            (
-                                "b",
-                                Base(
-                                    Address,
-                                ),
-                            ),
-                            (
-                                "value",
-                                Base(
-                                    Numeric(
-                                        U256,
-                                    ),
-                                ),
-                            ),
-                        ],
-                        return_type: Base(
-                            Unit,
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "write_baz",
-                        params: [
-                            (
-                                "a",
-                                Base(
-                                    Address,
-                                ),
-                            ),
-                            (
-                                "b",
-                                Base(
-                                    Numeric(
-                                        U256,
-                                    ),
-                                ),
-                            ),
-                            (
-                                "value",
-                                Base(
-                                    Bool,
-                                ),
-                            ),
-                        ],
-                        return_type: Base(
-                            Unit,
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
+note: 
+  ┌─ features/nested_map.fe:2:5
+  │
+2 │     bar: Map<address, Map<address, u256>>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, Map<address, u256>>
 
 note: 
-  ┌─ features/nested_map.fe:6:16
+  ┌─ features/nested_map.fe:3:5
   │
-6 │         return self.bar[a][b]
-  │                ^^^^^^^^ attributes hash: 17521865670528208847
-  │
-  = ExpressionAttributes {
-        typ: Map(
-            Map {
-                key: Address,
-                value: Map(
-                    Map {
-                        key: Address,
-                        value: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ),
-            },
-        ),
-        location: Storage {
-            nonce: Some(
-                0,
-            ),
-        },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/nested_map.fe:6:25
-  │
-6 │         return self.bar[a][b]
-  │                         ^ attributes hash: 16804606599831072828
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Address,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/nested_map.fe:6:16
-  │
-6 │         return self.bar[a][b]
-  │                ^^^^^^^^^^^ attributes hash: 13465984430266063783
-  │
-  = ExpressionAttributes {
-        typ: Map(
-            Map {
-                key: Address,
-                value: Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-            },
-        ),
-        location: Storage {
-            nonce: None,
-        },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/nested_map.fe:6:28
-  │
-6 │         return self.bar[a][b]
-  │                            ^ attributes hash: 16804606599831072828
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Address,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/nested_map.fe:6:16
-  │
-6 │         return self.bar[a][b]
-  │                ^^^^^^^^^^^^^^ attributes hash: 2750573035226013709
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Storage {
-            nonce: None,
-        },
-        move_location: Some(
-            Value,
-        ),
-    }
-
-note: 
-  ┌─ features/nested_map.fe:9:9
-  │
-9 │         self.bar[a][b] = value
-  │         ^^^^^^^^ attributes hash: 17521865670528208847
-  │
-  = ExpressionAttributes {
-        typ: Map(
-            Map {
-                key: Address,
-                value: Map(
-                    Map {
-                        key: Address,
-                        value: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ),
-            },
-        ),
-        location: Storage {
-            nonce: Some(
-                0,
-            ),
-        },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/nested_map.fe:9:18
-  │
-9 │         self.bar[a][b] = value
-  │                  ^ attributes hash: 16804606599831072828
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Address,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/nested_map.fe:9:9
-  │
-9 │         self.bar[a][b] = value
-  │         ^^^^^^^^^^^ attributes hash: 13465984430266063783
-  │
-  = ExpressionAttributes {
-        typ: Map(
-            Map {
-                key: Address,
-                value: Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-            },
-        ),
-        location: Storage {
-            nonce: None,
-        },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/nested_map.fe:9:21
-  │
-9 │         self.bar[a][b] = value
-  │                     ^ attributes hash: 16804606599831072828
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Address,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/nested_map.fe:9:9
-  │
-9 │         self.bar[a][b] = value
-  │         ^^^^^^^^^^^^^^ attributes hash: 6410008273718378934
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Storage {
-            nonce: None,
-        },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/nested_map.fe:9:26
-  │
-9 │         self.bar[a][b] = value
-  │                          ^^^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-   ┌─ features/nested_map.fe:12:16
-   │
-12 │         return self.baz[a][b]
-   │                ^^^^^^^^ attributes hash: 6549007927796656952
-   │
-   = ExpressionAttributes {
-         typ: Map(
-             Map {
-                 key: Address,
-                 value: Map(
-                     Map {
-                         key: Numeric(
-                             U256,
-                         ),
-                         value: Base(
-                             Bool,
-                         ),
-                     },
-                 ),
-             },
-         ),
-         location: Storage {
-             nonce: Some(
-                 1,
-             ),
-         },
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/nested_map.fe:12:25
-   │
-12 │         return self.baz[a][b]
-   │                         ^ attributes hash: 16804606599831072828
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/nested_map.fe:12:16
-   │
-12 │         return self.baz[a][b]
-   │                ^^^^^^^^^^^ attributes hash: 1010923659305716869
-   │
-   = ExpressionAttributes {
-         typ: Map(
-             Map {
-                 key: Numeric(
-                     U256,
-                 ),
-                 value: Base(
-                     Bool,
-                 ),
-             },
-         ),
-         location: Storage {
-             nonce: None,
-         },
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/nested_map.fe:12:28
-   │
-12 │         return self.baz[a][b]
-   │                            ^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/nested_map.fe:12:16
-   │
-12 │         return self.baz[a][b]
-   │                ^^^^^^^^^^^^^^ attributes hash: 13987914872626472887
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Storage {
-             nonce: None,
-         },
-         move_location: Some(
-             Value,
-         ),
-     }
-
-note: 
-   ┌─ features/nested_map.fe:15:9
-   │
-15 │         self.baz[a][b] = value
-   │         ^^^^^^^^ attributes hash: 6549007927796656952
-   │
-   = ExpressionAttributes {
-         typ: Map(
-             Map {
-                 key: Address,
-                 value: Map(
-                     Map {
-                         key: Numeric(
-                             U256,
-                         ),
-                         value: Base(
-                             Bool,
-                         ),
-                     },
-                 ),
-             },
-         ),
-         location: Storage {
-             nonce: Some(
-                 1,
-             ),
-         },
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/nested_map.fe:15:18
-   │
-15 │         self.baz[a][b] = value
-   │                  ^ attributes hash: 16804606599831072828
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Address,
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/nested_map.fe:15:9
-   │
-15 │         self.baz[a][b] = value
-   │         ^^^^^^^^^^^ attributes hash: 1010923659305716869
-   │
-   = ExpressionAttributes {
-         typ: Map(
-             Map {
-                 key: Numeric(
-                     U256,
-                 ),
-                 value: Base(
-                     Bool,
-                 ),
-             },
-         ),
-         location: Storage {
-             nonce: None,
-         },
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/nested_map.fe:15:21
-   │
-15 │         self.baz[a][b] = value
-   │                     ^ attributes hash: 1230752710897721197
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-         location: Value,
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/nested_map.fe:15:9
-   │
-15 │         self.baz[a][b] = value
-   │         ^^^^^^^^^^^^^^ attributes hash: 18252780794751918399
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Storage {
-             nonce: None,
-         },
-         move_location: None,
-     }
-
-note: 
-   ┌─ features/nested_map.fe:15:26
-   │
-15 │         self.baz[a][b] = value
-   │                          ^^^^^ attributes hash: 519621297275845584
-   │
-   = ExpressionAttributes {
-         typ: Base(
-             Bool,
-         ),
-         location: Value,
-         move_location: None,
-     }
+3 │     baz: Map<address, Map<u256, bool>>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, Map<u256, bool>>
 
 note: 
   ┌─ features/nested_map.fe:5:5
   │  
 5 │ ╭     pub fn read_bar(a: address, b: address) -> u256:
 6 │ │         return self.bar[a][b]
-  │ ╰─────────────────────────────^ attributes hash: 10024110223657719649
+  │ ╰─────────────────────────────^ attributes hash: 1651558539348251726
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "read_bar",
+  = FunctionSignature {
         params: [
-            (
-                "a",
-                Base(
-                    Address,
+            FunctionParam {
+                name: "a",
+                typ: Ok(
+                    Base(
+                        Address,
+                    ),
                 ),
-            ),
-            (
-                "b",
-                Base(
-                    Address,
+            },
+            FunctionParam {
+                name: "b",
+                typ: Ok(
+                    Base(
+                        Address,
+                    ),
                 ),
-            ),
+            },
         ],
-        return_type: Base(
-            Numeric(
-                U256,
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U256,
+                ),
             ),
         ),
     }
@@ -585,35 +55,41 @@ note:
   │  
 8 │ ╭     pub fn write_bar(a: address, b: address, value: u256):
 9 │ │         self.bar[a][b] = value
-  │ ╰──────────────────────────────^ attributes hash: 14129922578398797319
+  │ ╰──────────────────────────────^ attributes hash: 15634013844749287831
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "write_bar",
+  = FunctionSignature {
         params: [
-            (
-                "a",
-                Base(
-                    Address,
-                ),
-            ),
-            (
-                "b",
-                Base(
-                    Address,
-                ),
-            ),
-            (
-                "value",
-                Base(
-                    Numeric(
-                        U256,
+            FunctionParam {
+                name: "a",
+                typ: Ok(
+                    Base(
+                        Address,
                     ),
                 ),
-            ),
+            },
+            FunctionParam {
+                name: "b",
+                typ: Ok(
+                    Base(
+                        Address,
+                    ),
+                ),
+            },
+            FunctionParam {
+                name: "value",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U256,
+                        ),
+                    ),
+                ),
+            },
         ],
-        return_type: Base(
-            Unit,
+        return_type: Ok(
+            Base(
+                Unit,
+            ),
         ),
     }
 
@@ -622,29 +98,33 @@ note:
    │  
 11 │ ╭     pub fn read_baz(a: address, b: u256) -> bool:
 12 │ │         return self.baz[a][b]
-   │ ╰─────────────────────────────^ attributes hash: 173287432308673817
+   │ ╰─────────────────────────────^ attributes hash: 7209940387781148962
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "read_baz",
+   = FunctionSignature {
          params: [
-             (
-                 "a",
-                 Base(
-                     Address,
-                 ),
-             ),
-             (
-                 "b",
-                 Base(
-                     Numeric(
-                         U256,
+             FunctionParam {
+                 name: "a",
+                 typ: Ok(
+                     Base(
+                         Address,
                      ),
                  ),
-             ),
+             },
+             FunctionParam {
+                 name: "b",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 ),
+             },
          ],
-         return_type: Base(
-             Bool,
+         return_type: Ok(
+             Base(
+                 Bool,
+             ),
          ),
      }
 
@@ -653,431 +133,174 @@ note:
    │  
 14 │ ╭     pub fn write_baz(a: address, b: u256, value: bool):
 15 │ │         self.baz[a][b] = value
-   │ ╰──────────────────────────────^ attributes hash: 14658687342455194127
+   │ ╰──────────────────────────────^ attributes hash: 10489623509827031309
    │  
-   = FunctionAttributes {
-         is_public: true,
-         name: "write_baz",
+   = FunctionSignature {
          params: [
-             (
-                 "a",
-                 Base(
-                     Address,
-                 ),
-             ),
-             (
-                 "b",
-                 Base(
-                     Numeric(
-                         U256,
+             FunctionParam {
+                 name: "a",
+                 typ: Ok(
+                     Base(
+                         Address,
                      ),
                  ),
-             ),
-             (
-                 "value",
-                 Base(
-                     Bool,
+             },
+             FunctionParam {
+                 name: "b",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
                  ),
-             ),
+             },
+             FunctionParam {
+                 name: "value",
+                 typ: Ok(
+                     Base(
+                         Bool,
+                     ),
+                 ),
+             },
          ],
-         return_type: Base(
-             Unit,
+         return_type: Ok(
+             Base(
+                 Unit,
+             ),
          ),
      }
 
 note: 
-   ┌─ features/nested_map.fe:1:1
-   │  
- 1 │ ╭ contract Foo:
- 2 │ │     bar: Map<address, Map<address, u256>>
- 3 │ │     baz: Map<address, Map<u256, bool>>
- 4 │ │ 
-   · │
-14 │ │     pub fn write_baz(a: address, b: u256, value: bool):
-15 │ │         self.baz[a][b] = value
-   │ ╰──────────────────────────────^ attributes hash: 9312017443177892010
-   │  
-   = ContractAttributes {
-         public_functions: [
-             FunctionAttributes {
-                 is_public: true,
-                 name: "read_bar",
-                 params: [
-                     (
-                         "a",
-                         Base(
-                             Address,
-                         ),
-                     ),
-                     (
-                         "b",
-                         Base(
-                             Address,
-                         ),
-                     ),
-                 ],
-                 return_type: Base(
-                     Numeric(
-                         U256,
-                     ),
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "read_baz",
-                 params: [
-                     (
-                         "a",
-                         Base(
-                             Address,
-                         ),
-                     ),
-                     (
-                         "b",
-                         Base(
-                             Numeric(
-                                 U256,
-                             ),
-                         ),
-                     ),
-                 ],
-                 return_type: Base(
-                     Bool,
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "write_bar",
-                 params: [
-                     (
-                         "a",
-                         Base(
-                             Address,
-                         ),
-                     ),
-                     (
-                         "b",
-                         Base(
-                             Address,
-                         ),
-                     ),
-                     (
-                         "value",
-                         Base(
-                             Numeric(
-                                 U256,
-                             ),
-                         ),
-                     ),
-                 ],
-                 return_type: Base(
-                     Unit,
-                 ),
-             },
-             FunctionAttributes {
-                 is_public: true,
-                 name: "write_baz",
-                 params: [
-                     (
-                         "a",
-                         Base(
-                             Address,
-                         ),
-                     ),
-                     (
-                         "b",
-                         Base(
-                             Numeric(
-                                 U256,
-                             ),
-                         ),
-                     ),
-                     (
-                         "value",
-                         Base(
-                             Bool,
-                         ),
-                     ),
-                 ],
-                 return_type: Base(
-                     Unit,
-                 ),
-             },
-         ],
-         init_function: None,
-         events: [],
-         structs: [],
-         external_contracts: [],
-     }
+  ┌─ features/nested_map.fe:6:16
+  │
+6 │         return self.bar[a][b]
+  │                ^^^^^^^^ Map<address, Map<address, u256>>: Storage { nonce: Some(0) } => None
 
 note: 
-  ┌─ features/nested_map.fe:5:24
+  ┌─ features/nested_map.fe:6:25
   │
-5 │     pub fn read_bar(a: address, b: address) -> u256:
-  │                        ^^^^^^^ attributes hash: 928477466454064117
-  │
-  = Base(
-        Address,
-    )
+6 │         return self.bar[a][b]
+  │                         ^ address: Value => None
 
 note: 
-  ┌─ features/nested_map.fe:5:36
+  ┌─ features/nested_map.fe:6:16
   │
-5 │     pub fn read_bar(a: address, b: address) -> u256:
-  │                                    ^^^^^^^ attributes hash: 928477466454064117
-  │
-  = Base(
-        Address,
-    )
+6 │         return self.bar[a][b]
+  │                ^^^^^^^^^^^ Map<address, u256>: Storage { nonce: None } => None
 
 note: 
-  ┌─ features/nested_map.fe:5:48
+  ┌─ features/nested_map.fe:6:28
   │
-5 │     pub fn read_bar(a: address, b: address) -> u256:
-  │                                                ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+6 │         return self.bar[a][b]
+  │                            ^ address: Value => None
 
 note: 
-  ┌─ features/nested_map.fe:8:25
+  ┌─ features/nested_map.fe:6:16
   │
-8 │     pub fn write_bar(a: address, b: address, value: u256):
-  │                         ^^^^^^^ attributes hash: 928477466454064117
-  │
-  = Base(
-        Address,
-    )
+6 │         return self.bar[a][b]
+  │                ^^^^^^^^^^^^^^ u256: Storage { nonce: None } => Some(Value)
 
 note: 
-  ┌─ features/nested_map.fe:8:37
+  ┌─ features/nested_map.fe:9:9
   │
-8 │     pub fn write_bar(a: address, b: address, value: u256):
-  │                                     ^^^^^^^ attributes hash: 928477466454064117
-  │
-  = Base(
-        Address,
-    )
+9 │         self.bar[a][b] = value
+  │         ^^^^^^^^ Map<address, Map<address, u256>>: Storage { nonce: Some(0) } => None
 
 note: 
-  ┌─ features/nested_map.fe:8:53
+  ┌─ features/nested_map.fe:9:18
   │
-8 │     pub fn write_bar(a: address, b: address, value: u256):
-  │                                                     ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+9 │         self.bar[a][b] = value
+  │                  ^ address: Value => None
 
 note: 
-   ┌─ features/nested_map.fe:11:24
+  ┌─ features/nested_map.fe:9:9
+  │
+9 │         self.bar[a][b] = value
+  │         ^^^^^^^^^^^ Map<address, u256>: Storage { nonce: None } => None
+
+note: 
+  ┌─ features/nested_map.fe:9:21
+  │
+9 │         self.bar[a][b] = value
+  │                     ^ address: Value => None
+
+note: 
+  ┌─ features/nested_map.fe:9:9
+  │
+9 │         self.bar[a][b] = value
+  │         ^^^^^^^^^^^^^^ u256: Storage { nonce: None } => None
+
+note: 
+  ┌─ features/nested_map.fe:9:26
+  │
+9 │         self.bar[a][b] = value
+  │                          ^^^^^ u256: Value => None
+
+note: 
+   ┌─ features/nested_map.fe:12:16
    │
-11 │     pub fn read_baz(a: address, b: u256) -> bool:
-   │                        ^^^^^^^ attributes hash: 928477466454064117
+12 │         return self.baz[a][b]
+   │                ^^^^^^^^ Map<address, Map<u256, bool>>: Storage { nonce: Some(1) } => None
+
+note: 
+   ┌─ features/nested_map.fe:12:25
    │
-   = Base(
-         Address,
-     )
+12 │         return self.baz[a][b]
+   │                         ^ address: Value => None
 
 note: 
-   ┌─ features/nested_map.fe:11:36
+   ┌─ features/nested_map.fe:12:16
    │
-11 │     pub fn read_baz(a: address, b: u256) -> bool:
-   │                                    ^^^^ attributes hash: 4293763436908729629
+12 │         return self.baz[a][b]
+   │                ^^^^^^^^^^^ Map<u256, bool>: Storage { nonce: None } => None
+
+note: 
+   ┌─ features/nested_map.fe:12:28
    │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
+12 │         return self.baz[a][b]
+   │                            ^ u256: Value => None
 
 note: 
-   ┌─ features/nested_map.fe:11:45
+   ┌─ features/nested_map.fe:12:16
    │
-11 │     pub fn read_baz(a: address, b: u256) -> bool:
-   │                                             ^^^^ attributes hash: 5425972608982369985
+12 │         return self.baz[a][b]
+   │                ^^^^^^^^^^^^^^ bool: Storage { nonce: None } => Some(Value)
+
+note: 
+   ┌─ features/nested_map.fe:15:9
    │
-   = Base(
-         Bool,
-     )
+15 │         self.baz[a][b] = value
+   │         ^^^^^^^^ Map<address, Map<u256, bool>>: Storage { nonce: Some(1) } => None
 
 note: 
-   ┌─ features/nested_map.fe:14:25
+   ┌─ features/nested_map.fe:15:18
    │
-14 │     pub fn write_baz(a: address, b: u256, value: bool):
-   │                         ^^^^^^^ attributes hash: 928477466454064117
+15 │         self.baz[a][b] = value
+   │                  ^ address: Value => None
+
+note: 
+   ┌─ features/nested_map.fe:15:9
    │
-   = Base(
-         Address,
-     )
+15 │         self.baz[a][b] = value
+   │         ^^^^^^^^^^^ Map<u256, bool>: Storage { nonce: None } => None
 
 note: 
-   ┌─ features/nested_map.fe:14:37
+   ┌─ features/nested_map.fe:15:21
    │
-14 │     pub fn write_baz(a: address, b: u256, value: bool):
-   │                                     ^^^^ attributes hash: 4293763436908729629
+15 │         self.baz[a][b] = value
+   │                     ^ u256: Value => None
+
+note: 
+   ┌─ features/nested_map.fe:15:9
    │
-   = Base(
-         Numeric(
-             U256,
-         ),
-     )
+15 │         self.baz[a][b] = value
+   │         ^^^^^^^^^^^^^^ bool: Storage { nonce: None } => None
 
 note: 
-   ┌─ features/nested_map.fe:14:50
+   ┌─ features/nested_map.fe:15:26
    │
-14 │     pub fn write_baz(a: address, b: u256, value: bool):
-   │                                                  ^^^^ attributes hash: 5425972608982369985
-   │
-   = Base(
-         Bool,
-     )
-
-note: 
-  ┌─ features/nested_map.fe:2:14
-  │
-2 │     bar: Map<address, Map<address, u256>>
-  │              ^^^^^^^ attributes hash: 928477466454064117
-  │
-  = Base(
-        Address,
-    )
-
-note: 
-  ┌─ features/nested_map.fe:2:27
-  │
-2 │     bar: Map<address, Map<address, u256>>
-  │                           ^^^^^^^ attributes hash: 928477466454064117
-  │
-  = Base(
-        Address,
-    )
-
-note: 
-  ┌─ features/nested_map.fe:2:36
-  │
-2 │     bar: Map<address, Map<address, u256>>
-  │                                    ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/nested_map.fe:2:23
-  │
-2 │     bar: Map<address, Map<address, u256>>
-  │                       ^^^^^^^^^^^^^^^^^^ attributes hash: 6665160789021782098
-  │
-  = Map(
-        Map {
-            key: Address,
-            value: Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        },
-    )
-
-note: 
-  ┌─ features/nested_map.fe:2:10
-  │
-2 │     bar: Map<address, Map<address, u256>>
-  │          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 5466994551336559747
-  │
-  = Map(
-        Map {
-            key: Address,
-            value: Map(
-                Map {
-                    key: Address,
-                    value: Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                },
-            ),
-        },
-    )
-
-note: 
-  ┌─ features/nested_map.fe:3:14
-  │
-3 │     baz: Map<address, Map<u256, bool>>
-  │              ^^^^^^^ attributes hash: 928477466454064117
-  │
-  = Base(
-        Address,
-    )
-
-note: 
-  ┌─ features/nested_map.fe:3:27
-  │
-3 │     baz: Map<address, Map<u256, bool>>
-  │                           ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/nested_map.fe:3:33
-  │
-3 │     baz: Map<address, Map<u256, bool>>
-  │                                 ^^^^ attributes hash: 5425972608982369985
-  │
-  = Base(
-        Bool,
-    )
-
-note: 
-  ┌─ features/nested_map.fe:3:23
-  │
-3 │     baz: Map<address, Map<u256, bool>>
-  │                       ^^^^^^^^^^^^^^^ attributes hash: 12570503247450964282
-  │
-  = Map(
-        Map {
-            key: Numeric(
-                U256,
-            ),
-            value: Base(
-                Bool,
-            ),
-        },
-    )
-
-note: 
-  ┌─ features/nested_map.fe:3:10
-  │
-3 │     baz: Map<address, Map<u256, bool>>
-  │          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 17007185420661971694
-  │
-  = Map(
-        Map {
-            key: Address,
-            value: Map(
-                Map {
-                    key: Numeric(
-                        U256,
-                    ),
-                    value: Base(
-                        Bool,
-                    ),
-                },
-            ),
-        },
-    )
+15 │         self.baz[a][b] = value
+   │                          ^^^^^ bool: Value => None
 
 

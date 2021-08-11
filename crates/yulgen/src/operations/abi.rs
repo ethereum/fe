@@ -25,7 +25,7 @@ pub fn encode(types: &[AbiType], vals: Vec<yul::Expression>) -> yul::Expression 
 /// Returns an expression that gives size of the encoded values.
 ///
 /// It will sum up the sizes known at compile-time with the sizes known during runtime.
-pub fn encoding_size(types: &[AbiType], vals: Vec<yul::Expression>) -> yul::Expression {
+pub fn encoding_size(types: &[AbiType], vals: &[yul::Expression]) -> yul::Expression {
     let mut head_size = 0;
     let mut known_data_size = 0;
     let mut unknown_data_size = vec![];
@@ -37,7 +37,7 @@ pub fn encoding_size(types: &[AbiType], vals: Vec<yul::Expression>) -> yul::Expr
         match typ {
             AbiType::String { .. } => {
                 known_data_size += 32;
-                unknown_data_size.push(expression! { ceil32((mload([val]))) })
+                unknown_data_size.push(expression! { ceil32((mload([val.clone()]))) })
             }
             AbiType::Bytes { size } => known_data_size += 32 + ceil_32(*size),
             _ => {}

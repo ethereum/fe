@@ -1,6 +1,7 @@
 use fe_analyzer::namespace::types::{
     Array, Base, Contract, FeString, FixedSize, Integer, Struct, Tuple,
 };
+use fe_analyzer::AnalyzerDb;
 
 pub trait EvmSized {
     /// The amount of bytes used by the type when being stored.
@@ -64,7 +65,7 @@ impl EvmSized for Tuple {
 
 impl EvmSized for Struct {
     fn size(&self) -> usize {
-        self.fields.len() * 32
+        self.field_count * 32
     }
 }
 
@@ -99,18 +100,12 @@ pub enum AbiDecodeLocation {
     Memory,
 }
 
-pub fn to_abi_types<'a, T>(types: &'a [T]) -> Vec<AbiType>
-where
-    &'a T: Into<AbiType>,
-{
-    types.iter().map(|typ| typ.into()).collect()
+pub fn to_abi_types(db: &dyn AnalyzerDb, types: &[impl AsAbiType]) -> Vec<AbiType> {
+    types.iter().map(|typ| typ.as_abi_type(db)).collect()
 }
 
-pub fn to_abi_selector_names<'a, T>(types: &'a [T]) -> Vec<String>
-where
-    &'a T: Into<AbiType>,
-{
-    types.iter().map(|typ| typ.into().selector_name()).collect()
+pub fn to_abi_selector_names(types: &[AbiType]) -> Vec<String> {
+    types.iter().map(|typ| typ.selector_name()).collect()
 }
 
 impl AbiType {
@@ -175,22 +170,26 @@ impl AbiType {
     }
 }
 
-impl From<&FixedSize> for AbiType {
-    fn from(typ: &FixedSize) -> Self {
-        match typ {
-            FixedSize::Base(base) => base.into(),
-            FixedSize::Array(array) => array.into(),
-            FixedSize::Tuple(tuple) => tuple.into(),
-            FixedSize::String(string) => string.into(),
+pub trait AsAbiType {
+    fn as_abi_type(&self, db: &dyn AnalyzerDb) -> AbiType;
+}
+
+impl AsAbiType for FixedSize {
+    fn as_abi_type(&self, db: &dyn AnalyzerDb) -> AbiType {
+        match self {
+            FixedSize::Base(base) => base.as_abi_type(db),
+            FixedSize::Array(array) => array.as_abi_type(db),
+            FixedSize::Tuple(tuple) => tuple.as_abi_type(db),
+            FixedSize::String(string) => string.as_abi_type(db),
             FixedSize::Contract(_) => AbiType::Address,
-            FixedSize::Struct(val) => val.into(),
+            FixedSize::Struct(val) => val.as_abi_type(db),
         }
     }
 }
 
-impl From<&Base> for AbiType {
-    fn from(typ: &Base) -> Self {
-        match typ {
+impl AsAbiType for Base {
+    fn as_abi_type(&self, _db: &dyn AnalyzerDb) -> AbiType {
+        match self {
             Base::Numeric(integer) => {
                 let size = integer.size();
                 if integer.is_signed() {
@@ -206,45 +205,48 @@ impl From<&Base> for AbiType {
     }
 }
 
-impl From<&Array> for AbiType {
-    fn from(array: &Array) -> Self {
-        if matches!(array.inner, Base::Numeric(Integer::U8)) {
-            AbiType::Bytes { size: array.size }
+impl AsAbiType for Array {
+    fn as_abi_type(&self, db: &dyn AnalyzerDb) -> AbiType {
+        if matches!(self.inner, Base::Numeric(Integer::U8)) {
+            AbiType::Bytes { size: self.size }
         } else {
             AbiType::StaticArray {
-                inner: Box::new(AbiType::from(&array.inner)),
-                size: array.size,
+                inner: Box::new(self.inner.as_abi_type(db)),
+                size: self.size,
             }
         }
     }
 }
 
-impl From<&Struct> for AbiType {
-    fn from(_struct: &Struct) -> Self {
+impl AsAbiType for Struct {
+    fn as_abi_type(&self, db: &dyn AnalyzerDb) -> AbiType {
+        let components = self
+            .id
+            .all_fields(db)
+            .iter()
+            .map(|field| {
+                field
+                    .typ(db)
+                    .expect("struct field type error")
+                    .as_abi_type(db)
+            })
+            .collect();
+        AbiType::Tuple { components }
+    }
+}
+
+impl AsAbiType for Tuple {
+    fn as_abi_type(&self, db: &dyn AnalyzerDb) -> AbiType {
         AbiType::Tuple {
-            components: _struct.fields.iter().map(|(_, typ)| typ.into()).collect(),
+            components: self.items.iter().map(|typ| typ.as_abi_type(db)).collect(),
         }
     }
 }
 
-impl From<&Tuple> for AbiType {
-    fn from(tuple: &Tuple) -> Self {
-        AbiType::Tuple {
-            components: tuple.items.iter().map(|typ| typ.into()).collect(),
-        }
-    }
-}
-
-impl From<&FeString> for AbiType {
-    fn from(string: &FeString) -> Self {
+impl AsAbiType for FeString {
+    fn as_abi_type(&self, _db: &dyn AnalyzerDb) -> AbiType {
         AbiType::String {
-            max_size: string.max_size,
+            max_size: self.max_size,
         }
-    }
-}
-
-impl From<&AbiType> for AbiType {
-    fn from(typ: &AbiType) -> Self {
-        typ.to_owned()
     }
 }

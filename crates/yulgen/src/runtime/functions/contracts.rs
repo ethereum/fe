@@ -1,9 +1,10 @@
 use crate::names;
 use crate::names::abi as abi_names;
 use crate::operations::abi as abi_operations;
-use crate::types::{to_abi_selector_names, to_abi_types, AbiDecodeLocation, AbiType};
+use crate::types::{to_abi_selector_names, to_abi_types, AbiDecodeLocation, AsAbiType};
 use fe_abi::utils as abi_utils;
-use fe_analyzer::namespace::types::Contract;
+use fe_analyzer::namespace::items::ContractId;
+use fe_analyzer::AnalyzerDb;
 use yultsur::*;
 
 /// Return all contacts runtime functions
@@ -13,30 +14,33 @@ pub fn all() -> Vec<yul::Statement> {
 
 /// Builds a set of functions used to make calls to the given contract's public
 /// functions.
-pub fn calls(contract: Contract) -> Vec<yul::Statement> {
-    let contract_name = contract.name;
+pub fn calls(db: &dyn AnalyzerDb, contract: ContractId) -> Vec<yul::Statement> {
+    let contract_name = contract.name(db);
     contract
-        .functions
-        .into_iter()
-        .map(|function| {
+        .functions(db)
+        .iter()
+        .map(|(name, function)| {
+            let signature = function.signature(db);
+            let return_type = signature.return_type.clone().expect("fn return type error");
+
             // get the name of the call function and its parameters
-            let function_name = names::contract_call(&contract_name, &function.name);
-            let param_types = to_abi_types(&function.param_types());
+            let function_name = names::contract_call(&contract_name, name);
+            let param_types = to_abi_types(db, &signature.param_types());
 
             // create a pair of identifiers and expressions for the parameters
-            let (param_idents, param_exprs) = abi_names::vals("param", function.params.len());
+            let (param_idents, param_exprs) = abi_names::vals("param", signature.params.len());
             // the function selector must be added to the first 4 bytes of the calldata
             let selector = {
-                let selector =
-                    abi_utils::func_selector(&function.name, &to_abi_selector_names(&param_types));
+                let selector = abi_utils::func_selector(name, &to_abi_selector_names(&param_types));
                 literal_expression! { (selector) }
             };
-            // the operations used to encode the parameters
-            let encoding_operation = abi_operations::encode(&param_types, param_exprs.clone());
-            // the size of the encoded data
-            let encoding_size = abi_operations::encoding_size(&param_types, param_exprs);
 
-            if function.return_type.is_unit() {
+            // the size of the encoded data
+            let encoding_size = abi_operations::encoding_size(&param_types, &param_exprs);
+            // the operations used to encode the parameters
+            let encoding_operation = abi_operations::encode(&param_types, param_exprs);
+
+            if return_type.is_unit() {
                 // there is no return data to handle
                 function_definition! {
                     function [function_name](addr, [param_idents...]) -> return_val {
@@ -48,7 +52,7 @@ pub fn calls(contract: Contract) -> Vec<yul::Statement> {
                 }
             } else {
                 let decoding_operation = abi_operations::decode_data(
-                    &[AbiType::from(&function.return_type)],
+                    &[return_type.as_abi_type(db)],
                     expression! { outstart },
                     expression! { add(outstart, outsize) },
                     AbiDecodeLocation::Memory,

@@ -1,7 +1,7 @@
 //! Fe to ABI builder.
 
-use fe_analyzer::context::Context;
-use fe_parser::ast;
+use fe_analyzer::namespace::items::ModuleId;
+use fe_analyzer::AnalyzerDb;
 use std::collections::HashMap;
 
 mod builder;
@@ -21,8 +21,8 @@ pub type JsonAbi = String;
 pub type ContractName = String;
 
 /// Builds ABIs for each contract in the module.
-pub fn build(context: &Context, module: &ast::Module) -> Result<NamedAbis, AbiError> {
-    builder::module(context, module)?
+pub fn build(db: &dyn AnalyzerDb, module: ModuleId) -> Result<NamedAbis, AbiError> {
+    builder::module(db, module)?
         .drain()
         .map(|(name, abi)| abi.json(true).map(|json| (name, json)))
         .collect::<Result<NamedAbis, _>>()

@@ -1,128 +1,8 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/return_array.fe\", &src, &context)"
+expression: "build_snapshot(\"features/return_array.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "bar",
-                        params: [
-                            (
-                                "x",
-                                Base(
-                                    Numeric(
-                                        U256,
-                                    ),
-                                ),
-                            ),
-                        ],
-                        return_type: Array(
-                            Array {
-                                size: 5,
-                                inner: Numeric(
-                                    U256,
-                                ),
-                            },
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
-note: 
-  ┌─ features/return_array.fe:4:9
-  │
-4 │         my_array[3] = x
-  │         ^^^^^^^^ attributes hash: 1409573588937423555
-  │
-  = ExpressionAttributes {
-        typ: Array(
-            Array {
-                size: 5,
-                inner: Numeric(
-                    U256,
-                ),
-            },
-        ),
-        location: Memory,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_array.fe:4:18
-  │
-4 │         my_array[3] = x
-  │                  ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_array.fe:4:9
-  │
-4 │         my_array[3] = x
-  │         ^^^^^^^^^^^ attributes hash: 13245336599501214748
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Memory,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_array.fe:4:23
-  │
-4 │         my_array[3] = x
-  │                       ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_array.fe:5:16
-  │
-5 │         return my_array
-  │                ^^^^^^^^ attributes hash: 1409573588937423555
-  │
-  = ExpressionAttributes {
-        typ: Array(
-            Array {
-                size: 5,
-                inner: Numeric(
-                    U256,
-                ),
-            },
-        ),
-        location: Memory,
-        move_location: None,
-    }
-
 note: 
   ┌─ features/return_array.fe:2:5
   │  
@@ -130,151 +10,67 @@ note:
 3 │ │         let my_array: u256[5]
 4 │ │         my_array[3] = x
 5 │ │         return my_array
-  │ ╰───────────────────────^ attributes hash: 8691335146772847108
+  │ ╰───────────────────────^ attributes hash: 15829867558716906613
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "bar",
+  = FunctionSignature {
         params: [
-            (
-                "x",
-                Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-            ),
-        ],
-        return_type: Array(
-            Array {
-                size: 5,
-                inner: Numeric(
-                    U256,
-                ),
-            },
-        ),
-    }
-
-note: 
-  ┌─ features/return_array.fe:3:9
-  │
-3 │         let my_array: u256[5]
-  │         ^^^^^^^^^^^^^^^^^^^^^ attributes hash: 10049365445048351196
-  │
-  = Array(
-        Array {
-            size: 5,
-            inner: Numeric(
-                U256,
-            ),
-        },
-    )
-
-note: 
-  ┌─ features/return_array.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │     pub fn bar(x: u256) -> u256[5]:
-3 │ │         let my_array: u256[5]
-4 │ │         my_array[3] = x
-5 │ │         return my_array
-  │ ╰───────────────────────^ attributes hash: 15659954479044905237
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "bar",
-                params: [
-                    (
-                        "x",
-                        Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    ),
-                ],
-                return_type: Array(
-                    Array {
-                        size: 5,
-                        inner: Numeric(
+            FunctionParam {
+                name: "x",
+                typ: Ok(
+                    Base(
+                        Numeric(
                             U256,
                         ),
-                    },
+                    ),
                 ),
             },
         ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [],
+        return_type: Ok(
+            Array(
+                Array {
+                    size: 5,
+                    inner: Numeric(
+                        U256,
+                    ),
+                },
+            ),
+        ),
     }
 
 note: 
-  ┌─ features/return_array.fe:2:19
+  ┌─ features/return_array.fe:4:9
   │
-2 │     pub fn bar(x: u256) -> u256[5]:
-  │                   ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+4 │         my_array[3] = x
+  │         ^^^^^^^^ u256[5]: Memory => None
 
 note: 
-  ┌─ features/return_array.fe:2:28
+  ┌─ features/return_array.fe:4:18
   │
-2 │     pub fn bar(x: u256) -> u256[5]:
-  │                            ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+4 │         my_array[3] = x
+  │                  ^ u256: Value => None
 
 note: 
-  ┌─ features/return_array.fe:2:28
+  ┌─ features/return_array.fe:4:9
   │
-2 │     pub fn bar(x: u256) -> u256[5]:
-  │                            ^^^^^^^ attributes hash: 10049365445048351196
+4 │         my_array[3] = x
+  │         ^^^^^^^^^^^ u256: Memory => None
+
+note: 
+  ┌─ features/return_array.fe:4:23
   │
-  = Array(
-        Array {
-            size: 5,
-            inner: Numeric(
-                U256,
-            ),
-        },
-    )
+4 │         my_array[3] = x
+  │                       ^ u256: Value => None
+
+note: 
+  ┌─ features/return_array.fe:5:16
+  │
+5 │         return my_array
+  │                ^^^^^^^^ u256[5]: Memory => None
 
 note: 
   ┌─ features/return_array.fe:3:23
   │
 3 │         let my_array: u256[5]
-  │                       ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/return_array.fe:3:23
-  │
-3 │         let my_array: u256[5]
-  │                       ^^^^^^^ attributes hash: 10049365445048351196
-  │
-  = Array(
-        Array {
-            size: 5,
-            inner: Numeric(
-                U256,
-            ),
-        },
-    )
+  │                       ^^^^^^^ u256[5]
 
 

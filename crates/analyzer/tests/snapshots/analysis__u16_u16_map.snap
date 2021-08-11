@@ -1,227 +1,39 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/u16_u16_map.fe\", &src, &context)"
+expression: "build_snapshot(\"features/u16_u16_map.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "read_bar",
-                        params: [
-                            (
-                                "key",
-                                Base(
-                                    Numeric(
-                                        U16,
-                                    ),
-                                ),
-                            ),
-                        ],
-                        return_type: Base(
-                            Numeric(
-                                U16,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "write_bar",
-                        params: [
-                            (
-                                "key",
-                                Base(
-                                    Numeric(
-                                        U16,
-                                    ),
-                                ),
-                            ),
-                            (
-                                "value",
-                                Base(
-                                    Numeric(
-                                        U16,
-                                    ),
-                                ),
-                            ),
-                        ],
-                        return_type: Base(
-                            Unit,
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
 note: 
-  ┌─ features/u16_u16_map.fe:5:16
+  ┌─ features/u16_u16_map.fe:2:5
   │
-5 │         return self.bar[key]
-  │                ^^^^^^^^ attributes hash: 1931961605064838659
-  │
-  = ExpressionAttributes {
-        typ: Map(
-            Map {
-                key: Numeric(
-                    U16,
-                ),
-                value: Base(
-                    Numeric(
-                        U16,
-                    ),
-                ),
-            },
-        ),
-        location: Storage {
-            nonce: Some(
-                0,
-            ),
-        },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/u16_u16_map.fe:5:25
-  │
-5 │         return self.bar[key]
-  │                         ^^^ attributes hash: 1434400102836480875
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U16,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/u16_u16_map.fe:5:16
-  │
-5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ attributes hash: 2275402472759385986
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U16,
-            ),
-        ),
-        location: Storage {
-            nonce: None,
-        },
-        move_location: Some(
-            Value,
-        ),
-    }
-
-note: 
-  ┌─ features/u16_u16_map.fe:8:9
-  │
-8 │         self.bar[key] = value
-  │         ^^^^^^^^ attributes hash: 1931961605064838659
-  │
-  = ExpressionAttributes {
-        typ: Map(
-            Map {
-                key: Numeric(
-                    U16,
-                ),
-                value: Base(
-                    Numeric(
-                        U16,
-                    ),
-                ),
-            },
-        ),
-        location: Storage {
-            nonce: Some(
-                0,
-            ),
-        },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/u16_u16_map.fe:8:18
-  │
-8 │         self.bar[key] = value
-  │                  ^^^ attributes hash: 1434400102836480875
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U16,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/u16_u16_map.fe:8:9
-  │
-8 │         self.bar[key] = value
-  │         ^^^^^^^^^^^^^ attributes hash: 10105765718958244362
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U16,
-            ),
-        ),
-        location: Storage {
-            nonce: None,
-        },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/u16_u16_map.fe:8:25
-  │
-8 │         self.bar[key] = value
-  │                         ^^^^^ attributes hash: 1434400102836480875
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U16,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
+2 │     bar: Map<u16, u16>
+  │     ^^^^^^^^^^^^^^^^^^ Map<u16, u16>
 
 note: 
   ┌─ features/u16_u16_map.fe:4:5
   │  
 4 │ ╭     pub fn read_bar(key: u16) -> u16:
 5 │ │         return self.bar[key]
-  │ ╰────────────────────────────^ attributes hash: 6300193745719880448
+  │ ╰────────────────────────────^ attributes hash: 9839082566663037677
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "read_bar",
+  = FunctionSignature {
         params: [
-            (
-                "key",
-                Base(
-                    Numeric(
-                        U16,
+            FunctionParam {
+                name: "key",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U16,
+                        ),
                     ),
                 ),
-            ),
+            },
         ],
-        return_type: Base(
-            Numeric(
-                U16,
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U16,
+                ),
             ),
         ),
     }
@@ -231,188 +43,78 @@ note:
   │  
 7 │ ╭     pub fn write_bar(key: u16, value: u16):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 4949589026705128614
+  │ ╰─────────────────────────────^ attributes hash: 3157214284721683583
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "write_bar",
+  = FunctionSignature {
         params: [
-            (
-                "key",
-                Base(
-                    Numeric(
-                        U16,
+            FunctionParam {
+                name: "key",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U16,
+                        ),
                     ),
                 ),
-            ),
-            (
-                "value",
-                Base(
-                    Numeric(
-                        U16,
+            },
+            FunctionParam {
+                name: "value",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U16,
+                        ),
                     ),
                 ),
-            ),
+            },
         ],
-        return_type: Base(
-            Unit,
+        return_type: Ok(
+            Base(
+                Unit,
+            ),
         ),
     }
 
 note: 
-  ┌─ features/u16_u16_map.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │     pub bar: Map<u16, u16>
-3 │ │ 
-4 │ │     pub fn read_bar(key: u16) -> u16:
-  · │
-7 │ │     pub fn write_bar(key: u16, value: u16):
-8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 6995646552603336713
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "read_bar",
-                params: [
-                    (
-                        "key",
-                        Base(
-                            Numeric(
-                                U16,
-                            ),
-                        ),
-                    ),
-                ],
-                return_type: Base(
-                    Numeric(
-                        U16,
-                    ),
-                ),
-            },
-            FunctionAttributes {
-                is_public: true,
-                name: "write_bar",
-                params: [
-                    (
-                        "key",
-                        Base(
-                            Numeric(
-                                U16,
-                            ),
-                        ),
-                    ),
-                    (
-                        "value",
-                        Base(
-                            Numeric(
-                                U16,
-                            ),
-                        ),
-                    ),
-                ],
-                return_type: Base(
-                    Unit,
-                ),
-            },
-        ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [],
-    }
+  ┌─ features/u16_u16_map.fe:5:16
+  │
+5 │         return self.bar[key]
+  │                ^^^^^^^^ Map<u16, u16>: Storage { nonce: Some(0) } => None
 
 note: 
-  ┌─ features/u16_u16_map.fe:4:26
+  ┌─ features/u16_u16_map.fe:5:25
   │
-4 │     pub fn read_bar(key: u16) -> u16:
-  │                          ^^^ attributes hash: 10482216811962112628
-  │
-  = Base(
-        Numeric(
-            U16,
-        ),
-    )
+5 │         return self.bar[key]
+  │                         ^^^ u16: Value => None
 
 note: 
-  ┌─ features/u16_u16_map.fe:4:34
+  ┌─ features/u16_u16_map.fe:5:16
   │
-4 │     pub fn read_bar(key: u16) -> u16:
-  │                                  ^^^ attributes hash: 10482216811962112628
-  │
-  = Base(
-        Numeric(
-            U16,
-        ),
-    )
+5 │         return self.bar[key]
+  │                ^^^^^^^^^^^^^ u16: Storage { nonce: None } => Some(Value)
 
 note: 
-  ┌─ features/u16_u16_map.fe:7:27
+  ┌─ features/u16_u16_map.fe:8:9
   │
-7 │     pub fn write_bar(key: u16, value: u16):
-  │                           ^^^ attributes hash: 10482216811962112628
-  │
-  = Base(
-        Numeric(
-            U16,
-        ),
-    )
+8 │         self.bar[key] = value
+  │         ^^^^^^^^ Map<u16, u16>: Storage { nonce: Some(0) } => None
 
 note: 
-  ┌─ features/u16_u16_map.fe:7:39
+  ┌─ features/u16_u16_map.fe:8:18
   │
-7 │     pub fn write_bar(key: u16, value: u16):
-  │                                       ^^^ attributes hash: 10482216811962112628
-  │
-  = Base(
-        Numeric(
-            U16,
-        ),
-    )
+8 │         self.bar[key] = value
+  │                  ^^^ u16: Value => None
 
 note: 
-  ┌─ features/u16_u16_map.fe:2:18
+  ┌─ features/u16_u16_map.fe:8:9
   │
-2 │     pub bar: Map<u16, u16>
-  │                  ^^^ attributes hash: 10482216811962112628
-  │
-  = Base(
-        Numeric(
-            U16,
-        ),
-    )
+8 │         self.bar[key] = value
+  │         ^^^^^^^^^^^^^ u16: Storage { nonce: None } => None
 
 note: 
-  ┌─ features/u16_u16_map.fe:2:23
+  ┌─ features/u16_u16_map.fe:8:25
   │
-2 │     pub bar: Map<u16, u16>
-  │                       ^^^ attributes hash: 10482216811962112628
-  │
-  = Base(
-        Numeric(
-            U16,
-        ),
-    )
-
-note: 
-  ┌─ features/u16_u16_map.fe:2:14
-  │
-2 │     pub bar: Map<u16, u16>
-  │              ^^^^^^^^^^^^^ attributes hash: 1154471945905211198
-  │
-  = Map(
-        Map {
-            key: Numeric(
-                U16,
-            ),
-            value: Base(
-                Numeric(
-                    U16,
-                ),
-            ),
-        },
-    )
+8 │         self.bar[key] = value
+  │                         ^^^^^ u16: Value => None
 
 

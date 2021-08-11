@@ -1,218 +1,8 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/while_loop_with_break_2.fe\", &src, &context)"
+expression: "build_snapshot(\"features/while_loop_with_break_2.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "bar",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
-note: 
-  ┌─ features/while_loop_with_break_2.fe:3:25
-  │
-3 │         let val: u256 = 0
-  │                         ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_break_2.fe:4:15
-  │
-4 │         while val < 2:
-  │               ^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_break_2.fe:4:21
-  │
-4 │         while val < 2:
-  │                     ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_break_2.fe:4:15
-  │
-4 │         while val < 2:
-  │               ^^^^^^^ attributes hash: 519621297275845584
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_break_2.fe:5:13
-  │
-5 │             val = val + 1
-  │             ^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_break_2.fe:5:19
-  │
-5 │             val = val + 1
-  │                   ^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_break_2.fe:5:25
-  │
-5 │             val = val + 1
-  │                         ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_break_2.fe:5:19
-  │
-5 │             val = val + 1
-  │                   ^^^^^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_break_2.fe:6:16
-  │
-6 │             if val == 1:
-  │                ^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_break_2.fe:6:23
-  │
-6 │             if val == 1:
-  │                       ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_break_2.fe:6:16
-  │
-6 │             if val == 1:
-  │                ^^^^^^^^ attributes hash: 519621297275845584
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Bool,
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/while_loop_with_break_2.fe:8:16
-  │
-8 │         return val
-  │                ^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
 note: 
   ┌─ features/while_loop_with_break_2.fe:2:5
   │  
@@ -223,84 +13,95 @@ note:
 6 │ │             if val == 1:
 7 │ │                 break
 8 │ │         return val
-  │ ╰──────────────────^ attributes hash: 5931278080780939395
+  │ ╰──────────────────^ attributes hash: 4553090961241945225
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "bar",
+  = FunctionSignature {
         params: [],
-        return_type: Base(
-            Numeric(
-                U256,
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U256,
+                ),
             ),
         ),
     }
 
 note: 
-  ┌─ features/while_loop_with_break_2.fe:3:9
+  ┌─ features/while_loop_with_break_2.fe:3:25
   │
 3 │         let val: u256 = 0
-  │         ^^^^^^^^^^^^^^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+  │                         ^ u256: Value => None
 
 note: 
-  ┌─ features/while_loop_with_break_2.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │     pub fn bar() -> u256:
-3 │ │         let val: u256 = 0
-4 │ │         while val < 2:
-  · │
-7 │ │                 break
-8 │ │         return val
-  │ ╰──────────────────^ attributes hash: 5268314470252829497
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "bar",
-                params: [],
-                return_type: Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-            },
-        ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [],
-    }
+  ┌─ features/while_loop_with_break_2.fe:4:15
+  │
+4 │         while val < 2:
+  │               ^^^ u256: Value => None
 
 note: 
-  ┌─ features/while_loop_with_break_2.fe:2:21
+  ┌─ features/while_loop_with_break_2.fe:4:21
   │
-2 │     pub fn bar() -> u256:
-  │                     ^^^^ attributes hash: 4293763436908729629
+4 │         while val < 2:
+  │                     ^ u256: Value => None
+
+note: 
+  ┌─ features/while_loop_with_break_2.fe:4:15
   │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+4 │         while val < 2:
+  │               ^^^^^^^ bool: Value => None
+
+note: 
+  ┌─ features/while_loop_with_break_2.fe:5:13
+  │
+5 │             val = val + 1
+  │             ^^^ u256: Value => None
+
+note: 
+  ┌─ features/while_loop_with_break_2.fe:5:19
+  │
+5 │             val = val + 1
+  │                   ^^^ u256: Value => None
+
+note: 
+  ┌─ features/while_loop_with_break_2.fe:5:25
+  │
+5 │             val = val + 1
+  │                         ^ u256: Value => None
+
+note: 
+  ┌─ features/while_loop_with_break_2.fe:5:19
+  │
+5 │             val = val + 1
+  │                   ^^^^^^^ u256: Value => None
+
+note: 
+  ┌─ features/while_loop_with_break_2.fe:6:16
+  │
+6 │             if val == 1:
+  │                ^^^ u256: Value => None
+
+note: 
+  ┌─ features/while_loop_with_break_2.fe:6:23
+  │
+6 │             if val == 1:
+  │                       ^ u256: Value => None
+
+note: 
+  ┌─ features/while_loop_with_break_2.fe:6:16
+  │
+6 │             if val == 1:
+  │                ^^^^^^^^ bool: Value => None
+
+note: 
+  ┌─ features/while_loop_with_break_2.fe:8:16
+  │
+8 │         return val
+  │                ^^^ u256: Value => None
 
 note: 
   ┌─ features/while_loop_with_break_2.fe:3:18
   │
 3 │         let val: u256 = 0
-  │                  ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+  │                  ^^^^ u256
 
 

@@ -1,232 +1,48 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/constructor.fe\", &src, &context)"
+expression: "build_snapshot(\"features/constructor.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "read_bar",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
 note: 
-  ┌─ features/constructor.fe:5:9
+  ┌─ features/constructor.fe:2:5
   │
-5 │         self.bar[42] = baz + bing
-  │         ^^^^^^^^ attributes hash: 7500259330345281063
-  │
-  = ExpressionAttributes {
-        typ: Map(
-            Map {
-                key: Numeric(
-                    U256,
-                ),
-                value: Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-            },
-        ),
-        location: Storage {
-            nonce: Some(
-                0,
-            ),
-        },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/constructor.fe:5:18
-  │
-5 │         self.bar[42] = baz + bing
-  │                  ^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/constructor.fe:5:9
-  │
-5 │         self.bar[42] = baz + bing
-  │         ^^^^^^^^^^^^ attributes hash: 6410008273718378934
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Storage {
-            nonce: None,
-        },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/constructor.fe:5:24
-  │
-5 │         self.bar[42] = baz + bing
-  │                        ^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/constructor.fe:5:30
-  │
-5 │         self.bar[42] = baz + bing
-  │                              ^^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/constructor.fe:5:24
-  │
-5 │         self.bar[42] = baz + bing
-  │                        ^^^^^^^^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/constructor.fe:8:16
-  │
-8 │         return self.bar[42]
-  │                ^^^^^^^^ attributes hash: 7500259330345281063
-  │
-  = ExpressionAttributes {
-        typ: Map(
-            Map {
-                key: Numeric(
-                    U256,
-                ),
-                value: Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-            },
-        ),
-        location: Storage {
-            nonce: Some(
-                0,
-            ),
-        },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/constructor.fe:8:25
-  │
-8 │         return self.bar[42]
-  │                         ^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/constructor.fe:8:16
-  │
-8 │         return self.bar[42]
-  │                ^^^^^^^^^^^^ attributes hash: 2750573035226013709
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Storage {
-            nonce: None,
-        },
-        move_location: Some(
-            Value,
-        ),
-    }
+2 │     bar: Map<u256, u256>
+  │     ^^^^^^^^^^^^^^^^^^^^ Map<u256, u256>
 
 note: 
   ┌─ features/constructor.fe:4:5
   │  
 4 │ ╭     pub fn __init__(baz: u256, bing: u256):
 5 │ │         self.bar[42] = baz + bing
-  │ ╰─────────────────────────────────^ attributes hash: 13081080872766212737
+  │ ╰─────────────────────────────────^ attributes hash: 13860805323528878631
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "__init__",
+  = FunctionSignature {
         params: [
-            (
-                "baz",
-                Base(
-                    Numeric(
-                        U256,
+            FunctionParam {
+                name: "baz",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U256,
+                        ),
                     ),
                 ),
-            ),
-            (
-                "bing",
-                Base(
-                    Numeric(
-                        U256,
+            },
+            FunctionParam {
+                name: "bing",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U256,
+                        ),
                     ),
                 ),
-            ),
+            },
         ],
-        return_type: Base(
-            Unit,
+        return_type: Ok(
+            Base(
+                Unit,
+            ),
         ),
     }
 
@@ -235,153 +51,71 @@ note:
   │  
 7 │ ╭     pub fn read_bar() -> u256:
 8 │ │         return self.bar[42]
-  │ ╰───────────────────────────^ attributes hash: 14729662030811563737
+  │ ╰───────────────────────────^ attributes hash: 4553090961241945225
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "read_bar",
+  = FunctionSignature {
         params: [],
-        return_type: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-    }
-
-note: 
-  ┌─ features/constructor.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │     bar: Map<u256, u256>
-3 │ │ 
-4 │ │     pub fn __init__(baz: u256, bing: u256):
-  · │
-7 │ │     pub fn read_bar() -> u256:
-8 │ │         return self.bar[42]
-  │ ╰───────────────────────────^ attributes hash: 1581399891614554711
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "read_bar",
-                params: [],
-                return_type: Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-            },
-        ],
-        init_function: Some(
-            FunctionAttributes {
-                is_public: true,
-                name: "__init__",
-                params: [
-                    (
-                        "baz",
-                        Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    ),
-                    (
-                        "bing",
-                        Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    ),
-                ],
-                return_type: Base(
-                    Unit,
-                ),
-            },
-        ),
-        events: [],
-        structs: [],
-        external_contracts: [],
-    }
-
-note: 
-  ┌─ features/constructor.fe:4:26
-  │
-4 │     pub fn __init__(baz: u256, bing: u256):
-  │                          ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/constructor.fe:4:38
-  │
-4 │     pub fn __init__(baz: u256, bing: u256):
-  │                                      ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/constructor.fe:7:26
-  │
-7 │     pub fn read_bar() -> u256:
-  │                          ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/constructor.fe:2:14
-  │
-2 │     bar: Map<u256, u256>
-  │              ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/constructor.fe:2:20
-  │
-2 │     bar: Map<u256, u256>
-  │                    ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
-
-note: 
-  ┌─ features/constructor.fe:2:10
-  │
-2 │     bar: Map<u256, u256>
-  │          ^^^^^^^^^^^^^^^ attributes hash: 8678458200954633740
-  │
-  = Map(
-        Map {
-            key: Numeric(
-                U256,
-            ),
-            value: Base(
+        return_type: Ok(
+            Base(
                 Numeric(
                     U256,
                 ),
             ),
-        },
-    )
+        ),
+    }
+
+note: 
+  ┌─ features/constructor.fe:5:9
+  │
+5 │         self.bar[42] = baz + bing
+  │         ^^^^^^^^ Map<u256, u256>: Storage { nonce: Some(0) } => None
+
+note: 
+  ┌─ features/constructor.fe:5:18
+  │
+5 │         self.bar[42] = baz + bing
+  │                  ^^ u256: Value => None
+
+note: 
+  ┌─ features/constructor.fe:5:9
+  │
+5 │         self.bar[42] = baz + bing
+  │         ^^^^^^^^^^^^ u256: Storage { nonce: None } => None
+
+note: 
+  ┌─ features/constructor.fe:5:24
+  │
+5 │         self.bar[42] = baz + bing
+  │                        ^^^ u256: Value => None
+
+note: 
+  ┌─ features/constructor.fe:5:30
+  │
+5 │         self.bar[42] = baz + bing
+  │                              ^^^^ u256: Value => None
+
+note: 
+  ┌─ features/constructor.fe:5:24
+  │
+5 │         self.bar[42] = baz + bing
+  │                        ^^^^^^^^^^ u256: Value => None
+
+note: 
+  ┌─ features/constructor.fe:8:16
+  │
+8 │         return self.bar[42]
+  │                ^^^^^^^^ Map<u256, u256>: Storage { nonce: Some(0) } => None
+
+note: 
+  ┌─ features/constructor.fe:8:25
+  │
+8 │         return self.bar[42]
+  │                         ^^ u256: Value => None
+
+note: 
+  ┌─ features/constructor.fe:8:16
+  │
+8 │         return self.bar[42]
+  │                ^^^^^^^^^^^^ u256: Storage { nonce: None } => Some(Value)
 
 

@@ -19,14 +19,17 @@ pub fn get_attribute(
 #[cfg(test)]
 mod tests {
     use crate::operations::structs;
-    use fe_analyzer::namespace::types::{FixedSize, Struct};
+    use fe_analyzer::namespace::items::StructId;
+    use fe_analyzer::namespace::types::Struct;
     use yultsur::*;
 
     #[test]
     fn test_new() {
-        let mut val = Struct::new("Foo");
-        val.add_field("bar", &FixedSize::bool()).unwrap();
-        val.add_field("bar2", &FixedSize::bool()).unwrap();
+        let val = Struct {
+            name: "Foo".to_string(),
+            id: StructId::default(),
+            field_count: 2,
+        };
         let params = vec![
             identifier_expression! { (1) },
             identifier_expression! { (2) },

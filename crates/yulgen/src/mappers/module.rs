@@ -1,34 +1,21 @@
 use crate::mappers::contracts;
-use crate::AnalyzerContext;
-use fe_parser::ast as fe;
+use crate::{AnalyzerDb, ModuleId};
 use std::collections::HashMap;
 use yultsur::yul;
 
 pub type YulContracts = HashMap<String, yul::Object>;
 
 /// Builds a vector of Yul contracts from a Fe module.
-pub fn module(analysis: &AnalyzerContext, module: &fe::Module) -> YulContracts {
+pub fn module(db: &dyn AnalyzerDb, module: ModuleId) -> YulContracts {
     module
-        .body
+        .all_contracts(db)
         .iter()
-        .fold(YulContracts::new(), |mut contracts, stmt| {
-            match &stmt {
-                fe::ModuleStmt::Pragma(_) => {}
-                fe::ModuleStmt::TypeAlias(_) => {}
-                fe::ModuleStmt::Contract(def) => {
-                    let contract = contracts::contract_def(analysis, def, &contracts);
+        .fold(YulContracts::new(), |mut contracts, id| {
+            let yul_contract = contracts::contract_def(db, *id, &contracts);
 
-                    if contracts
-                        .insert(def.kind.name.kind.clone(), contract)
-                        .is_some()
-                    {
-                        panic!("duplicate contract definition");
-                    }
-                }
-                fe::ModuleStmt::Struct(_) => {}
-                fe::ModuleStmt::Import(_) => unimplemented!(),
+            if contracts.insert(id.name(db), yul_contract).is_some() {
+                panic!("duplicate contract definition");
             }
-
             contracts
         })
 }

@@ -1,101 +1,30 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/return_msg_sig.fe\", &src, &context)"
+expression: "build_snapshot(\"features/return_msg_sig.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "bar",
-                        params: [],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
-note: 
-  ┌─ features/return_msg_sig.fe:3:16
-  │
-3 │         return msg.sig
-  │                ^^^^^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
 note: 
   ┌─ features/return_msg_sig.fe:2:5
   │  
 2 │ ╭     pub fn bar() -> u256:
 3 │ │         return msg.sig
-  │ ╰──────────────────────^ attributes hash: 5931278080780939395
+  │ ╰──────────────────────^ attributes hash: 4553090961241945225
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "bar",
+  = FunctionSignature {
         params: [],
-        return_type: Base(
-            Numeric(
-                U256,
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U256,
+                ),
             ),
         ),
     }
 
 note: 
-  ┌─ features/return_msg_sig.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │     pub fn bar() -> u256:
-3 │ │         return msg.sig
-  │ ╰──────────────────────^ attributes hash: 5268314470252829497
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "bar",
-                params: [],
-                return_type: Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-            },
-        ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [],
-    }
-
-note: 
-  ┌─ features/return_msg_sig.fe:2:21
+  ┌─ features/return_msg_sig.fe:3:16
   │
-2 │     pub fn bar() -> u256:
-  │                     ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+3 │         return msg.sig
+  │                ^^^^^^^ u256: Value => None
 
 

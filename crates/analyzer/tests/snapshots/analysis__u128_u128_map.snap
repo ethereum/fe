@@ -1,227 +1,39 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/u128_u128_map.fe\", &src, &context)"
+expression: "build_snapshot(\"features/u128_u128_map.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "read_bar",
-                        params: [
-                            (
-                                "key",
-                                Base(
-                                    Numeric(
-                                        U128,
-                                    ),
-                                ),
-                            ),
-                        ],
-                        return_type: Base(
-                            Numeric(
-                                U128,
-                            ),
-                        ),
-                    },
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "write_bar",
-                        params: [
-                            (
-                                "key",
-                                Base(
-                                    Numeric(
-                                        U128,
-                                    ),
-                                ),
-                            ),
-                            (
-                                "value",
-                                Base(
-                                    Numeric(
-                                        U128,
-                                    ),
-                                ),
-                            ),
-                        ],
-                        return_type: Base(
-                            Unit,
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
 note: 
-  ┌─ features/u128_u128_map.fe:5:16
+  ┌─ features/u128_u128_map.fe:2:5
   │
-5 │         return self.bar[key]
-  │                ^^^^^^^^ attributes hash: 3599868092882241902
-  │
-  = ExpressionAttributes {
-        typ: Map(
-            Map {
-                key: Numeric(
-                    U128,
-                ),
-                value: Base(
-                    Numeric(
-                        U128,
-                    ),
-                ),
-            },
-        ),
-        location: Storage {
-            nonce: Some(
-                0,
-            ),
-        },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/u128_u128_map.fe:5:25
-  │
-5 │         return self.bar[key]
-  │                         ^^^ attributes hash: 231358192590700262
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U128,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/u128_u128_map.fe:5:16
-  │
-5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ attributes hash: 4773355545736336866
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U128,
-            ),
-        ),
-        location: Storage {
-            nonce: None,
-        },
-        move_location: Some(
-            Value,
-        ),
-    }
-
-note: 
-  ┌─ features/u128_u128_map.fe:8:9
-  │
-8 │         self.bar[key] = value
-  │         ^^^^^^^^ attributes hash: 3599868092882241902
-  │
-  = ExpressionAttributes {
-        typ: Map(
-            Map {
-                key: Numeric(
-                    U128,
-                ),
-                value: Base(
-                    Numeric(
-                        U128,
-                    ),
-                ),
-            },
-        ),
-        location: Storage {
-            nonce: Some(
-                0,
-            ),
-        },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/u128_u128_map.fe:8:18
-  │
-8 │         self.bar[key] = value
-  │                  ^^^ attributes hash: 231358192590700262
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U128,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/u128_u128_map.fe:8:9
-  │
-8 │         self.bar[key] = value
-  │         ^^^^^^^^^^^^^ attributes hash: 12624832649451867488
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U128,
-            ),
-        ),
-        location: Storage {
-            nonce: None,
-        },
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/u128_u128_map.fe:8:25
-  │
-8 │         self.bar[key] = value
-  │                         ^^^^^ attributes hash: 231358192590700262
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U128,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
+2 │     bar: Map<u128, u128>
+  │     ^^^^^^^^^^^^^^^^^^^^ Map<u128, u128>
 
 note: 
   ┌─ features/u128_u128_map.fe:4:5
   │  
 4 │ ╭     pub fn read_bar(key: u128) -> u128:
 5 │ │         return self.bar[key]
-  │ ╰────────────────────────────^ attributes hash: 2198999376665281933
+  │ ╰────────────────────────────^ attributes hash: 946551912650384248
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "read_bar",
+  = FunctionSignature {
         params: [
-            (
-                "key",
-                Base(
-                    Numeric(
-                        U128,
+            FunctionParam {
+                name: "key",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U128,
+                        ),
                     ),
                 ),
-            ),
+            },
         ],
-        return_type: Base(
-            Numeric(
-                U128,
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U128,
+                ),
             ),
         ),
     }
@@ -231,188 +43,78 @@ note:
   │  
 7 │ ╭     pub fn write_bar(key: u128, value: u128):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 1223918627362086657
+  │ ╰─────────────────────────────^ attributes hash: 6409992050423040542
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "write_bar",
+  = FunctionSignature {
         params: [
-            (
-                "key",
-                Base(
-                    Numeric(
-                        U128,
+            FunctionParam {
+                name: "key",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U128,
+                        ),
                     ),
                 ),
-            ),
-            (
-                "value",
-                Base(
-                    Numeric(
-                        U128,
+            },
+            FunctionParam {
+                name: "value",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U128,
+                        ),
                     ),
                 ),
-            ),
+            },
         ],
-        return_type: Base(
-            Unit,
+        return_type: Ok(
+            Base(
+                Unit,
+            ),
         ),
     }
 
 note: 
-  ┌─ features/u128_u128_map.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │     pub bar: Map<u128, u128>
-3 │ │ 
-4 │ │     pub fn read_bar(key: u128) -> u128:
-  · │
-7 │ │     pub fn write_bar(key: u128, value: u128):
-8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 5524013194389757103
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "read_bar",
-                params: [
-                    (
-                        "key",
-                        Base(
-                            Numeric(
-                                U128,
-                            ),
-                        ),
-                    ),
-                ],
-                return_type: Base(
-                    Numeric(
-                        U128,
-                    ),
-                ),
-            },
-            FunctionAttributes {
-                is_public: true,
-                name: "write_bar",
-                params: [
-                    (
-                        "key",
-                        Base(
-                            Numeric(
-                                U128,
-                            ),
-                        ),
-                    ),
-                    (
-                        "value",
-                        Base(
-                            Numeric(
-                                U128,
-                            ),
-                        ),
-                    ),
-                ],
-                return_type: Base(
-                    Unit,
-                ),
-            },
-        ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [],
-    }
+  ┌─ features/u128_u128_map.fe:5:16
+  │
+5 │         return self.bar[key]
+  │                ^^^^^^^^ Map<u128, u128>: Storage { nonce: Some(0) } => None
 
 note: 
-  ┌─ features/u128_u128_map.fe:4:26
+  ┌─ features/u128_u128_map.fe:5:25
   │
-4 │     pub fn read_bar(key: u128) -> u128:
-  │                          ^^^^ attributes hash: 6162263163478414243
-  │
-  = Base(
-        Numeric(
-            U128,
-        ),
-    )
+5 │         return self.bar[key]
+  │                         ^^^ u128: Value => None
 
 note: 
-  ┌─ features/u128_u128_map.fe:4:35
+  ┌─ features/u128_u128_map.fe:5:16
   │
-4 │     pub fn read_bar(key: u128) -> u128:
-  │                                   ^^^^ attributes hash: 6162263163478414243
-  │
-  = Base(
-        Numeric(
-            U128,
-        ),
-    )
+5 │         return self.bar[key]
+  │                ^^^^^^^^^^^^^ u128: Storage { nonce: None } => Some(Value)
 
 note: 
-  ┌─ features/u128_u128_map.fe:7:27
+  ┌─ features/u128_u128_map.fe:8:9
   │
-7 │     pub fn write_bar(key: u128, value: u128):
-  │                           ^^^^ attributes hash: 6162263163478414243
-  │
-  = Base(
-        Numeric(
-            U128,
-        ),
-    )
+8 │         self.bar[key] = value
+  │         ^^^^^^^^ Map<u128, u128>: Storage { nonce: Some(0) } => None
 
 note: 
-  ┌─ features/u128_u128_map.fe:7:40
+  ┌─ features/u128_u128_map.fe:8:18
   │
-7 │     pub fn write_bar(key: u128, value: u128):
-  │                                        ^^^^ attributes hash: 6162263163478414243
-  │
-  = Base(
-        Numeric(
-            U128,
-        ),
-    )
+8 │         self.bar[key] = value
+  │                  ^^^ u128: Value => None
 
 note: 
-  ┌─ features/u128_u128_map.fe:2:18
+  ┌─ features/u128_u128_map.fe:8:9
   │
-2 │     pub bar: Map<u128, u128>
-  │                  ^^^^ attributes hash: 6162263163478414243
-  │
-  = Base(
-        Numeric(
-            U128,
-        ),
-    )
+8 │         self.bar[key] = value
+  │         ^^^^^^^^^^^^^ u128: Storage { nonce: None } => None
 
 note: 
-  ┌─ features/u128_u128_map.fe:2:24
+  ┌─ features/u128_u128_map.fe:8:25
   │
-2 │     pub bar: Map<u128, u128>
-  │                        ^^^^ attributes hash: 6162263163478414243
-  │
-  = Base(
-        Numeric(
-            U128,
-        ),
-    )
-
-note: 
-  ┌─ features/u128_u128_map.fe:2:14
-  │
-2 │     pub bar: Map<u128, u128>
-  │              ^^^^^^^^^^^^^^^ attributes hash: 8420179897707835865
-  │
-  = Map(
-        Map {
-            key: Numeric(
-                U128,
-            ),
-            value: Base(
-                Numeric(
-                    U128,
-                ),
-            ),
-        },
-    )
+8 │         self.bar[key] = value
+  │                         ^^^^^ u128: Value => None
 
 

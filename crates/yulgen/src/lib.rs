@@ -1,7 +1,7 @@
 //! Fe to Yul compiler.
 
-use fe_analyzer::context::Context as AnalyzerContext;
-use fe_parser::ast;
+use fe_analyzer::namespace::items::ModuleId;
+use fe_analyzer::AnalyzerDb;
 use std::collections::HashMap;
 use yultsur::yul;
 
@@ -14,8 +14,6 @@ pub mod operations;
 pub mod runtime;
 pub mod types;
 mod utils;
-
-pub(crate) use context::Context;
 
 /// The name of a Fe contract.
 pub type ContractName = String;
@@ -30,8 +28,8 @@ pub type NamedYulContracts = HashMap<ContractName, YulIr>;
 ///
 /// Any failure to compile an AST to Yul is considered a bug, and thus panics.
 /// Invalid ASTs should be caught by an analysis step prior to Yul generation.
-pub fn compile(analysis: &AnalyzerContext, module: &ast::Module) -> NamedYulContracts {
-    mappers::module::module(analysis, module)
+pub fn compile(db: &dyn AnalyzerDb, module: ModuleId) -> NamedYulContracts {
+    mappers::module::module(db, module)
         .drain()
         .map(|(name, object)| (name, to_safe_json(object)))
         .collect::<NamedYulContracts>()

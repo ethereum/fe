@@ -1,208 +1,63 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/return_bitwiseand_u256.fe\", &src, &context)"
+expression: "build_snapshot(\"features/return_bitwiseand_u256.fe\", &src, module, &db)"
 
 ---
-ModuleAttributes {
-    type_defs: {
-        "Foo": Contract(
-            Contract {
-                name: "Foo",
-                functions: [
-                    FunctionAttributes {
-                        is_public: true,
-                        name: "bar",
-                        params: [
-                            (
-                                "x",
-                                Base(
-                                    Numeric(
-                                        U256,
-                                    ),
-                                ),
-                            ),
-                            (
-                                "y",
-                                Base(
-                                    Numeric(
-                                        U256,
-                                    ),
-                                ),
-                            ),
-                        ],
-                        return_type: Base(
-                            Numeric(
-                                U256,
-                            ),
-                        ),
-                    },
-                ],
-            },
-        ),
-    },
-}
-
-note: 
-  ┌─ features/return_bitwiseand_u256.fe:3:16
-  │
-3 │         return x & y
-  │                ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_bitwiseand_u256.fe:3:20
-  │
-3 │         return x & y
-  │                    ^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
-note: 
-  ┌─ features/return_bitwiseand_u256.fe:3:16
-  │
-3 │         return x & y
-  │                ^^^^^ attributes hash: 1230752710897721197
-  │
-  = ExpressionAttributes {
-        typ: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-        location: Value,
-        move_location: None,
-    }
-
 note: 
   ┌─ features/return_bitwiseand_u256.fe:2:5
   │  
 2 │ ╭     pub fn bar(x: u256, y: u256) -> u256:
 3 │ │         return x & y
-  │ ╰────────────────────^ attributes hash: 9795260742452447282
+  │ ╰────────────────────^ attributes hash: 11686109986999089900
   │  
-  = FunctionAttributes {
-        is_public: true,
-        name: "bar",
+  = FunctionSignature {
         params: [
-            (
-                "x",
-                Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-            ),
-            (
-                "y",
-                Base(
-                    Numeric(
-                        U256,
-                    ),
-                ),
-            ),
-        ],
-        return_type: Base(
-            Numeric(
-                U256,
-            ),
-        ),
-    }
-
-note: 
-  ┌─ features/return_bitwiseand_u256.fe:1:1
-  │  
-1 │ ╭ contract Foo:
-2 │ │     pub fn bar(x: u256, y: u256) -> u256:
-3 │ │         return x & y
-  │ ╰────────────────────^ attributes hash: 5880388885455737027
-  │  
-  = ContractAttributes {
-        public_functions: [
-            FunctionAttributes {
-                is_public: true,
-                name: "bar",
-                params: [
-                    (
-                        "x",
-                        Base(
-                            Numeric(
-                                U256,
-                            ),
+            FunctionParam {
+                name: "x",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U256,
                         ),
                     ),
-                    (
-                        "y",
-                        Base(
-                            Numeric(
-                                U256,
-                            ),
+                ),
+            },
+            FunctionParam {
+                name: "y",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U256,
                         ),
-                    ),
-                ],
-                return_type: Base(
-                    Numeric(
-                        U256,
                     ),
                 ),
             },
         ],
-        init_function: None,
-        events: [],
-        structs: [],
-        external_contracts: [],
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U256,
+                ),
+            ),
+        ),
     }
 
 note: 
-  ┌─ features/return_bitwiseand_u256.fe:2:19
+  ┌─ features/return_bitwiseand_u256.fe:3:16
   │
-2 │     pub fn bar(x: u256, y: u256) -> u256:
-  │                   ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+3 │         return x & y
+  │                ^ u256: Value => None
 
 note: 
-  ┌─ features/return_bitwiseand_u256.fe:2:28
+  ┌─ features/return_bitwiseand_u256.fe:3:20
   │
-2 │     pub fn bar(x: u256, y: u256) -> u256:
-  │                            ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+3 │         return x & y
+  │                    ^ u256: Value => None
 
 note: 
-  ┌─ features/return_bitwiseand_u256.fe:2:37
+  ┌─ features/return_bitwiseand_u256.fe:3:16
   │
-2 │     pub fn bar(x: u256, y: u256) -> u256:
-  │                                     ^^^^ attributes hash: 4293763436908729629
-  │
-  = Base(
-        Numeric(
-            U256,
-        ),
-    )
+3 │         return x & y
+  │                ^^^^^ u256: Value => None
 
 

@@ -1,26 +1,20 @@
-use crate::context::Context;
+use crate::context::ModuleContext;
 use crate::names;
-use fe_analyzer::namespace::types::TypeDowncast;
+use fe_analyzer::namespace::types::{Type, TypeDowncast};
 use fe_parser::ast::{GenericArg, TypeDesc};
 use fe_parser::node::Node;
 
-pub fn type_desc(context: &mut Context, desc: Node<TypeDesc>) -> Node<TypeDesc> {
+pub fn type_desc(context: &mut ModuleContext, desc: Node<TypeDesc>, typ: &Type) -> Node<TypeDesc> {
     match desc.kind {
         TypeDesc::Unit | TypeDesc::Base { .. } => desc,
 
         TypeDesc::Tuple { items } => {
-            let typ = context
-                .module
-                .analysis
-                .get_type_desc(desc.id)
-                .expect("missing type desc type")
-                .as_tuple()
-                .expect("expected tuple type");
+            let typ = typ.as_tuple().expect("expected tuple type");
 
-            for item in items.into_iter() {
-                type_desc(context, item);
+            for (item_desc, item_type) in items.into_iter().zip(typ.items.iter()) {
+                type_desc(context, item_desc, &item_type.clone().into());
             }
-            context.module.tuples.insert(typ.clone());
+            context.add_tuple(typ.clone());
             Node::new(
                 TypeDesc::Base {
                     base: names::tuple_struct_name(typ),
@@ -29,13 +23,20 @@ pub fn type_desc(context: &mut Context, desc: Node<TypeDesc>) -> Node<TypeDesc> 
             )
         }
 
-        TypeDesc::Array { typ, dimension } => Node::new(
-            TypeDesc::Array {
-                typ: Box::new(type_desc(context, *typ)),
-                dimension,
-            },
-            desc.span,
-        ),
+        TypeDesc::Array {
+            typ: desc,
+            dimension,
+        } => {
+            let inner_type = typ.as_array().expect("expected array type").inner;
+            let span = desc.span;
+            Node::new(
+                TypeDesc::Array {
+                    typ: Box::new(type_desc(context, *desc, &Type::Base(inner_type))),
+                    dimension,
+                },
+                span,
+            )
+        }
 
         TypeDesc::Generic { base, args } => Node::new(
             TypeDesc::Generic {
@@ -43,11 +44,15 @@ pub fn type_desc(context: &mut Context, desc: Node<TypeDesc>) -> Node<TypeDesc> 
                 args: Node::new(
                     args.kind
                         .into_iter()
-                        .map(|arg| match arg {
+                        .enumerate()
+                        .map(|(idx, arg)| match arg {
                             GenericArg::Int(_) => arg,
-                            GenericArg::TypeDesc(node) => {
-                                GenericArg::TypeDesc(type_desc(context, node))
-                            }
+                            GenericArg::TypeDesc(node) => GenericArg::TypeDesc(type_desc(
+                                context,
+                                node,
+                                &typ.generic_arg_type(idx)
+                                    .expect("expected generic type arg"),
+                            )),
                         })
                         .collect(),
                     args.span,
