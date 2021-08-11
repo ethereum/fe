@@ -9,7 +9,6 @@ error: failed to parse variable declaration
 1 │ let x
   │     ^ Must be followed by type annotation
   │
-  = The left side of a variable declaration can be either a name
-    or a non-empty tuple.
+  = Example: `let x: u8 = 1`
 
 

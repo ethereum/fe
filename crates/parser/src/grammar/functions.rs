@@ -211,7 +211,6 @@ pub fn parse_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
 }
 
 fn parse_var_decl(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
-
     let let_tkn = par.assert(TokenKind::Let);
     let expr = parse_expr(par)?;
     let target = expr_to_vardecl_target(par, expr.clone())?;
@@ -228,7 +227,7 @@ fn parse_var_decl(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
             let span = let_tkn.span + target.span + typ.span + value.as_ref();
             par.expect_newline("variable declaration")?;
             Node::new(FuncStmt::VarDecl { target, typ, value }, span)
-        },
+        }
         _ => {
             par.fancy_error(
                 "failed to parse variable declaration",
@@ -236,10 +235,7 @@ fn parse_var_decl(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
                     expr.span,
                     "Must be followed by type annotation",
                 )],
-                vec![
-                    "Example: `let x: u8 = 1`"
-                        .into(),
-                ],
+                vec!["Example: `let x: u8 = 1`".into()],
             );
             return Err(ParseFailed);
         }
@@ -256,22 +252,14 @@ fn parse_expr_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
         None | Some(Newline) => {
             let span = expr.span;
             Node::new(FuncStmt::Expr { value: expr }, span)
-        },
+        }
         Some(Colon) => {
             par.fancy_error(
                 "Variable declaration must begin with `let`",
-                vec![Label::primary(
-                    expr.span,
-                    "invalid variable declaration",
-                )],
-                vec![
-                    "Example: `let x: u8 = 1`"
-                        .into(),
-                ],
+                vec![Label::primary(expr.span, "invalid variable declaration")],
+                vec!["Example: `let x: u8 = 1`".into()],
             );
             return Err(ParseFailed);
-
-
         }
         Some(Eq) => {
             par.next()?;
