@@ -24,6 +24,7 @@
     * [`return` Statement](statement_return.md)
     * [`if` Statement](statement_if.md)
 * [Expressions](expressions.md)
+    * [Literal expressions](expr-literal.md)
     * [Arithmetic Operators](arithmetic_operators.md)
     * [Comparision Operators](comparision_operators.md)
 * [Type System](type_system.md)
