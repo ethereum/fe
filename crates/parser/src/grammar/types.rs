@@ -11,7 +11,7 @@ use vec1::Vec1;
 pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ast::Struct>> {
     use TokenKind::*;
     let struct_tok = par.assert(Struct);
-    let name = par.expect_with_notes(Name, "failed to parse struct definition", || {
+    let name = par.expect_with_notes(Name, "failed to parse struct definition", |_| {
         vec!["Note: a struct name must start with a letter or underscore, and contain letters, numbers, or underscores".into()]
     })?;
 
@@ -55,7 +55,7 @@ pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ast::Struct>> {
 pub fn parse_type_alias(par: &mut Parser) -> ParseResult<Node<TypeAlias>> {
     let type_tok = par.assert(TokenKind::Type);
     let name = par.expect(TokenKind::Name, "failed to parse type declaration")?;
-    par.expect_with_notes(TokenKind::Eq, "failed to parse type declaration", || {
+    par.expect_with_notes(TokenKind::Eq, "failed to parse type declaration", |_| {
         vec![
             "Note: a type alias name must be followed by an equals sign and a type description"
                 .into(),
@@ -118,7 +118,7 @@ pub fn parse_event_def(par: &mut Parser) -> ParseResult<Node<ast::Event>> {
 pub fn parse_event_field(par: &mut Parser) -> ParseResult<Node<EventField>> {
     let idx_qual = parse_opt_qualifier(par, TokenKind::Idx);
     let name = par.expect(TokenKind::Name, "failed to parse event field")?;
-    par.expect_with_notes(TokenKind::Colon, "failed to parse event field", || {
+    par.expect_with_notes(TokenKind::Colon, "failed to parse event field", |_| {
         vec![
             "Note: event field name must be followed by a colon and a type description".into(),
             format!(
@@ -151,17 +151,30 @@ pub fn parse_field(
     const_qual: Option<Span>,
 ) -> ParseResult<Node<Field>> {
     let name = par.expect(TokenKind::Name, "failed to parse field definition")?;
-    par.expect_with_notes(TokenKind::Colon, "failed to parse field definition", || {
-        vec![
-            "Note: field name must be followed by a colon and a type description".into(),
-            format!(
+    par.expect_with_notes(
+        TokenKind::Colon,
+        "failed to parse field definition",
+        |next| {
+            let mut notes = vec![];
+            if name.text == "def" && next.kind == TokenKind::Name {
+                notes.push("Hint: use `fn` to define a function".into());
+                notes.push(format!(
+                    "Example: `{}fn {}( ...`",
+                    if pub_qual.is_some() { "pub " } else { "" },
+                    next.text
+                ));
+            }
+            notes
+                .push("Note: field name must be followed by a colon and a type description".into());
+            notes.push(format!(
                 "Example: {}{}{}: address",
                 if pub_qual.is_some() { "pub " } else { "" },
                 if const_qual.is_some() { "const " } else { "" },
                 name.text
-            ),
-        ]
-    })?;
+            ));
+            notes
+        },
+    )?;
 
     let typ = parse_type_desc(par)?;
     let value = if par.peek() == Some(TokenKind::Eq) {

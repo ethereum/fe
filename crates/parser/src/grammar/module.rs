@@ -65,7 +65,7 @@ pub fn parse_simple_import(par: &mut Parser) -> ParseResult<Node<Import>> {
     let mut names = vec![];
     loop {
         let name =
-            par.expect_with_notes(TokenKind::Name, "failed to parse import statement", || {
+            par.expect_with_notes(TokenKind::Name, "failed to parse import statement", |_| {
                 vec![
                     "Note: `import` must be followed by a module name or path".into(),
                     "Example: `import mymodule".into(),
