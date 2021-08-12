@@ -20,6 +20,7 @@
     * [Contracts](contracts.md)
 * [Statements](statements.md)
     * [`pragma` Statement](statement_pragma.md)
+    * [`let` Statement](statement_let.md)
     * [`revert` Statement](statement_revert.md)
     * [`return` Statement](statement_return.md)
     * [`if` Statement](statement_if.md)
