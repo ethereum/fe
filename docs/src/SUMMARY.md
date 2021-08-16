@@ -34,6 +34,7 @@
         * [`if` Statement](spec/statement_if.md)
         * [`for` Statement](spec/statement_for.md)
         * [`while` Statement](spec/statement_while.md)
+        * [`break` Statement](spec/statement_break.md)
     * [Expressions](spec/expressions.md)
         * [Literal expressions](spec/expr-literal.md)
         * [Arithmetic Operators](spec/arithmetic_operators.md)
