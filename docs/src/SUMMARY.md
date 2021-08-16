@@ -28,6 +28,7 @@
         * [`pragma` Statement](spec/statement_pragma.md)
         * [`let` Statement](spec/statement_let.md)
         * [Assignment Statement](spec/statement_assign.md)
+        * [Augmenting Assignment Statement](spec/statement_augassign.md)
         * [`revert` Statement](spec/statement_revert.md)
         * [`return` Statement](spec/statement_return.md)
         * [`if` Statement](spec/statement_if.md)
