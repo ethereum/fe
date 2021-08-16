@@ -26,6 +26,7 @@
     * [`revert` Statement](statement_revert.md)
     * [`return` Statement](statement_return.md)
     * [`if` Statement](statement_if.md)
+    * [`for` Statement](statement_for.md)
 * [Expressions](expressions.md)
     * [Literal expressions](expr-literal.md)
     * [Arithmetic Operators](arithmetic_operators.md)
