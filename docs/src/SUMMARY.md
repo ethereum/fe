@@ -32,6 +32,7 @@
         * [`revert` Statement](spec/statement_revert.md)
         * [`return` Statement](spec/statement_return.md)
         * [`if` Statement](spec/statement_if.md)
+        * [`for` Statement](spec/statement_for.md)
     * [Expressions](spec/expressions.md)
         * [Literal expressions](spec/expr-literal.md)
         * [Arithmetic Operators](spec/arithmetic_operators.md)
