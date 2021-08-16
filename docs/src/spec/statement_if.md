@@ -22,7 +22,7 @@ contract Foo:
         if val > 5:
             return 1
         else:
-            assert 2
+            return 2
 ```
 
 The `if` statement is used for conditional execution.
