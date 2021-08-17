@@ -29,6 +29,7 @@
     * [`for` Statement](statement_for.md)
     * [`while` Statement](statement_while.md)
     * [`break` Statement](statement_break.md)
+    * [`continue` Statement](statement_continue.md)
 * [Expressions](expressions.md)
     * [Literal expressions](expr-literal.md)
     * [Arithmetic Operators](arithmetic_operators.md)
