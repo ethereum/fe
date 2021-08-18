@@ -36,6 +36,7 @@
         * [`while` Statement](spec/statement_while.md)
         * [`break` Statement](spec/statement_break.md)
         * [`continue` Statement](spec/statement_continue.md)
+        * [`pass` Statement](spec/statement_pass.md)
     * [Expressions](spec/expressions.md)
         * [Literal expressions](spec/expr-literal.md)
         * [Arithmetic Operators](spec/arithmetic_operators.md)
