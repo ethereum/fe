@@ -25,6 +25,7 @@
     * [`let` Statement](statement_let.md)
     * [`revert` Statement](statement_revert.md)
     * [`return` Statement](statement_return.md)
+    * [`emit` Statement](statement_emit.md)
     * [`if` Statement](statement_if.md)
     * [`for` Statement](statement_for.md)
     * [`while` Statement](statement_while.md)
