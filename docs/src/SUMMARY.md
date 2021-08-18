@@ -31,6 +31,7 @@
         * [Augmenting Assignment Statement](spec/statement_augassign.md)
         * [`revert` Statement](spec/statement_revert.md)
         * [`return` Statement](spec/statement_return.md)
+        * [`emit` Statement](spec/statement_emit.md)
         * [`if` Statement](spec/statement_if.md)
         * [`for` Statement](spec/statement_for.md)
         * [`while` Statement](spec/statement_while.md)
