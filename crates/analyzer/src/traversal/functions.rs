@@ -2,6 +2,7 @@ use crate::context::{AnalyzerContext, ExpressionAttributes, Label, Location};
 use crate::errors::{AlreadyDefined, FatalError};
 use crate::namespace::scopes::{BlockScope, BlockScopeType};
 use crate::namespace::types::{Base, FixedSize, Type};
+use crate::traversal::call_args::LabelPolicy;
 use crate::traversal::{assignments, call_args, declarations, expressions};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
@@ -148,6 +149,7 @@ fn emit(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalEr
                 name.span,
                 args,
                 &event.typ(scope.db()).fields,
+                LabelPolicy::AllowUnlabledIfNameEqual,
             )?;
         } else {
             scope.error(

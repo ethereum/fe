@@ -185,6 +185,8 @@ test_file! { invalid_tx_field }
 test_file! { invalid_var_declaration_1 }
 test_file! { invalid_var_declaration_2 }
 test_file! { issue_451 }
+test_file! { mislabeled_call_args }
+test_file! { mislabeled_call_args_external_contract_call }
 test_file! { mismatch_return_type }
 test_file! { missing_return }
 test_file! { missing_return_in_else }

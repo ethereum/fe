@@ -55,9 +55,10 @@ pub fn validate_named_args(
     name_span: Span,
     args: &Node<Vec<Node<fe::CallArg>>>,
     params: &[impl LabeledParameter],
+    label_policy: LabelPolicy,
 ) -> Result<(), FatalError> {
     validate_arg_count(scope, name, name_span, args, params.len());
-    validate_arg_labels(scope, args, params);
+    validate_arg_labels(scope, args, params, label_policy);
     validate_arg_types(scope, name, args, params)?;
     Ok(())
 }
@@ -107,10 +108,16 @@ pub fn validate_arg_count(
     }
 }
 
+pub enum LabelPolicy {
+    AllowAnyUnlabeled,
+    AllowUnlabledIfNameEqual,
+}
+
 pub fn validate_arg_labels(
     scope: &mut BlockScope,
     args: &Node<Vec<Node<fe::CallArg>>>,
     params: &[impl LabeledParameter],
+    label_policy: LabelPolicy,
 ) {
     for (expected_label, arg) in params
         .iter()
@@ -142,17 +149,19 @@ pub fn validate_arg_labels(
             (Some(expected_label), None) => match &arg_val.kind {
                 fe::Expr::Name(var_name) if var_name == expected_label => {}
                 _ => {
-                    scope.fancy_error(
-                        "missing argument label",
-                        vec![Label::primary(
-                            Span::new(arg_val.span.start, arg_val.span.start),
-                            format!("add `{}=` here", expected_label),
-                        )],
-                        vec![format!(
-                            "Note: this label is optional if the argument is a variable named `{}`.",
-                            expected_label
-                        )],
-                    );
+                    if let LabelPolicy::AllowUnlabledIfNameEqual = label_policy {
+                        scope.fancy_error(
+                            "missing argument label",
+                            vec![Label::primary(
+                                Span::new(arg_val.span.start, arg_val.span.start),
+                                format!("add `{}=` here", expected_label),
+                            )],
+                            vec![format!(
+                                "Note: this label is optional if the argument is a variable named `{}`.",
+                                expected_label
+                            )],
+                        );
+                    }
                 }
             },
             (None, Some(actual_label)) => {
