@@ -9,7 +9,7 @@ use crate::namespace::types::{
     Array, Base, Contract, FeString, Integer, Struct, Tuple, Type, TypeDowncast, U256,
 };
 use crate::operations;
-use crate::traversal::call_args::{validate_arg_count, validate_arg_types, validate_named_args};
+use crate::traversal::call_args::{validate_arg_count, validate_named_args, LabelPolicy};
 use crate::traversal::utils::{add_bin_operations_errors, types_to_fixed_sizes};
 use fe_common::diagnostics::Label;
 use fe_common::numeric;
@@ -754,7 +754,14 @@ fn expr_call_struct_constructor(
         .iter()
         .map(|(name, field)| (name.clone(), field.typ(db)))
         .collect::<Vec<_>>();
-    validate_named_args(scope, &struct_.name, name_span, args, &fields)?;
+    validate_named_args(
+        scope,
+        &struct_.name,
+        name_span,
+        args,
+        &fields,
+        LabelPolicy::AllowUnlabledIfNameEqual,
+    )?;
 
     Ok(ExpressionAttributes::new(
         Type::Struct(struct_),
@@ -876,8 +883,14 @@ fn expr_call_self_attribute(
 
     if let Some(func) = scope.root.contract_function(func_name) {
         let sig = func.signature(scope.root.db);
-        validate_arg_count(scope, func_name, name_span, args, sig.params.len());
-        validate_arg_types(scope, func_name, args, &sig.params)?;
+        validate_named_args(
+            scope,
+            func_name,
+            name_span,
+            args,
+            &sig.params,
+            LabelPolicy::AllowAnyUnlabeled,
+        )?;
 
         let return_type = sig.return_type.clone()?;
         let return_location = Location::assign_location(&return_type);
@@ -1151,8 +1164,14 @@ fn expr_call_contract_attribute(
         let sig = function.signature(scope.db());
         let return_type = sig.return_type.clone()?;
 
-        validate_arg_count(scope, func_name, name_span, args, sig.params.len());
-        validate_arg_types(scope, func_name, args, &sig.params)?;
+        validate_named_args(
+            scope,
+            func_name,
+            name_span,
+            args,
+            &sig.params,
+            LabelPolicy::AllowAnyUnlabeled,
+        )?;
 
         let location = Location::assign_location(&return_type);
         Ok(ExpressionAttributes::new(return_type.into(), location))

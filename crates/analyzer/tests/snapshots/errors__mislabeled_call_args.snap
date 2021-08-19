@@ -1,0 +1,18 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: argument label mismatch
+  ┌─ compile_errors/mislabeled_call_args.fe:4:18
+  │
+4 │         self.bar(doesnt_exist=1, me_neither=2)
+  │                  ^^^^^^^^^^^^ expected `val1`
+
+error: argument label mismatch
+  ┌─ compile_errors/mislabeled_call_args.fe:4:34
+  │
+4 │         self.bar(doesnt_exist=1, me_neither=2)
+  │                                  ^^^^^^^^^^ expected `val2`
+
+
