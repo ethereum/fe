@@ -40,6 +40,7 @@
         * [`assert` Statement](spec/statement_assert.md)
         * [`pass` Statement](spec/statement_pass.md)
     * [Expressions](spec/expressions.md)
+        * [Call expressions](spec/expr_call.md)
         * [Literal expressions](spec/expr-literal.md)
         * [Arithmetic Operators](spec/arithmetic_operators.md)
         * [Comparision Operators](spec/comparision_operators.md)
