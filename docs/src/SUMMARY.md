@@ -41,6 +41,7 @@
         * [`pass` Statement](spec/statement_pass.md)
     * [Expressions](spec/expressions.md)
         * [Call expressions](spec/expr_call.md)
+        * [Tuple expressions](spec/expr_tuple.md)
         * [Literal expressions](spec/expr-literal.md)
         * [Arithmetic Operators](spec/arithmetic_operators.md)
         * [Comparision Operators](spec/comparision_operators.md)
