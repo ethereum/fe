@@ -36,6 +36,7 @@
 * [Expressions](expressions.md)
     * [Call expressions](expr_call.md)
     * [Tuple expressions](expr_tuple.md)
+    * [List expressions](expr_list.md)
     * [Attribute expressions](expr_attribute.md)
     * [Literal expressions](expr-literal.md)
     * [Arithmetic Operators](arithmetic_operators.md)
