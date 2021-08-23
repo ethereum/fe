@@ -43,6 +43,7 @@
         * [Call expressions](spec/expr_call.md)
         * [Tuple expressions](spec/expr_tuple.md)
         * [List expressions](spec/expr_list.md)
+        * [Index expressions](spec/expr_index.md)
         * [Attribute expressions](spec/expr_attribute.md)
         * [Literal expressions](spec/expr-literal.md)
         * [Arithmetic Operators](spec/arithmetic_operators.md)
