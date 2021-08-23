@@ -1,7 +1,7 @@
 contract Foo:
     my_array: u256[3]
 
-    pub fn bar() -> u256:
+    pub fn bar(self) -> u256:
         self.my_array = [1,2,3]
         let sum: u256 = 0
         for i in self.my_array.to_mem():

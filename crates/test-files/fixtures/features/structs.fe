@@ -7,7 +7,7 @@ struct House:
 contract Foo:
     my_house: House
 
-    pub fn create_house():
+    pub fn create_house(self):
         self.my_house = House(
             price=1,
             size=2,

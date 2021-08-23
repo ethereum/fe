@@ -12,7 +12,7 @@ An example of a `revert` statement without revert data:
 
 ```
 contract Foo:
-    fn transfer(to : address, value : u256):
+    fn transfer(self, to : address, value : u256):
         if not self.in_whitelist(to):
             revert
         # more logic here
@@ -22,7 +22,7 @@ An example of a `revert` statement with revert data:
 
 ```
 contract Foo:
-    fn transfer(to : address, value : u256):
+    fn transfer(self, to : address, value : u256):
         if not self.in_whitelist(to):
             revert ApplicationError(code=5)
         # more logic here

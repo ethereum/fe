@@ -1,0 +1,14 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: `baz` must be called using `self`
+  ┌─ compile_errors/call_to_mut_fn_without_self.fe:3:9
+  │
+3 │         baz()
+  │         ^^^ function takes self
+  │
+  = Suggestion: try `self.baz(...)` instead of `baz(...)`
+
+

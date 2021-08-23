@@ -116,8 +116,15 @@ pub struct FeString {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FunctionSignature {
+    pub self_decl: SelfDecl,
     pub params: Vec<FunctionParam>,
     pub return_type: Result<FixedSize, TypeError>,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
+pub enum SelfDecl {
+    None,
+    Mutable,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

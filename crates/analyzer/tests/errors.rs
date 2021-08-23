@@ -50,7 +50,7 @@ macro_rules! test_stmt {
         #[wasm_bindgen_test]
         fn $name() {
             let src = format!(
-                "contract C:\n pub fn f():\n  {}",
+                "contract C:\n pub fn f(self):\n  {}",
                 $stmt.replace('\n', "\n  ")
             );
             if cfg!(target_arch = "wasm32") {
@@ -215,3 +215,8 @@ test_file! { abi_encode_from_storage }
 test_file! { assert_sto_msg_no_copy }
 test_file! { for_loop_sto_iter_no_copy }
 test_file! { revert_sto_error_no_copy }
+
+test_file! { call_to_mut_fn_without_self }
+test_file! { call_to_pure_fn_on_self }
+test_file! { missing_self }
+test_file! { self_not_first }

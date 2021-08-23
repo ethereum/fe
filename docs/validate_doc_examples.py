@@ -31,7 +31,7 @@ SKIP_LIST = [
     'stack.md_e985510948163c9aa6f7bbd245a3ce1a6bc9b064.fe',
     'functions.md_5a6a3b458a39ef0ec9696e59e36e747a8f7779c9.fe',
     'first_contract.md_1fe46f24899f78d00da0444bf5fa1dfe40eb0a2a.fe',
-    'first_contract.md_de4b2217b3aeb9a989bdffbf1142e34731d725f5.fe',
+    'first_contract.md_2992d9a656129dc8e4192e598f90b394bc151750.fe'
 ]
 
 class CodeSnippet(NamedTuple):

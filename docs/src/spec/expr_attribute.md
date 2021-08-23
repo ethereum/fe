@@ -27,8 +27,8 @@ contract Foo:
         # Different examples of attribute expressions
         let bool_1: bool = some_tuple.item0
         let x1: u256 = some_point.x
-        let point1: u256 = self.get_point().x
-        let point2: u256 = self.some_point.x
+        let point1: u256 = get_point().x
+        let point2: u256 = some_point.x
 
 ```
 

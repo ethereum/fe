@@ -24,9 +24,10 @@ note:
 10 │ │         my_address: address
 11 │ │     ) -> (u256, bool, address):
 12 │ │         return (my_num, my_bool, my_address)
-   │ ╰────────────────────────────────────────────^ attributes hash: 14534698649919318558
+   │ ╰────────────────────────────────────────────^ attributes hash: 13483717293020073668
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "my_num",
@@ -81,9 +82,10 @@ note:
    │  
 14 │ ╭     pub fn read_my_tuple_item0(my_tuple: (u256, bool, address)) -> u256:
 15 │ │         return my_tuple.item0
-   │ ╰─────────────────────────────^ attributes hash: 5114195826335643055
+   │ ╰─────────────────────────────^ attributes hash: 2766506595472512026
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "my_tuple",
@@ -122,9 +124,10 @@ note:
    │  
 17 │ ╭     pub fn read_my_tuple_item1(my_tuple: (u256, bool, address)) -> bool:
 18 │ │         return my_tuple.item1
-   │ ╰─────────────────────────────^ attributes hash: 15367699380563059967
+   │ ╰─────────────────────────────^ attributes hash: 6352541920629593005
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "my_tuple",
@@ -161,9 +164,10 @@ note:
    │  
 20 │ ╭     pub fn read_my_tuple_item2(my_tuple: (u256, bool, address)) -> address:
 21 │ │         return my_tuple.item2
-   │ ╰─────────────────────────────^ attributes hash: 18418836367069467314
+   │ ╰─────────────────────────────^ attributes hash: 12452259679831530463
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "my_tuple",
@@ -199,10 +203,11 @@ note:
    ┌─ stress/tuple_stress.fe:23:5
    │  
 23 │ ╭     pub fn read_my_tuple_item10(my_tuple: (u256, u256, u256, u256, u256, u256, u256, u256, u256, u256, address)) -> address:
-24 │ │             return my_tuple.item10
-   │ ╰──────────────────────────────────^ attributes hash: 17624511170692480766
+24 │ │         return my_tuple.item10
+   │ ╰──────────────────────────────^ attributes hash: 14267968335076845493
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "my_tuple",
@@ -281,9 +286,10 @@ note:
    │  
 26 │ ╭     pub fn emit_my_event(my_tuple: (u256, bool, address)):
 27 │ │         emit MyEvent(my_tuple)
-   │ ╰──────────────────────────────^ attributes hash: 13087875162113275245
+   │ ╰──────────────────────────────^ attributes hash: 11035500091824568233
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "my_tuple",
@@ -318,12 +324,13 @@ note:
 note: 
    ┌─ stress/tuple_stress.fe:29:5
    │  
-29 │ ╭     pub fn set_my_sto_tuple(my_u256: u256, my_i32: i32):
+29 │ ╭     pub fn set_my_sto_tuple(self, my_u256: u256, my_i32: i32):
 30 │ │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
 31 │ │         self.my_sto_tuple = (my_u256, my_i32)
-   │ ╰─────────────────────────────────────────────^ attributes hash: 4022092093243954425
+   │ ╰─────────────────────────────────────────────^ attributes hash: 5930645998145376015
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "my_u256",
@@ -356,11 +363,12 @@ note:
 note: 
    ┌─ stress/tuple_stress.fe:33:5
    │  
-33 │ ╭     pub fn get_my_sto_tuple() -> (u256, i32):
+33 │ ╭     pub fn get_my_sto_tuple(self) -> (u256, i32):
 34 │ │         return self.my_sto_tuple.to_mem()
-   │ ╰─────────────────────────────────────────^ attributes hash: 16978508948255230610
+   │ ╰─────────────────────────────────────────^ attributes hash: 8140983257972799311
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              Tuple(
@@ -385,16 +393,17 @@ note:
 note: 
    ┌─ stress/tuple_stress.fe:36:5
    │  
-36 │ ╭     pub fn build_tuple_and_emit():
+36 │ ╭     pub fn build_tuple_and_emit(self):
 37 │ │         let my_num: u256 = self.my_sto_tuple.item0
 38 │ │         let my_tuple: (u256, bool, address) = (
 39 │ │             self.my_sto_tuple.item0,
    · │
 42 │ │         )
-43 │ │         self.emit_my_event(my_tuple)
-   │ ╰────────────────────────────────────^ attributes hash: 17883060253504188551
+43 │ │         emit_my_event(my_tuple)
+   │ ╰───────────────────────────────^ attributes hash: 4369441865732737140
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              Base(
@@ -408,9 +417,10 @@ note:
    │  
 45 │ ╭     pub fn encode_my_tuple(my_tuple: (u256, bool, address)) -> u8[96]:
 46 │ │         return my_tuple.abi_encode()
-   │ ╰────────────────────────────────────^ attributes hash: 13695567180922413051
+   │ ╰────────────────────────────────────^ attributes hash: 4037443094215636083
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "my_tuple",
@@ -508,16 +518,16 @@ note:
    │                ^^^^^^^^^^^^^^ address: Memory => Some(Value)
 
 note: 
-   ┌─ stress/tuple_stress.fe:24:20
+   ┌─ stress/tuple_stress.fe:24:16
    │
-24 │             return my_tuple.item10
-   │                    ^^^^^^^^ (u256, u256, u256, u256, u256, u256, u256, u256, u256, u256, address): Memory => None
+24 │         return my_tuple.item10
+   │                ^^^^^^^^ (u256, u256, u256, u256, u256, u256, u256, u256, u256, u256, address): Memory => None
 
 note: 
-   ┌─ stress/tuple_stress.fe:24:20
+   ┌─ stress/tuple_stress.fe:24:16
    │
-24 │             return my_tuple.item10
-   │                    ^^^^^^^^^^^^^^^ address: Memory => Some(Value)
+24 │         return my_tuple.item10
+   │                ^^^^^^^^^^^^^^^ address: Memory => Some(Value)
 
 note: 
    ┌─ stress/tuple_stress.fe:27:22
@@ -693,16 +703,16 @@ note:
    │ ╰─────────^ (u256, bool, address): Memory => None
 
 note: 
-   ┌─ stress/tuple_stress.fe:43:28
+   ┌─ stress/tuple_stress.fe:43:23
    │
-43 │         self.emit_my_event(my_tuple)
-   │                            ^^^^^^^^ (u256, bool, address): Memory => None
+43 │         emit_my_event(my_tuple)
+   │                       ^^^^^^^^ (u256, bool, address): Memory => None
 
 note: 
    ┌─ stress/tuple_stress.fe:43:9
    │
-43 │         self.emit_my_event(my_tuple)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value => None
+43 │         emit_my_event(my_tuple)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^ (): Value => None
 
 note: 
    ┌─ stress/tuple_stress.fe:46:16
@@ -814,10 +824,10 @@ note:
 note: 
    ┌─ stress/tuple_stress.fe:43:9
    │
-43 │         self.emit_my_event(my_tuple)
-   │         ^^^^^^^^^^^^^^^^^^ attributes hash: 608487383688023809
+43 │         emit_my_event(my_tuple)
+   │         ^^^^^^^^^^^^^ attributes hash: 4428583522641384060
    │
-   = SelfAttribute {
+   = Pure {
          func_name: "emit_my_event",
      }
 

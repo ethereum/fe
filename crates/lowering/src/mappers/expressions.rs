@@ -1,7 +1,6 @@
 use crate::context::FnContext;
 use crate::names::{list_expr_generator_fn_name, tuple_struct_name};
 use crate::utils::ZeroSpanNode;
-use fe_analyzer::builtins::Object;
 use fe_analyzer::namespace::types::{Type, TypeDowncast};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
@@ -172,11 +171,7 @@ fn expr_list(context: &mut FnContext, exp: Node<fe::Expr>) -> fe::Expr {
 
             // Turn List Expression into a function call
             return fe::Expr::Call {
-                func: fe::Expr::Attribute {
-                    value: fe::Expr::Name(Object::Self_.to_string()).into_boxed_node(),
-                    attr: fn_name.into_node(),
-                }
-                .into_boxed_node(),
+                func: fe::Expr::Name(fn_name).into_boxed_node(),
                 generic_args: None,
                 args,
             };

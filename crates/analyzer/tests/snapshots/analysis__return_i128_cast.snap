@@ -8,9 +8,10 @@ note:
   │  
 2 │ ╭     pub fn bar() -> i128:
 3 │ │         return i128(-3)
-  │ ╰───────────────────────^ attributes hash: 12139568508098609638
+  │ ╰───────────────────────^ attributes hash: 11475314391007551899
   │  
   = FunctionSignature {
+        self_decl: None,
         params: [],
         return_type: Ok(
             Base(

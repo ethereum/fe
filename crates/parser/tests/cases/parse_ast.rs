@@ -187,11 +187,11 @@ contract GuestBook:
     event Signed:
         idx book_msg: BookMsg
 
-    pub fn sign(book_msg: BookMsg):
+    pub fn sign(self, book_msg: BookMsg):
         self.guest_book[msg.sender] = book_msg
 
         emit Signed(book_msg=book_msg)
 
-    pub fn get_msg(addr: address) -> BookMsg:
+    pub fn get_msg(self, addr: address) -> BookMsg:
         return self.guest_book[addr]
 "# }

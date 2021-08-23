@@ -5,8 +5,8 @@ contract Foo:
 contract FooFactory:
     foo_addr: address
 
-    pub fn __init__():
+    pub fn __init__(self):
         self.foo_addr = address(Foo.create(0))
 
-    pub fn get_foo_addr() -> address:
+    pub fn get_foo_addr(self) -> address:
         return self.foo_addr

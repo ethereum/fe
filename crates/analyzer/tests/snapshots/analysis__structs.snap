@@ -36,16 +36,17 @@ note:
 note: 
    ┌─ features/structs.fe:10:5
    │  
-10 │ ╭     pub fn create_house():
+10 │ ╭     pub fn create_house(self):
 11 │ │         self.my_house = House(
 12 │ │             price=1,
 13 │ │             size=2,
    · │
 41 │ │         assert self.my_house.rooms == u8(100)
 42 │ │         assert self.my_house.vacant
-   │ ╰───────────────────────────────────^ attributes hash: 17883060253504188551
+   │ ╰───────────────────────────────────^ attributes hash: 4369441865732737140
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              Base(
@@ -64,9 +65,10 @@ note:
    · │
 64 │ │         assert building.rooms == u8(10)
 65 │ │         return building.size
-   │ ╰────────────────────────────^ attributes hash: 4553090961241945225
+   │ ╰────────────────────────────^ attributes hash: 17979516652885443340
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -87,9 +89,10 @@ note:
    · │
 73 │ │         )
 74 │ │         return house.abi_encode()
-   │ ╰─────────────────────────────────^ attributes hash: 17493453129355039047
+   │ ╰─────────────────────────────────^ attributes hash: 6092146250611764360
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [],
          return_type: Ok(
              Array(
@@ -113,9 +116,10 @@ note:
    · │
 82 │ │         )
 83 │ │         return keccak256(house.abi_encode())
-   │ ╰────────────────────────────────────────────^ attributes hash: 4553090961241945225
+   │ ╰────────────────────────────────────────────^ attributes hash: 17979516652885443340
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [],
          return_type: Ok(
              Base(

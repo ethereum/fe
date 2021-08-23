@@ -4,5 +4,5 @@ struct MyError:
 contract Foo:
     my_error: MyError
 
-    pub fn bar():
+    pub fn bar(self):
         revert self.my_error

@@ -77,6 +77,32 @@ pub fn contract_public_function_map(
     )
 }
 
+pub fn contract_pure_function_map(
+    db: &dyn AnalyzerDb,
+    contract: ContractId,
+) -> Rc<IndexMap<String, FunctionId>> {
+    Rc::new(
+        contract
+            .functions(db)
+            .iter()
+            .filter_map(|(name, func)| func.is_pure(db).then(|| (name.clone(), *func)))
+            .collect(),
+    )
+}
+
+pub fn contract_self_function_map(
+    db: &dyn AnalyzerDb,
+    contract: ContractId,
+) -> Rc<IndexMap<String, FunctionId>> {
+    Rc::new(
+        contract
+            .functions(db)
+            .iter()
+            .filter_map(|(name, func)| (!func.is_pure(db)).then(|| (name.clone(), *func)))
+            .collect(),
+    )
+}
+
 pub fn contract_init_function(
     db: &dyn AnalyzerDb,
     contract: ContractId,

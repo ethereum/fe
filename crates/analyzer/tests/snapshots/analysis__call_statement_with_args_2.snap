@@ -12,12 +12,13 @@ note:
 note: 
   ┌─ features/call_statement_with_args_2.fe:4:5
   │  
-4 │ ╭     fn assign(val: u256) -> u256:
+4 │ ╭     fn assign(self, val: u256) -> u256:
 5 │ │         self.baz[0] = val
 6 │ │         return val
-  │ ╰──────────────────^ attributes hash: 6248121154456130073
+  │ ╰──────────────────^ attributes hash: 13803375927344563415
   │  
   = FunctionSignature {
+        self_decl: Mutable,
         params: [
             FunctionParam {
                 name: "val",
@@ -42,12 +43,13 @@ note:
 note: 
    ┌─ features/call_statement_with_args_2.fe:8:5
    │  
- 8 │ ╭     pub fn bar() -> u256:
+ 8 │ ╭     pub fn bar(self) -> u256:
  9 │ │         self.assign(100)
 10 │ │         return self.baz[0]
-   │ ╰──────────────────────────^ attributes hash: 4553090961241945225
+   │ ╰──────────────────────────^ attributes hash: 16482263331346774611
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              Base(
@@ -122,10 +124,14 @@ note:
   ┌─ features/call_statement_with_args_2.fe:9:9
   │
 9 │         self.assign(100)
-  │         ^^^^^^^^^^^ attributes hash: 13402545317341859599
+  │         ^^^^^^^^^^^ attributes hash: 511266823031776296
   │
   = SelfAttribute {
         func_name: "assign",
+        self_span: Span {
+            start: 164,
+            end: 168,
+        },
     }
 
 

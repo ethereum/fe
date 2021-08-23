@@ -6,10 +6,12 @@ use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, Location};
 use crate::errors::{FatalError, IndexingError, NotFixedSize};
 use crate::namespace::scopes::BlockScope;
 use crate::namespace::types::{
-    Array, Base, Contract, FeString, Integer, Struct, Tuple, Type, TypeDowncast, U256,
+    Array, Base, Contract, FeString, Integer, SelfDecl, Struct, Tuple, Type, TypeDowncast, U256,
 };
 use crate::operations;
-use crate::traversal::call_args::{validate_arg_count, validate_named_args, LabelPolicy};
+use crate::traversal::call_args::{
+    validate_arg_count, validate_arg_types, validate_named_args, LabelPolicy,
+};
 use crate::traversal::utils::{add_bin_operations_errors, types_to_fixed_sizes};
 use fe_common::diagnostics::Label;
 use fe_common::numeric;
@@ -400,7 +402,7 @@ fn expr_attribute(
         // If the value is a name, check if it is a builtin object and attribute.
         if let fe::Expr::Name(name) = &value.kind {
             match Object::from_str(name) {
-                Ok(Object::Self_) => return expr_attribute_self(scope, attr),
+                Ok(Object::Self_) => return expr_attribute_self(scope, value, attr),
                 Ok(Object::Block) => {
                     return match BlockField::from_str(&attr.kind) {
                         Ok(BlockField::Coinbase) => base_type(Base::Address),
@@ -568,8 +570,11 @@ fn tuple_item_index(item: &str) -> Option<usize> {
 
 fn expr_attribute_self(
     scope: &mut BlockScope,
+    value: &Node<fe::Expr>,
     attr: &Node<String>,
 ) -> Result<ExpressionAttributes, FatalError> {
+    check_for_self_param(scope, value.span)?;
+
     if let Ok(SelfField::Address) = SelfField::from_str(&attr.kind) {
         return Ok(ExpressionAttributes::new(
             Type::Base(Base::Address),
@@ -698,9 +703,11 @@ fn expr_call(
             CallType::TypeConstructor { typ } => {
                 expr_call_type_constructor(scope, func.span, typ, args)
             }
-            CallType::SelfAttribute { func_name } => {
-                expr_call_self_attribute(scope, &func_name, func.span, args)
-            }
+            CallType::SelfAttribute {
+                func_name,
+                self_span,
+            } => expr_call_self_attribute(scope, &func_name, func.span, self_span, args),
+            CallType::Pure { func_name } => expr_call_pure(scope, &func_name, func.span, args),
             CallType::ValueAttribute => expr_call_value_attribute(scope, func, args),
             CallType::TypeAttribute { typ, func_name } => {
                 expr_call_type_attribute(scope, typ, &func_name, func.span, args)
@@ -879,7 +886,65 @@ fn check_for_call_to_init_fn(
     }
 }
 
+fn check_for_self_param(scope: &mut BlockScope, use_span: Span) -> Result<(), FatalError> {
+    if scope.root.function.signature(scope.db()).self_decl == SelfDecl::None {
+        scope.fancy_error(
+            "`self` is not defined",
+            vec![Label::primary(use_span, "undefined value")],
+            vec![
+                "add `self` to the scope by including it in the function signature".to_string(),
+                "Example: `fn foo(self, bar: bool)`".to_string(),
+            ],
+        );
+        Err(FatalError::new())
+    } else {
+        Ok(())
+    }
+}
+
 fn expr_call_self_attribute(
+    scope: &mut BlockScope,
+    func_name: &str,
+    name_span: Span,
+    self_span: Span,
+    args: &Node<Vec<Node<fe::CallArg>>>,
+) -> Result<ExpressionAttributes, FatalError> {
+    check_for_call_to_init_fn(scope, func_name, name_span)?;
+    check_for_self_param(scope, self_span)?;
+
+    if let Some(func) = scope.root.self_contract_function(func_name) {
+        let sig = func.signature(scope.root.db);
+        validate_arg_count(scope, func_name, name_span, args, sig.params.len());
+        validate_arg_types(scope, func_name, args, &sig.params)?;
+
+        let return_type = sig.return_type.clone()?;
+        let return_location = Location::assign_location(&return_type);
+        Ok(ExpressionAttributes::new(
+            return_type.into(),
+            return_location,
+        ))
+    } else {
+        if scope.root.pure_contract_function(func_name).is_none() {
+            scope.fancy_error(
+                &format!("no function named `{}` exists in this contract", func_name),
+                vec![Label::primary(name_span, "undefined function")],
+                vec![],
+            );
+        } else {
+            scope.fancy_error(
+                &format!("`{}` must be called without `self`", func_name),
+                vec![Label::primary(name_span, "function does not take self")],
+                vec![format!(
+                    "Suggestion: try `{}(...)` instead of `self.{}(...)`",
+                    func_name, func_name
+                )],
+            )
+        }
+        Err(FatalError::new())
+    }
+}
+
+fn expr_call_pure(
     scope: &mut BlockScope,
     func_name: &str,
     name_span: Span,
@@ -887,7 +952,7 @@ fn expr_call_self_attribute(
 ) -> Result<ExpressionAttributes, FatalError> {
     check_for_call_to_init_fn(scope, func_name, name_span)?;
 
-    if let Some(func) = scope.root.contract_function(func_name) {
+    if let Some(func) = scope.root.pure_contract_function(func_name) {
         let sig = func.signature(scope.root.db);
         validate_named_args(
             scope,
@@ -905,11 +970,22 @@ fn expr_call_self_attribute(
             return_location,
         ))
     } else {
-        scope.fancy_error(
-            &format!("no function `{}` exists this contract", func_name),
-            vec![Label::primary(name_span, "undefined function")],
-            vec![],
-        );
+        if scope.root.self_contract_function(func_name).is_none() {
+            scope.fancy_error(
+                &format!("no function named `{}` exists in this contract", func_name),
+                vec![Label::primary(name_span, "undefined function")],
+                vec![],
+            )
+        } else {
+            scope.fancy_error(
+                &format!("`{}` must be called using `self`", func_name),
+                vec![Label::primary(name_span, "function takes self")],
+                vec![format!(
+                    "Suggestion: try `self.{}(...)` instead of `{}(...)`",
+                    func_name, func_name
+                )],
+            )
+        };
         Err(FatalError::new())
     }
 }
@@ -1216,7 +1292,7 @@ fn expr_call_type(
     generic_args: Option<&Node<Vec<fe::GenericArg>>>,
 ) -> Result<CallType, FatalError> {
     let call_type = match &func.kind {
-        fe::Expr::Name(name) => expr_name_call_type(scope, name, func.span, generic_args),
+        fe::Expr::Name(name) => expr_name_call_type(scope, name, generic_args),
         fe::Expr::Attribute { .. } => expr_attribute_call_type(scope, func),
         _ => {
             let expression = expr(scope, func, None)?;
@@ -1239,7 +1315,6 @@ fn expr_call_type(
 fn expr_name_call_type(
     scope: &mut BlockScope,
     name: &str,
-    name_span: Span,
     generic_args: Option<&Node<Vec<fe::GenericArg>>>,
 ) -> Result<CallType, FatalError> {
     match (name, generic_args) {
@@ -1295,8 +1370,9 @@ fn expr_name_call_type(
             if let Some(typ) = scope.resolve_type(value) {
                 Ok(CallType::TypeConstructor { typ: typ? })
             } else {
-                scope.error("undefined function", name_span, "undefined");
-                Err(FatalError::new())
+                Ok(CallType::Pure {
+                    func_name: value.to_string(),
+                })
             }
         }
     }
@@ -1321,6 +1397,7 @@ fn expr_attribute_call_type(
                 Ok(Object::Self_) => {
                     return Ok(CallType::SelfAttribute {
                         func_name: attr.kind.to_string(),
+                        self_span: value.span,
                     })
                 }
                 Err(_) => {}

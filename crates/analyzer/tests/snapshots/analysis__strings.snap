@@ -50,9 +50,10 @@ note:
    │  
 11 │ ╭     pub fn __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
 12 │ │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │ ╰─────────────────────────────────────────────────────────────────────────────────^ attributes hash: 3164511711782689051
+   │ ╰─────────────────────────────────────────────────────────────────────────────────^ attributes hash: 2002059796134224129
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "s1",
@@ -115,9 +116,10 @@ note:
    │  
 14 │ ╭     pub fn bar(s1: String<100>, s2: String<100>) -> String<100>:
 15 │ │         return s2
-   │ ╰─────────────────^ attributes hash: 5487186020749486199
+   │ ╰─────────────────^ attributes hash: 9796174980111478041
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "s1",
@@ -154,9 +156,10 @@ note:
    │  
 17 │ ╭     pub fn return_static_string() -> String<43>:
 18 │ │         return "The quick brown fox jumps over the lazy dog"
-   │ ╰────────────────────────────────────────────────────────────^ attributes hash: 16003421452775228761
+   │ ╰────────────────────────────────────────────────────────────^ attributes hash: 3426951284599168562
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [],
          return_type: Ok(
              String(
@@ -172,9 +175,10 @@ note:
    │  
 20 │ ╭     pub fn return_casted_static_string() -> String<100>:
 21 │ │         return String<100>("foo")
-   │ ╰─────────────────────────────────^ attributes hash: 547051866614494389
+   │ ╰─────────────────────────────────^ attributes hash: 15820744965541513152
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [],
          return_type: Ok(
              String(
@@ -191,9 +195,10 @@ note:
 23 │ ╭     pub fn return_special_chars() -> String<18>:
 24 │ │         return "\n\"'\r\t
 25 │ │         foo\\"
-   │ ╰──────────────^ attributes hash: 9448948996761675237
+   │ ╰──────────────^ attributes hash: 14991635520577142188
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [],
          return_type: Ok(
              String(

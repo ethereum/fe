@@ -47,7 +47,7 @@ event_field: [event_field_qual] NAME ':' type_desc NEWLINE
 func_def:
     [func_qual] 'fn' NAME '(' [arg_list] ')' ['->' base_type] ':' block
 arg_list: arg_def (',' arg_def)* [',']
-arg_def: NAME ':' type_desc
+arg_def: NAME ':' type_desc | 'self'
 
 type_desc: map_type | base_type
 map_type:

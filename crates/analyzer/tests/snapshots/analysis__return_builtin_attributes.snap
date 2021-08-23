@@ -8,9 +8,10 @@ note:
   │  
 2 │ ╭     pub fn coinbase() -> address:
 3 │ │         return block.coinbase
-  │ ╰─────────────────────────────^ attributes hash: 2195077967527136217
+  │ ╰─────────────────────────────^ attributes hash: 14219262914863437447
   │  
   = FunctionSignature {
+        self_decl: None,
         params: [],
         return_type: Ok(
             Base(
@@ -24,9 +25,10 @@ note:
   │  
 5 │ ╭     pub fn difficulty() -> u256:
 6 │ │         return block.difficulty
-  │ ╰───────────────────────────────^ attributes hash: 4553090961241945225
+  │ ╰───────────────────────────────^ attributes hash: 17979516652885443340
   │  
   = FunctionSignature {
+        self_decl: None,
         params: [],
         return_type: Ok(
             Base(
@@ -42,9 +44,10 @@ note:
   │  
 8 │ ╭     pub fn number() -> u256:
 9 │ │         return block.number
-  │ ╰───────────────────────────^ attributes hash: 4553090961241945225
+  │ ╰───────────────────────────^ attributes hash: 17979516652885443340
   │  
   = FunctionSignature {
+        self_decl: None,
         params: [],
         return_type: Ok(
             Base(
@@ -60,9 +63,10 @@ note:
    │  
 11 │ ╭     pub fn timestamp() -> u256:
 12 │ │         return block.timestamp
-   │ ╰──────────────────────────────^ attributes hash: 4553090961241945225
+   │ ╰──────────────────────────────^ attributes hash: 17979516652885443340
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -78,9 +82,10 @@ note:
    │  
 14 │ ╭     pub fn chainid() -> u256:
 15 │ │         return chain.id
-   │ ╰───────────────────────^ attributes hash: 4553090961241945225
+   │ ╰───────────────────────^ attributes hash: 17979516652885443340
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -96,9 +101,10 @@ note:
    │  
 17 │ ╭     pub fn sender() -> address:
 18 │ │         return msg.sender
-   │ ╰─────────────────────────^ attributes hash: 2195077967527136217
+   │ ╰─────────────────────────^ attributes hash: 14219262914863437447
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -112,9 +118,10 @@ note:
    │  
 20 │ ╭     pub fn value() -> u256:
 21 │ │         return msg.value
-   │ ╰────────────────────────^ attributes hash: 4553090961241945225
+   │ ╰────────────────────────^ attributes hash: 17979516652885443340
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -130,9 +137,10 @@ note:
    │  
 23 │ ╭     pub fn origin() -> address:
 24 │ │         return tx.origin
-   │ ╰────────────────────────^ attributes hash: 2195077967527136217
+   │ ╰────────────────────────^ attributes hash: 14219262914863437447
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -146,9 +154,10 @@ note:
    │  
 26 │ ╭     pub fn gas_price() -> u256:
 27 │ │         return tx.gas_price
-   │ ╰───────────────────────────^ attributes hash: 4553090961241945225
+   │ ╰───────────────────────────^ attributes hash: 17979516652885443340
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [],
          return_type: Ok(
              Base(

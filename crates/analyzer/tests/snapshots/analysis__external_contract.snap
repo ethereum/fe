@@ -26,9 +26,10 @@ note:
   │  
 7 │ ╭     pub fn emit_event(my_num: u256, my_addrs: address[5], my_string: String<11>):
 8 │ │         emit MyEvent(my_num, my_addrs, my_string)
-  │ ╰─────────────────────────────────────────────────^ attributes hash: 17428859623886168806
+  │ ╰─────────────────────────────────────────────────^ attributes hash: 18349539147683316743
   │  
   = FunctionSignature {
+        self_decl: None,
         params: [
             FunctionParam {
                 name: "my_num",
@@ -78,9 +79,10 @@ note:
 13 │ │         my_array[1] = a * b
 14 │ │         my_array[2] = b
 15 │ │         return my_array
-   │ ╰───────────────────────^ attributes hash: 9609739735012773294
+   │ ╰───────────────────────^ attributes hash: 7166601560969052500
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "a",
@@ -125,9 +127,10 @@ note:
    · │
 24 │ │         let foo: Foo = Foo(foo_address)
 25 │ │         foo.emit_event(my_num, my_addrs, my_string)
-   │ ╰───────────────────────────────────────────────────^ attributes hash: 14705437284568223339
+   │ ╰───────────────────────────────────────────────────^ attributes hash: 17183077571888547848
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "foo_address",
@@ -186,9 +189,10 @@ note:
 31 │ │     ) -> u256[3]:
 32 │ │         let foo: Foo = Foo(foo_address)
 33 │ │         return foo.build_array(a, b)
-   │ ╰────────────────────────────────────^ attributes hash: 13650137565568360017
+   │ ╰────────────────────────────────────^ attributes hash: 6783560394552784988
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "foo_address",

@@ -6,7 +6,7 @@ expression: "error_string(&path, &src)"
 error: The function `do_private_thingz` on `contract Foo` is private
   ┌─ compile_errors/call_non_pub_fn_on_external_contract.fe:9:21
   │  
-4 │ ╭   fn do_private_thingz():
+4 │ ╭   fn do_private_thingz(self):
 5 │ │      self.val = 100
   │ ╰───────────────────' `do_private_thingz` is defined here
   · │

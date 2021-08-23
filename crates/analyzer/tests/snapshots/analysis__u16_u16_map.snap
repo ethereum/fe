@@ -12,11 +12,12 @@ note:
 note: 
   ┌─ features/u16_u16_map.fe:4:5
   │  
-4 │ ╭     pub fn read_bar(key: u16) -> u16:
+4 │ ╭     pub fn read_bar(self, key: u16) -> u16:
 5 │ │         return self.bar[key]
-  │ ╰────────────────────────────^ attributes hash: 9839082566663037677
+  │ ╰────────────────────────────^ attributes hash: 13277112481715403660
   │  
   = FunctionSignature {
+        self_decl: Mutable,
         params: [
             FunctionParam {
                 name: "key",
@@ -41,11 +42,12 @@ note:
 note: 
   ┌─ features/u16_u16_map.fe:7:5
   │  
-7 │ ╭     pub fn write_bar(key: u16, value: u16):
+7 │ ╭     pub fn write_bar(self, key: u16, value: u16):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 3157214284721683583
+  │ ╰─────────────────────────────^ attributes hash: 14682981866604087396
   │  
   = FunctionSignature {
+        self_decl: Mutable,
         params: [
             FunctionParam {
                 name: "key",

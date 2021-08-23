@@ -12,11 +12,12 @@ note:
 note: 
   ┌─ features/call_statement_without_args.fe:4:5
   │  
-4 │ ╭     fn assign():
+4 │ ╭     fn assign(self):
 5 │ │         self.baz[0] = 100
-  │ ╰─────────────────────────^ attributes hash: 17883060253504188551
+  │ ╰─────────────────────────^ attributes hash: 4369441865732737140
   │  
   = FunctionSignature {
+        self_decl: Mutable,
         params: [],
         return_type: Ok(
             Base(
@@ -28,12 +29,13 @@ note:
 note: 
   ┌─ features/call_statement_without_args.fe:7:5
   │  
-7 │ ╭     pub fn bar() -> u256:
+7 │ ╭     pub fn bar(self) -> u256:
 8 │ │         self.assign()
 9 │ │         return self.baz[0]
-  │ ╰──────────────────────────^ attributes hash: 4553090961241945225
+  │ ╰──────────────────────────^ attributes hash: 16482263331346774611
   │  
   = FunctionSignature {
+        self_decl: Mutable,
         params: [],
         return_type: Ok(
             Base(
@@ -96,10 +98,14 @@ note:
   ┌─ features/call_statement_without_args.fe:8:9
   │
 8 │         self.assign()
-  │         ^^^^^^^^^^^ attributes hash: 13402545317341859599
+  │         ^^^^^^^^^^^ attributes hash: 17318279018058750260
   │
   = SelfAttribute {
         func_name: "assign",
+        self_span: Span {
+            start: 126,
+            end: 130,
+        },
     }
 
 

@@ -4,4 +4,4 @@ contract Foo:
         revert
 
     pub fn bar() -> u256:
-        return self.foo()
+        return foo()

@@ -18,15 +18,16 @@ note:
 note: 
    ┌─ demos/guest_book.fe:11:5
    │  
-11 │ ╭     pub fn sign(book_msg: String<100>):
+11 │ ╭     pub fn sign(self, book_msg: String<100>):
 12 │ │         # All storage access is explicit using `self.<some-key>`
 13 │ │         self.messages[msg.sender] = book_msg
 14 │ │ 
 15 │ │         # Emit the `Signed` event
 16 │ │         emit Signed(book_msg=book_msg)
-   │ ╰──────────────────────────────────────^ attributes hash: 4052420453933544886
+   │ ╰──────────────────────────────────────^ attributes hash: 726352713514806227
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "book_msg",
@@ -49,13 +50,14 @@ note:
 note: 
    ┌─ demos/guest_book.fe:18:5
    │  
-18 │ ╭     pub fn get_msg(addr: address) -> String<100>:
+18 │ ╭     pub fn get_msg(self, addr: address) -> String<100>:
 19 │ │         # Copying data from storage to memory
 20 │ │         # has to be done explicitly via `to_mem()`
 21 │ │         return self.messages[addr].to_mem()
-   │ ╰───────────────────────────────────────────^ attributes hash: 10372952195383146305
+   │ ╰───────────────────────────────────────────^ attributes hash: 13118977016650692130
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "addr",

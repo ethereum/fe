@@ -154,9 +154,15 @@ pub struct EventField {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
-pub struct FunctionArg {
+pub struct RegularFunctionArg {
     pub name: Node<String>,
     pub typ: Node<TypeDesc>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub enum FunctionArg {
+    Regular(RegularFunctionArg),
+    Zelf,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -346,7 +352,10 @@ impl Node<Function> {
 
 impl Node<FunctionArg> {
     pub fn name(&self) -> &str {
-        &self.kind.name.kind
+        match &self.kind {
+            FunctionArg::Regular(arg) => &arg.name.kind,
+            FunctionArg::Zelf => "self",
+        }
     }
 }
 

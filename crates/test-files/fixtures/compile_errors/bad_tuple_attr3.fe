@@ -2,5 +2,5 @@
 contract foo:
     my_sto_tuple: (u256, i32)
 
-    pub fn bar:
+    pub fn bar(self):
         self.my_sto_tuple.item00

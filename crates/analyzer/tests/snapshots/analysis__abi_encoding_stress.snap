@@ -102,11 +102,12 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:23:5
    │  
-23 │ ╭     pub fn set_my_addrs(my_addrs: address[5]):
+23 │ ╭     pub fn set_my_addrs(self, my_addrs: address[5]):
 24 │ │         self.my_addrs = my_addrs
-   │ ╰────────────────────────────────^ attributes hash: 7792454252220620713
+   │ ╰────────────────────────────────^ attributes hash: 8230149271433625082
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "my_addrs",
@@ -130,11 +131,12 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:26:5
    │  
-26 │ ╭     pub fn get_my_addrs() -> address[5]:
+26 │ ╭     pub fn get_my_addrs(self) -> address[5]:
 27 │ │         return self.my_addrs.to_mem()
-   │ ╰─────────────────────────────────────^ attributes hash: 2287525696829879728
+   │ ╰─────────────────────────────────────^ attributes hash: 14938423529265024589
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              Array(
@@ -149,11 +151,12 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:29:5
    │  
-29 │ ╭     pub fn set_my_u128(my_u128: u128):
+29 │ ╭     pub fn set_my_u128(self, my_u128: u128):
 30 │ │         self.my_u128 = my_u128
-   │ ╰──────────────────────────────^ attributes hash: 1483578428416970862
+   │ ╰──────────────────────────────^ attributes hash: 9586494768459567014
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "my_u128",
@@ -176,11 +179,12 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:32:5
    │  
-32 │ ╭     pub fn get_my_u128() -> u128:
+32 │ ╭     pub fn get_my_u128(self) -> u128:
 33 │ │         return self.my_u128
-   │ ╰───────────────────────────^ attributes hash: 16590220569563418042
+   │ ╰───────────────────────────^ attributes hash: 1703680575433883116
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              Base(
@@ -194,11 +198,12 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:35:5
    │  
-35 │ ╭     pub fn set_my_string(my_string: String<10>):
+35 │ ╭     pub fn set_my_string(self, my_string: String<10>):
 36 │ │         self.my_string = my_string
-   │ ╰──────────────────────────────────^ attributes hash: 1220080414581004615
+   │ ╰──────────────────────────────────^ attributes hash: 12755746761294548533
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "my_string",
@@ -221,11 +226,12 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:38:5
    │  
-38 │ ╭     pub fn get_my_string() -> String<10>:
+38 │ ╭     pub fn get_my_string(self) -> String<10>:
 39 │ │         return self.my_string.to_mem()
-   │ ╰──────────────────────────────────────^ attributes hash: 9281401346944239687
+   │ ╰──────────────────────────────────────^ attributes hash: 7751556256223364605
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              String(
@@ -239,11 +245,12 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:41:5
    │  
-41 │ ╭     pub fn set_my_u16s(my_u16s: u16[255]):
+41 │ ╭     pub fn set_my_u16s(self, my_u16s: u16[255]):
 42 │ │         self.my_u16s = my_u16s
-   │ ╰──────────────────────────────^ attributes hash: 4003332420113060329
+   │ ╰──────────────────────────────^ attributes hash: 15627129425342656114
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "my_u16s",
@@ -269,11 +276,12 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:44:5
    │  
-44 │ ╭     pub fn get_my_u16s() -> u16[255]:
+44 │ ╭     pub fn get_my_u16s(self) -> u16[255]:
 45 │ │         return self.my_u16s.to_mem()
-   │ ╰────────────────────────────────────^ attributes hash: 16639309595415919877
+   │ ╰────────────────────────────────────^ attributes hash: 1712184078290376685
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              Array(
@@ -290,11 +298,12 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:47:5
    │  
-47 │ ╭     pub fn set_my_bool(my_bool: bool):
+47 │ ╭     pub fn set_my_bool(self, my_bool: bool):
 48 │ │         self.my_bool = my_bool
-   │ ╰──────────────────────────────^ attributes hash: 10090082643311988957
+   │ ╰──────────────────────────────^ attributes hash: 6416448266362982339
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "my_bool",
@@ -315,11 +324,12 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:50:5
    │  
-50 │ ╭     pub fn get_my_bool() -> bool:
+50 │ ╭     pub fn get_my_bool(self) -> bool:
 51 │ │         return self.my_bool
-   │ ╰───────────────────────────^ attributes hash: 9286995118813931448
+   │ ╰───────────────────────────^ attributes hash: 4761504089579832229
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              Base(
@@ -331,11 +341,12 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:53:5
    │  
-53 │ ╭     pub fn set_my_bytes(my_bytes: u8[100]):
+53 │ ╭     pub fn set_my_bytes(self, my_bytes: u8[100]):
 54 │ │         self.my_bytes = my_bytes
-   │ ╰────────────────────────────────^ attributes hash: 16041897644211461890
+   │ ╰────────────────────────────────^ attributes hash: 5447714587686147158
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "my_bytes",
@@ -361,11 +372,12 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:56:5
    │  
-56 │ ╭     pub fn get_my_bytes() -> u8[100]:
+56 │ ╭     pub fn get_my_bytes(self) -> u8[100]:
 57 │ │         return self.my_bytes.to_mem()
-   │ ╰─────────────────────────────────────^ attributes hash: 18288654186894625799
+   │ ╰─────────────────────────────────────^ attributes hash: 11897278640933106358
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              Array(
@@ -389,9 +401,10 @@ note:
 63 │ │             my_bool=true,
 64 │ │             my_addr=address(123456)
 65 │ │         )
-   │ ╰─────────^ attributes hash: 8198766938367957550
+   │ ╰─────────^ attributes hash: 12792745713144811261
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [],
          return_type: Ok(
              Struct(
@@ -415,9 +428,10 @@ note:
 70 │ │         my_struct.my_bool = false
 71 │ │         my_struct.my_addr = address(9999)
 72 │ │         return my_struct
-   │ ╰────────────────────────^ attributes hash: 12745288013791427549
+   │ ╰────────────────────────^ attributes hash: 6786804746141497115
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "my_struct",
@@ -450,16 +464,17 @@ note:
 note: 
    ┌─ stress/abi_encoding_stress.fe:74:5
    │  
-74 │ ╭     pub fn emit_my_event():
+74 │ ╭     pub fn emit_my_event(self):
 75 │ │         emit MyEvent(
 76 │ │             my_addrs=self.my_addrs.to_mem(),
 77 │ │             my_u128=self.my_u128,
    · │
 81 │ │             my_bytes=self.my_bytes.to_mem()
 82 │ │         )
-   │ ╰─────────^ attributes hash: 17883060253504188551
+   │ ╰─────────^ attributes hash: 4369441865732737140
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              Base(

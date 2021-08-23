@@ -79,6 +79,14 @@ impl<'a> FunctionScope<'a> {
         self.function.parent(self.db).function(self.db, name)
     }
 
+    pub fn self_contract_function(&self, name: &str) -> Option<FunctionId> {
+        self.function.parent(self.db).self_function(self.db, name)
+    }
+
+    pub fn pure_contract_function(&self, name: &str) -> Option<FunctionId> {
+        self.function.parent(self.db).pure_function(self.db, name)
+    }
+
     pub fn resolve_event(&self, name: &str) -> Option<EventId> {
         self.function.parent(self.db).event(self.db, name)
     }

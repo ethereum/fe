@@ -13,7 +13,7 @@ Example:
 contract Foo:
   some_array: u256[10]
 
-  pub fn bar():
+  pub fn bar(self):
     let val1: u256 = 10
     # Assignment of stack variable
     val1 = 10

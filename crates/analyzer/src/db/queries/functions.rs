@@ -3,7 +3,7 @@ use crate::db::{Analysis, AnalyzerDb};
 use crate::errors;
 use crate::namespace::items::FunctionId;
 use crate::namespace::scopes::{BlockScope, BlockScopeType, FunctionScope, ItemScope};
-use crate::namespace::types::{self, FixedSize};
+use crate::namespace::types::{self, FixedSize, SelfDecl};
 use crate::traversal::functions::traverse_statements;
 use crate::traversal::types::type_desc;
 use fe_common::diagnostics::Label;
@@ -24,43 +24,67 @@ pub fn function_signature(
 
     let mut scope = ItemScope::new(db, function.module(db));
 
+    let self_decl = if matches!(
+        def.args.get(0),
+        Some(Node {
+            kind: ast::FunctionArg::Zelf,
+            ..
+        })
+    ) {
+        SelfDecl::Mutable
+    } else {
+        SelfDecl::None
+    };
+
     let mut names = HashMap::new();
     let params = def
         .args
         .iter()
+        // skip analysis of a `self` param
+        .skip(if self_decl == SelfDecl::None { 0 } else { 1 })
         .enumerate()
-        .filter_map(|(index, arg)| {
-            let ast::FunctionArg {
+        .filter_map(|(index, arg)| match &arg.kind {
+            ast::FunctionArg::Zelf => {
+                scope.error(
+                    "self is not the first parameter",
+                    arg.span,
+                    "self may only be used as the first parameter",
+                );
+
+                None
+            }
+            ast::FunctionArg::Regular(ast::RegularFunctionArg {
                 name,
                 typ: typ_node,
-            } = &arg.kind;
-            let typ = type_desc(&mut scope, typ_node).and_then(|typ| match typ.try_into() {
-                Ok(typ) => Ok(typ),
-                Err(_) => {
-                    scope.error(
-                        "function parameter types must have fixed size",
-                        typ_node.span,
-                        "`Map` type can't be used as a function parameter",
-                    );
-                    Err(errors::TypeError)
-                }
-            });
+            }) => {
+                let typ = type_desc(&mut scope, typ_node).and_then(|typ| match typ.try_into() {
+                    Ok(typ) => Ok(typ),
+                    Err(_) => {
+                        scope.error(
+                            "function parameter types must have fixed size",
+                            typ_node.span,
+                            "`Map` type can't be used as a function parameter",
+                        );
+                        Err(errors::TypeError)
+                    }
+                });
 
-            if let Some(dup_idx) = names.get(&name.kind) {
-                let dup_arg: &Node<ast::FunctionArg> = &def.args[*dup_idx];
-                scope.duplicate_name_error(
-                    &format!("duplicate parameter names in function `{}`", def.name.kind),
-                    &name.kind,
-                    dup_arg.span,
-                    arg.span,
-                );
-                None
-            } else {
-                names.insert(&name.kind, index);
-                Some(types::FunctionParam {
-                    name: name.kind.clone(),
-                    typ,
-                })
+                if let Some(dup_idx) = names.get(&name.kind) {
+                    let dup_arg: &Node<ast::FunctionArg> = &def.args[*dup_idx];
+                    scope.duplicate_name_error(
+                        &format!("duplicate parameter names in function `{}`", def.name.kind),
+                        &name.kind,
+                        dup_arg.span,
+                        arg.span,
+                    );
+                    None
+                } else {
+                    names.insert(&name.kind, index);
+                    Some(types::FunctionParam {
+                        name: name.kind.clone(),
+                        typ,
+                    })
+                }
             }
         })
         .collect();
@@ -100,6 +124,7 @@ pub fn function_signature(
 
     Analysis {
         value: Rc::new(types::FunctionSignature {
+            self_decl,
             params,
             return_type,
         }),

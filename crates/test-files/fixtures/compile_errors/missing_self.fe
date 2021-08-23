@@ -1,0 +1,6 @@
+contract Foo:
+    fn pure_fn():
+        self.mut_fn()
+
+    fn mut_fn(self):
+        pass

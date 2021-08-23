@@ -66,15 +66,16 @@ note:
 note: 
    ┌─ features/type_aliases.fe:15:5
    │  
-15 │ ╭     pub fn post(body: PostBody):
+15 │ ╭     pub fn post(self, body: PostBody):
 16 │ │         # id: PostId = keccak256(body.abi_encode())
 17 │ │         let id: PostId = 0
 18 │ │         self.posts[id] = body
 19 │ │         self.authors[msg.sender]
 20 │ │         self.scoreboard[id] = 0
-   │ ╰───────────────────────────────^ attributes hash: 14562420308644804689
+   │ ╰───────────────────────────────^ attributes hash: 771627946712539769
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "body",
@@ -97,13 +98,14 @@ note:
 note: 
    ┌─ features/type_aliases.fe:22:5
    │  
-22 │ ╭     pub fn upvote(id: PostId) -> Score:
+22 │ ╭     pub fn upvote(self, id: PostId) -> Score:
 23 │ │         let score: Score = self.scoreboard[id] + 1
 24 │ │         self.scoreboard[id] = score
 25 │ │         return score
-   │ ╰────────────────────^ attributes hash: 9723759341304918760
+   │ ╰────────────────────^ attributes hash: 8245519384016556717
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "id",
@@ -128,11 +130,12 @@ note:
 note: 
    ┌─ features/type_aliases.fe:27:5
    │  
-27 │ ╭     pub fn get_post(id: PostId) -> PostBody:
+27 │ ╭     pub fn get_post(self, id: PostId) -> PostBody:
 28 │ │         return self.posts[id].to_mem()
-   │ ╰──────────────────────────────────────^ attributes hash: 9466985503508091937
+   │ ╰──────────────────────────────────────^ attributes hash: 10352242143184749414
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "id",

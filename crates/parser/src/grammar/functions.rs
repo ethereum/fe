@@ -1,7 +1,9 @@
 use super::expressions::{parse_call_args, parse_expr};
 use super::types::parse_type_desc;
 
-use crate::ast::{BinOperator, Expr, FuncStmt, Function, FunctionArg, VarDeclTarget};
+use crate::ast::{
+    BinOperator, Expr, FuncStmt, Function, FunctionArg, RegularFunctionArg, VarDeclTarget,
+};
 use crate::lexer::TokenKind;
 use crate::node::{Node, Span};
 use crate::{Label, ParseFailed, ParseResult, Parser};
@@ -91,26 +93,30 @@ fn parse_fn_param_list(par: &mut Parser) -> ParseResult<Node<Vec<Node<FunctionAr
             TokenKind::Name => {
                 let name = par.next()?;
 
-                par.expect_with_notes(
-                    TokenKind::Colon,
-                    "failed to parse function parameter",
-                    |_| {
-                        vec![
-                            "Note: parameter name must be followed by a colon and a type description"
-                                .into(),
-                            format!("Example: `{}: u256`", name.text),
-                        ]
-                    },
-                )?;
-                let typ = parse_type_desc(par)?;
-                let param_span = name.span + typ.span;
-                params.push(Node::new(
-                    FunctionArg {
-                        name: Node::new(name.text.into(), name.span),
-                        typ,
-                    },
-                    param_span,
-                ));
+                if name.text == "self" {
+                    params.push(Node::new(FunctionArg::Zelf, name.span));
+                } else {
+                    par.expect_with_notes(
+                        TokenKind::Colon,
+                        "failed to parse function parameter",
+                        |_| {
+                            vec![
+                                "Note: parameter name must be followed by a colon and a type description"
+                                    .into(),
+                                format!("Example: `{}: u256`", name.text),
+                            ]
+                        },
+                    )?;
+                    let typ = parse_type_desc(par)?;
+                    let param_span = name.span + typ.span;
+                    params.push(Node::new(
+                        FunctionArg::Regular(RegularFunctionArg {
+                            name: Node::new(name.text.into(), name.span),
+                            typ,
+                        }),
+                        param_span,
+                    ));
+                }
 
                 if par.peek() == Some(TokenKind::Comma) {
                     par.next()?;

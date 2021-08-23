@@ -10,9 +10,10 @@ note:
 3 │ │         let my_array: u256[5]
 4 │ │         my_array[3] = x
 5 │ │         return my_array
-  │ ╰───────────────────────^ attributes hash: 15829867558716906613
+  │ ╰───────────────────────^ attributes hash: 10028801516300138995
   │  
   = FunctionSignature {
+        self_decl: None,
         params: [
             FunctionParam {
                 name: "x",

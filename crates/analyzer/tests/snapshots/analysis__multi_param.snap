@@ -12,9 +12,10 @@ note:
 5 │ │         my_array[1] = y
 6 │ │         my_array[2] = z
 7 │ │         return my_array
-  │ ╰───────────────────────^ attributes hash: 6824984156660016016
+  │ ╰───────────────────────^ attributes hash: 15956839592293831939
   │  
   = FunctionSignature {
+        self_decl: None,
         params: [
             FunctionParam {
                 name: "x",

@@ -266,9 +266,10 @@ note:
   │  
 2 │ ╭     pub fn balanceOf(account: address) -> u256:
 3 │ │         return 0
-  │ ╰────────────────^ attributes hash: 3270716362116162777
+  │ ╰────────────────^ attributes hash: 2140140122946032557
   │  
   = FunctionSignature {
+        self_decl: None,
         params: [
             FunctionParam {
                 name: "account",
@@ -293,9 +294,10 @@ note:
   │  
 5 │ ╭     pub fn transfer(recipient: address, amount: u256) -> bool:
 6 │ │         return false
-  │ ╰────────────────────^ attributes hash: 18206623983116939792
+  │ ╰────────────────────^ attributes hash: 8296406261133122468
   │  
   = FunctionSignature {
+        self_decl: None,
         params: [
             FunctionParam {
                 name: "recipient",
@@ -326,11 +328,12 @@ note:
 note: 
    ┌─ demos/uniswap.fe:63:5
    │  
-63 │ ╭     pub fn __init__():
+63 │ ╭     pub fn __init__(self):
 64 │ │         self.factory = msg.sender
-   │ ╰─────────────────────────────────^ attributes hash: 17883060253504188551
+   │ ╰─────────────────────────────────^ attributes hash: 4369441865732737140
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              Base(
@@ -342,11 +345,12 @@ note:
 note: 
    ┌─ demos/uniswap.fe:66:5
    │  
-66 │ ╭     pub fn factory() -> address:
+66 │ ╭     pub fn factory(self) -> address:
 67 │ │         return self.factory
-   │ ╰───────────────────────────^ attributes hash: 2195077967527136217
+   │ ╰───────────────────────────^ attributes hash: 17651916811868111914
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              Base(
@@ -358,11 +362,12 @@ note:
 note: 
    ┌─ demos/uniswap.fe:69:5
    │  
-69 │ ╭     pub fn token0() -> address:
+69 │ ╭     pub fn token0(self) -> address:
 70 │ │         return self.token0
-   │ ╰──────────────────────────^ attributes hash: 2195077967527136217
+   │ ╰──────────────────────────^ attributes hash: 17651916811868111914
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              Base(
@@ -374,11 +379,12 @@ note:
 note: 
    ┌─ demos/uniswap.fe:72:5
    │  
-72 │ ╭     pub fn token1() -> address:
+72 │ ╭     pub fn token1(self) -> address:
 73 │ │         return self.token1
-   │ ╰──────────────────────────^ attributes hash: 2195077967527136217
+   │ ╰──────────────────────────^ attributes hash: 17651916811868111914
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              Base(
@@ -390,13 +396,14 @@ note:
 note: 
    ┌─ demos/uniswap.fe:75:5
    │  
-75 │ ╭     fn _mint(to: address, value: u256):
+75 │ ╭     fn _mint(self, to: address, value: u256):
 76 │ │         self.total_supply = self.total_supply + value
 77 │ │         self.balances[to] = self.balances[to] + value
 78 │ │         emit Transfer(from=address(0), to, value)
-   │ ╰─────────────────────────────────────────────────^ attributes hash: 12325006012704879214
+   │ ╰─────────────────────────────────────────────────^ attributes hash: 1135367514371429330
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "to",
@@ -427,13 +434,14 @@ note:
 note: 
    ┌─ demos/uniswap.fe:80:5
    │  
-80 │ ╭     fn _burn(from: address, value: u256):
+80 │ ╭     fn _burn(self, from: address, value: u256):
 81 │ │         self.balances[from] = self.balances[from] - value
 82 │ │         self.total_supply = self.total_supply - value
 83 │ │         emit Transfer(from, to=address(0), value)
-   │ ╰─────────────────────────────────────────────────^ attributes hash: 17270351444233039583
+   │ ╰─────────────────────────────────────────────────^ attributes hash: 18052677761580718632
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "from",
@@ -464,12 +472,13 @@ note:
 note: 
    ┌─ demos/uniswap.fe:85:5
    │  
-85 │ ╭     fn _approve(owner: address, spender: address, value: u256):
+85 │ ╭     fn _approve(self, owner: address, spender: address, value: u256):
 86 │ │         self.allowances[owner][spender] = value
 87 │ │         emit Approval(owner, spender, value)
-   │ ╰────────────────────────────────────────────^ attributes hash: 14201079106432958367
+   │ ╰────────────────────────────────────────────^ attributes hash: 2670276789438195364
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "owner",
@@ -508,13 +517,14 @@ note:
 note: 
    ┌─ demos/uniswap.fe:89:5
    │  
-89 │ ╭     fn _transfer(from: address, to: address, value: u256):
+89 │ ╭     fn _transfer(self, from: address, to: address, value: u256):
 90 │ │         self.balances[from] = self.balances[from] - value
 91 │ │         self.balances[to] = self.balances[to] + value
 92 │ │         emit Transfer(from, to, value)
-   │ ╰──────────────────────────────────────^ attributes hash: 15422594702274887655
+   │ ╰──────────────────────────────────────^ attributes hash: 1279967340500149849
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "from",
@@ -553,12 +563,13 @@ note:
 note: 
    ┌─ demos/uniswap.fe:94:5
    │  
-94 │ ╭     pub fn approve(spender: address, value: u256) -> bool:
+94 │ ╭     pub fn approve(self, spender: address, value: u256) -> bool:
 95 │ │         self._approve(msg.sender, spender, value)
 96 │ │         return true
-   │ ╰───────────────────^ attributes hash: 11178591286876422786
+   │ ╰───────────────────^ attributes hash: 10662679418650794263
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "spender",
@@ -589,12 +600,13 @@ note:
 note: 
     ┌─ demos/uniswap.fe:98:5
     │  
- 98 │ ╭     pub fn transfer(to: address, value: u256) -> bool:
+ 98 │ ╭     pub fn transfer(self, to: address, value: u256) -> bool:
  99 │ │         self._transfer(msg.sender, to, value)
 100 │ │         return true
-    │ ╰───────────────────^ attributes hash: 13652324078777284205
+    │ ╰───────────────────^ attributes hash: 3518107939221722675
     │  
     = FunctionSignature {
+          self_decl: Mutable,
           params: [
               FunctionParam {
                   name: "to",
@@ -625,15 +637,16 @@ note:
 note: 
     ┌─ demos/uniswap.fe:102:5
     │  
-102 │ ╭     pub fn transferFrom(from: address, to: address, value: u256) -> bool:
+102 │ ╭     pub fn transferFrom(self, from: address, to: address, value: u256) -> bool:
 103 │ │         assert self.allowances[from][msg.sender] >= value
 104 │ │ 
 105 │ │         self.allowances[from][msg.sender] = self.allowances[from][msg.sender] - value
 106 │ │         self._transfer(from, to, value)
 107 │ │         return true
-    │ ╰───────────────────^ attributes hash: 16346907181339098414
+    │ ╰───────────────────^ attributes hash: 8152647388321889889
     │  
     = FunctionSignature {
+          self_decl: Mutable,
           params: [
               FunctionParam {
                   name: "from",
@@ -672,11 +685,12 @@ note:
 note: 
     ┌─ demos/uniswap.fe:109:5
     │  
-109 │ ╭     pub fn balanceOf(account: address) -> u256:
+109 │ ╭     pub fn balanceOf(self, account: address) -> u256:
 110 │ │         return self.balances[account]
-    │ ╰─────────────────────────────────────^ attributes hash: 3270716362116162777
+    │ ╰─────────────────────────────────────^ attributes hash: 11484923544867751175
     │  
     = FunctionSignature {
+          self_decl: Mutable,
           params: [
               FunctionParam {
                   name: "account",
@@ -699,11 +713,12 @@ note:
 note: 
     ┌─ demos/uniswap.fe:112:5
     │  
-112 │ ╭     pub fn get_reserves() -> (u256, u256, u256):
+112 │ ╭     pub fn get_reserves(self) -> (u256, u256, u256):
 113 │ │         return (self.reserve0, self.reserve1, self.block_timestamp_last)
-    │ ╰────────────────────────────────────────────────────────────────────────^ attributes hash: 3127943090617884215
+    │ ╰────────────────────────────────────────────────────────────────────────^ attributes hash: 1362480321321505196
     │  
     = FunctionSignature {
+          self_decl: Mutable,
           params: [],
           return_type: Ok(
               Tuple(
@@ -733,13 +748,14 @@ note:
 note: 
     ┌─ demos/uniswap.fe:116:5
     │  
-116 │ ╭     pub fn initialize(token0: address, token1: address):
+116 │ ╭     pub fn initialize(self, token0: address, token1: address):
 117 │ │         assert msg.sender == self.factory, "UniswapV2: FORBIDDEN"
 118 │ │         self.token0 = token0
 119 │ │         self.token1 = token1
-    │ ╰────────────────────────────^ attributes hash: 2750947401374471543
+    │ ╰────────────────────────────^ attributes hash: 9762098062283689454
     │  
     = FunctionSignature {
+          self_decl: Mutable,
           params: [
               FunctionParam {
                   name: "token0",
@@ -768,16 +784,17 @@ note:
 note: 
     ┌─ demos/uniswap.fe:122:5
     │  
-122 │ ╭     fn _update(balance0: u256, balance1: u256, reserve0: u256, reserve1: u256):
+122 │ ╭     fn _update(self, balance0: u256, balance1: u256, reserve0: u256, reserve1: u256):
 123 │ │         # changed from u32s
 124 │ │         let block_timestamp: u256 = block.timestamp % 2**32
 125 │ │         # TODO: reproduce desired overflow (https://github.com/ethereum/fe/issues/286)
     · │
 134 │ │         self.block_timestamp_last = block_timestamp
 135 │ │         emit Sync(reserve0=self.reserve0, reserve1=self.reserve1)
-    │ ╰─────────────────────────────────────────────────────────────────^ attributes hash: 107976639431843170
+    │ ╰─────────────────────────────────────────────────────────────────^ attributes hash: 13082574297248451564
     │  
     = FunctionSignature {
+          self_decl: Mutable,
           params: [
               FunctionParam {
                   name: "balance0",
@@ -830,16 +847,17 @@ note:
 note: 
     ┌─ demos/uniswap.fe:138:5
     │  
-138 │ ╭     fn _mint_fee(reserve0: u256, reserve1: u256) -> bool:
+138 │ ╭     fn _mint_fee(self, reserve0: u256, reserve1: u256) -> bool:
 139 │ │         let fee_to: address = UniswapV2Factory(self.factory).fee_to()
 140 │ │         let fee_on: bool = fee_to != address(0)
 141 │ │         let k_last: u256 = self.k_last # gas savings
     · │
 154 │ │ 
 155 │ │         return fee_on
-    │ ╰─────────────────────^ attributes hash: 16138774722461576279
+    │ ╰─────────────────────^ attributes hash: 9365170424361356438
     │  
     = FunctionSignature {
+          self_decl: Mutable,
           params: [
               FunctionParam {
                   name: "reserve0",
@@ -872,16 +890,17 @@ note:
 note: 
     ┌─ demos/uniswap.fe:158:5
     │  
-158 │ ╭     pub fn mint(to: address) -> u256:
+158 │ ╭     pub fn mint(self, to: address) -> u256:
 159 │ │         let MINIMUM_LIQUIDITY: u256 = 1000
 160 │ │         let reserve0: u256 = self.reserve0
 161 │ │         let reserve1: u256 = self.reserve1
     · │
 184 │ │         emit Mint(sender=msg.sender, amount0, amount1)
 185 │ │         return liquidity
-    │ ╰────────────────────────^ attributes hash: 10503721476058267208
+    │ ╰────────────────────────^ attributes hash: 13052412037608309076
     │  
     = FunctionSignature {
+          self_decl: Mutable,
           params: [
               FunctionParam {
                   name: "to",
@@ -904,16 +923,17 @@ note:
 note: 
     ┌─ demos/uniswap.fe:188:5
     │  
-188 │ ╭     pub fn burn(to: address) -> (u256, u256):
+188 │ ╭     pub fn burn(self, to: address) -> (u256, u256):
 189 │ │         let reserve0: u256 = self.reserve0
 190 │ │         let reserve1: u256 = self.reserve1
 191 │ │         let token0: ERC20 = ERC20(self.token0)
     · │
 213 │ │         emit Burn(sender=msg.sender, amount0, amount1, to)
 214 │ │         return (amount0, amount1)
-    │ ╰─────────────────────────────────^ attributes hash: 953615132639126195
+    │ ╰─────────────────────────────────^ attributes hash: 2656431017065792419
     │  
     = FunctionSignature {
+          self_decl: Mutable,
           params: [
               FunctionParam {
                   name: "to",
@@ -947,16 +967,17 @@ note:
 note: 
     ┌─ demos/uniswap.fe:219:5
     │  
-219 │ ╭     pub fn swap(amount0_out: u256, amount1_out: u256, to: address):
+219 │ ╭     pub fn swap(self, amount0_out: u256, amount1_out: u256, to: address):
 220 │ │         assert amount0_out > 0 or amount1_out > 0, "UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT"
 221 │ │         let reserve0: u256 = self.reserve0
 222 │ │         let reserve1: u256 = self.reserve1
     · │
 252 │ │         self._update(balance0, balance1, reserve0, reserve1)
 253 │ │         emit Swap(sender=msg.sender, amount0_in, amount1_in, amount0_out, amount1_out, to)
-    │ ╰──────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 6900968008281218364
+    │ ╰──────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 13380171127738201451
     │  
     = FunctionSignature {
+          self_decl: Mutable,
           params: [
               FunctionParam {
                   name: "amount0_out",
@@ -997,15 +1018,16 @@ note:
 note: 
     ┌─ demos/uniswap.fe:256:5
     │  
-256 │ ╭     pub fn skim(to: address):
+256 │ ╭     pub fn skim(self, to: address):
 257 │ │         let token0: ERC20 = ERC20(self.token0) # gas savings
 258 │ │         let token1: ERC20 = ERC20(self.token1) # gas savings
 259 │ │ 
 260 │ │         token0.transfer(to, token0.balanceOf(self.address) - self.reserve0)
 261 │ │         token1.transfer(to, token1.balanceOf(self.address) - self.reserve1)
-    │ ╰───────────────────────────────────────────────────────────────────────────^ attributes hash: 10827547217198146082
+    │ ╰───────────────────────────────────────────────────────────────────────────^ attributes hash: 2346286316485274384
     │  
     = FunctionSignature {
+          self_decl: Mutable,
           params: [
               FunctionParam {
                   name: "to",
@@ -1026,13 +1048,14 @@ note:
 note: 
     ┌─ demos/uniswap.fe:264:5
     │  
-264 │ ╭     pub fn sync():
+264 │ ╭     pub fn sync(self):
 265 │ │         let token0: ERC20 = ERC20(self.token0)
 266 │ │         let token1: ERC20 = ERC20(self.token1)
 267 │ │         self._update(token0.balanceOf(self.address), token1.balanceOf(self.address), self.reserve0, self.reserve1)
-    │ ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 17883060253504188551
+    │ ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────^ attributes hash: 4369441865732737140
     │  
     = FunctionSignature {
+          self_decl: Mutable,
           params: [],
           return_type: Ok(
               Base(
@@ -1051,9 +1074,10 @@ note:
     · │
 278 │ │             z = 1
 279 │ │         return z
-    │ ╰────────────────^ attributes hash: 6248121154456130073
+    │ ╰────────────────^ attributes hash: 3075818098030342593
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "val",
@@ -1080,9 +1104,10 @@ note:
     │  
 281 │ ╭     fn min(x: u256, y: u256) -> u256:
 282 │ │         return x if x < y else y
-    │ ╰────────────────────────────────^ attributes hash: 11686109986999089900
+    │ ╰────────────────────────────────^ attributes hash: 4022593831796629401
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "x",
@@ -1117,11 +1142,12 @@ note:
 note: 
     ┌─ demos/uniswap.fe:299:5
     │  
-299 │ ╭     pub fn __init__(fee_to_setter: address):
+299 │ ╭     pub fn __init__(self, fee_to_setter: address):
 300 │ │        self.fee_to_setter = fee_to_setter
-    │ ╰─────────────────────────────────────────^ attributes hash: 7782168487707120671
+    │ ╰─────────────────────────────────────────^ attributes hash: 10732478853163688613
     │  
     = FunctionSignature {
+          self_decl: Mutable,
           params: [
               FunctionParam {
                   name: "fee_to_setter",
@@ -1142,11 +1168,12 @@ note:
 note: 
     ┌─ demos/uniswap.fe:302:5
     │  
-302 │ ╭     pub fn fee_to() -> address:
+302 │ ╭     pub fn fee_to(self) -> address:
 303 │ │         return self.fee_to
-    │ ╰──────────────────────────^ attributes hash: 2195077967527136217
+    │ ╰──────────────────────────^ attributes hash: 17651916811868111914
     │  
     = FunctionSignature {
+          self_decl: Mutable,
           params: [],
           return_type: Ok(
               Base(
@@ -1158,11 +1185,12 @@ note:
 note: 
     ┌─ demos/uniswap.fe:305:5
     │  
-305 │ ╭     pub fn fee_to_setter() -> address:
+305 │ ╭     pub fn fee_to_setter(self) -> address:
 306 │ │         return self.fee_to_setter
-    │ ╰─────────────────────────────────^ attributes hash: 2195077967527136217
+    │ ╰─────────────────────────────────^ attributes hash: 17651916811868111914
     │  
     = FunctionSignature {
+          self_decl: Mutable,
           params: [],
           return_type: Ok(
               Base(
@@ -1174,11 +1202,12 @@ note:
 note: 
     ┌─ demos/uniswap.fe:308:5
     │  
-308 │ ╭     pub fn all_pairs_length() -> u256:
+308 │ ╭     pub fn all_pairs_length(self) -> u256:
 309 │ │         return self.pair_counter
-    │ ╰────────────────────────────────^ attributes hash: 4553090961241945225
+    │ ╰────────────────────────────────^ attributes hash: 16482263331346774611
     │  
     = FunctionSignature {
+          self_decl: Mutable,
           params: [],
           return_type: Ok(
               Base(
@@ -1192,16 +1221,17 @@ note:
 note: 
     ┌─ demos/uniswap.fe:311:5
     │  
-311 │ ╭     pub fn create_pair(token_a: address, token_b: address) -> address:
+311 │ ╭     pub fn create_pair(self, token_a: address, token_b: address) -> address:
 312 │ │         assert token_a != token_b, "UniswapV2: IDENTICAL_ADDRESSES"
 313 │ │ 
 314 │ │         let token0: address = token_a if token_a < token_b else token_b
     · │
 328 │ │         emit PairCreated(token0, token1, pair=address(pair), index=self.pair_counter)
 329 │ │         return address(pair)
-    │ ╰────────────────────────────^ attributes hash: 11728721798336794276
+    │ ╰────────────────────────────^ attributes hash: 12932031939304465073
     │  
     = FunctionSignature {
+          self_decl: Mutable,
           params: [
               FunctionParam {
                   name: "token_a",
@@ -1230,12 +1260,13 @@ note:
 note: 
     ┌─ demos/uniswap.fe:331:5
     │  
-331 │ ╭     pub fn set_fee_to(fee_to: address):
+331 │ ╭     pub fn set_fee_to(self, fee_to: address):
 332 │ │         assert msg.sender == self.fee_to_setter, "UniswapV2: FORBIDDEN"
 333 │ │         self.fee_to = fee_to
-    │ ╰────────────────────────────^ attributes hash: 9358978543319530970
+    │ ╰────────────────────────────^ attributes hash: 14618921052791880235
     │  
     = FunctionSignature {
+          self_decl: Mutable,
           params: [
               FunctionParam {
                   name: "fee_to",
@@ -1256,12 +1287,13 @@ note:
 note: 
     ┌─ demos/uniswap.fe:335:5
     │  
-335 │ ╭     pub fn set_fee_to_setter(fee_to_setter: address):
+335 │ ╭     pub fn set_fee_to_setter(self, fee_to_setter: address):
 336 │ │         assert msg.sender == fee_to_setter, "UniswapV2: FORBIDDEN"
 337 │ │         self.fee_to_setter = fee_to_setter
-    │ ╰──────────────────────────────────────────^ attributes hash: 7782168487707120671
+    │ ╰──────────────────────────────────────────^ attributes hash: 10732478853163688613
     │  
     = FunctionSignature {
+          self_decl: Mutable,
           params: [
               FunctionParam {
                   name: "fee_to_setter",
@@ -2306,40 +2338,40 @@ note:
     │                ^^^^^^^^^^^ bool: Value => None
 
 note: 
-    ┌─ demos/uniswap.fe:144:46
+    ┌─ demos/uniswap.fe:144:41
     │
-144 │                 let root_k: u256 = self.sqrt(reserve0 * reserve1)
-    │                                              ^^^^^^^^ u256: Value => None
+144 │                 let root_k: u256 = sqrt(reserve0 * reserve1)
+    │                                         ^^^^^^^^ u256: Value => None
 
 note: 
-    ┌─ demos/uniswap.fe:144:57
+    ┌─ demos/uniswap.fe:144:52
     │
-144 │                 let root_k: u256 = self.sqrt(reserve0 * reserve1)
-    │                                                         ^^^^^^^^ u256: Value => None
+144 │                 let root_k: u256 = sqrt(reserve0 * reserve1)
+    │                                                    ^^^^^^^^ u256: Value => None
 
 note: 
-    ┌─ demos/uniswap.fe:144:46
+    ┌─ demos/uniswap.fe:144:41
     │
-144 │                 let root_k: u256 = self.sqrt(reserve0 * reserve1)
-    │                                              ^^^^^^^^^^^^^^^^^^^ u256: Value => None
+144 │                 let root_k: u256 = sqrt(reserve0 * reserve1)
+    │                                         ^^^^^^^^^^^^^^^^^^^ u256: Value => None
 
 note: 
     ┌─ demos/uniswap.fe:144:36
     │
-144 │                 let root_k: u256 = self.sqrt(reserve0 * reserve1)
-    │                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
+144 │                 let root_k: u256 = sqrt(reserve0 * reserve1)
+    │                                    ^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
 
 note: 
-    ┌─ demos/uniswap.fe:145:51
+    ┌─ demos/uniswap.fe:145:46
     │
-145 │                 let root_k_last: u256 = self.sqrt(k_last)
-    │                                                   ^^^^^^ u256: Value => None
+145 │                 let root_k_last: u256 = sqrt(k_last)
+    │                                              ^^^^^^ u256: Value => None
 
 note: 
     ┌─ demos/uniswap.fe:145:41
     │
-145 │                 let root_k_last: u256 = self.sqrt(k_last)
-    │                                         ^^^^^^^^^^^^^^^^^ u256: Value => None
+145 │                 let root_k_last: u256 = sqrt(k_last)
+    │                                         ^^^^^^^^^^^^ u256: Value => None
 
 note: 
     ┌─ demos/uniswap.fe:146:20
@@ -2662,44 +2694,44 @@ note:
 note: 
     ┌─ demos/uniswap.fe:171:13
     │
-171 │             liquidity = self.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
+171 │             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
     │             ^^^^^^^^^ u256: Value => None
 
 note: 
-    ┌─ demos/uniswap.fe:171:35
+    ┌─ demos/uniswap.fe:171:30
     │
-171 │             liquidity = self.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
-    │                                   ^^^^^^^ u256: Value => None
+171 │             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
+    │                              ^^^^^^^ u256: Value => None
 
 note: 
-    ┌─ demos/uniswap.fe:171:45
+    ┌─ demos/uniswap.fe:171:40
     │
-171 │             liquidity = self.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
-    │                                             ^^^^^^^ u256: Value => None
+171 │             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
+    │                                        ^^^^^^^ u256: Value => None
 
 note: 
-    ┌─ demos/uniswap.fe:171:35
+    ┌─ demos/uniswap.fe:171:30
     │
-171 │             liquidity = self.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
-    │                                   ^^^^^^^^^^^^^^^^^ u256: Value => None
-
-note: 
-    ┌─ demos/uniswap.fe:171:25
-    │
-171 │             liquidity = self.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
-    │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
-
-note: 
-    ┌─ demos/uniswap.fe:171:56
-    │
-171 │             liquidity = self.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
-    │                                                        ^^^^^^^^^^^^^^^^^ u256: Value => None
+171 │             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
+    │                              ^^^^^^^^^^^^^^^^^ u256: Value => None
 
 note: 
     ┌─ demos/uniswap.fe:171:25
     │
-171 │             liquidity = self.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
-    │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
+171 │             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
+    │                         ^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
+
+note: 
+    ┌─ demos/uniswap.fe:171:51
+    │
+171 │             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
+    │                                                   ^^^^^^^^^^^^^^^^^ u256: Value => None
+
+note: 
+    ┌─ demos/uniswap.fe:171:25
+    │
+171 │             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
+    │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
 
 note: 
     ┌─ demos/uniswap.fe:172:32
@@ -2728,74 +2760,74 @@ note:
 note: 
     ┌─ demos/uniswap.fe:174:13
     │
-174 │             liquidity = self.min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
+174 │             liquidity = min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
     │             ^^^^^^^^^ u256: Value => None
 
 note: 
-    ┌─ demos/uniswap.fe:174:35
+    ┌─ demos/uniswap.fe:174:30
     │
-174 │             liquidity = self.min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
-    │                                   ^^^^^^^ u256: Value => None
+174 │             liquidity = min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
+    │                              ^^^^^^^ u256: Value => None
 
 note: 
-    ┌─ demos/uniswap.fe:174:45
+    ┌─ demos/uniswap.fe:174:40
     │
-174 │             liquidity = self.min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
-    │                                             ^^^^^^^^^^^^ u256: Value => None
+174 │             liquidity = min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
+    │                                        ^^^^^^^^^^^^ u256: Value => None
 
 note: 
-    ┌─ demos/uniswap.fe:174:34
+    ┌─ demos/uniswap.fe:174:29
     │
-174 │             liquidity = self.min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
-    │                                  ^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
+174 │             liquidity = min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
+    │                             ^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
 
 note: 
-    ┌─ demos/uniswap.fe:174:61
+    ┌─ demos/uniswap.fe:174:56
     │
-174 │             liquidity = self.min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
-    │                                                             ^^^^^^^^ u256: Value => None
+174 │             liquidity = min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
+    │                                                        ^^^^^^^^ u256: Value => None
 
 note: 
-    ┌─ demos/uniswap.fe:174:34
+    ┌─ demos/uniswap.fe:174:29
     │
-174 │             liquidity = self.min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
-    │                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
+174 │             liquidity = min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
+    │                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
 
 note: 
-    ┌─ demos/uniswap.fe:174:72
+    ┌─ demos/uniswap.fe:174:67
     │
-174 │             liquidity = self.min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
-    │                                                                        ^^^^^^^ u256: Value => None
+174 │             liquidity = min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
+    │                                                                   ^^^^^^^ u256: Value => None
 
 note: 
-    ┌─ demos/uniswap.fe:174:82
+    ┌─ demos/uniswap.fe:174:77
     │
-174 │             liquidity = self.min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
-    │                                                                                  ^^^^^^^^^^^^ u256: Value => None
+174 │             liquidity = min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
+    │                                                                             ^^^^^^^^^^^^ u256: Value => None
 
 note: 
-    ┌─ demos/uniswap.fe:174:71
+    ┌─ demos/uniswap.fe:174:66
     │
-174 │             liquidity = self.min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
-    │                                                                       ^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
+174 │             liquidity = min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
+    │                                                                  ^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
 
 note: 
-    ┌─ demos/uniswap.fe:174:98
+    ┌─ demos/uniswap.fe:174:93
     │
-174 │             liquidity = self.min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
-    │                                                                                                  ^^^^^^^^ u256: Value => None
+174 │             liquidity = min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
+    │                                                                                             ^^^^^^^^ u256: Value => None
 
 note: 
-    ┌─ demos/uniswap.fe:174:71
+    ┌─ demos/uniswap.fe:174:66
     │
-174 │             liquidity = self.min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
-    │                                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
+174 │             liquidity = min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
+    │                                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
 
 note: 
     ┌─ demos/uniswap.fe:174:25
     │
-174 │             liquidity = self.min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
-    │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
+174 │             liquidity = min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
+    │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
 
 note: 
     ┌─ demos/uniswap.fe:176:16
@@ -5467,13 +5499,13 @@ note:
 note: 
     ┌─ demos/uniswap.fe:144:29
     │
-144 │                 let root_k: u256 = self.sqrt(reserve0 * reserve1)
+144 │                 let root_k: u256 = sqrt(reserve0 * reserve1)
     │                             ^^^^ u256
 
 note: 
     ┌─ demos/uniswap.fe:145:34
     │
-145 │                 let root_k_last: u256 = self.sqrt(k_last)
+145 │                 let root_k_last: u256 = sqrt(k_last)
     │                                  ^^^^ u256
 
 note: 
@@ -5768,30 +5800,42 @@ note:
    ┌─ demos/uniswap.fe:95:9
    │
 95 │         self._approve(msg.sender, spender, value)
-   │         ^^^^^^^^^^^^^ attributes hash: 11653095055511118634
+   │         ^^^^^^^^^^^^^ attributes hash: 10018161393539106403
    │
    = SelfAttribute {
          func_name: "_approve",
+         self_span: Span {
+             start: 2409,
+             end: 2413,
+         },
      }
 
 note: 
    ┌─ demos/uniswap.fe:99:9
    │
 99 │         self._transfer(msg.sender, to, value)
-   │         ^^^^^^^^^^^^^^ attributes hash: 17554789810436603039
+   │         ^^^^^^^^^^^^^^ attributes hash: 10093895704938982127
    │
    = SelfAttribute {
          func_name: "_transfer",
+         self_span: Span {
+             start: 2541,
+             end: 2545,
+         },
      }
 
 note: 
     ┌─ demos/uniswap.fe:106:9
     │
 106 │         self._transfer(from, to, value)
-    │         ^^^^^^^^^^^^^^ attributes hash: 17554789810436603039
+    │         ^^^^^^^^^^^^^^ attributes hash: 12907935190801646102
     │
     = SelfAttribute {
           func_name: "_transfer",
+          self_span: Span {
+              start: 2833,
+              end: 2837,
+          },
       }
 
 note: 
@@ -5834,20 +5878,20 @@ note:
 note: 
     ┌─ demos/uniswap.fe:144:36
     │
-144 │                 let root_k: u256 = self.sqrt(reserve0 * reserve1)
-    │                                    ^^^^^^^^^ attributes hash: 9944310827285951567
+144 │                 let root_k: u256 = sqrt(reserve0 * reserve1)
+    │                                    ^^^^ attributes hash: 11539501539171308117
     │
-    = SelfAttribute {
+    = Pure {
           func_name: "sqrt",
       }
 
 note: 
     ┌─ demos/uniswap.fe:145:41
     │
-145 │                 let root_k_last: u256 = self.sqrt(k_last)
-    │                                         ^^^^^^^^^ attributes hash: 9944310827285951567
+145 │                 let root_k_last: u256 = sqrt(k_last)
+    │                                         ^^^^ attributes hash: 11539501539171308117
     │
-    = SelfAttribute {
+    = Pure {
           func_name: "sqrt",
       }
 
@@ -5855,10 +5899,14 @@ note:
     ┌─ demos/uniswap.fe:151:25
     │
 151 │                         self._mint(fee_to, liquidity)
-    │                         ^^^^^^^^^^ attributes hash: 1155617642661253645
+    │                         ^^^^^^^^^^ attributes hash: 5774063433734111386
     │
     = SelfAttribute {
           func_name: "_mint",
+          self_span: Span {
+              start: 5111,
+              end: 5115,
+          },
       }
 
 note: 
@@ -5915,19 +5963,23 @@ note:
     ┌─ demos/uniswap.fe:167:28
     │
 167 │         let fee_on: bool = self._mint_fee(reserve0, reserve1)
-    │                            ^^^^^^^^^^^^^^ attributes hash: 13891964698023729577
+    │                            ^^^^^^^^^^^^^^ attributes hash: 5706709587227470482
     │
     = SelfAttribute {
           func_name: "_mint_fee",
+          self_span: Span {
+              start: 5772,
+              end: 5776,
+          },
       }
 
 note: 
     ┌─ demos/uniswap.fe:171:25
     │
-171 │             liquidity = self.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
-    │                         ^^^^^^^^^ attributes hash: 9944310827285951567
+171 │             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
+    │                         ^^^^ attributes hash: 11539501539171308117
     │
-    = SelfAttribute {
+    = Pure {
           func_name: "sqrt",
       }
 
@@ -5935,10 +5987,14 @@ note:
     ┌─ demos/uniswap.fe:172:13
     │
 172 │             self._mint(address(0), MINIMUM_LIQUIDITY) # permanently lock the first MINIMUM_LIQUIDITY tokens
-    │             ^^^^^^^^^^ attributes hash: 1155617642661253645
+    │             ^^^^^^^^^^ attributes hash: 1138819520748010179
     │
     = SelfAttribute {
           func_name: "_mint",
+          self_span: Span {
+              start: 6077,
+              end: 6081,
+          },
       }
 
 note: 
@@ -5956,10 +6012,10 @@ note:
 note: 
     ┌─ demos/uniswap.fe:174:25
     │
-174 │             liquidity = self.min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
-    │                         ^^^^^^^^ attributes hash: 13669611707215958911
+174 │             liquidity = min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
+    │                         ^^^ attributes hash: 2385741873862807477
     │
-    = SelfAttribute {
+    = Pure {
           func_name: "min",
       }
 
@@ -5967,20 +6023,28 @@ note:
     ┌─ demos/uniswap.fe:178:9
     │
 178 │         self._mint(to, liquidity)
-    │         ^^^^^^^^^^ attributes hash: 1155617642661253645
+    │         ^^^^^^^^^^ attributes hash: 11733924240468847297
     │
     = SelfAttribute {
           func_name: "_mint",
+          self_span: Span {
+              start: 6372,
+              end: 6376,
+          },
       }
 
 note: 
     ┌─ demos/uniswap.fe:179:9
     │
 179 │         self._update(balance0, balance1, reserve0, reserve1)
-    │         ^^^^^^^^^^^^ attributes hash: 6764850540347574840
+    │         ^^^^^^^^^^^^ attributes hash: 13255950405190274570
     │
     = SelfAttribute {
           func_name: "_update",
+          self_span: Span {
+              start: 6406,
+              end: 6410,
+          },
       }
 
 note: 
@@ -6037,20 +6101,28 @@ note:
     ┌─ demos/uniswap.fe:197:28
     │
 197 │         let fee_on: bool = self._mint_fee(reserve0, reserve1)
-    │                            ^^^^^^^^^^^^^^ attributes hash: 13891964698023729577
+    │                            ^^^^^^^^^^^^^^ attributes hash: 5536339678205451361
     │
     = SelfAttribute {
           func_name: "_mint_fee",
+          self_span: Span {
+              start: 7186,
+              end: 7190,
+          },
       }
 
 note: 
     ┌─ demos/uniswap.fe:202:9
     │
 202 │         self._burn(self.address, liquidity)
-    │         ^^^^^^^^^^ attributes hash: 9774977178119003771
+    │         ^^^^^^^^^^ attributes hash: 4813635634628659472
     │
     = SelfAttribute {
           func_name: "_burn",
+          self_span: Span {
+              start: 7671,
+              end: 7675,
+          },
       }
 
 note: 
@@ -6089,10 +6161,14 @@ note:
     ┌─ demos/uniswap.fe:208:9
     │
 208 │         self._update(balance0, balance1, reserve0, reserve1)
-    │         ^^^^^^^^^^^^ attributes hash: 6764850540347574840
+    │         ^^^^^^^^^^^^ attributes hash: 15351211589753982846
     │
     = SelfAttribute {
           func_name: "_update",
+          self_span: Span {
+              start: 7890,
+              end: 7894,
+          },
       }
 
 note: 
@@ -6189,10 +6265,14 @@ note:
     ┌─ demos/uniswap.fe:252:9
     │
 252 │         self._update(balance0, balance1, reserve0, reserve1)
-    │         ^^^^^^^^^^^^ attributes hash: 6764850540347574840
+    │         ^^^^^^^^^^^^ attributes hash: 5918725660327764465
     │
     = SelfAttribute {
           func_name: "_update",
+          self_span: Span {
+              start: 10100,
+              end: 10104,
+          },
       }
 
 note: 
@@ -6299,10 +6379,14 @@ note:
     ┌─ demos/uniswap.fe:267:9
     │
 267 │         self._update(token0.balanceOf(self.address), token1.balanceOf(self.address), self.reserve0, self.reserve1)
-    │         ^^^^^^^^^^^^ attributes hash: 6764850540347574840
+    │         ^^^^^^^^^^^^ attributes hash: 15796683777521125666
     │
     = SelfAttribute {
           func_name: "_update",
+          self_span: Span {
+              start: 10760,
+              end: 10764,
+          },
       }
 
 note: 

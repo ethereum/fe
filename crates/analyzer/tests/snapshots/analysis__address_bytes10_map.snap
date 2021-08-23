@@ -12,11 +12,12 @@ note:
 note: 
   ┌─ features/address_bytes10_map.fe:4:5
   │  
-4 │ ╭     pub fn read_bar(key: address) -> u8[10]:
+4 │ ╭     pub fn read_bar(self, key: address) -> u8[10]:
 5 │ │         return self.bar[key].to_mem()
-  │ ╰─────────────────────────────────────^ attributes hash: 6717884890054312629
+  │ ╰─────────────────────────────────────^ attributes hash: 8899857923785283493
   │  
   = FunctionSignature {
+        self_decl: Mutable,
         params: [
             FunctionParam {
                 name: "key",
@@ -42,11 +43,12 @@ note:
 note: 
   ┌─ features/address_bytes10_map.fe:7:5
   │  
-7 │ ╭     pub fn write_bar(key: address, value: u8[10]):
+7 │ ╭     pub fn write_bar(self, key: address, value: u8[10]):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 11691503617473568421
+  │ ╰─────────────────────────────^ attributes hash: 8250642936007969286
   │  
   = FunctionSignature {
+        self_decl: Mutable,
         params: [
             FunctionParam {
                 name: "key",

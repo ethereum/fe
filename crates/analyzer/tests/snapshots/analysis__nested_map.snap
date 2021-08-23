@@ -18,11 +18,12 @@ note:
 note: 
   ┌─ features/nested_map.fe:5:5
   │  
-5 │ ╭     pub fn read_bar(a: address, b: address) -> u256:
+5 │ ╭     pub fn read_bar(self, a: address, b: address) -> u256:
 6 │ │         return self.bar[a][b]
-  │ ╰─────────────────────────────^ attributes hash: 1651558539348251726
+  │ ╰─────────────────────────────^ attributes hash: 10579681573605137522
   │  
   = FunctionSignature {
+        self_decl: Mutable,
         params: [
             FunctionParam {
                 name: "a",
@@ -53,11 +54,12 @@ note:
 note: 
   ┌─ features/nested_map.fe:8:5
   │  
-8 │ ╭     pub fn write_bar(a: address, b: address, value: u256):
+8 │ ╭     pub fn write_bar(self, a: address, b: address, value: u256):
 9 │ │         self.bar[a][b] = value
-  │ ╰──────────────────────────────^ attributes hash: 15634013844749287831
+  │ ╰──────────────────────────────^ attributes hash: 6159174104336834167
   │  
   = FunctionSignature {
+        self_decl: Mutable,
         params: [
             FunctionParam {
                 name: "a",
@@ -96,11 +98,12 @@ note:
 note: 
    ┌─ features/nested_map.fe:11:5
    │  
-11 │ ╭     pub fn read_baz(a: address, b: u256) -> bool:
+11 │ ╭     pub fn read_baz(self, a: address, b: u256) -> bool:
 12 │ │         return self.baz[a][b]
-   │ ╰─────────────────────────────^ attributes hash: 7209940387781148962
+   │ ╰─────────────────────────────^ attributes hash: 4588948300794405674
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "a",
@@ -131,11 +134,12 @@ note:
 note: 
    ┌─ features/nested_map.fe:14:5
    │  
-14 │ ╭     pub fn write_baz(a: address, b: u256, value: bool):
+14 │ ╭     pub fn write_baz(self, a: address, b: u256, value: bool):
 15 │ │         self.baz[a][b] = value
-   │ ╰──────────────────────────────^ attributes hash: 10489623509827031309
+   │ ╰──────────────────────────────^ attributes hash: 6894542203512356705
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "a",

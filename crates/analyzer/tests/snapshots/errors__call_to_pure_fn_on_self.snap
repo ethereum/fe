@@ -1,0 +1,14 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: `pure` must be called without `self`
+  ┌─ compile_errors/call_to_pure_fn_on_self.fe:6:9
+  │
+6 │         self.pure()
+  │         ^^^^^^^^^ function does not take self
+  │
+  = Suggestion: try `pure(...)` instead of `self.pure(...)`
+
+

@@ -2,6 +2,7 @@ use crate::context;
 use crate::errors::{self, TypeError};
 use crate::impl_intern_key;
 use crate::namespace::types;
+use crate::namespace::types::SelfDecl;
 use crate::traversal::pragma::check_pragma_version;
 use crate::AnalyzerDb;
 use fe_common::diagnostics::Diagnostic;
@@ -242,6 +243,26 @@ impl ContractId {
         self.public_functions(db).get(name).copied()
     }
 
+    /// Functions that do not have a self parameter.
+    pub fn pure_functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, FunctionId>> {
+        db.contract_pure_function_map(*self)
+    }
+
+    /// Get a pure function by its name.
+    pub fn pure_function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
+        self.pure_functions(db).get(name).copied()
+    }
+
+    /// Functions that have a self parameter.
+    pub fn self_functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, FunctionId>> {
+        db.contract_self_function_map(*self)
+    }
+
+    /// Get a function that takes self by its name.
+    pub fn self_function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
+        self.self_functions(db).get(name).copied()
+    }
+
     /// A `Vec` of every function defined in the contract, including duplicates and the init function.
     pub fn all_functions(&self, db: &dyn AnalyzerDb) -> Rc<Vec<FunctionId>> {
         db.contract_all_functions(*self)
@@ -324,6 +345,10 @@ impl FunctionId {
 
     pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
         self.data(db).ast.kind.is_pub
+    }
+
+    pub fn is_pure(&self, db: &dyn AnalyzerDb) -> bool {
+        self.signature(db).self_decl == SelfDecl::None
     }
 
     pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<Function> {

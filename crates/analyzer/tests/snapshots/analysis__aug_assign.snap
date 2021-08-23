@@ -15,9 +15,10 @@ note:
 4 │ ╭     pub fn add(a: u256, b: u256) -> u256:
 5 │ │         a += b
 6 │ │         return a
-  │ ╰────────────────^ attributes hash: 15056346078233080632
+  │ ╰────────────────^ attributes hash: 10094331793610550579
   │  
   = FunctionSignature {
+        self_decl: None,
         params: [
             FunctionParam {
                 name: "a",
@@ -55,9 +56,10 @@ note:
  8 │ ╭     pub fn sub(a: u256, b: u256) -> u256:
  9 │ │         a -= b
 10 │ │         return a
-   │ ╰────────────────^ attributes hash: 15056346078233080632
+   │ ╰────────────────^ attributes hash: 10094331793610550579
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "a",
@@ -95,9 +97,10 @@ note:
 12 │ ╭     pub fn mul(a: u256, b: u256) -> u256:
 13 │ │         a *= b
 14 │ │         return a
-   │ ╰────────────────^ attributes hash: 15056346078233080632
+   │ ╰────────────────^ attributes hash: 10094331793610550579
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "a",
@@ -135,9 +138,10 @@ note:
 16 │ ╭     pub fn div(a: u256, b: u256) -> u256:
 17 │ │         a /= b
 18 │ │         return a
-   │ ╰────────────────^ attributes hash: 15056346078233080632
+   │ ╰────────────────^ attributes hash: 10094331793610550579
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "a",
@@ -175,9 +179,10 @@ note:
 20 │ ╭     pub fn mod(a: u256, b: u256) -> u256:
 21 │ │         a %= b
 22 │ │         return a
-   │ ╰────────────────^ attributes hash: 15056346078233080632
+   │ ╰────────────────^ attributes hash: 10094331793610550579
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "a",
@@ -215,9 +220,10 @@ note:
 24 │ ╭     pub fn pow(a: u256, b: u256) -> u256:
 25 │ │         a **= b
 26 │ │         return a
-   │ ╰────────────────^ attributes hash: 15056346078233080632
+   │ ╰────────────────^ attributes hash: 10094331793610550579
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "a",
@@ -255,9 +261,10 @@ note:
 28 │ ╭     pub fn lshift(a: u8, b: u8) -> u8:
 29 │ │         a <<= b
 30 │ │         return a
-   │ ╰────────────────^ attributes hash: 15179202576655649603
+   │ ╰────────────────^ attributes hash: 9159210808631090718
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "a",
@@ -295,9 +302,10 @@ note:
 32 │ ╭     pub fn rshift(a: u8, b: u8) -> u8:
 33 │ │         a >>= b
 34 │ │         return a
-   │ ╰────────────────^ attributes hash: 15179202576655649603
+   │ ╰────────────────^ attributes hash: 9159210808631090718
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "a",
@@ -335,9 +343,10 @@ note:
 36 │ ╭     pub fn bit_or(a: u8, b: u8) -> u8:
 37 │ │         a |= b
 38 │ │         return a
-   │ ╰────────────────^ attributes hash: 15179202576655649603
+   │ ╰────────────────^ attributes hash: 9159210808631090718
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "a",
@@ -375,9 +384,10 @@ note:
 40 │ ╭     pub fn bit_xor(a: u8, b: u8) -> u8:
 41 │ │         a ^= b
 42 │ │         return a
-   │ ╰────────────────^ attributes hash: 15179202576655649603
+   │ ╰────────────────^ attributes hash: 9159210808631090718
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "a",
@@ -415,9 +425,10 @@ note:
 44 │ ╭     pub fn bit_and(a: u8, b: u8) -> u8:
 45 │ │         a &= b
 46 │ │         return a
-   │ ╰────────────────^ attributes hash: 15179202576655649603
+   │ ╰────────────────^ attributes hash: 9159210808631090718
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "a",
@@ -452,13 +463,14 @@ note:
 note: 
    ┌─ features/aug_assign.fe:48:5
    │  
-48 │ ╭     pub fn add_from_sto(a: u256, b: u256) -> u256:
+48 │ ╭     pub fn add_from_sto(self, a: u256, b: u256) -> u256:
 49 │ │         self.my_num = a
 50 │ │         self.my_num += b
 51 │ │         return self.my_num
-   │ ╰──────────────────────────^ attributes hash: 15056346078233080632
+   │ ╰──────────────────────────^ attributes hash: 2855001974628647253
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "a",
@@ -498,9 +510,10 @@ note:
 55 │ │         my_array[7] = a
 56 │ │         my_array[7] += b
 57 │ │         return my_array[7]
-   │ ╰──────────────────────────^ attributes hash: 15056346078233080632
+   │ ╰──────────────────────────^ attributes hash: 10094331793610550579
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "a",
