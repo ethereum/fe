@@ -45,6 +45,7 @@
         * [List expressions](spec/expr_list.md)
         * [Index expressions](spec/expr_index.md)
         * [Attribute expressions](spec/expr_attribute.md)
+        * [Name expressions](spec/expr_name.md)
         * [Literal expressions](spec/expr-literal.md)
         * [Arithmetic Operators](spec/arithmetic_operators.md)
         * [Comparision Operators](spec/comparision_operators.md)
