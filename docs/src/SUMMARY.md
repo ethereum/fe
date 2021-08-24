@@ -50,6 +50,7 @@
         * [Arithmetic Operators](spec/expr_arithmetic_operators.md)
         * [Comparision Operators](spec/expr_comparision_operators.md)
         * [Boolean Operators](spec/expr_boolean_operators.md)
+        * [Unary Operators](spec/expr_unary_operators.md)
     * [Type System](spec/type_system.md)
         * [Types](spec/types.md)
             * [Boolean Type](spec/boolean_type.md)

@@ -44,6 +44,7 @@
     * [Arithmetic Operators](expr_arithmetic_operators.md)
     * [Comparision Operators](expr_comparision_operators.md)
     * [Boolean Operators](expr_boolean_operators.md)
+    * [Unary Operators](expr_unary_operators.md)
 * [Type System](type_system.md)
     * [Types](types.md)
         * [Boolean Type](boolean_type.md)
