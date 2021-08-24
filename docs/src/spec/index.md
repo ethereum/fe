@@ -43,6 +43,7 @@
     * [Literal expressions](expr-literal.md)
     * [Arithmetic Operators](arithmetic_operators.md)
     * [Comparision Operators](comparision_operators.md)
+    * [Boolean Operators](expr_boolean_operator.md)
 * [Type System](type_system.md)
     * [Types](types.md)
         * [Boolean Type](boolean_type.md)
