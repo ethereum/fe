@@ -62,6 +62,8 @@ jobs:
           toolchain: stable
           override: true
           components: rustfmt, clippy
+      - name: Validate doc examples
+        run: ./docs/validate_doc_examples.py
       - name: Validate release notes entry
         run: ./newsfragments/validate_files.py
       - name: Lint with rustfmt
