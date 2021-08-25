@@ -34,14 +34,6 @@ contract Foo:
         emit Mix(num1=26, addr, num2=42, my_bytes)
 ```
 
-The above can also be written in a slightly more verbose form:
-
-```python
-  fn transfer(to: address, value: u256) -> ():
-      if not self.in_whitelist(to):
-          return ()
-```
-
 [_Expression_]: expressions.md
 [IDENTIFIER]: identifiers.md
 [struct]: structs.md
