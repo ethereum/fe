@@ -74,7 +74,7 @@ def create_fe_snippet_file(snippet: CodeSnippet) -> pathlib.Path:
         snippet_file.write(snippet.content)
     return fe_snippet_path
 
-def run_snippet(path: pathlib.Path) -> subprocess.CompletedProcess[bytes]:
+def run_snippet(path: pathlib.Path) -> 'subprocess.CompletedProcess[bytes]':
     return subprocess.run(["cargo", "run", "--features", "solc-backend", str(path), '--overwrite'])
 
 def extract_code_examples() -> None:
