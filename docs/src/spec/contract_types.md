@@ -17,7 +17,7 @@ contract Foo:
 contract FooFactory:
     pub fn create2_foo() -> address:
         # `0` is the value being sent and `52` is the address salt
-        let foo: Foo = Foo.create2(0, 52)
+        foo: Foo = Foo.create2(0, 52)
         return address(foo)
 ```
 

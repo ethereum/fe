@@ -12,7 +12,7 @@ Example:
 contract Foo:
 
   fn bar():
-    let single_byte_string: String<1> = "a"
+    single_byte_string: String<1> = "a"
     # Casting is needed because the type inferred from "foo" is String<3>
-    let longer_string: String<100> = String<100>("foo")
+    longer_string: String<100> = String<100>("foo")
 ```
