@@ -8,13 +8,6 @@
 
 The unary operators are used to negate expressions. The unary `-` (minus) operator yields the negation of its numeric argument. The unary `~` (invert) operator yields the *bitwise* inversion of its integer argument. The unary `not` operator yields the inversion of its boolean argument.
 
-<div class="warning">
-
-Warning:
-The unary NOT operator (`~`) isn't yet implemented ([See GitHub issue](https://github.com/ethereum/fe/issues/521))
-</div>
-
-
 Example:
 
 ```

@@ -53,6 +53,12 @@ pub fn checked_sub(size: &Integer) -> yul::Identifier {
     identifier! {(format!("checked_sub_{}", size.to_lowercase()))}
 }
 
+/// Generate a function name to adjust the size of the integer
+pub fn adjust_numeric_size(size: &Integer) -> yul::Identifier {
+    let size: &str = size.into();
+    identifier! {(format!("adjust_numeric_{}", size.to_lowercase()))}
+}
+
 /// Generate a safe function name for a user defined function
 pub fn func_name(name: &str) -> yul::Identifier {
     identifier! { (format!("$${}", name)) }

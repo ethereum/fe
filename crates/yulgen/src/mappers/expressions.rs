@@ -2,7 +2,7 @@ use crate::context::FnContext;
 use crate::names;
 use crate::operations::{
     abi as abi_operations, contracts as contract_operations, data as data_operations,
-    structs as struct_operations,
+    math as math_operations, structs as struct_operations,
 };
 use crate::types::AsAbiType;
 use crate::types::EvmSized;
@@ -272,13 +272,23 @@ pub fn expr_unary_operation(context: &mut FnContext, exp: &Node<fe::Expr>) -> yu
     if let fe::Expr::UnaryOperation { op, operand } = &exp.kind {
         let yul_operand = expr(context, operand);
 
+        let typ = &context
+            .expression_attributes(operand)
+            .expect("Missing `operand` expression in context")
+            .typ;
+
         return match &op.kind {
             fe::UnaryOperator::USub => {
                 let zero = literal_expression! {0};
                 expression! { sub([zero], [yul_operand]) }
             }
             fe::UnaryOperator::Not => expression! { iszero([yul_operand]) },
-            _ => todo!(),
+            fe::UnaryOperator::Invert => match typ {
+                Type::Base(Base::Numeric(integer)) => {
+                    math_operations::adjust_numeric_size(integer, expression! { not([yul_operand])})
+                }
+                _ => unreachable!(),
+            },
         };
     }
 
