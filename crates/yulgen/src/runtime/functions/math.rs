@@ -97,6 +97,22 @@ pub fn checked_sub_fns() -> Vec<yul::Statement> {
     ]
 }
 
+/// Return a vector of runtime functions to adjust numeric sizes
+pub fn adjust_numeric_size_fns() -> Vec<yul::Statement> {
+    vec![
+        adjust_numeric_unsigned(Integer::U128),
+        adjust_numeric_unsigned(Integer::U64),
+        adjust_numeric_unsigned(Integer::U32),
+        adjust_numeric_unsigned(Integer::U16),
+        adjust_numeric_unsigned(Integer::U8),
+        adjust_numeric_signed(Integer::I128, 15),
+        adjust_numeric_signed(Integer::I64, 7),
+        adjust_numeric_signed(Integer::I32, 3),
+        adjust_numeric_signed(Integer::I16, 1),
+        adjust_numeric_signed(Integer::I8, 0),
+    ]
+}
+
 // Return all math runtime functions
 pub fn all() -> Vec<yul::Statement> {
     [
@@ -106,6 +122,7 @@ pub fn all() -> Vec<yul::Statement> {
         checked_mod_fns(),
         checked_mul_fns(),
         checked_sub_fns(),
+        adjust_numeric_size_fns(),
     ]
     .concat()
 }
@@ -283,6 +300,31 @@ fn _checked_exp_unsigned(size: Integer) -> yul::Statement {
     function_definition! {
         function [fn_name](base, exponent) -> power {
             (power := checked_exp_unsigned(base, exponent, [max_value]))
+        }
+    }
+}
+
+fn adjust_numeric_unsigned(size: Integer) -> yul::Statement {
+    if size.is_signed() {
+        panic!("Expected unsigned integer")
+    }
+    let max_value = get_max(size);
+    let fn_name = names::adjust_numeric_size(&size);
+    function_definition! {
+        function [fn_name](value) -> cleaned {
+            (cleaned := and(value, [max_value]))
+        }
+    }
+}
+
+fn adjust_numeric_signed(size: Integer, base: usize) -> yul::Statement {
+    if !size.is_signed() {
+        panic!("Expected signed integer")
+    }
+    let fn_name = names::adjust_numeric_size(&size);
+    function_definition! {
+        function [fn_name](value) -> cleaned {
+            (cleaned := signextend([literal_expression! { (base) }], value))
         }
     }
 }

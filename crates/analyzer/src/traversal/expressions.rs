@@ -666,8 +666,14 @@ fn expr_unary_operation(
                 ))
             }
             UnaryOperator::Invert => {
-                scope.not_yet_implemented("unary invert", exp.span);
-                Ok(ExpressionAttributes::new(Type::unit(), Location::Value))
+                if !matches!(operand_attributes.typ, Type::Base(Base::Numeric(_))) {
+                    emit_err(scope, "a numeric type")
+                }
+
+                Ok(ExpressionAttributes::new(
+                    operand_attributes.typ,
+                    Location::Value,
+                ))
             }
         };
     }
