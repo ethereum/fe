@@ -173,6 +173,7 @@ pub struct EventField {
 
 /// A function interface.
 #[derive(Serialize, Debug, PartialEq, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Function {
     /// The function's name.
     pub name: String,
@@ -183,6 +184,9 @@ pub struct Function {
     pub inputs: Vec<FuncInput>,
     /// All function outputs.
     pub outputs: Vec<FuncOutput>,
+    /// Mutability of the function
+    #[serde(skip_serializing_if = "should_skip_state_mutability")]
+    pub state_mutability: Option<StateMutability>,
 }
 
 /// Component of an ABI tuple.
@@ -238,6 +242,10 @@ fn should_skip_components(components: &[Component]) -> bool {
     components.is_empty()
 }
 
+fn should_skip_state_mutability(mutability: &Option<StateMutability>) -> bool {
+    mutability.is_none()
+}
+
 /// The type of a public function.
 #[allow(dead_code)]
 #[derive(Serialize, Debug, PartialEq, Clone)]
@@ -250,7 +258,6 @@ pub enum FuncType {
 }
 
 /// The mutability of a public function.
-#[allow(dead_code)]
 #[derive(Serialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum StateMutability {
@@ -262,7 +269,9 @@ pub enum StateMutability {
 
 #[cfg(test)]
 mod tests {
-    use crate::elements::{Contract, Event, EventField, FuncInput, FuncOutput, FuncType, Function};
+    use crate::elements::{
+        Contract, Event, EventField, FuncInput, FuncOutput, FuncType, Function, StateMutability,
+    };
 
     #[test]
     fn contract_json() {
@@ -291,6 +300,7 @@ mod tests {
                     typ: "uint256".to_string(),
                     components: vec![],
                 }],
+                state_mutability: Some(StateMutability::Pure),
             }],
         };
 
@@ -313,7 +323,8 @@ mod tests {
                     "name":"function_name",
                     "type":"function",
                     "inputs":[{"name":"input_name","type":"address"}],
-                    "outputs":[{"name":"output_name","type":"uint256"}]
+                    "outputs":[{"name":"output_name","type":"uint256"}],
+                    "stateMutability":"pure"
                 }
             ]"#
             .split_whitespace()
