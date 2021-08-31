@@ -10,6 +10,92 @@ Fe is moving fast. Read up on all the latest improvements.
 **WARNING: All Fe releases are alpha releases and only meant to share the development progress with developers and enthusiasts. It is NOT yet ready for production usage.**
 
 [//]: # (towncrier release notes start)
+## 0.8.0-alpha "Haxonite" (2021-08-31)
+
+
+### Features
+
+
+- Support quotes, tabs and carriage returns in string literals and otherwise
+  restrict string literals to the printable subset of the ASCII table. ([#329](https://github.com/ethereum/fe/issues/329))
+- The analyzer now uses a query-based system, which fixes some shortcomings of the previous implementation.
+
+  - Types can now refer to other types defined later in the file.
+  Example:
+  ```
+  type Posts = Map<PostId, PostBody>
+  type PostId = u256
+  type PostBody = String<140>
+  ```
+
+  - Duplicate definition errors now show the location of the original definition.
+  - The analysis of each function, type definition, etc happens independently, so an error in one
+  doesn't stop the analysis pass. This means fe can report more user errors in a single run of the compiler. ([#468](https://github.com/ethereum/fe/issues/468))
+- Function definitions are now denoted with the keyword fn instead of def. ([#496](https://github.com/ethereum/fe/issues/496))
+- Variable declarations are now preceded by the `let` keyword. Example: `let x: u8 = 1`. ([#509](https://github.com/ethereum/fe/issues/509))
+- Implemented support for numeric unary invert operator (`~`) ([#526](https://github.com/ethereum/fe/issues/526))
+
+
+### Bugfixes
+
+
+- Calling `self.__init__()` now results in a nice error instead of a panic in the yul compilation stage. ([#468](https://github.com/ethereum/fe/issues/468))
+- Fixed an issue where certain expressions were not being moved to the correct location. ([#493](https://github.com/ethereum/fe/issues/493))
+- Fixed an issue with a missing return statement not properly detected.
+
+  Previous to this fix, the following code compiles but it should not:
+
+  ```
+  contract Foo:
+      pub fn bar(val: u256) -> u256:
+          if val > 1:
+              return 5
+  ```
+
+  With this change, the compiler rightfully detects that the code is missing
+  a `return` or `revert` statement after the `if` statement since it is not
+  guaranteed that the path of execution always follows the arm of the `if` statement. ([#497](https://github.com/ethereum/fe/issues/497))
+- Fixed a bug in the analyzer which allowed tuple item accessor names with a leading 0,
+  resulting in an internal compiler error in a later pass. Example: `my_tuple.item001`.
+  These are now rejected with an error message. ([#510](https://github.com/ethereum/fe/issues/510))
+- Check call argument labels for function calls.
+
+  Previously the compiler would not check any labels that were used
+  when making function calls on `self` or external contracts.
+
+  This can be especially problematic if gives developers the impression
+  that they could apply function arguments in any order as long as they
+  are named which is **not** the case. 
+
+  ```
+  contract Foo:
+
+      pub fn baz():
+          self.bar(val2=1, doesnt_even_exist=2)
+    
+      pub fn bar(val1: u256, val2: u256):
+          pass
+  ```
+
+  Code as the one above is now rightfully rejected by the compiler. ([#517](https://github.com/ethereum/fe/issues/517))
+
+
+### Improved Documentation
+
+
+- Various improvements and bug fixes to both the content and layout of the specification. ([#489](https://github.com/ethereum/fe/issues/489))
+- Document all remaining statements and expressions in the spec.
+
+  Also added a CI check to ensure code examples in the documentation
+  are validated against the latest compiler. ([#514](https://github.com/ethereum/fe/issues/514))
+
+
+### Internal Changes - for Fe Contributors
+
+
+- Separated Fe type traits between crates. ([#485](https://github.com/ethereum/fe/issues/485))
+
+
 ## 0.7.0-alpha "Galaxite" (2021-07-27)
 
 ### Features
