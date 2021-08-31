@@ -187,6 +187,7 @@ test_file! { invalid_var_declaration_1 }
 test_file! { invalid_var_declaration_2 }
 test_file! { issue_451 }
 test_file! { mislabeled_call_args }
+test_file! { mislabeled_call_args_self }
 test_file! { mislabeled_call_args_external_contract_call }
 test_file! { mismatch_return_type }
 test_file! { missing_return }

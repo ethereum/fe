@@ -30,7 +30,7 @@
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_Expression_]\
 >
 > _FunctionParameters_ :\
-> &nbsp;&nbsp; _FunctionParam_ (`,` _FunctionParam_)<sup>\*</sup> `,`<sup>?</sup>
+> &nbsp;&nbsp;  `self`<sup>?</sup> | `self,`<sup>?</sup>   _FunctionParam_ (`,` _FunctionParam_)<sup>\*</sup> `,`<sup>?</sup>
 >
 > _FunctionParam_ :\
 > &nbsp;&nbsp; [IDENTIFIER] `:` [_Type_]

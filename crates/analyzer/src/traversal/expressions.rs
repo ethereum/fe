@@ -9,9 +9,7 @@ use crate::namespace::types::{
     Array, Base, Contract, FeString, Integer, SelfDecl, Struct, Tuple, Type, TypeDowncast, U256,
 };
 use crate::operations;
-use crate::traversal::call_args::{
-    validate_arg_count, validate_arg_types, validate_named_args, LabelPolicy,
-};
+use crate::traversal::call_args::{validate_arg_count, validate_named_args, LabelPolicy};
 use crate::traversal::utils::{add_bin_operations_errors, types_to_fixed_sizes};
 use fe_common::diagnostics::Label;
 use fe_common::numeric;
@@ -573,7 +571,7 @@ fn expr_attribute_self(
     value: &Node<fe::Expr>,
     attr: &Node<String>,
 ) -> Result<ExpressionAttributes, FatalError> {
-    check_for_self_param(scope, value.span)?;
+    check_for_self_param(scope, value.span);
 
     if let Ok(SelfField::Address) = SelfField::from_str(&attr.kind) {
         return Ok(ExpressionAttributes::new(
@@ -886,7 +884,7 @@ fn check_for_call_to_init_fn(
     }
 }
 
-fn check_for_self_param(scope: &mut BlockScope, use_span: Span) -> Result<(), FatalError> {
+fn check_for_self_param(scope: &mut BlockScope, use_span: Span) {
     if scope.root.function.signature(scope.db()).self_decl == SelfDecl::None {
         scope.fancy_error(
             "`self` is not defined",
@@ -896,9 +894,6 @@ fn check_for_self_param(scope: &mut BlockScope, use_span: Span) -> Result<(), Fa
                 "Example: `fn foo(self, bar: bool)`".to_string(),
             ],
         );
-        Err(FatalError::new())
-    } else {
-        Ok(())
     }
 }
 
@@ -910,12 +905,18 @@ fn expr_call_self_attribute(
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, FatalError> {
     check_for_call_to_init_fn(scope, func_name, name_span)?;
-    check_for_self_param(scope, self_span)?;
+    check_for_self_param(scope, self_span);
 
     if let Some(func) = scope.root.self_contract_function(func_name) {
         let sig = func.signature(scope.root.db);
-        validate_arg_count(scope, func_name, name_span, args, sig.params.len());
-        validate_arg_types(scope, func_name, args, &sig.params)?;
+        validate_named_args(
+            scope,
+            func_name,
+            name_span,
+            args,
+            &sig.params,
+            LabelPolicy::AllowAnyUnlabeled,
+        )?;
 
         let return_type = sig.return_type.clone()?;
         let return_location = Location::assign_location(&return_type);
