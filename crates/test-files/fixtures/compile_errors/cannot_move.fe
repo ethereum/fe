@@ -1,5 +1,5 @@
 contract Foo:
     data: u256[10]
 
-    pub fn foo() -> u256[10]:
+    pub fn foo(self) -> u256[10]:
         return self.data

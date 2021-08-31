@@ -30,7 +30,7 @@
 > &nbsp;&nbsp; &nbsp;&nbsp; | [_Expression_]\
 >
 > _FunctionParameters_ :\
-> &nbsp;&nbsp; _FunctionParam_ (`,` _FunctionParam_)<sup>\*</sup> `,`<sup>?</sup>
+> &nbsp;&nbsp;  `self`<sup>?</sup> | `self,`<sup>?</sup>   _FunctionParam_ (`,` _FunctionParam_)<sup>\*</sup> `,`<sup>?</sup>
 >
 > _FunctionParam_ :\
 > &nbsp;&nbsp; [IDENTIFIER] `:` [_Type_]
@@ -57,6 +57,22 @@ For example, this is a simple function:
 ```python
 fn answer_to_life_the_universe_and_everything() -> u256:
     return 42
+```
+
+A function may accept `self` as a parameter. This gives the function the ability 
+to read and mutate contract storage.
+
+Example:
+
+```python
+contract Foo:
+    my_stored_num: u256
+
+    pub fn my_pure_func():
+        pass
+        
+    pub fn my_self_func(self):
+        self.my_stored_num = 26
 ```
 
 [NEWLINE]: tokens.md#newline

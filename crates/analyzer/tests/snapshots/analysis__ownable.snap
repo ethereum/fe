@@ -24,11 +24,12 @@ note:
 note: 
   ┌─ features/ownable.fe:8:3
   │  
-8 │ ╭   pub fn __init__():
+8 │ ╭   pub fn __init__(self):
 9 │ │     self._owner = msg.sender
-  │ ╰────────────────────────────^ attributes hash: 17883060253504188551
+  │ ╰────────────────────────────^ attributes hash: 4369441865732737140
   │  
   = FunctionSignature {
+        self_decl: Mutable,
         params: [],
         return_type: Ok(
             Base(
@@ -40,11 +41,12 @@ note:
 note: 
    ┌─ features/ownable.fe:11:3
    │  
-11 │ ╭   pub fn owner() -> address:
+11 │ ╭   pub fn owner(self) -> address:
 12 │ │     return self._owner
-   │ ╰──────────────────────^ attributes hash: 2195077967527136217
+   │ ╰──────────────────────^ attributes hash: 17651916811868111914
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              Base(
@@ -56,13 +58,14 @@ note:
 note: 
    ┌─ features/ownable.fe:14:3
    │  
-14 │ ╭   pub fn renounceOwnership():
+14 │ ╭   pub fn renounceOwnership(self):
 15 │ │     assert msg.sender == self._owner
 16 │ │     self._owner = address(0)
 17 │ │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner=address(0))
-   │ ╰────────────────────────────────────────────────────────────────────────────^ attributes hash: 17883060253504188551
+   │ ╰────────────────────────────────────────────────────────────────────────────^ attributes hash: 4369441865732737140
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              Base(
@@ -74,14 +77,15 @@ note:
 note: 
    ┌─ features/ownable.fe:19:3
    │  
-19 │ ╭   pub fn transferOwnership(newOwner: address):
+19 │ ╭   pub fn transferOwnership(self, newOwner: address):
 20 │ │     assert msg.sender == self._owner
 21 │ │     assert newOwner != address(0)
 22 │ │     self._owner = newOwner
 23 │ │     emit OwnershipTransferred(previousOwner=msg.sender, newOwner)
-   │ ╰─────────────────────────────────────────────────────────────────^ attributes hash: 9370789811972031746
+   │ ╰─────────────────────────────────────────────────────────────────^ attributes hash: 9053558391660990741
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "newOwner",

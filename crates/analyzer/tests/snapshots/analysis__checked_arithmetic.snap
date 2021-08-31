@@ -8,9 +8,10 @@ note:
   │  
 3 │ ╭     pub fn add_u256(left: u256, right: u256) -> u256:
 4 │ │         return left + right
-  │ ╰───────────────────────────^ attributes hash: 10934394392719230350
+  │ ╰───────────────────────────^ attributes hash: 3568881859844729307
   │  
   = FunctionSignature {
+        self_decl: None,
         params: [
             FunctionParam {
                 name: "left",
@@ -47,9 +48,10 @@ note:
   │  
 6 │ ╭     pub fn add_u128(left: u128, right: u128) -> u128:
 7 │ │         return left + right
-  │ ╰───────────────────────────^ attributes hash: 3844087086888288806
+  │ ╰───────────────────────────^ attributes hash: 17129592850815340223
   │  
   = FunctionSignature {
+        self_decl: None,
         params: [
             FunctionParam {
                 name: "left",
@@ -86,9 +88,10 @@ note:
    │  
  9 │ ╭     pub fn add_u64(left: u64, right: u64) -> u64:
 10 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 7090360049943337373
+   │ ╰───────────────────────────^ attributes hash: 14666166959439406742
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -125,9 +128,10 @@ note:
    │  
 12 │ ╭     pub fn add_u32(left: u32, right: u32) -> u32:
 13 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 1924425134457147261
+   │ ╰───────────────────────────^ attributes hash: 2033723386058016238
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -164,9 +168,10 @@ note:
    │  
 15 │ ╭     pub fn add_u16(left: u16, right: u16) -> u16:
 16 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 2007900231672655657
+   │ ╰───────────────────────────^ attributes hash: 2208322929283836441
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -203,9 +208,10 @@ note:
    │  
 18 │ ╭     pub fn add_u8(left: u8, right: u8) -> u8:
 19 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 1045834994105525345
+   │ ╰───────────────────────────^ attributes hash: 16477852824764552468
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -242,9 +248,10 @@ note:
    │  
 21 │ ╭     pub fn add_i256(left: i256, right: i256) -> i256:
 22 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 13926565639439232492
+   │ ╰───────────────────────────^ attributes hash: 13756051924186323535
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -281,9 +288,10 @@ note:
    │  
 24 │ ╭     pub fn add_i128(left: i128, right: i128) -> i128:
 25 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 3214814928241611038
+   │ ╰───────────────────────────^ attributes hash: 470029936044980118
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -320,9 +328,10 @@ note:
    │  
 27 │ ╭     pub fn add_i64(left: i64, right: i64) -> i64:
 28 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 11957634529458381280
+   │ ╰───────────────────────────^ attributes hash: 15016550520446375601
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -359,9 +368,10 @@ note:
    │  
 30 │ ╭     pub fn add_i32(left: i32, right: i32) -> i32:
 31 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 1408981139897494799
+   │ ╰───────────────────────────^ attributes hash: 5408722229298808308
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -398,9 +408,10 @@ note:
    │  
 33 │ ╭     pub fn add_i16(left: i16, right: i16) -> i16:
 34 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 6628839244879101310
+   │ ╰───────────────────────────^ attributes hash: 6512603022216737285
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -437,9 +448,10 @@ note:
    │  
 36 │ ╭     pub fn add_i8(left: i8, right: i8) -> i8:
 37 │ │         return left + right
-   │ ╰───────────────────────────^ attributes hash: 14117217432290539755
+   │ ╰───────────────────────────^ attributes hash: 6610364095665106106
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -476,9 +488,10 @@ note:
    │  
 39 │ ╭     pub fn sub_u256(left: u256, right: u256) -> u256:
 40 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 10934394392719230350
+   │ ╰───────────────────────────^ attributes hash: 3568881859844729307
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -515,9 +528,10 @@ note:
    │  
 42 │ ╭     pub fn sub_u128(left: u128, right: u128) -> u128:
 43 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 3844087086888288806
+   │ ╰───────────────────────────^ attributes hash: 17129592850815340223
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -554,9 +568,10 @@ note:
    │  
 45 │ ╭     pub fn sub_u64(left: u64, right: u64) -> u64:
 46 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 7090360049943337373
+   │ ╰───────────────────────────^ attributes hash: 14666166959439406742
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -593,9 +608,10 @@ note:
    │  
 48 │ ╭     pub fn sub_u32(left: u32, right: u32) -> u32:
 49 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 1924425134457147261
+   │ ╰───────────────────────────^ attributes hash: 2033723386058016238
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -632,9 +648,10 @@ note:
    │  
 51 │ ╭     pub fn sub_u16(left: u16, right: u16) -> u16:
 52 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 2007900231672655657
+   │ ╰───────────────────────────^ attributes hash: 2208322929283836441
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -671,9 +688,10 @@ note:
    │  
 54 │ ╭     pub fn sub_u8(left: u8, right: u8) -> u8:
 55 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 1045834994105525345
+   │ ╰───────────────────────────^ attributes hash: 16477852824764552468
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -710,9 +728,10 @@ note:
    │  
 57 │ ╭     pub fn sub_i256(left: i256, right: i256) -> i256:
 58 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 13926565639439232492
+   │ ╰───────────────────────────^ attributes hash: 13756051924186323535
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -749,9 +768,10 @@ note:
    │  
 60 │ ╭     pub fn sub_i128(left: i128, right: i128) -> i128:
 61 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 3214814928241611038
+   │ ╰───────────────────────────^ attributes hash: 470029936044980118
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -788,9 +808,10 @@ note:
    │  
 63 │ ╭     pub fn sub_i64(left: i64, right: i64) -> i64:
 64 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 11957634529458381280
+   │ ╰───────────────────────────^ attributes hash: 15016550520446375601
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -827,9 +848,10 @@ note:
    │  
 66 │ ╭     pub fn sub_i32(left: i32, right: i32) -> i32:
 67 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 1408981139897494799
+   │ ╰───────────────────────────^ attributes hash: 5408722229298808308
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -866,9 +888,10 @@ note:
    │  
 69 │ ╭     pub fn sub_i16(left: i16, right: i16) -> i16:
 70 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 6628839244879101310
+   │ ╰───────────────────────────^ attributes hash: 6512603022216737285
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -905,9 +928,10 @@ note:
    │  
 72 │ ╭     pub fn sub_i8(left: i8, right: i8) -> i8:
 73 │ │         return left - right
-   │ ╰───────────────────────────^ attributes hash: 14117217432290539755
+   │ ╰───────────────────────────^ attributes hash: 6610364095665106106
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -944,9 +968,10 @@ note:
    │  
 75 │ ╭     pub fn div_u256(left: u256, right: u256) -> u256:
 76 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 10934394392719230350
+   │ ╰───────────────────────────^ attributes hash: 3568881859844729307
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -983,9 +1008,10 @@ note:
    │  
 78 │ ╭     pub fn div_u128(left: u128, right: u128) -> u128:
 79 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 3844087086888288806
+   │ ╰───────────────────────────^ attributes hash: 17129592850815340223
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -1022,9 +1048,10 @@ note:
    │  
 81 │ ╭     pub fn div_u64(left: u64, right: u64) -> u64:
 82 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 7090360049943337373
+   │ ╰───────────────────────────^ attributes hash: 14666166959439406742
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -1061,9 +1088,10 @@ note:
    │  
 84 │ ╭     pub fn div_u32(left: u32, right: u32) -> u32:
 85 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 1924425134457147261
+   │ ╰───────────────────────────^ attributes hash: 2033723386058016238
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -1100,9 +1128,10 @@ note:
    │  
 87 │ ╭     pub fn div_u16(left: u16, right: u16) -> u16:
 88 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 2007900231672655657
+   │ ╰───────────────────────────^ attributes hash: 2208322929283836441
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -1139,9 +1168,10 @@ note:
    │  
 90 │ ╭     pub fn div_u8(left: u8, right: u8) -> u8:
 91 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 1045834994105525345
+   │ ╰───────────────────────────^ attributes hash: 16477852824764552468
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -1178,9 +1208,10 @@ note:
    │  
 93 │ ╭     pub fn div_i256(left: i256, right: i256) -> i256:
 94 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 13926565639439232492
+   │ ╰───────────────────────────^ attributes hash: 13756051924186323535
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -1217,9 +1248,10 @@ note:
    │  
 96 │ ╭     pub fn div_i128(left: i128, right: i128) -> i128:
 97 │ │         return left / right
-   │ ╰───────────────────────────^ attributes hash: 3214814928241611038
+   │ ╰───────────────────────────^ attributes hash: 470029936044980118
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "left",
@@ -1256,9 +1288,10 @@ note:
     │  
  99 │ ╭     pub fn div_i64(left: i64, right: i64) -> i64:
 100 │ │         return left / right
-    │ ╰───────────────────────────^ attributes hash: 11957634529458381280
+    │ ╰───────────────────────────^ attributes hash: 15016550520446375601
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -1295,9 +1328,10 @@ note:
     │  
 102 │ ╭     pub fn div_i32(left: i32, right: i32) -> i32:
 103 │ │         return left / right
-    │ ╰───────────────────────────^ attributes hash: 1408981139897494799
+    │ ╰───────────────────────────^ attributes hash: 5408722229298808308
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -1334,9 +1368,10 @@ note:
     │  
 105 │ ╭     pub fn div_i16(left: i16, right: i16) -> i16:
 106 │ │         return left / right
-    │ ╰───────────────────────────^ attributes hash: 6628839244879101310
+    │ ╰───────────────────────────^ attributes hash: 6512603022216737285
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -1373,9 +1408,10 @@ note:
     │  
 108 │ ╭     pub fn div_i8(left: i8, right: i8) -> i8:
 109 │ │         return left / right
-    │ ╰───────────────────────────^ attributes hash: 14117217432290539755
+    │ ╰───────────────────────────^ attributes hash: 6610364095665106106
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -1412,9 +1448,10 @@ note:
     │  
 111 │ ╭     pub fn mul_u256(left: u256, right: u256) -> u256:
 112 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 10934394392719230350
+    │ ╰───────────────────────────^ attributes hash: 3568881859844729307
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -1451,9 +1488,10 @@ note:
     │  
 114 │ ╭     pub fn mul_u128(left: u128, right: u128) -> u128:
 115 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 3844087086888288806
+    │ ╰───────────────────────────^ attributes hash: 17129592850815340223
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -1490,9 +1528,10 @@ note:
     │  
 117 │ ╭     pub fn mul_u64(left: u64, right: u64) -> u64:
 118 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 7090360049943337373
+    │ ╰───────────────────────────^ attributes hash: 14666166959439406742
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -1529,9 +1568,10 @@ note:
     │  
 120 │ ╭     pub fn mul_u32(left: u32, right: u32) -> u32:
 121 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 1924425134457147261
+    │ ╰───────────────────────────^ attributes hash: 2033723386058016238
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -1568,9 +1608,10 @@ note:
     │  
 123 │ ╭     pub fn mul_u16(left: u16, right: u16) -> u16:
 124 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 2007900231672655657
+    │ ╰───────────────────────────^ attributes hash: 2208322929283836441
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -1607,9 +1648,10 @@ note:
     │  
 126 │ ╭     pub fn mul_u8(left: u8, right: u8) -> u8:
 127 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 1045834994105525345
+    │ ╰───────────────────────────^ attributes hash: 16477852824764552468
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -1646,9 +1688,10 @@ note:
     │  
 129 │ ╭     pub fn mul_i256(left: i256, right: i256) -> i256:
 130 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 13926565639439232492
+    │ ╰───────────────────────────^ attributes hash: 13756051924186323535
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -1685,9 +1728,10 @@ note:
     │  
 132 │ ╭     pub fn mul_i128(left: i128, right: i128) -> i128:
 133 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 3214814928241611038
+    │ ╰───────────────────────────^ attributes hash: 470029936044980118
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -1724,9 +1768,10 @@ note:
     │  
 135 │ ╭     pub fn mul_i64(left: i64, right: i64) -> i64:
 136 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 11957634529458381280
+    │ ╰───────────────────────────^ attributes hash: 15016550520446375601
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -1763,9 +1808,10 @@ note:
     │  
 138 │ ╭     pub fn mul_i32(left: i32, right: i32) -> i32:
 139 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 1408981139897494799
+    │ ╰───────────────────────────^ attributes hash: 5408722229298808308
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -1802,9 +1848,10 @@ note:
     │  
 141 │ ╭     pub fn mul_i16(left: i16, right: i16) -> i16:
 142 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 6628839244879101310
+    │ ╰───────────────────────────^ attributes hash: 6512603022216737285
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -1841,9 +1888,10 @@ note:
     │  
 144 │ ╭     pub fn mul_i8(left: i8, right: i8) -> i8:
 145 │ │         return left * right
-    │ ╰───────────────────────────^ attributes hash: 14117217432290539755
+    │ ╰───────────────────────────^ attributes hash: 6610364095665106106
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -1880,9 +1928,10 @@ note:
     │  
 147 │ ╭     pub fn mod_u256(left: u256, right: u256) -> u256:
 148 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 10934394392719230350
+    │ ╰───────────────────────────^ attributes hash: 3568881859844729307
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -1919,9 +1968,10 @@ note:
     │  
 150 │ ╭     pub fn mod_u128(left: u128, right: u128) -> u128:
 151 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 3844087086888288806
+    │ ╰───────────────────────────^ attributes hash: 17129592850815340223
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -1958,9 +2008,10 @@ note:
     │  
 153 │ ╭     pub fn mod_u64(left: u64, right: u64) -> u64:
 154 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 7090360049943337373
+    │ ╰───────────────────────────^ attributes hash: 14666166959439406742
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -1997,9 +2048,10 @@ note:
     │  
 156 │ ╭     pub fn mod_u32(left: u32, right: u32) -> u32:
 157 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 1924425134457147261
+    │ ╰───────────────────────────^ attributes hash: 2033723386058016238
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -2036,9 +2088,10 @@ note:
     │  
 159 │ ╭     pub fn mod_u16(left: u16, right: u16) -> u16:
 160 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 2007900231672655657
+    │ ╰───────────────────────────^ attributes hash: 2208322929283836441
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -2075,9 +2128,10 @@ note:
     │  
 162 │ ╭     pub fn mod_u8(left: u8, right: u8) -> u8:
 163 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 1045834994105525345
+    │ ╰───────────────────────────^ attributes hash: 16477852824764552468
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -2114,9 +2168,10 @@ note:
     │  
 165 │ ╭     pub fn mod_i256(left: i256, right: i256) -> i256:
 166 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 13926565639439232492
+    │ ╰───────────────────────────^ attributes hash: 13756051924186323535
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -2153,9 +2208,10 @@ note:
     │  
 168 │ ╭     pub fn mod_i128(left: i128, right: i128) -> i128:
 169 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 3214814928241611038
+    │ ╰───────────────────────────^ attributes hash: 470029936044980118
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -2192,9 +2248,10 @@ note:
     │  
 171 │ ╭     pub fn mod_i64(left: i64, right: i64) -> i64:
 172 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 11957634529458381280
+    │ ╰───────────────────────────^ attributes hash: 15016550520446375601
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -2231,9 +2288,10 @@ note:
     │  
 174 │ ╭     pub fn mod_i32(left: i32, right: i32) -> i32:
 175 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 1408981139897494799
+    │ ╰───────────────────────────^ attributes hash: 5408722229298808308
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -2270,9 +2328,10 @@ note:
     │  
 177 │ ╭     pub fn mod_i16(left: i16, right: i16) -> i16:
 178 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 6628839244879101310
+    │ ╰───────────────────────────^ attributes hash: 6512603022216737285
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -2309,9 +2368,10 @@ note:
     │  
 180 │ ╭     pub fn mod_i8(left: i8, right: i8) -> i8:
 181 │ │         return left % right
-    │ ╰───────────────────────────^ attributes hash: 14117217432290539755
+    │ ╰───────────────────────────^ attributes hash: 6610364095665106106
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -2348,9 +2408,10 @@ note:
     │  
 183 │ ╭     pub fn pow_u256(left: u256, right: u256) -> u256:
 184 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 10934394392719230350
+    │ ╰────────────────────────────^ attributes hash: 3568881859844729307
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -2387,9 +2448,10 @@ note:
     │  
 186 │ ╭     pub fn pow_u128(left: u128, right: u128) -> u128:
 187 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 3844087086888288806
+    │ ╰────────────────────────────^ attributes hash: 17129592850815340223
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -2426,9 +2488,10 @@ note:
     │  
 189 │ ╭     pub fn pow_u64(left: u64, right: u64) -> u64:
 190 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 7090360049943337373
+    │ ╰────────────────────────────^ attributes hash: 14666166959439406742
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -2465,9 +2528,10 @@ note:
     │  
 192 │ ╭     pub fn pow_u32(left: u32, right: u32) -> u32:
 193 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 1924425134457147261
+    │ ╰────────────────────────────^ attributes hash: 2033723386058016238
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -2504,9 +2568,10 @@ note:
     │  
 195 │ ╭     pub fn pow_u16(left: u16, right: u16) -> u16:
 196 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 2007900231672655657
+    │ ╰────────────────────────────^ attributes hash: 2208322929283836441
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -2543,9 +2608,10 @@ note:
     │  
 198 │ ╭     pub fn pow_u8(left: u8, right: u8) -> u8:
 199 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 1045834994105525345
+    │ ╰────────────────────────────^ attributes hash: 16477852824764552468
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -2582,9 +2648,10 @@ note:
     │  
 201 │ ╭     pub fn pow_i256(left: i256, right: u256) -> i256:
 202 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 16826090789493664662
+    │ ╰────────────────────────────^ attributes hash: 13328792098034894314
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -2621,9 +2688,10 @@ note:
     │  
 204 │ ╭     pub fn pow_i128(left: i128, right: u128) -> i128:
 205 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 17118097490571815230
+    │ ╰────────────────────────────^ attributes hash: 5162497528451028741
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -2660,9 +2728,10 @@ note:
     │  
 207 │ ╭     pub fn pow_i64(left: i64, right: u64) -> i64:
 208 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 7954836210445785693
+    │ ╰────────────────────────────^ attributes hash: 3582235670066718134
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -2699,9 +2768,10 @@ note:
     │  
 210 │ ╭     pub fn pow_i32(left: i32, right: u32) -> i32:
 211 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 16765733214596552581
+    │ ╰────────────────────────────^ attributes hash: 9104251235952663662
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -2738,9 +2808,10 @@ note:
     │  
 213 │ ╭     pub fn pow_i16(left: i16, right: u16) -> i16:
 214 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 13501313120497633316
+    │ ╰────────────────────────────^ attributes hash: 1798106810832003212
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",
@@ -2777,9 +2848,10 @@ note:
     │  
 216 │ ╭     pub fn pow_i8(left: i8, right: u8) -> i8:
 217 │ │         return left ** right
-    │ ╰────────────────────────────^ attributes hash: 12382712145774122490
+    │ ╰────────────────────────────^ attributes hash: 4658061017856467890
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "left",

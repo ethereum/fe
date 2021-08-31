@@ -45,7 +45,7 @@ contract Foo:
         a &= b
         return a
 
-    pub fn add_from_sto(a: u256, b: u256) -> u256:
+    pub fn add_from_sto(self, a: u256, b: u256) -> u256:
         self.my_num = a
         self.my_num += b
         return self.my_num

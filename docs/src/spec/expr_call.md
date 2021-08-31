@@ -26,7 +26,7 @@ Example:
 contract Foo:
 
     pub fn baz():
-        self.bar(100, val2=300)
+        bar(100, val2=300)
 
     pub fn bar(val1: u256, val2: u256):
         pass

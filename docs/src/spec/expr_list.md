@@ -31,7 +31,7 @@ contract Foo:
     pub fn baz():
         let val1: u256 = 2
         # A list expression
-        let foo: u256[3] = [1, val1, self.get_val3()]
+        let foo: u256[3] = [1, val1, get_val3()]
 ```
 
 [_Expression_]: expressions.md

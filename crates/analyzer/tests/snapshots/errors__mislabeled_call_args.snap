@@ -4,15 +4,15 @@ expression: "error_string(&path, &src)"
 
 ---
 error: argument label mismatch
-  ┌─ compile_errors/mislabeled_call_args.fe:4:18
+  ┌─ compile_errors/mislabeled_call_args.fe:4:13
   │
-4 │         self.bar(doesnt_exist=1, me_neither=2)
-  │                  ^^^^^^^^^^^^ expected `val1`
+4 │         bar(doesnt_exist=1, me_neither=2)
+  │             ^^^^^^^^^^^^ expected `val1`
 
 error: argument label mismatch
-  ┌─ compile_errors/mislabeled_call_args.fe:4:34
+  ┌─ compile_errors/mislabeled_call_args.fe:4:29
   │
-4 │         self.bar(doesnt_exist=1, me_neither=2)
-  │                                  ^^^^^^^^^^ expected `val2`
+4 │         bar(doesnt_exist=1, me_neither=2)
+  │                             ^^^^^^^^^^ expected `val2`
 
 

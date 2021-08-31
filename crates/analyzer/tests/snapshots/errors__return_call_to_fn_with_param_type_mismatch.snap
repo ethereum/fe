@@ -4,9 +4,9 @@ expression: "error_string(&path, &src)"
 
 ---
 error: incorrect type for `foo` argument `val`
-  ┌─ compile_errors/return_call_to_fn_with_param_type_mismatch.fe:7:25
+  ┌─ compile_errors/return_call_to_fn_with_param_type_mismatch.fe:7:20
   │
-7 │         return self.foo(100)
-  │                         ^^^ this has type `u256`; expected type `address`
+7 │         return foo(100)
+  │                    ^^^ this has type `u256`; expected type `address`
 
 

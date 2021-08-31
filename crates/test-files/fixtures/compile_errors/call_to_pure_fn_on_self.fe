@@ -1,0 +1,6 @@
+contract Foo:
+    fn pure():
+        pass
+
+    fn bar(self):
+        self.pure()

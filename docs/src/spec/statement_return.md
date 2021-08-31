@@ -12,11 +12,11 @@ An example of a `return` statement without explicit use of an expression:
 
 ```python
 contract Foo:
-    fn transfer(to: address, value: u256):
+    fn transfer(self, to: address, value: u256):
         if not self.in_whitelist(to):
             return
 
-    fn in_whitelist(to: address) -> bool:
+    fn in_whitelist(self, to: address) -> bool:
         # revert used as placeholder for actual logic
         revert
 ```
@@ -25,11 +25,11 @@ The above can also be written in a slightly more verbose form:
 
 ```python
 contract Foo:
-    fn transfer(to: address, value: u256) -> ():
+    fn transfer(self, to: address, value: u256) -> ():
         if not self.in_whitelist(to):
             return ()
 
-    fn in_whitelist(to: address) -> bool:
+    fn in_whitelist(self, to: address) -> bool:
         # revert used as placeholder for actual logic
         revert
 ```

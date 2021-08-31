@@ -3,7 +3,7 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: no function `doesnt_exist` exists this contract
+error: no function named `doesnt_exist` exists in this contract
   ┌─ [snippet]:3:3
   │
 3 │   self.doesnt_exist()

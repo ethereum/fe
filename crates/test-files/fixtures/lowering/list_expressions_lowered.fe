@@ -1,6 +1,6 @@
 contract Foo:
     pub fn foo() -> ():
-        let x: u256[3] = self.list_expr_array_u256_3(10, 20, 30)
+        let x: u256[3] = list_expr_array_u256_3(10, 20, 30)
         return ()
 
     fn list_expr_array_u256_3(val0: u256, val1: u256, val2: u256) -> u256[3]:

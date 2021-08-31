@@ -3,9 +3,10 @@ use crate::mappers::expressions;
 use crate::mappers::types;
 use crate::utils::ZeroSpanNode;
 use fe_analyzer::namespace::items::FunctionId;
-use fe_analyzer::namespace::types::Type;
 use fe_analyzer::namespace::types::TypeDowncast;
+use fe_analyzer::namespace::types::{Base, Type};
 use fe_parser::ast as fe;
+use fe_parser::ast::RegularFunctionArg;
 use fe_parser::node::Node;
 
 /// Lowers a function definition.
@@ -41,20 +42,40 @@ pub fn func_def(contract: &mut ContractContext, function: FunctionId) -> Node<fe
         lowered_body
     };
 
+    let param_types = {
+        let params = &signature.params;
+        let mut types = vec![];
+        if matches!(
+            args.first(),
+            Some(Node {
+                kind: fe::FunctionArg::Zelf,
+                ..
+            })
+        ) {
+            // The type of self is excluded from the parameter type list, so we add
+            // a unit type placeholder to accommodate the following zip.
+            types.push(Type::Base(Base::Unit));
+        }
+        for param in params {
+            types.push(param.typ.clone().expect("fn param type error").into())
+        }
+        types
+    };
+
     let args = args
         .iter()
-        .zip(
-            signature
-                .params
-                .iter()
-                .map(|param| param.typ.clone().expect("fn param type error").into()),
-        )
+        .zip(param_types)
         .map(|(pnode, ptype)| {
-            fe::FunctionArg {
-                name: pnode.kind.name.clone(),
-                typ: types::type_desc(&mut contract.module, pnode.kind.typ.clone(), &ptype),
+            if let fe::FunctionArg::Regular(regular) = &pnode.kind {
+                fe::FunctionArg::Regular(RegularFunctionArg {
+                    name: regular.name.clone(),
+                    typ: types::type_desc(&mut contract.module, regular.typ.clone(), &ptype),
+                })
+                .into_node()
+            } else {
+                // the self arg remains the same
+                pnode.to_owned()
             }
-            .into_node()
         })
         .collect();
 

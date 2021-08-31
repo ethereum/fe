@@ -69,6 +69,10 @@ pub trait AnalyzerDb {
     fn contract_function_map(&self, id: ContractId) -> Analysis<Rc<IndexMap<String, FunctionId>>>;
     #[salsa::invoke(queries::contracts::contract_public_function_map)]
     fn contract_public_function_map(&self, id: ContractId) -> Rc<IndexMap<String, FunctionId>>;
+    #[salsa::invoke(queries::contracts::contract_pure_function_map)]
+    fn contract_pure_function_map(&self, id: ContractId) -> Rc<IndexMap<String, FunctionId>>;
+    #[salsa::invoke(queries::contracts::contract_self_function_map)]
+    fn contract_self_function_map(&self, id: ContractId) -> Rc<IndexMap<String, FunctionId>>;
     #[salsa::invoke(queries::contracts::contract_init_function)]
     fn contract_init_function(&self, id: ContractId) -> Analysis<Option<FunctionId>>;
 

@@ -20,9 +20,10 @@ note:
   │  
 5 │ ╭     pub fn external_bar() -> u256:
 6 │ │         return Bar(address(0)).bar()
-  │ ╰────────────────────────────────────^ attributes hash: 4553090961241945225
+  │ ╰────────────────────────────────────^ attributes hash: 17979516652885443340
   │  
   = FunctionSignature {
+        self_decl: None,
         params: [],
         return_type: Ok(
             Base(
@@ -38,9 +39,10 @@ note:
   │  
 8 │ ╭     pub fn foo() -> u256:
 9 │ │         return 42
-  │ ╰─────────────────^ attributes hash: 4553090961241945225
+  │ ╰─────────────────^ attributes hash: 17979516652885443340
   │  
   = FunctionSignature {
+        self_decl: None,
         params: [],
         return_type: Ok(
             Base(
@@ -56,9 +58,10 @@ note:
    │  
 15 │ ╭     pub fn external_foo() -> u256:
 16 │ │         return Foo(address(0)).foo()
-   │ ╰────────────────────────────────────^ attributes hash: 4553090961241945225
+   │ ╰────────────────────────────────────^ attributes hash: 17979516652885443340
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -74,9 +77,10 @@ note:
    │  
 18 │ ╭     pub fn bar() -> u256:
 19 │ │         return 26
-   │ ╰─────────────────^ attributes hash: 4553090961241945225
+   │ ╰─────────────────^ attributes hash: 17979516652885443340
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [],
          return_type: Ok(
              Base(

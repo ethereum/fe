@@ -14,9 +14,10 @@ note:
   │  
 3 │ ╭     pub fn foo(val1: u256, val2: u256, val3: u256, val4: u256, val5: u256) -> u256:
 4 │ │         return val1 + val2 + val3 + val4 + val5
-  │ ╰───────────────────────────────────────────────^ attributes hash: 4194611052461768296
+  │ ╰───────────────────────────────────────────────^ attributes hash: 4629287087811571223
   │  
   = FunctionSignature {
+        self_decl: None,
         params: [
             FunctionParam {
                 name: "val1",
@@ -83,9 +84,10 @@ note:
   │  
 6 │ ╭     pub fn cem() -> u256:
 7 │ │         return 100
-  │ ╰──────────────────^ attributes hash: 4553090961241945225
+  │ ╰──────────────────^ attributes hash: 17979516652885443340
   │  
   = FunctionSignature {
+        self_decl: None,
         params: [],
         return_type: Ok(
             Base(
@@ -99,12 +101,13 @@ note:
 note: 
    ┌─ features/return_u256_from_called_fn_with_args.fe:9:5
    │  
- 9 │ ╭     pub fn bar() -> u256:
+ 9 │ ╭     pub fn bar(self) -> u256:
 10 │ │         self.baz[0] = 43
-11 │ │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │ ╰───────────────────────────────────────────────────────────────^ attributes hash: 4553090961241945225
+11 │ │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
+   │ ╰─────────────────────────────────────────────────────^ attributes hash: 16482263331346774611
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              Base(
@@ -200,82 +203,82 @@ note:
    │                       ^^ u256: Value => None
 
 note: 
-   ┌─ features/return_u256_from_called_fn_with_args.fe:11:25
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:20
    │
-11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │                         ^ u256: Value => None
+11 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
+   │                    ^ u256: Value => None
 
 note: 
-   ┌─ features/return_u256_from_called_fn_with_args.fe:11:28
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:23
    │
-11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │                            ^ u256: Value => None
+11 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
+   │                       ^ u256: Value => None
 
 note: 
-   ┌─ features/return_u256_from_called_fn_with_args.fe:11:31
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:26
    │
-11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │                               ^^^^^^^^^^ u256: Value => None
+11 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
+   │                          ^^^^^ u256: Value => None
 
 note: 
-   ┌─ features/return_u256_from_called_fn_with_args.fe:11:43
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:33
    │
-11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │                                           ^^ u256: Value => None
+11 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
+   │                                 ^^ u256: Value => None
 
 note: 
-   ┌─ features/return_u256_from_called_fn_with_args.fe:11:48
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:38
    │
-11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │                                                ^^ u256: Value => None
+11 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
+   │                                      ^^ u256: Value => None
 
 note: 
-   ┌─ features/return_u256_from_called_fn_with_args.fe:11:43
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:33
    │
-11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │                                           ^^^^^^^ u256: Value => None
+11 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
+   │                                 ^^^^^^^ u256: Value => None
 
 note: 
-   ┌─ features/return_u256_from_called_fn_with_args.fe:11:52
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:42
    │
-11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │                                                    ^^^^^^^^ Map<u256, u256>: Storage { nonce: Some(0) } => None
+11 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
+   │                                          ^^^^^^^^ Map<u256, u256>: Storage { nonce: Some(0) } => None
 
 note: 
-   ┌─ features/return_u256_from_called_fn_with_args.fe:11:61
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:51
    │
-11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │                                                             ^ u256: Value => None
+11 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
+   │                                                   ^ u256: Value => None
 
 note: 
-   ┌─ features/return_u256_from_called_fn_with_args.fe:11:52
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:42
    │
-11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │                                                    ^^^^^^^^^^^ u256: Storage { nonce: None } => Some(Value)
-
-note: 
-   ┌─ features/return_u256_from_called_fn_with_args.fe:11:16
-   │
-11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
+11 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
+   │                                          ^^^^^^^^^^^ u256: Storage { nonce: None } => Some(Value)
 
 note: 
    ┌─ features/return_u256_from_called_fn_with_args.fe:11:16
    │
-11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │                ^^^^^^^^ attributes hash: 5290763145657400289
+11 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
+
+note: 
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:16
    │
-   = SelfAttribute {
+11 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
+   │                ^^^ attributes hash: 1664590513608378371
+   │
+   = Pure {
          func_name: "foo",
      }
 
 note: 
-   ┌─ features/return_u256_from_called_fn_with_args.fe:11:31
+   ┌─ features/return_u256_from_called_fn_with_args.fe:11:26
    │
-11 │         return self.foo(5, 2, self.cem(), 25 + 25, self.baz[0])
-   │                               ^^^^^^^^ attributes hash: 15959357109795915945
+11 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
+   │                          ^^^ attributes hash: 3933618496970144567
    │
-   = SelfAttribute {
+   = Pure {
          func_name: "cem",
      }
 

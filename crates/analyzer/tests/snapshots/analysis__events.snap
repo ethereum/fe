@@ -62,9 +62,10 @@ note:
    │  
 19 │ ╭     pub fn emit_nums():
 20 │ │         emit Nums(num1=26, num2=42)
-   │ ╰───────────────────────────────────^ attributes hash: 17883060253504188551
+   │ ╰───────────────────────────────────^ attributes hash: 15148455653558261645
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -78,9 +79,10 @@ note:
    │  
 22 │ ╭     pub fn emit_bases(addr: address):
 23 │ │         emit Bases(num=26, addr)
-   │ ╰────────────────────────────────^ attributes hash: 1974394024601971155
+   │ ╰────────────────────────────────^ attributes hash: 14507092098124791222
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "addr",
@@ -103,9 +105,10 @@ note:
    │  
 25 │ ╭     pub fn emit_mix(addr: address, my_bytes: u8[100]):
 26 │ │         emit Mix(num1=26, addr, num2=42, my_bytes)
-   │ ╰──────────────────────────────────────────────────^ attributes hash: 9471426679017439139
+   │ ╰──────────────────────────────────────────────────^ attributes hash: 11181555056051097974
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "addr",
@@ -144,9 +147,10 @@ note:
 30 │ │         addrs[0] = addr1
 31 │ │         addrs[1] = addr2
 32 │ │         emit Addresses(addrs)
-   │ ╰─────────────────────────────^ attributes hash: 8782263773672116816
+   │ ╰─────────────────────────────^ attributes hash: 13018113254659996848
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [
              FunctionParam {
                  name: "addr1",

@@ -21,26 +21,26 @@ contract Foo:
         return my_tuple.item2
 
     pub fn read_my_tuple_item10(my_tuple: (u256, u256, u256, u256, u256, u256, u256, u256, u256, u256, address)) -> address:
-            return my_tuple.item10
+        return my_tuple.item10
 
     pub fn emit_my_event(my_tuple: (u256, bool, address)):
         emit MyEvent(my_tuple)
 
-    pub fn set_my_sto_tuple(my_u256: u256, my_i32: i32):
+    pub fn set_my_sto_tuple(self, my_u256: u256, my_i32: i32):
         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
         self.my_sto_tuple = (my_u256, my_i32)
 
-    pub fn get_my_sto_tuple() -> (u256, i32):
+    pub fn get_my_sto_tuple(self) -> (u256, i32):
         return self.my_sto_tuple.to_mem()
 
-    pub fn build_tuple_and_emit():
+    pub fn build_tuple_and_emit(self):
         let my_num: u256 = self.my_sto_tuple.item0
         let my_tuple: (u256, bool, address) = (
             self.my_sto_tuple.item0,
             true and false,
             address(26)
         )
-        self.emit_my_event(my_tuple)
+        emit_my_event(my_tuple)
 
     pub fn encode_my_tuple(my_tuple: (u256, bool, address)) -> u8[96]:
         return my_tuple.abi_encode()

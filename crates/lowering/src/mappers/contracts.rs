@@ -5,6 +5,7 @@ use crate::utils::ZeroSpanNode;
 use fe_analyzer::namespace::items::{ContractFieldId, ContractId, EventId};
 use fe_analyzer::namespace::types::{Array, FixedSize};
 use fe_parser::ast;
+use fe_parser::ast::RegularFunctionArg;
 use fe_parser::node::Node;
 
 /// Lowers a contract definition.
@@ -99,10 +100,10 @@ fn list_expr_to_fn_def(array: &Array) -> ast::Function {
     // Built the AST nodes for the function arguments
     let args = (0..array.size)
         .map(|index| {
-            ast::FunctionArg {
+            ast::FunctionArg::Regular(RegularFunctionArg {
                 name: format!("val{}", index).into_node(),
                 typ: names::fixed_size_type_desc(&FixedSize::Base(array.inner)).into_node(),
-            }
+            })
             .into_node()
         })
         .collect::<Vec<_>>();

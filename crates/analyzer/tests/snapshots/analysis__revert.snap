@@ -38,9 +38,10 @@ note:
    │  
 12 │ ╭     pub fn bar() -> u256:
 13 │ │         revert
-   │ ╰──────────────^ attributes hash: 4553090961241945225
+   │ ╰──────────────^ attributes hash: 17979516652885443340
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -56,9 +57,10 @@ note:
    │  
 15 │ ╭     pub fn revert_custom_error():
 16 │ │         revert Error(msg=1, val=true)
-   │ ╰─────────────────────────────────────^ attributes hash: 17883060253504188551
+   │ ╰─────────────────────────────────────^ attributes hash: 15148455653558261645
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -72,9 +74,10 @@ note:
    │  
 18 │ ╭     pub fn revert_other_error():
 19 │ │         revert OtherError(msg=1, val=true)
-   │ ╰──────────────────────────────────────────^ attributes hash: 17883060253504188551
+   │ ╰──────────────────────────────────────────^ attributes hash: 15148455653558261645
    │  
    = FunctionSignature {
+         self_decl: None,
          params: [],
          return_type: Ok(
              Base(
@@ -86,12 +89,13 @@ note:
 note: 
    ┌─ features/revert.fe:21:5
    │  
-21 │ ╭     pub fn revert_other_error_from_sto():
+21 │ ╭     pub fn revert_other_error_from_sto(self):
 22 │ │         self.my_other_error = OtherError(msg=1, val=true)
 23 │ │         revert self.my_other_error.to_mem()
-   │ ╰───────────────────────────────────────────^ attributes hash: 17883060253504188551
+   │ ╰───────────────────────────────────────────^ attributes hash: 4369441865732737140
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              Base(

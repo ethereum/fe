@@ -19,12 +19,12 @@ contract Foo:
         while sum < 10:
             sum += 1
 
-            if self.some_abort_condition():
+            if some_abort_condition():
                 break
 
         return sum
 
-    fn some_abort_condition -> bool:
+    fn some_abort_condition() -> bool:
         # some complex logic
         return true
 ```
@@ -39,12 +39,12 @@ contract Foo:
         for i in values:
             sum = sum + i
 
-            if self.some_abort_condition():
+            if some_abort_condition():
                 break
 
         return sum
 
-    fn some_abort_condition -> bool:
+    fn some_abort_condition() -> bool:
         # some complex logic
         return true
 ```

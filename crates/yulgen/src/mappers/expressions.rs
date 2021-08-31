@@ -103,7 +103,7 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
             typ: Type::Struct(val),
         } => struct_operations::new(&val, yul_args),
         CallType::TypeConstructor { .. } => yul_args[0].to_owned(),
-        CallType::SelfAttribute { func_name } => {
+        CallType::SelfAttribute { func_name, .. } | CallType::Pure { func_name } => {
             let func_name = names::func_name(&func_name);
             expression! { [func_name]([yul_args...]) }
         }

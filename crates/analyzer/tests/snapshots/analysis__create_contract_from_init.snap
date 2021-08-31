@@ -14,9 +14,10 @@ note:
   │  
 2 │ ╭     pub fn get_my_num() -> u256:
 3 │ │         return 42
-  │ ╰─────────────────^ attributes hash: 4553090961241945225
+  │ ╰─────────────────^ attributes hash: 17979516652885443340
   │  
   = FunctionSignature {
+        self_decl: None,
         params: [],
         return_type: Ok(
             Base(
@@ -30,11 +31,12 @@ note:
 note: 
   ┌─ features/create_contract_from_init.fe:8:5
   │  
-8 │ ╭     pub fn __init__():
+8 │ ╭     pub fn __init__(self):
 9 │ │         self.foo_addr = address(Foo.create(0))
-  │ ╰──────────────────────────────────────────────^ attributes hash: 17883060253504188551
+  │ ╰──────────────────────────────────────────────^ attributes hash: 4369441865732737140
   │  
   = FunctionSignature {
+        self_decl: Mutable,
         params: [],
         return_type: Ok(
             Base(
@@ -46,11 +48,12 @@ note:
 note: 
    ┌─ features/create_contract_from_init.fe:11:5
    │  
-11 │ ╭     pub fn get_foo_addr() -> address:
+11 │ ╭     pub fn get_foo_addr(self) -> address:
 12 │ │         return self.foo_addr
-   │ ╰────────────────────────────^ attributes hash: 2195077967527136217
+   │ ╰────────────────────────────^ attributes hash: 17651916811868111914
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              Base(

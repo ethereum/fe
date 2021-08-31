@@ -78,14 +78,15 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:21:5
    │  
-21 │ ╭     pub fn __init__(name: String<100>, symbol: String<100>):
+21 │ ╭     pub fn __init__(self, name: String<100>, symbol: String<100>):
 22 │ │         self._name = name
 23 │ │         self._symbol = symbol
 24 │ │         self._decimals = u8(18)
 25 │ │         self._mint(msg.sender, 1000000000000000000000000)
-   │ ╰─────────────────────────────────────────────────────────^ attributes hash: 3273606564690912097
+   │ ╰─────────────────────────────────────────────────────────^ attributes hash: 5200858442325067440
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "name",
@@ -118,11 +119,12 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:27:5
    │  
-27 │ ╭     pub fn name() -> String<100>:
+27 │ ╭     pub fn name(self) -> String<100>:
 28 │ │         return self._name.to_mem()
-   │ ╰──────────────────────────────────^ attributes hash: 547051866614494389
+   │ ╰──────────────────────────────────^ attributes hash: 12632360895853494516
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              String(
@@ -136,11 +138,12 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:30:5
    │  
-30 │ ╭     pub fn symbol() -> String<100>:
+30 │ ╭     pub fn symbol(self) -> String<100>:
 31 │ │         return self._symbol.to_mem()
-   │ ╰────────────────────────────────────^ attributes hash: 547051866614494389
+   │ ╰────────────────────────────────────^ attributes hash: 12632360895853494516
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              String(
@@ -154,11 +157,12 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:33:5
    │  
-33 │ ╭     pub fn decimals() -> u8:
+33 │ ╭     pub fn decimals(self) -> u8:
 34 │ │         return self._decimals
-   │ ╰─────────────────────────────^ attributes hash: 207849059327209983
+   │ ╰─────────────────────────────^ attributes hash: 6791549355703693154
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              Base(
@@ -172,11 +176,12 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:36:5
    │  
-36 │ ╭     pub fn totalSupply() -> u256:
+36 │ ╭     pub fn totalSupply(self) -> u256:
 37 │ │         return self._total_supply
-   │ ╰─────────────────────────────────^ attributes hash: 4553090961241945225
+   │ ╰─────────────────────────────────^ attributes hash: 16482263331346774611
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [],
          return_type: Ok(
              Base(
@@ -190,11 +195,12 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:39:5
    │  
-39 │ ╭     pub fn balanceOf(account: address) -> u256:
+39 │ ╭     pub fn balanceOf(self, account: address) -> u256:
 40 │ │         return self._balances[account]
-   │ ╰──────────────────────────────────────^ attributes hash: 3270716362116162777
+   │ ╰──────────────────────────────────────^ attributes hash: 11484923544867751175
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "account",
@@ -217,12 +223,13 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:42:5
    │  
-42 │ ╭     pub fn transfer(recipient: address, value: u256) -> bool:
+42 │ ╭     pub fn transfer(self, recipient: address, value: u256) -> bool:
 43 │ │         self._transfer(msg.sender, recipient, value)
 44 │ │         return true
-   │ ╰───────────────────^ attributes hash: 4820155873652504726
+   │ ╰───────────────────^ attributes hash: 1991308505230085281
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "recipient",
@@ -253,11 +260,12 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:46:5
    │  
-46 │ ╭     pub fn allowance(owner: address, spender: address) -> u256:
+46 │ ╭     pub fn allowance(self, owner: address, spender: address) -> u256:
 47 │ │         return self._allowances[owner][spender]
-   │ ╰───────────────────────────────────────────────^ attributes hash: 14386390033603643930
+   │ ╰───────────────────────────────────────────────^ attributes hash: 9282693738387957668
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "owner",
@@ -288,12 +296,13 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:49:5
    │  
-49 │ ╭     pub fn approve(spender: address, value: u256) -> bool:
+49 │ ╭     pub fn approve(self, spender: address, value: u256) -> bool:
 50 │ │         self._approve(msg.sender, spender, value)
 51 │ │         return true
-   │ ╰───────────────────^ attributes hash: 11178591286876422786
+   │ ╰───────────────────^ attributes hash: 10662679418650794263
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "spender",
@@ -324,15 +333,16 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:53:5
    │  
-53 │ ╭     pub fn transferFrom(sender: address, recipient: address, value: u256) -> bool:
+53 │ ╭     pub fn transferFrom(self, sender: address, recipient: address, value: u256) -> bool:
 54 │ │         assert self._allowances[sender][msg.sender] >= value
 55 │ │ 
 56 │ │         self._transfer(sender, recipient, value)
 57 │ │         self._approve(sender, msg.sender, self._allowances[sender][msg.sender] - value)
 58 │ │         return true
-   │ ╰───────────────────^ attributes hash: 6064139117296579527
+   │ ╰───────────────────^ attributes hash: 91095815201716281
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "sender",
@@ -371,12 +381,13 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:60:5
    │  
-60 │ ╭     pub fn increaseAllowance(spender: address, addedValue: u256) -> bool:
+60 │ ╭     pub fn increaseAllowance(self, spender: address, addedValue: u256) -> bool:
 61 │ │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] + addedValue)
 62 │ │         return true
-   │ ╰───────────────────^ attributes hash: 9683116214595794825
+   │ ╰───────────────────^ attributes hash: 950629619328373893
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "spender",
@@ -407,12 +418,13 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:64:5
    │  
-64 │ ╭     pub fn decreaseAllowance(spender: address, subtractedValue: u256) -> bool:
+64 │ ╭     pub fn decreaseAllowance(self, spender: address, subtractedValue: u256) -> bool:
 65 │ │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] - subtractedValue)
 66 │ │         return true
-   │ ╰───────────────────^ attributes hash: 16344483445513373712
+   │ ╰───────────────────^ attributes hash: 12802591286463221158
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "spender",
@@ -443,16 +455,17 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:68:5
    │  
-68 │ ╭     fn _transfer(sender: address, recipient: address, value: u256):
+68 │ ╭     fn _transfer(self, sender: address, recipient: address, value: u256):
 69 │ │         assert sender != address(0)
 70 │ │         assert recipient != address(0)
 71 │ │ 
    · │
 75 │ │         self._balances[recipient] = self._balances[recipient] + value
 76 │ │         emit Transfer(from=sender, to=recipient, value=value)
-   │ ╰─────────────────────────────────────────────────────────────^ attributes hash: 5319660245929540884
+   │ ╰─────────────────────────────────────────────────────────────^ attributes hash: 923743412527861440
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "sender",
@@ -491,16 +504,17 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:78:5
    │  
-78 │ ╭     fn _mint(account: address, value: u256):
+78 │ ╭     fn _mint(self, account: address, value: u256):
 79 │ │         assert account != address(0)
 80 │ │ 
-81 │ │         self._before_token_transfer(address(0), account, value)
+81 │ │         _before_token_transfer(address(0), account, value)
    · │
 84 │ │         self._balances[account] = self._balances[account] + value
 85 │ │         emit Transfer(from=address(0), to=account, value=value)
-   │ ╰───────────────────────────────────────────────────────────────^ attributes hash: 2703747865659945970
+   │ ╰───────────────────────────────────────────────────────────────^ attributes hash: 10909525661003637247
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "account",
@@ -531,16 +545,17 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:87:5
    │  
-87 │ ╭     fn _burn(account: address, value: u256):
+87 │ ╭     fn _burn(self, account: address, value: u256):
 88 │ │         assert account != address(0)
 89 │ │ 
-90 │ │         self._before_token_transfer(account, address(0), value)
+90 │ │         _before_token_transfer(account, address(0), value)
    · │
 93 │ │         self._total_supply = self._total_supply - value
 94 │ │         emit Transfer(from=account, to=address(0), value)
-   │ ╰─────────────────────────────────────────────────────────^ attributes hash: 2703747865659945970
+   │ ╰─────────────────────────────────────────────────────────^ attributes hash: 10909525661003637247
    │  
    = FunctionSignature {
+         self_decl: Mutable,
          params: [
              FunctionParam {
                  name: "account",
@@ -571,15 +586,16 @@ note:
 note: 
     ┌─ demos/erc20_token.fe:96:5
     │  
- 96 │ ╭     fn _approve(owner: address, spender: address, value: u256):
+ 96 │ ╭     fn _approve(self, owner: address, spender: address, value: u256):
  97 │ │         assert owner != address(0)
  98 │ │         assert spender != address(0)
  99 │ │ 
 100 │ │         self._allowances[owner][spender] = value
 101 │ │         emit Approval(owner, spender, value)
-    │ ╰────────────────────────────────────────────^ attributes hash: 14201079106432958367
+    │ ╰────────────────────────────────────────────^ attributes hash: 2670276789438195364
     │  
     = FunctionSignature {
+          self_decl: Mutable,
           params: [
               FunctionParam {
                   name: "owner",
@@ -618,11 +634,12 @@ note:
 note: 
     ┌─ demos/erc20_token.fe:103:5
     │  
-103 │ ╭     fn _setup_decimals(decimals_: u8):
+103 │ ╭     fn _setup_decimals(self, decimals_: u8):
 104 │ │         self._decimals = decimals_
-    │ ╰──────────────────────────────────^ attributes hash: 11792619442907068589
+    │ ╰──────────────────────────────────^ attributes hash: 9774377157681208112
     │  
     = FunctionSignature {
+          self_decl: Mutable,
           params: [
               FunctionParam {
                   name: "decimals_",
@@ -647,9 +664,10 @@ note:
     │  
 106 │ ╭     fn _before_token_transfer(from: address, to: address, value: u256):
 107 │ │         pass
-    │ ╰────────────^ attributes hash: 15422594702274887655
+    │ ╰────────────^ attributes hash: 9175941171634351733
     │  
     = FunctionSignature {
+          self_decl: None,
           params: [
               FunctionParam {
                   name: "from",
@@ -1202,28 +1220,28 @@ note:
    │                ^^^^^^^^^^^^^^^^^^^^^^^ bool: Value => None
 
 note: 
-   ┌─ demos/erc20_token.fe:72:37
+   ┌─ demos/erc20_token.fe:72:32
    │
-72 │         self._before_token_transfer(sender, recipient, value)
-   │                                     ^^^^^^ address: Value => None
+72 │         _before_token_transfer(sender, recipient, value)
+   │                                ^^^^^^ address: Value => None
 
 note: 
-   ┌─ demos/erc20_token.fe:72:45
+   ┌─ demos/erc20_token.fe:72:40
    │
-72 │         self._before_token_transfer(sender, recipient, value)
-   │                                             ^^^^^^^^^ address: Value => None
+72 │         _before_token_transfer(sender, recipient, value)
+   │                                        ^^^^^^^^^ address: Value => None
 
 note: 
-   ┌─ demos/erc20_token.fe:72:56
+   ┌─ demos/erc20_token.fe:72:51
    │
-72 │         self._before_token_transfer(sender, recipient, value)
-   │                                                        ^^^^^ u256: Value => None
+72 │         _before_token_transfer(sender, recipient, value)
+   │                                                   ^^^^^ u256: Value => None
 
 note: 
    ┌─ demos/erc20_token.fe:72:9
    │
-72 │         self._before_token_transfer(sender, recipient, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value => None
+72 │         _before_token_transfer(sender, recipient, value)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value => None
 
 note: 
    ┌─ demos/erc20_token.fe:74:9
@@ -1364,34 +1382,34 @@ note:
    │                ^^^^^^^^^^^^^^^^^^^^^ bool: Value => None
 
 note: 
-   ┌─ demos/erc20_token.fe:81:45
+   ┌─ demos/erc20_token.fe:81:40
    │
-81 │         self._before_token_transfer(address(0), account, value)
-   │                                             ^ u256: Value => None
+81 │         _before_token_transfer(address(0), account, value)
+   │                                        ^ u256: Value => None
 
 note: 
-   ┌─ demos/erc20_token.fe:81:37
+   ┌─ demos/erc20_token.fe:81:32
    │
-81 │         self._before_token_transfer(address(0), account, value)
-   │                                     ^^^^^^^^^^ address: Value => None
+81 │         _before_token_transfer(address(0), account, value)
+   │                                ^^^^^^^^^^ address: Value => None
 
 note: 
-   ┌─ demos/erc20_token.fe:81:49
+   ┌─ demos/erc20_token.fe:81:44
    │
-81 │         self._before_token_transfer(address(0), account, value)
-   │                                                 ^^^^^^^ address: Value => None
+81 │         _before_token_transfer(address(0), account, value)
+   │                                            ^^^^^^^ address: Value => None
 
 note: 
-   ┌─ demos/erc20_token.fe:81:58
+   ┌─ demos/erc20_token.fe:81:53
    │
-81 │         self._before_token_transfer(address(0), account, value)
-   │                                                          ^^^^^ u256: Value => None
+81 │         _before_token_transfer(address(0), account, value)
+   │                                                     ^^^^^ u256: Value => None
 
 note: 
    ┌─ demos/erc20_token.fe:81:9
    │
-81 │         self._before_token_transfer(address(0), account, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value => None
+81 │         _before_token_transfer(address(0), account, value)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value => None
 
 note: 
    ┌─ demos/erc20_token.fe:83:9
@@ -1514,34 +1532,34 @@ note:
    │                ^^^^^^^^^^^^^^^^^^^^^ bool: Value => None
 
 note: 
-   ┌─ demos/erc20_token.fe:90:37
+   ┌─ demos/erc20_token.fe:90:32
    │
-90 │         self._before_token_transfer(account, address(0), value)
-   │                                     ^^^^^^^ address: Value => None
+90 │         _before_token_transfer(account, address(0), value)
+   │                                ^^^^^^^ address: Value => None
 
 note: 
-   ┌─ demos/erc20_token.fe:90:54
+   ┌─ demos/erc20_token.fe:90:49
    │
-90 │         self._before_token_transfer(account, address(0), value)
-   │                                                      ^ u256: Value => None
+90 │         _before_token_transfer(account, address(0), value)
+   │                                                 ^ u256: Value => None
 
 note: 
-   ┌─ demos/erc20_token.fe:90:46
+   ┌─ demos/erc20_token.fe:90:41
    │
-90 │         self._before_token_transfer(account, address(0), value)
-   │                                              ^^^^^^^^^^ address: Value => None
+90 │         _before_token_transfer(account, address(0), value)
+   │                                         ^^^^^^^^^^ address: Value => None
 
 note: 
-   ┌─ demos/erc20_token.fe:90:58
+   ┌─ demos/erc20_token.fe:90:53
    │
-90 │         self._before_token_transfer(account, address(0), value)
-   │                                                          ^^^^^ u256: Value => None
+90 │         _before_token_transfer(account, address(0), value)
+   │                                                     ^^^^^ u256: Value => None
 
 note: 
    ┌─ demos/erc20_token.fe:90:9
    │
-90 │         self._before_token_transfer(account, address(0), value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value => None
+90 │         _before_token_transfer(account, address(0), value)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value => None
 
 note: 
    ┌─ demos/erc20_token.fe:92:9
@@ -1935,10 +1953,14 @@ note:
    ┌─ demos/erc20_token.fe:25:9
    │
 25 │         self._mint(msg.sender, 1000000000000000000000000)
-   │         ^^^^^^^^^^ attributes hash: 1155617642661253645
+   │         ^^^^^^^^^^ attributes hash: 265135702653684875
    │
    = SelfAttribute {
          func_name: "_mint",
+         self_span: Span {
+             start: 544,
+             end: 548,
+         },
      }
 
 note: 
@@ -1961,60 +1983,84 @@ note:
    ┌─ demos/erc20_token.fe:43:9
    │
 43 │         self._transfer(msg.sender, recipient, value)
-   │         ^^^^^^^^^^^^^^ attributes hash: 17554789810436603039
+   │         ^^^^^^^^^^^^^^ attributes hash: 5001565696467153522
    │
    = SelfAttribute {
          func_name: "_transfer",
+         self_span: Span {
+             start: 1054,
+             end: 1058,
+         },
      }
 
 note: 
    ┌─ demos/erc20_token.fe:50:9
    │
 50 │         self._approve(msg.sender, spender, value)
-   │         ^^^^^^^^^^^^^ attributes hash: 11653095055511118634
+   │         ^^^^^^^^^^^^^ attributes hash: 12868845685407710867
    │
    = SelfAttribute {
          func_name: "_approve",
+         self_span: Span {
+             start: 1312,
+             end: 1316,
+         },
      }
 
 note: 
    ┌─ demos/erc20_token.fe:56:9
    │
 56 │         self._transfer(sender, recipient, value)
-   │         ^^^^^^^^^^^^^^ attributes hash: 17554789810436603039
+   │         ^^^^^^^^^^^^^^ attributes hash: 15797901682332754704
    │
    = SelfAttribute {
          func_name: "_transfer",
+         self_span: Span {
+             start: 1534,
+             end: 1538,
+         },
      }
 
 note: 
    ┌─ demos/erc20_token.fe:57:9
    │
 57 │         self._approve(sender, msg.sender, self._allowances[sender][msg.sender] - value)
-   │         ^^^^^^^^^^^^^ attributes hash: 11653095055511118634
+   │         ^^^^^^^^^^^^^ attributes hash: 5014804364001639559
    │
    = SelfAttribute {
          func_name: "_approve",
+         self_span: Span {
+             start: 1583,
+             end: 1587,
+         },
      }
 
 note: 
    ┌─ demos/erc20_token.fe:61:9
    │
 61 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] + addedValue)
-   │         ^^^^^^^^^^^^^ attributes hash: 11653095055511118634
+   │         ^^^^^^^^^^^^^ attributes hash: 7212935123142327759
    │
    = SelfAttribute {
          func_name: "_approve",
+         self_span: Span {
+             start: 1772,
+             end: 1776,
+         },
      }
 
 note: 
    ┌─ demos/erc20_token.fe:65:9
    │
 65 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] - subtractedValue)
-   │         ^^^^^^^^^^^^^ attributes hash: 11653095055511118634
+   │         ^^^^^^^^^^^^^ attributes hash: 1568376678775244707
    │
    = SelfAttribute {
          func_name: "_approve",
+         self_span: Span {
+             start: 1973,
+             end: 1977,
+         },
      }
 
 note: 
@@ -2044,10 +2090,10 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:72:9
    │
-72 │         self._before_token_transfer(sender, recipient, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9533469367599954
+72 │         _before_token_transfer(sender, recipient, value)
+   │         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 283404834886046277
    │
-   = SelfAttribute {
+   = Pure {
          func_name: "_before_token_transfer",
      }
 
@@ -2066,18 +2112,18 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:81:9
    │
-81 │         self._before_token_transfer(address(0), account, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9533469367599954
+81 │         _before_token_transfer(address(0), account, value)
+   │         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 283404834886046277
    │
-   = SelfAttribute {
+   = Pure {
          func_name: "_before_token_transfer",
      }
 
 note: 
-   ┌─ demos/erc20_token.fe:81:37
+   ┌─ demos/erc20_token.fe:81:32
    │
-81 │         self._before_token_transfer(address(0), account, value)
-   │                                     ^^^^^^^ attributes hash: 14203407709342965641
+81 │         _before_token_transfer(address(0), account, value)
+   │                                ^^^^^^^ attributes hash: 14203407709342965641
    │
    = TypeConstructor {
          typ: Base(
@@ -2112,18 +2158,18 @@ note:
 note: 
    ┌─ demos/erc20_token.fe:90:9
    │
-90 │         self._before_token_transfer(account, address(0), value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 9533469367599954
+90 │         _before_token_transfer(account, address(0), value)
+   │         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 283404834886046277
    │
-   = SelfAttribute {
+   = Pure {
          func_name: "_before_token_transfer",
      }
 
 note: 
-   ┌─ demos/erc20_token.fe:90:46
+   ┌─ demos/erc20_token.fe:90:41
    │
-90 │         self._before_token_transfer(account, address(0), value)
-   │                                              ^^^^^^^ attributes hash: 14203407709342965641
+90 │         _before_token_transfer(account, address(0), value)
+   │                                         ^^^^^^^ attributes hash: 14203407709342965641
    │
    = TypeConstructor {
          typ: Base(

@@ -12,11 +12,12 @@ note:
 note: 
   ┌─ features/constructor.fe:4:5
   │  
-4 │ ╭     pub fn __init__(baz: u256, bing: u256):
+4 │ ╭     pub fn __init__(self, baz: u256, bing: u256):
 5 │ │         self.bar[42] = baz + bing
-  │ ╰─────────────────────────────────^ attributes hash: 13860805323528878631
+  │ ╰─────────────────────────────────^ attributes hash: 13108393064012885630
   │  
   = FunctionSignature {
+        self_decl: Mutable,
         params: [
             FunctionParam {
                 name: "baz",
@@ -49,11 +50,12 @@ note:
 note: 
   ┌─ features/constructor.fe:7:5
   │  
-7 │ ╭     pub fn read_bar() -> u256:
+7 │ ╭     pub fn read_bar(self) -> u256:
 8 │ │         return self.bar[42]
-  │ ╰───────────────────────────^ attributes hash: 4553090961241945225
+  │ ╰───────────────────────────^ attributes hash: 16482263331346774611
   │  
   = FunctionSignature {
+        self_decl: Mutable,
         params: [],
         return_type: Ok(
             Base(

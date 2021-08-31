@@ -161,6 +161,8 @@ fn test_assert() {
     case("return_msg_sig.fe", &[], uint_token(4273672062)),
     case("return_sum_list_expression_1.fe", &[], uint_token(210)),
     case("return_sum_list_expression_2.fe", &[], uint_token(210)),
+    case("pure_fn.fe", &[uint_token(42), uint_token(26)], uint_token(68)),
+    case("pure_fn_internal_call.fe", &[uint_token(42), uint_token(26)], uint_token(68)),
     // unary invert
     case("return_invert_i256.fe", &[int_token(1)], int_token(-2)),
     case("return_invert_i128.fe", &[int_token(1)], int_token(-2)),

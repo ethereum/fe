@@ -2,19 +2,19 @@ contract Foo:
     my_tuple: (u256, address)
     my_string: String<100>
 
-    pub fn get_my_string() -> String<100>:
+    pub fn get_my_string(self) -> String<100>:
         return self.my_string.to_mem()
 
-    pub fn set_my_string(some_string: String<100>):
+    pub fn set_my_string(self, some_string: String<100>):
         self.my_string = some_string
 
-    pub fn get_my_tuple() -> (u256, address):
+    pub fn get_my_tuple(self) -> (u256, address):
         return self.my_tuple.to_mem()
 
-    pub fn set_my_tuple(some_tuple: (u256, address)):
+    pub fn set_my_tuple(self, some_tuple: (u256, address)):
         self.my_tuple = some_tuple
 
-    pub fn set_my_string_and_tuple(some_string: String<100>, some_tuple: (u256, address)):
+    pub fn set_my_string_and_tuple(self, some_string: String<100>, some_tuple: (u256, address)):
         self.my_string = some_string
         self.my_tuple = some_tuple
 
@@ -31,31 +31,35 @@ contract Foo:
 contract FooProxy:
     foo: Foo
 
-    pub fn __init__(foo_addr: address):
+    pub fn __init__(self, foo_addr: address):
         self.foo = Foo(foo_addr)
 
-    pub fn call_set_my_string(some_string: String<100>):
+    pub fn call_set_my_string(self, some_string: String<100>):
         self.foo.set_my_string(some_string)
 
-    pub fn call_get_my_string() -> String<100>:
+    pub fn call_get_my_string(self) -> String<100>:
         return self.foo.get_my_string()
 
-    pub fn call_set_my_tuple(some_tuple: (u256, address)):
+    pub fn call_set_my_tuple(self, some_tuple: (u256, address)):
         self.foo.set_my_tuple(some_tuple)
 
-    pub fn call_get_my_tuple() -> (u256, address):
+    pub fn call_get_my_tuple(self) -> (u256, address):
         return self.foo.get_my_tuple()
 
-    pub fn call_set_my_string_and_tuple(some_string: String<100>, some_tuple: (u256, address)):
+    pub fn call_set_my_string_and_tuple(
+        self,
+        some_string: String<100>,
+        some_tuple: (u256, address)
+    ):
         self.foo.set_my_string_and_tuple(some_string, some_tuple)
 
-    pub fn call_get_string() -> String<10>:
+    pub fn call_get_string(self) -> String<10>:
         return self.foo.get_string()
 
-    pub fn call_get_tuple() -> (u256, u256, bool):
+    pub fn call_get_tuple(self) -> (u256, u256, bool):
         return self.foo.get_tuple()
 
-    pub fn call_get_array():
+    pub fn call_get_array(self):
         let my_array: u16[4] = self.foo.get_array()
         assert my_array[0] == u16(1)
         assert my_array[1] == u16(2)

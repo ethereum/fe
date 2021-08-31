@@ -8,9 +8,10 @@ note:
   │  
 2 │ ╭     pub fn get_my_num() -> u256:
 3 │ │         return 42
-  │ ╰─────────────────^ attributes hash: 4553090961241945225
+  │ ╰─────────────────^ attributes hash: 17979516652885443340
   │  
   = FunctionSignature {
+        self_decl: None,
         params: [],
         return_type: Ok(
             Base(
@@ -27,9 +28,10 @@ note:
 6 │ ╭     pub fn create_foo() -> address:
 7 │ │         let foo: Foo = Foo.create(0)
 8 │ │         return address(foo)
-  │ ╰───────────────────────────^ attributes hash: 2195077967527136217
+  │ ╰───────────────────────────^ attributes hash: 14219262914863437447
   │  
   = FunctionSignature {
+        self_decl: None,
         params: [],
         return_type: Ok(
             Base(

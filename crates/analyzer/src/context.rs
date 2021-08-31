@@ -157,7 +157,8 @@ impl fmt::Display for ExpressionAttributes {
 pub enum CallType {
     BuiltinFunction { func: GlobalMethod },
     TypeConstructor { typ: Type },
-    SelfAttribute { func_name: String },
+    SelfAttribute { func_name: String, self_span: Span },
+    Pure { func_name: String },
     ValueAttribute,
     TypeAttribute { typ: Type, func_name: String },
 }

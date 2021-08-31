@@ -11,10 +11,10 @@ contract Foo:
     pub fn revert_with(baz: u256, reason: String<1000>):
         assert baz > 5, reason
 
-    pub fn assert_sto_bool():
+    pub fn assert_sto_bool(self):
         self.my_bool = false
         assert self.my_bool
 
-    pub fn assert_sto_string_msg():
+    pub fn assert_sto_string_msg(self):
         self.my_string = "hello"
         assert false, self.my_string.to_mem()

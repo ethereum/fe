@@ -13,9 +13,10 @@ note:
 6 │ │             if val == 1:
 7 │ │                 break
 8 │ │         return val
-  │ ╰──────────────────^ attributes hash: 4553090961241945225
+  │ ╰──────────────────^ attributes hash: 17979516652885443340
   │  
   = FunctionSignature {
+        self_decl: None,
         params: [],
         return_type: Ok(
             Base(

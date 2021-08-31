@@ -6,11 +6,12 @@ expression: "build_snapshot(\"features/return_u256_from_called_fn.fe\", &src, mo
 note: 
   ┌─ features/return_u256_from_called_fn.fe:4:5
   │  
-4 │ ╭     pub fn bar() -> u256:
-5 │ │         return self.foo()
-  │ ╰─────────────────────────^ attributes hash: 4553090961241945225
+4 │ ╭     pub fn bar(self) -> u256:
+5 │ │         return foo()
+  │ ╰────────────────────^ attributes hash: 16482263331346774611
   │  
   = FunctionSignature {
+        self_decl: Mutable,
         params: [],
         return_type: Ok(
             Base(
@@ -26,9 +27,10 @@ note:
   │  
 7 │ ╭     pub fn foo() -> u256:
 8 │ │         return 42
-  │ ╰─────────────────^ attributes hash: 4553090961241945225
+  │ ╰─────────────────^ attributes hash: 17979516652885443340
   │  
   = FunctionSignature {
+        self_decl: None,
         params: [],
         return_type: Ok(
             Base(
@@ -42,8 +44,8 @@ note:
 note: 
   ┌─ features/return_u256_from_called_fn.fe:5:16
   │
-5 │         return self.foo()
-  │                ^^^^^^^^^^ u256: Value => None
+5 │         return foo()
+  │                ^^^^^ u256: Value => None
 
 note: 
   ┌─ features/return_u256_from_called_fn.fe:8:16
@@ -54,10 +56,10 @@ note:
 note: 
   ┌─ features/return_u256_from_called_fn.fe:5:16
   │
-5 │         return self.foo()
-  │                ^^^^^^^^ attributes hash: 5290763145657400289
+5 │         return foo()
+  │                ^^^ attributes hash: 1664590513608378371
   │
-  = SelfAttribute {
+  = Pure {
         func_name: "foo",
     }
 
