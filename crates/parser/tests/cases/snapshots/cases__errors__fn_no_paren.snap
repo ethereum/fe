@@ -1,0 +1,17 @@
+---
+source: crates/parser/tests/cases/errors.rs
+expression: "err_string(stringify!(fn_no_paren), contracts::parse_contract_def, true,\n           \"contract C:\\n pub fn f:\\n  pass\")"
+
+---
+error: function definition requires a list of parameters
+  ┌─ fn_no_paren:2:9
+  │
+2 │  pub fn f:
+  │         ^ function name must be followed by `(`
+  │
+  = Note: if the function `f` takes no parameters, use an empty set of parentheses.
+  = Example: fn f()
+  = Note: each parameter must have a name and a type.
+  = Example: fn f(my_value: u256, x: bool)
+
+

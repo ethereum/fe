@@ -12,7 +12,9 @@ where
     let id = files.add_file(test_name, src);
     let mut parser = Parser::new(src);
 
-    if should_fail != parse_fn(&mut parser).is_err() {
+    let is_ok = parse_fn(&mut parser).is_ok();
+    let parse_ok = is_ok && parser.diagnostics.is_empty();
+    if should_fail && parse_ok {
         panic!(
             "expected parsing to {}fail",
             if should_fail { "" } else { "not " }
@@ -82,6 +84,7 @@ test_parse_err! { expr_bad_prefix, expressions::parse_expr, true, "*x + 1" }
 test_parse_err! { for_no_in, functions::parse_stmt, true, "for x:\n pass" }
 test_parse_err! { fn_no_args, |par| functions::parse_fn_def(par, None), false, "fn f:\n  return 5" }
 test_parse_err! { fn_def_kw, contracts::parse_contract_def, true, "contract C:\n pub def f(x: u8):\n  return x" }
+test_parse_err! { fn_no_paren, contracts::parse_contract_def, true, "contract C:\n pub fn f:\n  pass" }
 test_parse_err! { if_no_body, functions::parse_stmt, true, "if x:\nelse:\n x" }
 test_parse_err! { import_bad_name, module::parse_simple_import, true, "import x as 123" }
 test_parse_err! { module_bad_stmt, module::parse_module, true, "if x:\n y" }

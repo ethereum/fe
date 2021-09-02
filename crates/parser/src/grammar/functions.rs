@@ -42,6 +42,7 @@ pub fn parse_fn_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Nod
                 ],
             );
             vec![]
+            // return Err(ParseFailed);
         }
         _ => {
             let tok = par.next()?;
