@@ -2,7 +2,7 @@ use fe_common::diagnostics::Label;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 
-use crate::context::AnalyzerContext;
+use crate::context::{AnalyzerContext, DiagnosticVoucher};
 use crate::errors::{BinaryOperationError, NotFixedSize};
 use crate::namespace::types::{FixedSize, Type};
 use std::convert::TryInto;
@@ -16,7 +16,7 @@ pub fn add_bin_operations_errors(
     left: &Node<fe::Expr>,
     right: &Node<fe::Expr>,
     error: BinaryOperationError,
-) {
+) -> DiagnosticVoucher {
     match error {
         BinaryOperationError::NotEqualAndUnsigned => context.fancy_error(
             "The types for this operation must be equal and unsigned",

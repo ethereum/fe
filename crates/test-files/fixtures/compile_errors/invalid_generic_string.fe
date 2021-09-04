@@ -1,2 +1,3 @@
 contract Foo:
   val: String<foo>
+  foo: String<10, 20>

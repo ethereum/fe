@@ -86,15 +86,14 @@ pub fn expr_list(
         let inner = match first_attr.typ {
             Type::Base(base) => base,
             _ => {
-                scope.error(
+                return Err(FatalError::new(scope.error(
                     "arrays can only hold primitive types",
                     elts[0].span,
                     &format!(
                         "this has type `{}`; expected a primitive type",
                         first_attr.typ
                     ),
-                );
-                return Err(FatalError::new());
+                )));
             }
         };
 
@@ -143,15 +142,14 @@ pub fn value_expr(
 ) -> Result<ExpressionAttributes, FatalError> {
     let original_attributes = expr(scope, exp, expected_type)?;
     let attributes = original_attributes.clone().into_loaded().map_err(|_| {
-        scope.fancy_error(
+        FatalError::new(scope.fancy_error(
             "can't move value onto stack",
             vec![Label::primary(exp.span, "Value to be moved")],
             vec![format!(
                 "Note: Can't move `{}` types on the stack",
                 original_attributes.typ
             )],
-        );
-        FatalError::new()
+        ))
     })?;
 
     scope.root.update_expression(exp, attributes.clone());
@@ -189,12 +187,11 @@ pub fn assignable_expr(
             }
         }
         Map(_) => {
-            scope.error(
+            return Err(FatalError::new(scope.error(
                 "`Map` type cannot reside in memory",
                 exp.span,
                 "this type can only be used in a contract field",
-            );
-            return Err(FatalError::new());
+            )));
         }
     };
     scope.root.update_expression(exp, attributes.clone());
@@ -221,12 +218,11 @@ fn expr_tuple(
 
         let tuple_types = match types_to_fixed_sizes(&types) {
             Err(NotFixedSize) => {
-                scope.error(
+                return Err(FatalError::new(scope.error(
                     "variable size types can not be part of tuples",
                     exp.span,
                     "",
-                );
-                return Err(FatalError::new());
+                )));
             }
             Ok(val) => val,
         };
@@ -258,9 +254,9 @@ fn expr_name(
             let location = Location::assign_location(&typ);
             Ok(ExpressionAttributes::new(typ.into(), location))
         }
-        Some(_) => Err(FatalError::new()),
+        Some(Err(err)) => Err(err.into()),
         None => {
-            scope.error(
+            let voucher = scope.error(
                 &format!("cannot find value `{}` in this scope", name),
                 exp.span,
                 "undefined",
@@ -269,10 +265,12 @@ fn expr_name(
                 Some(typ) => Ok(ExpressionAttributes::new(
                     typ.clone(),
                     Location::assign_location(
-                        &typ.clone().try_into().map_err(|_| FatalError::new())?,
+                        &typ.clone()
+                            .try_into()
+                            .map_err(|_| FatalError::new(voucher))?,
                     ),
                 )),
-                None => Err(FatalError::new()),
+                None => Err(FatalError::new(voucher)),
             }
         }
     }
@@ -284,7 +282,7 @@ fn expr_str(
 ) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Str(string) = &exp.kind {
         if !is_valid_string(string) {
-            scope.error("String contains invalid byte sequence", exp.span, "")
+            scope.error("String contains invalid byte sequence", exp.span, "");
         };
 
         return Ok(ExpressionAttributes::new(
@@ -355,23 +353,21 @@ fn expr_subscript(
         let typ =
             match operations::index(value_attributes.typ.clone(), index_attributes.typ.clone()) {
                 Err(IndexingError::NotSubscriptable) => {
-                    scope.fancy_error(
+                    return Err(FatalError::new(scope.fancy_error(
                         &format!("`{}` type is not subscriptable", value_attributes.typ),
                         vec![Label::primary(value.span, "unsubscriptable type")],
                         vec!["Note: Only arrays and maps are subscriptable".into()],
-                    );
-                    return Err(FatalError::new());
+                    )));
                 }
                 Err(IndexingError::WrongIndexType) => {
-                    scope.fancy_error(
+                    return Err(FatalError::new(scope.fancy_error(
                         &format!(
                             "can not subscript {} with type {}",
                             value_attributes.typ, index_attributes.typ
                         ),
                         vec![Label::primary(index.span, "wrong index type")],
                         vec![],
-                    );
-                    return Err(FatalError::new());
+                    )));
                 }
                 Ok(val) => val,
             };
@@ -395,7 +391,6 @@ fn expr_attribute(
 ) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::Attribute { value, attr } = &exp.kind {
         let base_type = |typ| Ok(ExpressionAttributes::new(Type::Base(typ), Location::Value));
-        let fatal_err = Err(FatalError::new());
 
         // If the value is a name, check if it is a builtin object and attribute.
         if let fe::Expr::Name(name) = &value.kind {
@@ -408,7 +403,7 @@ fn expr_attribute(
                         Ok(BlockField::Number) => base_type(U256),
                         Ok(BlockField::Timestamp) => base_type(U256),
                         Err(_) => {
-                            scope.fancy_error(
+                            Err(FatalError::new(scope.fancy_error(
                                 "Not a block field",
                                 vec![
                                     Label::primary(
@@ -417,8 +412,7 @@ fn expr_attribute(
                                     ),
                                 ],
                                 vec!["Note: Only `coinbase`, `difficulty`, `number` and `timestamp` can be accessed on `block`.".into()],
-                            );
-                            fatal_err
+                            )))
                         }
                     }
                 }
@@ -426,12 +420,11 @@ fn expr_attribute(
                     return match ChainField::from_str(&attr.kind) {
                         Ok(ChainField::Id) => base_type(U256),
                         Err(_) => {
-                            scope.fancy_error(
+                            Err(FatalError::new(scope.fancy_error(
                                 "Not a chain field",
                                 vec![Label::primary(attr.span, "")],
                                 vec!["Note: Only `id` can be accessed on `chain`.".into()],
-                            );
-                            fatal_err
+                            )))
                         }
                     }
                 }
@@ -441,7 +434,7 @@ fn expr_attribute(
                         Ok(MsgField::Sig) => base_type(U256),
                         Ok(MsgField::Value) => base_type(U256),
                         Err(_) => {
-                            scope.fancy_error(
+                            Err(FatalError::new(scope.fancy_error(
                                 "Not a `msg` field",
                                 vec![
                                     Label::primary(
@@ -450,8 +443,7 @@ fn expr_attribute(
                                     ),
                                 ],
                                 vec!["Note: Only `sender`, `sig` and `value` can be accessed on `msg`.".into()],
-                            );
-                            fatal_err
+                            )))
                         }
                     }
                 }
@@ -460,15 +452,14 @@ fn expr_attribute(
                         Ok(TxField::GasPrice) => base_type(U256),
                         Ok(TxField::Origin) => base_type(Base::Address),
                         Err(_) => {
-                            scope.fancy_error(
+                            Err(FatalError::new(scope.fancy_error(
                                 "Not a `tx` field",
                                 vec![Label::primary(attr.span, "")],
                                 vec![
                                     "Note: Only `gas_price` and `origin` can be accessed on `tx`."
                                         .into(),
                                 ],
-                            );
-                            fatal_err
+                            )))
                         }
                     }
                 }
@@ -493,15 +484,14 @@ fn expr_attribute(
                         location,
                     ))
                 } else {
-                    scope.fancy_error(
+                    Err(FatalError::new(scope.fancy_error(
                         &format!(
                             "No field `{}` exists on struct `{}`",
                             &attr.kind, struct_.name
                         ),
                         vec![Label::primary(attr.span, "undefined field")],
                         vec![],
-                    );
-                    fatal_err
+                    )))
                 }
             }
             ExpressionAttributes {
@@ -512,7 +502,7 @@ fn expr_attribute(
                 let item_index = match tuple_item_index(&attr.kind) {
                     Some(index) => index,
                     None => {
-                        scope.fancy_error(
+                        return Err(FatalError::new(scope.fancy_error(
                             &format!("No field `{}` exists on this tuple", &attr.kind),
                             vec![
                                 Label::primary(
@@ -521,36 +511,31 @@ fn expr_attribute(
                                 )
                             ],
                             vec!["Note: Tuple values are accessed via `itemN` properties such as `item0` or `item1`".into()],
-                        );
-                        return fatal_err;
+                        )));
                     }
                 };
 
                 if let Some(typ) = tuple.items.get(item_index) {
                     Ok(ExpressionAttributes::new(typ.to_owned().into(), location))
                 } else {
-                    scope.fancy_error(
+                    Err(FatalError::new(scope.fancy_error(
                         &format!("No field `item{}` exists on this tuple", item_index),
                         vec![Label::primary(attr.span, "unknown field")],
                         vec![format!(
                             "Note: The highest possible field for this tuple is `item{}`",
                             tuple.items.len() - 1
                         )],
-                    );
-                    fatal_err
+                    )))
                 }
             }
-            _ => {
-                scope.fancy_error(
-                    &format!(
-                        "No field `{}` exists on type {}",
-                        &attr.kind, expression_attributes.typ
-                    ),
-                    vec![Label::primary(attr.span, "unknown field")],
-                    vec![],
-                );
-                fatal_err
-            }
+            _ => Err(FatalError::new(scope.fancy_error(
+                &format!(
+                    "No field `{}` exists on type {}",
+                    &attr.kind, expression_attributes.typ
+                ),
+                vec![Label::primary(attr.span, "unknown field")],
+                vec![],
+            ))),
         };
     }
 
@@ -585,14 +570,11 @@ fn expr_attribute_self(
             typ?,
             Location::Storage { nonce: Some(nonce) },
         )),
-        None => {
-            scope.fancy_error(
-                &format!("No field `{}` exists on this contract", &attr.kind),
-                vec![Label::primary(attr.span, "undefined field")],
-                vec![],
-            );
-            Err(FatalError::new())
-        }
+        None => Err(FatalError::new(scope.fancy_error(
+            &format!("No field `{}` exists on this contract", &attr.kind),
+            vec![Label::primary(attr.span, "undefined field")],
+            vec![],
+        ))),
     }
 }
 
@@ -608,8 +590,9 @@ fn expr_bin_operation(
 
         let typ = match operations::bin(&left_attributes.typ, &op.kind, &right_attributes.typ) {
             Err(err) => {
-                add_bin_operations_errors(scope, left, right, err);
-                return Err(FatalError::new());
+                return Err(FatalError::new(add_bin_operations_errors(
+                    scope, left, right, err,
+                )));
             }
             Ok(val) => val,
         };
@@ -639,7 +622,7 @@ fn expr_unary_operation(
                     "this has type `{}`; expected {}",
                     operand_attributes.typ, expected
                 ),
-            )
+            );
         };
 
         return match op.kind {
@@ -850,7 +833,15 @@ fn expr_call_type_constructor(
                 Location::Value,
             ))
         }
-        _ => Err(FatalError::new()),
+        Type::Struct(_) => unreachable!(), // handled above
+
+        // TODO: These type should be handled explicitly, either here or in expr_name_call_type.
+        // `Map<x, y>()` and `bool()` will (probably) currently result in an undefined fn error.
+        Type::Array(_) => unreachable!(),
+        Type::Tuple(_) => unreachable!(),
+        Type::Map(_) => unreachable!(),
+        Type::Base(Base::Bool) => unreachable!(),
+        Type::Base(Base::Unit) => unreachable!(),
     }
 }
 
@@ -870,15 +861,14 @@ fn check_for_call_to_init_fn(
     span: Span,
 ) -> Result<(), FatalError> {
     if name == "__init__" {
-        scope.fancy_error(
+        Err(FatalError::new(scope.fancy_error(
             "`__init__()` is not directly callable",
             vec![Label::primary(span, "")],
             vec![
                 "Note: `__init__` is the constructor function, and can't be called at runtime."
                     .into(),
             ],
-        );
-        Err(FatalError::new())
+        )))
     } else {
         Ok(())
     }
@@ -925,12 +915,12 @@ fn expr_call_self_attribute(
             return_location,
         ))
     } else {
-        if scope.root.pure_contract_function(func_name).is_none() {
+        let voucher = if scope.root.pure_contract_function(func_name).is_none() {
             scope.fancy_error(
                 &format!("no function named `{}` exists in this contract", func_name),
                 vec![Label::primary(name_span, "undefined function")],
                 vec![],
-            );
+            )
         } else {
             scope.fancy_error(
                 &format!("`{}` must be called without `self`", func_name),
@@ -940,8 +930,8 @@ fn expr_call_self_attribute(
                     func_name, func_name
                 )],
             )
-        }
-        Err(FatalError::new())
+        };
+        Err(FatalError::new(voucher))
     }
 }
 
@@ -971,7 +961,7 @@ fn expr_call_pure(
             return_location,
         ))
     } else {
-        if scope.root.self_contract_function(func_name).is_none() {
+        let voucher = if scope.root.self_contract_function(func_name).is_none() {
             scope.fancy_error(
                 &format!("no function named `{}` exists in this contract", func_name),
                 vec![Label::primary(name_span, "undefined function")],
@@ -987,7 +977,7 @@ fn expr_call_pure(
                 )],
             )
         };
-        Err(FatalError::new())
+        Err(FatalError::new(voucher))
     }
 }
 
@@ -1003,15 +993,14 @@ fn expr_call_value_attribute(
             // We must ensure the expression is loaded onto the stack.
             let expression = value_attributes.clone().into_loaded().map_err(|_| {
                 // TODO: Add test code that triggers this
-                scope.fancy_error(
+                FatalError::new(scope.fancy_error(
                     "can't move value onto stack",
                     vec![Label::primary(value.span, "Value to be moved")],
                     vec![format!(
                         "Note: Can't move `{}` types on the stack",
                         value_attributes.typ
                     )],
-                );
-                FatalError::new()
+                ))
             })?;
 
             scope.root.update_expression(value, expression);
@@ -1029,15 +1018,14 @@ fn expr_call_value_attribute(
 
         return match ValueMethod::from_str(&attr.kind) {
             Err(_) => {
-                scope.fancy_error(
+                return Err(FatalError::new(scope.fancy_error(
                     &format!(
                         "No function `{}` exists on type `{}`",
                         &attr.kind, &value_attributes.typ
                     ),
                     vec![Label::primary(attr.span, "undefined function")],
                     vec![],
-                );
-                return Err(FatalError::new());
+                )));
             }
             Ok(ValueMethod::Clone) => {
                 match value_attributes.location {
@@ -1223,14 +1211,11 @@ fn expr_call_type_attribute(
                 Location::Value,
             ))
         }
-        _ => {
-            scope.fancy_error(
-                &format!("No function `{}` exists on type `{}`", func_name, &typ),
-                vec![Label::primary(name_span, "undefined function")],
-                vec![],
-            );
-            Err(FatalError::new())
-        }
+        _ => Err(FatalError::new(scope.fancy_error(
+            &format!("No function `{}` exists on type `{}`", func_name, &typ),
+            vec![Label::primary(name_span, "undefined function")],
+            vec![],
+        ))),
     }
 }
 
@@ -1259,7 +1244,7 @@ fn expr_call_contract_attribute(
         let location = Location::assign_location(&return_type);
         Ok(ExpressionAttributes::new(return_type.into(), location))
     } else if let Some(function) = contract.id.function(scope.db(), func_name) {
-        scope.fancy_error(
+        Err(FatalError::new(scope.fancy_error(
             &format!(
                 "The function `{}` on `contract {}` is private",
                 func_name, contract.name
@@ -1272,18 +1257,16 @@ fn expr_call_contract_attribute(
                 ),
             ],
             vec![],
-        );
-        Err(FatalError::new())
+        )))
     } else {
-        scope.fancy_error(
+        Err(FatalError::new(scope.fancy_error(
             &format!(
                 "No function `{}` exists on contract `{}`",
                 func_name, contract.name
             ),
             vec![Label::primary(name_span, "undefined function")],
             vec![],
-        );
-        Err(FatalError::new())
+        )))
     }
 }
 
@@ -1297,15 +1280,14 @@ fn expr_call_type(
         fe::Expr::Attribute { .. } => expr_attribute_call_type(scope, func),
         _ => {
             let expression = expr(scope, func, None)?;
-            scope.fancy_error(
+            Err(FatalError::new(scope.fancy_error(
                 &format!("the {} type is not callable", expression.typ),
                 vec![Label::primary(
                     func.span,
                     format!("this has type {}", expression.typ),
                 )],
                 vec![],
-            );
-            Err(FatalError::new())
+            )))
         }
     }?;
 
@@ -1318,6 +1300,7 @@ fn expr_name_call_type(
     name: &str,
     generic_args: Option<&Node<Vec<fe::GenericArg>>>,
 ) -> Result<CallType, FatalError> {
+    // TODO: we're ignoring error cases like `u256<x>(10)` here
     match (name, generic_args) {
         ("keccak256", _) => Ok(CallType::BuiltinFunction {
             func: GlobalMethod::Keccak256,
@@ -1361,11 +1344,15 @@ fn expr_name_call_type(
         ("i8", _) => Ok(CallType::TypeConstructor {
             typ: Type::Base(Base::Numeric(Integer::I8)),
         }),
-        ("String", Some(Node { kind: args, .. })) => match &args[..] {
+        ("String", Some(args_node)) => match &args_node.kind[..] {
             [fe::GenericArg::Int(len)] => Ok(CallType::TypeConstructor {
                 typ: Type::String(FeString { max_size: len.kind }),
             }),
-            _ => Err(FatalError::new()),
+            _ => Err(FatalError::new(scope.fancy_error(
+                "invalid `String` type argument",
+                vec![Label::primary(args_node.span, "expected an integer")],
+                vec!["Example: String<100>".into()],
+            ))),
         },
         (value, _) => {
             if let Some(typ) = scope.resolve_type(value) {
@@ -1387,13 +1374,11 @@ fn expr_attribute_call_type(
         if let fe::Expr::Name(name) = &value.kind {
             match Object::from_str(name) {
                 Ok(Object::Block) | Ok(Object::Chain) | Ok(Object::Msg) | Ok(Object::Tx) => {
-                    scope.fancy_error(
+                    return Err(FatalError::new(scope.fancy_error(
                         &format!("no function `{}` exists on builtin `{}`", &attr.kind, &name),
                         vec![Label::primary(exp.span, "undefined function")],
                         vec![],
-                    );
-
-                    return Err(FatalError::new());
+                    )));
                 }
                 Ok(Object::Self_) => {
                     return Ok(CallType::SelfAttribute {

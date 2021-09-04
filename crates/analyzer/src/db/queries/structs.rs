@@ -94,11 +94,11 @@ pub fn struct_field_type(
     }
     let typ = match type_desc(&mut scope, typ) {
         Ok(types::Type::Base(base)) => Ok(types::FixedSize::Base(base)),
-        Ok(_) => {
-            scope.not_yet_implemented("non-primitive type struct fields", field_data.ast.span);
-            Err(TypeError)
-        }
-        Err(TypeError) => Err(TypeError),
+        Ok(_) => Err(TypeError::new(scope.not_yet_implemented(
+            "non-primitive type struct fields",
+            field_data.ast.span,
+        ))),
+        Err(err) => Err(err),
     };
 
     Analysis {

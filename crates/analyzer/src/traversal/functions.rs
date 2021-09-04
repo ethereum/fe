@@ -47,19 +47,19 @@ fn for_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fat
             let target_type = if let Type::Array(array) = iter_type {
                 FixedSize::Base(array.inner)
             } else {
-                scope.type_error(
+                return Err(FatalError::new(scope.type_error(
                     "invalid `for` loop iterator type",
                     iter.span,
                     &"array",
                     &iter_type,
-                );
-                return Err(FatalError::new());
+                )));
             };
 
             let mut body_scope = scope.new_child(BlockScopeType::Loop);
             if let Err(AlreadyDefined(dup_span)) =
                 body_scope.add_var(&target.kind, target_type, target.span)
             {
+                // TODO: maybe we should fail here; subsequent errors might be misleading
                 body_scope.fancy_error(
                     &format!(
                         "a variable named `{}` already exists in this scope",
@@ -70,7 +70,7 @@ fn for_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fat
                         Label::secondary(dup_span, "previous definition is here"),
                     ],
                     vec![],
-                )
+                );
             }
             // Traverse the statements within the `for loop` body scope.
             traverse_statements(&mut body_scope, body)
@@ -84,7 +84,7 @@ fn loop_flow_statement(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) {
         let stmt_name = match stmt.kind {
             fe::FuncStmt::Continue => "continue",
             fe::FuncStmt::Break => "break",
-            _ => panic!(),
+            _ => unreachable!(),
         };
         scope.error(
             &format!("`{}` outside of a loop", stmt_name),

@@ -1,0 +1,12 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: function return type must have a fixed size
+  ┌─ compile_errors/return_type_not_fixedsize.fe:2:17
+  │
+2 │   pub fn f() -> Map<address, bool>:
+  │                 ^^^^^^^^^^^^^^^^^^ this can't be returned from a function
+
+

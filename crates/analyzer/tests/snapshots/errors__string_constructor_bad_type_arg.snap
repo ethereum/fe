@@ -1,0 +1,14 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: invalid `String` type argument
+  ┌─ compile_errors/string_constructor_bad_type_arg.fe:5:22
+  │
+5 │         return String<H00>("foo")
+  │                      ^^^^^ expected an integer
+  │
+  = Example: String<100>
+
+

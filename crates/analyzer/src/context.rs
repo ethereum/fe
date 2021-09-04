@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
+use std::marker::PhantomData;
 use std::rc::Rc;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -28,8 +29,8 @@ pub trait AnalyzerContext {
     fn resolve_type(&self, name: &str) -> Option<Result<Type, TypeError>>;
     fn add_diagnostic(&mut self, diag: Diagnostic);
 
-    fn error(&mut self, message: &str, label_span: Span, label: &str) {
-        self.add_diagnostic(errors::error(message, label_span, label))
+    fn error(&mut self, message: &str, label_span: Span, label: &str) -> DiagnosticVoucher {
+        self.register_diag(errors::error(message, label_span, label))
     }
 
     fn type_error(
@@ -38,22 +39,55 @@ pub trait AnalyzerContext {
         span: Span,
         expected: &dyn Display,
         actual: &dyn Display,
-    ) {
-        self.add_diagnostic(errors::type_error(message, span, expected, actual))
+    ) -> DiagnosticVoucher {
+        self.register_diag(errors::type_error(message, span, expected, actual))
     }
 
-    fn not_yet_implemented(&mut self, feature: &str, span: Span) {
-        self.add_diagnostic(errors::not_yet_implemented(feature, span))
+    fn not_yet_implemented(&mut self, feature: &str, span: Span) -> DiagnosticVoucher {
+        self.register_diag(errors::not_yet_implemented(feature, span))
     }
 
-    fn fancy_error(&mut self, message: &str, labels: Vec<Label>, notes: Vec<String>) {
-        self.add_diagnostic(errors::fancy_error(message, labels, notes))
+    fn fancy_error(
+        &mut self,
+        message: &str,
+        labels: Vec<Label>,
+        notes: Vec<String>,
+    ) -> DiagnosticVoucher {
+        self.register_diag(errors::fancy_error(message, labels, notes))
     }
 
-    fn duplicate_name_error(&mut self, message: &str, name: &str, original: Span, duplicate: Span) {
-        self.add_diagnostic(errors::duplicate_name_error(
+    fn duplicate_name_error(
+        &mut self,
+        message: &str,
+        name: &str,
+        original: Span,
+        duplicate: Span,
+    ) -> DiagnosticVoucher {
+        self.register_diag(errors::duplicate_name_error(
             message, name, original, duplicate,
         ))
+    }
+
+    fn register_diag(&mut self, diag: Diagnostic) -> DiagnosticVoucher {
+        self.add_diagnostic(diag);
+        DiagnosticVoucher(PhantomData::default())
+    }
+}
+
+/// This should only be created by [`AnalyzerContext`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DiagnosticVoucher(PhantomData<()>);
+
+#[derive(Default)]
+pub struct TempContext {
+    pub diagnostics: Vec<Diagnostic>,
+}
+impl AnalyzerContext for TempContext {
+    fn resolve_type(&self, _name: &str) -> Option<Result<Type, TypeError>> {
+        panic!("TempContext can't resolve types")
+    }
+    fn add_diagnostic(&mut self, diag: Diagnostic) {
+        self.diagnostics.push(diag)
     }
 }
 

@@ -1,0 +1,18 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: undefined type
+  ┌─ compile_errors/undefined_type_param.fe:4:8
+  │
+4 │     x: MysteryType
+  │        ^^^^^^^^^^^ this type name has not been defined
+
+error: undefined type
+  ┌─ compile_errors/undefined_type_param.fe:8:19
+  │
+8 │     pub fn a(val: DoesntExist):
+  │                   ^^^^^^^^^^^ this type name has not been defined
+
+

@@ -78,10 +78,9 @@ pub fn check_assign_target(
         }
         Name(_) => Ok(()),
         _ => {
-            scope.fancy_error("invalid assignment target",
-                              vec![Label::primary(expr.span, "")],
-                              vec!["The left side of an assignment can be a variable name, attribute, subscript, or tuple.".into()]);
-            Err(FatalError::new())
+            Err(FatalError::new(scope.fancy_error("invalid assignment target",
+                                                  vec![Label::primary(expr.span, "")],
+                                                  vec!["The left side of an assignment can be a variable name, attribute, subscript, or tuple.".into()])))
         }
     }
 }
