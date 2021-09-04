@@ -55,22 +55,19 @@ Run `fe --help` to explore further options.
 
 The following is a simple contract implemented in Fe.
 
-```fe
-type BookMsg = bytes[100]
-
+```python
 contract GuestBook:
-    pub guest_book: Map<address, BookMsg>
+    messages: Map<address, String<100>>
 
     event Signed:
-        book_msg: BookMsg
+        book_msg: String<100>
 
-    pub fn sign(book_msg: BookMsg):
-        self.guest_book[msg.sender] = book_msg
-
+    pub fn sign(self, book_msg: String<100>):
+        self.messages[msg.sender] = book_msg
         emit Signed(book_msg=book_msg)
 
-    pub fn get_msg(addr: address) -> BookMsg:
-        return self.guest_book[addr].to_mem()
+    pub fn get_msg(self, addr: address) -> String<100>:
+        return self.messages[addr].to_mem()
 ```
 
 A lot more working examples can be found in our [test fixtures directory](https://github.com/ethereum/fe/tree/master/crates/test-files/fixtures/demos).
