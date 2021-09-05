@@ -591,7 +591,13 @@ fn expr_bin_operation(
         let typ = match operations::bin(&left_attributes.typ, &op.kind, &right_attributes.typ) {
             Err(err) => {
                 return Err(FatalError::new(add_bin_operations_errors(
-                    scope, left, right, err,
+                    scope,
+                    &op.kind,
+                    left.span,
+                    &left_attributes.typ,
+                    right.span,
+                    &right_attributes.typ,
+                    err,
                 )));
             }
             Ok(val) => val,

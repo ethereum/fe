@@ -3,10 +3,14 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: The right hand side of this operation must fit into the left
-  ┌─ [snippet]:5:11
+error: incompatible `**` operand types
+  ┌─ [snippet]:5:3
   │
 5 │   base ** exp
-  │           ^^^ size too large
+  │   ^^^^    ^^^ this has type `u256`
+  │   │        
+  │   this has type `i128`
+  │
+  = The type of the right hand side cannot be larger than the left (`i128`)
 
 

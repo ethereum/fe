@@ -169,6 +169,7 @@ test_file! { duplicate_struct_in_module }
 test_file! { duplicate_typedef_in_module }
 test_file! { duplicate_var_in_child_scope }
 test_file! { duplicate_var_in_contract_method }
+test_file! { duplicate_var_in_for_loop }
 test_file! { emit_bad_args }
 test_file! { external_call_type_error }
 test_file! { external_call_wrong_number_of_params }

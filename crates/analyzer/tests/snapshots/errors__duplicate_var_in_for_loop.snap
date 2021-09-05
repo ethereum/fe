@@ -1,0 +1,23 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: duplicate definition of variable `x`
+  ┌─ compile_errors/duplicate_var_in_for_loop.fe:3:9
+  │
+3 │     let x: u256 = 10
+  │         ^ `x` first defined here
+  ·
+7 │     for x in xs:
+  │         - `x` redefined here
+
+error: `+` operand types must be equal
+  ┌─ compile_errors/duplicate_var_in_for_loop.fe:8:7
+  │
+8 │       sum += x
+  │       ^^^    ^ this has type `u256`
+  │       │       
+  │       this has type `u8`
+
+

@@ -3,10 +3,10 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: The right hand side of this operation must be unsigned
+error: The right hand side of the `**` operation must be unsigned
   ┌─ [snippet]:5:8
   │
 5 │   a ** b
-  │        ^ incompatible signed numeric
+  │        ^ this has signed type `i256`
 
 

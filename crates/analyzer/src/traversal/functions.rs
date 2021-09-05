@@ -1,4 +1,4 @@
-use crate::context::{AnalyzerContext, ExpressionAttributes, Label, Location};
+use crate::context::{AnalyzerContext, ExpressionAttributes, Location};
 use crate::errors::{AlreadyDefined, FatalError};
 use crate::namespace::scopes::{BlockScope, BlockScopeType};
 use crate::namespace::types::{Base, FixedSize, Type};
@@ -59,17 +59,11 @@ fn for_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fat
             if let Err(AlreadyDefined(dup_span)) =
                 body_scope.add_var(&target.kind, target_type, target.span)
             {
-                // TODO: maybe we should fail here; subsequent errors might be misleading
-                body_scope.fancy_error(
-                    &format!(
-                        "a variable named `{}` already exists in this scope",
-                        target.kind
-                    ),
-                    vec![
-                        Label::primary(target.span, "this variable has already been defined"),
-                        Label::secondary(dup_span, "previous definition is here"),
-                    ],
-                    vec![],
+                body_scope.duplicate_name_error(
+                    &format!("duplicate definition of variable `{}`", target.kind),
+                    &target.kind,
+                    dup_span,
+                    target.span,
                 );
             }
             // Traverse the statements within the `for loop` body scope.
@@ -89,7 +83,10 @@ fn loop_flow_statement(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) {
         scope.error(
             &format!("`{}` outside of a loop", stmt_name),
             stmt.span,
-            &format!("cannot `{}` outside of a `for` or `while` loop", stmt_name),
+            &format!(
+                "`{}` can only be used inside of a `for` or `while` loop",
+                stmt_name
+            ),
         );
     }
 }
