@@ -50,6 +50,11 @@ pub fn compile(
         }
     };
 
+    if !errors.is_empty() {
+        // There was a non-fatal parser error (eg missing parens in a fn def `fn foo: ...`)
+        return Err(CompileError(errors));
+    }
+
     // build abi
     let json_abis = fe_abi::build(&db, module_id).expect("failed to generate abi");
 
