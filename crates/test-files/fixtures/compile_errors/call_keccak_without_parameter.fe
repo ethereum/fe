@@ -1,7 +1,0 @@
-contract Bar:
-    pass
-
-contract Foo:
-
-    pub fn foo():
-       keccak256()

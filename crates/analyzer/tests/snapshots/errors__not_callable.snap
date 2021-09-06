@@ -3,10 +3,10 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, &src)"
 
 ---
-error: the u256 type is not callable
+error: `u256` type is not callable
   ┌─ compile_errors/not_callable.fe:4:9
   │
 4 │         5()
-  │         ^ this has type u256
+  │         ^ this has type `u256`
 
 

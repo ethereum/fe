@@ -1,0 +1,12 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: `Map` key must be a primitive type
+  ┌─ [snippet]:3:14
+  │
+3 │   let x: Map<Map<u8, u8>, address>
+  │              ^^^^^^^^^^^ this can't be used as a Map key
+
+

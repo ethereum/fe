@@ -55,8 +55,6 @@ fn add_var(
     match &target.kind {
         fe::VarDeclTarget::Name(name) => {
             if let Err(AlreadyDefined(prev_span)) = scope.add_var(name, typ, target.span) {
-                // TODO: this should probably be a fatal error; continuing here might result
-                //  in confusing type mismatch errors
                 scope.fancy_error(
                     "duplicate variable definition",
                     vec![

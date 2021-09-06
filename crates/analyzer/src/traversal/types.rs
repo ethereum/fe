@@ -1,11 +1,12 @@
 use crate::context::AnalyzerContext;
 use crate::errors::TypeError;
-use crate::namespace::types::{Array, Base, FeString, FixedSize, Integer, Map, Tuple, Type};
+use crate::namespace::types::{Array, Base, FeString, FixedSize, Map, Tuple, Type};
 use crate::traversal::call_args::validate_arg_count;
 use fe_common::diagnostics::Label;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use std::convert::TryFrom;
+use std::str::FromStr;
 use vec1::Vec1;
 
 /// Maps a type description node to an enum type.
@@ -13,37 +14,40 @@ pub fn type_desc(
     context: &mut dyn AnalyzerContext,
     desc: &Node<fe::TypeDesc>,
 ) -> Result<Type, TypeError> {
-    use Base::*;
-    use Integer::*;
-
     let typ = match &desc.kind {
-        fe::TypeDesc::Base { base } => match base.as_str() {
-            "u256" => Type::Base(Numeric(U256)),
-            "u128" => Type::Base(Numeric(U128)),
-            "u64" => Type::Base(Numeric(U64)),
-            "u32" => Type::Base(Numeric(U32)),
-            "u16" => Type::Base(Numeric(U16)),
-            "u8" => Type::Base(Numeric(U8)),
-            "i256" => Type::Base(Numeric(I256)),
-            "i128" => Type::Base(Numeric(I128)),
-            "i64" => Type::Base(Numeric(I64)),
-            "i32" => Type::Base(Numeric(I32)),
-            "i16" => Type::Base(Numeric(I16)),
-            "i8" => Type::Base(Numeric(I8)),
-            "bool" => Type::Base(Bool),
-            "address" => Type::Base(Address),
-            base => {
-                if let Some(typ) = context.resolve_type(base) {
-                    typ?
-                } else {
-                    return Err(TypeError::new(context.error(
-                        "undefined type",
-                        desc.span,
-                        "this type name has not been defined",
-                    )));
+        fe::TypeDesc::Base { base } => {
+            if let Ok(base_type) = Base::from_str(base) {
+                Type::Base(base_type)
+            } else {
+                match base.as_str() {
+                    "String" => {
+                        return Err(TypeError::new(context.fancy_error(
+                            "`String` type requires a max size argument",
+                            vec![Label::primary(desc.span, "")],
+                            vec!["Example: String<100>".into()],
+                        )))
+                    }
+                    "Map" => {
+                        return Err(TypeError::new(context.fancy_error(
+                            "`Map` type requires key and value type arguments",
+                            vec![Label::primary(desc.span, "")],
+                            vec!["Example: Map<address, u256>".into()],
+                        )))
+                    }
+                    _ => {
+                        if let Some(typ) = context.resolve_type(base) {
+                            typ?
+                        } else {
+                            return Err(TypeError::new(context.error(
+                                "undefined type",
+                                desc.span,
+                                "this type name has not been defined",
+                            )));
+                        }
+                    }
                 }
             }
-        },
+        }
         fe::TypeDesc::Array { typ, dimension } => {
             if let Type::Base(base) = type_desc(context, typ)? {
                 Type::Array(Array {
@@ -111,7 +115,14 @@ pub fn type_desc(
                     )));
                 }
             },
-            _ => {
+            other => {
+                if let Ok(base_type) = Base::from_str(other) {
+                    return Err(TypeError::new(context.fancy_error(
+                        &format!("`{}` type is not generic", base_type),
+                        vec![Label::primary(args.span, "unexpected type argument list")],
+                        vec![format!("Hint: use `{}`", base_type)],
+                    )));
+                }
                 return Err(TypeError::new(context.error(
                     "undefined generic type",
                     base.span,

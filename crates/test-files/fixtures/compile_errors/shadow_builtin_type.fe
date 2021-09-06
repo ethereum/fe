@@ -1,0 +1,4 @@
+type u256 = u8
+type String = u256
+type Map = u256
+type bool = u256

@@ -1,14 +1,14 @@
 ---
 source: crates/analyzer/tests/errors.rs
-expression: "error_string(&path, &src)"
+expression: "error_string(\"[snippet]\", &src)"
 
 ---
 error: `keccak256` expects 1 argument, but 0 were provided
-  ┌─ compile_errors/call_keccak_without_parameter.fe:7:8
+  ┌─ [snippet]:3:3
   │
-7 │        keccak256()
-  │        ^^^^^^^^^-- supplied 0 arguments
-  │        │         
-  │        expects 1 argument
+3 │   keccak256()
+  │   ^^^^^^^^^-- supplied 0 arguments
+  │   │         
+  │   expects 1 argument
 
 

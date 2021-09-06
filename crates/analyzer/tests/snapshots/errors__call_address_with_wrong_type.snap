@@ -1,13 +1,13 @@
 ---
 source: crates/analyzer/tests/errors.rs
-expression: "error_string(&path, &src)"
+expression: "error_string(\"[snippet]\", &src)"
 
 ---
 error: `bool` can not be used as a parameter to `address(..)`
-  ┌─ compile_errors/call_address_with_wrong_type.fe:3:17
+  ┌─ [snippet]:3:11
   │
-3 │         address(true)
-  │                 ^^^^ wrong type
+3 │   address(true)
+  │           ^^^^ wrong type
   │
   = Note: address(..) expects a parameter of a contract type, numeric or address
 

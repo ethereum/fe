@@ -1,0 +1,14 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: `Map` type requires key and value type arguments
+  ┌─ [snippet]:3:10
+  │
+3 │   let x: Map
+  │          ^^^
+  │
+  = Example: Map<address, u256>
+
+
