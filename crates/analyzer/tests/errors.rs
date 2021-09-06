@@ -202,6 +202,10 @@ test_file! { return_call_to_fn_with_param_type_mismatch }
 test_file! { return_call_to_fn_without_return }
 test_file! { return_from_init }
 test_file! { return_lt_mixed_types }
+test_file! { return_type_undefined }
+test_file! { return_type_not_fixedsize }
+test_file! { string_constructor_bad_type_arg }
+test_file! { undefined_type_param }
 
 test_file! { strict_boolean_if_else }
 test_file! { struct_call_bad_args }

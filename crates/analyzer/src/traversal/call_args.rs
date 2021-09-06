@@ -1,4 +1,4 @@
-use crate::context::AnalyzerContext;
+use crate::context::{AnalyzerContext, DiagnosticVoucher};
 use crate::errors::{FatalError, TypeError};
 use crate::namespace::scopes::BlockScope;
 use crate::namespace::types::{EventField, FixedSize, FunctionParam};
@@ -69,7 +69,7 @@ pub fn validate_arg_count(
     name_span: Span,
     args: &Node<Vec<impl Spanned>>,
     param_count: usize,
-) {
+) -> Option<DiagnosticVoucher> {
     if args.kind.len() != param_count {
         let mut labels = vec![Label::primary(
             name_span,
@@ -92,7 +92,7 @@ pub fn validate_arg_count(
             );
         }
 
-        context.fancy_error(
+        Some(context.fancy_error(
             &format!(
                 "`{}` expects {} {}, but {} {} provided",
                 name,
@@ -103,8 +103,10 @@ pub fn validate_arg_count(
             ),
             labels,
             vec![],
-        );
+        ))
         // TODO: add `defined here` label (need span for definition)
+    } else {
+        None
     }
 }
 

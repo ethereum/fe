@@ -1,6 +1,6 @@
 use crate::context::{AnalyzerContext, FunctionBody};
 use crate::db::{Analysis, AnalyzerDb};
-use crate::errors;
+use crate::errors::TypeError;
 use crate::namespace::items::FunctionId;
 use crate::namespace::scopes::{BlockScope, BlockScopeType, FunctionScope, ItemScope};
 use crate::namespace::types::{self, FixedSize, SelfDecl};
@@ -59,14 +59,11 @@ pub fn function_signature(
             }) => {
                 let typ = type_desc(&mut scope, typ_node).and_then(|typ| match typ.try_into() {
                     Ok(typ) => Ok(typ),
-                    Err(_) => {
-                        scope.error(
-                            "function parameter types must have fixed size",
-                            typ_node.span,
-                            "`Map` type can't be used as a function parameter",
-                        );
-                        Err(errors::TypeError)
-                    }
+                    Err(_) => Err(TypeError::new(scope.error(
+                        "function parameter types must have fixed size",
+                        typ_node.span,
+                        "`Map` type can't be used as a function parameter",
+                    ))),
                 });
 
                 if let Some(dup_idx) = names.get(&name.kind) {
@@ -107,17 +104,14 @@ pub fn function_signature(
                 }
                 Ok(FixedSize::unit())
             } else {
-                type_desc(&mut scope, type_node).and_then(|typ| match typ.try_into() {
+                match type_desc(&mut scope, type_node)?.try_into() {
                     Ok(typ) => Ok(typ),
-                    Err(_) => {
-                        scope.error(
-                            "function return type must have a fixed size",
-                            type_node.span,
-                            "this can't be returned from a function",
-                        );
-                        Err(errors::TypeError)
-                    }
-                })
+                    Err(_) => Err(TypeError::new(scope.error(
+                        "function return type must have a fixed size",
+                        type_node.span,
+                        "this can't be returned from a function",
+                    ))),
+                }
             }
         })
         .unwrap_or_else(|| Ok(FixedSize::unit()));
@@ -160,19 +154,14 @@ pub fn function_body(db: &dyn AnalyzerDb, function: FunctionId) -> Analysis<Rc<F
         }
     }
 
-    match traverse_statements(
+    // If `traverse_statements` fails, we can be confident that a diagnostic
+    // has been emitted, either while analyzing this fn body or while analyzing
+    // a type or fn used in this fn body, because of the `DiagnosticVoucher`
+    // system. (See the definition of `FatalError`)
+    let _ = traverse_statements(
         &mut BlockScope::new(&scope, BlockScopeType::Function),
         &def.body,
-    ) {
-        Ok(()) => {}
-        Err(_) => {
-            assert!(
-                !scope.diagnostics.borrow().is_empty(),
-                "analysis of `fn {}` failed, but no diagnostics were emitted",
-                def.name.kind
-            )
-        }
-    }
+    );
     Analysis {
         value: Rc::new(scope.body.into_inner()),
         diagnostics: Rc::new(scope.diagnostics.into_inner()),

@@ -1,42 +1,66 @@
 //! Semantic errors.
 
+use crate::context::DiagnosticVoucher;
 use fe_common::diagnostics::{Diagnostic, Label, Severity};
 use fe_common::Span;
 use std::fmt::Display;
-use std::marker::PhantomData;
+
+/// Error indicating that a type is invalid.
+///
+/// Note that the "type" of a thing (eg the type of a `FunctionParam`)
+/// in [`crate::namespace::types`] is sometimes represented as a
+/// `Result<FixedSize, TypeError>`.
+///
+/// If, for example, a function parameter has an undefined type, we emit a [`Diagnostic`] message,
+/// give that parameter a "type" of `Err(TypeError)`, and carry on. If/when that parameter is
+/// used in the function body, we assume that a diagnostic message about the undefined type
+/// has already been emitted, and halt the analysis of the function body.
+///
+/// To ensure that that assumption is sound, a diagnostic *must* be emitted before creating
+/// a `TypeError`. So that the rust compiler can help us enforce this rule, a `TypeError`
+/// cannot be constructed without providing a [`DiagnosticVoucher`]. A voucher can be obtained
+/// by calling an error function on an [`AnalyzerContext`](crate::context::AnalyzerContext).
+/// Please don't try to work around this restriction.
+///
+/// # Example
+/// ```ignore
+/// pub fn check_something(context: &mut dyn AnalyzerContext, span: Span) -> Result<(), TypeError> {
+///     // check failed! emit a diagnostic and return an error
+///     let voucher = context.error("something is wrong", span, "this");
+///     Err(TypeError::new(voucher))
+/// }
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TypeError(DiagnosticVoucher);
+impl TypeError {
+    // `Clone` is required because these are stored in a salsa db.
+    // Please don't clone these manually.
+
+    pub fn new(voucher: DiagnosticVoucher) -> Self {
+        Self(voucher)
+    }
+}
+
+/// Error to be returned when otherwise no meaningful information can be returned.
+/// Can't be created unless a diagnostic has been emitted, and thus a [`DiagnosticVoucher`]
+/// has been obtained. (See comment on [`TypeError`])
+#[derive(Debug)]
+pub struct FatalError(DiagnosticVoucher);
+
+impl FatalError {
+    /// Create a `FatalError` instance, given a "voucher"
+    /// obtained by emitting an error via an [`AnalyzerContext`](crate::context::AnalyzerContext).
+    pub fn new(voucher: DiagnosticVoucher) -> Self {
+        Self(voucher)
+    }
+}
 
 /// Error to be returned from APIs that should reject duplicate definitions
 #[derive(Debug)]
 pub struct AlreadyDefined(pub Span);
 
-/// Error to be returned when otherwise no meaningful information can be returned
-#[derive(Debug)]
-pub struct FatalError(PhantomData<()>);
-
-impl FatalError {
-    /// Create a `FatalError` instance.
-    pub fn new() -> FatalError {
-        // This is primarly a hook for debugging. If we hit a FatalError for which we haven't
-        // yet assigned a proper user error, we can place a panic here to see where the fatal
-        // error originates.
-        FatalError(PhantomData::default())
-    }
-}
-
-impl Default for FatalError {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 /// Error indicating that a value can not move between memory and storage
 #[derive(Debug)]
 pub struct CannotMove;
-
-/// Error indicating that a type is invalid. An error diagnostic should be emitted
-/// prior to returning this error type.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct TypeError;
 
 /// Error indicating that a [`Type`] can't be converted into a [`FixedSize`]
 #[derive(Debug)]
@@ -63,8 +87,8 @@ pub enum BinaryOperationError {
 pub struct AnalyzerError(pub Vec<Diagnostic>);
 
 impl From<TypeError> for FatalError {
-    fn from(_: TypeError) -> Self {
-        Self::new()
+    fn from(err: TypeError) -> Self {
+        Self::new(err.0)
     }
 }
 

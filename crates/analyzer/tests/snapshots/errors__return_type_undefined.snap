@@ -1,0 +1,12 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: undefined type
+  ┌─ compile_errors/return_type_undefined.fe:2:17
+  │
+2 │   pub fn f() -> Foo:
+  │                 ^^^ this type name has not been defined
+
+

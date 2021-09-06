@@ -36,12 +36,11 @@ pub fn type_desc(
                 if let Some(typ) = context.resolve_type(base) {
                     typ?
                 } else {
-                    context.error(
+                    return Err(TypeError::new(context.error(
                         "undefined type",
                         desc.span,
                         "this type name has not been defined",
-                    );
-                    return Err(TypeError);
+                    )));
                 }
             }
         },
@@ -52,53 +51,49 @@ pub fn type_desc(
                     size: *dimension,
                 })
             } else {
-                context.error(
+                return Err(TypeError::new(context.error(
                     "arrays can only hold primitive types",
                     typ.span,
                     "can't be stored in an array",
-                );
-                return Err(TypeError);
+                )));
             }
         }
         fe::TypeDesc::Generic { base, args } => match base.kind.as_str() {
             "Map" => {
-                validate_arg_count(context, &base.kind, base.span, args, 2);
+                let diag_voucher = validate_arg_count(context, &base.kind, base.span, args, 2);
 
                 let key = match args.kind.get(0) {
                     Some(fe::GenericArg::TypeDesc(type_node)) => {
                         match type_desc(context, type_node)? {
                             Type::Base(base) => base,
                             _ => {
-                                context.error(
+                                return Err(TypeError::new(context.error(
                                     "`Map` key must be a primitive type",
                                     type_node.span,
                                     "this can't be used as a Map key",
-                                );
-                                return Err(TypeError);
+                                )));
                             }
                         }
                     }
                     Some(fe::GenericArg::Int(node)) => {
-                        context.error(
+                        return Err(TypeError::new(context.error(
                             "`Map` key must be a type",
                             node.span,
                             "this should be a type name",
-                        );
-                        return Err(TypeError);
+                        )));
                     }
-                    None => return Err(TypeError),
+                    None => return Err(TypeError::new(diag_voucher.unwrap())),
                 };
                 let value = match args.kind.get(1) {
                     Some(fe::GenericArg::TypeDesc(type_node)) => type_desc(context, type_node)?,
                     Some(fe::GenericArg::Int(node)) => {
-                        context.error(
+                        return Err(TypeError::new(context.error(
                             "`Map` value must be a type",
                             node.span,
                             "this should be a type name",
-                        );
-                        return Err(TypeError);
+                        )));
                     }
-                    None => return Err(TypeError),
+                    None => return Err(TypeError::new(diag_voucher.unwrap())),
                 };
 
                 Type::Map(Map {
@@ -109,21 +104,19 @@ pub fn type_desc(
             "String" => match &args.kind[..] {
                 [fe::GenericArg::Int(len)] => Type::String(FeString { max_size: len.kind }),
                 _ => {
-                    context.fancy_error(
-                        "Numeric generic type parameter expected",
-                        vec![Label::primary(args.span, "invalid type parameter")],
+                    return Err(TypeError::new(context.fancy_error(
+                        "invalid `String` type argument",
+                        vec![Label::primary(args.span, "expected an integer")],
                         vec!["Example: String<100>".into()],
-                    );
-                    return Err(TypeError);
+                    )));
                 }
             },
             _ => {
-                context.error(
+                return Err(TypeError::new(context.error(
                     "undefined generic type",
                     base.span,
                     "this type name has not been defined",
-                );
-                return Err(TypeError);
+                )));
             }
         },
         fe::TypeDesc::Tuple { items } => {
@@ -131,14 +124,11 @@ pub fn type_desc(
                 .iter()
                 .map(|typ| match FixedSize::try_from(type_desc(context, typ)?) {
                     Ok(typ) => Ok(typ),
-                    Err(_) => {
-                        context.error(
-                            "tuple elements must have fixed size",
-                            typ.span,
-                            "this can't be stored in a tuple",
-                        );
-                        Err(TypeError)
-                    }
+                    Err(_) => Err(TypeError::new(context.error(
+                        "tuple elements must have fixed size",
+                        typ.span,
+                        "this can't be stored in a tuple",
+                    ))),
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             Type::Tuple(Tuple {

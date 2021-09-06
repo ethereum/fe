@@ -16,12 +16,11 @@ pub fn var_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(),
             Ok(typ) => typ,
             Err(_) => {
                 // If this conversion fails, the type must be a map (for now at least)
-                scope.error(
+                return Err(FatalError::new(scope.error(
                     "invalid variable type",
                     typ.span,
                     "`Map` type can only be used as a contract field",
-                );
-                return Err(FatalError::new());
+                )));
             }
         };
 
@@ -53,9 +52,11 @@ fn add_var(
     target: &Node<fe::VarDeclTarget>,
     typ: FixedSize,
 ) -> Result<(), FatalError> {
-    match (&target.kind, typ) {
-        (fe::VarDeclTarget::Name(name), typ) => {
+    match &target.kind {
+        fe::VarDeclTarget::Name(name) => {
             if let Err(AlreadyDefined(prev_span)) = scope.add_var(name, typ, target.span) {
+                // TODO: this should probably be a fatal error; continuing here might result
+                //  in confusing type mismatch errors
                 scope.fancy_error(
                     "duplicate variable definition",
                     vec![
@@ -63,38 +64,37 @@ fn add_var(
                         Label::secondary(target.span, &format!("`{}` redefined here", name)),
                     ],
                     vec![],
-                )
-            }
-            Ok(())
-        }
-        (fe::VarDeclTarget::Tuple(items), FixedSize::Tuple(items_ty)) => {
-            let items_ty = items_ty.items;
-            let items_ty_len = items_ty.as_vec().len();
-            if items.len() != items_ty_len {
-                scope.fancy_error(
-                    "invalid declaration",
-                    vec![Label::primary(target.span, "")],
-                    vec![format!(
-                        "Tuple declaration has {} {} but the specified tuple type has {} {}",
-                        items.len(),
-                        pluralize_conditionally("item", items.len()),
-                        items_ty_len,
-                        pluralize_conditionally("item", items_ty_len),
-                    )],
                 );
-                return Err(FatalError::new());
-            }
-            for (item, item_ty) in items.iter().zip(items_ty.into_iter()) {
-                add_var(scope, item, item_ty)?;
             }
             Ok(())
         }
-        (fe::VarDeclTarget::Tuple(_), typ) if !matches!(typ, FixedSize::Tuple(_)) => {
-            scope.fancy_error("invalid declaration",
-                                vec![Label::primary(target.span, "")],
-                                vec![format!("Tuple declaration targets need to be declared with the tuple type but here the type is {}", typ)]);
-            Err(FatalError::new())
+        fe::VarDeclTarget::Tuple(items) => {
+            match typ {
+                FixedSize::Tuple(items_ty) => {
+                    let items_ty = items_ty.items;
+                    let items_ty_len = items_ty.as_vec().len();
+                    if items.len() != items_ty_len {
+                        return Err(FatalError::new(scope.fancy_error(
+                            "invalid declaration",
+                            vec![Label::primary(target.span, "")],
+                            vec![format!(
+                                "Tuple declaration has {} {} but the specified tuple type has {} {}",
+                                items.len(),
+                                pluralize_conditionally("item", items.len()),
+                                items_ty_len,
+                                pluralize_conditionally("item", items_ty_len),
+                            )],
+                        )));
+                    }
+                    for (item, item_ty) in items.iter().zip(items_ty.into_iter()) {
+                        add_var(scope, item, item_ty)?;
+                    }
+                    Ok(())
+                }
+                _ => Err(FatalError::new(scope.fancy_error("invalid declaration",
+                                                           vec![Label::primary(target.span, "")],
+                                                           vec![format!("Tuple declaration targets need to be declared with the tuple type but here the type is {}", typ)])))
+            }
         }
-        _ => Err(FatalError::new()),
     }
 }

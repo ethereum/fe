@@ -1,0 +1,5 @@
+# https://github.com/ethereum/fe/issues/532
+
+contract ERC20:
+    pub fn return_casted_static_string() -> String<100>:
+        return String<H00>("foo")

@@ -3,11 +3,19 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, &src)"
 
 ---
-error: Numeric generic type parameter expected
+error: invalid `String` type argument
   ┌─ compile_errors/invalid_generic_string.fe:2:14
   │
 2 │   val: String<foo>
-  │              ^^^^^ invalid type parameter
+  │              ^^^^^ expected an integer
+  │
+  = Example: String<100>
+
+error: invalid `String` type argument
+  ┌─ compile_errors/invalid_generic_string.fe:3:14
+  │
+3 │   foo: String<10, 20>
+  │              ^^^^^^^^ expected an integer
   │
   = Example: String<100>
 

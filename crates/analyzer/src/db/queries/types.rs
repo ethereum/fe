@@ -1,5 +1,6 @@
+use crate::context::{AnalyzerContext, TempContext};
 use crate::db::Analysis;
-use crate::errors::{self, TypeError};
+use crate::errors::TypeError;
 use crate::namespace::items::TypeAliasId;
 use crate::namespace::scopes::ItemScope;
 use crate::namespace::types;
@@ -25,12 +26,15 @@ pub fn type_alias_type_cycle(
     _cycle: &[String],
     alias: &TypeAliasId,
 ) -> Analysis<Result<types::Type, TypeError>> {
+    let mut context = TempContext::default();
+    let err = Err(TypeError::new(context.error(
+        "recursive type definition",
+        alias.data(db).ast.span,
+        "",
+    )));
+
     Analysis {
-        value: Err(TypeError),
-        diagnostics: Rc::new(vec![errors::error(
-            "recursive type definition",
-            alias.data(db).ast.span,
-            "",
-        )]),
+        value: err,
+        diagnostics: Rc::new(context.diagnostics),
     }
 }

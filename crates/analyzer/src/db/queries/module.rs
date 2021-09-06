@@ -88,7 +88,13 @@ pub fn module_resolve_type_cycle(
     _module: &ModuleId,
     _name: &String,
 ) -> Option<Result<types::Type, errors::TypeError>> {
-    Some(Err(errors::TypeError))
+    // The only possible type cycle currently is a recursive type alias,
+    // which is handled in queries/types.rs
+    // However, salsa will also call this function if there's such a cycle,
+    // so we can't panic here, and we can't return a TypeError because
+    // there's no way to emit a diagnostic! The only option is to return
+    // None, and handle type cycles in more specifc cycle handlers.
+    None
 }
 
 pub fn module_contracts(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<Vec<ContractId>> {
