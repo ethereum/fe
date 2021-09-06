@@ -12,9 +12,16 @@ where
     let id = files.add_file(test_name, src);
     let mut parser = Parser::new(src);
 
-    let is_ok = parse_fn(&mut parser).is_ok();
-    let parse_ok = is_ok && parser.diagnostics.is_empty();
-    if should_fail && parse_ok {
+    let did_fail = match parse_fn(&mut parser) {
+        Ok(_) => if parser.diagnostics.is_empty() {
+            false
+        } else {
+            true
+        },
+        Err(_) => true
+    };
+
+    if should_fail != did_fail {
         panic!(
             "expected parsing to {}fail",
             if should_fail { "" } else { "not " }
@@ -74,15 +81,18 @@ contract C:
 "#
 }
 
+// fails
 test_parse_err! { contract_pub_event, contracts::parse_contract_def, false, "contract C:\n pub event E:\n  x: u8" }
+// fails
 test_parse_err! { contract_const_pub, contracts::parse_contract_def, false, "contract C:\n const pub x: u8" }
+// fails
 test_parse_err! { contract_const_fn, contracts::parse_contract_def, false, "contract C:\n const fn f():\n  pass" }
 test_parse_err! { emit_no_args, functions::parse_stmt, true, "emit x" }
 test_parse_err! { emit_expr, functions::parse_stmt, true, "emit x + 1" }
 test_parse_err! { emit_bad_call, functions::parse_stmt, true, "emit MyEvent(1)()" }
 test_parse_err! { expr_bad_prefix, expressions::parse_expr, true, "*x + 1" }
 test_parse_err! { for_no_in, functions::parse_stmt, true, "for x:\n pass" }
-test_parse_err! { fn_no_args, |par| functions::parse_fn_def(par, None), false, "fn f:\n  return 5" }
+test_parse_err! { fn_no_args, |par| functions::parse_fn_def(par, None), false, "fn f():\n  return 5" }
 test_parse_err! { fn_def_kw, contracts::parse_contract_def, true, "contract C:\n pub def f(x: u8):\n  return x" }
 test_parse_err! { fn_no_paren, contracts::parse_contract_def, true, "contract C:\n pub fn f:\n  pass" }
 test_parse_err! { if_no_body, functions::parse_stmt, true, "if x:\nelse:\n x" }
@@ -100,6 +110,7 @@ test_parse_err! { stmt_vardecl_missing_type_annotation_3, functions::parse_stmt,
 test_parse_err! { stmt_vardecl_invalid_type_annotation, functions::parse_stmt, true, "let x: y + z" }
 test_parse_err! { stmt_vardecl_invalid_name, functions::parse_stmt, true, "let x + y: u8" }
 
+// fails
 // assert_snapshot! doesn't like the invalid escape code
 #[test]
 fn string_invalid_escape() {
