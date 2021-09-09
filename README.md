@@ -31,7 +31,7 @@ Additional information about design goals and background can be found in the [of
 
 ## Language Specification
 
-We aim to provide a full language specification that should eventually be used to formally verify the correctness of the compiler. A work in progress draft of the specification can be found [here](http://fe.ethereum.org/docs/spec/index.html).
+We aim to provide a full language specification that should eventually be used to formally verify the correctness of the compiler. A work in progress draft of the specification can be found [here](http://fe-lang.org/docs/spec/index.html).
 
 ## Progress
 

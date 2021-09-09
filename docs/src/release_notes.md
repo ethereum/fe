@@ -319,7 +319,7 @@ Fe is moving fast. Read up on all the latest improvements.
 ### Improved Documentation
 
 
-- Created a landing page for Fe at https://fe.ethereum.org ([#394](https://github.com/ethereum/fe/issues/394))
+- Created a landing page for Fe at https://fe-lang.org ([#394](https://github.com/ethereum/fe/issues/394))
 - Provide a Quickstart chapter in Fe Guide ([#403](https://github.com/ethereum/fe/issues/403))
 
 
