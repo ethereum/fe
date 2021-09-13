@@ -9,7 +9,7 @@ Fe is an emerging smart contract language for the Ethereum blockchain.
 
 ## Overview
 
-Fe is a statically typed language for the Ethereum Virtual Machine (EVM). It is inspired by Python and Rust and is easy to learn -- even for developers who are new to the Ethereum ecosystem.
+Fe is a statically typed language for the Ethereum Virtual Machine (EVM). It is inspired by Python and Rust which makes it easy to learn -- especially for new developers entering the Ethereum ecosystem.
 
 ## Features & Goals
 
