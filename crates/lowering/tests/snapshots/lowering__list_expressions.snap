@@ -1,3 +1,8 @@
+---
+source: crates/lowering/tests/lowering.rs
+expression: lowered_code
+
+---
 contract Foo:
     pub fn foo() -> ():
         let x: u256[3] = list_expr_array_u256_3(10, 20, 30)
@@ -9,4 +14,3 @@ contract Foo:
         generated_array[1] = val1
         generated_array[2] = val2
         return generated_array
-

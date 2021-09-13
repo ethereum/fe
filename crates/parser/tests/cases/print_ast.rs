@@ -18,7 +18,7 @@ macro_rules! test_print {
     };
 }
 
-test_print!(erc20, "demos/erc20_token.fe");
-test_print!(guest_book, "printing/guest_book_no_comments.fe");
-test_print!(expr_parens, "printing/expr_parens.fe");
-test_print!(defs, "printing/defs.fe");
+test_print! { erc20, "demos/erc20_token.fe" }
+test_print! { guest_book, "printing/guest_book_no_comments.fe" }
+test_print! { expr_parens, "printing/expr_parens.fe" }
+test_print! { defs, "printing/defs.fe" }

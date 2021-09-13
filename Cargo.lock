@@ -602,6 +602,8 @@ dependencies = [
  "fe-parser",
  "fe-test-files",
  "indexmap",
+ "insta",
+ "pretty_assertions",
  "regex",
  "rstest",
  "wasm-bindgen-test",

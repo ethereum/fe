@@ -1,4 +1,0 @@
-contract Foo:
-    fn bar() -> ():
-        pass
-        return ()
