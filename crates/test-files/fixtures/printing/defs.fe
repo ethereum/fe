@@ -5,9 +5,15 @@ struct MyStruct:
     field2: u256
     field3: address
 
+struct EmptyType:
+    pass
+
 contract Foo:
     field1: Map<u256, bool>
     field2: bool
+
+    event EmptyEvent:
+        pass
 
     event MyEvent:
         idx field1: bool
