@@ -564,6 +564,7 @@ dependencies = [
  "fe-analyzer",
  "fe-common",
  "fe-compiler-test-utils",
+ "fe-driver",
  "fe-lowering",
  "fe-parser",
  "fe-test-files",

@@ -3,11 +3,11 @@ source: crates/lowering/tests/lowering.rs
 expression: lowered_code
 
 ---
-struct tuple_u8_address_:
+struct $tuple_u8_address_:
     item0: u8
     item1: address
 
-type Tup = tuple_u8_address_
+type Tup = $tuple_u8_address_
 
 contract Foo:
     tup: Tup

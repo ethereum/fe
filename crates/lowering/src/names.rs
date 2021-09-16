@@ -9,7 +9,7 @@ pub fn list_expr_generator_fn_name(list_expr_type: &Array) -> String {
 
 /// The name of a lowered tuple struct definition.
 pub fn tuple_struct_name(tuple: &Tuple) -> String {
-    tuple.lower_snake()
+    format!("${}", tuple.lower_snake())
 }
 
 /// Maps a FixedSize type to its type description.

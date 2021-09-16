@@ -1,4 +1,6 @@
 #[cfg(test)]
+mod crashes;
+#[cfg(test)]
 mod demo_erc20;
 #[cfg(test)]
 mod demo_guestbook;

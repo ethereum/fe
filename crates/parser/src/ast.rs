@@ -80,6 +80,7 @@ pub enum GenericArg {
     TypeDesc(Node<TypeDesc>),
     Int(Node<usize>),
 }
+
 impl Spanned for GenericArg {
     fn span(&self) -> Span {
         match self {
