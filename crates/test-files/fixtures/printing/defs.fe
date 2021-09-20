@@ -1,0 +1,30 @@
+type MyType = String<42>
+
+struct MyStruct:
+    field1: bool
+    field2: u256
+    field3: address
+
+struct EmptyType:
+    pass
+
+contract Foo:
+    field1: Map<u256, bool>
+    field2: bool
+
+    event EmptyEvent:
+        pass
+
+    event MyEvent:
+        idx field1: bool
+        field2: String<42>
+
+    pub fn my_func():
+        pass
+
+    fn my_other_func():
+        pass
+
+contract Bar:
+    pub fn __init__():
+        pass

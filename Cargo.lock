@@ -612,7 +612,9 @@ name = "fe-parser"
 version = "0.8.0-alpha"
 dependencies = [
  "fe-common",
+ "fe-test-files",
  "if_chain",
+ "indenter",
  "insta",
  "logos",
  "pretty_assertions",
