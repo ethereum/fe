@@ -1,0 +1,229 @@
+---
+source: crates/parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(use_nested1), module::parse_use,\n           \"use foo::bar::{bing::*, bang::big, bass as fish, bong::{hello as hi, goodbye}}\")"
+
+---
+Node(
+  kind: Use(
+    tree: Node(
+      kind: Nested(
+        prefix: Node(
+          kind: Path(
+            names: [
+              Node(
+                kind: "foo",
+                span: Span(
+                  start: 4,
+                  end: 7,
+                ),
+              ),
+              Node(
+                kind: "bar",
+                span: Span(
+                  start: 9,
+                  end: 12,
+                ),
+              ),
+            ],
+            trailing_delim: true,
+          ),
+          span: Span(
+            start: 4,
+            end: 14,
+          ),
+        ),
+        children: [
+          Node(
+            kind: Glob(
+              prefix: Node(
+                kind: Path(
+                  names: [
+                    Node(
+                      kind: "bing",
+                      span: Span(
+                        start: 15,
+                        end: 19,
+                      ),
+                    ),
+                  ],
+                  trailing_delim: true,
+                ),
+                span: Span(
+                  start: 15,
+                  end: 21,
+                ),
+              ),
+            ),
+            span: Span(
+              start: 15,
+              end: 21,
+            ),
+          ),
+          Node(
+            kind: Simple(
+              path: Node(
+                kind: Path(
+                  names: [
+                    Node(
+                      kind: "bang",
+                      span: Span(
+                        start: 24,
+                        end: 28,
+                      ),
+                    ),
+                    Node(
+                      kind: "big",
+                      span: Span(
+                        start: 30,
+                        end: 33,
+                      ),
+                    ),
+                  ],
+                  trailing_delim: false,
+                ),
+                span: Span(
+                  start: 24,
+                  end: 33,
+                ),
+              ),
+              rename: None,
+            ),
+            span: Span(
+              start: 24,
+              end: 33,
+            ),
+          ),
+          Node(
+            kind: Simple(
+              path: Node(
+                kind: Path(
+                  names: [
+                    Node(
+                      kind: "bass",
+                      span: Span(
+                        start: 35,
+                        end: 39,
+                      ),
+                    ),
+                  ],
+                  trailing_delim: false,
+                ),
+                span: Span(
+                  start: 35,
+                  end: 39,
+                ),
+              ),
+              rename: Some(Node(
+                kind: "fish",
+                span: Span(
+                  start: 43,
+                  end: 47,
+                ),
+              )),
+            ),
+            span: Span(
+              start: 35,
+              end: 47,
+            ),
+          ),
+          Node(
+            kind: Nested(
+              prefix: Node(
+                kind: Path(
+                  names: [
+                    Node(
+                      kind: "bong",
+                      span: Span(
+                        start: 49,
+                        end: 53,
+                      ),
+                    ),
+                  ],
+                  trailing_delim: true,
+                ),
+                span: Span(
+                  start: 49,
+                  end: 55,
+                ),
+              ),
+              children: [
+                Node(
+                  kind: Simple(
+                    path: Node(
+                      kind: Path(
+                        names: [
+                          Node(
+                            kind: "hello",
+                            span: Span(
+                              start: 56,
+                              end: 61,
+                            ),
+                          ),
+                        ],
+                        trailing_delim: false,
+                      ),
+                      span: Span(
+                        start: 56,
+                        end: 61,
+                      ),
+                    ),
+                    rename: Some(Node(
+                      kind: "hi",
+                      span: Span(
+                        start: 65,
+                        end: 67,
+                      ),
+                    )),
+                  ),
+                  span: Span(
+                    start: 56,
+                    end: 67,
+                  ),
+                ),
+                Node(
+                  kind: Simple(
+                    path: Node(
+                      kind: Path(
+                        names: [
+                          Node(
+                            kind: "goodbye",
+                            span: Span(
+                              start: 69,
+                              end: 76,
+                            ),
+                          ),
+                        ],
+                        trailing_delim: false,
+                      ),
+                      span: Span(
+                        start: 69,
+                        end: 76,
+                      ),
+                    ),
+                    rename: None,
+                  ),
+                  span: Span(
+                    start: 69,
+                    end: 76,
+                  ),
+                ),
+              ],
+            ),
+            span: Span(
+              start: 76,
+              end: 77,
+            ),
+          ),
+        ],
+      ),
+      span: Span(
+        start: 77,
+        end: 78,
+      ),
+    ),
+  ),
+  span: Span(
+    start: 0,
+    end: 78,
+  ),
+)

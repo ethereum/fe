@@ -38,6 +38,32 @@ pub enum Import {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct Path {
+    pub names: Vec<Node<String>>,
+    pub trailing_delim: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct Use {
+    pub tree: Node<UseTree>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub enum UseTree {
+    Glob {
+        prefix: Node<Path>,
+    },
+    Nested {
+        prefix: Node<Path>,
+        children: Vec<Node<UseTree>>,
+    },
+    Simple {
+        path: Node<Path>,
+        rename: Option<Node<String>>,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct TypeAlias {
     pub name: Node<String>,
     pub typ: Node<TypeDesc>,

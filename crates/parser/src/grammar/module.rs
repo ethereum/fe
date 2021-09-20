@@ -1,6 +1,6 @@
 use super::contracts::parse_contract_def;
 use super::types::{parse_struct_def, parse_type_alias};
-use crate::ast::{Import, Module, ModuleStmt, Pragma, SimpleImportName};
+use crate::ast::{Import, Module, ModuleStmt, Path, Pragma, SimpleImportName, Use, UseTree};
 use crate::node::{Node, Span};
 use crate::{Label, ParseFailed, ParseResult, Parser, TokenKind};
 
@@ -114,6 +114,143 @@ pub fn parse_from_import(par: &mut Parser) -> ParseResult<Node<Import>> {
     let tok = par.assert(TokenKind::Name);
     assert_eq!(tok.text, "from");
     todo!("parse from .. import (not supported in rest of compiler yet)")
+}
+
+/// Parse a `::` delimited path.
+pub fn parse_path(par: &mut Parser) -> ParseResult<Node<Path>> {
+    let mut names = vec![];
+
+    let name = par.expect_with_notes(TokenKind::Name, "failed to parse path", |_| {
+        vec![
+            "Note: paths must start with a name".into(),
+            "Example: `foo::bar`".into(),
+        ]
+    })?;
+
+    names.push(Node::new(name.text.to_string(), name.span));
+
+    loop {
+        if par.peek() == Some(TokenKind::ColonColon) {
+            let delim_tok = par.next()?;
+
+            if par.peek() == Some(TokenKind::Name) {
+                let name = par.next()?;
+
+                names.push(Node::new(name.text.to_string(), name.span));
+            } else {
+                let span =
+                    names.first().expect("`names` should not be empty").span + delim_tok.span;
+
+                return Ok(Node::new(
+                    Path {
+                        names,
+                        trailing_delim: true,
+                    },
+                    span,
+                ));
+            }
+        } else {
+            let span = names.first().expect("`names` should not be empty").span
+                + names.last().expect("").span;
+
+            return Ok(Node::new(
+                Path {
+                    names,
+                    trailing_delim: false,
+                },
+                span,
+            ));
+        }
+    }
+}
+
+/// Parse a `use` statement.
+/// # Panics
+/// Panics if the next token isn't `use`.
+pub fn parse_use(par: &mut Parser) -> ParseResult<Node<Use>> {
+    let use_tok = par.assert(TokenKind::Use);
+
+    let tree = parse_use_tree(par)?;
+    let tree_span = tree.span;
+
+    Ok(Node::new(Use { tree }, use_tok.span + tree_span))
+}
+
+/// Parse a `use` tree.
+pub fn parse_use_tree(par: &mut Parser) -> ParseResult<Node<UseTree>> {
+    let path = parse_path(par)?;
+    let path_span = path.span;
+
+    if path.kind.trailing_delim {
+        match par.peek() {
+            Some(TokenKind::BraceOpen) => {
+                par.next()?;
+
+                let mut children = vec![];
+                let close_brace_span;
+
+                loop {
+                    children.push(parse_use_tree(par)?);
+
+                    match par.peek() {
+                        Some(TokenKind::Comma) => {
+                            par.next()?;
+                            continue;
+                        }
+                        Some(TokenKind::BraceClose) => {
+                            let tok = par.next()?;
+                            close_brace_span = tok.span;
+                            break;
+                        }
+                        _ => {
+                            let tok = par.next()?;
+                            par.unexpected_token_error(
+                                tok.span,
+                                "failed to parse `use` tree",
+                                vec!["Note: expected a `,` or `}` token".to_string()],
+                            );
+                            return Err(ParseFailed);
+                        }
+                    }
+                }
+
+                Ok(Node::new(
+                    UseTree::Nested {
+                        prefix: path,
+                        children,
+                    },
+                    close_brace_span,
+                ))
+            }
+            Some(TokenKind::Star) => {
+                par.next()?;
+                Ok(Node::new(UseTree::Glob { prefix: path }, path_span))
+            }
+            _ => {
+                let tok = par.next()?;
+                par.unexpected_token_error(
+                    tok.span,
+                    "failed to parse `use` tree",
+                    vec!["Note: expected a `*`, `{` or name token".to_string()],
+                );
+                return Err(ParseFailed);
+            }
+        }
+    } else {
+        if par.peek() == Some(TokenKind::As) {
+            par.next()?;
+
+            let rename_tok = par.expect(TokenKind::Name, "failed to parse `use` tree")?;
+            let rename = Some(Node::new(rename_tok.text.to_string(), rename_tok.span));
+
+            Ok(Node::new(
+                UseTree::Simple { path, rename },
+                path_span + rename_tok.span,
+            ))
+        } else {
+            Ok(Node::new(UseTree::Simple { path, rename: None }, path_span))
+        }
+    }
 }
 
 /// Parse a `pragma <version-requirement>` statement.

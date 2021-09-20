@@ -33,7 +33,7 @@ pub struct Parser<'a> {
     /// generic type parameter list (eg. `Map<u256, Map<u256, address>>`).
     buffered: Vec<Token<'a>>,
 
-    paren_stack: Vec<Span>,
+    enclosure_stack: Vec<Span>,
     indent_stack: Vec<BlockIndent<'a>>,
     indent_style: Option<char>,
 
@@ -47,7 +47,7 @@ impl<'a> Parser<'a> {
         Parser {
             lexer: Lexer::new(content),
             buffered: vec![],
-            paren_stack: vec![],
+            enclosure_stack: vec![],
             indent_stack: vec![BlockIndent {
                 context_span: Span::zero(),
                 context_name: "module".into(),
@@ -70,13 +70,26 @@ impl<'a> Parser<'a> {
         // TODO: allow newlines inside square brackets
         // TODO: allow newlines inside angle brackets?
         //   eg `fn f(x: map\n <\n u8\n, ...`
-        if !self.paren_stack.is_empty() {
+        if !self.enclosure_stack.is_empty() {
             self.eat_newlines();
         }
         if let Some(tok) = self.next_raw() {
-            if tok.kind == TokenKind::ParenOpen {
-                self.paren_stack.push(tok.span);
-            } else if tok.kind == TokenKind::ParenClose && self.paren_stack.pop().is_none() {
+            if [
+                TokenKind::ParenOpen,
+                TokenKind::BraceOpen,
+                TokenKind::BracketOpen,
+            ]
+            .contains(&tok.kind)
+            {
+                self.enclosure_stack.push(tok.span);
+            } else if [
+                TokenKind::ParenClose,
+                TokenKind::BraceClose,
+                TokenKind::BracketClose,
+            ]
+            .contains(&tok.kind)
+                && self.enclosure_stack.pop().is_none()
+            {
                 self.error(tok.span, "Unmatched right parenthesis");
                 if self.peek_raw() == Some(TokenKind::ParenClose) {
                     // another unmatched closing paren; fail.
@@ -100,7 +113,7 @@ impl<'a> Parser<'a> {
     /// Take a peek at the next token kind without consuming it, or return an
     /// error if we've reached the end of the file.
     pub fn peek_or_err(&mut self) -> ParseResult<TokenKind> {
-        if !self.paren_stack.is_empty() {
+        if !self.enclosure_stack.is_empty() {
             self.eat_newlines();
         }
         if let Some(tk) = self.peek_raw() {
@@ -115,7 +128,7 @@ impl<'a> Parser<'a> {
     /// Take a peek at the next token kind. Returns `None` if we've reached the
     /// end of the file.
     pub fn peek(&mut self) -> Option<TokenKind> {
-        if !self.paren_stack.is_empty() {
+        if !self.enclosure_stack.is_empty() {
             self.eat_newlines();
         }
         self.peek_raw()
@@ -267,7 +280,7 @@ impl<'a> Parser<'a> {
     /// # Panics
     /// Panics if called while the parser is inside a set of parentheses.
     pub fn enter_block(&mut self, context_span: Span, context_name: &str) -> ParseResult<()> {
-        assert!(self.paren_stack.is_empty());
+        assert!(self.enclosure_stack.is_empty());
 
         let colon = if self.peek_raw() == Some(TokenKind::Colon) {
             self.next_raw()
@@ -337,7 +350,7 @@ impl<'a> Parser<'a> {
 
     fn handle_newline_indent(&mut self, context_name: &str) -> ParseResult<()> {
         assert!(
-            self.paren_stack.is_empty(),
+            self.enclosure_stack.is_empty(),
             "Parser::handle_newline_indent called within parens"
         );
 
@@ -462,7 +475,7 @@ impl<'a, 'b> BTParser<'a, 'b> {
         let parser = Parser {
             lexer: snapshot.lexer.clone(),
             buffered: snapshot.buffered.clone(),
-            paren_stack: snapshot.paren_stack.clone(),
+            enclosure_stack: snapshot.enclosure_stack.clone(),
             indent_stack: snapshot.indent_stack.clone(),
             indent_style: snapshot.indent_style,
             diagnostics: Vec::new(),
@@ -473,7 +486,7 @@ impl<'a, 'b> BTParser<'a, 'b> {
     pub fn accept(self) {
         self.snapshot.lexer = self.parser.lexer;
         self.snapshot.buffered = self.parser.buffered;
-        self.snapshot.paren_stack = self.parser.paren_stack;
+        self.snapshot.enclosure_stack = self.parser.enclosure_stack;
         self.snapshot.indent_stack = self.parser.indent_stack;
         self.snapshot.indent_style = self.parser.indent_style;
         self.snapshot.diagnostics.extend(self.parser.diagnostics);

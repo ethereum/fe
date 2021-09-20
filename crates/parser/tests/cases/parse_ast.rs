@@ -140,6 +140,16 @@ test_parse! { pragma2, module::parse_pragma, "pragma 0.1.0-alpha" }
 test_parse! { pragma3, module::parse_pragma, "pragma >= 1.2, < 1.5" }
 
 test_parse! { import_simple, module::parse_simple_import, "import foo as bar, baz, bing as bop" }
+test_parse! { use_simple1, module::parse_use, "use foo::bar" }
+test_parse! { use_simple2, module::parse_use, "use foo::bar as baz" }
+test_parse! { use_glob, module::parse_use, "use foo::bar::*" }
+test_parse! { use_nested1, module::parse_use, "use foo::bar::{bing::*, bang::big, bass as fish, bong::{hello as hi, goodbye}}" }
+test_parse! { use_nested2, module::parse_use, r#"use std::bar::{
+    bing::*,
+    bad::{food as burger, barge::*, bill::bob::{jkl::*}},
+    evm as mve
+}"#
+}
 test_parse! { struct_def, types::parse_struct_def, r#"struct S:
   x: address
   pub y: u8
