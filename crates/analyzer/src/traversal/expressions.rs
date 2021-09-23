@@ -10,6 +10,7 @@ use crate::namespace::types::{
 };
 use crate::operations;
 use crate::traversal::call_args::{validate_arg_count, validate_named_args, LabelPolicy};
+use crate::traversal::types::resolve_type_name;
 use crate::traversal::utils::{add_bin_operations_errors, types_to_fixed_sizes};
 use fe_common::diagnostics::Label;
 use fe_common::numeric;
@@ -786,8 +787,25 @@ fn expr_call_type_constructor(
     typ: Type,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, FatalError> {
-    if let Type::Struct(struct_type) = typ {
-        return expr_call_struct_constructor(scope, name_span, struct_type, args);
+    match typ {
+        Type::Struct(struct_type) => {
+            return expr_call_struct_constructor(scope, name_span, struct_type, args)
+        }
+        Type::Base(Base::Bool) => {
+            return Err(FatalError::new(scope.error(
+                "`bool` type is not callable",
+                name_span,
+                "",
+            )))
+        }
+        Type::Map(_) => {
+            return Err(FatalError::new(scope.error(
+                "`Map` type is not callable",
+                name_span,
+                "",
+            )))
+        }
+        _ => {}
     }
 
     // These all expect 1 arg, for now.
@@ -840,15 +858,11 @@ fn expr_call_type_constructor(
                 Location::Value,
             ))
         }
-        Type::Base(Base::Bool) => Err(FatalError::new(scope.error(
-            "`bool` type is not callable",
-            name_span,
-            "",
-        ))),
         Type::Base(Base::Unit) => unreachable!(), // rejected in expr_call_type
-        Type::Map(_) => unreachable!(),           // rejected in expr_name_call_type
+        Type::Base(Base::Bool) => unreachable!(), // handled above
         Type::Tuple(_) => unreachable!(),         // rejected in expr_call_type
         Type::Struct(_) => unreachable!(),        // handled above
+        Type::Map(_) => unreachable!(),           // handled above
         // The current array type syntax is parsed as an index operation in this case (eg `u8[10](5)`),
         // and won't end up here.
         Type::Array(_) => unreachable!(),
@@ -1311,17 +1325,8 @@ fn expr_name_call_type(
     name_span: Span,
     generic_args: Option<&Node<Vec<fe::GenericArg>>>,
 ) -> Result<CallType, FatalError> {
-    if let Ok(base_type) = Base::from_str(name) {
-        if let Some(args) = generic_args {
-            scope.error(
-                &format!("`{}` type does not expect generic arguments", base_type),
-                args.span,
-                "unexpected generic argument list",
-            );
-        }
-        Ok(CallType::TypeConstructor {
-            typ: Type::Base(base_type),
-        })
+    if let Some(typ) = resolve_type_name(scope, name, name_span, generic_args) {
+        Ok(CallType::TypeConstructor { typ: typ? })
     } else if let Ok(func) = GlobalMethod::from_str(name) {
         if let Some(args) = generic_args {
             scope.error(
@@ -1330,51 +1335,11 @@ fn expr_name_call_type(
                 "unexpected generic argument list",
             );
         }
-        Ok(CallType::BuiltinFunction { func: func })
+        Ok(CallType::BuiltinFunction { func })
     } else {
-        match name {
-            "String" => match generic_args {
-                None => Err(FatalError::new(scope.fancy_error(
-                    "`String` type requires a max size argument",
-                    vec![Label::primary(name_span, "")],
-                    vec!["Example: String<100>".into()],
-                ))),
-                Some(args) => match &args.kind[..] {
-                    [fe::GenericArg::Int(len)] => Ok(CallType::TypeConstructor {
-                        typ: Type::String(FeString { max_size: len.kind }),
-                    }),
-                    _ => Err(FatalError::new(scope.fancy_error(
-                        "invalid `String` type argument",
-                        vec![Label::primary(args.span, "expected an integer")],
-                        vec!["Example: String<100>".into()],
-                    ))),
-                },
-            },
-            "Map" => Err(FatalError::new(scope.fancy_error(
-                "`Map` type is not callable",
-                vec![Label::primary(name_span, "")],
-                vec![],
-            ))),
-            _ => {
-                // user types and functions can't be generic yet,
-                // so any generic args are erroneous
-                if let Some(args) = generic_args {
-                    scope.fancy_error(
-                        "unexpected generic arguments",
-                        vec![Label::primary(args.span, "")],
-                        vec![],
-                    );
-                }
-
-                if let Some(typ) = scope.resolve_type(name) {
-                    Ok(CallType::TypeConstructor { typ: typ? })
-                } else {
-                    Ok(CallType::Pure {
-                        func_name: name.to_string(),
-                    })
-                }
-            }
-        }
+        Ok(CallType::Pure {
+            func_name: name.to_string(),
+        })
     }
 }
 

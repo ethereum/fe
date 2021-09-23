@@ -1,5 +1,5 @@
 use crate::context::{AnalyzerContext, ExpressionAttributes, Location};
-use crate::errors::{AlreadyDefined, FatalError};
+use crate::errors::FatalError;
 use crate::namespace::scopes::{BlockScope, BlockScopeType};
 use crate::namespace::types::{Base, FixedSize, Type};
 use crate::traversal::call_args::LabelPolicy;
@@ -56,16 +56,9 @@ fn for_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fat
             };
 
             let mut body_scope = scope.new_child(BlockScopeType::Loop);
-            if let Err(AlreadyDefined(dup_span)) =
-                body_scope.add_var(&target.kind, target_type, target.span)
-            {
-                body_scope.duplicate_name_error(
-                    &format!("duplicate definition of variable `{}`", target.kind),
-                    &target.kind,
-                    dup_span,
-                    target.span,
-                );
-            }
+            // add_var emits a msg on err; we can ignore the Result.
+            let _ = body_scope.add_var(&target.kind, target_type, target.span);
+
             // Traverse the statements within the `for loop` body scope.
             traverse_statements(&mut body_scope, body)
         }

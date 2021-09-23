@@ -119,6 +119,14 @@ impl TypeDefId {
         }
     }
 
+    pub fn name_span(&self, db: &dyn AnalyzerDb) -> Span {
+        match self {
+            TypeDefId::Alias(id) => id.data(db).ast.kind.name.span,
+            TypeDefId::Struct(id) => id.data(db).ast.kind.name.span,
+            TypeDefId::Contract(id) => id.data(db).ast.kind.name.span,
+        }
+    }
+
     pub fn span(&self, db: &dyn AnalyzerDb) -> Span {
         match self {
             TypeDefId::Alias(id) => id.data(db).ast.span,

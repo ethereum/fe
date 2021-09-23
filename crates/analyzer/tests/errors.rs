@@ -139,10 +139,11 @@ test_stmt! { overflow_u8_assignment, "let x: u8 = 260" }
 test_stmt! { pow_with_signed_exponent, "let base: i128\nlet xp: i128\nbase ** exp" }
 // Exponent can be unsigned but needs to be same size or smaller
 test_stmt! { pow_with_wrong_capacity, "let base: i128\nlet exp: u256\nbase ** exp" }
-// test_stmt! { shadow_builtin_type_with_var, "let u8: u8 = 10" }
-// test_stmt! { shadow_builtin_function_with_var, "let keccak256: u8 = 10" }
-// test_file! { shadow_builtin_type }
-// test_file! { shadow_builtin_function }
+test_stmt! { shadow_builtin_type_with_var, "let u8: u8 = 10" }
+test_stmt! { shadow_builtin_fn_with_var, "let keccak256: u8 = 10" }
+test_stmt! { shadow_builtin_object_with_var, "let self: u8 = 10" }
+test_file! { shadow_builtin_type }
+test_file! { shadow_builtin_function }
 test_stmt! { string_capacity_mismatch, "String<3>(\"too long\")" }
 test_stmt! { string_non_int_type_arg, "let x: String<u8>" }
 test_stmt! { string_no_type_arg_list, "let x: String" }

@@ -3,7 +3,7 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, &src)"
 
 ---
-error: duplicate variable definition
+error: duplicate definition of variable `sum`
   ┌─ compile_errors/duplicate_var_in_child_scope.fe:4:13
   │
 4 │         let sum: u256 = 0

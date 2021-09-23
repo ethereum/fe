@@ -56,7 +56,7 @@ impl FatalError {
 
 /// Error to be returned from APIs that should reject duplicate definitions
 #[derive(Debug)]
-pub struct AlreadyDefined(pub Span);
+pub struct AlreadyDefined;
 
 /// Error indicating that a value can not move between memory and storage
 #[derive(Debug)]

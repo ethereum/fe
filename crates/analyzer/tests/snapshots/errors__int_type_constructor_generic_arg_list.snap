@@ -3,10 +3,12 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: `u256` type does not expect generic arguments
+error: `u256` type is not generic
   ┌─ [snippet]:3:7
   │
 3 │   u256<>(10)
-  │       ^^ unexpected generic argument list
+  │       ^^ unexpected type argument list
+  │
+  = Hint: use `u256`
 
 

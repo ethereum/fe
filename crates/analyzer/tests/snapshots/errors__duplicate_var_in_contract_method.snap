@@ -3,7 +3,7 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, &src)"
 
 ---
-error: duplicate variable definition
+error: duplicate definition of variable `foo`
   ┌─ compile_errors/duplicate_var_in_contract_method.fe:3:13
   │
 3 │         let foo: u8

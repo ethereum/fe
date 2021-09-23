@@ -7,3 +7,6 @@ contract C:
 
   pub fn bool(x: u8) -> bool:
     return x != 0
+
+  pub fn self() -> bool:
+    return false
