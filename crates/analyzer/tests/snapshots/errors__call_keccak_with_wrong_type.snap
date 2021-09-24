@@ -1,14 +1,14 @@
 ---
 source: crates/analyzer/tests/errors.rs
-expression: "error_string(&path, &src)"
+expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: `bool` can not be used as a parameter to `keccak(..)`
-  ┌─ compile_errors/call_keccak_with_wrong_type.fe:7:17
+error: `bool` can not be used as an argument to `keccak256`
+  ┌─ [snippet]:3:12
   │
-7 │        keccak256(true)
-  │                 ^^^^^^ wrong type
+3 │   keccak256(true)
+  │            ^^^^^^ wrong type
   │
-  = Note: keccak(..) expects a byte array as parameter
+  = Note: `keccak256` expects a byte array argument
 
 

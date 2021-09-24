@@ -1,5 +1,5 @@
 use crate::context::AnalyzerContext;
-use crate::errors::{AlreadyDefined, FatalError};
+use crate::errors::FatalError;
 use crate::namespace::scopes::BlockScope;
 use crate::namespace::types::FixedSize;
 use crate::traversal::{expressions, types};
@@ -54,18 +54,8 @@ fn add_var(
 ) -> Result<(), FatalError> {
     match &target.kind {
         fe::VarDeclTarget::Name(name) => {
-            if let Err(AlreadyDefined(prev_span)) = scope.add_var(name, typ, target.span) {
-                // TODO: this should probably be a fatal error; continuing here might result
-                //  in confusing type mismatch errors
-                scope.fancy_error(
-                    "duplicate variable definition",
-                    vec![
-                        Label::primary(prev_span, &format!("`{}` first defined here", name)),
-                        Label::secondary(target.span, &format!("`{}` redefined here", name)),
-                    ],
-                    vec![],
-                );
-            }
+            // this logs a message on err, so it's safe to ignore here.
+            let _ = scope.add_var(name, typ, target.span);
             Ok(())
         }
         fe::VarDeclTarget::Tuple(items) => {

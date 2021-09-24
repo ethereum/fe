@@ -1,0 +1,12 @@
+contract C:
+  pub fn keccak256(bytes: u8[4]) -> u8[4]:
+    return [1, 2, 3, 4]
+
+  pub fn u256(x: u8) -> u256:
+    return 10
+
+  pub fn bool(x: u8) -> bool:
+    return x != 0
+
+  pub fn self() -> bool:
+    return false

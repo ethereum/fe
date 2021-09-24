@@ -1,3 +1,4 @@
+use crate::builtins;
 use crate::context::Analysis;
 use crate::db::AnalyzerDb;
 use crate::errors;
@@ -48,6 +49,16 @@ pub fn module_type_def_map(
 
     let mut map = IndexMap::<String, TypeDefId>::new();
     for def in module.all_type_defs(db).iter() {
+        let def_name = def.name(db);
+        if let Some(reserved) = builtins::reserved_name(&def_name) {
+            diagnostics.push(errors::error(
+                &format!("type name conflicts with built-in {}", reserved.as_ref()),
+                def.name_span(db),
+                &format!("`{}` is a built-in {}", def_name, reserved.as_ref()),
+            ));
+            continue;
+        }
+
         match map.entry(def.name(db)) {
             Entry::Occupied(entry) => {
                 diagnostics.push(errors::fancy_error(

@@ -1,0 +1,14 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: `String` type requires a max size argument
+  ┌─ [snippet]:3:10
+  │
+3 │   let x: String
+  │          ^^^^^^
+  │
+  = Example: String<100>
+
+

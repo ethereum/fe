@@ -1,0 +1,60 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: type name conflicts with built-in type
+  ┌─ compile_errors/shadow_builtin_type.fe:1:6
+  │
+1 │ type u256 = u8
+  │      ^^^^ `u256` is a built-in type
+
+error: type name conflicts with built-in type
+  ┌─ compile_errors/shadow_builtin_type.fe:2:6
+  │
+2 │ type String = u256
+  │      ^^^^^^ `String` is a built-in type
+
+error: type name conflicts with built-in type
+  ┌─ compile_errors/shadow_builtin_type.fe:3:6
+  │
+3 │ type Map = u256
+  │      ^^^ `Map` is a built-in type
+
+error: type name conflicts with built-in type
+  ┌─ compile_errors/shadow_builtin_type.fe:4:6
+  │
+4 │ type bool = u256
+  │      ^^^^ `bool` is a built-in type
+
+error: type name conflicts with built-in function
+  ┌─ compile_errors/shadow_builtin_type.fe:6:6
+  │
+6 │ type keccak256 = u8
+  │      ^^^^^^^^^ `keccak256` is a built-in function
+
+error: type name conflicts with built-in object
+  ┌─ compile_errors/shadow_builtin_type.fe:7:6
+  │
+7 │ type block = u8
+  │      ^^^^^ `block` is a built-in object
+
+error: type name conflicts with built-in object
+  ┌─ compile_errors/shadow_builtin_type.fe:8:6
+  │
+8 │ type msg = u8
+  │      ^^^ `msg` is a built-in object
+
+error: type name conflicts with built-in object
+  ┌─ compile_errors/shadow_builtin_type.fe:9:6
+  │
+9 │ type chain = u8
+  │      ^^^^^ `chain` is a built-in object
+
+error: type name conflicts with built-in object
+   ┌─ compile_errors/shadow_builtin_type.fe:10:6
+   │
+10 │ type self = u8
+   │      ^^^^ `self` is a built-in object
+
+

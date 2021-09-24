@@ -1,6 +1,7 @@
 contract Foo:
     pub fn bar():
-        let my_array: u256[3]
+        let my_array: u64[3]
         let sum: u256 = 0
         for i in my_array:
-            let sum: u256 = 0
+            let sum: u64 = 0
+            sum += i

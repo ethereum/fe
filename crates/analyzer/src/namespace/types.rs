@@ -5,7 +5,8 @@ use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 use std::convert::TryFrom;
 use std::fmt;
-use strum::IntoStaticStr;
+use std::str::FromStr;
+use strum::{EnumString, IntoStaticStr};
 use vec1::Vec1;
 
 pub fn u256_min() -> BigInt {
@@ -59,7 +60,8 @@ pub enum Base {
     Unit,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash, IntoStaticStr)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash, IntoStaticStr, EnumString)]
+#[strum(serialize_all = "snake_case")]
 pub enum Integer {
     U256,
     U128,
@@ -94,8 +96,6 @@ pub struct Tuple {
     pub items: Vec1<FixedSize>,
 }
 
-// Struct and Contract only exist to impl Display below;
-// we could refactor code that uses Display and remove them.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Struct {
     pub name: String,
@@ -595,5 +595,18 @@ impl fmt::Display for Contract {
 impl fmt::Display for Struct {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name)
+    }
+}
+
+impl FromStr for Base {
+    type Err = strum::ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "bool" => Ok(Base::Bool),
+            "address" => Ok(Base::Address),
+            "()" => Ok(Base::Unit),
+            _ => Ok(Base::Numeric(Integer::from_str(s)?)),
+        }
     }
 }

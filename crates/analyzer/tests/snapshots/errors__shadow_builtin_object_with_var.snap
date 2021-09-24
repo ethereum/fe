@@ -1,0 +1,12 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: variable name conflicts with built-in object
+  ┌─ [snippet]:3:7
+  │
+3 │   let self: u8 = 10
+  │       ^^^^ `self` is a built-in object
+
+

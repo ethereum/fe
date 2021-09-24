@@ -1,0 +1,8 @@
+contract C:
+  fn f():
+    let x: u256 = 10
+
+    let xs: u8[4] = [1, 2, 3, 4]
+    let sum: u8 = 0
+    for x in xs:
+      sum += x

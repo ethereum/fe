@@ -1,5 +1,6 @@
 #![allow(unstable_name_collisions)] // expect_none, which ain't gonna be stabilized
 
+use crate::builtins;
 use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, FunctionBody};
 use crate::errors::{AlreadyDefined, TypeError};
 use crate::namespace::items::{EventId, FunctionId, ModuleId};
@@ -249,9 +250,29 @@ impl<'a, 'b> BlockScope<'a, 'b> {
         typ: FixedSize,
         span: Span,
     ) -> Result<(), AlreadyDefined> {
+        if let Some(reserved) = builtins::reserved_name(name) {
+            self.error(
+                &format!(
+                    "variable name conflicts with built-in {}",
+                    reserved.as_ref()
+                ),
+                span,
+                &format!("`{}` is a built-in {}", name, reserved.as_ref()),
+            );
+            return Err(AlreadyDefined);
+        }
+
         // It's (currently) an error to shadow a variable in a nested scope
         match self.var_def_span(name) {
-            Some(prev_span) => Err(AlreadyDefined(prev_span)),
+            Some(prev_span) => {
+                self.duplicate_name_error(
+                    &format!("duplicate definition of variable `{}`", name),
+                    name,
+                    prev_span,
+                    span,
+                );
+                Err(AlreadyDefined)
+            }
             None => {
                 self.variable_defs.insert(name.to_string(), (typ, span));
                 Ok(())

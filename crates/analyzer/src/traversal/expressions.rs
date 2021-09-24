@@ -10,6 +10,7 @@ use crate::namespace::types::{
 };
 use crate::operations;
 use crate::traversal::call_args::{validate_arg_count, validate_named_args, LabelPolicy};
+use crate::traversal::types::resolve_type_name;
 use crate::traversal::utils::{add_bin_operations_errors, types_to_fixed_sizes};
 use fe_common::diagnostics::Label;
 use fe_common::numeric;
@@ -591,7 +592,13 @@ fn expr_bin_operation(
         let typ = match operations::bin(&left_attributes.typ, &op.kind, &right_attributes.typ) {
             Err(err) => {
                 return Err(FatalError::new(add_bin_operations_errors(
-                    scope, left, right, err,
+                    scope,
+                    &op.kind,
+                    left.span,
+                    &left_attributes.typ,
+                    right.span,
+                    &right_attributes.typ,
+                    err,
                 )));
             }
             Ok(val) => val,
@@ -701,14 +708,14 @@ fn expr_call(
 
 fn expr_call_builtin_function(
     scope: &mut BlockScope,
-    typ: GlobalMethod,
+    function: GlobalMethod,
     name_span: Span,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, FatalError> {
     let argument_attributes = expr_call_args(scope, args)?;
-    match typ {
+    match function {
         GlobalMethod::Keccak256 => {
-            validate_arg_count(scope, typ.into(), name_span, args, 1);
+            validate_arg_count(scope, function.into(), name_span, args, 1);
             expect_no_label_on_first_arg(scope, args);
 
             if let Some(arg_typ) = argument_attributes.first().map(|attr| &attr.typ) {
@@ -719,13 +726,14 @@ fn expr_call_builtin_function(
                         ..
                     })
                 ) {
+                    let fn_name: &str = function.into();
                     scope.fancy_error(
                         &format!(
-                            "`{}` can not be used as a parameter to `keccak(..)`",
-                            arg_typ
+                            "`{}` can not be used as an argument to `{}`",
+                            arg_typ, fn_name,
                         ),
                         vec![Label::primary(args.span, "wrong type")],
-                        vec!["Note: keccak(..) expects a byte array as parameter".into()],
+                        vec![format!("Note: `{}` expects a byte array argument", fn_name)],
                     );
                 }
             };
@@ -779,8 +787,25 @@ fn expr_call_type_constructor(
     typ: Type,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, FatalError> {
-    if let Type::Struct(struct_type) = typ {
-        return expr_call_struct_constructor(scope, name_span, struct_type, args);
+    match typ {
+        Type::Struct(struct_type) => {
+            return expr_call_struct_constructor(scope, name_span, struct_type, args)
+        }
+        Type::Base(Base::Bool) => {
+            return Err(FatalError::new(scope.error(
+                "`bool` type is not callable",
+                name_span,
+                "",
+            )))
+        }
+        Type::Map(_) => {
+            return Err(FatalError::new(scope.error(
+                "`Map` type is not callable",
+                name_span,
+                "",
+            )))
+        }
+        _ => {}
     }
 
     // These all expect 1 arg, for now.
@@ -833,15 +858,14 @@ fn expr_call_type_constructor(
                 Location::Value,
             ))
         }
-        Type::Struct(_) => unreachable!(), // handled above
-
-        // TODO: These type should be handled explicitly, either here or in expr_name_call_type.
-        // `Map<x, y>()` and `bool()` will (probably) currently result in an undefined fn error.
+        Type::Base(Base::Unit) => unreachable!(), // rejected in expr_call_type
+        Type::Base(Base::Bool) => unreachable!(), // handled above
+        Type::Tuple(_) => unreachable!(),         // rejected in expr_call_type
+        Type::Struct(_) => unreachable!(),        // handled above
+        Type::Map(_) => unreachable!(),           // handled above
+        // The current array type syntax is parsed as an index operation in this case (eg `u8[10](5)`),
+        // and won't end up here.
         Type::Array(_) => unreachable!(),
-        Type::Tuple(_) => unreachable!(),
-        Type::Map(_) => unreachable!(),
-        Type::Base(Base::Bool) => unreachable!(),
-        Type::Base(Base::Unit) => unreachable!(),
     }
 }
 
@@ -1276,15 +1300,15 @@ fn expr_call_type(
     generic_args: Option<&Node<Vec<fe::GenericArg>>>,
 ) -> Result<CallType, FatalError> {
     let call_type = match &func.kind {
-        fe::Expr::Name(name) => expr_name_call_type(scope, name, generic_args),
+        fe::Expr::Name(name) => expr_name_call_type(scope, name, func.span, generic_args),
         fe::Expr::Attribute { .. } => expr_attribute_call_type(scope, func),
         _ => {
             let expression = expr(scope, func, None)?;
             Err(FatalError::new(scope.fancy_error(
-                &format!("the {} type is not callable", expression.typ),
+                &format!("`{}` type is not callable", expression.typ),
                 vec![Label::primary(
                     func.span,
-                    format!("this has type {}", expression.typ),
+                    format!("this has type `{}`", expression.typ),
                 )],
                 vec![],
             )))
@@ -1298,71 +1322,24 @@ fn expr_call_type(
 fn expr_name_call_type(
     scope: &mut BlockScope,
     name: &str,
+    name_span: Span,
     generic_args: Option<&Node<Vec<fe::GenericArg>>>,
 ) -> Result<CallType, FatalError> {
-    // TODO: we're ignoring error cases like `u256<x>(10)` here
-    match (name, generic_args) {
-        ("keccak256", _) => Ok(CallType::BuiltinFunction {
-            func: GlobalMethod::Keccak256,
-        }),
-        ("address", _) => Ok(CallType::TypeConstructor {
-            typ: Type::Base(Base::Address),
-        }),
-        ("u256", _) => Ok(CallType::TypeConstructor {
-            typ: Type::Base(Base::Numeric(Integer::U256)),
-        }),
-        ("u128", _) => Ok(CallType::TypeConstructor {
-            typ: Type::Base(Base::Numeric(Integer::U128)),
-        }),
-        ("u64", _) => Ok(CallType::TypeConstructor {
-            typ: Type::Base(Base::Numeric(Integer::U64)),
-        }),
-        ("u32", _) => Ok(CallType::TypeConstructor {
-            typ: Type::Base(Base::Numeric(Integer::U32)),
-        }),
-        ("u16", _) => Ok(CallType::TypeConstructor {
-            typ: Type::Base(Base::Numeric(Integer::U16)),
-        }),
-        ("u8", _) => Ok(CallType::TypeConstructor {
-            typ: Type::Base(Base::Numeric(Integer::U8)),
-        }),
-        ("i256", _) => Ok(CallType::TypeConstructor {
-            typ: Type::Base(Base::Numeric(Integer::I256)),
-        }),
-        ("i128", _) => Ok(CallType::TypeConstructor {
-            typ: Type::Base(Base::Numeric(Integer::I128)),
-        }),
-        ("i64", _) => Ok(CallType::TypeConstructor {
-            typ: Type::Base(Base::Numeric(Integer::I64)),
-        }),
-        ("i32", _) => Ok(CallType::TypeConstructor {
-            typ: Type::Base(Base::Numeric(Integer::I32)),
-        }),
-        ("i16", _) => Ok(CallType::TypeConstructor {
-            typ: Type::Base(Base::Numeric(Integer::I16)),
-        }),
-        ("i8", _) => Ok(CallType::TypeConstructor {
-            typ: Type::Base(Base::Numeric(Integer::I8)),
-        }),
-        ("String", Some(args_node)) => match &args_node.kind[..] {
-            [fe::GenericArg::Int(len)] => Ok(CallType::TypeConstructor {
-                typ: Type::String(FeString { max_size: len.kind }),
-            }),
-            _ => Err(FatalError::new(scope.fancy_error(
-                "invalid `String` type argument",
-                vec![Label::primary(args_node.span, "expected an integer")],
-                vec!["Example: String<100>".into()],
-            ))),
-        },
-        (value, _) => {
-            if let Some(typ) = scope.resolve_type(value) {
-                Ok(CallType::TypeConstructor { typ: typ? })
-            } else {
-                Ok(CallType::Pure {
-                    func_name: value.to_string(),
-                })
-            }
+    if let Some(typ) = resolve_type_name(scope, name, name_span, generic_args) {
+        Ok(CallType::TypeConstructor { typ: typ? })
+    } else if let Ok(func) = GlobalMethod::from_str(name) {
+        if let Some(args) = generic_args {
+            scope.error(
+                &format!("`{}` function does not expect generic arguments", name),
+                args.span,
+                "unexpected generic argument list",
+            );
         }
+        Ok(CallType::BuiltinFunction { func })
+    } else {
+        Ok(CallType::Pure {
+            func_name: name.to_string(),
+        })
     }
 }
 

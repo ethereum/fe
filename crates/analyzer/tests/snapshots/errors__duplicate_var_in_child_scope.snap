@@ -3,13 +3,21 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, &src)"
 
 ---
-error: duplicate variable definition
+error: duplicate definition of variable `sum`
   ┌─ compile_errors/duplicate_var_in_child_scope.fe:4:13
   │
 4 │         let sum: u256 = 0
   │             ^^^ `sum` first defined here
 5 │         for i in my_array:
-6 │             let sum: u256 = 0
+6 │             let sum: u64 = 0
   │                 --- `sum` redefined here
+
+error: `+` operand types must be equal
+  ┌─ compile_errors/duplicate_var_in_child_scope.fe:7:13
+  │
+7 │             sum += i
+  │             ^^^    ^ this has type `u64`
+  │             │       
+  │             this has type `u256`
 
 

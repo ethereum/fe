@@ -1,0 +1,30 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: function name conflicts with built-in function
+  ┌─ compile_errors/shadow_builtin_function.fe:2:10
+  │
+2 │   pub fn keccak256(bytes: u8[4]) -> u8[4]:
+  │          ^^^^^^^^^ `keccak256` is a built-in function
+
+error: function name conflicts with built-in type
+  ┌─ compile_errors/shadow_builtin_function.fe:5:10
+  │
+5 │   pub fn u256(x: u8) -> u256:
+  │          ^^^^ `u256` is a built-in type
+
+error: function name conflicts with built-in type
+  ┌─ compile_errors/shadow_builtin_function.fe:8:10
+  │
+8 │   pub fn bool(x: u8) -> bool:
+  │          ^^^^ `bool` is a built-in type
+
+error: function name conflicts with built-in object
+   ┌─ compile_errors/shadow_builtin_function.fe:11:10
+   │
+11 │   pub fn self() -> bool:
+   │          ^^^^ `self` is a built-in object
+
+

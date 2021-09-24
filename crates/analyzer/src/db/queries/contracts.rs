@@ -1,3 +1,4 @@
+use crate::builtins;
 use crate::context::AnalyzerContext;
 use crate::db::{Analysis, AnalyzerDb};
 use crate::errors;
@@ -37,7 +38,19 @@ pub fn contract_function_map(
 
     for func in contract.all_functions(db).iter() {
         let def = &func.data(db).ast;
-        if def.name() == "__init__" {
+        let def_name = def.name();
+        if def_name == "__init__" {
+            continue;
+        }
+        if let Some(reserved) = builtins::reserved_name(def_name) {
+            scope.error(
+                &format!(
+                    "function name conflicts with built-in {}",
+                    reserved.as_ref()
+                ),
+                def.kind.name.span,
+                &format!("`{}` is a built-in {}", def_name, reserved.as_ref()),
+            );
             continue;
         }
 

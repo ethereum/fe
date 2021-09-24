@@ -1,0 +1,14 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: invalid `String` type argument
+  ┌─ [snippet]:3:9
+  │
+3 │   String<>()
+  │         ^^ expected an integer
+  │
+  = Example: String<100>
+
+

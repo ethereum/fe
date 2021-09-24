@@ -7,6 +7,6 @@ error: `continue` outside of a loop
   ┌─ [snippet]:3:3
   │
 3 │   continue
-  │   ^^^^^^^^ cannot `continue` outside of a `for` or `while` loop
+  │   ^^^^^^^^ `continue` can only be used inside of a `for` or `while` loop
 
 
