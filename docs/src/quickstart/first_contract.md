@@ -15,8 +15,6 @@ To keep things simple we will just write a basic *guestbook* where people can le
 
 Fe code is written in files ending on the `.fe` file extension. Let's create a file `guest_book.fe` and put in the following content.
 
-python
-
 ```python
 contract GuestBook:
 ```
