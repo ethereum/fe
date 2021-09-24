@@ -1,0 +1,28 @@
+---
+source: crates/lowering/tests/lowering.rs
+expression: lowered_code
+
+---
+struct $tuple_bool_bool_address_u8_:
+    item0: bool
+    item1: bool
+    item2: address
+    item3: u8
+
+struct $tuple_u256_bool_:
+    item0: u256
+    item1: bool
+
+contract Foo:
+    my_sto_tuple: $tuple_bool_bool_address_u8_
+
+    pub fn bar(self, my_tuple: $tuple_u256_bool_) -> ():
+        let $tmp_tuple_0: $tuple_u256_bool_ = my_tuple
+        let my_u256: u256 = $tmp_tuple_0.item0
+        let my_bool: bool = $tmp_tuple_0.item1
+        let $tmp_tuple_1: $tuple_bool_bool_address_u8_ = self.my_sto_tuple.to_mem()
+        let a: bool = $tmp_tuple_1.item0
+        let b: bool = $tmp_tuple_1.item1
+        let c: address = $tmp_tuple_1.item2
+        let d: u8 = $tmp_tuple_1.item3
+        return ()

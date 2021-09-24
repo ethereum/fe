@@ -19,6 +19,7 @@ fe-lowering = {path = "../lowering", version = "^0.8.0-alpha"}
 fe-parser = {path = "../parser", version = "^0.8.0-alpha"}
 fe-yulgen = {path = "../yulgen", version = "^0.8.0-alpha"}
 fe-yulc = {path = "../yulc", version = "^0.8.0-alpha"}
+fe-driver = {path = "../driver", version = "^0.8.0-alpha"}
 test-files = {path = "../test-files", package = "fe-test-files" }
 hex = "0.4"
 primitive-types = {version = "0.9", default-features = false, features = ["rlp"]}
