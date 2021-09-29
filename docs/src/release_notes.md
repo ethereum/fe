@@ -10,6 +10,59 @@ Fe is moving fast. Read up on all the latest improvements.
 **WARNING: All Fe releases are alpha releases and only meant to share the development progress with developers and enthusiasts. It is NOT yet ready for production usage.**
 
 [//]: # (towncrier release notes start)
+## 0.9.0-alpha (2021-09-29)## 0.9.0-alpha (2021-09-29)
+
+
+### Features
+
+
+- The `self` variable is no longer implicitly defined in code blocks. It must now be declared
+  as the first parameter in a function signature.
+
+  Example:
+
+  ```
+  contract Foo:
+      my_stored_num: u256
+
+      pub fn bar(self, my_num: u256):
+          self.my_stored_num = my_num
+        
+      pub fn baz(self):
+          self.bar(my_pure_func())
+        
+      pub fn my_pure_func() -> u256:
+          return 42 + 26
+  ``` ([#520](https://github.com/ethereum/fe/issues/520))
+- The analyzer now disallows defining a type, variable, or function whose
+  name conflicts with a built-in type, function, or object.
+
+  Example:
+
+  ```
+  error: type name conflicts with built-in type
+  ┌─ compile_errors/shadow_builtin_type.fe:1:6
+  │
+  1 │ type u256 = u8
+  │      ^^^^ `u256` is a built-in type
+  ``` ([#539](https://github.com/ethereum/fe/issues/539))
+
+
+### Bugfixes
+
+
+- Fixed cases where the analyzer would correctly reject code, but would panic instead of logging an error message. ([#534](https://github.com/ethereum/fe/issues/534))
+- Non-fatal parser errors (eg missing parentheses when defining a function that takes no arguments: `fn foo:`)
+  are no longer ignored if the semantic analysis stage succeeds. ([#535](https://github.com/ethereum/fe/issues/535))
+- Fixed issue #531 by adding a `$` to the front of lowered tuple names. ([#546](https://github.com/ethereum/fe/issues/546))
+
+
+### Internal Changes - for Fe Contributors
+
+
+- Implemented pretty printing of Fe AST. ([#540](https://github.com/ethereum/fe/issues/540))
+
+
 ## 0.8.0-alpha "Haxonite" (2021-08-31)
 
 
