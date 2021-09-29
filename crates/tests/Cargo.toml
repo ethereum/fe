@@ -2,7 +2,7 @@
 authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2018"
 name = "fe-compiler-tests"
-version = "0.8.0-alpha"
+version = "0.9.0-alpha"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/ethereum/fe"
 
@@ -12,14 +12,14 @@ repository = "https://github.com/ethereum/fe"
 ethabi = "14.0"
 evm = "0.26.0"
 evm-runtime = "0.26.0"
-fe-analyzer = {path = "../analyzer", version = "^0.8.0-alpha"}
-fe-common = {path = "../common", version = "^0.8.0-alpha"}
+fe-analyzer = {path = "../analyzer", version = "^0.9.0-alpha"}
+fe-common = {path = "../common", version = "^0.9.0-alpha"}
 fe-compiler-test-utils = {path = "../test-utils" }
-fe-lowering = {path = "../lowering", version = "^0.8.0-alpha"}
-fe-parser = {path = "../parser", version = "^0.8.0-alpha"}
-fe-yulgen = {path = "../yulgen", version = "^0.8.0-alpha"}
-fe-yulc = {path = "../yulc", version = "^0.8.0-alpha"}
-fe-driver = {path = "../driver", version = "^0.8.0-alpha"}
+fe-lowering = {path = "../lowering", version = "^0.9.0-alpha"}
+fe-parser = {path = "../parser", version = "^0.9.0-alpha"}
+fe-yulgen = {path = "../yulgen", version = "^0.9.0-alpha"}
+fe-yulc = {path = "../yulc", version = "^0.9.0-alpha"}
+fe-driver = {path = "../driver", version = "^0.9.0-alpha"}
 test-files = {path = "../test-files", package = "fe-test-files" }
 hex = "0.4"
 primitive-types = {version = "0.9", default-features = false, features = ["rlp"]}

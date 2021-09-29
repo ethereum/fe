@@ -480,7 +480,7 @@ dependencies = [
 
 [[package]]
 name = "fe"
-version = "0.8.0-alpha"
+version = "0.9.0-alpha"
 dependencies = [
  "clap",
  "fe-common",
@@ -490,7 +490,7 @@ dependencies = [
 
 [[package]]
 name = "fe-abi"
-version = "0.8.0-alpha"
+version = "0.9.0-alpha"
 dependencies = [
  "fe-analyzer",
  "fe-common",
@@ -501,7 +501,7 @@ dependencies = [
 
 [[package]]
 name = "fe-analyzer"
-version = "0.8.0-alpha"
+version = "0.9.0-alpha"
 dependencies = [
  "fe-common",
  "fe-parser",
@@ -523,7 +523,7 @@ dependencies = [
 
 [[package]]
 name = "fe-common"
-version = "0.8.0-alpha"
+version = "0.9.0-alpha"
 dependencies = [
  "codespan-reporting",
  "difference",
@@ -537,7 +537,7 @@ dependencies = [
 
 [[package]]
 name = "fe-compiler-test-utils"
-version = "0.8.0-alpha"
+version = "0.9.0-alpha"
 dependencies = [
  "ethabi",
  "evm",
@@ -556,7 +556,7 @@ dependencies = [
 
 [[package]]
 name = "fe-compiler-tests"
-version = "0.8.0-alpha"
+version = "0.9.0-alpha"
 dependencies = [
  "ethabi",
  "evm",
@@ -582,7 +582,7 @@ dependencies = [
 
 [[package]]
 name = "fe-driver"
-version = "0.8.0-alpha"
+version = "0.9.0-alpha"
 dependencies = [
  "fe-abi",
  "fe-analyzer",
@@ -596,7 +596,7 @@ dependencies = [
 
 [[package]]
 name = "fe-lowering"
-version = "0.8.0-alpha"
+version = "0.9.0-alpha"
 dependencies = [
  "fe-analyzer",
  "fe-common",
@@ -612,7 +612,7 @@ dependencies = [
 
 [[package]]
 name = "fe-parser"
-version = "0.8.0-alpha"
+version = "0.9.0-alpha"
 dependencies = [
  "fe-common",
  "fe-test-files",
@@ -632,14 +632,14 @@ dependencies = [
 
 [[package]]
 name = "fe-test-files"
-version = "0.8.0-alpha"
+version = "0.9.0-alpha"
 dependencies = [
  "include_dir",
 ]
 
 [[package]]
 name = "fe-yulc"
-version = "0.8.0-alpha"
+version = "0.9.0-alpha"
 dependencies = [
  "fe-yulgen",
  "serde_json",
@@ -648,7 +648,7 @@ dependencies = [
 
 [[package]]
 name = "fe-yulgen"
-version = "0.8.0-alpha"
+version = "0.9.0-alpha"
 dependencies = [
  "fe-abi",
  "fe-analyzer",

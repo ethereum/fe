@@ -1,15 +1,15 @@
 [package]
 name = "fe-lowering"
-version = "0.8.0-alpha"
+version = "0.9.0-alpha"
 authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2018"
 license = "Apache-2.0"
 repository = "https://github.com/ethereum/fe"
 
 [dependencies]
-fe-common = {path = "../common", version = "^0.8.0-alpha"}
-fe-parser = {path = "../parser", version = "^0.8.0-alpha"}
-fe-analyzer = {path = "../analyzer", version = "^0.8.0-alpha"}
+fe-common = {path = "../common", version = "^0.9.0-alpha"}
+fe-parser = {path = "../parser", version = "^0.9.0-alpha"}
+fe-analyzer = {path = "../analyzer", version = "^0.9.0-alpha"}
 indexmap = "1.6.2"
 
 [dev-dependencies]

@@ -1,6 +1,6 @@
 [package]
 name = "fe-test-files"
-version = "0.8.0-alpha"
+version = "0.9.0-alpha"
 authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2018"
 license = "Apache-2.0"
