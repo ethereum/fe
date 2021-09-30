@@ -8,3 +8,10 @@ type block = u8
 type msg = u8
 type chain = u8
 type self = u8
+
+contract C:
+  fn f(u8: u256):
+    pass
+
+  fn g(keccak256: u8):
+    pass

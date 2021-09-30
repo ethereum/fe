@@ -142,30 +142,30 @@ note:
   ┌─ features/keccak.fe:4:16
   │
 4 │         return keccak256(val)
-  │                ^^^^^^^^^ attributes hash: 11888120106960716956
+  │                ^^^^^^^^^ attributes hash: 3985281278010092305
   │
-  = BuiltinFunction {
-        func: Keccak256,
-    }
+  = BuiltinFunction(
+        Keccak256,
+    )
 
 note: 
   ┌─ features/keccak.fe:7:16
   │
 7 │         return keccak256(val)
-  │                ^^^^^^^^^ attributes hash: 11888120106960716956
+  │                ^^^^^^^^^ attributes hash: 3985281278010092305
   │
-  = BuiltinFunction {
-        func: Keccak256,
-    }
+  = BuiltinFunction(
+        Keccak256,
+    )
 
 note: 
    ┌─ features/keccak.fe:10:16
    │
 10 │         return keccak256(val)
-   │                ^^^^^^^^^ attributes hash: 11888120106960716956
+   │                ^^^^^^^^^ attributes hash: 3985281278010092305
    │
-   = BuiltinFunction {
-         func: Keccak256,
-     }
+   = BuiltinFunction(
+         Keccak256,
+     )
 
 

@@ -4,9 +4,29 @@ expression: "error_string(&path, &src)"
 
 ---
 error: `u256` type is not callable
-  ┌─ compile_errors/not_callable.fe:4:9
+  ┌─ compile_errors/not_callable.fe:7:5
   │
-4 │         5()
-  │         ^ this has type `u256`
+7 │     5()
+  │     ^ this has type `u256`
+
+error: `MyEvent` is not callable
+   ┌─ compile_errors/not_callable.fe:10:5
+   │
+10 │     MyEvent(x=10)
+   │     ^^^^^^^ `MyEvent` is an event, and can't be constructed in this context
+   │
+   = Hint: to emit an event, use `emit MyEvent(..)`
+
+error: `block` is not callable
+   ┌─ compile_errors/not_callable.fe:13:5
+   │
+13 │     block()
+   │     ^^^^^ `block` is a built-in object, and can't be used as a function
+
+error: `self` is not callable
+   ┌─ compile_errors/not_callable.fe:16:5
+   │
+16 │     self()
+   │     ^^^^ `self` is a built-in object, and can't be used as a function
 
 

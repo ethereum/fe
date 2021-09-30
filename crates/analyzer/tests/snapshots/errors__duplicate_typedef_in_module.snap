@@ -4,12 +4,21 @@ expression: "error_string(&path, &src)"
 
 ---
 error: duplicate type name
-  ┌─ compile_errors/duplicate_typedef_in_module.fe:2:1
+  ┌─ compile_errors/duplicate_typedef_in_module.fe:2:6
   │
 2 │ type bar = u8
-  │ ^^^^^^^^^^^^^ `bar` first defined here
+  │      ^^^ `bar` first defined here
 3 │ 
 4 │ type bar = u8
-  │ ------------- `bar` redefined here
+  │      --- `bar` redefined here
+
+error: function name `bar` conflicts with previously defined type
+  ┌─ compile_errors/duplicate_typedef_in_module.fe:2:6
+  │
+2 │ type bar = u8
+  │      ^^^ `bar` first defined here
+  ·
+8 │     pub fn bar():
+  │            --- `bar` redefined here
 
 

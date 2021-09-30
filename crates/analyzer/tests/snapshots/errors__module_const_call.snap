@@ -1,0 +1,12 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: `FOO` is not callable
+  ┌─ compile_errors/module_const_call.fe:5:5
+  │
+5 │     FOO()
+  │     ^^^ `FOO` is a constant of type `u8`, and can't be used as a function
+
+

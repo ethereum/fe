@@ -4,18 +4,12 @@ expression: "error_string(&path, &src)"
 
 ---
 error: duplicate type name
-  ┌─ compile_errors/duplicate_contract_in_module.fe:1:1
-  │    
-1 │ ╭   contract Foo:
-2 │ │   
-3 │ │       pub fn bar():
-4 │ │           pass
-  │ ╰──────────────^ `Foo` first defined here
-5 │     
-6 │   ╭ contract Foo:
-7 │   │ 
-8 │   │     pub fn bar():
-9 │   │         pass
-  │   ╰────────────' `Foo` redefined here
+  ┌─ compile_errors/duplicate_contract_in_module.fe:1:10
+  │
+1 │ contract Foo:
+  │          ^^^ `Foo` first defined here
+  ·
+6 │ contract Foo:
+  │          --- `Foo` redefined here
 
 

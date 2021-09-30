@@ -7,6 +7,6 @@ error: `Map` key must be a type
   ┌─ [snippet]:3:14
   │
 3 │   let x: Map<10, 20>
-  │              ^^ this should be a type name
+  │              ^^ expected a type name
 
 

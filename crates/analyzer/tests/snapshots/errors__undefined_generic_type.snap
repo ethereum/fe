@@ -7,6 +7,6 @@ error: undefined type
   ┌─ [snippet]:3:10
   │
 3 │   let x: foobar<u256> = 10
-  │          ^^^^^^ this type name has not been defined
+  │          ^^^^^^ `foobar` has not been defined
 
 

@@ -1,6 +1,6 @@
 //! Semantic errors.
 
-use crate::context::DiagnosticVoucher;
+use crate::context::{DiagnosticVoucher, NamedThing};
 use fe_common::diagnostics::{Diagnostic, Label, Severity};
 use fe_common::Span;
 use std::fmt::Display;
@@ -144,4 +144,46 @@ pub fn duplicate_name_error(
         ],
         vec![],
     )
+}
+
+pub fn name_conflict_error(
+    name_kind: &str, // Eg "function parameter" or "variable name"
+    name: &str,
+    original: &NamedThing,
+    original_span: Option<Span>,
+    duplicate_span: Span,
+) -> Diagnostic {
+    if let Some(original_span) = original_span {
+        fancy_error(
+            &format!(
+                "{} name `{}` conflicts with previously defined {}",
+                name_kind,
+                name,
+                original.item_kind_display_name()
+            ),
+            vec![
+                Label::primary(original_span, format!("`{}` first defined here", name)),
+                Label::secondary(duplicate_span, format!("`{}` redefined here", name)),
+            ],
+            vec![],
+        )
+    } else {
+        fancy_error(
+            &format!(
+                "{} name `{}` conflicts with built-in {}",
+                name_kind,
+                name,
+                original.item_kind_display_name()
+            ),
+            vec![Label::primary(
+                duplicate_span,
+                format!(
+                    "`{}` is a built-in {}",
+                    name,
+                    original.item_kind_display_name()
+                ),
+            )],
+            vec![],
+        )
+    }
 }

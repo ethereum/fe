@@ -85,16 +85,14 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
         .collect();
 
     return match call_type {
-        CallType::BuiltinFunction { func } => match func {
+        CallType::BuiltinFunction(func) => match func {
             GlobalMethod::Keccak256 => {
                 let first_arg = &args.kind.first().expect("Missing argument").kind.value;
                 let attributes = context
                     .expression_attributes(first_arg)
                     .expect("missing attributes");
                 let size = FixedSize::try_from(attributes.typ.clone()).expect("Invalid type");
-                let func_name: &str = func.into();
-
-                let func_name = identifier! { (func_name) };
+                let func_name = identifier! { (func.as_ref()) };
                 let size = identifier_expression! { (size.size()) };
                 expression! { [func_name]([yul_args[0].to_owned()], [size]) }
             }
@@ -103,10 +101,15 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
             typ: Type::Struct(val),
         } => struct_operations::new(&val, yul_args),
         CallType::TypeConstructor { .. } => yul_args[0].to_owned(),
-        CallType::SelfAttribute { func_name, .. } | CallType::Pure { func_name } => {
+        CallType::Pure(func) => {
+            let func_name = names::func_name(&func.name(context.db));
+            expression! { [func_name]([yul_args...]) }
+        }
+        CallType::SelfAttribute { func_name, .. } => {
             let func_name = names::func_name(&func_name);
             expression! { [func_name]([yul_args...]) }
         }
+
         CallType::ValueAttribute => {
             if let fe::Expr::Attribute { value, attr } = &func.kind {
                 let value_attributes = context

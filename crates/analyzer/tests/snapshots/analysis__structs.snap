@@ -1464,11 +1464,11 @@ note:
    ┌─ features/structs.fe:83:16
    │
 83 │         return keccak256(house.abi_encode())
-   │                ^^^^^^^^^ attributes hash: 11888120106960716956
+   │                ^^^^^^^^^ attributes hash: 3985281278010092305
    │
-   = BuiltinFunction {
-         func: Keccak256,
-     }
+   = BuiltinFunction(
+         Keccak256,
+     )
 
 note: 
    ┌─ features/structs.fe:83:26

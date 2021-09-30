@@ -57,7 +57,7 @@ pub fn validate_named_args(
     params: &[impl LabeledParameter],
     label_policy: LabelPolicy,
 ) -> Result<(), FatalError> {
-    validate_arg_count(scope, name, name_span, args, params.len());
+    validate_arg_count(scope, name, name_span, args, params.len(), "argument");
     validate_arg_labels(scope, args, params, label_policy);
     validate_arg_types(scope, name, args, params)?;
     Ok(())
@@ -69,6 +69,7 @@ pub fn validate_arg_count(
     name_span: Span,
     args: &Node<Vec<impl Spanned>>,
     param_count: usize,
+    argument_word: &str,
 ) -> Option<DiagnosticVoucher> {
     if args.kind.len() != param_count {
         let mut labels = vec![Label::primary(
@@ -76,7 +77,7 @@ pub fn validate_arg_count(
             format!(
                 "expects {} {}",
                 param_count,
-                pluralize_conditionally("argument", param_count)
+                pluralize_conditionally(argument_word, param_count)
             ),
         )];
         if args.kind.is_empty() {
@@ -88,7 +89,7 @@ pub fn validate_arg_count(
             labels.last_mut().unwrap().message = format!(
                 "supplied {} {}",
                 args.kind.len(),
-                pluralize_conditionally("argument", args.kind.len())
+                pluralize_conditionally(argument_word, args.kind.len())
             );
         }
 
@@ -97,7 +98,7 @@ pub fn validate_arg_count(
                 "`{}` expects {} {}, but {} {} provided",
                 name,
                 param_count,
-                pluralize_conditionally("argument", param_count),
+                pluralize_conditionally(argument_word, param_count),
                 args.kind.len(),
                 pluralize_conditionally(("was", "were"), args.kind.len())
             ),

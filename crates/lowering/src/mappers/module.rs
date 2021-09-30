@@ -2,7 +2,7 @@ use crate::context::ModuleContext;
 use crate::mappers::{contracts, types};
 use crate::names;
 use crate::utils::ZeroSpanNode;
-use fe_analyzer::namespace::items::{ModuleId, TypeDefId};
+use fe_analyzer::namespace::items::{Item, ModuleId, TypeDef};
 use fe_analyzer::namespace::types::{Base, FixedSize, Tuple};
 use fe_analyzer::AnalyzerDb;
 use fe_parser::ast;
@@ -20,33 +20,42 @@ pub fn module(db: &dyn AnalyzerDb, module: ModuleId) -> ast::Module {
         .filter_map(|stmt| match stmt {
             ast::ModuleStmt::Pragma(_) => Some(stmt.clone()),
             ast::ModuleStmt::Use(_) => Some(stmt.clone()),
-            // All name expressions referring to constants are handled at the time of lowering,
-            // which causes the constants to no longer serve a purpose.
-            ast::ModuleStmt::Constant(_) => None,
             _ => None,
         })
         .collect::<Vec<_>>();
 
-    lowered_body.extend(module.all_type_defs(db).iter().map(|def| match def {
-        TypeDefId::Alias(id) => {
-            let node = &id.data(db).ast;
-            let name = node.kind.name.clone();
-            ast::ModuleStmt::TypeAlias(Node::new(
-                ast::TypeAlias {
-                    name,
-                    typ: types::type_desc(
-                        &mut context,
-                        node.kind.typ.clone(),
-                        &id.typ(db).expect("type alias error"),
-                    ),
-                },
-                id.span(db),
-            ))
-        }
-        TypeDefId::Struct(id) => ast::ModuleStmt::Struct(id.data(db).ast.clone()),
-        TypeDefId::Contract(id) => {
-            ast::ModuleStmt::Contract(contracts::contract_def(&mut context, *id))
-        }
+    lowered_body.extend(module.all_items(db).iter().filter_map(|item| match item {
+        Item::Type(typedef) => match typedef {
+            TypeDef::Alias(id) => {
+                let node = &id.data(db).ast;
+                let name = node.kind.name.clone();
+                Some(ast::ModuleStmt::TypeAlias(Node::new(
+                    ast::TypeAlias {
+                        name,
+                        typ: types::type_desc(
+                            &mut context,
+                            node.kind.typ.clone(),
+                            &id.typ(db).expect("type alias error"),
+                        ),
+                    },
+                    id.span(db),
+                )))
+            }
+            TypeDef::Struct(id) => Some(ast::ModuleStmt::Struct(id.data(db).ast.clone())),
+            TypeDef::Contract(id) => Some(ast::ModuleStmt::Contract(contracts::contract_def(
+                &mut context,
+                *id,
+            ))),
+            TypeDef::Primitive(_) => unreachable!(),
+        },
+        Item::GenericType(_) => todo!("generic types can't be defined in fe yet"),
+        Item::Event(_) => todo!("events can't be defined at the module level yet"),
+        Item::Function(_) => todo!("functions can't be defined at the module level yet"),
+        Item::BuiltinFunction(_) | Item::Object(_) => unreachable!("special built-in stuff"),
+
+        // All name expressions referring to constants are handled at the time of lowering,
+        // which causes the constants to no longer serve a purpose.
+        Item::Constant(_) => None,
     }));
 
     let struct_defs_from_tuples = context

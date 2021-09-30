@@ -3,12 +3,10 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: invalid `String` type argument
-  ┌─ [snippet]:3:16
+error: `String` max size must be an integer
+  ┌─ [snippet]:3:17
   │
 3 │   let x: String<u8>
-  │                ^^^^ expected an integer
-  │
-  = Example: String<100>
+  │                 ^^ expected an integer
 
 

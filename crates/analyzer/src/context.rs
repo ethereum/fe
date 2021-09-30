@@ -1,7 +1,8 @@
 use crate::builtins::GlobalMethod;
 use crate::errors::{self, CannotMove, TypeError};
-use crate::namespace::items::{DiagnosticSink, EventId};
+use crate::namespace::items::{DiagnosticSink, EventId, FunctionId, Item};
 use crate::namespace::types::{FixedSize, Type};
+use crate::AnalyzerDb;
 use fe_common::diagnostics::Diagnostic;
 pub use fe_common::diagnostics::Label;
 use fe_common::Span;
@@ -26,8 +27,9 @@ impl<T> Analysis<T> {
 }
 
 pub trait AnalyzerContext {
-    fn resolve_type(&self, name: &str) -> Option<Result<Type, TypeError>>;
+    fn resolve_name(&self, name: &str) -> Option<NamedThing>;
     fn add_diagnostic(&mut self, diag: Diagnostic);
+    fn db(&self) -> &dyn AnalyzerDb;
 
     fn error(&mut self, message: &str, label_span: Span, label: &str) -> DiagnosticVoucher {
         self.register_diag(errors::error(message, label_span, label))
@@ -68,9 +70,59 @@ pub trait AnalyzerContext {
         ))
     }
 
+    fn name_conflict_error(
+        &mut self,
+        name_kind: &str, // Eg "function parameter" or "variable name"
+        name: &str,
+        original: &NamedThing,
+        original_span: Option<Span>,
+        duplicate_span: Span,
+    ) -> DiagnosticVoucher {
+        self.register_diag(errors::name_conflict_error(
+            name_kind,
+            name,
+            original,
+            original_span,
+            duplicate_span,
+        ))
+    }
+
     fn register_diag(&mut self, diag: Diagnostic) -> DiagnosticVoucher {
         self.add_diagnostic(diag);
         DiagnosticVoucher(PhantomData::default())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum NamedThing {
+    Item(Item),
+    Variable {
+        name: String,
+        typ: Result<FixedSize, TypeError>,
+        span: Span,
+    },
+}
+
+impl NamedThing {
+    pub fn name_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
+        match self {
+            NamedThing::Item(item) => item.name_span(db),
+            NamedThing::Variable { span, .. } => Some(*span),
+        }
+    }
+
+    pub fn is_builtin(&self) -> bool {
+        match self {
+            NamedThing::Item(item) => item.is_builtin(),
+            NamedThing::Variable { .. } => false,
+        }
+    }
+
+    pub fn item_kind_display_name(&self) -> &str {
+        match self {
+            NamedThing::Item(item) => item.item_kind_display_name(),
+            NamedThing::Variable { .. } => "variable",
+        }
     }
 }
 
@@ -83,8 +135,11 @@ pub struct TempContext {
     pub diagnostics: Vec<Diagnostic>,
 }
 impl AnalyzerContext for TempContext {
-    fn resolve_type(&self, _name: &str) -> Option<Result<Type, TypeError>> {
-        panic!("TempContext can't resolve types")
+    fn db(&self) -> &dyn AnalyzerDb {
+        panic!("TempContext has no analyzer db")
+    }
+    fn resolve_name(&self, _name: &str) -> Option<NamedThing> {
+        panic!("TempContext can't resolve names")
     }
     fn add_diagnostic(&mut self, diag: Diagnostic) {
         self.diagnostics.push(diag)
@@ -189,10 +244,10 @@ impl fmt::Display for ExpressionAttributes {
 /// The type of a function call.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CallType {
-    BuiltinFunction { func: GlobalMethod },
+    BuiltinFunction(GlobalMethod),
     TypeConstructor { typ: Type },
     SelfAttribute { func_name: String, self_span: Span },
-    Pure { func_name: String },
+    Pure(FunctionId),
     ValueAttribute,
     TypeAttribute { typ: Type, func_name: String },
 }

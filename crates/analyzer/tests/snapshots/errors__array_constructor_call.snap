@@ -3,10 +3,10 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: cannot find value `u8` in this scope
+error: `u8` is a built-in type name, and can't be used as an expression
   ┌─ [snippet]:3:3
   │
 3 │   u8[3]([1, 2, 3])
-  │   ^^ undefined
+  │   ^^ `u8` is used here as a value
 
 

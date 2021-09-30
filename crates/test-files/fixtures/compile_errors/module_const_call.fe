@@ -1,0 +1,5 @@
+const FOO: u8 = 1
+
+contract C:
+  fn f():
+    FOO()

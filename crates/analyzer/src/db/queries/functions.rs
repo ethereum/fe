@@ -66,7 +66,16 @@ pub fn function_signature(
                     ))),
                 });
 
-                if let Some(dup_idx) = names.get(&name.kind) {
+                if let Some(named_item) = scope.resolve_name(&name.kind) {
+                    scope.name_conflict_error(
+                        "function parameter",
+                        &name.kind,
+                        &named_item,
+                        named_item.name_span(db),
+                        name.span,
+                    );
+                    None
+                } else if let Some(dup_idx) = names.get(&name.kind) {
                     let dup_arg: &Node<ast::FunctionArg> = &def.args[*dup_idx];
                     scope.duplicate_name_error(
                         &format!("duplicate parameter names in function `{}`", def.name.kind),
@@ -156,8 +165,6 @@ pub fn function_body(db: &dyn AnalyzerDb, function: FunctionId) -> Analysis<Rc<F
 
     let mut block_scope = BlockScope::new(&scope, BlockScopeType::Function);
 
-    add_module_constants_to_scope(db, &mut block_scope);
-
     // If `traverse_statements` fails, we can be confident that a diagnostic
     // has been emitted, either while analyzing this fn body or while analyzing
     // a type or fn used in this fn body, because of the `DiagnosticVoucher`
@@ -166,32 +173,6 @@ pub fn function_body(db: &dyn AnalyzerDb, function: FunctionId) -> Analysis<Rc<F
     Analysis {
         value: Rc::new(scope.body.into_inner()),
         diagnostics: Rc::new(scope.diagnostics.into_inner()),
-    }
-}
-
-fn add_module_constants_to_scope(db: &dyn AnalyzerDb, scope: &mut BlockScope) {
-    for module_const in scope.root.function.module(db).all_constants(db).iter() {
-        let typ = match module_const.typ(db) {
-            Ok(typ) => typ,
-            Err(_) => {
-                // No need to report module_constant_type() already reports this
-                continue;
-            }
-        };
-
-        let const_type: FixedSize = match typ.try_into() {
-            Ok(typ) => typ,
-            Err(_) => {
-                // No need to report module_constant_type() already reports this
-                continue;
-            }
-        };
-
-        let const_name = module_const.name(db);
-        // add_var emits a msg on err; we can ignore the Result.
-        scope
-            .add_var(&const_name, const_type, module_const.span(db))
-            .ok();
     }
 }
 

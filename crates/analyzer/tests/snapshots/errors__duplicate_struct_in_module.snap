@@ -4,14 +4,12 @@ expression: "error_string(&path, &src)"
 
 ---
 error: duplicate type name
-  ┌─ compile_errors/duplicate_struct_in_module.fe:1:1
-  │    
-1 │ ╭   struct MyStruct:
-2 │ │       foo: u8
-  │ ╰─────────────^ `MyStruct` first defined here
-3 │     
-4 │   ╭ struct MyStruct:
-5 │   │     foo: u8
-  │   ╰───────────' `MyStruct` redefined here
+  ┌─ compile_errors/duplicate_struct_in_module.fe:1:8
+  │
+1 │ struct MyStruct:
+  │        ^^^^^^^^ `MyStruct` first defined here
+  ·
+4 │ struct MyStruct:
+  │        -------- `MyStruct` redefined here
 
 

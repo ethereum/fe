@@ -2,15 +2,16 @@ use crate::builtins::{
     BlockField, ChainField, ContractTypeMethod, GlobalMethod, MsgField, Object, SelfField, TxField,
     ValueMethod,
 };
-use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, Location};
+use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, Location, NamedThing};
 use crate::errors::{FatalError, IndexingError, NotFixedSize};
+use crate::namespace::items::{FunctionId, Item};
 use crate::namespace::scopes::BlockScope;
 use crate::namespace::types::{
     Array, Base, Contract, FeString, Integer, SelfDecl, Struct, Tuple, Type, TypeDowncast, U256,
 };
 use crate::operations;
 use crate::traversal::call_args::{validate_arg_count, validate_named_args, LabelPolicy};
-use crate::traversal::types::resolve_type_name;
+use crate::traversal::types::apply_generic_type_args;
 use crate::traversal::utils::{add_bin_operations_errors, types_to_fixed_sizes};
 use fe_common::diagnostics::Label;
 use fe_common::numeric;
@@ -250,14 +251,52 @@ fn expr_name(
         fe::Expr::Name(name) => name,
         _ => unreachable!(),
     };
-    match scope.var_type(name) {
-        Some(Ok(typ)) => {
+
+    match scope.resolve_name(name) {
+        Some(NamedThing::Variable { typ, .. }) => {
+            let typ = typ?;
             let location = Location::assign_location(&typ);
             Ok(ExpressionAttributes::new(typ.into(), location))
         }
-        Some(Err(err)) => Err(err.into()),
+        Some(NamedThing::Item(Item::Constant(id))) => {
+            let typ = id
+                .typ(scope.db())?
+                .try_into()
+                .expect("const type must be fixedsize");
+            let location = Location::assign_location(&typ);
+            Ok(ExpressionAttributes::new(typ.into(), location))
+        }
+        Some(item) => {
+            let item_kind = item.item_kind_display_name();
+            let diag = if let Some(def_span) = item.name_span(scope.db()) {
+                scope.fancy_error(
+                    &format!(
+                        "`{}` is a {} name, and can't be used as an expression",
+                        name, item_kind
+                    ),
+                    vec![
+                        Label::primary(
+                            def_span,
+                            &format!("`{}` is defined here as a {}", name, item_kind),
+                        ),
+                        Label::primary(exp.span, &format!("`{}` is used here as a value", name)),
+                    ],
+                    vec![],
+                )
+            } else {
+                scope.error(
+                    &format!(
+                        "`{}` is a built-in {} name, and can't be used as an expression",
+                        name, item_kind
+                    ),
+                    exp.span,
+                    &format!("`{}` is used here as a value", name),
+                )
+            };
+            Err(FatalError::new(diag))
+        }
         None => {
-            let voucher = scope.error(
+            let diag = scope.error(
                 &format!("cannot find value `{}` in this scope", name),
                 exp.span,
                 "undefined",
@@ -266,12 +305,10 @@ fn expr_name(
                 Some(typ) => Ok(ExpressionAttributes::new(
                     typ.clone(),
                     Location::assign_location(
-                        &typ.clone()
-                            .try_into()
-                            .map_err(|_| FatalError::new(voucher))?,
+                        &typ.clone().try_into().map_err(|_| FatalError::new(diag))?,
                     ),
                 )),
-                None => Err(FatalError::new(voucher)),
+                None => Err(FatalError::new(diag)),
             }
         }
     }
@@ -685,7 +722,7 @@ fn expr_call(
     } = &exp.kind
     {
         return match expr_call_type(scope, func, generic_args.as_ref())? {
-            CallType::BuiltinFunction { func: builtin } => {
+            CallType::BuiltinFunction(builtin) => {
                 expr_call_builtin_function(scope, builtin, func.span, args)
             }
             CallType::TypeConstructor { typ } => {
@@ -695,7 +732,7 @@ fn expr_call(
                 func_name,
                 self_span,
             } => expr_call_self_attribute(scope, &func_name, func.span, self_span, args),
-            CallType::Pure { func_name } => expr_call_pure(scope, &func_name, func.span, args),
+            CallType::Pure(func_id) => expr_call_pure(scope, func_id, args),
             CallType::ValueAttribute => expr_call_value_attribute(scope, func, args),
             CallType::TypeAttribute { typ, func_name } => {
                 expr_call_type_attribute(scope, typ, &func_name, func.span, args)
@@ -715,7 +752,7 @@ fn expr_call_builtin_function(
     let argument_attributes = expr_call_args(scope, args)?;
     match function {
         GlobalMethod::Keccak256 => {
-            validate_arg_count(scope, function.into(), name_span, args, 1);
+            validate_arg_count(scope, function.as_ref(), name_span, args, 1, "argument");
             expect_no_label_on_first_arg(scope, args);
 
             if let Some(arg_typ) = argument_attributes.first().map(|attr| &attr.typ) {
@@ -726,14 +763,17 @@ fn expr_call_builtin_function(
                         ..
                     })
                 ) {
-                    let fn_name: &str = function.into();
                     scope.fancy_error(
                         &format!(
                             "`{}` can not be used as an argument to `{}`",
-                            arg_typ, fn_name,
+                            arg_typ,
+                            function.as_ref(),
                         ),
                         vec![Label::primary(args.span, "wrong type")],
-                        vec![format!("Note: `{}` expects a byte array argument", fn_name)],
+                        vec![format!(
+                            "Note: `{}` expects a byte array argument",
+                            function.as_ref()
+                        )],
                     );
                 }
             };
@@ -809,7 +849,7 @@ fn expr_call_type_constructor(
     }
 
     // These all expect 1 arg, for now.
-    validate_arg_count(scope, &format!("{}", typ), name_span, args, 1);
+    validate_arg_count(scope, &format!("{}", typ), name_span, args, 1, "argument");
     expect_no_label_on_first_arg(scope, args);
 
     match &typ {
@@ -961,48 +1001,29 @@ fn expr_call_self_attribute(
 
 fn expr_call_pure(
     scope: &mut BlockScope,
-    func_name: &str,
-    name_span: Span,
+    function: FunctionId,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, FatalError> {
-    check_for_call_to_init_fn(scope, func_name, name_span)?;
+    assert!(function.is_pure(scope.db()));
 
-    if let Some(func) = scope.root.pure_contract_function(func_name) {
-        let sig = func.signature(scope.root.db);
-        validate_named_args(
-            scope,
-            func_name,
-            name_span,
-            args,
-            &sig.params,
-            LabelPolicy::AllowAnyUnlabeled,
-        )?;
+    let fn_name = function.name(scope.db());
+    let name_span = function.name_span(scope.db());
+    let sig = function.signature(scope.db());
+    validate_named_args(
+        scope,
+        &fn_name,
+        name_span,
+        args,
+        &sig.params,
+        LabelPolicy::AllowAnyUnlabeled,
+    )?;
 
-        let return_type = sig.return_type.clone()?;
-        let return_location = Location::assign_location(&return_type);
-        Ok(ExpressionAttributes::new(
-            return_type.into(),
-            return_location,
-        ))
-    } else {
-        let voucher = if scope.root.self_contract_function(func_name).is_none() {
-            scope.fancy_error(
-                &format!("no function named `{}` exists in this contract", func_name),
-                vec![Label::primary(name_span, "undefined function")],
-                vec![],
-            )
-        } else {
-            scope.fancy_error(
-                &format!("`{}` must be called using `self`", func_name),
-                vec![Label::primary(name_span, "function takes self")],
-                vec![format!(
-                    "Suggestion: try `self.{}(...)` instead of `{}(...)`",
-                    func_name, func_name
-                )],
-            )
-        };
-        Err(FatalError::new(voucher))
-    }
+    let return_type = sig.return_type.clone()?;
+    let return_location = Location::assign_location(&return_type);
+    Ok(ExpressionAttributes::new(
+        return_type.into(),
+        return_location,
+    ))
 }
 
 fn expr_call_value_attribute(
@@ -1037,8 +1058,8 @@ fn expr_call_value_attribute(
             );
         }
 
-        // for now all of these function expect 0 arguments
-        validate_arg_count(scope, &attr.kind, attr.span, args, 0);
+        // for now all of these functions expect 0 arguments
+        validate_arg_count(scope, &attr.kind, attr.span, args, 0, "argument");
 
         return match ValueMethod::from_str(&attr.kind) {
             Err(_) => {
@@ -1097,10 +1118,10 @@ fn expr_call_value_attribute(
                         scope.fancy_error(
                             "`to_mem()` called on value in memory",
                             vec![
-                                Label::primary(value.span, "this value is in storage"),
+                                Label::primary(value.span, "this value is already in memory"),
                                 Label::secondary(
                                     attr.span,
-                                    "hint: to make a copy, use `.to_mem()` here",
+                                    "hint: to make a copy, use `.clone()` here",
                                 ),
                             ],
                             vec![],
@@ -1151,7 +1172,7 @@ fn expr_call_value_attribute(
                 _ => {
                     scope.fancy_error(
                         &format!(
-                            "value of type {} does not support `abi_encode()`",
+                            "value of type `{}` does not support `abi_encode()`",
                             value_attributes.typ
                         ),
                         vec![Label::primary(
@@ -1183,7 +1204,7 @@ fn expr_call_type_attribute(
     let arg_attributes = expr_call_args(scope, args)?;
     let contract_name = scope.contract_name();
 
-    let report_circular_dependency = |scope: &mut BlockScope, method: String| {
+    let report_circular_dependency = |scope: &mut BlockScope, method: &str| {
         scope.fancy_error(
             &format!("`{contract}.{}(...)` called within `{contract}` creates an illegal circular dependency", method, contract=contract_name),
             vec![Label::primary(name_span, "Contract creation")],
@@ -1194,10 +1215,10 @@ fn expr_call_type_attribute(
 
     match (typ.clone(), ContractTypeMethod::from_str(func_name)) {
         (Type::Contract(contract), Ok(ContractTypeMethod::Create2)) => {
-            validate_arg_count(scope, func_name, name_span, args, 2);
+            validate_arg_count(scope, func_name, name_span, args, 2, "argument");
 
             if contract_name == contract.name {
-                report_circular_dependency(scope, ContractTypeMethod::Create2.to_string());
+                report_circular_dependency(scope, ContractTypeMethod::Create2.as_ref());
             }
 
             if !matches!(
@@ -1216,10 +1237,10 @@ fn expr_call_type_attribute(
             ))
         }
         (Type::Contract(contract), Ok(ContractTypeMethod::Create)) => {
-            validate_arg_count(scope, func_name, name_span, args, 1);
+            validate_arg_count(scope, func_name, name_span, args, 1, "argument");
 
             if contract_name == contract.name {
-                report_circular_dependency(scope, ContractTypeMethod::Create.to_string());
+                report_circular_dependency(scope, ContractTypeMethod::Create.as_ref());
             }
 
             if !matches!(&arg_attributes[0].typ, Type::Base(Base::Numeric(_))) {
@@ -1301,7 +1322,10 @@ fn expr_call_type(
 ) -> Result<CallType, FatalError> {
     let call_type = match &func.kind {
         fe::Expr::Name(name) => expr_name_call_type(scope, name, func.span, generic_args),
-        fe::Expr::Attribute { .. } => expr_attribute_call_type(scope, func),
+        fe::Expr::Attribute { .. } => {
+            // TODO: err if there are generic args
+            expr_attribute_call_type(scope, func)
+        }
         _ => {
             let expression = expr(scope, func, None)?;
             Err(FatalError::new(scope.fancy_error(
@@ -1325,21 +1349,115 @@ fn expr_name_call_type(
     name_span: Span,
     generic_args: Option<&Node<Vec<fe::GenericArg>>>,
 ) -> Result<CallType, FatalError> {
-    if let Some(typ) = resolve_type_name(scope, name, name_span, generic_args) {
-        Ok(CallType::TypeConstructor { typ: typ? })
-    } else if let Ok(func) = GlobalMethod::from_str(name) {
-        if let Some(args) = generic_args {
-            scope.error(
-                &format!("`{}` function does not expect generic arguments", name),
-                args.span,
-                "unexpected generic argument list",
-            );
+    check_for_call_to_init_fn(scope, name, name_span)?;
+
+    let named_item = scope.resolve_name(name).ok_or_else(|| {
+        if let Some(function) = scope.root.contract_function(name) {
+            FatalError::new(scope.fancy_error(
+                &format!("`{}` must be called via `self`", name),
+                vec![
+                    Label::primary(
+                        function.name_span(scope.db()),
+                        &format!("`{}` is defined here as a function that takes `self`", name),
+                    ),
+                    Label::primary(
+                        name_span,
+                        format!("`{}` is called here as a standalone function", name),
+                    ),
+                ],
+                vec![format!(
+                    "Suggestion: use `self.{}(...)` instead of `{}(...)`",
+                    name, name
+                )],
+            ))
+        } else {
+            FatalError::new(scope.error(
+                &format!("`{}` is not defined", name),
+                name_span,
+                &format!("`{}` has not been defined in this scope", name),
+            ))
         }
-        Ok(CallType::BuiltinFunction { func })
-    } else {
-        Ok(CallType::Pure {
-            func_name: name.to_string(),
-        })
+    })?;
+
+    match named_item {
+        NamedThing::Variable { typ, span, .. } => Err(FatalError::new(scope.fancy_error(
+            &format!("`{}` is not callable", name),
+            vec![
+                Label::secondary(span, format!("`{}` has type `{}`", name, typ?)),
+                Label::primary(name_span, format!("`{}` can't be used as a function", name)),
+            ],
+            vec![],
+        ))),
+        NamedThing::Item(Item::Constant(id)) => Err(FatalError::new(scope.error(
+            &format!("`{}` is not callable", name),
+            name_span,
+            &format!(
+                "`{}` is a constant of type `{}`, and can't be used as a function",
+                name,
+                id.typ(scope.db())?,
+            ),
+        ))),
+        NamedThing::Item(Item::Object(_)) => Err(FatalError::new(scope.error(
+            &format!("`{}` is not callable", name),
+            name_span,
+            &format!(
+                "`{}` is a built-in object, and can't be used as a function",
+                name
+            ),
+        ))),
+        NamedThing::Item(Item::Event(_)) => Err(FatalError::new(scope.fancy_error(
+            &format!("`{}` is not callable", name),
+            vec![Label::primary(
+                name_span,
+                &format!(
+                    "`{}` is an event, and can't be constructed in this context",
+                    name
+                ),
+            )],
+            vec![format!("Hint: to emit an event, use `emit {}(..)`", name)],
+        ))),
+        NamedThing::Item(Item::BuiltinFunction(function)) => {
+            if let Some(args) = generic_args {
+                scope.error(
+                    &format!("`{}` function does not expect generic arguments", name),
+                    args.span,
+                    "unexpected generic argument list",
+                );
+            }
+            Ok(CallType::BuiltinFunction(function))
+        }
+
+        NamedThing::Item(Item::Function(function)) => {
+            if let Some(args) = generic_args {
+                scope.fancy_error(
+                    &format!("`{}` function is not generic", name),
+                    vec![Label::primary(
+                        args.span,
+                        "unexpected generic argument list",
+                    )],
+                    vec![],
+                );
+            }
+            Ok(CallType::Pure(function))
+        }
+        NamedThing::Item(Item::Type(id)) => {
+            if let Some(args) = generic_args {
+                scope.fancy_error(
+                    &format!("`{}` type is not generic", name),
+                    vec![Label::primary(
+                        args.span,
+                        "unexpected generic argument list",
+                    )],
+                    vec![],
+                );
+            }
+            Ok(CallType::TypeConstructor {
+                typ: id.typ(scope.db())?,
+            })
+        }
+        NamedThing::Item(Item::GenericType(generic)) => Ok(CallType::TypeConstructor {
+            typ: apply_generic_type_args(scope, generic, name_span, generic_args)?,
+        }),
     }
 }
 
@@ -1349,30 +1467,32 @@ fn expr_attribute_call_type(
 ) -> Result<CallType, FatalError> {
     if let fe::Expr::Attribute { value, attr } = &exp.kind {
         if let fe::Expr::Name(name) = &value.kind {
-            match Object::from_str(name) {
-                Ok(Object::Block) | Ok(Object::Chain) | Ok(Object::Msg) | Ok(Object::Tx) => {
-                    return Err(FatalError::new(scope.fancy_error(
-                        &format!("no function `{}` exists on builtin `{}`", &attr.kind, &name),
-                        vec![Label::primary(exp.span, "undefined function")],
-                        vec![],
-                    )));
-                }
-                Ok(Object::Self_) => {
-                    return Ok(CallType::SelfAttribute {
+            match scope.resolve_name(name) {
+                Some(NamedThing::Item(Item::Object(object))) => match object {
+                    Object::Self_ => {
+                        return Ok(CallType::SelfAttribute {
+                            func_name: attr.kind.to_string(),
+                            self_span: value.span,
+                        })
+                    }
+                    Object::Block | Object::Chain | Object::Msg | Object::Tx => {
+                        return Err(FatalError::new(scope.fancy_error(
+                            &format!("no function `{}` exists on builtin `{}`", &attr.kind, &name),
+                            vec![Label::primary(exp.span, "undefined function")],
+                            vec![],
+                        )));
+                    }
+                },
+                Some(NamedThing::Item(Item::Type(id))) => {
+                    return Ok(CallType::TypeAttribute {
+                        typ: id.typ(scope.db())?,
                         func_name: attr.kind.to_string(),
-                        self_span: value.span,
                     })
                 }
-                Err(_) => {}
-            }
-
-            if let Some(typ) = scope.resolve_type(name) {
-                return Ok(CallType::TypeAttribute {
-                    typ: typ?,
-                    func_name: attr.kind.to_string(),
-                });
-            }
-        };
+                // Everything else is handled in expr_call_value_attribute
+                _ => {}
+            };
+        }
 
         return Ok(CallType::ValueAttribute);
     }

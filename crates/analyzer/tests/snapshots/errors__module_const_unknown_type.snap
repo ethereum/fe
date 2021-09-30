@@ -7,6 +7,6 @@ error: undefined type
   ┌─ compile_errors/module_const_unknown_type.fe:1:12
   │
 1 │ const FOO: Bar = 1
-  │            ^^^ this type name has not been defined
+  │            ^^^ `Bar` has not been defined
 
 
