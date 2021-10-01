@@ -169,23 +169,21 @@ pub fn parse_use_tree(par: &mut Parser) -> ParseResult<Node<UseTree>> {
                     "failed to parse `use` tree",
                     vec!["Note: expected a `*`, `{` or name token".to_string()],
                 );
-                return Err(ParseFailed);
+                Err(ParseFailed)
             }
         }
+    } else if par.peek() == Some(TokenKind::As) {
+        par.next()?;
+
+        let rename_tok = par.expect(TokenKind::Name, "failed to parse `use` tree")?;
+        let rename = Some(Node::new(rename_tok.text.to_string(), rename_tok.span));
+
+        Ok(Node::new(
+            UseTree::Simple { path, rename },
+            path_span + rename_tok.span,
+        ))
     } else {
-        if par.peek() == Some(TokenKind::As) {
-            par.next()?;
-
-            let rename_tok = par.expect(TokenKind::Name, "failed to parse `use` tree")?;
-            let rename = Some(Node::new(rename_tok.text.to_string(), rename_tok.span));
-
-            Ok(Node::new(
-                UseTree::Simple { path, rename },
-                path_span + rename_tok.span,
-            ))
-        } else {
-            Ok(Node::new(UseTree::Simple { path, rename: None }, path_span))
-        }
+        Ok(Node::new(UseTree::Simple { path, rename: None }, path_span))
     }
 }
 

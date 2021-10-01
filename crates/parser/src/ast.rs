@@ -429,7 +429,7 @@ impl fmt::Display for Path {
         let joined_names = self
             .names
             .iter()
-            .map(|name| format!("{}", name.kind))
+            .map(|name| name.kind.to_string())
             .collect::<Vec<_>>()
             .join("::");
         write!(f, "{}", joined_names)?;
