@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/parse_ast.rs
+source: crates/parser/tests/cases/parse_ast.rs
 expression: "ast_string(stringify!(type_generic), types::parse_type_desc,\n           \"foo<a, b<c>, d[10]>\")"
 
 ---

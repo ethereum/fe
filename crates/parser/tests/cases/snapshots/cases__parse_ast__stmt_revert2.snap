@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/parse_ast.rs
+source: crates/parser/tests/cases/parse_ast.rs
 expression: "ast_string(stringify!(stmt_revert2), functions::parse_stmt,\n           \"revert something\")"
 
 ---

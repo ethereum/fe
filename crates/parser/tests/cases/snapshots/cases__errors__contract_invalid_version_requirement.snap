@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/errors.rs
+source: crates/parser/tests/cases/errors.rs
 expression: "err_string(stringify!(contract_invalid_version_requirement),\n           module::parse_module, true, r#\"\npragma 0.o\ncontract C:\n  pass\n\"#)"
 
 ---

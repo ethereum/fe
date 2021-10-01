@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/errors.rs
+source: crates/parser/tests/cases/errors.rs
 expression: "err_string(stringify!(contract_const_fn), contracts::parse_contract_def,\n           false, \"contract C:\\n const fn f():\\n  pass\")"
 
 ---

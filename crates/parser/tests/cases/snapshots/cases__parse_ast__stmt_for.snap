@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/parse_ast.rs
+source: crates/parser/tests/cases/parse_ast.rs
 expression: "ast_string(stringify!(stmt_for), functions::parse_stmt,\n           \"for a in b[0]:\\n pass\")"
 
 ---

@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/errors.rs
+source: crates/parser/tests/cases/errors.rs
 expression: "err_string(stringify!(expr_bad_prefix), expressions::parse_expr, true,\n           \"*x + 1\")"
 
 ---

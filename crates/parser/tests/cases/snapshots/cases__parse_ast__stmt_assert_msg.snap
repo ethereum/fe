@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/parse_ast.rs
+source: crates/parser/tests/cases/parse_ast.rs
 expression: "ast_string(stringify!(stmt_assert_msg), functions::parse_stmt,\n           \"assert x == y, z\")"
 
 ---

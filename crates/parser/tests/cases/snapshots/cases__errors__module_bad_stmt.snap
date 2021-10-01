@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/errors.rs
+source: crates/parser/tests/cases/errors.rs
 expression: "err_string(stringify!(module_bad_stmt), module::parse_module, true,\n           \"if x:\\n y\")"
 
 ---

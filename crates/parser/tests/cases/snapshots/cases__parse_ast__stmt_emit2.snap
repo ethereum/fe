@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/parse_ast.rs
+source: crates/parser/tests/cases/parse_ast.rs
 expression: "ast_string(stringify!(stmt_emit2), functions::parse_stmt,\n           \"emit Foo(1, 2, x=y)\")"
 
 ---

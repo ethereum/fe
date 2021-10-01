@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/parse_ast.rs
+source: crates/parser/tests/cases/parse_ast.rs
 expression: "ast_string(stringify!(empty_struct_def), types::parse_struct_def,\n           r#\"struct S:\n  pass\n\"#)"
 
 ---

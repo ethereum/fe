@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/errors.rs
+source: crates/parser/tests/cases/errors.rs
 expression: "err_string(stringify!(contract_field_after_def), module::parse_module, false,\n           r#\"\ncontract C:\n  fn f():\n    pass\n  x: u8\n\"#)"
 
 ---

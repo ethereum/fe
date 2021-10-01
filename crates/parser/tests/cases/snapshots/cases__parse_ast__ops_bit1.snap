@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/parse_ast.rs
+source: crates/parser/tests/cases/parse_ast.rs
 expression: "ast_string(stringify!(ops_bit1), expressions::parse_expr, \"a & b >> c\")"
 
 ---

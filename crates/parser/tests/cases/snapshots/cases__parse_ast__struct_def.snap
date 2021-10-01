@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/parse_ast.rs
+source: crates/parser/tests/cases/parse_ast.rs
 expression: "ast_string(stringify!(struct_def), types::parse_struct_def,\n           r#\"struct S:\n  x: address\n  pub y: u8\n  const z: u8\n  pub const a: Map<u8, foo>\n\"#)"
 
 ---

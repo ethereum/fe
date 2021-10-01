@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/errors.rs
+source: crates/parser/tests/cases/errors.rs
 expression: "err_string(stringify!(for_no_in), functions::parse_stmt, true,\n           \"for x:\\n pass\")"
 
 ---

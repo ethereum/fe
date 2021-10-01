@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/errors.rs
+source: crates/parser/tests/cases/errors.rs
 expression: "err_string(stringify!(emit_bad_call), functions::parse_stmt, true,\n           \"emit MyEvent(1)()\")"
 
 ---

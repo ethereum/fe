@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/parse_ast.rs
+source: crates/parser/tests/cases/parse_ast.rs
 expression: "ast_string(stringify!(type_map2), types::parse_type_desc,\n           \"Map<address, Map<u8, u256>>\")"
 
 ---

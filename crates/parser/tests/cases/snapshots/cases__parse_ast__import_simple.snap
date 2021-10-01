@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/parse_ast.rs
+source: crates/parser/tests/cases/parse_ast.rs
 expression: "ast_string(stringify!(import_simple), module::parse_simple_import,\n           \"import foo as bar, baz, bing as bop\")"
 
 ---
