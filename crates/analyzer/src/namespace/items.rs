@@ -86,8 +86,8 @@ impl ModuleId {
                         sink.push(&diag)
                     }
                 }
-                ast::ModuleStmt::Import(inner) => {
-                    sink.push(&errors::not_yet_implemented("import", inner.span));
+                ast::ModuleStmt::Use(inner) => {
+                    sink.push(&errors::not_yet_implemented("use", inner.span));
                 }
                 _ => {} // everything else is a type def, handled below.
             }

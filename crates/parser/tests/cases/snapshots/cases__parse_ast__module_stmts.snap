@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(module_stmts), module::parse_module,\n           r#\"\npragma 0.5.0\n\nimport foo as bar, baz as bum\n\ntype X = Map<u8, u16>\n\ncontract A:\n    pub const x: u256 = 10\n\ncontract B:\n    pub x: X\n\"#)"
+expression: "ast_string(stringify!(module_stmts), module::parse_module,\n           r#\"\npragma 0.5.0\n\nuse foo::bar::{\n    bing as bong,\n    food::*\n}\n\ntype X = Map<u8, u16>\n\ncontract A:\n    pub const x: u256 = 10\n\ncontract B:\n    pub x: X\n\"#)"
 
 ---
 Node(
@@ -21,62 +21,106 @@ Node(
           end: 13,
         ),
       )),
-      Import(Node(
-        kind: Simple(
-          names: [
-            Node(
-              kind: SimpleImportName(
-                path: [
-                  Node(
-                    kind: "foo",
-                    span: Span(
-                      start: 22,
-                      end: 25,
+      Use(Node(
+        kind: Use(
+          tree: Node(
+            kind: Nested(
+              prefix: Node(
+                kind: Path(
+                  names: [
+                    Node(
+                      kind: "foo",
+                      span: Span(
+                        start: 19,
+                        end: 22,
+                      ),
+                    ),
+                    Node(
+                      kind: "bar",
+                      span: Span(
+                        start: 24,
+                        end: 27,
+                      ),
+                    ),
+                  ],
+                  trailing_delim: true,
+                ),
+                span: Span(
+                  start: 19,
+                  end: 29,
+                ),
+              ),
+              children: [
+                Node(
+                  kind: Simple(
+                    path: Node(
+                      kind: Path(
+                        names: [
+                          Node(
+                            kind: "bing",
+                            span: Span(
+                              start: 35,
+                              end: 39,
+                            ),
+                          ),
+                        ],
+                        trailing_delim: false,
+                      ),
+                      span: Span(
+                        start: 35,
+                        end: 39,
+                      ),
+                    ),
+                    rename: Some(Node(
+                      kind: "bong",
+                      span: Span(
+                        start: 43,
+                        end: 47,
+                      ),
+                    )),
+                  ),
+                  span: Span(
+                    start: 35,
+                    end: 47,
+                  ),
+                ),
+                Node(
+                  kind: Glob(
+                    prefix: Node(
+                      kind: Path(
+                        names: [
+                          Node(
+                            kind: "food",
+                            span: Span(
+                              start: 53,
+                              end: 57,
+                            ),
+                          ),
+                        ],
+                        trailing_delim: true,
+                      ),
+                      span: Span(
+                        start: 53,
+                        end: 59,
+                      ),
                     ),
                   ),
-                ],
-                alias: Some(Node(
-                  kind: "bar",
                   span: Span(
-                    start: 29,
-                    end: 32,
+                    start: 53,
+                    end: 59,
                   ),
-                )),
-              ),
-              span: Span(
-                start: 22,
-                end: 32,
-              ),
+                ),
+              ],
             ),
-            Node(
-              kind: SimpleImportName(
-                path: [
-                  Node(
-                    kind: "baz",
-                    span: Span(
-                      start: 34,
-                      end: 37,
-                    ),
-                  ),
-                ],
-                alias: Some(Node(
-                  kind: "bum",
-                  span: Span(
-                    start: 41,
-                    end: 44,
-                  ),
-                )),
-              ),
-              span: Span(
-                start: 34,
-                end: 44,
-              ),
+            span: Span(
+              start: 61,
+              end: 62,
             ),
-          ],
+          ),
         ),
         span: Span(
           start: 15,
-          end: 44,
+          end: 62,
         ),
       )),
       TypeAlias(Node(
@@ -84,8 +128,8 @@ Node(
           name: Node(
             kind: "X",
             span: Span(
-              start: 51,
-              end: 52,
+              start: 69,
+              end: 70,
             ),
           ),
           typ: Node(
@@ -93,8 +137,8 @@ Node(
               base: Node(
                 kind: "Map",
                 span: Span(
-                  start: 55,
-                  end: 58,
+                  start: 73,
+                  end: 76,
                 ),
               ),
               args: Node(
@@ -104,8 +148,8 @@ Node(
                       base: "u8",
                     ),
                     span: Span(
-                      start: 59,
-                      end: 61,
+                      start: 77,
+                      end: 79,
                     ),
                   )),
                   TypeDesc(Node(
@@ -113,26 +157,26 @@ Node(
                       base: "u16",
                     ),
                     span: Span(
-                      start: 63,
-                      end: 66,
+                      start: 81,
+                      end: 84,
                     ),
                   )),
                 ],
                 span: Span(
-                  start: 58,
-                  end: 67,
+                  start: 76,
+                  end: 85,
                 ),
               ),
             ),
             span: Span(
-              start: 55,
-              end: 67,
+              start: 73,
+              end: 85,
             ),
           ),
         ),
         span: Span(
-          start: 46,
-          end: 67,
+          start: 64,
+          end: 85,
         ),
       )),
       Contract(Node(
@@ -140,8 +184,8 @@ Node(
           name: Node(
             kind: "A",
             span: Span(
-              start: 78,
-              end: 79,
+              start: 96,
+              end: 97,
             ),
           ),
           fields: [
@@ -152,8 +196,8 @@ Node(
                 name: Node(
                   kind: "x",
                   span: Span(
-                    start: 95,
-                    end: 96,
+                    start: 113,
+                    end: 114,
                   ),
                 ),
                 typ: Node(
@@ -161,29 +205,29 @@ Node(
                     base: "u256",
                   ),
                   span: Span(
-                    start: 98,
-                    end: 102,
+                    start: 116,
+                    end: 120,
                   ),
                 ),
                 value: Some(Node(
                   kind: Num("10"),
                   span: Span(
-                    start: 105,
-                    end: 107,
+                    start: 123,
+                    end: 125,
                   ),
                 )),
               ),
               span: Span(
-                start: 85,
-                end: 102,
+                start: 103,
+                end: 120,
               ),
             ),
           ],
           body: [],
         ),
         span: Span(
-          start: 69,
-          end: 102,
+          start: 87,
+          end: 120,
         ),
       )),
       Contract(Node(
@@ -191,8 +235,8 @@ Node(
           name: Node(
             kind: "B",
             span: Span(
-              start: 118,
-              end: 119,
+              start: 136,
+              end: 137,
             ),
           ),
           fields: [
@@ -203,8 +247,8 @@ Node(
                 name: Node(
                   kind: "x",
                   span: Span(
-                    start: 129,
-                    end: 130,
+                    start: 147,
+                    end: 148,
                   ),
                 ),
                 typ: Node(
@@ -212,29 +256,29 @@ Node(
                     base: "X",
                   ),
                   span: Span(
-                    start: 132,
-                    end: 133,
+                    start: 150,
+                    end: 151,
                   ),
                 ),
                 value: None,
               ),
               span: Span(
-                start: 125,
-                end: 133,
+                start: 143,
+                end: 151,
               ),
             ),
           ],
           body: [],
         ),
         span: Span(
-          start: 109,
-          end: 133,
+          start: 127,
+          end: 151,
         ),
       )),
     ],
   ),
   span: Span(
     start: 0,
-    end: 133,
+    end: 151,
   ),
 )

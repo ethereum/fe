@@ -83,7 +83,7 @@ test_parse_err! { for_no_in, functions::parse_stmt, true, "for x:\n pass" }
 test_parse_err! { fn_no_args, |par| functions::parse_fn_def(par, None), false, "fn f:\n  return 5" }
 test_parse_err! { fn_def_kw, contracts::parse_contract_def, true, "contract C:\n pub def f(x: u8):\n  return x" }
 test_parse_err! { if_no_body, functions::parse_stmt, true, "if x:\nelse:\n x" }
-test_parse_err! { import_bad_name, module::parse_simple_import, true, "import x as 123" }
+test_parse_err! { use_bad_name, module::parse_use, true, "use x as 123" }
 test_parse_err! { module_bad_stmt, module::parse_module, true, "if x:\n y" }
 test_parse_err! { module_nonsense, module::parse_module, true, "))" }
 test_parse_err! { struct_bad_field_name, types::parse_struct_def, true, "struct f:\n pub fn" }

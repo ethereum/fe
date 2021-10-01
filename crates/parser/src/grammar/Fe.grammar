@@ -2,24 +2,21 @@ file_input: NEWLINE ENDMARKER | module_stmt+ ENDMARKER
 
 module_stmt: import_stmt | type_def | contract_def
 
-########################### import_stmt ##############################
+########################### path ######################################
 
-import_stmt: (simple_import | from_import) NEWLINE
+path: NAME ('::' NAME)*
 
-simple_import: 'import' (simple_import_name (',' simple_import_name)*)
-simple_import_name: dotted_name ['as' NAME]
+trailing_delim_path: path '::'
 
-from_import: from_import_parent_alt | from_import_sub_alt
+########################### use_stmt ##################################
 
-from_import_parent_alt: 'from' '.'+ 'import' from_import_names
-from_import_sub_alt: 'from' from_import_sub_path 'import' from_import_names
+use_stmt: 'use' use_tree NEWLINE
 
-from_import_sub_path: '.'* dotted_name
-from_import_names: '*' | '(' from_import_names_list ')' | from_import_names_list
-from_import_names_list: from_import_name (',' from_import_name)* [',']
-from_import_name: NAME ['as' NAME]
+use_tree: (simple_use_tree | glob_use_tree | nested_use_tree)
 
-dotted_name: NAME ('.' NAME)*
+simple_use_tree: path ['as' NAME]
+glob_use_tree: trailing_delim_path '*'
+nested_use_tree: trailing_delim_path '{' [use_tree (',' use_tree)* [',']] '}'
 
 ########################### type_def #################################
 
