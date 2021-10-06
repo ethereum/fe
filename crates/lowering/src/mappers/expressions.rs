@@ -10,7 +10,7 @@ pub fn expr(context: &mut FnContext, exp: Node<fe::Expr>) -> Node<fe::Expr> {
     let span = exp.span;
 
     let lowered_kind = match exp.kind {
-        fe::Expr::Name(_) => exp.kind,
+        fe::Expr::Name(_) => expr_name(context, exp),
         fe::Expr::Num(_) => exp.kind,
         fe::Expr::Bool(_) => exp.kind,
         fe::Expr::Subscript { value, index } => fe::Expr::Subscript {
@@ -101,6 +101,27 @@ pub fn call_args(
         .collect();
 
     Node::new(lowered_args, args.span)
+}
+
+fn expr_name(context: &mut FnContext, exp: Node<fe::Expr>) -> fe::Expr {
+    let name = match &exp.kind {
+        fe::Expr::Name(name) => name,
+        _ => unreachable!(),
+    };
+
+    let db = context.db();
+
+    let module_const = context.id.module(db).lookup_constant(db, name);
+
+    // If the name maps to a base type constant we lower the code to inline
+    // the name expression to the value expression of the constant.
+    match module_const {
+        Some(val) if val.is_base_type(db) => val.value(db),
+        Some(_) => {
+            panic!("Should have been rejected at first analyzer pass")
+        }
+        None => exp.kind,
+    }
 }
 
 fn expr_tuple(context: &mut FnContext, exp: Node<fe::Expr>) -> fe::Expr {

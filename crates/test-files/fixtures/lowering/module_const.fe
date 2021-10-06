@@ -1,0 +1,18 @@
+const THREE: u256 = 3
+const TEN: u256 = 10
+const IS_ADMIN: bool = true
+const UNIT: () = ()
+
+contract Foo:
+
+  pub fn bar() -> u256:
+    if IS_ADMIN:
+        return THREE * TEN
+    else:
+        return TEN
+
+  pub fn baz() -> u256:
+    return THREE * 3
+
+  pub fn return_unit():
+    return UNIT

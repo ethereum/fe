@@ -26,6 +26,7 @@
         * [Contracts](spec/contracts.md)
     * [Statements](spec/statements.md)
         * [`pragma` Statement](spec/statement_pragma.md)
+        * [`const` Statement](spec/statement_const.md)
         * [`let` Statement](spec/statement_let.md)
         * [Assignment Statement](spec/statement_assign.md)
         * [Augmenting Assignment Statement](spec/statement_augassign.md)

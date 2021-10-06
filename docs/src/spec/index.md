@@ -22,6 +22,7 @@
     * [`pragma` Statement](statement_pragma.md)
     * [Assignment Statement](statement_assign.md)
     * [Augmenting Assignment Statement](statement_augassign.md)
+    * [`const` Statement](statement_const.md)
     * [`let` Statement](statement_let.md)
     * [`revert` Statement](statement_revert.md)
     * [`return` Statement](statement_return.md)
