@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/errors.rs
+source: crates/parser/tests/cases/errors.rs
 expression: "err_string(stringify!(contract_empty_body), module::parse_module, true,\n           \"contract X:\\n \\n \\ncontract Y:\\n x: u8\")"
 
 ---

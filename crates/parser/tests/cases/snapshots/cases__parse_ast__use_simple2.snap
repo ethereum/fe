@@ -1,0 +1,53 @@
+---
+source: crates/parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(use_simple2), module::parse_use, \"use foo::bar as baz\")"
+
+---
+Node(
+  kind: Use(
+    tree: Node(
+      kind: Simple(
+        path: Node(
+          kind: Path(
+            names: [
+              Node(
+                kind: "foo",
+                span: Span(
+                  start: 4,
+                  end: 7,
+                ),
+              ),
+              Node(
+                kind: "bar",
+                span: Span(
+                  start: 9,
+                  end: 12,
+                ),
+              ),
+            ],
+            trailing_delim: false,
+          ),
+          span: Span(
+            start: 4,
+            end: 12,
+          ),
+        ),
+        rename: Some(Node(
+          kind: "baz",
+          span: Span(
+            start: 16,
+            end: 19,
+          ),
+        )),
+      ),
+      span: Span(
+        start: 4,
+        end: 19,
+      ),
+    ),
+  ),
+  span: Span(
+    start: 0,
+    end: 19,
+  ),
+)

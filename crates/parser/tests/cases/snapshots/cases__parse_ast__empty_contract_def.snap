@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/parse_ast.rs
+source: crates/parser/tests/cases/parse_ast.rs
 expression: "ast_string(stringify!(empty_contract_def), contracts::parse_contract_def,\n           r#\"contract Foo:\n    pass\n\"#)"
 
 ---

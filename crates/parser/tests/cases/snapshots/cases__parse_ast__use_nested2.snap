@@ -1,0 +1,255 @@
+---
+source: crates/parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(use_nested2), module::parse_use,\n           r#\"use std::bar::{\n    bing::*,\n    bad::{food as burger, barge::*, bill::bob::{jkl::*}},\n    evm as mve\n}\"#)"
+
+---
+Node(
+  kind: Use(
+    tree: Node(
+      kind: Nested(
+        prefix: Node(
+          kind: Path(
+            names: [
+              Node(
+                kind: "std",
+                span: Span(
+                  start: 4,
+                  end: 7,
+                ),
+              ),
+              Node(
+                kind: "bar",
+                span: Span(
+                  start: 9,
+                  end: 12,
+                ),
+              ),
+            ],
+            trailing_delim: true,
+          ),
+          span: Span(
+            start: 4,
+            end: 14,
+          ),
+        ),
+        children: [
+          Node(
+            kind: Glob(
+              prefix: Node(
+                kind: Path(
+                  names: [
+                    Node(
+                      kind: "bing",
+                      span: Span(
+                        start: 20,
+                        end: 24,
+                      ),
+                    ),
+                  ],
+                  trailing_delim: true,
+                ),
+                span: Span(
+                  start: 20,
+                  end: 26,
+                ),
+              ),
+            ),
+            span: Span(
+              start: 20,
+              end: 26,
+            ),
+          ),
+          Node(
+            kind: Nested(
+              prefix: Node(
+                kind: Path(
+                  names: [
+                    Node(
+                      kind: "bad",
+                      span: Span(
+                        start: 33,
+                        end: 36,
+                      ),
+                    ),
+                  ],
+                  trailing_delim: true,
+                ),
+                span: Span(
+                  start: 33,
+                  end: 38,
+                ),
+              ),
+              children: [
+                Node(
+                  kind: Simple(
+                    path: Node(
+                      kind: Path(
+                        names: [
+                          Node(
+                            kind: "food",
+                            span: Span(
+                              start: 39,
+                              end: 43,
+                            ),
+                          ),
+                        ],
+                        trailing_delim: false,
+                      ),
+                      span: Span(
+                        start: 39,
+                        end: 43,
+                      ),
+                    ),
+                    rename: Some(Node(
+                      kind: "burger",
+                      span: Span(
+                        start: 47,
+                        end: 53,
+                      ),
+                    )),
+                  ),
+                  span: Span(
+                    start: 39,
+                    end: 53,
+                  ),
+                ),
+                Node(
+                  kind: Glob(
+                    prefix: Node(
+                      kind: Path(
+                        names: [
+                          Node(
+                            kind: "barge",
+                            span: Span(
+                              start: 55,
+                              end: 60,
+                            ),
+                          ),
+                        ],
+                        trailing_delim: true,
+                      ),
+                      span: Span(
+                        start: 55,
+                        end: 62,
+                      ),
+                    ),
+                  ),
+                  span: Span(
+                    start: 55,
+                    end: 62,
+                  ),
+                ),
+                Node(
+                  kind: Nested(
+                    prefix: Node(
+                      kind: Path(
+                        names: [
+                          Node(
+                            kind: "bill",
+                            span: Span(
+                              start: 65,
+                              end: 69,
+                            ),
+                          ),
+                          Node(
+                            kind: "bob",
+                            span: Span(
+                              start: 71,
+                              end: 74,
+                            ),
+                          ),
+                        ],
+                        trailing_delim: true,
+                      ),
+                      span: Span(
+                        start: 65,
+                        end: 76,
+                      ),
+                    ),
+                    children: [
+                      Node(
+                        kind: Glob(
+                          prefix: Node(
+                            kind: Path(
+                              names: [
+                                Node(
+                                  kind: "jkl",
+                                  span: Span(
+                                    start: 77,
+                                    end: 80,
+                                  ),
+                                ),
+                              ],
+                              trailing_delim: true,
+                            ),
+                            span: Span(
+                              start: 77,
+                              end: 82,
+                            ),
+                          ),
+                        ),
+                        span: Span(
+                          start: 77,
+                          end: 82,
+                        ),
+                      ),
+                    ],
+                  ),
+                  span: Span(
+                    start: 83,
+                    end: 84,
+                  ),
+                ),
+              ],
+            ),
+            span: Span(
+              start: 84,
+              end: 85,
+            ),
+          ),
+          Node(
+            kind: Simple(
+              path: Node(
+                kind: Path(
+                  names: [
+                    Node(
+                      kind: "evm",
+                      span: Span(
+                        start: 91,
+                        end: 94,
+                      ),
+                    ),
+                  ],
+                  trailing_delim: false,
+                ),
+                span: Span(
+                  start: 91,
+                  end: 94,
+                ),
+              ),
+              rename: Some(Node(
+                kind: "mve",
+                span: Span(
+                  start: 98,
+                  end: 101,
+                ),
+              )),
+            ),
+            span: Span(
+              start: 91,
+              end: 101,
+            ),
+          ),
+        ],
+      ),
+      span: Span(
+        start: 102,
+        end: 103,
+      ),
+    ),
+  ),
+  span: Span(
+    start: 0,
+    end: 103,
+  ),
+)

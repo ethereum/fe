@@ -15,7 +15,7 @@ pub struct Module {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub enum ModuleStmt {
     Pragma(Node<Pragma>),
-    Import(Node<Import>),
+    Use(Node<Use>),
     TypeAlias(Node<TypeAlias>),
     Contract(Node<Contract>),
     Struct(Node<Struct>),
@@ -27,13 +27,28 @@ pub struct Pragma {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
-pub enum Import {
-    Simple {
-        names: Vec<Node<SimpleImportName>>,
+pub struct Path {
+    pub names: Vec<Node<String>>,
+    pub trailing_delim: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct Use {
+    pub tree: Node<UseTree>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub enum UseTree {
+    Glob {
+        prefix: Node<Path>,
     },
-    From {
-        path: Node<FromImportPath>,
-        names: Node<FromImportNames>,
+    Nested {
+        prefix: Node<Path>,
+        children: Vec<Node<UseTree>>,
+    },
+    Simple {
+        path: Node<Path>,
+        rename: Option<Node<String>>,
     },
 }
 
@@ -88,35 +103,6 @@ impl Spanned for GenericArg {
             GenericArg::Int(node) => node.span,
         }
     }
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
-pub struct SimpleImportName {
-    pub path: Vec<Node<String>>,
-    pub alias: Option<Node<String>>,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
-pub enum FromImportPath {
-    Absolute {
-        path: Vec<Node<String>>,
-    },
-    Relative {
-        parent_level: usize,
-        path: Vec<Node<String>>,
-    },
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
-pub enum FromImportNames {
-    Star,
-    List(Vec<Node<FromImportName>>),
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
-pub struct FromImportName {
-    pub name: Node<String>,
-    pub alias: Option<Node<String>>,
 }
 
 /// struct or contract field, with optional 'pub' and 'const' qualifiers
@@ -373,7 +359,7 @@ impl Spanned for ModuleStmt {
     fn span(&self) -> Span {
         match self {
             ModuleStmt::Pragma(inner) => inner.span,
-            ModuleStmt::Import(inner) => inner.span,
+            ModuleStmt::Use(inner) => inner.span,
             ModuleStmt::TypeAlias(inner) => inner.span,
             ModuleStmt::Contract(inner) => inner.span,
             ModuleStmt::Struct(inner) => inner.span,
@@ -400,7 +386,7 @@ impl fmt::Display for ModuleStmt {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             ModuleStmt::Pragma(node) => write!(f, "{}", node.kind),
-            ModuleStmt::Import(node) => write!(f, "{}", node.kind),
+            ModuleStmt::Use(node) => write!(f, "{}", node.kind),
             ModuleStmt::TypeAlias(node) => write!(f, "{}", node.kind),
             ModuleStmt::Contract(node) => write!(f, "{}", node.kind),
             ModuleStmt::Struct(node) => write!(f, "{}", node.kind),
@@ -414,9 +400,45 @@ impl fmt::Display for Pragma {
     }
 }
 
-impl fmt::Display for Import {
-    fn fmt(&self, _f: &mut Formatter<'_>) -> fmt::Result {
-        todo!()
+impl fmt::Display for Use {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "use {}", self.tree.kind)
+    }
+}
+
+impl fmt::Display for UseTree {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            UseTree::Glob { prefix } => write!(f, "{}*", prefix.kind),
+            UseTree::Simple { path, rename } => {
+                if let Some(rename) = rename {
+                    write!(f, "{} as {}", path.kind, rename.kind)
+                } else {
+                    write!(f, "{}", path.kind)
+                }
+            }
+            UseTree::Nested { prefix, children } => {
+                write!(f, "{}{{{}}}", prefix.kind, node_comma_joined(children))
+            }
+        }
+    }
+}
+
+impl fmt::Display for Path {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let joined_names = self
+            .names
+            .iter()
+            .map(|name| name.kind.to_string())
+            .collect::<Vec<_>>()
+            .join("::");
+        write!(f, "{}", joined_names)?;
+
+        if self.trailing_delim {
+            write!(f, "::")?;
+        }
+
+        Ok(())
     }
 }
 
@@ -471,30 +493,6 @@ impl fmt::Display for GenericArg {
             GenericArg::TypeDesc(node) => write!(f, "{}", node.kind),
             GenericArg::Int(node) => write!(f, "{}", node.kind),
         }
-    }
-}
-
-impl fmt::Display for SimpleImportName {
-    fn fmt(&self, _f: &mut Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
-
-impl fmt::Display for FromImportPath {
-    fn fmt(&self, _f: &mut Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
-
-impl fmt::Display for FromImportNames {
-    fn fmt(&self, _f: &mut Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
-
-impl fmt::Display for FromImportName {
-    fn fmt(&self, _f: &mut Formatter<'_>) -> fmt::Result {
-        todo!()
     }
 }
 

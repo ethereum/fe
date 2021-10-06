@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/parse_ast.rs
+source: crates/parser/tests/cases/parse_ast.rs
 expression: "ast_string(stringify!(pragma2), module::parse_pragma, \"pragma 0.1.0-alpha\")"
 
 ---

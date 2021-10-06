@@ -1,6 +1,6 @@
 ---
-source: parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(stmt_revert), functions::parse_stmt, \"revert\")"
+source: crates/parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(stmt_revert1), functions::parse_stmt, \"revert\")"
 
 ---
 Node(

@@ -1,3 +1,11 @@
+use foo::bar as baz
+
+use foo::food
+
+use bing::bong::*
+
+use test1::{test1_1, test1_2::{test_1_2_1::*}}
+
 type MyType = String<42>
 
 struct MyStruct:

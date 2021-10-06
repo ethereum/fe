@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/parse_ast.rs
+source: crates/parser/tests/cases/parse_ast.rs
 expression: "ast_string(stringify!(type_3d), types::parse_type_desc, \"u256[4][4][4]\")"
 
 ---

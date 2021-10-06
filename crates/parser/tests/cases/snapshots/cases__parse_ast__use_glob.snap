@@ -1,0 +1,46 @@
+---
+source: crates/parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(use_glob), module::parse_use, \"use foo::bar::*\")"
+
+---
+Node(
+  kind: Use(
+    tree: Node(
+      kind: Glob(
+        prefix: Node(
+          kind: Path(
+            names: [
+              Node(
+                kind: "foo",
+                span: Span(
+                  start: 4,
+                  end: 7,
+                ),
+              ),
+              Node(
+                kind: "bar",
+                span: Span(
+                  start: 9,
+                  end: 12,
+                ),
+              ),
+            ],
+            trailing_delim: true,
+          ),
+          span: Span(
+            start: 4,
+            end: 14,
+          ),
+        ),
+      ),
+      span: Span(
+        start: 4,
+        end: 14,
+      ),
+    ),
+  ),
+  span: Span(
+    start: 0,
+    end: 14,
+  ),
+)

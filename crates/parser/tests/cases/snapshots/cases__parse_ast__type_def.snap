@@ -1,6 +1,6 @@
 ---
-source: parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(type_def), types::parse_type_def,\n           \"type X = Map<address, u256>\")"
+source: crates/parser/tests/cases/parse_ast.rs
+expression: "ast_string(stringify!(type_def), types::parse_type_alias,\n           \"type X = Map<address, u256>\")"
 
 ---
 Node(

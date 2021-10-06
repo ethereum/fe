@@ -1,5 +1,5 @@
 ---
-source: parser/tests/cases/parse_ast.rs
+source: crates/parser/tests/cases/parse_ast.rs
 expression: "ast_string(stringify!(empty_event_def), types::parse_event_def,\n           \"event Foo:\\n  pass\")"
 
 ---

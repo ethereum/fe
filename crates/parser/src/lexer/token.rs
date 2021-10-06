@@ -114,6 +114,10 @@ pub enum TokenKind {
     Not,
     #[token("or")]
     Or,
+    #[token("let")]
+    Let,
+    #[token("use")]
+    Use,
     // Symbols
     #[token("(")]
     ParenOpen,
@@ -199,8 +203,6 @@ pub enum TokenKind {
     GtGtEq,
     #[token("->")]
     Arrow,
-    #[token("let")]
-    Let,
 }
 
 impl TokenKind {
@@ -258,6 +260,7 @@ impl TokenKind {
             In => "in",
             Not => "not",
             Or => "or",
+            Use => "use",
             ParenOpen => "(",
             ParenClose => ")",
             BracketOpen => "[",
