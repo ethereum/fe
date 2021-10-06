@@ -76,7 +76,7 @@ Let's focus on the functionality of our world changing application and add a met
 contract GuestBook:
   messages: Map<address, String<100>>
 
-  pub fn sign(self, book_msg: String<100>):
+  pub fn sign(self:u256, book_msg: String<100>):
       self.messages[msg.sender] = book_msg
 ```
 
@@ -120,10 +120,10 @@ To make the guest book more useful we will also add a method `get_msg` to read e
 contract GuestBook:
   messages: Map<address, String<100>>
 
-  pub fn sign(self, book_msg: String<100>):
+  pub fn sign(self:u256, book_msg: String<100>):
       self.messages[msg.sender] = book_msg
 
-  pub fn get_msg(self, addr: address) -> String<100>:
+  pub fn get_msg(self:u256, addr: address) -> String<100>:
       return self.messages[addr]
 ```
 
@@ -151,10 +151,10 @@ The code should compile fine when we change it accordingly.
 contract GuestBook:
   messages: Map<address, String<100>>
 
-  pub fn sign(self, book_msg: String<100>):
+  pub fn sign(self:u256, book_msg: String<100>):
       self.messages[msg.sender] = book_msg
 
-  pub fn get_msg(self, addr: address) -> String<100>:
+  pub fn get_msg(self:u256, addr: address) -> String<100>:
       return self.messages[addr].to_mem()
 ```
 
