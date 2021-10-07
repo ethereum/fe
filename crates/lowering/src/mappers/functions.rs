@@ -11,7 +11,7 @@ use fe_parser::node::Node;
 
 /// Lowers a function definition.
 pub fn func_def(contract: &mut ContractContext, function: FunctionId) -> Node<fe::Function> {
-    let mut context = FnContext::new(contract, function.body(contract.db()));
+    let mut context = FnContext::new(function, contract, function.body(contract.db()));
     let node = &function.data(context.db()).ast;
     let fe::Function {
         is_pub,

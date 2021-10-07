@@ -1,8 +1,8 @@
 use crate::context::{Analysis, FunctionBody};
 use crate::errors::TypeError;
 use crate::namespace::items::{
-    self, ContractFieldId, ContractId, EventId, FunctionId, ModuleId, StructFieldId, StructId,
-    TypeAliasId, TypeDefId,
+    self, ContractFieldId, ContractId, EventId, FunctionId, ModuleConstantId, ModuleId,
+    StructFieldId, StructId, TypeAliasId, TypeDefId,
 };
 use crate::namespace::types;
 use indexmap::IndexMap;
@@ -30,6 +30,8 @@ macro_rules! impl_intern_key {
 pub trait AnalyzerDb {
     #[salsa::interned]
     fn intern_module(&self, data: Rc<items::Module>) -> ModuleId;
+    #[salsa::interned]
+    fn intern_module_const(&self, data: Rc<items::ModuleConstant>) -> ModuleConstantId;
     #[salsa::interned]
     fn intern_struct(&self, data: Rc<items::Struct>) -> StructId;
     #[salsa::interned]
@@ -61,6 +63,15 @@ pub trait AnalyzerDb {
     fn module_contracts(&self, module: ModuleId) -> Rc<Vec<ContractId>>;
     #[salsa::invoke(queries::module::module_structs)]
     fn module_structs(&self, module: ModuleId) -> Rc<Vec<StructId>>;
+    #[salsa::invoke(queries::module::module_constants)]
+    fn module_constants(&self, module: ModuleId) -> Rc<Vec<ModuleConstantId>>;
+
+    // Module Constant
+    #[salsa::invoke(queries::module::module_constant_type)]
+    fn module_constant_type(
+        &self,
+        id: ModuleConstantId,
+    ) -> Analysis<Result<types::Type, TypeError>>;
 
     // Contract
     #[salsa::invoke(queries::contracts::contract_all_functions)]

@@ -18,6 +18,7 @@ pub enum ModuleStmt {
     Use(Node<Use>),
     TypeAlias(Node<TypeAlias>),
     Contract(Node<Contract>),
+    Constant(Node<ConstantDecl>),
     Struct(Node<Struct>),
 }
 
@@ -50,6 +51,13 @@ pub enum UseTree {
         path: Node<Path>,
         rename: Option<Node<String>>,
     },
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct ConstantDecl {
+    pub name: Node<String>,
+    pub typ: Node<TypeDesc>,
+    pub value: Node<Expr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -362,6 +370,7 @@ impl Spanned for ModuleStmt {
             ModuleStmt::Use(inner) => inner.span,
             ModuleStmt::TypeAlias(inner) => inner.span,
             ModuleStmt::Contract(inner) => inner.span,
+            ModuleStmt::Constant(inner) => inner.span,
             ModuleStmt::Struct(inner) => inner.span,
         }
     }
@@ -389,6 +398,7 @@ impl fmt::Display for ModuleStmt {
             ModuleStmt::Use(node) => write!(f, "{}", node.kind),
             ModuleStmt::TypeAlias(node) => write!(f, "{}", node.kind),
             ModuleStmt::Contract(node) => write!(f, "{}", node.kind),
+            ModuleStmt::Constant(node) => write!(f, "{}", node.kind),
             ModuleStmt::Struct(node) => write!(f, "{}", node.kind),
         }
     }
@@ -439,6 +449,16 @@ impl fmt::Display for Path {
         }
 
         Ok(())
+    }
+}
+
+impl fmt::Display for ConstantDecl {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "const {}: {} = {}",
+            self.name.kind, self.typ.kind, self.value.kind
+        )
     }
 }
 

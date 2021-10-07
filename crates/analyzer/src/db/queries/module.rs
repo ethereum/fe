@@ -1,11 +1,14 @@
 use crate::builtins;
-use crate::context::Analysis;
+use crate::context::{Analysis, AnalyzerContext};
 use crate::db::AnalyzerDb;
-use crate::errors;
+use crate::errors::{self, TypeError};
 use crate::namespace::items::{
-    Contract, ContractId, ModuleId, Struct, StructId, TypeAlias, TypeDefId,
+    Contract, ContractId, ModuleConstant, ModuleConstantId, ModuleId, Struct, StructId, TypeAlias,
+    TypeDefId,
 };
-use crate::namespace::types;
+use crate::namespace::scopes::ItemScope;
+use crate::namespace::types::{self, Type};
+use crate::traversal::types::type_desc;
 use fe_common::diagnostics::Label;
 use fe_parser::ast;
 use indexmap::map::{Entry, IndexMap};
@@ -130,4 +133,45 @@ pub fn module_structs(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<Vec<StructId>
             })
             .collect(),
     )
+}
+
+pub fn module_constants(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<Vec<ModuleConstantId>> {
+    let ast::Module { body } = &module.data(db).ast;
+    let ids = body
+        .iter()
+        .filter_map(|stmt| match stmt {
+            ast::ModuleStmt::Constant(node) => {
+                Some(db.intern_module_const(Rc::new(ModuleConstant {
+                    ast: node.clone(),
+                    module,
+                })))
+            }
+            _ => None,
+        })
+        .collect();
+    Rc::new(ids)
+}
+
+pub fn module_constant_type(
+    db: &dyn AnalyzerDb,
+    constant: ModuleConstantId,
+) -> Analysis<Result<types::Type, TypeError>> {
+    let mut scope = ItemScope::new(db, constant.data(db).module);
+    let typ = type_desc(&mut scope, &constant.data(db).ast.kind.typ);
+
+    match &typ {
+        Ok(typ) if !matches!(typ, Type::Base(_)) => {
+            scope.error(
+                "Non-base types not yet supported for constants",
+                constant.data(db).ast.kind.typ.span,
+                &format!("this has type `{}`; expected a primitive type", typ),
+            );
+        }
+        _ => {}
+    }
+
+    Analysis {
+        value: typ,
+        diagnostics: Rc::new(scope.diagnostics),
+    }
 }

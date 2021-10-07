@@ -20,6 +20,9 @@ pub fn module(db: &dyn AnalyzerDb, module: ModuleId) -> ast::Module {
         .filter_map(|stmt| match stmt {
             ast::ModuleStmt::Pragma(_) => Some(stmt.clone()),
             ast::ModuleStmt::Use(_) => Some(stmt.clone()),
+            // All name expressions referring to constants are handled at the time of lowering,
+            // which causes the constants to no longer serve a purpose.
+            ast::ModuleStmt::Constant(_) => None,
             _ => None,
         })
         .collect::<Vec<_>>();

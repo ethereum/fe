@@ -154,17 +154,44 @@ pub fn function_body(db: &dyn AnalyzerDb, function: FunctionId) -> Analysis<Rc<F
         }
     }
 
+    let mut block_scope = BlockScope::new(&scope, BlockScopeType::Function);
+
+    add_module_constants_to_scope(db, &mut block_scope);
+
     // If `traverse_statements` fails, we can be confident that a diagnostic
     // has been emitted, either while analyzing this fn body or while analyzing
     // a type or fn used in this fn body, because of the `DiagnosticVoucher`
     // system. (See the definition of `FatalError`)
-    let _ = traverse_statements(
-        &mut BlockScope::new(&scope, BlockScopeType::Function),
-        &def.body,
-    );
+    let _ = traverse_statements(&mut block_scope, &def.body);
     Analysis {
         value: Rc::new(scope.body.into_inner()),
         diagnostics: Rc::new(scope.diagnostics.into_inner()),
+    }
+}
+
+fn add_module_constants_to_scope(db: &dyn AnalyzerDb, scope: &mut BlockScope) {
+    for module_const in scope.root.function.module(db).all_constants(db).iter() {
+        let typ = match module_const.typ(db) {
+            Ok(typ) => typ,
+            Err(_) => {
+                // No need to report module_constant_type() already reports this
+                continue;
+            }
+        };
+
+        let const_type: FixedSize = match typ.try_into() {
+            Ok(typ) => typ,
+            Err(_) => {
+                // No need to report module_constant_type() already reports this
+                continue;
+            }
+        };
+
+        let const_name = module_const.name(db);
+        // add_var emits a msg on err; we can ignore the Result.
+        scope
+            .add_var(&const_name, const_type, module_const.span(db))
+            .ok();
     }
 }
 

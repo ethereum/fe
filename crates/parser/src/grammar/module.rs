@@ -1,6 +1,7 @@
 use super::contracts::parse_contract_def;
-use super::types::{parse_struct_def, parse_type_alias};
-use crate::ast::{Module, ModuleStmt, Path, Pragma, Use, UseTree};
+use super::expressions::parse_expr;
+use super::types::{parse_struct_def, parse_type_alias, parse_type_desc};
+use crate::ast::{ConstantDecl, Module, ModuleStmt, Path, Pragma, Use, UseTree};
 use crate::node::{Node, Span};
 use crate::{Label, ParseFailed, ParseResult, Parser, TokenKind};
 
@@ -35,6 +36,7 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
         TokenKind::Contract => ModuleStmt::Contract(parse_contract_def(par)?),
         TokenKind::Struct => ModuleStmt::Struct(parse_struct_def(par)?),
         TokenKind::Type => ModuleStmt::TypeAlias(parse_type_alias(par)?),
+        TokenKind::Const => ModuleStmt::Constant(parse_constant(par)?),
 
         // Let these be parse errors for now:
         // TokenKind::Event => todo!("module-level event def"),
@@ -44,12 +46,57 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
             par.unexpected_token_error(
                 tok.span,
                 "failed to parse module",
-                vec!["Note: expected import, contract, struct, type, or event".into()],
+                vec!["Note: expected import, contract, struct, type, const or event".into()],
             );
             return Err(ParseFailed);
         }
     };
     Ok(stmt)
+}
+
+/// Parse a constant, e.g. `const MAGIC_NUMBER: u256 = 4711`.
+/// # Panics
+/// Panics if the next token isn't `const`.
+pub fn parse_constant(par: &mut Parser) -> ParseResult<Node<ConstantDecl>> {
+    let const_tok = par.assert(TokenKind::Const);
+    let name = par.expect(TokenKind::Name, "failed to parse constant declaration")?;
+    par.expect_with_notes(
+        TokenKind::Colon,
+        "failed to parse constant declaration",
+        |_| {
+            vec![
+                "Note: constant name must be followed by a colon and a type description".into(),
+                format!("Example: let `{}: u256 = 1000`", name.text),
+            ]
+        },
+    )?;
+    let typ = parse_type_desc(par)?;
+    par.expect_with_notes(
+        TokenKind::Eq,
+        "failed to parse constant declaration",
+        |_| {
+            vec![
+            "Note: the type of a constant must be followed by an equals sign and a value assignment"
+                .into(),
+                format!(
+                    "Example: let `{}: u256 = 1000`",
+                    name.text
+                ),
+        ]
+        },
+    )?;
+
+    let exp = parse_expr(par)?;
+
+    let span = const_tok.span + exp.span;
+    Ok(Node::new(
+        ConstantDecl {
+            name: name.into(),
+            typ,
+            value: exp,
+        },
+        span,
+    ))
 }
 
 /// Parse a `use` statement.

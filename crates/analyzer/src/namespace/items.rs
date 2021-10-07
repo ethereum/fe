@@ -7,6 +7,7 @@ use crate::traversal::pragma::check_pragma_version;
 use crate::AnalyzerDb;
 use fe_common::diagnostics::Diagnostic;
 use fe_parser::ast;
+use fe_parser::ast::Expr;
 use fe_parser::node::{Node, Span};
 use indexmap::IndexMap;
 use std::rc::Rc;
@@ -71,6 +72,19 @@ impl ModuleId {
         db.module_structs(*self)
     }
 
+    /// All constants, including duplicates
+    pub fn all_constants(&self, db: &dyn AnalyzerDb) -> Rc<Vec<ModuleConstantId>> {
+        db.module_constants(*self)
+    }
+
+    /// Get constant by name
+    pub fn lookup_constant(&self, db: &dyn AnalyzerDb, name: &str) -> Option<ModuleConstantId> {
+        self.all_constants(db)
+            .iter()
+            .cloned()
+            .find(|item| item.name(db) == name)
+    }
+
     pub fn diagnostics(&self, db: &dyn AnalyzerDb) -> Vec<Diagnostic> {
         let mut diagnostics = vec![];
         self.sink_diagnostics(db, &mut diagnostics);
@@ -89,6 +103,10 @@ impl ModuleId {
                 ast::ModuleStmt::Use(inner) => {
                     sink.push(&errors::not_yet_implemented("use", inner.span));
                 }
+                ast::ModuleStmt::Constant(_) => self
+                    .all_constants(db)
+                    .iter()
+                    .for_each(|id| id.sink_diagnostics(db, sink)),
                 _ => {} // everything else is a type def, handled below.
             }
         }
@@ -100,6 +118,58 @@ impl ModuleId {
         self.all_type_defs(db)
             .iter()
             .for_each(|id| id.sink_diagnostics(db, sink));
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct ModuleConstant {
+    pub ast: Node<ast::ConstantDecl>,
+    pub module: ModuleId,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+pub struct ModuleConstantId(pub(crate) u32);
+impl_intern_key!(ModuleConstantId);
+
+impl ModuleConstantId {
+    pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<ModuleConstant> {
+        db.lookup_intern_module_const(*self)
+    }
+    pub fn span(&self, db: &dyn AnalyzerDb) -> Span {
+        self.data(db).ast.span
+    }
+    pub fn typ(&self, db: &dyn AnalyzerDb) -> Result<types::Type, TypeError> {
+        db.module_constant_type(*self).value
+    }
+
+    pub fn is_base_type(&self, db: &dyn AnalyzerDb) -> bool {
+        matches!(self.typ(db), Ok(types::Type::Base(_)))
+    }
+
+    pub fn name(&self, db: &dyn AnalyzerDb) -> String {
+        self.data(db).ast.kind.name.kind.clone()
+    }
+
+    pub fn value(&self, db: &dyn AnalyzerDb) -> fe_parser::ast::Expr {
+        self.data(db).ast.kind.value.kind.clone()
+    }
+
+    pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
+        db.module_constant_type(*self)
+            .diagnostics
+            .iter()
+            .for_each(|d| sink.push(d));
+
+        if !matches!(
+            self.value(db),
+            Expr::Bool(_) | Expr::Num(_) | Expr::Str(_) | Expr::Unit
+        ) {
+            sink.push(&errors::error(
+                "non-literal expressions not yet supported for constants",
+                self.data(db).ast.kind.value.span,
+                "not a literal",
+            ))
+        }
     }
 }
 

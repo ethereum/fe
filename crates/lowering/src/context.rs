@@ -1,4 +1,5 @@
 use fe_analyzer::context::{ExpressionAttributes, FunctionBody};
+use fe_analyzer::namespace::items::FunctionId;
 use fe_analyzer::namespace::types::{Array, FixedSize, Tuple};
 use fe_analyzer::AnalyzerDb;
 use fe_parser::ast;
@@ -52,16 +53,22 @@ impl<'a, 'db> ContractContext<'a, 'db> {
 pub struct FnContext<'a, 'b, 'db> {
     pub contract: &'a mut ContractContext<'b, 'db>,
     pub body: Rc<FunctionBody>,
+    pub id: FunctionId,
 
     /// Holds fresh id for [`FnContext::make_unique_name`]
     fresh_id: u64,
 }
 
 impl<'a, 'b, 'db> FnContext<'a, 'b, 'db> {
-    pub fn new(contract: &'a mut ContractContext<'b, 'db>, body: Rc<FunctionBody>) -> Self {
+    pub fn new(
+        id: FunctionId,
+        contract: &'a mut ContractContext<'b, 'db>,
+        body: Rc<FunctionBody>,
+    ) -> Self {
         Self {
             contract,
             body,
+            id,
             fresh_id: 0,
         }
     }
