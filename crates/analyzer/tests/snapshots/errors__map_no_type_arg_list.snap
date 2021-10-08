@@ -3,12 +3,12 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: `Map` type requires key and value type arguments
+error: missing generic arguments for type `Map`
   ┌─ [snippet]:3:10
   │
 3 │   let x: Map
-  │          ^^^
+  │          ^^^ expected 2 generic arguments
   │
-  = Example: Map<address, u256>
+  = Example: `Map<u64, String<32>>`
 
 

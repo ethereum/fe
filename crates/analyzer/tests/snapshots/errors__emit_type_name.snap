@@ -1,0 +1,12 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: `emit` expects an event
+  ┌─ [snippet]:3:8
+  │
+3 │   emit u8()
+  │        ^^ `u8` is a type name; expected an event
+
+

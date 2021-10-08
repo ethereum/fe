@@ -82,6 +82,7 @@ pub struct Struct {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub enum TypeDesc {
     Unit,
+    // TODO: change `Base { base: String }` to `Name(String)`
     Base {
         base: String,
     },
@@ -353,6 +354,13 @@ impl Node<FunctionArg> {
         match &self.kind {
             FunctionArg::Regular(arg) => &arg.name.kind,
             FunctionArg::Zelf => "self",
+        }
+    }
+
+    pub fn name_span(&self) -> Span {
+        match &self.kind {
+            FunctionArg::Regular(arg) => arg.name.span,
+            FunctionArg::Zelf => self.span,
         }
     }
 }

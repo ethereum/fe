@@ -1,5 +1,6 @@
-use crate::context::{AnalyzerContext, ExpressionAttributes, Location};
+use crate::context::{AnalyzerContext, ExpressionAttributes, Location, NamedThing};
 use crate::errors::FatalError;
+use crate::namespace::items::Item;
 use crate::namespace::scopes::{BlockScope, BlockScopeType};
 use crate::namespace::types::{Base, FixedSize, Type};
 use crate::traversal::call_args::LabelPolicy;
@@ -131,26 +132,39 @@ fn while_loop(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), F
 
 fn emit(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
     if let fe::FuncStmt::Emit { name, args } = &stmt.kind {
-        if let Some(event) = scope.root.resolve_event(&name.kind) {
-            scope.root.add_emit(stmt, event);
-            call_args::validate_named_args(
-                scope,
-                &name.kind,
-                name.span,
-                args,
-                &event.typ(scope.db()).fields,
-                LabelPolicy::AllowUnlabledIfNameEqual,
-            )?;
-        } else {
-            scope.error(
-                &format!("undefined event: `{}`", name.kind),
-                name.span,
-                "undefined event",
-            );
+        match scope.resolve_name(&name.kind) {
+            None => {
+                scope.error(
+                    &format!("undefined event: `{}`", name.kind),
+                    name.span,
+                    "undefined event",
+                );
+            }
+            Some(NamedThing::Item(Item::Event(event))) => {
+                scope.root.add_emit(stmt, event);
+                call_args::validate_named_args(
+                    scope,
+                    &name.kind,
+                    name.span,
+                    args,
+                    &event.typ(scope.db()).fields,
+                    LabelPolicy::AllowUnlabledIfNameEqual,
+                )?;
+            }
+            Some(named_thing) => {
+                scope.error(
+                    "`emit` expects an event",
+                    name.span,
+                    &format!(
+                        "`{}` is a {} name; expected an event",
+                        &name.kind,
+                        named_thing.item_kind_display_name(),
+                    ),
+                );
+            }
         }
         return Ok(());
     }
-
     unreachable!()
 }
 

@@ -95,6 +95,8 @@ test_stmt! { clone_arg_count, "let x: u256[2] = [5, 6]\nlet y: u256[2] = x.clone
 test_stmt! { continue_without_loop, "continue" }
 test_stmt! { continue_without_loop_2, "if true:\n  continue" }
 test_stmt! { emit_undefined_event, "emit MyEvent()" }
+test_stmt! { emit_type_name, "emit u8()" }
+test_stmt! { emit_variable, "let x: u8 = 10\nemit x()" }
 test_stmt! { int_type_generic_arg_list, "let x: u256<>" }
 test_stmt! { int_type_generic_arg, "let x: u256<10>" }
 test_stmt! { int_type_constructor_generic_arg_list, "u256<>(10)" }
@@ -222,6 +224,7 @@ test_file! { missing_return_after_if }
 test_file! { module_const_unknown_type }
 test_file! { module_const_non_base_type }
 test_file! { module_const_not_literal }
+test_file! { module_const_call }
 test_file! { needs_mem_copy }
 test_file! { not_callable }
 test_file! { not_in_scope }

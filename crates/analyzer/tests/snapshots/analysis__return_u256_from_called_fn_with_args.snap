@@ -266,20 +266,24 @@ note:
    ┌─ features/return_u256_from_called_fn_with_args.fe:11:16
    │
 11 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
-   │                ^^^ attributes hash: 1664590513608378371
+   │                ^^^ attributes hash: 6251600114237252411
    │
-   = Pure {
-         func_name: "foo",
-     }
+   = Pure(
+         FunctionId(
+             0,
+         ),
+     )
 
 note: 
    ┌─ features/return_u256_from_called_fn_with_args.fe:11:26
    │
 11 │         return foo(5, 2, cem(), 25 + 25, self.baz[0])
-   │                          ^^^ attributes hash: 3933618496970144567
+   │                          ^^^ attributes hash: 6696068954755293271
    │
-   = Pure {
-         func_name: "cem",
-     }
+   = Pure(
+         FunctionId(
+             1,
+         ),
+     )
 
 

@@ -3,12 +3,12 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: invalid `String` type argument
-  ┌─ [snippet]:3:9
+error: `String` expects 1 generic argument, but 2 were provided
+  ┌─ [snippet]:3:3
   │
 3 │   String<1, u8>()
-  │         ^^^^^^^ expected an integer
-  │
-  = Example: String<100>
+  │   ^^^^^^ -  -- supplied 2 generic arguments
+  │   │          
+  │   expects 1 generic argument
 
 

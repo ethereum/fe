@@ -1,5 +1,5 @@
 use fe_analyzer::context;
-use fe_analyzer::namespace::items;
+use fe_analyzer::namespace::items::{self, Item, TypeDef};
 use fe_analyzer::namespace::types::{Event, FixedSize, FunctionSignature, Type};
 use fe_analyzer::{AnalyzerDb, Db};
 use fe_common::diagnostics::{diagnostics_string, print_diagnostics, Diagnostic, Label, Severity};
@@ -165,10 +165,10 @@ fn build_snapshot(path: &str, src: &str, module: items::ModuleId, db: &dyn Analy
 
     // contract and struct types aren't worth printing
     let type_aliases = module
-        .all_type_defs(db)
+        .all_items(db)
         .iter()
         .filter_map(|def| match def {
-            items::TypeDefId::Alias(alias) => {
+            Item::Type(TypeDef::Alias(alias)) => {
                 Some((alias.data(db).ast.span, alias.typ(db).unwrap()))
             }
             _ => None,

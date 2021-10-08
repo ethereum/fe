@@ -3,18 +3,12 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: `Map` expects 2 arguments, but 1 was provided
+error: `Map` expects 2 generic arguments, but 1 was provided
   ┌─ [snippet]:3:10
   │
 3 │   let x: Map<y>
-  │          ^^^ - supplied 1 argument
+  │          ^^^ - supplied 1 generic argument
   │          │    
-  │          expects 2 arguments
-
-error: undefined type
-  ┌─ [snippet]:3:14
-  │
-3 │   let x: Map<y>
-  │              ^ this type name has not been defined
+  │          expects 2 generic arguments
 
 

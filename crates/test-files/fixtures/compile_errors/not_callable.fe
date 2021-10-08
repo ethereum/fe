@@ -1,4 +1,16 @@
-contract Foo:
 
-    pub fn bar():
-        5()
+contract Foo:
+  event MyEvent:
+    x: u8
+
+  fn call_int():
+    5()
+
+  fn call_event():
+    MyEvent(x=10)
+
+  fn call_block():
+    block()
+
+  fn call_self(self):
+    self()

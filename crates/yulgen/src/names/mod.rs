@@ -7,14 +7,13 @@ pub mod abi;
 
 /// Generate a function name to perform checked addition
 pub fn checked_add(size: &Integer) -> yul::Identifier {
-    let size: &str = size.into();
-    identifier! {(format!("checked_add_{}", size.to_lowercase()))}
+    identifier! {(format!("checked_add_{}", size.as_ref().to_lowercase()))}
 }
 
 /// Generate a function name to perform checked division
 pub fn checked_div(size: &Integer) -> yul::Identifier {
     let size: &str = if size.is_signed() {
-        size.into()
+        size.as_ref()
     } else {
         "unsigned"
     };
@@ -33,20 +32,18 @@ pub fn checked_mod(size: &Integer) -> yul::Identifier {
 
 /// Generate a function name to perform checked exponentiation
 pub fn checked_exp(size: &Integer) -> yul::Identifier {
-    let size: &str = size.into();
-    identifier! {(format!("checked_exp_{}", size.to_lowercase()))}
+    identifier! {(format!("checked_exp_{}", size.as_ref().to_lowercase()))}
 }
 
 /// Generate a function name to perform checked multiplication
 pub fn checked_mul(size: &Integer) -> yul::Identifier {
-    let size: &str = size.into();
-    identifier! {(format!("checked_mul_{}", size.to_lowercase()))}
+    identifier! {(format!("checked_mul_{}", size.as_ref().to_lowercase()))}
 }
 
 /// Generate a function name to perform checked subtraction
 pub fn checked_sub(size: &Integer) -> yul::Identifier {
     let size: &str = if size.is_signed() {
-        size.into()
+        size.as_ref()
     } else {
         "unsigned"
     };
@@ -55,8 +52,7 @@ pub fn checked_sub(size: &Integer) -> yul::Identifier {
 
 /// Generate a function name to adjust the size of the integer
 pub fn adjust_numeric_size(size: &Integer) -> yul::Identifier {
-    let size: &str = size.into();
-    identifier! {(format!("adjust_numeric_{}", size.to_lowercase()))}
+    identifier! {(format!("adjust_numeric_{}", size.as_ref().to_lowercase()))}
 }
 
 /// Generate a safe function name for a user defined function

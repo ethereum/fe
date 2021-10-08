@@ -5879,21 +5879,25 @@ note:
     ┌─ demos/uniswap.fe:144:36
     │
 144 │                 let root_k: u256 = sqrt(reserve0 * reserve1)
-    │                                    ^^^^ attributes hash: 11539501539171308117
+    │                                    ^^^^ attributes hash: 3607074860458368047
     │
-    = Pure {
-          func_name: "sqrt",
-      }
+    = Pure(
+          FunctionId(
+              23,
+          ),
+      )
 
 note: 
     ┌─ demos/uniswap.fe:145:41
     │
 145 │                 let root_k_last: u256 = sqrt(k_last)
-    │                                         ^^^^ attributes hash: 11539501539171308117
+    │                                         ^^^^ attributes hash: 3607074860458368047
     │
-    = Pure {
-          func_name: "sqrt",
-      }
+    = Pure(
+          FunctionId(
+              23,
+          ),
+      )
 
 note: 
     ┌─ demos/uniswap.fe:151:25
@@ -5977,11 +5981,13 @@ note:
     ┌─ demos/uniswap.fe:171:25
     │
 171 │             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY
-    │                         ^^^^ attributes hash: 11539501539171308117
+    │                         ^^^^ attributes hash: 3607074860458368047
     │
-    = Pure {
-          func_name: "sqrt",
-      }
+    = Pure(
+          FunctionId(
+              23,
+          ),
+      )
 
 note: 
     ┌─ demos/uniswap.fe:172:13
@@ -6013,11 +6019,13 @@ note:
     ┌─ demos/uniswap.fe:174:25
     │
 174 │             liquidity = min((amount0 * total_supply) / reserve0, (amount1 * total_supply) / reserve1)
-    │                         ^^^ attributes hash: 2385741873862807477
+    │                         ^^^ attributes hash: 1164657736943769014
     │
-    = Pure {
-          func_name: "min",
-      }
+    = Pure(
+          FunctionId(
+              24,
+          ),
+      )
 
 note: 
     ┌─ demos/uniswap.fe:178:9
@@ -6433,11 +6441,11 @@ note:
     ┌─ demos/uniswap.fe:319:26
     │
 319 │         let salt: u256 = keccak256((token0, token1).abi_encode())
-    │                          ^^^^^^^^^ attributes hash: 11888120106960716956
+    │                          ^^^^^^^^^ attributes hash: 3985281278010092305
     │
-    = BuiltinFunction {
-          func: Keccak256,
-      }
+    = BuiltinFunction(
+          Keccak256,
+      )
 
 note: 
     ┌─ demos/uniswap.fe:319:36

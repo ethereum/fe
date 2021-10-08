@@ -1,6 +1,7 @@
 use crate::context::FnContext;
 use crate::names::{list_expr_generator_fn_name, tuple_struct_name};
 use crate::utils::ZeroSpanNode;
+use fe_analyzer::namespace::items::Item;
 use fe_analyzer::namespace::types::{Type, TypeDowncast};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
@@ -110,17 +111,15 @@ fn expr_name(context: &mut FnContext, exp: Node<fe::Expr>) -> fe::Expr {
     };
 
     let db = context.db();
-
-    let module_const = context.id.module(db).lookup_constant(db, name);
-
-    // If the name maps to a base type constant we lower the code to inline
-    // the name expression to the value expression of the constant.
-    match module_const {
-        Some(val) if val.is_base_type(db) => val.value(db),
-        Some(_) => {
-            panic!("Should have been rejected at first analyzer pass")
+    match context.id.module(db).resolve_name(db, name) {
+        Some(Item::Constant(val)) => {
+            assert!(
+                val.is_base_type(db),
+                "Should have been rejected at first analyzer pass"
+            );
+            val.value(db)
         }
-        None => exp.kind,
+        _ => exp.kind,
     }
 }
 

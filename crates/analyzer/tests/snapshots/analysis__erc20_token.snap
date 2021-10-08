@@ -2087,11 +2087,13 @@ note:
    ┌─ demos/erc20_token.fe:68:9
    │
 68 │         _before_token_transfer(sender, recipient, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 283404834886046277
+   │         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4288839759476594646
    │
-   = Pure {
-         func_name: "_before_token_transfer",
-     }
+   = Pure(
+         FunctionId(
+             17,
+         ),
+     )
 
 note: 
    ┌─ demos/erc20_token.fe:74:27
@@ -2109,11 +2111,13 @@ note:
    ┌─ demos/erc20_token.fe:75:9
    │
 75 │         _before_token_transfer(address(0), account, value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 283404834886046277
+   │         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4288839759476594646
    │
-   = Pure {
-         func_name: "_before_token_transfer",
-     }
+   = Pure(
+         FunctionId(
+             17,
+         ),
+     )
 
 note: 
    ┌─ demos/erc20_token.fe:75:32
@@ -2155,11 +2159,13 @@ note:
    ┌─ demos/erc20_token.fe:82:9
    │
 82 │         _before_token_transfer(account, address(0), value)
-   │         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 283404834886046277
+   │         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4288839759476594646
    │
-   = Pure {
-         func_name: "_before_token_transfer",
-     }
+   = Pure(
+         FunctionId(
+             17,
+         ),
+     )
 
 note: 
    ┌─ demos/erc20_token.fe:82:41

@@ -1,9 +1,8 @@
 #![allow(unstable_name_collisions)] // expect_none, which ain't gonna be stabilized
 
-use crate::builtins;
-use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, FunctionBody};
+use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, FunctionBody, NamedThing};
 use crate::errors::{AlreadyDefined, TypeError};
-use crate::namespace::items::{EventId, FunctionId, ModuleId};
+use crate::namespace::items::{ContractId, EventId, FunctionId, Item, ModuleId};
 use crate::namespace::types::{FixedSize, Type};
 use crate::AnalyzerDb;
 use fe_common::diagnostics::Diagnostic;
@@ -29,8 +28,13 @@ impl<'a> ItemScope<'a> {
 }
 
 impl<'a> AnalyzerContext for ItemScope<'a> {
-    fn resolve_type(&self, name: &str) -> Option<Result<Type, TypeError>> {
-        self.module.resolve_type(self.db, name)
+    fn db(&self) -> &dyn AnalyzerDb {
+        self.db
+    }
+    fn resolve_name(&self, name: &str) -> Option<NamedThing> {
+        self.module
+            .resolve_name(self.db, name)
+            .map(NamedThing::Item)
     }
     fn add_diagnostic(&mut self, diag: Diagnostic) {
         self.diagnostics.push(diag)
@@ -73,23 +77,19 @@ impl<'a> FunctionScope<'a> {
     }
 
     pub fn contract_field(&self, name: &str) -> Option<(Result<Type, TypeError>, usize)> {
-        self.function.parent(self.db).field_type(self.db, name)
+        self.function.contract(self.db).field_type(self.db, name)
     }
 
     pub fn contract_function(&self, name: &str) -> Option<FunctionId> {
-        self.function.parent(self.db).function(self.db, name)
-    }
-
-    pub fn self_contract_function(&self, name: &str) -> Option<FunctionId> {
-        self.function.parent(self.db).self_function(self.db, name)
+        self.function.contract(self.db).function(self.db, name)
     }
 
     pub fn pure_contract_function(&self, name: &str) -> Option<FunctionId> {
-        self.function.parent(self.db).pure_function(self.db, name)
+        self.function.contract(self.db).pure_function(self.db, name)
     }
 
-    pub fn resolve_event(&self, name: &str) -> Option<EventId> {
-        self.function.parent(self.db).event(self.db, name)
+    pub fn self_contract_function(&self, name: &str) -> Option<FunctionId> {
+        self.function.contract(self.db).self_function(self.db, name)
     }
 
     pub fn function_return_type(&self) -> Result<FixedSize, TypeError> {
@@ -167,12 +167,51 @@ impl<'a> FunctionScope<'a> {
 }
 
 impl<'a> AnalyzerContext for FunctionScope<'a> {
+    fn db(&self) -> &dyn AnalyzerDb {
+        self.db
+    }
+
     fn add_diagnostic(&mut self, diag: Diagnostic) {
         self.diagnostics.borrow_mut().push(diag)
     }
 
-    fn resolve_type(&self, name: &str) -> Option<Result<Type, TypeError>> {
-        self.function.module(self.db).resolve_type(self.db, name)
+    fn resolve_name(&self, name: &str) -> Option<NamedThing> {
+        // Getting param names and spans should be simpler
+        self.function
+            .signature(self.db)
+            .params
+            .iter()
+            .find_map(|param| {
+                (param.name == name).then(|| {
+                    let span = self
+                        .function
+                        .data(self.db)
+                        .ast
+                        .kind
+                        .args
+                        .iter()
+                        .find_map(|param| (param.name() == name).then(|| param.name_span()))
+                        .expect("found param type but not span");
+
+                    NamedThing::Variable {
+                        name: name.to_string(),
+                        typ: param.typ.clone(),
+                        span,
+                    }
+                })
+            })
+            .or_else(|| {
+                self.function
+                    .contract(self.db)
+                    .resolve_name(self.db, name)
+                    .map(NamedThing::Item)
+            })
+            .or_else(|| {
+                self.function
+                    .module(self.db)
+                    .resolve_name(self.db, name)
+                    .map(NamedThing::Item)
+            })
     }
 }
 
@@ -191,8 +230,28 @@ pub enum BlockScopeType {
 }
 
 impl AnalyzerContext for BlockScope<'_, '_> {
-    fn resolve_type(&self, name: &str) -> Option<Result<Type, TypeError>> {
-        self.root.resolve_type(name)
+    fn db(&self) -> &dyn AnalyzerDb {
+        self.root.db
+    }
+    fn resolve_name(&self, name: &str) -> Option<NamedThing> {
+        self.variable_defs
+            .get(name)
+            .map(|(typ, span)| NamedThing::Variable {
+                name: name.to_string(),
+                typ: Ok(typ.clone()),
+                span: *span,
+            })
+            .or_else(|| {
+                if let Some(parent) = self.parent {
+                    parent.resolve_name(name)
+                } else {
+                    // If there's no parent block, check the contract and module
+                    self.contract()
+                        .pure_function(self.db(), name)
+                        .map(|id| NamedThing::Item(Item::Function(id)))
+                        .or_else(|| self.root.resolve_name(name))
+                }
+            })
     }
     fn add_diagnostic(&mut self, diag: Diagnostic) {
         self.root.diagnostics.borrow_mut().push(diag)
@@ -218,29 +277,16 @@ impl<'a, 'b> BlockScope<'a, 'b> {
         }
     }
 
+    pub fn contract(&self) -> ContractId {
+        self.root.function.contract(self.root.db)
+    }
+
+    pub fn module(&self) -> ModuleId {
+        self.root.function.module(self.root.db)
+    }
+
     pub fn contract_name(&self) -> String {
-        self.root.function.parent(self.root.db).name(self.root.db)
-    }
-
-    pub fn db(&self) -> &dyn AnalyzerDb {
-        self.root.db
-    }
-
-    /// Lookup a definition in current or inherited block scope
-    pub fn var_type(&self, name: &str) -> Option<Result<FixedSize, TypeError>> {
-        self.variable_defs
-            .get(name)
-            .map(|(typ, _span)| Ok(typ.clone()))
-            .or_else(|| self.parent?.var_type(name))
-            .or_else(|| self.root.var_type(name))
-    }
-
-    pub fn var_def_span(&self, name: &str) -> Option<Span> {
-        self.variable_defs
-            .get(name)
-            .map(|(_typ, span)| *span)
-            .or_else(|| self.parent?.var_def_span(name))
-            .or_else(|| self.root.var_def_span(name))
+        self.root.function.contract(self.root.db).name(self.root.db)
     }
 
     /// Add a variable to the block scope.
@@ -250,33 +296,36 @@ impl<'a, 'b> BlockScope<'a, 'b> {
         typ: FixedSize,
         span: Span,
     ) -> Result<(), AlreadyDefined> {
-        if let Some(reserved) = builtins::reserved_name(name) {
-            self.error(
-                &format!(
-                    "variable name conflicts with built-in {}",
-                    reserved.as_ref()
-                ),
-                span,
-                &format!("`{}` is a built-in {}", name, reserved.as_ref()),
-            );
-            return Err(AlreadyDefined);
-        }
-
-        // It's (currently) an error to shadow a variable in a nested scope
-        match self.var_def_span(name) {
-            Some(prev_span) => {
+        if let Some(named_item) = self.resolve_name(name) {
+            if named_item.is_builtin() {
+                self.error(
+                    &format!(
+                        "variable name conflicts with built-in {}",
+                        named_item.item_kind_display_name(),
+                    ),
+                    span,
+                    &format!(
+                        "`{}` is a built-in {}",
+                        name,
+                        named_item.item_kind_display_name()
+                    ),
+                );
+                return Err(AlreadyDefined);
+            } else {
+                // It's (currently) an error to shadow a variable in a nested scope
                 self.duplicate_name_error(
                     &format!("duplicate definition of variable `{}`", name),
                     name,
-                    prev_span,
+                    named_item
+                        .name_span(self.db())
+                        .expect("missing name_span of non-builtin"),
                     span,
                 );
-                Err(AlreadyDefined)
             }
-            None => {
-                self.variable_defs.insert(name.to_string(), (typ, span));
-                Ok(())
-            }
+            Err(AlreadyDefined)
+        } else {
+            self.variable_defs.insert(name.to_string(), (typ, span));
+            Ok(())
         }
     }
 

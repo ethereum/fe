@@ -3,12 +3,12 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: `String` type requires a max size argument
+error: missing generic argument for type `String`
   ┌─ [snippet]:3:10
   │
 3 │   let x: String
-  │          ^^^^^^
+  │          ^^^^^^ expected 1 generic argument
   │
-  = Example: String<100>
+  = Example: `String<32>`
 
 

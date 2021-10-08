@@ -1,8 +1,7 @@
-use crate::builtins;
-use crate::context::AnalyzerContext;
+use crate::context::{AnalyzerContext, NamedThing};
 use crate::db::{Analysis, AnalyzerDb};
 use crate::errors;
-use crate::namespace::items::{self, ContractFieldId, ContractId, EventId, FunctionId};
+use crate::namespace::items::{self, ContractFieldId, ContractId, EventId, FunctionId, Item};
 use crate::namespace::scopes::ItemScope;
 use crate::namespace::types;
 use crate::traversal::types::type_desc;
@@ -13,6 +12,7 @@ use indexmap::map::{Entry, IndexMap};
 use std::rc::Rc;
 
 pub fn contract_all_functions(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<Vec<FunctionId>> {
+    let module = contract.module(db);
     let body = &contract.data(db).ast.kind.body;
     Rc::new(
         body.iter()
@@ -21,7 +21,8 @@ pub fn contract_all_functions(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<V
                 ast::ContractStmt::Function(node) => {
                     Some(db.intern_function(Rc::new(items::Function {
                         ast: node.clone(),
-                        parent: contract,
+                        contract,
+                        module,
                     })))
                 }
             })
@@ -42,14 +43,25 @@ pub fn contract_function_map(
         if def_name == "__init__" {
             continue;
         }
-        if let Some(reserved) = builtins::reserved_name(def_name) {
-            scope.error(
-                &format!(
-                    "function name conflicts with built-in {}",
-                    reserved.as_ref()
-                ),
+
+        if let Some(event) = contract.event(db, def_name) {
+            scope.name_conflict_error(
+                "function",
+                def_name,
+                &NamedThing::Item(Item::Event(event)),
+                Some(event.name_span(db)),
                 def.kind.name.span,
-                &format!("`{}` is a built-in {}", def_name, reserved.as_ref()),
+            );
+            continue;
+        }
+
+        if let Some(named_item) = scope.resolve_name(def_name) {
+            scope.name_conflict_error(
+                "function",
+                def_name,
+                &named_item,
+                named_item.name_span(db),
+                def.kind.name.span,
             );
             continue;
         }

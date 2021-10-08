@@ -7,8 +7,6 @@ error: `u256` type is not generic
   ┌─ [snippet]:3:7
   │
 3 │   u256<1>(10)
-  │       ^^^ unexpected type argument list
-  │
-  = Hint: use `u256`
+  │       ^^^ unexpected generic argument list
 
 

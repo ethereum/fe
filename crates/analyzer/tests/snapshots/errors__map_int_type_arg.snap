@@ -7,6 +7,6 @@ error: `Map` value must be a type
   ┌─ [snippet]:3:23
   │
 3 │   let x: Map<address, 100>
-  │                       ^^^ this should be a type name
+  │                       ^^^ expected a type name
 
 

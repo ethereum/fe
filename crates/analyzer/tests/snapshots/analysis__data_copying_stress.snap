@@ -1128,11 +1128,13 @@ note:
    ┌─ stress/data_copying_stress.fe:69:9
    │
 69 │         emit_my_event_internal(
-   │         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15175926995091823840
+   │         ^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 1445082349245844857
    │
-   = Pure {
-         func_name: "emit_my_event_internal",
-     }
+   = Pure(
+         FunctionId(
+             8,
+         ),
+     )
 
 note: 
    ┌─ stress/data_copying_stress.fe:70:13

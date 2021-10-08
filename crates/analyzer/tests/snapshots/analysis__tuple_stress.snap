@@ -825,11 +825,13 @@ note:
    ┌─ stress/tuple_stress.fe:43:9
    │
 43 │         emit_my_event(my_tuple)
-   │         ^^^^^^^^^^^^^ attributes hash: 4428583522641384060
+   │         ^^^^^^^^^^^^^ attributes hash: 12310327282992125219
    │
-   = Pure {
-         func_name: "emit_my_event",
-     }
+   = Pure(
+         FunctionId(
+             5,
+         ),
+     )
 
 note: 
    ┌─ stress/tuple_stress.fe:46:16

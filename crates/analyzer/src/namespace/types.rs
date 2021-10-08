@@ -6,7 +6,7 @@ use num_traits::ToPrimitive;
 use std::convert::TryFrom;
 use std::fmt;
 use std::str::FromStr;
-use strum::{EnumString, IntoStaticStr};
+use strum::{AsRefStr, EnumIter, EnumString};
 use vec1::Vec1;
 
 pub fn u256_min() -> BigInt {
@@ -52,7 +52,7 @@ pub enum FixedSize {
     Struct(Struct),
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Base {
     Numeric(Integer),
     Bool,
@@ -60,7 +60,7 @@ pub enum Base {
     Unit,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash, IntoStaticStr, EnumString)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, AsRefStr, EnumString, EnumIter)]
 #[strum(serialize_all = "snake_case")]
 pub enum Integer {
     U256,
@@ -79,7 +79,7 @@ pub enum Integer {
 
 pub const U256: Base = Base::Numeric(Integer::U256);
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Array {
     pub size: usize,
     pub inner: Base,
@@ -131,6 +131,77 @@ pub enum SelfDecl {
 pub struct FunctionParam {
     pub name: String,
     pub typ: Result<FixedSize, TypeError>,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, EnumString, AsRefStr, EnumIter)]
+pub enum GenericType {
+    // Array, // TODO: when array syntax is changed
+    String,
+    Map,
+}
+
+impl GenericType {
+    pub fn name(&self) -> &str {
+        self.as_ref()
+    }
+    pub fn params(&self) -> Vec<GenericParam> {
+        match self {
+            GenericType::String => vec![GenericParam {
+                name: "max size".into(),
+                kind: GenericParamKind::Int,
+            }],
+            GenericType::Map => vec![
+                GenericParam {
+                    name: "key".into(),
+                    kind: GenericParamKind::PrimitiveType,
+                },
+                GenericParam {
+                    name: "value".into(),
+                    kind: GenericParamKind::AnyType,
+                },
+            ],
+        }
+    }
+
+    // see traversal::types::apply_generic_type_args for error checking
+    pub fn apply(&self, args: &[GenericArg]) -> Option<Type> {
+        match self {
+            GenericType::String => match args {
+                [GenericArg::Int(max_size)] => Some(Type::String(FeString {
+                    max_size: *max_size,
+                })),
+                _ => None,
+            },
+            GenericType::Map => match args {
+                [GenericArg::Type(key), GenericArg::Type(value)] => Some(Type::Map(Map {
+                    key: key.as_primitive()?,
+                    value: Box::new(value.clone()),
+                })),
+                _ => None,
+            },
+        }
+    }
+}
+
+pub struct GenericParam {
+    pub name: String,
+    pub kind: GenericParamKind,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum GenericParamKind {
+    Int,
+
+    // Ideally these would be represented as trait constraints.
+    PrimitiveType,
+    // FixedSizeType, // not needed yet
+    AnyType,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum GenericArg {
+    Int(usize),
+    Type(Type),
 }
 
 impl Integer {
@@ -268,6 +339,7 @@ pub trait TypeDowncast {
     fn as_string(&self) -> Option<&FeString>;
     fn as_map(&self) -> Option<&Map>;
     fn as_int(&self) -> Option<Integer>;
+    fn as_primitive(&self) -> Option<Base>;
 }
 
 impl TypeDowncast for Type {
@@ -301,6 +373,12 @@ impl TypeDowncast for Type {
             _ => None,
         }
     }
+    fn as_primitive(&self) -> Option<Base> {
+        match self {
+            Type::Base(base) => Some(*base),
+            _ => None,
+        }
+    }
 }
 
 impl TypeDowncast for Option<&Type> {
@@ -318,6 +396,9 @@ impl TypeDowncast for Option<&Type> {
     }
     fn as_int(&self) -> Option<Integer> {
         self.and_then(|t| t.as_int())
+    }
+    fn as_primitive(&self) -> Option<Base> {
+        self.and_then(|t| t.as_primitive())
     }
 }
 
