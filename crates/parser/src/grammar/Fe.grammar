@@ -1,6 +1,6 @@
 file_input: NEWLINE ENDMARKER | module_stmt+ ENDMARKER
 
-module_stmt: import_stmt | type_def | contract_def
+module_stmt: import_stmt | type_def | contract_def | func_def
 
 ########################### path ######################################
 
@@ -63,9 +63,6 @@ func_qual: 'pub'
 func_stmt:  compound_stmt | simple_stmt
 simple_stmt: small_stmt (';' small_stmt)* [';'] NEWLINE
 
-# NOTE: `vardecl_stmt`, `assign_stmt`, and `augassign_stmt` MUST precede
-# `exprs`.  Otherwise, the parser will get stuck.  However, they must follow
-# all others.  Otherwise, reserved words will match a simple NAME.
 small_stmt: return_stmt | assert_stmt | emit_stmt | pass_stmt | break_stmt |
             continue_stmt | revert_stmt | vardecl_stmt | assign_stmt | augassign_stmt |
             exprs

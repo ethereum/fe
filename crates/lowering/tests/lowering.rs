@@ -68,5 +68,6 @@ test_file! { map_tuple, "lowering/map_tuple.fe" }
 test_file! { type_alias_tuple, "lowering/type_alias_tuple.fe" }
 test_file! { tuple_destruct, "lowering/tuple_destruct.fe" }
 test_file! { module_const, "lowering/module_const.fe" }
+test_file! { module_fn, "lowering/module_fn.fe" }
 // TODO: the analyzer rejects lowered nested tuples.
 // test_file!(array_tuple, "lowering/array_tuple.fe");

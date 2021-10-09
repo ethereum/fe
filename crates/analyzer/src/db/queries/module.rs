@@ -3,8 +3,8 @@ use crate::context::{Analysis, AnalyzerContext};
 use crate::db::AnalyzerDb;
 use crate::errors::{self, TypeError};
 use crate::namespace::items::{
-    Contract, ContractId, Item, ModuleConstant, ModuleConstantId, ModuleId, Struct, StructId,
-    TypeAlias, TypeDef,
+    Contract, ContractId, Function, Item, ModuleConstant, ModuleConstantId, ModuleId, Struct,
+    StructId, TypeAlias, TypeDef,
 };
 use crate::namespace::scopes::ItemScope;
 use crate::namespace::types::{self, Type};
@@ -75,6 +75,13 @@ pub fn module_all_items(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<Vec<Item>> 
                     module,
                 }),
             ))),
+            ast::ModuleStmt::Function(node) => {
+                Some(Item::Function(db.intern_function(Rc::new(Function {
+                    ast: node.clone(),
+                    contract: None,
+                    module,
+                }))))
+            }
             ast::ModuleStmt::Pragma(_) => None,
             ast::ModuleStmt::Use(_) => todo!(),
         })

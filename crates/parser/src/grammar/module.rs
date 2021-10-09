@@ -1,5 +1,6 @@
 use super::contracts::parse_contract_def;
 use super::expressions::parse_expr;
+use super::functions::parse_fn_def;
 use super::types::{parse_struct_def, parse_type_alias, parse_type_desc};
 use crate::ast::{ConstantDecl, Module, ModuleStmt, Path, Pragma, Use, UseTree};
 use crate::node::{Node, Span};
@@ -41,6 +42,21 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
         // Let these be parse errors for now:
         // TokenKind::Event => todo!("module-level event def"),
         // TokenKind::Name if par.peeked_text() == "from" => parse_from_import(par),
+        TokenKind::Pub => {
+            let pub_span = par.next()?.span;
+            if par.peek_or_err()? == TokenKind::Fn {
+                ModuleStmt::Function(parse_fn_def(par, Some(pub_span))?)
+            } else {
+                let tok = par.next()?;
+                par.unexpected_token_error(
+                    tok.span,
+                    "failed to parse module",
+                    vec!["Note: expected `fn`".into()],
+                );
+                return Err(ParseFailed);
+            }
+        }
+        TokenKind::Fn => ModuleStmt::Function(parse_fn_def(par, None)?),
         _ => {
             let tok = par.next()?;
             par.unexpected_token_error(

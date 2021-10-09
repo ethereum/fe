@@ -131,16 +131,20 @@ mod tests {
 
     #[test]
     fn build_contract_abi() {
-        let contract = "\
-            \ncontract Foo:\
-            \n  event Food:\
-            \n    idx barge: u256
-            \n  pub fn __init__(x: address):\
-            \n    pass\
-            \n  fn baz(x: address) -> u256:\
-            \n    revert\
-            \n  pub fn bar(x: u256) -> u256[10]:\
-            \n    revert";
+        let contract = r#"
+pub fn add(x: u256, y: u256) -> u256:
+  return x + y
+
+contract Foo:
+  event Food:
+    idx barge: u256
+  pub fn __init__(x: address):
+    pass
+  fn baz(x: address) -> u256:
+    add(10, 20)
+    revert
+  pub fn bar(x: u256) -> u256[10]:
+    revert"#;
 
         let module = parse_code_chunk(parse_module, contract)
             .expect("unable to build module AST")

@@ -1,5 +1,5 @@
 use fe_analyzer::context::{ExpressionAttributes, FunctionBody};
-use fe_analyzer::namespace::items::FunctionId;
+use fe_analyzer::namespace::items::{FunctionId, ModuleId};
 use fe_analyzer::namespace::types::{Array, FixedSize, Tuple};
 use fe_analyzer::AnalyzerDb;
 use fe_parser::ast;
@@ -9,49 +9,28 @@ use std::rc::Rc;
 
 pub struct ModuleContext<'db> {
     pub db: &'db dyn AnalyzerDb,
+    pub module: ModuleId,
+
+    /// List expressions that are used in the module
+    pub list_expressions: IndexSet<Array>,
+
     /// Tuples that are used in the module
-    tuples: IndexSet<Tuple>,
+    pub tuples: IndexSet<Tuple>,
 }
 
 impl<'db> ModuleContext<'db> {
-    pub fn new(db: &'db dyn AnalyzerDb) -> Self {
+    pub fn new(db: &'db dyn AnalyzerDb, module: ModuleId) -> Self {
         Self {
             db,
+            module,
+            list_expressions: IndexSet::new(),
             tuples: IndexSet::new(),
         }
     }
-
-    pub fn add_tuple(&mut self, tuple: Tuple) {
-        self.tuples.insert(tuple);
-    }
-
-    pub fn into_tuples(self) -> IndexSet<Tuple> {
-        self.tuples
-    }
 }
 
-pub struct ContractContext<'a, 'db> {
+pub struct FnContext<'a, 'db> {
     pub module: &'a mut ModuleContext<'db>,
-
-    /// List expressions that are used in the contract
-    pub list_expressions: IndexSet<Array>,
-}
-
-impl<'a, 'db> ContractContext<'a, 'db> {
-    pub fn new(module: &'a mut ModuleContext<'db>) -> Self {
-        Self {
-            module,
-            list_expressions: IndexSet::new(),
-        }
-    }
-
-    pub fn db(&self) -> &'db dyn AnalyzerDb {
-        self.module.db
-    }
-}
-
-pub struct FnContext<'a, 'b, 'db> {
-    pub contract: &'a mut ContractContext<'b, 'db>,
     pub body: Rc<FunctionBody>,
     pub id: FunctionId,
 
@@ -59,14 +38,10 @@ pub struct FnContext<'a, 'b, 'db> {
     fresh_id: u64,
 }
 
-impl<'a, 'b, 'db> FnContext<'a, 'b, 'db> {
-    pub fn new(
-        id: FunctionId,
-        contract: &'a mut ContractContext<'b, 'db>,
-        body: Rc<FunctionBody>,
-    ) -> Self {
+impl<'a, 'db> FnContext<'a, 'db> {
+    pub fn new(module: &'a mut ModuleContext<'db>, id: FunctionId, body: Rc<FunctionBody>) -> Self {
         Self {
-            contract,
+            module,
             body,
             id,
             fresh_id: 0,
@@ -81,7 +56,7 @@ impl<'a, 'b, 'db> FnContext<'a, 'b, 'db> {
     }
 
     pub fn db(&self) -> &'db dyn AnalyzerDb {
-        self.contract.db()
+        self.module.db
     }
 
     pub fn expression_attributes(&self, node: &Node<ast::Expr>) -> Option<&ExpressionAttributes> {
@@ -92,8 +67,8 @@ impl<'a, 'b, 'db> FnContext<'a, 'b, 'db> {
     }
 }
 
-impl<'a, 'b, 'db> AsMut<ModuleContext<'db>> for FnContext<'a, 'b, 'db> {
+impl<'a, 'db> AsMut<ModuleContext<'db>> for FnContext<'a, 'db> {
     fn as_mut(&mut self) -> &mut ModuleContext<'db> {
-        self.contract.module
+        self.module
     }
 }

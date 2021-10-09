@@ -2,8 +2,8 @@
 
 use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, FunctionBody, NamedThing};
 use crate::errors::{AlreadyDefined, TypeError};
-use crate::namespace::items::{ContractId, EventId, FunctionId, Item, ModuleId};
-use crate::namespace::types::{FixedSize, Type};
+use crate::namespace::items::{EventId, FunctionId, ModuleId};
+use crate::namespace::types::FixedSize;
 use crate::AnalyzerDb;
 use fe_common::diagnostics::Diagnostic;
 use fe_common::Span;
@@ -56,40 +56,6 @@ impl<'a> FunctionScope<'a> {
             body: RefCell::new(FunctionBody::default()),
             diagnostics: RefCell::new(vec![]),
         }
-    }
-
-    pub fn var_type(&self, name: &str) -> Option<Result<FixedSize, TypeError>> {
-        self.function
-            .signature(self.db)
-            .params
-            .iter()
-            .find_map(|param| (param.name == name).then(|| param.typ.clone()))
-    }
-
-    pub fn var_def_span(&self, name: &str) -> Option<Span> {
-        self.function
-            .data(self.db)
-            .ast
-            .kind
-            .args
-            .iter()
-            .find_map(|param| (param.name() == name).then(|| param.span))
-    }
-
-    pub fn contract_field(&self, name: &str) -> Option<(Result<Type, TypeError>, usize)> {
-        self.function.contract(self.db).field_type(self.db, name)
-    }
-
-    pub fn contract_function(&self, name: &str) -> Option<FunctionId> {
-        self.function.contract(self.db).function(self.db, name)
-    }
-
-    pub fn pure_contract_function(&self, name: &str) -> Option<FunctionId> {
-        self.function.contract(self.db).pure_function(self.db, name)
-    }
-
-    pub fn self_contract_function(&self, name: &str) -> Option<FunctionId> {
-        self.function.contract(self.db).self_function(self.db, name)
     }
 
     pub fn function_return_type(&self) -> Result<FixedSize, TypeError> {
@@ -201,16 +167,12 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
                 })
             })
             .or_else(|| {
-                self.function
-                    .contract(self.db)
-                    .resolve_name(self.db, name)
-                    .map(NamedThing::Item)
-            })
-            .or_else(|| {
-                self.function
-                    .module(self.db)
-                    .resolve_name(self.db, name)
-                    .map(NamedThing::Item)
+                if let Some(contract) = self.function.contract(self.db) {
+                    contract.resolve_name(self.db, name)
+                } else {
+                    self.function.module(self.db).resolve_name(self.db, name)
+                }
+                .map(NamedThing::Item)
             })
     }
 }
@@ -245,11 +207,7 @@ impl AnalyzerContext for BlockScope<'_, '_> {
                 if let Some(parent) = self.parent {
                     parent.resolve_name(name)
                 } else {
-                    // If there's no parent block, check the contract and module
-                    self.contract()
-                        .pure_function(self.db(), name)
-                        .map(|id| NamedThing::Item(Item::Function(id)))
-                        .or_else(|| self.root.resolve_name(name))
+                    self.root.resolve_name(name)
                 }
             })
     }
@@ -277,16 +235,13 @@ impl<'a, 'b> BlockScope<'a, 'b> {
         }
     }
 
-    pub fn contract(&self) -> ContractId {
-        self.root.function.contract(self.root.db)
-    }
-
-    pub fn module(&self) -> ModuleId {
-        self.root.function.module(self.root.db)
-    }
-
-    pub fn contract_name(&self) -> String {
-        self.root.function.contract(self.root.db).name(self.root.db)
+    pub fn contract_name(&self) -> Option<String> {
+        Some(
+            self.root
+                .function
+                .contract(self.root.db)?
+                .name(self.root.db),
+        )
     }
 
     /// Add a variable to the block scope.

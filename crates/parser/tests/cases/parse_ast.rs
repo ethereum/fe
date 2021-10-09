@@ -183,6 +183,12 @@ use foo::bar::{
 
 type X = Map<u8, u16>
 
+pub fn double(x: u8) -> u8:
+    return x * 2
+
+fn secret() -> u8:
+    return 0xBEEF
+
 contract A:
     pub const x: u256 = 10
 

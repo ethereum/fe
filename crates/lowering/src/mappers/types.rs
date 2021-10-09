@@ -14,7 +14,7 @@ pub fn type_desc(context: &mut ModuleContext, desc: Node<TypeDesc>, typ: &Type) 
             for (item_desc, item_type) in items.into_iter().zip(typ.items.iter()) {
                 type_desc(context, item_desc, &item_type.clone().into());
             }
-            context.add_tuple(typ.clone());
+            context.tuples.insert(typ.clone());
             Node::new(
                 TypeDesc::Base {
                     base: names::tuple_struct_name(typ),

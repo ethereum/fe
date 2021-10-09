@@ -372,6 +372,7 @@ impl ContractId {
         self.pure_function(db, name)
             .map(Item::Function)
             .or_else(|| self.event(db, name).map(Item::Event))
+            .or_else(|| self.module(db).resolve_name(db, name))
     }
 
     pub fn init_function(&self, db: &dyn AnalyzerDb) -> Option<FunctionId> {
@@ -487,8 +488,8 @@ impl ContractFieldId {
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Function {
     pub ast: Node<ast::Function>,
+    pub contract: Option<ContractId>,
     pub module: ModuleId,
-    pub contract: ContractId,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
@@ -507,17 +508,17 @@ impl FunctionId {
     pub fn name_span(&self, db: &dyn AnalyzerDb) -> Span {
         self.data(db).ast.kind.name.span
     }
+    pub fn contract(&self, db: &dyn AnalyzerDb) -> Option<ContractId> {
+        self.data(db).contract
+    }
+    pub fn module(&self, db: &dyn AnalyzerDb) -> ModuleId {
+        self.data(db).module
+    }
     pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
         self.data(db).ast.kind.is_pub
     }
     pub fn is_pure(&self, db: &dyn AnalyzerDb) -> bool {
         self.signature(db).self_decl == SelfDecl::None
-    }
-    pub fn contract(&self, db: &dyn AnalyzerDb) -> ContractId {
-        self.data(db).contract
-    }
-    pub fn module(&self, db: &dyn AnalyzerDb) -> ModuleId {
-        self.data(db).module
     }
     pub fn signature(&self, db: &dyn AnalyzerDb) -> Rc<types::FunctionSignature> {
         db.function_signature(*self).value

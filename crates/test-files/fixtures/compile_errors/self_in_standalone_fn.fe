@@ -1,0 +1,7 @@
+fn pure_fn(self):
+    self.mut_fn()
+
+contract Foo:
+
+    fn foo(self):
+        pure_fn(self)

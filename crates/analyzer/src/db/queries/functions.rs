@@ -23,34 +23,32 @@ pub fn function_signature(
     let def = &node.kind;
 
     let mut scope = ItemScope::new(db, function.module(db));
+    let contract = function.contract(db);
 
-    let self_decl = if matches!(
-        def.args.get(0),
-        Some(Node {
-            kind: ast::FunctionArg::Zelf,
-            ..
-        })
-    ) {
-        SelfDecl::Mutable
-    } else {
-        SelfDecl::None
-    };
-
+    let mut self_decl = SelfDecl::None;
     let mut names = HashMap::new();
     let params = def
         .args
         .iter()
-        // skip analysis of a `self` param
-        .skip(if self_decl == SelfDecl::None { 0 } else { 1 })
         .enumerate()
         .filter_map(|(index, arg)| match &arg.kind {
             ast::FunctionArg::Zelf => {
-                scope.error(
-                    "self is not the first parameter",
-                    arg.span,
-                    "self may only be used as the first parameter",
-                );
-
+                if contract.is_none() {
+                    scope.error(
+                        "`self` can only be used in contract functions",
+                        arg.span,
+                        "not allowed in functions defined outside of a contract",
+                    );
+                } else {
+                    self_decl = SelfDecl::Mutable;
+                    if index != 0 {
+                        scope.error(
+                            "`self` is not the first parameter",
+                            arg.span,
+                            "`self` may only be used as the first parameter",
+                        );
+                    }
+                }
                 None
             }
             ast::FunctionArg::Regular(ast::RegularFunctionArg {
