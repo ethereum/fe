@@ -85,6 +85,7 @@ test_analysis! { multi_param, "features/multi_param.fe"}
 test_analysis! { nested_map, "features/nested_map.fe"}
 test_analysis! { numeric_sizes, "features/numeric_sizes.fe"}
 test_analysis! { ownable, "features/ownable.fe"}
+test_analysis! { pure_fn_standalone, "features/pure_fn_standalone.fe"}
 test_analysis! { return_addition_i256, "features/return_addition_i256.fe"}
 test_analysis! { return_addition_u128, "features/return_addition_u128.fe"}
 test_analysis! { return_addition_u256, "features/return_addition_u256.fe"}

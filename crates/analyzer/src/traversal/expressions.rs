@@ -4,7 +4,7 @@ use crate::builtins::{
 };
 use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, Location, NamedThing};
 use crate::errors::{FatalError, IndexingError, NotFixedSize};
-use crate::namespace::items::{FunctionId, Item};
+use crate::namespace::items::{ContractId, FunctionId, Item};
 use crate::namespace::scopes::BlockScope;
 use crate::namespace::types::{
     Array, Base, Contract, FeString, Integer, SelfDecl, Struct, Tuple, Type, TypeDowncast, U256,
@@ -594,7 +594,7 @@ fn expr_attribute_self(
     value: &Node<fe::Expr>,
     attr: &Node<String>,
 ) -> Result<ExpressionAttributes, FatalError> {
-    check_for_self_param(scope, value.span);
+    let contract = resolve_self(scope, value.span)?;
 
     if let Ok(SelfField::Address) = SelfField::from_str(&attr.kind) {
         return Ok(ExpressionAttributes::new(
@@ -603,7 +603,7 @@ fn expr_attribute_self(
         ));
     }
 
-    match scope.root.contract_field(&attr.kind) {
+    match contract.field_type(scope.db(), &attr.kind) {
         Some((typ, nonce)) => Ok(ExpressionAttributes::new(
             typ?,
             Location::Storage { nonce: Some(nonce) },
@@ -938,7 +938,18 @@ fn check_for_call_to_init_fn(
     }
 }
 
-fn check_for_self_param(scope: &mut BlockScope, use_span: Span) {
+fn resolve_self(scope: &mut BlockScope, use_span: Span) -> Result<ContractId, FatalError> {
+    let contract = scope.root.function.contract(scope.db()).ok_or_else(|| {
+        FatalError::new(scope.fancy_error(
+            "`self` can only be used in contract functions",
+            vec![Label::primary(
+                use_span,
+                "not allowed in functions defined outside of a contract",
+            )],
+            vec![],
+        ))
+    })?;
+
     if scope.root.function.signature(scope.db()).self_decl == SelfDecl::None {
         scope.fancy_error(
             "`self` is not defined",
@@ -949,6 +960,7 @@ fn check_for_self_param(scope: &mut BlockScope, use_span: Span) {
             ],
         );
     }
+    Ok(contract)
 }
 
 fn expr_call_self_attribute(
@@ -959,9 +971,9 @@ fn expr_call_self_attribute(
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, FatalError> {
     check_for_call_to_init_fn(scope, func_name, name_span)?;
-    check_for_self_param(scope, self_span);
+    let contract = resolve_self(scope, self_span)?;
 
-    if let Some(func) = scope.root.self_contract_function(func_name) {
+    if let Some(func) = contract.self_function(scope.db(), func_name) {
         let sig = func.signature(scope.root.db);
         validate_named_args(
             scope,
@@ -979,7 +991,7 @@ fn expr_call_self_attribute(
             return_location,
         ))
     } else {
-        let voucher = if scope.root.pure_contract_function(func_name).is_none() {
+        let voucher = if contract.pure_function(scope.db(), func_name).is_none() {
             scope.fancy_error(
                 &format!("no function named `{}` exists in this contract", func_name),
                 vec![Label::primary(name_span, "undefined function")],
@@ -1202,13 +1214,12 @@ fn expr_call_type_attribute(
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, FatalError> {
     let arg_attributes = expr_call_args(scope, args)?;
-    let contract_name = scope.contract_name();
 
-    let report_circular_dependency = |scope: &mut BlockScope, method: &str| {
+    let report_circular_dependency = |scope: &mut BlockScope, contract: &str, method: &str| {
         scope.fancy_error(
-            &format!("`{contract}.{}(...)` called within `{contract}` creates an illegal circular dependency", method, contract=contract_name),
+            &format!("`{contract}.{}(...)` called within `{contract}` creates an illegal circular dependency", method, contract=contract),
             vec![Label::primary(name_span, "Contract creation")],
-            vec![format!("Note: Consider using a dedicated factory contract to create instances of `{}`", contract_name)]);
+            vec![format!("Note: Consider using a dedicated factory contract to create instances of `{}`", contract)]);
     };
 
     // TODO: we should check for SomeContract.__init__() here and suggest create/create2
@@ -1217,8 +1228,12 @@ fn expr_call_type_attribute(
         (Type::Contract(contract), Ok(ContractTypeMethod::Create2)) => {
             validate_arg_count(scope, func_name, name_span, args, 2, "argument");
 
-            if contract_name == contract.name {
-                report_circular_dependency(scope, ContractTypeMethod::Create2.as_ref());
+            if scope.contract_name().as_ref() == Some(&contract.name) {
+                report_circular_dependency(
+                    scope,
+                    &contract.name,
+                    ContractTypeMethod::Create2.as_ref(),
+                );
             }
 
             if !matches!(
@@ -1239,8 +1254,12 @@ fn expr_call_type_attribute(
         (Type::Contract(contract), Ok(ContractTypeMethod::Create)) => {
             validate_arg_count(scope, func_name, name_span, args, 1, "argument");
 
-            if contract_name == contract.name {
-                report_circular_dependency(scope, ContractTypeMethod::Create.as_ref());
+            if scope.contract_name().as_ref() == Some(&contract.name) {
+                report_circular_dependency(
+                    scope,
+                    &contract.name,
+                    ContractTypeMethod::Create.as_ref(),
+                );
             }
 
             if !matches!(&arg_attributes[0].typ, Type::Base(Base::Numeric(_))) {
@@ -1352,7 +1371,12 @@ fn expr_name_call_type(
     check_for_call_to_init_fn(scope, name, name_span)?;
 
     let named_item = scope.resolve_name(name).ok_or_else(|| {
-        if let Some(function) = scope.root.contract_function(name) {
+        if let Some(function) = scope
+            .root
+            .function
+            .contract(scope.db())
+            .and_then(|contract| contract.self_function(scope.db(), name))
+        {
             FatalError::new(scope.fancy_error(
                 &format!("`{}` must be called via `self`", name),
                 vec![

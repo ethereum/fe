@@ -20,6 +20,7 @@ pub enum ModuleStmt {
     Contract(Node<Contract>),
     Constant(Node<ConstantDecl>),
     Struct(Node<Struct>),
+    Function(Node<Function>),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -380,6 +381,7 @@ impl Spanned for ModuleStmt {
             ModuleStmt::Contract(inner) => inner.span,
             ModuleStmt::Constant(inner) => inner.span,
             ModuleStmt::Struct(inner) => inner.span,
+            ModuleStmt::Function(inner) => inner.span,
         }
     }
 }
@@ -408,6 +410,7 @@ impl fmt::Display for ModuleStmt {
             ModuleStmt::Contract(node) => write!(f, "{}", node.kind),
             ModuleStmt::Constant(node) => write!(f, "{}", node.kind),
             ModuleStmt::Struct(node) => write!(f, "{}", node.kind),
+            ModuleStmt::Function(node) => write!(f, "{}", node.kind),
         }
     }
 }

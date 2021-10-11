@@ -156,7 +156,7 @@ fn expr_tuple(context: &mut FnContext, exp: Node<fe::Expr>) -> fe::Expr {
             .collect(),
         exp.span,
     );
-    context.contract.module.add_tuple(typ);
+    context.module.tuples.insert(typ);
 
     // create type constructor call for the lowered tuple
     fe::Expr::Call {
@@ -174,7 +174,7 @@ fn expr_list(context: &mut FnContext, exp: Node<fe::Expr>) -> fe::Expr {
     if let Type::Array(array) = &attributes.typ {
         let array = array.clone();
         let fn_name = list_expr_generator_fn_name(&array);
-        context.contract.list_expressions.insert(array);
+        context.module.list_expressions.insert(array);
 
         if let fe::Expr::List { elts } = exp.kind {
             let args = elts

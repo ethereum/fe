@@ -21,7 +21,7 @@ pub fn contract_all_functions(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<V
                 ast::ContractStmt::Function(node) => {
                     Some(db.intern_function(Rc::new(items::Function {
                         ast: node.clone(),
-                        contract,
+                        contract: Some(contract),
                         module,
                     })))
                 }

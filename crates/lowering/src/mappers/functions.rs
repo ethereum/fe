@@ -1,4 +1,4 @@
-use crate::context::{ContractContext, FnContext};
+use crate::context::{FnContext, ModuleContext};
 use crate::mappers::expressions;
 use crate::mappers::types;
 use crate::utils::ZeroSpanNode;
@@ -10,9 +10,8 @@ use fe_parser::ast::RegularFunctionArg;
 use fe_parser::node::Node;
 
 /// Lowers a function definition.
-pub fn func_def(contract: &mut ContractContext, function: FunctionId) -> Node<fe::Function> {
-    let mut context = FnContext::new(function, contract, function.body(contract.db()));
-    let node = &function.data(context.db()).ast;
+pub fn func_def(context: &mut ModuleContext, function: FunctionId) -> Node<fe::Function> {
+    let node = &function.data(context.db).ast;
     let fe::Function {
         is_pub,
         name,
@@ -21,15 +20,17 @@ pub fn func_def(contract: &mut ContractContext, function: FunctionId) -> Node<fe
         body,
     } = &node.kind;
 
-    let signature = function.signature(context.db());
+    let signature = function.signature(context.db);
 
     let return_type = signature
         .return_type
         .as_ref()
         .expect("fn return type error");
 
+    let mut fn_ctx = FnContext::new(context, function, function.body(context.db));
+
     let lowered_body = {
-        let mut lowered_body = multiple_stmts(&mut context, body.clone());
+        let mut lowered_body = multiple_stmts(&mut fn_ctx, body.clone());
         // append `return ()` to the body if there is no return
         if return_type.is_unit() && !is_last_statement_return(&lowered_body) {
             lowered_body.push(
@@ -69,7 +70,7 @@ pub fn func_def(contract: &mut ContractContext, function: FunctionId) -> Node<fe
             if let fe::FunctionArg::Regular(regular) = &pnode.kind {
                 fe::FunctionArg::Regular(RegularFunctionArg {
                     name: regular.name.clone(),
-                    typ: types::type_desc(&mut contract.module, regular.typ.clone(), &ptype),
+                    typ: types::type_desc(&mut fn_ctx.module, regular.typ.clone(), &ptype),
                 })
                 .into_node()
             } else {
@@ -83,7 +84,7 @@ pub fn func_def(contract: &mut ContractContext, function: FunctionId) -> Node<fe
     let lowered_return_type = return_type_node
         .clone()
         .map(|type_desc| {
-            types::type_desc(&mut contract.module, type_desc, &return_type.clone().into())
+            types::type_desc(&mut fn_ctx.module, type_desc, &return_type.clone().into())
         })
         .unwrap_or_else(|| fe::TypeDesc::Unit.into_node());
 
@@ -111,7 +112,7 @@ fn func_stmt(context: &mut FnContext, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::
             match target.kind {
                 fe::VarDeclTarget::Name(_) => vec![fe::FuncStmt::VarDecl {
                     target,
-                    typ: types::type_desc(context.contract.module, typ, &var_type),
+                    typ: types::type_desc(context.module, typ, &var_type),
                     value: expressions::optional_expr(context, value),
                 }],
                 fe::VarDeclTarget::Tuple(_) => {
@@ -251,7 +252,7 @@ fn lower_tuple_destructuring(
     let tmp_tuple = context.make_unique_name("tmp_tuple");
     stmts.push(fe::FuncStmt::VarDecl {
         target: Node::new(fe::VarDeclTarget::Name(tmp_tuple.clone()), span),
-        typ: types::type_desc(&mut context.contract.module, type_desc.clone(), typ),
+        typ: types::type_desc(&mut context.module, type_desc.clone(), typ),
         value: expressions::optional_expr(context, value),
     });
 
@@ -289,7 +290,7 @@ fn declare_tuple_items(
 
             stmts.push(fe::FuncStmt::VarDecl {
                 target,
-                typ: types::type_desc(&mut context.contract.module, type_desc, typ),
+                typ: types::type_desc(&mut context.module, type_desc, typ),
                 value: expressions::optional_expr(context, Some(value)),
             });
         }

@@ -1,0 +1,20 @@
+
+fn add_bonus(x: u256) -> u256:
+    return x + 10
+
+contract Foo:
+    cool_users: Map<address, bool>
+    points: Map<address, u256>
+
+    fn add_points(self, user: address, val: u256):
+        if self.cool_users[user]:
+            self.points[user] += add_bonus(val)
+        else:
+            self.points[user] += val
+
+    pub fn bar(self, x: u256) -> u256:
+        let a: address = address(x)
+        self.add_points(a, 100)
+        self.cool_users[a] = true
+        self.add_points(a, 100)
+        return self.points[a]

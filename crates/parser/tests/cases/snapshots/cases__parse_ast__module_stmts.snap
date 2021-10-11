@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(module_stmts), module::parse_module,\n           r#\"\npragma 0.5.0\n\nuse foo::bar::{\n    bing as bong,\n    food::*\n}\n\ntype X = Map<u8, u16>\n\ncontract A:\n    pub const x: u256 = 10\n\ncontract B:\n    pub x: X\n\"#)"
+expression: "ast_string(stringify!(module_stmts), module::parse_module,\n           r#\"\npragma 0.5.0\n\nuse foo::bar::{\n    bing as bong,\n    food::*\n}\n\ntype X = Map<u8, u16>\n\npub fn double(x: u8) -> u8:\n    return x * 2\n\nfn secret() -> u8:\n    return 0xBEEF\n\ncontract A:\n    pub const x: u256 = 10\n\ncontract B:\n    pub x: X\n\"#)"
 
 ---
 Node(
@@ -179,13 +179,146 @@ Node(
           end: 85,
         ),
       )),
+      Function(Node(
+        kind: Function(
+          is_pub: true,
+          name: Node(
+            kind: "double",
+            span: Span(
+              start: 94,
+              end: 100,
+            ),
+          ),
+          args: [
+            Node(
+              kind: Regular(RegularFunctionArg(
+                name: Node(
+                  kind: "x",
+                  span: Span(
+                    start: 101,
+                    end: 102,
+                  ),
+                ),
+                typ: Node(
+                  kind: Base(
+                    base: "u8",
+                  ),
+                  span: Span(
+                    start: 104,
+                    end: 106,
+                  ),
+                ),
+              )),
+              span: Span(
+                start: 101,
+                end: 106,
+              ),
+            ),
+          ],
+          return_type: Some(Node(
+            kind: Base(
+              base: "u8",
+            ),
+            span: Span(
+              start: 111,
+              end: 113,
+            ),
+          )),
+          body: [
+            Node(
+              kind: Return(
+                value: Some(Node(
+                  kind: BinOperation(
+                    left: Node(
+                      kind: Name("x"),
+                      span: Span(
+                        start: 126,
+                        end: 127,
+                      ),
+                    ),
+                    op: Node(
+                      kind: Mult,
+                      span: Span(
+                        start: 128,
+                        end: 129,
+                      ),
+                    ),
+                    right: Node(
+                      kind: Num("2"),
+                      span: Span(
+                        start: 130,
+                        end: 131,
+                      ),
+                    ),
+                  ),
+                  span: Span(
+                    start: 126,
+                    end: 131,
+                  ),
+                )),
+              ),
+              span: Span(
+                start: 119,
+                end: 131,
+              ),
+            ),
+          ],
+        ),
+        span: Span(
+          start: 87,
+          end: 131,
+        ),
+      )),
+      Function(Node(
+        kind: Function(
+          is_pub: false,
+          name: Node(
+            kind: "secret",
+            span: Span(
+              start: 136,
+              end: 142,
+            ),
+          ),
+          args: [],
+          return_type: Some(Node(
+            kind: Base(
+              base: "u8",
+            ),
+            span: Span(
+              start: 148,
+              end: 150,
+            ),
+          )),
+          body: [
+            Node(
+              kind: Return(
+                value: Some(Node(
+                  kind: Num("0xBEEF"),
+                  span: Span(
+                    start: 163,
+                    end: 169,
+                  ),
+                )),
+              ),
+              span: Span(
+                start: 156,
+                end: 169,
+              ),
+            ),
+          ],
+        ),
+        span: Span(
+          start: 133,
+          end: 169,
+        ),
+      )),
       Contract(Node(
         kind: Contract(
           name: Node(
             kind: "A",
             span: Span(
-              start: 96,
-              end: 97,
+              start: 180,
+              end: 181,
             ),
           ),
           fields: [
@@ -196,8 +329,8 @@ Node(
                 name: Node(
                   kind: "x",
                   span: Span(
-                    start: 113,
-                    end: 114,
+                    start: 197,
+                    end: 198,
                   ),
                 ),
                 typ: Node(
@@ -205,29 +338,29 @@ Node(
                     base: "u256",
                   ),
                   span: Span(
-                    start: 116,
-                    end: 120,
+                    start: 200,
+                    end: 204,
                   ),
                 ),
                 value: Some(Node(
                   kind: Num("10"),
                   span: Span(
-                    start: 123,
-                    end: 125,
+                    start: 207,
+                    end: 209,
                   ),
                 )),
               ),
               span: Span(
-                start: 103,
-                end: 120,
+                start: 187,
+                end: 204,
               ),
             ),
           ],
           body: [],
         ),
         span: Span(
-          start: 87,
-          end: 120,
+          start: 171,
+          end: 204,
         ),
       )),
       Contract(Node(
@@ -235,8 +368,8 @@ Node(
           name: Node(
             kind: "B",
             span: Span(
-              start: 136,
-              end: 137,
+              start: 220,
+              end: 221,
             ),
           ),
           fields: [
@@ -247,8 +380,8 @@ Node(
                 name: Node(
                   kind: "x",
                   span: Span(
-                    start: 147,
-                    end: 148,
+                    start: 231,
+                    end: 232,
                   ),
                 ),
                 typ: Node(
@@ -256,29 +389,29 @@ Node(
                     base: "X",
                   ),
                   span: Span(
-                    start: 150,
-                    end: 151,
+                    start: 234,
+                    end: 235,
                   ),
                 ),
                 value: None,
               ),
               span: Span(
-                start: 143,
-                end: 151,
+                start: 227,
+                end: 235,
               ),
             ),
           ],
           body: [],
         ),
         span: Span(
-          start: 127,
-          end: 151,
+          start: 211,
+          end: 235,
         ),
       )),
     ],
   ),
   span: Span(
     start: 0,
-    end: 151,
+    end: 235,
   ),
 )
