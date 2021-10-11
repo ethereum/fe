@@ -182,7 +182,7 @@ fn expr_list(context: &mut FnContext, exp: Node<fe::Expr>) -> fe::Expr {
                 .map(|list_val| {
                     fe::CallArg {
                         label: None,
-                        value: list_val,
+                        value: expr(context, list_val),
                     }
                     .into_node()
                 })

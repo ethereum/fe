@@ -27,10 +27,10 @@ contract Foo:
     pub fn if_elif_else() -> ():
         if true:
             return ()
-        else true:
+        else:
             if false:
                 return ()
-            else false:
+            else:
                 pass
 
 

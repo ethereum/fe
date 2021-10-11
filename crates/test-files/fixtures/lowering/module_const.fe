@@ -3,16 +3,38 @@ const TEN: u256 = 10
 const IS_ADMIN: bool = true
 const UNIT: () = ()
 
+struct Bar:
+  val: u256
+
 contract Foo:
 
-  pub fn bar() -> u256:
-    if IS_ADMIN:
-        return THREE * TEN
-    else:
-        return TEN
-
-  pub fn baz() -> u256:
-    return THREE * 3
+  table: Map<u256, u256>
 
   pub fn return_unit():
     return UNIT
+
+  pub fn usage(self) ->  u256:
+
+    let my_calc: u256 = THREE * TEN
+    let my_other_calc: u256 = THREE * 3
+
+    let my_array: u256[2] = [THREE, TEN]
+    let my_tuple: (u256, u256) = (THREE, TEN)
+    let my_bar: Bar = Bar(val=THREE)
+
+    while THREE > 4:
+        pass
+
+    for x in [THREE, TEN]:
+        pass
+
+    self.table[TEN] = THREE
+
+    if THREE == TEN:
+        pass
+    elif TEN == 10:
+        return THREE * TEN
+    elif IS_ADMIN:
+        revert Bar(val=THREE)
+
+    return self.table[THREE]
