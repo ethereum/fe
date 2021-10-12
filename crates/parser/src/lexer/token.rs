@@ -101,6 +101,8 @@ pub enum TokenKind {
     Struct,
     #[token("type")]
     Type,
+    #[token("unsafe")]
+    Unsafe,
     #[token("while")]
     While,
 
@@ -254,6 +256,7 @@ impl TokenKind {
             Revert => "revert",
             Struct => "struct",
             Type => "type",
+            Unsafe => "unsafe",
             While => "while",
             And => "and",
             As => "as",

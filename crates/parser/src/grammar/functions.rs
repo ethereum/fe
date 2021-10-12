@@ -9,14 +9,26 @@ use crate::node::{Node, Span};
 use crate::{Label, ParseFailed, ParseResult, Parser};
 
 /// Parse a function definition. The optional `pub` qualifier must be parsed by
-/// the caller, and passed in.
-///
-/// # Panics
-/// Panics if the next token isn't `fn`.
-pub fn parse_fn_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Node<Function>> {
-    let def_tok = par.assert(TokenKind::Fn);
+/// the caller, and passed in. Next token must be `unsafe` or `fn`.
+pub fn parse_fn_def(par: &mut Parser, mut pub_qual: Option<Span>) -> ParseResult<Node<Function>> {
+    let unsafe_qual = par.optional(TokenKind::Unsafe).map(|tok| tok.span);
+    if let Some(pub_) = par.optional(TokenKind::Pub) {
+        let unsafe_span =
+            unsafe_qual.expect("caller must verify that next token is `unsafe` or `fn`");
+
+        par.fancy_error(
+            "`pub` visibility modifier must come before `unsafe`",
+            vec![Label::primary(
+                unsafe_span + pub_.span,
+                "use `pub unsafe` here",
+            )],
+            vec![],
+        );
+        pub_qual = pub_qual.or(Some(pub_.span));
+    }
+    let fn_tok = par.expect(TokenKind::Fn, "failed to parse function definition")?;
     let name = par.expect(TokenKind::Name, "failed to parse function definition")?;
-    let mut span = def_tok.span + pub_qual + name.span;
+    let mut span = fn_tok.span + unsafe_qual + pub_qual + name.span;
 
     let args = match par.peek_or_err()? {
         TokenKind::ParenOpen => {
@@ -71,7 +83,8 @@ pub fn parse_fn_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Nod
     span += body.last();
     Ok(Node::new(
         Function {
-            is_pub: pub_qual.is_some(),
+            pub_: pub_qual,
+            unsafe_: unsafe_qual,
             name: name.into(),
             args,
             return_type,
@@ -212,6 +225,7 @@ pub fn parse_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
         Continue | Break | Pass => parse_single_word_stmt(par),
         Emit => parse_emit_statement(par),
         Let => parse_var_decl(par),
+        Unsafe => parse_unsafe_block(par),
         _ => parse_expr_stmt(par),
     }
 }
@@ -477,4 +491,17 @@ pub fn parse_emit_statement(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     }
 
     Err(ParseFailed)
+}
+
+/// Parse an `unsafe` block.
+///
+/// # Panics
+/// Panics if the next token isn't `unsafe`.
+pub fn parse_unsafe_block(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
+    let kw_tok = par.assert(TokenKind::Unsafe);
+    par.enter_block(kw_tok.span, "`unsafe` block")?;
+    let body = parse_block_stmts(par)?;
+    let span = kw_tok.span + body.last();
+
+    Ok(Node::new(FuncStmt::Unsafe(body), span))
 }

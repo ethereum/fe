@@ -12,13 +12,16 @@ where
     let id = files.add_file(test_name, src);
     let mut parser = Parser::new(src);
 
-    if should_fail != parse_fn(&mut parser).is_err() {
+    let parse_failed = parse_fn(&mut parser).is_err();
+    let diag = diagnostics_string(&parser.diagnostics, id, &files);
+    if parse_failed != should_fail {
         panic!(
-            "expected parsing to {}fail",
-            if should_fail { "" } else { "not " }
+            "expected parsing to {}fail. Diagnostics:\n{}",
+            if should_fail { "" } else { "not " },
+            diag
         );
     }
-    diagnostics_string(&parser.diagnostics, id, &files)
+    diag
 }
 
 macro_rules! test_parse_err {
@@ -80,7 +83,8 @@ test_parse_err! { emit_expr, functions::parse_stmt, true, "emit x + 1" }
 test_parse_err! { emit_bad_call, functions::parse_stmt, true, "emit MyEvent(1)()" }
 test_parse_err! { expr_bad_prefix, expressions::parse_expr, true, "*x + 1" }
 test_parse_err! { for_no_in, functions::parse_stmt, true, "for x:\n pass" }
-test_parse_err! { fn_no_args, |par| functions::parse_fn_def(par, None), false, "fn f:\n  return 5" }
+test_parse_err! { fn_no_args, module::parse_module, false, "fn f:\n  return 5" }
+test_parse_err! { fn_unsafe_pub, module::parse_module, false, "unsafe pub fn f():\n  return 5" }
 test_parse_err! { fn_def_kw, contracts::parse_contract_def, true, "contract C:\n pub def f(x: u8):\n  return x" }
 test_parse_err! { if_no_body, functions::parse_stmt, true, "if x:\nelse:\n x" }
 test_parse_err! { use_bad_name, module::parse_use, true, "use x as 123" }

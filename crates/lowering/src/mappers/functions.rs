@@ -13,7 +13,8 @@ use fe_parser::node::Node;
 pub fn func_def(context: &mut ModuleContext, function: FunctionId) -> Node<fe::Function> {
     let node = &function.data(context.db).ast;
     let fe::Function {
-        is_pub,
+        pub_,
+        unsafe_,
         name,
         args,
         return_type: return_type_node,
@@ -89,7 +90,8 @@ pub fn func_def(context: &mut ModuleContext, function: FunctionId) -> Node<fe::F
         .unwrap_or_else(|| fe::TypeDesc::Unit.into_node());
 
     let lowered_function = fe::Function {
-        is_pub: *is_pub,
+        pub_: *pub_,
+        unsafe_: *unsafe_,
         name: name.clone(),
         args,
         return_type: Some(lowered_return_type),
@@ -149,6 +151,7 @@ fn func_stmt(context: &mut FnContext, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::
             body: multiple_stmts(context, body),
             or_else: multiple_stmts(context, or_else),
         }],
+        fe::FuncStmt::Unsafe(body) => vec![fe::FuncStmt::Unsafe(multiple_stmts(context, body))],
         fe::FuncStmt::Assert { test, msg } => vec![fe::FuncStmt::Assert {
             test: expressions::expr(context, test),
             msg: expressions::optional_expr(context, msg),

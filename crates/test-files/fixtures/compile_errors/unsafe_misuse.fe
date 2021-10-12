@@ -1,0 +1,42 @@
+
+# unsafe module functions can be pub or not
+unsafe fn mod_priv(): # OK
+  pass
+pub unsafe fn mod_pub():
+  mod_priv() # OK
+
+pub fn f():
+  # unsafe fn called outside unsafe
+  mod_priv() # BAD
+
+pub fn g():
+  unsafe:
+    mod_priv() # OK
+
+contract Foo:
+  # pub unsafe contract functions aren't allowed
+  pub unsafe fn pub_self(self): # BAD
+    pass
+  pub unsafe fn pub_noself(): # BAD
+    pass
+
+  # non-pub contract fns can be unsafe
+  unsafe fn priv_nonself(): # OK
+    # can call any unsafe fn
+    mod_priv() # OK
+    mod_pub()  # OK
+    priv_nonself() # OK
+
+  # unsafe fns can take self
+  unsafe fn priv_self(self): # OK
+    self.priv_self2() # OK
+  unsafe fn priv_self2(self): # OK
+    pass
+
+  fn bar(self):
+    # BAD: unsafe fn called outside unsafe
+    self.priv_self() # BAD
+    priv_nonself()   # BAD
+    unsafe:
+      self.priv_self() # OK
+      priv_nonself()   # OK

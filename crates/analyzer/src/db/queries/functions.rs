@@ -9,6 +9,7 @@ use crate::traversal::types::type_desc;
 use fe_common::diagnostics::Label;
 use fe_parser::ast;
 use fe_parser::node::Node;
+use if_chain::if_chain;
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::rc::Rc;
@@ -24,6 +25,17 @@ pub fn function_signature(
 
     let mut scope = ItemScope::new(db, function.module(db));
     let contract = function.contract(db);
+
+    if_chain! {
+        if contract.is_some();
+        if let Some(pub_span) = function.pub_span(db);
+        if let Some(unsafe_span) = function.unsafe_span(db);
+        then {
+            scope.error("public contract functions can't be unsafe",
+                        pub_span + unsafe_span,
+                        "a contract function can be either `pub` or `unsafe`, but not both");
+        }
+    }
 
     let mut self_decl = SelfDecl::None;
     let mut names = HashMap::new();
@@ -161,7 +173,14 @@ pub fn function_body(db: &dyn AnalyzerDb, function: FunctionId) -> Analysis<Rc<F
         }
     }
 
-    let mut block_scope = BlockScope::new(&scope, BlockScopeType::Function);
+    let mut block_scope = BlockScope::new(
+        &scope,
+        if function.unsafe_span(db).is_some() {
+            BlockScopeType::Unsafe
+        } else {
+            BlockScopeType::Function
+        },
+    );
 
     // If `traverse_statements` fails, we can be confident that a diagnostic
     // has been emitted, either while analyzing this fn body or while analyzing

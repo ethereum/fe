@@ -514,11 +514,17 @@ impl FunctionId {
     pub fn module(&self, db: &dyn AnalyzerDb) -> ModuleId {
         self.data(db).module
     }
-    pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
-        self.data(db).ast.kind.is_pub
-    }
     pub fn is_pure(&self, db: &dyn AnalyzerDb) -> bool {
         self.signature(db).self_decl == SelfDecl::None
+    }
+    pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
+        self.pub_span(db).is_some()
+    }
+    pub fn pub_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
+        self.data(db).ast.kind.pub_
+    }
+    pub fn unsafe_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
+        self.data(db).ast.kind.unsafe_
     }
     pub fn signature(&self, db: &dyn AnalyzerDb) -> Rc<types::FunctionSignature> {
         db.function_signature(*self).value

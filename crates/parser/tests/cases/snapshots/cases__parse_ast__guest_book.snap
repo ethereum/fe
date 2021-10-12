@@ -154,7 +154,11 @@ Node(
             )),
             Function(Node(
               kind: Function(
-                is_pub: true,
+                pub_: Some(Span(
+                  start: 144,
+                  end: 147,
+                )),
+                unsafe_: None,
                 name: Node(
                   kind: "sign",
                   span: Span(
@@ -318,7 +322,11 @@ Node(
             )),
             Function(Node(
               kind: Function(
-                is_pub: true,
+                pub_: Some(Span(
+                  start: 274,
+                  end: 277,
+                )),
+                unsafe_: None,
                 name: Node(
                   kind: "get_msg",
                   span: Span(

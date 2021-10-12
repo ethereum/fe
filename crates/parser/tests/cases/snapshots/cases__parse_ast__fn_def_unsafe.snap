@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(fn_def), module::parse_module,\n           \"fn foo21(x: bool, y: address,) -> bool:\\n x\")"
+expression: "ast_string(stringify!(fn_def_unsafe), module::parse_module,\n           \"unsafe fn foo21(x: bool, y: address,) -> bool:\\n x\")"
 
 ---
 Node(
@@ -9,12 +9,15 @@ Node(
       Function(Node(
         kind: Function(
           pub_: None,
-          unsafe_: None,
+          unsafe_: Some(Span(
+            start: 0,
+            end: 6,
+          )),
           name: Node(
             kind: "foo21",
             span: Span(
-              start: 3,
-              end: 8,
+              start: 10,
+              end: 15,
             ),
           ),
           args: [
@@ -23,8 +26,8 @@ Node(
                 name: Node(
                   kind: "x",
                   span: Span(
-                    start: 9,
-                    end: 10,
+                    start: 16,
+                    end: 17,
                   ),
                 ),
                 typ: Node(
@@ -32,14 +35,14 @@ Node(
                     base: "bool",
                   ),
                   span: Span(
-                    start: 12,
-                    end: 16,
+                    start: 19,
+                    end: 23,
                   ),
                 ),
               )),
               span: Span(
-                start: 9,
-                end: 16,
+                start: 16,
+                end: 23,
               ),
             ),
             Node(
@@ -47,8 +50,8 @@ Node(
                 name: Node(
                   kind: "y",
                   span: Span(
-                    start: 18,
-                    end: 19,
+                    start: 25,
+                    end: 26,
                   ),
                 ),
                 typ: Node(
@@ -56,14 +59,14 @@ Node(
                     base: "address",
                   ),
                   span: Span(
-                    start: 21,
-                    end: 28,
+                    start: 28,
+                    end: 35,
                   ),
                 ),
               )),
               span: Span(
-                start: 18,
-                end: 28,
+                start: 25,
+                end: 35,
               ),
             ),
           ],
@@ -72,8 +75,8 @@ Node(
               base: "bool",
             ),
             span: Span(
-              start: 34,
-              end: 38,
+              start: 41,
+              end: 45,
             ),
           )),
           body: [
@@ -82,27 +85,27 @@ Node(
                 value: Node(
                   kind: Name("x"),
                   span: Span(
-                    start: 41,
-                    end: 42,
+                    start: 48,
+                    end: 49,
                   ),
                 ),
               ),
               span: Span(
-                start: 41,
-                end: 42,
+                start: 48,
+                end: 49,
               ),
             ),
           ],
         ),
         span: Span(
           start: 0,
-          end: 42,
+          end: 49,
         ),
       )),
     ],
   ),
   span: Span(
     start: 0,
-    end: 42,
+    end: 49,
   ),
 )

@@ -507,6 +507,7 @@ dependencies = [
  "fe-parser",
  "fe-test-files",
  "hex",
+ "if_chain",
  "indexmap",
  "insta",
  "num-bigint 0.3.2",

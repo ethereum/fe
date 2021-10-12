@@ -125,6 +125,7 @@ pub struct Field {
     pub value: Option<Node<Expr>>,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub enum ContractStmt {
     Event(Node<Event>),
@@ -139,7 +140,9 @@ pub struct Event {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Function {
-    pub is_pub: bool,
+    // qualifier order: `pub unsafe fn`
+    pub pub_: Option<Span>,
+    pub unsafe_: Option<Span>,
     pub name: Node<String>,
     pub args: Vec<Node<FunctionArg>>,
     pub return_type: Option<Node<TypeDesc>>,
@@ -216,6 +219,7 @@ pub enum FuncStmt {
     Revert {
         error: Option<Node<Expr>>,
     },
+    Unsafe(Vec<Node<FuncStmt>>),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -341,6 +345,15 @@ impl Node<Event> {
 impl Node<Field> {
     pub fn name(&self) -> &str {
         &self.kind.name.kind
+    }
+}
+
+impl Function {
+    pub fn is_pub(&self) -> bool {
+        self.pub_.is_some()
+    }
+    pub fn is_unsafe(&self) -> bool {
+        self.unsafe_.is_some()
     }
 }
 
@@ -561,7 +574,7 @@ impl fmt::Display for Event {
 
 impl fmt::Display for Function {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        if self.is_pub {
+        if self.is_pub() {
             write!(f, "pub ")?;
         }
         write!(
@@ -666,6 +679,10 @@ impl fmt::Display for FuncStmt {
                 } else {
                     write!(f, "revert")
                 }
+            }
+            FuncStmt::Unsafe(body) => {
+                writeln!(f, "unsafe:")?;
+                writeln!(indented(f), "{}", node_line_joined(body))
             }
         }
     }

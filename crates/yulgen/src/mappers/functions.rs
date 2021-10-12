@@ -58,6 +58,12 @@ fn func_stmt(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Stateme
         fe::FuncStmt::For { .. } => for_loop(context, stmt),
         fe::FuncStmt::While { .. } => while_loop(context, stmt),
         fe::FuncStmt::If { .. } => if_statement(context, stmt),
+        fe::FuncStmt::Unsafe(body) => {
+            let yul_body = multiple_func_stmt(context, body);
+            block_statement! {
+                [yul_body...]
+            }
+        }
         fe::FuncStmt::Assert { .. } => assert(context, stmt),
         fe::FuncStmt::Expr { .. } => expr(context, stmt),
         fe::FuncStmt::Pass => statement! { pop(0) },

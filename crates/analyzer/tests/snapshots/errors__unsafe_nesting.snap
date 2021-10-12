@@ -1,0 +1,20 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: unnecessary `unsafe` block
+  ┌─ compile_errors/unsafe_nesting.fe:2:3
+  │  
+2 │ ╭   unsafe:
+3 │ │     g()
+  │ ╰───────^ this `unsafe` block is nested inside another `unsafe` context
+
+error: unnecessary `unsafe` block
+  ┌─ compile_errors/unsafe_nesting.fe:8:5
+  │  
+8 │ ╭     unsafe:
+9 │ │       h()
+  │ ╰─────────^ this `unsafe` block is nested inside another `unsafe` context
+
+

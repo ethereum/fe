@@ -62,7 +62,7 @@ pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<Contract>> {
                 }
                 fields.push(field);
             }
-            Some(TokenKind::Fn) => {
+            Some(TokenKind::Fn | TokenKind::Unsafe) => {
                 if let Some(span) = const_qual {
                     par.error(
                         span,

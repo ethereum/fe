@@ -257,6 +257,15 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// If the next token matches the expected kind, return it. Otherwise return None.
+    pub fn optional(&mut self, kind: TokenKind) -> Option<Token<'a>> {
+        if self.peek() == Some(kind) {
+            Some(self.next().unwrap())
+        } else {
+            None
+        }
+    }
+
     /// Emit an "unexpected token" error diagnostic with the given message.
     pub fn unexpected_token_error<S: Into<String>>(
         &mut self,

@@ -29,6 +29,7 @@ fn func_stmt(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), Fa
         For { .. } => for_loop(scope, stmt),
         While { .. } => while_loop(scope, stmt),
         If { .. } => if_statement(scope, stmt),
+        Unsafe { .. } => unsafe_block(scope, stmt),
         Assert { .. } => assert(scope, stmt),
         Expr { value } => expressions::expr(scope, value, None).map(|_| ()),
         Pass => Ok(()),
@@ -105,6 +106,22 @@ fn if_statement(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(),
             traverse_statements(&mut scope.new_child(BlockScopeType::IfElse), body)?;
             traverse_statements(&mut scope.new_child(BlockScopeType::IfElse), or_else)?;
             Ok(())
+        }
+        _ => unreachable!(),
+    }
+}
+
+fn unsafe_block(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {
+    match &stmt.kind {
+        fe::FuncStmt::Unsafe(body) => {
+            if scope.inherits_type(BlockScopeType::Unsafe) {
+                scope.error(
+                    "unnecessary `unsafe` block",
+                    stmt.span,
+                    "this `unsafe` block is nested inside another `unsafe` context",
+                );
+            }
+            traverse_statements(&mut scope.new_child(BlockScopeType::Unsafe), body)
         }
         _ => unreachable!(),
     }

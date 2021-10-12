@@ -257,3 +257,5 @@ test_file! { call_to_pure_fn_on_self }
 test_file! { missing_self }
 test_file! { self_not_first }
 test_file! { self_in_standalone_fn }
+test_file! { unsafe_misuse }
+test_file! { unsafe_nesting }
