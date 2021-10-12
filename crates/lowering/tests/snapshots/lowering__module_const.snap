@@ -7,6 +7,12 @@ struct $tuple_u256_u256_:
     item0: u256
     item1: u256
 
+fn list_expr_array_u256_2(val0: u256, val1: u256) -> u256[2]:
+    let generated_array: u256[2]
+    generated_array[0] = val0
+    generated_array[1] = val1
+    return generated_array
+
 struct Bar:
     val: u256
 
@@ -41,9 +47,3 @@ contract Foo:
 
 
         return self.table[3]
-
-    fn list_expr_array_u256_2(val0: u256, val1: u256) -> u256[2]:
-        let generated_array: u256[2]
-        generated_array[0] = val0
-        generated_array[1] = val1
-        return generated_array
