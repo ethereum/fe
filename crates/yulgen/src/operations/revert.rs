@@ -7,6 +7,15 @@ pub fn error_revert(typ: &AbiType, msg: yul::Expression) -> yul::Statement {
     revert("Error", typ, msg)
 }
 
+/// Revert with an error code
+pub fn error_revert_numeric(val: usize) -> yul::Statement {
+    revert(
+        "Error",
+        &AbiType::Uint { size: 32 },
+        literal_expression! { (val) },
+    )
+}
+
 /// Revert with a panic code
 pub fn panic_revert(val: usize) -> yul::Statement {
     revert(

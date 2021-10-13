@@ -1,0 +1,3 @@
+contract Foo:
+    pub fn send_them_wei(to: address, wei: u256):
+        send_value(to, wei)

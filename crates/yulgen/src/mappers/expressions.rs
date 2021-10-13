@@ -96,6 +96,9 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
                 let size = identifier_expression! { (size.size()) };
                 expression! { [func_name]([yul_args[0].to_owned()], [size]) }
             }
+            GlobalMethod::SendValue => {
+                expression! { send_value([yul_args[0].to_owned()], [yul_args[1].to_owned()]) }
+            }
         },
         CallType::TypeConstructor {
             typ: Type::Struct(val),

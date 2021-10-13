@@ -66,3 +66,6 @@ pub const PANIC_OVER_OR_UNDERFLOW: usize = 0x11;
 pub const PANIC_DIV_OR_MOD_BY_ZERO: usize = 0x12;
 // TODO: Use a standardized code for invalid data.
 pub const PANIC_INVALID_ABI_DATA: usize = 0x99;
+
+pub const ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE: usize = 0x100;
+pub const ERROR_FAILED_SEND_VALUE: usize = 0x101;

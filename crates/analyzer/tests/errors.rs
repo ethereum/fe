@@ -91,6 +91,13 @@ test_stmt! { call_keccak_without_parameter, "keccak256()" }
 test_stmt! { call_keccak_with_wrong_type, "keccak256(true)" }
 test_stmt! { call_keccak_with_2_args, "keccak256(1, 2)" }
 test_stmt! { call_keccak_with_generic_args, "keccak256<10>(1)" }
+
+test_stmt! { call_send_value_without_parameter, "send_value()" }
+test_stmt! { call_send_value_with_1_arg, "send_value(address(0))" }
+test_stmt! { call_send_value_with_3_args, "send_value(address(0), 0, 0)" }
+test_stmt! { call_send_value_with_wrong_type, "send_value(true, 0)" }
+test_stmt! { call_send_value_with_wrong_type2, "send_value(address(0), true)" }
+test_stmt! { call_send_value_with_generic_args, "send_value<10>(address(0), 1)" }
 test_stmt! { clone_arg_count, "let x: u256[2] = [5, 6]\nlet y: u256[2] = x.clone(y)" }
 test_stmt! { continue_without_loop, "continue" }
 test_stmt! { continue_without_loop_2, "if true:\n  continue" }
