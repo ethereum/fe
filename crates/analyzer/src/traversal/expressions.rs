@@ -5,7 +5,7 @@ use crate::builtins::{
 use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, Location, NamedThing};
 use crate::errors::{FatalError, IndexingError, NotFixedSize};
 use crate::namespace::items::{ContractId, FunctionId, Item};
-use crate::namespace::scopes::BlockScope;
+use crate::namespace::scopes::{BlockScope, BlockScopeType};
 use crate::namespace::types::{
     Array, Base, Contract, FeString, Integer, SelfDecl, Struct, Tuple, Type, TypeDowncast, U256,
 };
@@ -19,6 +19,7 @@ use fe_common::Span;
 use fe_parser::ast as fe;
 use fe_parser::ast::UnaryOperator;
 use fe_parser::node::Node;
+use if_chain::if_chain;
 use num_bigint::BigInt;
 use std::convert::TryInto;
 use std::ops::RangeInclusive;
@@ -732,7 +733,7 @@ fn expr_call(
                 func_name,
                 self_span,
             } => expr_call_self_attribute(scope, &func_name, func.span, self_span, args),
-            CallType::Pure(func_id) => expr_call_pure(scope, func_id, args),
+            CallType::Pure(func_id) => expr_call_pure(scope, func.span, func_id, args),
             CallType::ValueAttribute => expr_call_value_attribute(scope, func, args),
             CallType::TypeAttribute { typ, func_name } => {
                 expr_call_type_attribute(scope, typ, &func_name, func.span, args)
@@ -963,6 +964,27 @@ fn resolve_self(scope: &mut BlockScope, use_span: Span) -> Result<ContractId, Fa
     Ok(contract)
 }
 
+fn check_for_unsafe_call_outside_unsafe(
+    scope: &mut BlockScope,
+    fn_name: &str,
+    call_name_span: Span,
+    function: FunctionId,
+) {
+    if_chain! {
+        if !scope.inherits_type(BlockScopeType::Unsafe);
+        if let Some(unsafe_span) = function.unsafe_span(scope.db());
+        then {
+            let def_name_span = function.name_span(scope.db());
+            scope.fancy_error(&format!("unsafe function `{}` can only be called in an unsafe function or block",
+                                       fn_name),
+                              vec![Label::primary(call_name_span, "call to unsafe function"),
+                                   Label::secondary(unsafe_span + def_name_span, format!("`{}` is defined here as unsafe", fn_name))],
+                              vec!["Hint: put this call in an `unsafe` block if you're confident that it's safe to use here".into()],
+            );
+        }
+    }
+}
+
 fn expr_call_self_attribute(
     scope: &mut BlockScope,
     func_name: &str,
@@ -974,6 +996,8 @@ fn expr_call_self_attribute(
     let contract = resolve_self(scope, self_span)?;
 
     if let Some(func) = contract.self_function(scope.db(), func_name) {
+        check_for_unsafe_call_outside_unsafe(scope, func_name, name_span, func);
+
         let sig = func.signature(scope.root.db);
         validate_named_args(
             scope,
@@ -1013,18 +1037,20 @@ fn expr_call_self_attribute(
 
 fn expr_call_pure(
     scope: &mut BlockScope,
+    call_name_span: Span,
     function: FunctionId,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, FatalError> {
     assert!(function.is_pure(scope.db()));
 
     let fn_name = function.name(scope.db());
-    let name_span = function.name_span(scope.db());
+    check_for_unsafe_call_outside_unsafe(scope, &fn_name, call_name_span, function);
+
     let sig = function.signature(scope.db());
     validate_named_args(
         scope,
         &fn_name,
-        name_span,
+        function.name_span(scope.db()),
         args,
         &sig.params,
         LabelPolicy::AllowAnyUnlabeled,

@@ -44,19 +44,22 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
         // TokenKind::Name if par.peeked_text() == "from" => parse_from_import(par),
         TokenKind::Pub => {
             let pub_span = par.next()?.span;
-            if par.peek_or_err()? == TokenKind::Fn {
-                ModuleStmt::Function(parse_fn_def(par, Some(pub_span))?)
-            } else {
-                let tok = par.next()?;
-                par.unexpected_token_error(
-                    tok.span,
-                    "failed to parse module",
-                    vec!["Note: expected `fn`".into()],
-                );
-                return Err(ParseFailed);
+            match par.peek_or_err()? {
+                TokenKind::Fn | TokenKind::Unsafe => {
+                    ModuleStmt::Function(parse_fn_def(par, Some(pub_span))?)
+                }
+                _ => {
+                    let tok = par.next()?;
+                    par.unexpected_token_error(
+                        tok.span,
+                        "failed to parse module",
+                        vec!["Note: expected `fn`".into()],
+                    );
+                    return Err(ParseFailed);
+                }
             }
         }
-        TokenKind::Fn => ModuleStmt::Function(parse_fn_def(par, None)?),
+        TokenKind::Fn | TokenKind::Unsafe => ModuleStmt::Function(parse_fn_def(par, None)?),
         _ => {
             let tok = par.next()?;
             par.unexpected_token_error(

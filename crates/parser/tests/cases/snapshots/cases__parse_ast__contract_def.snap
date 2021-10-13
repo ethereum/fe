@@ -130,7 +130,11 @@ Node(
     body: [
       Function(Node(
         kind: Function(
-          is_pub: true,
+          pub_: Some(Span(
+            start: 73,
+            end: 76,
+          )),
+          unsafe_: None,
           name: Node(
             kind: "foo",
             span: Span(

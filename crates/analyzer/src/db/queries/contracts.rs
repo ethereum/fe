@@ -162,7 +162,7 @@ pub fn contract_init_function(
     if let Some((id, span)) = first_def {
         // `__init__` must be `pub`.
         // Return type is checked in `queries::functions::function_signature`.
-        if !id.data(db).ast.kind.is_pub {
+        if !id.is_public(db) {
             diagnostics.push(errors::fancy_error(
                 "`__init__` function is not public",
                 vec![Label::primary(span, "`__init__` function must be public")],

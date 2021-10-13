@@ -1,0 +1,51 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: unsafe function `mod_priv` can only be called in an unsafe function or block
+   ┌─ compile_errors/unsafe_misuse.fe:10:3
+   │
+ 3 │ unsafe fn mod_priv(): # OK
+   │ ------------------ `mod_priv` is defined here as unsafe
+   ·
+10 │   mod_priv() # BAD
+   │   ^^^^^^^^ call to unsafe function
+   │
+   = Hint: put this call in an `unsafe` block if you're confident that it's safe to use here
+
+error: public contract functions can't be unsafe
+   ┌─ compile_errors/unsafe_misuse.fe:18:3
+   │
+18 │   pub unsafe fn pub_self(self): # BAD
+   │   ^^^^^^^^^^ a contract function can be either `pub` or `unsafe`, but not both
+
+error: public contract functions can't be unsafe
+   ┌─ compile_errors/unsafe_misuse.fe:20:3
+   │
+20 │   pub unsafe fn pub_noself(): # BAD
+   │   ^^^^^^^^^^ a contract function can be either `pub` or `unsafe`, but not both
+
+error: unsafe function `priv_self` can only be called in an unsafe function or block
+   ┌─ compile_errors/unsafe_misuse.fe:38:5
+   │
+31 │   unsafe fn priv_self(self): # OK
+   │   ------------------- `priv_self` is defined here as unsafe
+   ·
+38 │     self.priv_self() # BAD
+   │     ^^^^^^^^^^^^^^ call to unsafe function
+   │
+   = Hint: put this call in an `unsafe` block if you're confident that it's safe to use here
+
+error: unsafe function `priv_nonself` can only be called in an unsafe function or block
+   ┌─ compile_errors/unsafe_misuse.fe:39:5
+   │
+24 │   unsafe fn priv_nonself(): # OK
+   │   ---------------------- `priv_nonself` is defined here as unsafe
+   ·
+39 │     priv_nonself()   # BAD
+   │     ^^^^^^^^^^^^ call to unsafe function
+   │
+   = Hint: put this call in an `unsafe` block if you're confident that it's safe to use here
+
+

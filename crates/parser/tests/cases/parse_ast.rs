@@ -131,7 +131,10 @@ test_parse! { type_map4, types::parse_type_desc, "map < address , map < u8, u256
 test_parse! { type_tuple, types::parse_type_desc, "(u8, u16, address, Map<u8, u8>)" }
 test_parse! { type_unit, types::parse_type_desc, "()" }
 
-test_parse! { fn_def, |par| functions::parse_fn_def(par, None), "fn foo21(x: bool, y: address,) -> bool:\n x"}
+test_parse! { fn_def, module::parse_module, "fn foo21(x: bool, y: address,) -> bool:\n x"}
+test_parse! { fn_def_pub, module::parse_module, "pub fn foo21(x: bool, y: address,) -> bool:\n x"}
+test_parse! { fn_def_unsafe, module::parse_module, "unsafe fn foo21(x: bool, y: address,) -> bool:\n x"}
+test_parse! { fn_def_pub_unsafe, module::parse_module, "pub unsafe fn foo21(x: bool, y: address,) -> bool:\n x"}
 test_parse! { event_def, types::parse_event_def, "event Foo:\n  x: address\n  idx y: u8" }
 test_parse! { empty_event_def, types::parse_event_def, "event Foo:\n  pass" }
 

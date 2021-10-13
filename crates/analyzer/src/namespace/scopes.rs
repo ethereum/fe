@@ -189,6 +189,7 @@ pub enum BlockScopeType {
     Function,
     IfElse,
     Loop,
+    Unsafe,
 }
 
 impl AnalyzerContext for BlockScope<'_, '_> {

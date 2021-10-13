@@ -183,7 +183,8 @@ fn list_expr_to_fn_def(array: &Array) -> ast::Function {
 
     // Put it all together in one AST node that holds the entire function definition
     ast::Function {
-        is_pub: false,
+        pub_: None,
+        unsafe_: None,
         name: names::list_expr_generator_fn_name(array).into_node(),
         args,
         return_type,
