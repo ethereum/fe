@@ -1,4 +1,4 @@
-use crate::constants::PANIC_INVALID_ABI_DATA;
+use crate::constants::ERROR_INVALID_ABI_DATA;
 use crate::names::abi as abi_names;
 use crate::operations::abi as abi_operations;
 use crate::operations::abi::EncodingSize;
@@ -456,7 +456,7 @@ pub fn is_right_padded() -> yul::Statement {
 }
 
 fn revert_with_invalid_abi_data() -> yul::Statement {
-    revert_operations::panic_revert(PANIC_INVALID_ABI_DATA)
+    revert_operations::error_revert_numeric(ERROR_INVALID_ABI_DATA)
 }
 
 /// Reverts if the value is not left padded with the given number of bits.

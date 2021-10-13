@@ -230,7 +230,7 @@ pub fn encoded_div_or_mod_by_zero() -> Vec<u8> {
 }
 
 pub fn encoded_invalid_abi_data() -> Vec<u8> {
-    encode_revert("Panic(uint256)", &[uint_token(0x99)])
+    encode_revert("Error(uint256)", &[uint_token(0x103)])
 }
 
 #[allow(dead_code)]
