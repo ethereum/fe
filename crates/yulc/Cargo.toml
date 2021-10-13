@@ -11,6 +11,7 @@ fe-yulgen = {path = "../yulgen", version = "^0.10.0-alpha"}
 # This fork supports concurrent compilation, which is required for Rust tests.
 solc = { git = "https://github.com/g-r-a-n-t/solc-rust", optional = true}
 serde_json = "1.0"
+indexmap = "1.6.2"
 
 [features]
 solc-backend = ["solc"]

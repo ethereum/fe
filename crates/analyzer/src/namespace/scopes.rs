@@ -2,7 +2,7 @@
 
 use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, FunctionBody, NamedThing};
 use crate::errors::{AlreadyDefined, TypeError};
-use crate::namespace::items::{Class, EventId, FunctionId, ModuleId};
+use crate::namespace::items::{Class, EventId, FunctionId, Item, ModuleId};
 use crate::namespace::types::FixedSize;
 use crate::AnalyzerDb;
 use fe_common::diagnostics::Diagnostic;
@@ -38,6 +38,15 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
     }
     fn add_diagnostic(&mut self, diag: Diagnostic) {
         self.diagnostics.push(diag)
+    }
+    fn resolve_path(&mut self, path: &ast::Path) -> Option<NamedThing> {
+        let item = Item::Module(self.module).resolve_path(self.db(), path);
+
+        for diagnostic in item.diagnostics.iter() {
+            self.add_diagnostic(diagnostic.to_owned())
+        }
+
+        item.value.map(NamedThing::Item)
     }
 }
 
@@ -183,6 +192,16 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
                 .map(NamedThing::Item)
             })
     }
+
+    fn resolve_path(&mut self, path: &ast::Path) -> Option<NamedThing> {
+        let item = Item::Module(self.function.module(self.db())).resolve_path(self.db(), path);
+
+        for diagnostic in item.diagnostics.iter() {
+            self.add_diagnostic(diagnostic.to_owned())
+        }
+
+        item.value.map(NamedThing::Item)
+    }
 }
 
 pub struct BlockScope<'a, 'b> {
@@ -219,6 +238,15 @@ impl AnalyzerContext for BlockScope<'_, '_> {
                     self.root.resolve_name(name)
                 }
             })
+    }
+    fn resolve_path(&mut self, path: &ast::Path) -> Option<NamedThing> {
+        let item = Item::Module(self.root.function.module(self.db())).resolve_path(self.db(), path);
+
+        for diagnostic in item.diagnostics.iter() {
+            self.add_diagnostic(diagnostic.to_owned())
+        }
+
+        item.value.map(NamedThing::Item)
     }
     fn add_diagnostic(&mut self, diag: Diagnostic) {
         self.root.diagnostics.borrow_mut().push(diag)

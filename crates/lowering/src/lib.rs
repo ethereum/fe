@@ -1,15 +1,25 @@
 //! Fe Lowering.
 
-use fe_analyzer::namespace::items::ModuleId;
-use fe_analyzer::AnalyzerDb;
-use fe_parser::ast;
+use fe_analyzer::namespace::items::{IngotId, ModuleId};
 
 mod context;
+pub mod db;
 mod mappers;
 mod names;
 mod utils;
 
-/// Lowers the Fe source AST to a Fe HIR AST.
-pub fn lower(db: &dyn AnalyzerDb, module: ModuleId) -> ast::Module {
-    mappers::module::module(db, module)
+pub use db::{LoweringDb, TestDb};
+
+/// Lower a Fe module
+///
+/// Interns a module with the lowered AST and returns its ID.
+pub fn lower_module(db: &dyn LoweringDb, module_id: ModuleId) -> ModuleId {
+    db.lowered_module(module_id)
+}
+
+/// Lower a Fe ingot
+///
+/// Interns an ingot with the lowered module ASTs and returns its ID.
+pub fn lower_ingot(db: &dyn LoweringDb, ingot_id: IngotId) -> IngotId {
+    db.lowered_ingot(ingot_id)
 }

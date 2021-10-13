@@ -1,0 +1,9 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: error_string_ingot(&path)
+
+---
+error: The ingot named "compile_errors/mainless_ingot" is missing a main module. 
+Please add a `src/main.fe` file to the base directory.
+
+

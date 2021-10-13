@@ -1,0 +1,3 @@
+struct Baz:
+    my_bool: bool
+    my_u256: u256

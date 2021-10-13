@@ -3,13 +3,13 @@ source: crates/parser/tests/cases/errors.rs
 expression: "err_string(stringify!(self_use1), module::parse_module, true,\n           \"use self as bar\")"
 
 ---
-error: failed to parse path
+error: failed to parse `use` statement
   ┌─ self_use1:1:5
   │
 1 │ use self as bar
   │     ^^^^ expected a name, found keyword `self`
   │
-  = Note: paths must start with a name
-  = Example: `foo::bar`
+  = Note: `use` paths must start with a name
+  = Example: `use foo::bar`
 
 

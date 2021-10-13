@@ -10,6 +10,8 @@ use fe_common::diagnostics::print_diagnostics;
 use fe_common::files::{FileStore, SourceFileId};
 use fe_common::panic::install_panic_hook;
 use fe_driver::CompiledModule;
+use std::ffi::OsStr;
+use walkdir::WalkDir;
 
 const DEFAULT_OUTPUT_DIR_NAME: &str = "output";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -72,7 +74,7 @@ pub fn main() {
         )
         .get_matches();
 
-    let input_file = matches.value_of("input").unwrap();
+    let input_path = matches.value_of("input").unwrap();
     let output_dir = matches.value_of("output-dir").unwrap();
     let overwrite = matches.is_present("overwrite");
     let optimize = matches.value_of("optimize") == Some("true");
@@ -84,24 +86,56 @@ pub fn main() {
         eprintln!("Warning: bytecode output requires 'solc-backend' feature. Try `cargo build --release --features solc-backend`. Skipping.");
     }
 
-    let mut files = FileStore::new();
-    let file = files.load_file(input_file).map_err(ioerr_to_string);
-    if let Err(err) = file {
-        eprintln!("Failed to load file: `{}`. Error: {}", input_file, err);
-        std::process::exit(1);
-    }
-    let (content, id) = file.unwrap();
+    let (content, compiled_module) = if Path::new(input_path).is_file() {
+        let mut files = FileStore::new();
+        let file = files.load_file(input_path).map_err(ioerr_to_string);
 
-    let compiled_module = match fe_driver::compile(&files, id, &content, with_bytecode, optimize) {
-        Ok(module) => module,
-        Err(error) => {
-            eprintln!("Unable to compile {}.", input_file);
-            print_diagnostics(&error.0, &files);
+        let (content, id) = match file {
+            Err(err) => {
+                eprintln!("Failed to load file: `{}`. Error: {}", input_path, err);
+                std::process::exit(1)
+            }
+            Ok(file) => file,
+        };
+
+        let compiled_module = match fe_driver::compile_module(&files, id, with_bytecode, optimize) {
+            Ok(module) => module,
+            Err(error) => {
+                eprintln!("Unable to compile {}.", input_path);
+                print_diagnostics(&error.0, &files);
+                std::process::exit(1)
+            }
+        };
+        (content, compiled_module)
+    } else {
+        let files = build_ingot_filestore_for_dir(input_path);
+
+        if !Path::new(input_path).exists() {
+            eprintln!("Input directory does not exist: `{}`.", input_path);
             std::process::exit(1)
         }
+
+        let compiled_module = match fe_driver::compile_ingot(
+            input_path,
+            &files,
+            &files.all_files(),
+            with_bytecode,
+            optimize,
+        ) {
+            Ok(module) => module,
+            Err(error) => {
+                eprintln!("Unable to compile {}.", input_path);
+                print_diagnostics(&error.0, &files);
+                std::process::exit(1)
+            }
+        };
+
+        // no file content for ingots
+        ("".to_string(), compiled_module)
     };
+
     match write_compiled_module(compiled_module, &content, &targets, output_dir, overwrite) {
-        Ok(_) => println!("Compiled {}. Outputs in `{}`", input_file, output_dir),
+        Ok(_) => println!("Compiled {}. Outputs in `{}`", input_path, output_dir),
         Err(err) => {
             eprintln!(
                 "Failed to write output to directory: `{}`. Error: {}",
@@ -110,6 +144,27 @@ pub fn main() {
             std::process::exit(1)
         }
     }
+}
+
+fn build_ingot_filestore_for_dir(path: &str) -> FileStore {
+    let path = Path::new(path);
+    let walker = WalkDir::new(path);
+    let mut files = FileStore::new();
+
+    for entry in walker {
+        let entry = entry.unwrap();
+        let file_path = &entry.path().to_string_lossy().to_string();
+
+        if entry.path().extension() == Some(OsStr::new("fe")) {
+            let file = files.load_file(file_path);
+            if let Err(err) = file {
+                eprintln!("Failed to load file: `{}`. Error: {}", &file_path, err);
+                std::process::exit(1)
+            }
+        }
+    }
+
+    files
 }
 
 fn write_compiled_module(
@@ -149,7 +204,7 @@ fn write_compiled_module(
         write_output(&output_dir.join("module.tokens"), &format!("{:#?}", tokens))?;
     }
 
-    for (name, contract) in module.contracts.drain() {
+    for (name, contract) in module.contracts.drain(0..) {
         let contract_output_dir = output_dir.join(&name);
         fs::create_dir_all(&contract_output_dir).map_err(ioerr_to_string)?;
 

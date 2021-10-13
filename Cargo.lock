@@ -486,6 +486,7 @@ dependencies = [
  "fe-common",
  "fe-driver",
  "fe-parser",
+ "walkdir",
 ]
 
 [[package]]
@@ -544,6 +545,7 @@ dependencies = [
  "ethabi",
  "evm",
  "evm-runtime",
+ "fe-analyzer",
  "fe-common",
  "fe-driver",
  "fe-test-files",
@@ -594,6 +596,7 @@ dependencies = [
  "fe-parser",
  "fe-yulc",
  "fe-yulgen",
+ "indexmap",
  "serde_json",
 ]
 
@@ -610,6 +613,7 @@ dependencies = [
  "pretty_assertions",
  "regex",
  "rstest",
+ "salsa",
  "wasm-bindgen-test",
 ]
 
@@ -637,7 +641,9 @@ dependencies = [
 name = "fe-test-files"
 version = "0.10.0-alpha"
 dependencies = [
+ "fe-common",
  "include_dir",
+ "walkdir",
 ]
 
 [[package]]
@@ -645,6 +651,7 @@ name = "fe-yulc"
 version = "0.10.0-alpha"
 dependencies = [
  "fe-yulgen",
+ "indexmap",
  "serde_json",
  "solc",
 ]
@@ -656,6 +663,7 @@ dependencies = [
  "fe-abi",
  "fe-analyzer",
  "fe-common",
+ "fe-lowering",
  "fe-parser",
  "fe-test-files",
  "indexmap",
@@ -1438,6 +1446,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "same-file"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
+dependencies = [
+ "winapi-util",
+]
+
+[[package]]
 name = "scoped-tls"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1769,6 +1786,17 @@ name = "version_check"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
+
+[[package]]
+name = "walkdir"
+version = "2.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "808cf2735cd4b6866113f648b791c6adc5714537bc222d9347bb203386ffda56"
+dependencies = [
+ "same-file",
+ "winapi",
+ "winapi-util",
+]
 
 [[package]]
 name = "wasi"

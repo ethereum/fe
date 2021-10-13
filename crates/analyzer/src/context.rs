@@ -6,6 +6,7 @@ use crate::AnalyzerDb;
 use fe_common::diagnostics::Diagnostic;
 pub use fe_common::diagnostics::Label;
 use fe_common::Span;
+use fe_parser::ast;
 use fe_parser::node::NodeId;
 use indexmap::IndexMap;
 use std::collections::HashMap;
@@ -28,6 +29,7 @@ impl<T> Analysis<T> {
 
 pub trait AnalyzerContext {
     fn resolve_name(&self, name: &str) -> Option<NamedThing>;
+    fn resolve_path(&mut self, path: &ast::Path) -> Option<NamedThing>;
     fn add_diagnostic(&mut self, diag: Diagnostic);
     fn db(&self) -> &dyn AnalyzerDb;
 
@@ -156,6 +158,9 @@ impl AnalyzerContext for TempContext {
     }
     fn add_diagnostic(&mut self, diag: Diagnostic) {
         self.diagnostics.push(diag)
+    }
+    fn resolve_path(&mut self, _path: &ast::Path) -> Option<NamedThing> {
+        panic!("TempContext can't resolve paths")
     }
 }
 

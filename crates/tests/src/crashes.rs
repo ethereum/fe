@@ -10,7 +10,7 @@ macro_rules! test_file {
             let src = test_files::fixture(path);
             let mut files = FileStore::new();
             let id = files.add_file(path, src);
-            fe_driver::compile(&files, id, src, true, true).ok();
+            fe_driver::compile_module(&files, id, true, true).ok();
         }
     };
 }

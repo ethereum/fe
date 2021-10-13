@@ -14,6 +14,7 @@ fe-common = {path = "../common", version = "^0.10.0-alpha"}
 fe-driver = {path = "../driver", version = "^0.10.0-alpha"}
 fe-yulgen = {path = "../yulgen", version = "^0.10.0-alpha"}
 fe-yulc = {path = "../yulc", version = "^0.10.0-alpha", optional = true, features = ["solc-backend"]}
+fe-analyzer = {path = "../analyzer", version = "^0.10.0-alpha"}
 test-files = {path = "../test-files", package = "fe-test-files" }
 hex = "0.4"
 primitive-types = {version = "0.9", default-features = false, features = ["rlp"]}

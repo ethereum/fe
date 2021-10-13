@@ -1,26 +1,30 @@
-use fe_analyzer::namespace::items::ModuleId;
-use fe_analyzer::Db;
+use fe_analyzer::namespace::items::{Global, Module, ModuleContext, ModuleFileContent};
+use fe_analyzer::AnalyzerDb;
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::files::{FileStore, SourceFileId};
+use fe_lowering::TestDb;
 use fe_parser::ast as fe;
 use insta::assert_snapshot;
+use std::rc::Rc;
 use wasm_bindgen_test::wasm_bindgen_test;
 
 fn lower(src: &str, id: SourceFileId, files: &FileStore) -> fe::Module {
-    let fe_module = parse_file(src, id, files);
-    let (db, module_id) = analyze(fe_module, files);
-    fe_lowering::lower(&db, module_id)
-}
+    let ast = parse_file(src, id, files);
 
-fn analyze(module: fe::Module, files: &FileStore) -> (Db, ModuleId) {
-    let db = Db::default();
-    match fe_analyzer::analyze(&db, module) {
-        Ok(id) => (db, id),
-        Err(diagnostics) => {
-            print_diagnostics(&diagnostics, files);
-            panic!("analysis failed");
-        }
-    }
+    let db = TestDb::default();
+
+    let global = Global::default();
+    let global_id = db.intern_global(Rc::new(global));
+
+    let module = Module {
+        name: "test_module".to_string(),
+        context: ModuleContext::Global(global_id),
+        file_content: ModuleFileContent::File { file: id },
+        ast,
+    };
+    let module_id = db.intern_module(Rc::new(module));
+
+    fe_lowering::lower_module(&db, module_id).ast(&db)
 }
 
 fn parse_file(src: &str, id: SourceFileId, files: &FileStore) -> fe::Module {

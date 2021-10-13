@@ -1,4 +1,4 @@
-use crate::ast::{self, CallArg, Expr};
+use crate::ast::{self, CallArg, Expr, Path};
 use crate::node::Node;
 use crate::{Label, ParseFailed, ParseResult, Parser, Token, TokenKind};
 
@@ -107,7 +107,7 @@ pub fn parse_expr_with_min_bp(par: &mut Parser, min_bp: u8) -> ParseResult<Node<
 
             let op_tok = par.next()?;
             let rhs = parse_expr_with_min_bp(par, rbp)?;
-            expr_head = infix_op(expr_head, &op_tok, rhs);
+            expr_head = infix_op(par, expr_head, &op_tok, rhs)?;
             continue;
         }
         break;
@@ -243,7 +243,7 @@ fn infix_binding_power(op: TokenKind) -> Option<(u8, u8)> {
         // Prefix Plus | Minus | Tilde => 135
         StarStar => (141, 140),
         Dot => (150, 151),
-        // ColonColon =>
+        ColonColon => (160, 161),
         _ => return None,
     };
     Some(bp)
@@ -377,9 +377,14 @@ fn unescape_string(quoted_string: &str) -> Option<String> {
 }
 
 /// Create an expr from the given infix operator and operands.
-fn infix_op(left: Node<Expr>, op: &Token, right: Node<Expr>) -> Node<Expr> {
+fn infix_op(
+    par: &mut Parser,
+    left: Node<Expr>,
+    op: &Token,
+    right: Node<Expr>,
+) -> ParseResult<Node<Expr>> {
     use TokenKind::*;
-    match op.kind {
+    let expr = match op.kind {
         Or | And => bool_op(left, op, right),
 
         Amper | Hat | Pipe | LtLt | GtGt | Plus | Minus | Star | Slash | Percent | StarStar => {
@@ -399,12 +404,56 @@ fn infix_op(left: Node<Expr>, op: &Token, right: Node<Expr>) -> Node<Expr> {
                     span,
                 )
             } else {
-                todo!("handle dotted expr where right isn't a name")
+                // TODO: check for float number and say something helpful
+                par.fancy_error(
+                    "failed to parse attribute expression",
+                    vec![Label::primary(right.span, "expected a name")],
+                    vec![],
+                );
+                return Err(ParseFailed);
             }
         }
+        ColonColon => {
+            let mut path = match left.kind {
+                Expr::Name(name) => Path {
+                    segments: vec![Node::new(name, left.span)],
+                },
+                Expr::Path(path) => path,
+                _ => {
+                    par.fancy_error(
+                        "failed to parse path expression",
+                        vec![
+                            Label::secondary(op.span, "path delimiter".to_string()),
+                            Label::primary(left.span, "expected a name"),
+                        ],
+                        vec![],
+                    );
+                    return Err(ParseFailed);
+                }
+            };
 
+            // `right` can't be a Path (rbp > lbp); only valid option is `Name`
+            match right.kind {
+                Expr::Name(name) => {
+                    path.segments.push(Node::new(name, right.span));
+                    Node::new(Expr::Path(path), left.span + right.span)
+                }
+                _ => {
+                    par.fancy_error(
+                        "failed to parse path expression",
+                        vec![
+                            Label::secondary(op.span, "path delimiter".to_string()),
+                            Label::primary(right.span, "expected a name"),
+                        ],
+                        vec![],
+                    );
+                    return Err(ParseFailed);
+                }
+            }
+        }
         _ => panic!("Unexpected infix op token: {:?}", op),
-    }
+    };
+    Ok(expr)
 }
 
 /// Create an `Expr::BoolOperation` node for the given operator and operands.

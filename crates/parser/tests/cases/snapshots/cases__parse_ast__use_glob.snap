@@ -7,40 +7,33 @@ Node(
   kind: Use(
     tree: Node(
       kind: Glob(
-        prefix: Node(
-          kind: Path(
-            names: [
-              Node(
-                kind: "foo",
-                span: Span(
-                  start: 4,
-                  end: 7,
-                ),
+        prefix: Path(
+          segments: [
+            Node(
+              kind: "foo",
+              span: Span(
+                start: 4,
+                end: 7,
               ),
-              Node(
-                kind: "bar",
-                span: Span(
-                  start: 9,
-                  end: 12,
-                ),
+            ),
+            Node(
+              kind: "bar",
+              span: Span(
+                start: 9,
+                end: 12,
               ),
-            ],
-            trailing_delim: true,
-          ),
-          span: Span(
-            start: 4,
-            end: 14,
-          ),
+            ),
+          ],
         ),
       ),
       span: Span(
         start: 4,
-        end: 14,
+        end: 12,
       ),
     ),
   ),
   span: Span(
     start: 0,
-    end: 14,
+    end: 12,
   ),
 )

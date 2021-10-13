@@ -17,6 +17,7 @@ use fe_common::diagnostics::Label;
 use fe_common::numeric;
 use fe_common::Span;
 use fe_parser::ast as fe;
+use fe_parser::ast;
 use fe_parser::ast::UnaryOperator;
 use fe_parser::node::Node;
 use num_bigint::BigInt;
@@ -33,6 +34,7 @@ pub fn expr(
 ) -> Result<ExpressionAttributes, FatalError> {
     let attributes = match &exp.kind {
         fe::Expr::Name(_) => expr_name(scope, exp, expected_type),
+        fe::Expr::Path(_) => expr_path(scope, exp, expected_type),
         fe::Expr::Num(_) => Ok(expr_num(scope, exp, expected_type.as_int())),
         fe::Expr::Bool(_) => expr_bool(exp),
         fe::Expr::Subscript { .. } => expr_subscript(scope, exp),
@@ -265,7 +267,30 @@ fn expr_name(
         _ => unreachable!(),
     };
 
-    match scope.resolve_name(name) {
+    expr_named_thing(scope, exp, scope.resolve_name(name), expected_type)
+}
+
+fn expr_path(
+    scope: &mut BlockScope,
+    exp: &Node<fe::Expr>,
+    expected_type: Option<&Type>,
+) -> Result<ExpressionAttributes, FatalError> {
+    let path = match &exp.kind {
+        fe::Expr::Path(path) => path,
+        _ => unreachable!(),
+    };
+
+    let named_thing = scope.resolve_path(path);
+    expr_named_thing(scope, exp, named_thing, expected_type)
+}
+
+fn expr_named_thing(
+    scope: &mut BlockScope,
+    exp: &Node<fe::Expr>,
+    named_thing: Option<NamedThing>,
+    expected_type: Option<&Type>,
+) -> Result<ExpressionAttributes, FatalError> {
+    match named_thing {
         Some(NamedThing::Variable { typ, .. }) => {
             let typ = typ?;
             let location = Location::assign_location(&typ);
@@ -322,14 +347,17 @@ fn expr_name(
                 scope.fancy_error(
                     &format!(
                         "`{}` is a {} name, and can't be used as an expression",
-                        name, item_kind
+                        exp.kind, item_kind
                     ),
                     vec![
                         Label::primary(
                             def_span,
-                            &format!("`{}` is defined here as a {}", name, item_kind),
+                            &format!("`{}` is defined here as a {}", exp.kind, item_kind),
                         ),
-                        Label::primary(exp.span, &format!("`{}` is used here as a value", name)),
+                        Label::primary(
+                            exp.span,
+                            &format!("`{}` is used here as a value", exp.kind),
+                        ),
                     ],
                     vec![],
                 )
@@ -337,17 +365,17 @@ fn expr_name(
                 scope.error(
                     &format!(
                         "`{}` is a built-in {} name, and can't be used as an expression",
-                        name, item_kind
+                        exp.kind, item_kind
                     ),
                     exp.span,
-                    &format!("`{}` is used here as a value", name),
+                    &format!("`{}` is used here as a value", exp.kind),
                 )
             };
             Err(FatalError::new(diag))
         }
         None => {
             let diag = scope.error(
-                &format!("cannot find value `{}` in this scope", name),
+                &format!("cannot find value `{}` in this scope", exp.kind),
                 exp.span,
                 "undefined",
             );
@@ -754,7 +782,8 @@ fn expr_call(
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, FatalError> {
     let (attributes, call_type) = match &func.kind {
-        fe::Expr::Name(name) => expr_call_name(scope, name, func.span, generic_args, args)?,
+        fe::Expr::Name(name) => expr_call_name(scope, name, func, generic_args, args)?,
+        fe::Expr::Path(path) => expr_call_path(scope, path, func, generic_args, args)?,
         fe::Expr::Attribute { value, attr } => {
             // TODO: err if there are generic args
             expr_call_method(scope, value, attr, generic_args, args)?
@@ -794,16 +823,16 @@ fn expr_call(
     Ok(attributes)
 }
 
-fn expr_call_name(
+fn expr_call_name<T: std::fmt::Display>(
     scope: &mut BlockScope,
     name: &str,
-    name_span: Span,
+    func: &Node<T>,
     generic_args: &Option<Node<Vec<fe::GenericArg>>>,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<(ExpressionAttributes, CallType), FatalError> {
-    check_for_call_to_init_fn(scope, name, name_span)?;
+    check_for_call_to_init_fn(scope, name, func.span)?;
 
-    let named_item = scope.resolve_name(name).ok_or_else(|| {
+    let named_thing = scope.resolve_name(name).ok_or_else(|| {
         // Check for call to a fn in the current class that takes self.
         if let Some(function) = scope
             .root
@@ -820,7 +849,7 @@ fn expr_call_name(
                         &format!("`{}` is defined here as a function that takes `self`", name),
                     ),
                     Label::primary(
-                        name_span,
+                        func.span,
                         format!("`{}` is called here as a standalone function", name),
                     ),
                 ],
@@ -832,15 +861,43 @@ fn expr_call_name(
         } else {
             FatalError::new(scope.error(
                 &format!("`{}` is not defined", name),
-                name_span,
+                func.span,
                 &format!("`{}` has not been defined in this scope", name),
             ))
         }
     })?;
 
-    match named_item {
+    expr_call_named_thing(scope, named_thing, func, generic_args, args)
+}
+
+fn expr_call_path<T: std::fmt::Display>(
+    scope: &mut BlockScope,
+    path: &ast::Path,
+    func: &Node<T>,
+    generic_args: &Option<Node<Vec<fe::GenericArg>>>,
+    args: &Node<Vec<Node<fe::CallArg>>>,
+) -> Result<(ExpressionAttributes, CallType), FatalError> {
+    let named_thing = scope.resolve_path(path).ok_or_else(|| {
+        FatalError::new(scope.error(
+            &format!("`{}` is not defined", func.kind),
+            func.span,
+            &format!("`{}` has not been defined in this scope", func.kind),
+        ))
+    })?;
+
+    expr_call_named_thing(scope, named_thing, func, generic_args, args)
+}
+
+fn expr_call_named_thing<T: std::fmt::Display>(
+    scope: &mut BlockScope,
+    named_thing: NamedThing,
+    func: &Node<T>,
+    generic_args: &Option<Node<Vec<fe::GenericArg>>>,
+    args: &Node<Vec<Node<fe::CallArg>>>,
+) -> Result<(ExpressionAttributes, CallType), FatalError> {
+    match named_thing {
         NamedThing::Item(Item::BuiltinFunction(function)) => {
-            expr_call_builtin_function(scope, function, name_span, generic_args, args)
+            expr_call_builtin_function(scope, function, func.span, generic_args, args)
         }
         NamedThing::Item(Item::Function(function)) => {
             expr_call_pure(scope, function, generic_args, args)
@@ -848,7 +905,7 @@ fn expr_call_name(
         NamedThing::Item(Item::Type(id)) => {
             if let Some(args) = generic_args {
                 scope.fancy_error(
-                    &format!("`{}` type is not generic", name),
+                    &format!("`{}` type is not generic", func.kind),
                     vec![Label::primary(
                         args.span,
                         "unexpected generic argument list",
@@ -856,55 +913,77 @@ fn expr_call_name(
                     vec![],
                 );
             }
-            expr_call_type_constructor(scope, id.typ(scope.db())?, name_span, args)
+            expr_call_type_constructor(scope, id.typ(scope.db())?, func.span, args)
         }
         NamedThing::Item(Item::GenericType(generic)) => {
             let concrete_type =
-                apply_generic_type_args(scope, generic, name_span, generic_args.as_ref())?;
-            expr_call_type_constructor(scope, concrete_type, name_span, args)
+                apply_generic_type_args(scope, generic, func.span, generic_args.as_ref())?;
+            expr_call_type_constructor(scope, concrete_type, func.span, args)
         }
 
         // Nothing else is callable (for now at least)
         NamedThing::SelfValue { .. } => Err(FatalError::new(scope.error(
             "`self` is not callable",
-            name_span,
+            func.span,
             "can't be used as a function",
         ))),
         NamedThing::Variable { typ, span, .. } => Err(FatalError::new(scope.fancy_error(
-            &format!("`{}` is not callable", name),
+            &format!("`{}` is not callable", func.kind),
             vec![
-                Label::secondary(span, format!("`{}` has type `{}`", name, typ?)),
-                Label::primary(name_span, format!("`{}` can't be used as a function", name)),
+                Label::secondary(span, format!("`{}` has type `{}`", func.kind, typ?)),
+                Label::primary(
+                    func.span,
+                    format!("`{}` can't be used as a function", func.kind),
+                ),
             ],
             vec![],
         ))),
         NamedThing::Item(Item::Constant(id)) => Err(FatalError::new(scope.error(
-            &format!("`{}` is not callable", name),
-            name_span,
+            &format!("`{}` is not callable", func.kind),
+            func.span,
             &format!(
                 "`{}` is a constant of type `{}`, and can't be used as a function",
-                name,
+                func.kind,
                 id.typ(scope.db())?,
             ),
         ))),
         NamedThing::Item(Item::Object(_)) => Err(FatalError::new(scope.error(
-            &format!("`{}` is not callable", name),
-            name_span,
+            &format!("`{}` is not callable", func.kind),
+            func.span,
             &format!(
                 "`{}` is a built-in object, and can't be used as a function",
-                name
+                func.kind
             ),
         ))),
         NamedThing::Item(Item::Event(_)) => Err(FatalError::new(scope.fancy_error(
-            &format!("`{}` is not callable", name),
+            &format!("`{}` is not callable", func.kind),
             vec![Label::primary(
-                name_span,
+                func.span,
                 &format!(
                     "`{}` is an event, and can't be constructed in this context",
-                    name
+                    func.kind
                 ),
             )],
-            vec![format!("Hint: to emit an event, use `emit {}(..)`", name)],
+            vec![format!(
+                "Hint: to emit an event, use `emit {}(..)`",
+                func.kind
+            )],
+        ))),
+        NamedThing::Item(Item::Ingot(_)) => Err(FatalError::new(scope.error(
+            &format!("`{}` is not callable", func.kind),
+            func.span,
+            &format!(
+                "`{}` is an ingot, and can't be used as a function",
+                func.kind
+            ),
+        ))),
+        NamedThing::Item(Item::Module(_)) => Err(FatalError::new(scope.error(
+            &format!("`{}` is not callable", func.kind),
+            func.span,
+            &format!(
+                "`{}` is a module, and can't be used as a function",
+                func.kind
+            ),
         ))),
     }
 }

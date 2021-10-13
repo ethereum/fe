@@ -1,0 +1,10 @@
+struct Bing:
+    my_address: address
+
+fn get_42_backend() -> u256:
+    return 42
+
+# currently disallowed
+#contract BingContract:
+#    pub fn foo():
+#        pass

@@ -1,0 +1,4 @@
+struct Dong:
+  my_address: address
+  my_u256: u256
+  my_i8: i8

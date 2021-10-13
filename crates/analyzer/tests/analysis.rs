@@ -1,6 +1,8 @@
-use fe_analyzer::namespace::items::{self, Item, TypeDef};
+use fe_analyzer::namespace::items::{
+    self, Global, Ingot, Item, Module, ModuleContext, ModuleFileContent, TypeDef,
+};
 use fe_analyzer::namespace::types::{Event, FixedSize};
-use fe_analyzer::{AnalyzerDb, Db};
+use fe_analyzer::{AnalyzerDb, TestDb};
 use fe_common::diagnostics::{diagnostics_string, print_diagnostics, Diagnostic, Label, Severity};
 use fe_common::files::FileStore;
 use fe_parser::node::NodeId;
@@ -24,7 +26,7 @@ macro_rules! test_analysis {
             let mut files = FileStore::new();
             let src = test_files::fixture($path);
             let id = files.add_file($path, src);
-            let fe_module = match fe_parser::parse_file(id, &src) {
+            let ast = match fe_parser::parse_file(id, &src) {
                 Ok((module, _)) => module,
                 Err(diags) => {
                     print_diagnostics(&diags, &files);
@@ -32,9 +34,21 @@ macro_rules! test_analysis {
                 }
             };
 
-            let db = Db::default();
-            let module = db.intern_module(Rc::new(items::Module { ast: fe_module }));
-            let diagnostics = module.diagnostics(&db);
+            let db = TestDb::default();
+
+            let global = Global::default();
+            let global_id = db.intern_global(Rc::new(global));
+
+            let module = Module {
+                name: "test_module".to_string(),
+                context: ModuleContext::Global(global_id),
+                file_content: ModuleFileContent::File { file: id },
+                ast,
+            };
+
+            let module_id = db.intern_module(Rc::new(module));
+
+            let diagnostics = module_id.diagnostics(&db);
             if !diagnostics.is_empty() {
                 print_diagnostics(&diagnostics, &files);
                 panic!("analysis failed")
@@ -46,10 +60,64 @@ macro_rules! test_analysis {
                 //  for larger diffs. I recommend commenting out all tests but one.
                 fe_common::assert_snapshot_wasm!(
                     concat!("snapshots/analysis__", stringify!($name), ".snap"),
-                    build_snapshot(&files, module, &db)
+                    build_snapshot(&files, module_id, &db)
                 );
             } else {
-                assert_snapshot!(build_snapshot(&files, module, &db));
+                assert_snapshot!(build_snapshot(&files, module_id, &db));
+            }
+        }
+    };
+}
+
+macro_rules! test_analysis_ingot {
+    ($name:ident, $path:expr) => {
+        #[test]
+        #[wasm_bindgen_test]
+        fn $name() {
+            let files = test_files::build_filestore($path);
+
+            let db = TestDb::default();
+
+            let global = Global::default();
+            let global_id = db.intern_global(Rc::new(global));
+
+            let ingot = Ingot {
+                name: "test_ingot".to_string(),
+                global: global_id,
+                fe_files: files
+                    .files
+                    .values()
+                    .into_iter()
+                    .map(|file| {
+                        (
+                            file.id,
+                            (
+                                file.clone(),
+                                fe_parser::parse_file(file.id, &file.content).unwrap().0,
+                            ),
+                        )
+                    })
+                    .collect(),
+            };
+            let ingot_id = db.intern_ingot(Rc::new(ingot));
+
+            let snapshot = ingot_id
+                .all_modules(&db)
+                .iter()
+                .map(|module_id| build_snapshot(&files, *module_id, &db))
+                .collect::<Vec<_>>()
+                .join("\n");
+
+            if cfg!(target_arch = "wasm32") {
+                // NOTE: If this assertion fails, the generation of the output diff
+                //  is very slow on wasm, and may result in an out-of-memory error
+                //  for larger diffs. I recommend commenting out all tests but one.
+                fe_common::assert_snapshot_wasm!(
+                    concat!("snapshots/analysis__", stringify!($name), ".snap"),
+                    snapshot
+                );
+            } else {
+                assert_snapshot!(snapshot);
             }
         }
     };
@@ -164,6 +232,8 @@ test_analysis! { data_copying_stress, "stress/data_copying_stress.fe"}
 test_analysis! { tuple_stress, "stress/tuple_stress.fe"}
 test_analysis! { type_aliases, "features/type_aliases.fe"}
 
+test_analysis_ingot! { basic_ingot, "ingots/basic_ingot"}
+
 fn build_snapshot(file_store: &FileStore, module: items::ModuleId, db: &dyn AnalyzerDb) -> String {
     let diagnostics = module
         .all_items(db)
@@ -223,6 +293,8 @@ fn build_snapshot(file_store: &FileStore, module: items::ModuleId, db: &dyn Anal
             | Item::Type(TypeDef::Primitive(_))
             | Item::GenericType(_)
             | Item::BuiltinFunction(_)
+            | Item::Ingot(_)
+            | Item::Module(_)
             | Item::Object(_) => vec![],
         })
         .flatten()
