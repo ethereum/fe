@@ -50,6 +50,58 @@ fn evm_sanity() {
 }
 
 #[test]
+fn test_send_value() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "send_value.fe", "Foo", &[]);
+        let contract_address = harness.address;
+        let bob = "2000000000000000000000000000000000000002";
+        let ten = U256::from(10);
+        let zero = U256::from(0);
+
+        // The contract has a zero balance, hence send_value fails with Error(0x100)
+        assert_eq!(executor.balance(contract_address), zero);
+        validate_revert(
+            harness.capture_call(
+                &mut executor,
+                "send_them_wei",
+                &[address_token(bob), uint_token(1)],
+            ),
+            &encode_revert("Error(uint256)", &[uint_token(0x100)]),
+        );
+
+        // Let's give the contract 10 wei and send bob 9 wei
+        executor.state_mut().deposit(contract_address, ten);
+        assert_eq!(executor.balance(contract_address), ten);
+        assert_eq!(executor.balance(address(bob)), zero);
+
+        harness.test_function(
+            &mut executor,
+            "send_them_wei",
+            &[address_token(bob), uint_token(1)],
+            None,
+        );
+        assert_eq!(executor.balance(contract_address), U256::from(9));
+        assert_eq!(executor.balance(address(bob)), U256::from(1));
+
+        // Let's deploy a contract that reverts when it receives ether
+        let fail_contract =
+            deploy_solidity_contract(&mut executor, "solidity/always_revert.sol", "Foo", &[]);
+        executor.state_mut().deposit(fail_contract.address, ten);
+        assert_eq!(executor.balance(fail_contract.address), ten);
+
+        // Sending Ether to this contract reverts with Error(0x101)
+        validate_revert(
+            harness.capture_call(
+                &mut executor,
+                "send_them_wei",
+                &[ethabi::Token::Address(fail_contract.address), uint_token(1)],
+            ),
+            &encode_revert("Error(uint256)", &[uint_token(0x101)]),
+        );
+    })
+}
+
+#[test]
 fn test_revert() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, "revert.fe", "Foo", &[]);

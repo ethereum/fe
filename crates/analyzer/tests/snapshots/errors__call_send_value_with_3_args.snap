@@ -1,0 +1,14 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: `send_value` expects 2 arguments, but 3 were provided
+  ┌─ [snippet]:3:3
+  │
+3 │   send_value(address(0), 0, 0)
+  │   ^^^^^^^^^^ ----------  -  - supplied 3 arguments
+  │   │                          
+  │   expects 2 arguments
+
+

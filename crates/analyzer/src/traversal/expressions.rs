@@ -753,7 +753,7 @@ fn expr_call_builtin_function(
     match function {
         GlobalMethod::Keccak256 => {
             validate_arg_count(scope, function.as_ref(), name_span, args, 1, "argument");
-            expect_no_label_on_first_arg(scope, args);
+            expect_no_label_on_arg(scope, args, 0);
 
             if let Some(arg_typ) = argument_attributes.first().map(|attr| &attr.typ) {
                 if !matches!(
@@ -779,6 +779,54 @@ fn expr_call_builtin_function(
             };
 
             Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value))
+        }
+        GlobalMethod::SendValue => {
+            validate_arg_count(scope, function.as_ref(), name_span, args, 2, "argument");
+            // There's no label support for builtin functions today. That problem disappears as soon as they are written in Fe
+            expect_no_label_on_arg(scope, args, 0);
+            expect_no_label_on_arg(scope, args, 1);
+
+            let argument_info = argument_attributes
+                .iter()
+                .map(|attr| &attr.typ)
+                .zip(args.kind.iter().map(|arg| arg.span))
+                .collect::<Vec<_>>();
+
+            if let Some((arg_typ, span)) = argument_info.get(0) {
+                if !matches!(arg_typ, Type::Base(Base::Address)) {
+                    scope.fancy_error(
+                        &format!(
+                            "`{}` can not be used as an argument to `{}`",
+                            arg_typ,
+                            function.as_ref(),
+                        ),
+                        vec![Label::primary(*span, "wrong type")],
+                        vec![format!(
+                            "Note: `{}` expects an `address` as first argument",
+                            function.as_ref()
+                        )],
+                    );
+                }
+            }
+
+            if let Some((arg_typ, span)) = argument_info.get(1) {
+                if !matches!(arg_typ, Type::Base(U256)) {
+                    scope.fancy_error(
+                        &format!(
+                            "`{}` can not be used as an argument to `{}`",
+                            arg_typ,
+                            function.as_ref(),
+                        ),
+                        vec![Label::primary(*span, "wrong type")],
+                        vec![format!(
+                            "Note: `{}` expects an `u256` as second argument",
+                            function.as_ref()
+                        )],
+                    );
+                }
+            }
+
+            Ok(ExpressionAttributes::new(Type::unit(), Location::Value))
         }
     }
 }
@@ -811,8 +859,16 @@ fn expr_call_struct_constructor(
     ))
 }
 
-fn expect_no_label_on_first_arg(scope: &mut BlockScope, args: &Node<Vec<Node<fe::CallArg>>>) {
-    if let Some(label) = args.kind.first().and_then(|arg| arg.kind.label.as_ref()) {
+fn expect_no_label_on_arg(
+    scope: &mut BlockScope,
+    args: &Node<Vec<Node<fe::CallArg>>>,
+    arg_index: usize,
+) {
+    if let Some(label) = args
+        .kind
+        .get(arg_index)
+        .and_then(|arg| arg.kind.label.as_ref())
+    {
         scope.error(
             "argument should not be labeled",
             label.span,
@@ -850,7 +906,7 @@ fn expr_call_type_constructor(
 
     // These all expect 1 arg, for now.
     validate_arg_count(scope, &format!("{}", typ), name_span, args, 1, "argument");
-    expect_no_label_on_first_arg(scope, args);
+    expect_no_label_on_arg(scope, args, 0);
 
     match &typ {
         Type::String(string_type) => {

@@ -12,6 +12,11 @@ pub fn error_revert(typ: &AbiType) -> yul::Statement {
     revert("Error", typ)
 }
 
+/// Generate a YUL function to revert with an error code.
+pub fn error_revert_numeric() -> yul::Statement {
+    revert("Error", &AbiType::Uint { size: 32 })
+}
+
 /// Generate a YUL function to revert with a panic code.
 pub fn panic_revert() -> yul::Statement {
     revert("Panic", &AbiType::Uint { size: 32 })
@@ -52,5 +57,5 @@ pub fn revert(name: &str, typ: &AbiType) -> yul::Statement {
 
 /// Return all revert functions used by default.
 pub fn all() -> Vec<yul::Statement> {
-    vec![panic_revert()]
+    vec![panic_revert(), error_revert_numeric()]
 }

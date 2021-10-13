@@ -1,6 +1,8 @@
+use crate::constants::{ERROR_FAILED_SEND_VALUE, ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE};
 use crate::names;
 use crate::names::abi as abi_names;
 use crate::operations::abi as abi_operations;
+use crate::operations::revert as revert_operations;
 use crate::types::{to_abi_selector_names, to_abi_types, AbiDecodeLocation, AsAbiType};
 use fe_abi::utils as abi_utils;
 use fe_analyzer::namespace::items::ContractId;
@@ -9,7 +11,7 @@ use yultsur::*;
 
 /// Return all contacts runtime functions
 pub fn all() -> Vec<yul::Statement> {
-    vec![create2(), create()]
+    vec![create2(), create(), send_value()]
 }
 
 /// Builds a set of functions used to make calls to the given contract's public
@@ -93,6 +95,20 @@ pub fn create() -> yul::Statement {
             (let mptr := alloc(data_size))
             (datacopy(mptr, data_ptr, data_size))
             (return_address := create(value, mptr, data_size))
+        }
+    }
+}
+
+/// Function that sends wei from the contract to another address
+pub fn send_value() -> yul::Statement {
+    function_definition! {
+        // Inspired by: https://github.com/OpenZeppelin/openzeppelin-contracts/blob/5b28259dacf47fc208e03611eb3ba8eeaed63cc0/contracts/utils/Address.sol#L54-L59
+        function send_value(to_address, value_in_wei) -> result {
+            (if (lt((selfbalance()), value_in_wei)) { [revert_operations::error_revert_numeric(ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE)] })
+            (let success := call((gas()) , to_address, value_in_wei, 0, 0, 0, 0))
+            (if (iszero(success)) { [revert_operations::error_revert_numeric(ERROR_FAILED_SEND_VALUE)] })
+            // send_value returns the unit type but we need to return something.
+            (result := 0x0)
         }
     }
 }
