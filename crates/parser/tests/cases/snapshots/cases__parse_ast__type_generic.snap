@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(type_generic), types::parse_type_desc,\n           \"foo<a, b<c>, d[10]>\")"
+expression: "ast_string(stringify!(type_generic), types::parse_type_desc,\n           \"foo<a, b<c>, Array<d, 10>>\")"
 
 ---
 Node(
@@ -56,32 +56,53 @@ Node(
           ),
         )),
         TypeDesc(Node(
-          kind: Array(
-            typ: Node(
-              kind: Base(
-                base: "d",
-              ),
+          kind: Generic(
+            base: Node(
+              kind: "Array",
               span: Span(
                 start: 13,
-                end: 14,
+                end: 18,
               ),
             ),
-            dimension: 10,
+            args: Node(
+              kind: [
+                TypeDesc(Node(
+                  kind: Base(
+                    base: "d",
+                  ),
+                  span: Span(
+                    start: 19,
+                    end: 20,
+                  ),
+                )),
+                Int(Node(
+                  kind: 10,
+                  span: Span(
+                    start: 22,
+                    end: 24,
+                  ),
+                )),
+              ],
+              span: Span(
+                start: 18,
+                end: 25,
+              ),
+            ),
           ),
           span: Span(
             start: 13,
-            end: 18,
+            end: 25,
           ),
         )),
       ],
       span: Span(
         start: 3,
-        end: 19,
+        end: 26,
       ),
     ),
   ),
   span: Span(
     start: 0,
-    end: 19,
+    end: 26,
   ),
 )

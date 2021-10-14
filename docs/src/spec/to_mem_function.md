@@ -5,5 +5,5 @@ Reference type values can be copied from storage and into memory using the `to_m
 Example:
 
 ```python
-my_array_var: u256[10] = self.my_array_field.to_mem()
+my_array_var: Array<u256, 10> = self.my_array_field.to_mem()
 ```

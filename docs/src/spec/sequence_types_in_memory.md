@@ -7,7 +7,7 @@ Example:
 
 ```python
 # function scope
-foo: u256[100] # foo is a pointer that references 100 * 256 bits in memory.
+foo: Array<u256, 100> # foo is a pointer that references 100 * 256 bits in memory.
 ```
 
 To find an element inside of a sequence type, the relative location of the element is added to the

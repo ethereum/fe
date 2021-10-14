@@ -65,9 +65,9 @@ macro_rules! test_stmt {
     };
 }
 
-test_stmt! { array_non_primitive, "let x: (u8, u8)[10]" }
-test_stmt! { array_mixed_types, "let x: u16[3] = [1, address(0), \"hi\"]" }
-test_stmt! { array_size_mismatch, "let x: u8[3] = []\nlet y: u8[3] = [1, 2]" }
+test_stmt! { array_non_primitive, "let x: Array<(u8, u8), 10>" }
+test_stmt! { array_mixed_types, "let x: Array<u16, 3> = [1, address(0), \"hi\"]" }
+test_stmt! { array_size_mismatch, "let x: Array<u8, 3> = []\nlet y: Array<u8, 3> = [1, 2]" }
 test_stmt! { array_constructor_call, "u8[3]([1, 2, 3])" }
 test_stmt! { assert_reason_not_string, "assert true, 1" }
 test_stmt! { assign_int, "5 = 6" }
@@ -104,7 +104,7 @@ test_stmt! { call_send_value_with_3_args, "send_value(address(0), 0, 0)" }
 test_stmt! { call_send_value_with_wrong_type, "send_value(true, 0)" }
 test_stmt! { call_send_value_with_wrong_type2, "send_value(address(0), true)" }
 test_stmt! { call_send_value_with_generic_args, "send_value<10>(address(0), 1)" }
-test_stmt! { clone_arg_count, "let x: u256[2] = [5, 6]\nlet y: u256[2] = x.clone(y)" }
+test_stmt! { clone_arg_count, "let x: Array<u256, 2> = [5, 6]\nlet y: Array<u256, 2> = x.clone(y)" }
 test_stmt! { continue_without_loop, "continue" }
 test_stmt! { continue_without_loop_2, "if true:\n  continue" }
 test_stmt! { emit_undefined_event, "emit MyEvent()" }

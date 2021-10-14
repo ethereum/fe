@@ -23,21 +23,6 @@ pub fn type_desc(context: &mut ModuleContext, desc: Node<TypeDesc>, typ: &Type) 
             )
         }
 
-        TypeDesc::Array {
-            typ: desc,
-            dimension,
-        } => {
-            let inner_type = typ.as_array().expect("expected array type").inner;
-            let span = desc.span;
-            Node::new(
-                TypeDesc::Array {
-                    typ: Box::new(type_desc(context, *desc, &Type::Base(inner_type))),
-                    dimension,
-                },
-                span,
-            )
-        }
-
         TypeDesc::Generic { base, args } => Node::new(
             TypeDesc::Generic {
                 base,

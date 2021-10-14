@@ -24,7 +24,7 @@ contract Foo:
     pub fn get_string() -> String<10>:
         return String<10>("hi")
 
-    pub fn get_array() -> u16[4]:
+    pub fn get_array() -> Array<u16, 4>:
         return [u16(1), u16(2), u16(3), u16(257)]
 
     pub fn get_tuple() -> (u256, u256, bool):
@@ -76,7 +76,7 @@ contract FooProxy:
         return self.foo.get_tuple()
 
     pub fn call_get_array(self):
-        let my_array: u16[4] = self.foo.get_array()
+        let my_array: Array<u16, 4> = self.foo.get_array()
         assert my_array[0] == u16(1)
         assert my_array[1] == u16(2)
         assert my_array[2] == u16(3)

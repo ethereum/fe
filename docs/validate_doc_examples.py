@@ -23,7 +23,7 @@ SKIP_LIST = [
     'sequence_types_in_memory.md_d0c350a8f03869f88b1bae6308f168b2a53ba091.fe',
     'to_mem_function.md_947ff72560701a3e190ba73683c3ae685f065188.fe',
     'visibility_and_privacy.md_6482a7013a176c42a2cad1e126074a010edb4d74.fe',
-    'clone_function.md_641905887e4885c4fe0e64666dc50089182e6c5b.fe',
+    'clone_function.md_b5723756c9f8ecc9364a6a871a161dcb4607f2a3.fe',
     'tokens.md_e3f3d78fba190e6ed6072f18136e063d3ee3fb94.fe',
     # This one should be removed when the ICE is fixed
     'statement_let.md_c444f724992ccfee7bb2acf630cf642b832f62fe.fe',

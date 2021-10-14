@@ -1,11 +1,11 @@
 contract Foo:
     num: u256
-    nums: u256[42]
+    nums: Array<u256, 42>
     str: String<26>
 
     event MyEvent:
         num: u256
-        nums: u256[42]
+        nums: Array<u256, 42>
         str: String<26>
 
     pub fn write_num(self, x: u256):
@@ -14,10 +14,10 @@ contract Foo:
     pub fn read_num(self) -> u256:
         return self.num
 
-    pub fn write_nums(self, x: u256[42]):
+    pub fn write_nums(self, x: Array<u256, 42>):
         self.nums = x
 
-    pub fn read_nums(self) -> u256[42]:
+    pub fn read_nums(self) -> Array<u256, 42>:
         return self.nums.to_mem()
 
     pub fn write_str(self, x: String<26>):

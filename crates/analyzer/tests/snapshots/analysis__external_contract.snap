@@ -12,8 +12,8 @@ note:
 note: 
   ┌─ features/external_contract.fe:4:9
   │
-4 │         my_addrs: address[5]
-  │         ^^^^^^^^^^^^^^^^^^^^ address[5]
+4 │         my_addrs: Array<address, 5>
+  │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<address, 5>
 
 note: 
   ┌─ features/external_contract.fe:5:9
@@ -24,7 +24,7 @@ note:
 note: 
   ┌─ features/external_contract.fe:7:5
   │  
-7 │ ╭     pub fn emit_event(my_num: u256, my_addrs: address[5], my_string: String<11>):
+7 │ ╭     pub fn emit_event(my_num: u256, my_addrs: Array<address, 5>, my_string: String<11>):
 8 │ │         emit MyEvent(my_num, my_addrs, my_string)
   │ ╰─────────────────────────────────────────────────^ attributes hash: 18349539147683316743
   │  
@@ -73,8 +73,8 @@ note:
 note: 
    ┌─ features/external_contract.fe:10:5
    │  
-10 │ ╭     pub fn build_array(a: u256, b: u256) -> u256[3]:
-11 │ │         let my_array: u256[3]
+10 │ ╭     pub fn build_array(a: u256, b: u256) -> Array<u256, 3>:
+11 │ │         let my_array: Array<u256, 3>
 12 │ │         my_array[0] = a
 13 │ │         my_array[1] = a * b
 14 │ │         my_array[2] = b
@@ -123,7 +123,7 @@ note:
 18 │ ╭     pub fn call_emit_event(
 19 │ │         foo_address: address,
 20 │ │         my_num: u256,
-21 │ │         my_addrs: address[5],
+21 │ │         my_addrs: Array<address, 5>,
    · │
 24 │ │         let foo: Foo = Foo(foo_address)
 25 │ │         foo.emit_event(my_num, my_addrs, my_string)
@@ -186,7 +186,7 @@ note:
 28 │ │          foo_address: address,
 29 │ │          a: u256,
 30 │ │          b: u256,
-31 │ │     ) -> u256[3]:
+31 │ │     ) -> Array<u256, 3>:
 32 │ │         let foo: Foo = Foo(foo_address)
 33 │ │         return foo.build_array(a, b)
    │ ╰────────────────────────────────────^ attributes hash: 6783560394552784988
@@ -245,7 +245,7 @@ note:
   ┌─ features/external_contract.fe:8:30
   │
 8 │         emit MyEvent(my_num, my_addrs, my_string)
-  │                              ^^^^^^^^ address[5]: Memory => None
+  │                              ^^^^^^^^ Array<address, 5>: Memory => None
 
 note: 
   ┌─ features/external_contract.fe:8:40
@@ -257,7 +257,7 @@ note:
    ┌─ features/external_contract.fe:12:9
    │
 12 │         my_array[0] = a
-   │         ^^^^^^^^ u256[3]: Memory => None
+   │         ^^^^^^^^ Array<u256, 3>: Memory => None
 
 note: 
    ┌─ features/external_contract.fe:12:18
@@ -281,7 +281,7 @@ note:
    ┌─ features/external_contract.fe:13:9
    │
 13 │         my_array[1] = a * b
-   │         ^^^^^^^^ u256[3]: Memory => None
+   │         ^^^^^^^^ Array<u256, 3>: Memory => None
 
 note: 
    ┌─ features/external_contract.fe:13:18
@@ -317,7 +317,7 @@ note:
    ┌─ features/external_contract.fe:14:9
    │
 14 │         my_array[2] = b
-   │         ^^^^^^^^ u256[3]: Memory => None
+   │         ^^^^^^^^ Array<u256, 3>: Memory => None
 
 note: 
    ┌─ features/external_contract.fe:14:18
@@ -341,7 +341,7 @@ note:
    ┌─ features/external_contract.fe:15:16
    │
 15 │         return my_array
-   │                ^^^^^^^^ u256[3]: Memory => None
+   │                ^^^^^^^^ Array<u256, 3>: Memory => None
 
 note: 
    ┌─ features/external_contract.fe:24:28
@@ -371,7 +371,7 @@ note:
    ┌─ features/external_contract.fe:25:32
    │
 25 │         foo.emit_event(my_num, my_addrs, my_string)
-   │                                ^^^^^^^^ address[5]: Memory => None
+   │                                ^^^^^^^^ Array<address, 5>: Memory => None
 
 note: 
    ┌─ features/external_contract.fe:25:42
@@ -419,7 +419,7 @@ note:
    ┌─ features/external_contract.fe:33:16
    │
 33 │         return foo.build_array(a, b)
-   │                ^^^^^^^^^^^^^^^^^^^^^ u256[3]: Memory => None
+   │                ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 3>: Memory => None
 
 note: 
   ┌─ features/external_contract.fe:8:9
@@ -470,8 +470,8 @@ note:
 note: 
    ┌─ features/external_contract.fe:11:23
    │
-11 │         let my_array: u256[3]
-   │                       ^^^^^^^ u256[3]
+11 │         let my_array: Array<u256, 3>
+   │                       ^^^^^^^^^^^^^^ Array<u256, 3>
 
 note: 
    ┌─ features/external_contract.fe:24:18

@@ -64,7 +64,7 @@ contract Foo:
         assert building.rooms == u8(10)
         return building.size
 
-    pub fn encode_house() -> u8[128]:
+    pub fn encode_house() -> Array<u8, 128>:
         let house: House = House(
             price=300,
             size=500,

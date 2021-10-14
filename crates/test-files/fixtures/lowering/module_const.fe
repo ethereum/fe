@@ -18,7 +18,7 @@ contract Foo:
     let my_calc: u256 = THREE * TEN
     let my_other_calc: u256 = THREE * 3
 
-    let my_array: u256[2] = [THREE, TEN]
+    let my_array: Array<u256, 2> = [THREE, TEN]
     let my_tuple: (u256, u256) = (THREE, TEN)
     let my_bar: Bar = Bar(val=THREE)
 

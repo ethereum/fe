@@ -4,11 +4,11 @@ expression: "error_string(\"[snippet]\", &src)"
 
 ---
 error: `clone` expects 0 arguments, but 1 was provided
-  ┌─ [snippet]:4:22
+  ┌─ [snippet]:4:29
   │
-4 │   let y: u256[2] = x.clone(y)
-  │                      ^^^^^ - supplied 1 argument
-  │                      │      
-  │                      expects 0 arguments
+4 │   let y: Array<u256, 2> = x.clone(y)
+  │                             ^^^^^ - supplied 1 argument
+  │                             │      
+  │                             expects 0 arguments
 
 

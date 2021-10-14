@@ -6,13 +6,13 @@ expression: "build_snapshot(\"features/address_bytes10_map.fe\", &src, module, &
 note: 
   ┌─ features/address_bytes10_map.fe:2:5
   │
-2 │     bar: Map<address, u8[10]>
-  │     ^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, u8[10]>
+2 │     bar: Map<address, Array<u8, 10>>
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, Array<u8, 10>>
 
 note: 
   ┌─ features/address_bytes10_map.fe:4:5
   │  
-4 │ ╭     pub fn read_bar(self, key: address) -> u8[10]:
+4 │ ╭     pub fn read_bar(self, key: address) -> Array<u8, 10>:
 5 │ │         return self.bar[key].to_mem()
   │ ╰─────────────────────────────────────^ attributes hash: 8899857923785283493
   │  
@@ -43,7 +43,7 @@ note:
 note: 
   ┌─ features/address_bytes10_map.fe:7:5
   │  
-7 │ ╭     pub fn write_bar(self, key: address, value: u8[10]):
+7 │ ╭     pub fn write_bar(self, key: address, value: Array<u8, 10>):
 8 │ │         self.bar[key] = value
   │ ╰─────────────────────────────^ attributes hash: 8250642936007969286
   │  
@@ -83,7 +83,7 @@ note:
   ┌─ features/address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
-  │                ^^^^^^^^ Map<address, u8[10]>: Storage { nonce: Some(0) } => None
+  │                ^^^^^^^^ Map<address, Array<u8, 10>>: Storage { nonce: Some(0) } => None
 
 note: 
   ┌─ features/address_bytes10_map.fe:5:25
@@ -95,19 +95,19 @@ note:
   ┌─ features/address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
-  │                ^^^^^^^^^^^^^ u8[10]: Storage { nonce: None } => None
+  │                ^^^^^^^^^^^^^ Array<u8, 10>: Storage { nonce: None } => None
 
 note: 
   ┌─ features/address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
-  │                ^^^^^^^^^^^^^^^^^^^^^^ u8[10]: Storage { nonce: None } => Some(Memory)
+  │                ^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 10>: Storage { nonce: None } => Some(Memory)
 
 note: 
   ┌─ features/address_bytes10_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^ Map<address, u8[10]>: Storage { nonce: Some(0) } => None
+  │         ^^^^^^^^ Map<address, Array<u8, 10>>: Storage { nonce: Some(0) } => None
 
 note: 
   ┌─ features/address_bytes10_map.fe:8:18
@@ -119,13 +119,13 @@ note:
   ┌─ features/address_bytes10_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^^^^^^ u8[10]: Storage { nonce: None } => None
+  │         ^^^^^^^^^^^^^ Array<u8, 10>: Storage { nonce: None } => None
 
 note: 
   ┌─ features/address_bytes10_map.fe:8:25
   │
 8 │         self.bar[key] = value
-  │                         ^^^^^ u8[10]: Memory => None
+  │                         ^^^^^ Array<u8, 10>: Memory => None
 
 note: 
   ┌─ features/address_bytes10_map.fe:5:16

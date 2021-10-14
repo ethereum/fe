@@ -1,3 +1,4 @@
+use crate::names;
 use crate::utils::ZeroSpanNode;
 use fe_analyzer::namespace::types::{Array, Base, FixedSize, Integer, SafeNames, Tuple};
 use fe_parser::ast as fe;
@@ -17,16 +18,34 @@ pub fn fixed_size_type_desc(typ: &FixedSize) -> fe::TypeDesc {
     match typ {
         FixedSize::Base(Base::Unit) => fe::TypeDesc::Unit,
         FixedSize::Base(base) => fe::TypeDesc::Base {
-            base: base_type_name(base),
+            base: names::base_type_name(base),
         },
-        FixedSize::Array(array) => fe::TypeDesc::Array {
-            dimension: array.size,
-            typ: fixed_size_type_desc(&array.inner.into()).into_boxed_node(),
+        FixedSize::Array(array) => fe::TypeDesc::Generic {
+            base: "Array".to_string().into_node(),
+            args: vec![
+                fe::GenericArg::TypeDesc(
+                    fe::TypeDesc::Base {
+                        base: array.inner.to_string(),
+                    }
+                    .into_node(),
+                ),
+                fe::GenericArg::Int(array.size.into_node()),
+            ]
+            .into_node(),
         },
-        FixedSize::Tuple(_) => todo!(),
-        FixedSize::String(_) => todo!(),
-        FixedSize::Contract(_) => todo!(),
-        FixedSize::Struct(_) => todo!(),
+        FixedSize::Tuple(tuple) => fe::TypeDesc::Base {
+            base: names::tuple_struct_name(tuple),
+        },
+        FixedSize::String(string) => fe::TypeDesc::Generic {
+            base: "String".to_string().into_node(),
+            args: vec![fe::GenericArg::Int(string.max_size.into_node())].into_node(),
+        },
+        FixedSize::Contract(contract) => fe::TypeDesc::Base {
+            base: contract.name.clone(),
+        },
+        FixedSize::Struct(strukt) => fe::TypeDesc::Base {
+            base: strukt.name.clone(),
+        },
     }
 }
 

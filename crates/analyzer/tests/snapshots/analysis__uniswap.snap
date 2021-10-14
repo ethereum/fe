@@ -102,8 +102,8 @@ note:
 note: 
     ┌─ demos/uniswap.fe:290:5
     │
-290 │     all_pairs: address[100]
-    │     ^^^^^^^^^^^^^^^^^^^^^^^ address[100]
+290 │     all_pairs: Array<address, 100>
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<address, 100>
 
 note: 
     ┌─ demos/uniswap.fe:291:5
@@ -4747,7 +4747,7 @@ note:
     ┌─ demos/uniswap.fe:319:36
     │
 319 │         let salt: u256 = keccak256((token0, token1).abi_encode())
-    │                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u8[64]: Memory => None
+    │                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 64>: Memory => None
 
 note: 
     ┌─ demos/uniswap.fe:319:26
@@ -4885,7 +4885,7 @@ note:
     ┌─ demos/uniswap.fe:325:9
     │
 325 │         self.all_pairs[self.pair_counter] = address(pair)
-    │         ^^^^^^^^^^^^^^ address[100]: Storage { nonce: Some(3) } => None
+    │         ^^^^^^^^^^^^^^ Array<address, 100>: Storage { nonce: Some(3) } => None
 
 note: 
     ┌─ demos/uniswap.fe:325:24
