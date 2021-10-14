@@ -1,0 +1,70 @@
+---
+source: crates/analyzer/tests/analysis.rs
+expression: "build_snapshot(\"features/send_value.fe\", &src, module, &db)"
+
+---
+note: 
+  ┌─ features/send_value.fe:2:5
+  │  
+2 │ ╭     pub fn send_them_wei(to: address, wei: u256):
+3 │ │         send_value(to, wei)
+  │ ╰───────────────────────────^ attributes hash: 1344491078926082800
+  │  
+  = FunctionSignature {
+        self_decl: None,
+        params: [
+            FunctionParam {
+                name: "to",
+                typ: Ok(
+                    Base(
+                        Address,
+                    ),
+                ),
+            },
+            FunctionParam {
+                name: "wei",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U256,
+                        ),
+                    ),
+                ),
+            },
+        ],
+        return_type: Ok(
+            Base(
+                Unit,
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/send_value.fe:3:20
+  │
+3 │         send_value(to, wei)
+  │                    ^^ address: Value => None
+
+note: 
+  ┌─ features/send_value.fe:3:24
+  │
+3 │         send_value(to, wei)
+  │                        ^^^ u256: Value => None
+
+note: 
+  ┌─ features/send_value.fe:3:9
+  │
+3 │         send_value(to, wei)
+  │         ^^^^^^^^^^^^^^^^^^^ (): Value => None
+
+note: 
+  ┌─ features/send_value.fe:3:9
+  │
+3 │         send_value(to, wei)
+  │         ^^^^^^^^^^ attributes hash: 9660326149299693551
+  │
+  = BuiltinFunction(
+        SendValue,
+    )
+
+
