@@ -1,0 +1,14 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: `balance_of` expects 1 argument, but 2 were provided
+  ┌─ [snippet]:3:3
+  │
+3 │   balance_of(address(0), 2)
+  │   ^^^^^^^^^^ ----------  - supplied 2 arguments
+  │   │                       
+  │   expects 1 argument
+
+

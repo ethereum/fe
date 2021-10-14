@@ -1,0 +1,12 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: `balance_of` function does not expect generic arguments
+  ┌─ [snippet]:3:13
+  │
+3 │   balance_of<10>(address(0))
+  │             ^^^^ unexpected generic argument list
+
+

@@ -1,0 +1,14 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(\"[snippet]\", &src)"
+
+---
+error: `bool` can not be used as an argument to `balance_of`
+  ┌─ [snippet]:3:13
+  │
+3 │   balance_of(true)
+  │             ^^^^^^ wrong type
+  │
+  = Note: `balance_of` expects an address argument
+
+

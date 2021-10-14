@@ -92,6 +92,12 @@ test_stmt! { call_keccak_with_wrong_type, "keccak256(true)" }
 test_stmt! { call_keccak_with_2_args, "keccak256(1, 2)" }
 test_stmt! { call_keccak_with_generic_args, "keccak256<10>(1)" }
 
+test_stmt! { call_balance_of_without_parameter, "balance_of()" }
+test_stmt! { call_balance_of_with_wrong_type, "balance_of(true)" }
+test_stmt! { call_balance_of_with_2_args, "balance_of(address(0), 2)" }
+test_stmt! { call_balance_of_with_generic_args, "balance_of<10>(address(0))" }
+test_stmt! { call_balance_with_arg, "balance(address(0))" }
+test_stmt! { call_balance_with_generic_args, "balance<10>()" }
 test_stmt! { call_send_value_without_parameter, "send_value()" }
 test_stmt! { call_send_value_with_1_arg, "send_value(address(0))" }
 test_stmt! { call_send_value_with_3_args, "send_value(address(0), 0, 0)" }

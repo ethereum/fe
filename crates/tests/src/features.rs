@@ -132,6 +132,53 @@ fn test_revert() {
 }
 
 #[test]
+fn test_balances() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "balances.fe", "Foo", &[]);
+        let bob = address("2000000000000000000000000000000000000002");
+        let bob_token = ethabi::Token::Address(bob);
+
+        harness.test_function(&mut executor, "my_balance", &[], Some(&uint_token(0)));
+
+        harness.test_function(
+            &mut executor,
+            "other_balance",
+            &[ethabi::Token::Address(harness.address)],
+            Some(&uint_token(0)),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "other_balance",
+            &[bob_token.clone()],
+            Some(&uint_token(0)),
+        );
+
+        executor.state_mut().deposit(harness.address, U256::from(5));
+        executor.state_mut().deposit(bob, U256::from(10));
+
+        assert_eq!(executor.balance(harness.address), U256::from(5));
+        assert_eq!(executor.balance(bob), U256::from(10));
+
+        harness.test_function(&mut executor, "my_balance", &[], Some(&uint_token(5)));
+
+        harness.test_function(
+            &mut executor,
+            "other_balance",
+            &[ethabi::Token::Address(harness.address)],
+            Some(&uint_token(5)),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "other_balance",
+            &[bob_token],
+            Some(&uint_token(10)),
+        );
+    })
+}
+
+#[test]
 fn test_assert() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, "assert.fe", "Foo", &[]);
