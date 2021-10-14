@@ -141,6 +141,7 @@ test_analysis! { return_u256_from_called_fn_with_args, "features/return_u256_fro
 test_analysis! { revert, "features/revert.fe"}
 test_analysis! { self_address, "features/self_address.fe"}
 test_analysis! { send_value, "features/send_value.fe"}
+test_analysis! { balances, "features/balances.fe"}
 test_analysis! { sized_vals_in_sto, "features/sized_vals_in_sto.fe"}
 test_analysis! { strings, "features/strings.fe"}
 test_analysis! { structs, "features/structs.fe"}

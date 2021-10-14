@@ -117,6 +117,12 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
             GlobalMethod::SendValue => {
                 expression! { send_value([yul_args[0].to_owned()], [yul_args[1].to_owned()]) }
             }
+            GlobalMethod::Balance => {
+                expression! { selfbalance() }
+            }
+            GlobalMethod::BalanceOf => {
+                expression! { balance([yul_args[0].to_owned()]) }
+            }
         },
         CallType::TypeConstructor {
             typ: Type::Struct(val),

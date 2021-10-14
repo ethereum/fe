@@ -1,0 +1,91 @@
+---
+source: crates/analyzer/tests/analysis.rs
+expression: "build_snapshot(\"features/balances.fe\", &src, module, &db)"
+
+---
+note: 
+  ┌─ features/balances.fe:2:5
+  │  
+2 │ ╭     pub fn my_balance(self) -> u256:
+3 │ │         return balance()
+  │ ╰────────────────────────^ attributes hash: 16482263331346774611
+  │  
+  = FunctionSignature {
+        self_decl: Mutable,
+        params: [],
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U256,
+                ),
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/balances.fe:5:5
+  │  
+5 │ ╭     pub fn other_balance(self, someone: address) -> u256:
+6 │ │         return balance_of(someone)
+  │ ╰──────────────────────────────────^ attributes hash: 2478257718014019887
+  │  
+  = FunctionSignature {
+        self_decl: Mutable,
+        params: [
+            FunctionParam {
+                name: "someone",
+                typ: Ok(
+                    Base(
+                        Address,
+                    ),
+                ),
+            },
+        ],
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U256,
+                ),
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/balances.fe:3:16
+  │
+3 │         return balance()
+  │                ^^^^^^^^^ u256: Value => None
+
+note: 
+  ┌─ features/balances.fe:6:27
+  │
+6 │         return balance_of(someone)
+  │                           ^^^^^^^ address: Value => None
+
+note: 
+  ┌─ features/balances.fe:6:16
+  │
+6 │         return balance_of(someone)
+  │                ^^^^^^^^^^^^^^^^^^^ u256: Value => None
+
+note: 
+  ┌─ features/balances.fe:3:16
+  │
+3 │         return balance()
+  │                ^^^^^^^ attributes hash: 16310782615237733127
+  │
+  = BuiltinFunction(
+        Balance,
+    )
+
+note: 
+  ┌─ features/balances.fe:6:16
+  │
+6 │         return balance_of(someone)
+  │                ^^^^^^^^^^ attributes hash: 17653883527447570056
+  │
+  = BuiltinFunction(
+        BalanceOf,
+    )
+
+

@@ -1,0 +1,6 @@
+contract Foo:
+    pub fn my_balance(self) -> u256:
+        return balance()
+
+    pub fn other_balance(self, someone: address) -> u256:
+        return balance_of(someone)

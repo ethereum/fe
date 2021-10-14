@@ -13,6 +13,8 @@ pub enum ValueMethod {
 pub enum GlobalMethod {
     Keccak256,
     SendValue,
+    Balance,
+    BalanceOf,
 }
 
 #[derive(Debug, PartialEq, EnumString, AsRefStr)]

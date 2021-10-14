@@ -781,6 +781,32 @@ fn expr_call_builtin_function(
 
             Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value))
         }
+        GlobalMethod::Balance => {
+            validate_arg_count(scope, function.as_ref(), name_span, args, 0, "argument");
+            Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value))
+        }
+        GlobalMethod::BalanceOf => {
+            validate_arg_count(scope, function.as_ref(), name_span, args, 1, "argument");
+            expect_no_label_on_arg(scope, args, 0);
+
+            if let Some(arg_typ) = argument_attributes.first().map(|attr| &attr.typ) {
+                if !matches!(arg_typ, Type::Base(Base::Address)) {
+                    scope.fancy_error(
+                        &format!(
+                            "`{}` can not be used as an argument to `{}`",
+                            arg_typ,
+                            function.as_ref(),
+                        ),
+                        vec![Label::primary(args.span, "wrong type")],
+                        vec![format!(
+                            "Note: `{}` expects an address argument",
+                            function.as_ref()
+                        )],
+                    );
+                }
+            };
+            Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value))
+        }
         GlobalMethod::SendValue => {
             validate_arg_count(scope, function.as_ref(), name_span, args, 2, "argument");
             // There's no label support for builtin functions today. That problem disappears as soon as they are written in Fe
