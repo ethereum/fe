@@ -49,7 +49,13 @@ pub fn calls(db: &dyn AnalyzerDb, contract: ContractId) -> Vec<yul::Statement> {
                         (let instart := alloc_mstoren([selector], 4))
                         (let insize := add(4, [encoding_size]))
                         (pop([encoding_operation]))
-                        (pop((call((gas()), addr, 0, instart, insize, 0, 0))))
+                        (let success := call((gas()), addr, 0, instart, insize, 0, 0))
+                        (if (iszero(success)) {
+                            (let outsize := returndatasize())
+                            (let outstart := alloc(outsize))
+                            (returndatacopy(outstart, 0, outsize))
+                            (revert(outstart, outsize))
+                        })
                     }
                 }
             } else {
@@ -65,10 +71,11 @@ pub fn calls(db: &dyn AnalyzerDb, contract: ContractId) -> Vec<yul::Statement> {
                         (let instart := alloc_mstoren([selector], 4))
                         (let insize := add(4, [encoding_size]))
                         (pop([encoding_operation]))
-                        (pop((call((gas()), addr, 0, instart, insize, 0, 0))))
+                        (let success := call((gas()), addr, 0, instart, insize, 0, 0))
                         (let outsize := returndatasize())
                         (let outstart := alloc(outsize))
                         (returndatacopy(outstart, 0, outsize))
+                        (if (iszero(success)) { (revert(outstart, outsize)) })
                         (return_val := [decoding_operation])
                     }
                 }
