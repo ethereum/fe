@@ -318,5 +318,23 @@ fn external_calls_stress() {
             Some(&string_token("hi")),
         );
         proxy_harness.test_function(&mut executor, "call_get_array", &[], None);
+
+        proxy_harness.test_function_reverts(&mut executor, "call_do_revert", &[], &[]);
+
+        proxy_harness.test_function_reverts(&mut executor, "call_do_revert2", &[], &[]);
+
+        proxy_harness.test_function_reverts(
+            &mut executor,
+            "call_do_revert_with_data",
+            &[],
+            &encode_revert("SomeError(uint256)", &[uint_token(4711)]),
+        );
+
+        proxy_harness.test_function_reverts(
+            &mut executor,
+            "call_do_revert_with_data2",
+            &[],
+            &encode_revert("SomeError(uint256)", &[uint_token(4711)]),
+        );
     })
 }

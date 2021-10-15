@@ -213,7 +213,7 @@ pub fn validate_revert(
             format!("0x{}", hex::encode(expected_data))
         );
     } else {
-        panic!("failed")
+        panic!("Method was expected to revert but didn't")
     };
 }
 
