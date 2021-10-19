@@ -61,13 +61,31 @@ fn move_expression(
     from: Location,
     to: Location,
 ) -> yul::Expression {
-    let typ = FixedSize::try_from(typ).expect("Invalid type");
+    let fixed_size = FixedSize::try_from(typ.clone()).expect("Invalid type");
 
     match (from, to) {
-        (Location::Storage { .. }, Location::Value) => data_operations::sload(typ, val),
-        (Location::Memory, Location::Value) => data_operations::mload(typ, val),
-        (Location::Memory, Location::Memory) => data_operations::mcopym(typ, val),
-        (Location::Storage { .. }, Location::Memory) => data_operations::scopym(typ, val),
+        (Location::Storage { .. }, Location::Value) => {
+            if let Type::Base(Base::Numeric(integer)) = typ {
+                math_operations::adjust_numeric_size(
+                    &integer,
+                    data_operations::sload(fixed_size, val),
+                )
+            } else {
+                data_operations::sload(fixed_size, val)
+            }
+        }
+        (Location::Memory, Location::Value) => {
+            if let Type::Base(Base::Numeric(integer)) = typ {
+                math_operations::adjust_numeric_size(
+                    &integer,
+                    data_operations::mload(fixed_size, val),
+                )
+            } else {
+                data_operations::mload(fixed_size, val)
+            }
+        }
+        (Location::Memory, Location::Memory) => data_operations::mcopym(fixed_size, val),
+        (Location::Storage { .. }, Location::Memory) => data_operations::scopym(fixed_size, val),
         _ => panic!("invalid expression move: {:?} {:?}", from, to),
     }
 }

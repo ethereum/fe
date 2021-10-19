@@ -202,6 +202,8 @@ fn test_assert() {
     case("return_u256_from_called_fn.fe", &[], uint_token(42)),
     case("return_u256.fe", &[], uint_token(42)),
     case("return_i256.fe", &[], int_token(-3)),
+    case("return_from_storage_i8.fe", &[int_token(-3)], int_token(-6)),
+    case("return_from_memory_i8.fe", &[int_token(-3)], int_token(-6)),
     case("return_identity_u256.fe", &[uint_token(42)], uint_token(42)),
     case("return_identity_u128.fe", &[uint_token(42)], uint_token(42)),
     case("return_identity_u64.fe", &[uint_token(42)], uint_token(42)),
