@@ -103,6 +103,9 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
         CallType::TypeConstructor {
             typ: Type::Struct(val),
         } => struct_operations::new(&val, yul_args),
+        CallType::TypeConstructor {
+            typ: Type::Base(Base::Numeric(integer)),
+        } => math_operations::adjust_numeric_size(&integer, yul_args[0].to_owned()),
         CallType::TypeConstructor { .. } => yul_args[0].to_owned(),
         CallType::Pure(func) => {
             let func_name = names::func_name(&func.name(context.db));

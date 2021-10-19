@@ -210,6 +210,18 @@ fn test_assert() {
     case("return_identity_u8.fe", &[uint_token(42)], uint_token(42)),
     case("return_u128_cast.fe", &[], uint_token(42)),
     case("return_i128_cast.fe", &[], int_token(-3)),
+    case("return_cast_u8_to_signed.fe", &[uint_token(253)], int_token(-3)),
+    case("return_cast_u8_to_signed.fe", &[uint_token(127)], int_token(127)),
+    case("return_cast_u8_to_signed.fe", &[uint_token(128)], int_token(-128)),
+    case("return_cast_u8_to_signed.fe", &[uint_token(129)], int_token(-127)),
+    case("return_cast_u8_to_signed.fe", &[uint_token(0)], int_token(0)),
+    case("return_cast_u8_to_signed.fe", &[uint_token(1)], int_token(1)),
+    case("return_cast_i8_to_unsigned.fe", &[int_token(-3)], uint_token(253)),
+    case("return_cast_i8_to_unsigned.fe", &[int_token(-128)], uint_token(128)),
+    case("return_cast_i8_to_unsigned.fe", &[int_token(-127)], uint_token(129)),
+    case("return_cast_i8_to_unsigned.fe", &[int_token(127)], uint_token(127)),
+    case("return_cast_i8_to_unsigned.fe", &[int_token(0)], uint_token(0)),
+    case("return_cast_i8_to_unsigned.fe", &[int_token(1)], uint_token(1)),
     case("return_msg_sig.fe", &[], uint_token(4273672062)),
     case("return_sum_list_expression_1.fe", &[], uint_token(210)),
     case("return_sum_list_expression_2.fe", &[], uint_token(210)),
@@ -344,6 +356,15 @@ fn return_array() {
             &[uint_token(42)],
             Some(&uint_array_token(&[0, 0, 0, 42, 0])),
         )
+    })
+}
+
+#[test]
+fn numeric_casts() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "numeric_casts.fe", "Foo", &[]);
+
+        harness.test_function(&mut executor, "bar", &[], None)
     })
 }
 

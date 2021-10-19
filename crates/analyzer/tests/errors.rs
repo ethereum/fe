@@ -165,7 +165,8 @@ test_stmt! { string_constructor_no_type_args, "String<>()" }
 test_stmt! { string_constructor_two_int_type_args, "String<1, 2>()" }
 test_stmt! { string_constructor_two_type_args, "String<1, u8>()" }
 test_stmt! { ternary_type_mismatch, "10 if 100 else true" }
-test_stmt! { type_constructor_from_variable, "let x: u8\nlet y: u16 = u16(x)" }
+test_stmt! { change_sign_and_size_in_cast, "let x: i8\nlet y: u16 = u16(x)" }
+test_stmt! { change_sign_and_type_in_cast, "let x: bool\nlet y: u16 = u16(x)" }
 test_stmt! { type_constructor_arg_count, "let x: u8 = u8(1, 10)" }
 test_stmt! { unary_minus_on_bool, "let x: bool = true\n-x" }
 test_stmt! { unary_not_on_int, "let x: u256 = 10\nnot x" }
