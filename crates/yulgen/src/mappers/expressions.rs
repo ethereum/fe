@@ -251,7 +251,13 @@ pub fn expr_bin_operation(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul:
             fe::BinOperator::BitAnd => expression! { and([yul_left], [yul_right]) },
             fe::BinOperator::BitOr => expression! { or([yul_left], [yul_right]) },
             fe::BinOperator::BitXor => expression! { xor([yul_left], [yul_right]) },
-            fe::BinOperator::LShift => expression! { shl([yul_right], [yul_left]) },
+            fe::BinOperator::LShift => match typ {
+                Type::Base(Base::Numeric(integer)) => math_operations::adjust_numeric_size(
+                    integer,
+                    expression! { shl([yul_right], [math_operations::adjust_numeric_size(integer, yul_left)]) },
+                ),
+                _ => unreachable!(),
+            },
             fe::BinOperator::RShift => match typ.is_signed_integer() {
                 true => expression! { sar([yul_right], [yul_left]) },
                 false => expression! { shr([yul_right], [yul_left]) },
