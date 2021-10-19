@@ -257,6 +257,8 @@ fn test_assert() {
     case("return_bitwiseand_u128.fe", &[uint_token(12), uint_token(25)], uint_token(8)),
     case("return_bitwiseor_u256.fe", &[uint_token(12), uint_token(25)], uint_token(29)),
     case("return_bitwisexor_u256.fe", &[uint_token(12), uint_token(25)], uint_token(21)),
+    case("return_bitwiseshl_u8.fe", &[uint_token(1), uint_token(8)], uint_token(0)),
+    case("return_bitwiseshl_i8.fe", &[int_token(-1), uint_token(1)], int_token(-2)),
     case("return_bitwiseshl_u256.fe", &[uint_token(212), uint_token(0)], uint_token(212)),
     case("return_bitwiseshl_u256.fe", &[uint_token(212), uint_token(1)], uint_token(424)),
     case("return_bitwiseshr_u256.fe", &[uint_token(212), uint_token(0)], uint_token(212)),
