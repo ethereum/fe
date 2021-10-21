@@ -42,35 +42,21 @@ note:
   ┌─ features/if_statement_2.fe:4:12
   │
 4 │         if val > 5:
-  │            ^^^ u256: Value => None
-
-note: 
-  ┌─ features/if_statement_2.fe:4:18
-  │
-4 │         if val > 5:
-  │                  ^ u256: Value => None
+  │            ^^^   ^ u256: Value => None
+  │            │      
+  │            u256: Value => None
 
 note: 
   ┌─ features/if_statement_2.fe:4:12
   │
 4 │         if val > 5:
   │            ^^^^^^^ bool: Value => None
-
-note: 
-  ┌─ features/if_statement_2.fe:5:20
-  │
 5 │             return 1
   │                    ^ u256: Value => None
-
-note: 
-  ┌─ features/if_statement_2.fe:7:20
-  │
+6 │         else:
 7 │             assert true
   │                    ^^^^ bool: Value => None
-
-note: 
-  ┌─ features/if_statement_2.fe:9:16
-  │
+8 │ 
 9 │         return 0
   │                ^ u256: Value => None
 

@@ -27,6 +27,22 @@ note:
     }
 
 note: 
+  ┌─ features/call_statement_without_args.fe:5:9
+  │
+5 │         self.baz[0] = 100
+  │         ^^^^^^^^ ^ u256: Value => None
+  │         │         
+  │         Map<u256, u256>: Storage { nonce: Some(0) } => None
+
+note: 
+  ┌─ features/call_statement_without_args.fe:5:9
+  │
+5 │         self.baz[0] = 100
+  │         ^^^^^^^^^^^   ^^^ u256: Value => None
+  │         │              
+  │         u256: Storage { nonce: None } => None
+
+note: 
   ┌─ features/call_statement_without_args.fe:7:5
   │  
 7 │ ╭     pub fn bar(self) -> u256:
@@ -47,46 +63,14 @@ note:
     }
 
 note: 
-  ┌─ features/call_statement_without_args.fe:5:9
-  │
-5 │         self.baz[0] = 100
-  │         ^^^^^^^^ Map<u256, u256>: Storage { nonce: Some(0) } => None
-
-note: 
-  ┌─ features/call_statement_without_args.fe:5:18
-  │
-5 │         self.baz[0] = 100
-  │                  ^ u256: Value => None
-
-note: 
-  ┌─ features/call_statement_without_args.fe:5:9
-  │
-5 │         self.baz[0] = 100
-  │         ^^^^^^^^^^^ u256: Storage { nonce: None } => None
-
-note: 
-  ┌─ features/call_statement_without_args.fe:5:23
-  │
-5 │         self.baz[0] = 100
-  │                       ^^^ u256: Value => None
-
-note: 
   ┌─ features/call_statement_without_args.fe:8:9
   │
 8 │         self.assign()
   │         ^^^^^^^^^^^^^ (): Value => None
-
-note: 
-  ┌─ features/call_statement_without_args.fe:9:16
-  │
 9 │         return self.baz[0]
-  │                ^^^^^^^^ Map<u256, u256>: Storage { nonce: Some(0) } => None
-
-note: 
-  ┌─ features/call_statement_without_args.fe:9:25
-  │
-9 │         return self.baz[0]
-  │                         ^ u256: Value => None
+  │                ^^^^^^^^ ^ u256: Value => None
+  │                │         
+  │                Map<u256, u256>: Storage { nonce: Some(0) } => None
 
 note: 
   ┌─ features/call_statement_without_args.fe:9:16

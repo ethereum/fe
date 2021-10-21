@@ -28,117 +28,65 @@ note:
      }
 
 note: 
+  ┌─ features/while_loop_with_continue.fe:3:16
+  │
+3 │         let i: u256 = 0
+  │                ^^^^ u256
+4 │         let counter: u256 = 0
+  │                      ^^^^ u256
+
+note: 
   ┌─ features/while_loop_with_continue.fe:3:23
   │
 3 │         let i: u256 = 0
   │                       ^ u256: Value => None
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:4:29
-  │
 4 │         let counter: u256 = 0
   │                             ^ u256: Value => None
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:6:15
-  │
+5 │ 
 6 │         while i < 2:
-  │               ^ u256: Value => None
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:6:19
-  │
-6 │         while i < 2:
-  │                   ^ u256: Value => None
+  │               ^   ^ u256: Value => None
+  │               │    
+  │               u256: Value => None
 
 note: 
   ┌─ features/while_loop_with_continue.fe:6:15
   │
 6 │         while i < 2:
   │               ^^^^^ bool: Value => None
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:7:13
-  │
 7 │             i = i + 1
-  │             ^ u256: Value => None
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:7:17
-  │
-7 │             i = i + 1
-  │                 ^ u256: Value => None
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:7:21
-  │
-7 │             i = i + 1
-  │                     ^ u256: Value => None
+  │             ^   ^   ^ u256: Value => None
+  │             │   │    
+  │             │   u256: Value => None
+  │             u256: Value => None
 
 note: 
   ┌─ features/while_loop_with_continue.fe:7:17
   │
 7 │             i = i + 1
   │                 ^^^^^ u256: Value => None
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:8:16
-  │
 8 │             if i == 1:
-  │                ^ u256: Value => None
+  │                ^    ^ u256: Value => None
+  │                │     
+  │                u256: Value => None
 
 note: 
-  ┌─ features/while_loop_with_continue.fe:8:21
-  │
-8 │             if i == 1:
-  │                     ^ u256: Value => None
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:8:16
-  │
-8 │             if i == 1:
-  │                ^^^^^^ bool: Value => None
-
-note: 
-   ┌─ features/while_loop_with_continue.fe:10:13
+   ┌─ features/while_loop_with_continue.fe:8:16
    │
+ 8 │             if i == 1:
+   │                ^^^^^^ bool: Value => None
+ 9 │                 continue
 10 │             counter = counter + 1
-   │             ^^^^^^^ u256: Value => None
-
-note: 
-   ┌─ features/while_loop_with_continue.fe:10:23
-   │
-10 │             counter = counter + 1
-   │                       ^^^^^^^ u256: Value => None
-
-note: 
-   ┌─ features/while_loop_with_continue.fe:10:33
-   │
-10 │             counter = counter + 1
-   │                                 ^ u256: Value => None
+   │             ^^^^^^^   ^^^^^^^   ^ u256: Value => None
+   │             │         │          
+   │             │         u256: Value => None
+   │             u256: Value => None
 
 note: 
    ┌─ features/while_loop_with_continue.fe:10:23
    │
 10 │             counter = counter + 1
    │                       ^^^^^^^^^^^ u256: Value => None
-
-note: 
-   ┌─ features/while_loop_with_continue.fe:11:16
-   │
 11 │         return counter
    │                ^^^^^^^ u256: Value => None
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:3:16
-  │
-3 │         let i: u256 = 0
-  │                ^^^^ u256
-
-note: 
-  ┌─ features/while_loop_with_continue.fe:4:22
-  │
-4 │         let counter: u256 = 0
-  │                      ^^^^ u256
 
 

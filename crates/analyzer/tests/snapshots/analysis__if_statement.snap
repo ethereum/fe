@@ -40,29 +40,18 @@ note:
   ┌─ features/if_statement.fe:4:12
   │
 4 │         if input > 5:
-  │            ^^^^^ u256: Value => None
-
-note: 
-  ┌─ features/if_statement.fe:4:20
-  │
-4 │         if input > 5:
-  │                    ^ u256: Value => None
+  │            ^^^^^   ^ u256: Value => None
+  │            │        
+  │            u256: Value => None
 
 note: 
   ┌─ features/if_statement.fe:4:12
   │
 4 │         if input > 5:
   │            ^^^^^^^^^ bool: Value => None
-
-note: 
-  ┌─ features/if_statement.fe:5:20
-  │
 5 │             return 1
   │                    ^ u256: Value => None
-
-note: 
-  ┌─ features/if_statement.fe:7:20
-  │
+6 │         else:
 7 │             return 0
   │                    ^ u256: Value => None
 

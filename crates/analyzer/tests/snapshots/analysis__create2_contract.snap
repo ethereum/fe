@@ -23,6 +23,12 @@ note:
     }
 
 note: 
+  ┌─ features/create2_contract.fe:3:16
+  │
+3 │         return 42
+  │                ^^ u256: Value => None
+
+note: 
   ┌─ features/create2_contract.fe:6:5
   │  
 6 │ ╭     pub fn create2_foo() -> address:
@@ -42,32 +48,24 @@ note:
     }
 
 note: 
-  ┌─ features/create2_contract.fe:3:16
+  ┌─ features/create2_contract.fe:8:18
   │
-3 │         return 42
-  │                ^^ u256: Value => None
+8 │         let foo: Foo = Foo.create2(0, 52)
+  │                  ^^^ Foo
 
 note: 
   ┌─ features/create2_contract.fe:8:36
   │
 8 │         let foo: Foo = Foo.create2(0, 52)
-  │                                    ^ u256: Value => None
-
-note: 
-  ┌─ features/create2_contract.fe:8:39
-  │
-8 │         let foo: Foo = Foo.create2(0, 52)
-  │                                       ^^ u256: Value => None
+  │                                    ^  ^^ u256: Value => None
+  │                                    │   
+  │                                    u256: Value => None
 
 note: 
   ┌─ features/create2_contract.fe:8:24
   │
 8 │         let foo: Foo = Foo.create2(0, 52)
   │                        ^^^^^^^^^^^^^^^^^^ Foo: Value => None
-
-note: 
-  ┌─ features/create2_contract.fe:9:24
-  │
 9 │         return address(foo)
   │                        ^^^ Foo: Value => None
 
@@ -76,12 +74,6 @@ note:
   │
 9 │         return address(foo)
   │                ^^^^^^^^^^^^ address: Value => None
-
-note: 
-  ┌─ features/create2_contract.fe:8:18
-  │
-8 │         let foo: Foo = Foo.create2(0, 52)
-  │                  ^^^ Foo
 
 note: 
   ┌─ features/create2_contract.fe:8:24

@@ -44,6 +44,20 @@ note:
     }
 
 note: 
+  ┌─ features/checked_arithmetic.fe:4:16
+  │
+4 │         return left + right
+  │                ^^^^   ^^^^^ u256: Value => None
+  │                │       
+  │                u256: Value => None
+
+note: 
+  ┌─ features/checked_arithmetic.fe:4:16
+  │
+4 │         return left + right
+  │                ^^^^^^^^^^^^ u256: Value => None
+
+note: 
   ┌─ features/checked_arithmetic.fe:6:5
   │  
 6 │ ╭     pub fn add_u128(left: u128, right: u128) -> u128:
@@ -82,6 +96,20 @@ note:
             ),
         ),
     }
+
+note: 
+  ┌─ features/checked_arithmetic.fe:7:16
+  │
+7 │         return left + right
+  │                ^^^^   ^^^^^ u128: Value => None
+  │                │       
+  │                u128: Value => None
+
+note: 
+  ┌─ features/checked_arithmetic.fe:7:16
+  │
+7 │         return left + right
+  │                ^^^^^^^^^^^^ u128: Value => None
 
 note: 
    ┌─ features/checked_arithmetic.fe:9:5
@@ -124,6 +152,20 @@ note:
      }
 
 note: 
+   ┌─ features/checked_arithmetic.fe:10:16
+   │
+10 │         return left + right
+   │                ^^^^   ^^^^^ u64: Value => None
+   │                │       
+   │                u64: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:10:16
+   │
+10 │         return left + right
+   │                ^^^^^^^^^^^^ u64: Value => None
+
+note: 
    ┌─ features/checked_arithmetic.fe:12:5
    │  
 12 │ ╭     pub fn add_u32(left: u32, right: u32) -> u32:
@@ -162,6 +204,20 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/checked_arithmetic.fe:13:16
+   │
+13 │         return left + right
+   │                ^^^^   ^^^^^ u32: Value => None
+   │                │       
+   │                u32: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:13:16
+   │
+13 │         return left + right
+   │                ^^^^^^^^^^^^ u32: Value => None
 
 note: 
    ┌─ features/checked_arithmetic.fe:15:5
@@ -204,6 +260,20 @@ note:
      }
 
 note: 
+   ┌─ features/checked_arithmetic.fe:16:16
+   │
+16 │         return left + right
+   │                ^^^^   ^^^^^ u16: Value => None
+   │                │       
+   │                u16: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:16:16
+   │
+16 │         return left + right
+   │                ^^^^^^^^^^^^ u16: Value => None
+
+note: 
    ┌─ features/checked_arithmetic.fe:18:5
    │  
 18 │ ╭     pub fn add_u8(left: u8, right: u8) -> u8:
@@ -242,6 +312,20 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/checked_arithmetic.fe:19:16
+   │
+19 │         return left + right
+   │                ^^^^   ^^^^^ u8: Value => None
+   │                │       
+   │                u8: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:19:16
+   │
+19 │         return left + right
+   │                ^^^^^^^^^^^^ u8: Value => None
 
 note: 
    ┌─ features/checked_arithmetic.fe:21:5
@@ -284,6 +368,20 @@ note:
      }
 
 note: 
+   ┌─ features/checked_arithmetic.fe:22:16
+   │
+22 │         return left + right
+   │                ^^^^   ^^^^^ i256: Value => None
+   │                │       
+   │                i256: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:22:16
+   │
+22 │         return left + right
+   │                ^^^^^^^^^^^^ i256: Value => None
+
+note: 
    ┌─ features/checked_arithmetic.fe:24:5
    │  
 24 │ ╭     pub fn add_i128(left: i128, right: i128) -> i128:
@@ -322,6 +420,20 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/checked_arithmetic.fe:25:16
+   │
+25 │         return left + right
+   │                ^^^^   ^^^^^ i128: Value => None
+   │                │       
+   │                i128: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:25:16
+   │
+25 │         return left + right
+   │                ^^^^^^^^^^^^ i128: Value => None
 
 note: 
    ┌─ features/checked_arithmetic.fe:27:5
@@ -364,6 +476,20 @@ note:
      }
 
 note: 
+   ┌─ features/checked_arithmetic.fe:28:16
+   │
+28 │         return left + right
+   │                ^^^^   ^^^^^ i64: Value => None
+   │                │       
+   │                i64: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:28:16
+   │
+28 │         return left + right
+   │                ^^^^^^^^^^^^ i64: Value => None
+
+note: 
    ┌─ features/checked_arithmetic.fe:30:5
    │  
 30 │ ╭     pub fn add_i32(left: i32, right: i32) -> i32:
@@ -402,6 +528,20 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/checked_arithmetic.fe:31:16
+   │
+31 │         return left + right
+   │                ^^^^   ^^^^^ i32: Value => None
+   │                │       
+   │                i32: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:31:16
+   │
+31 │         return left + right
+   │                ^^^^^^^^^^^^ i32: Value => None
 
 note: 
    ┌─ features/checked_arithmetic.fe:33:5
@@ -444,6 +584,20 @@ note:
      }
 
 note: 
+   ┌─ features/checked_arithmetic.fe:34:16
+   │
+34 │         return left + right
+   │                ^^^^   ^^^^^ i16: Value => None
+   │                │       
+   │                i16: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:34:16
+   │
+34 │         return left + right
+   │                ^^^^^^^^^^^^ i16: Value => None
+
+note: 
    ┌─ features/checked_arithmetic.fe:36:5
    │  
 36 │ ╭     pub fn add_i8(left: i8, right: i8) -> i8:
@@ -482,6 +636,20 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/checked_arithmetic.fe:37:16
+   │
+37 │         return left + right
+   │                ^^^^   ^^^^^ i8: Value => None
+   │                │       
+   │                i8: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:37:16
+   │
+37 │         return left + right
+   │                ^^^^^^^^^^^^ i8: Value => None
 
 note: 
    ┌─ features/checked_arithmetic.fe:39:5
@@ -524,6 +692,20 @@ note:
      }
 
 note: 
+   ┌─ features/checked_arithmetic.fe:40:16
+   │
+40 │         return left - right
+   │                ^^^^   ^^^^^ u256: Value => None
+   │                │       
+   │                u256: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:40:16
+   │
+40 │         return left - right
+   │                ^^^^^^^^^^^^ u256: Value => None
+
+note: 
    ┌─ features/checked_arithmetic.fe:42:5
    │  
 42 │ ╭     pub fn sub_u128(left: u128, right: u128) -> u128:
@@ -562,6 +744,20 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/checked_arithmetic.fe:43:16
+   │
+43 │         return left - right
+   │                ^^^^   ^^^^^ u128: Value => None
+   │                │       
+   │                u128: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:43:16
+   │
+43 │         return left - right
+   │                ^^^^^^^^^^^^ u128: Value => None
 
 note: 
    ┌─ features/checked_arithmetic.fe:45:5
@@ -604,6 +800,20 @@ note:
      }
 
 note: 
+   ┌─ features/checked_arithmetic.fe:46:16
+   │
+46 │         return left - right
+   │                ^^^^   ^^^^^ u64: Value => None
+   │                │       
+   │                u64: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:46:16
+   │
+46 │         return left - right
+   │                ^^^^^^^^^^^^ u64: Value => None
+
+note: 
    ┌─ features/checked_arithmetic.fe:48:5
    │  
 48 │ ╭     pub fn sub_u32(left: u32, right: u32) -> u32:
@@ -642,6 +852,20 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/checked_arithmetic.fe:49:16
+   │
+49 │         return left - right
+   │                ^^^^   ^^^^^ u32: Value => None
+   │                │       
+   │                u32: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:49:16
+   │
+49 │         return left - right
+   │                ^^^^^^^^^^^^ u32: Value => None
 
 note: 
    ┌─ features/checked_arithmetic.fe:51:5
@@ -684,6 +908,20 @@ note:
      }
 
 note: 
+   ┌─ features/checked_arithmetic.fe:52:16
+   │
+52 │         return left - right
+   │                ^^^^   ^^^^^ u16: Value => None
+   │                │       
+   │                u16: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:52:16
+   │
+52 │         return left - right
+   │                ^^^^^^^^^^^^ u16: Value => None
+
+note: 
    ┌─ features/checked_arithmetic.fe:54:5
    │  
 54 │ ╭     pub fn sub_u8(left: u8, right: u8) -> u8:
@@ -722,6 +960,20 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/checked_arithmetic.fe:55:16
+   │
+55 │         return left - right
+   │                ^^^^   ^^^^^ u8: Value => None
+   │                │       
+   │                u8: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:55:16
+   │
+55 │         return left - right
+   │                ^^^^^^^^^^^^ u8: Value => None
 
 note: 
    ┌─ features/checked_arithmetic.fe:57:5
@@ -764,6 +1016,20 @@ note:
      }
 
 note: 
+   ┌─ features/checked_arithmetic.fe:58:16
+   │
+58 │         return left - right
+   │                ^^^^   ^^^^^ i256: Value => None
+   │                │       
+   │                i256: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:58:16
+   │
+58 │         return left - right
+   │                ^^^^^^^^^^^^ i256: Value => None
+
+note: 
    ┌─ features/checked_arithmetic.fe:60:5
    │  
 60 │ ╭     pub fn sub_i128(left: i128, right: i128) -> i128:
@@ -802,6 +1068,20 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/checked_arithmetic.fe:61:16
+   │
+61 │         return left - right
+   │                ^^^^   ^^^^^ i128: Value => None
+   │                │       
+   │                i128: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:61:16
+   │
+61 │         return left - right
+   │                ^^^^^^^^^^^^ i128: Value => None
 
 note: 
    ┌─ features/checked_arithmetic.fe:63:5
@@ -844,6 +1124,20 @@ note:
      }
 
 note: 
+   ┌─ features/checked_arithmetic.fe:64:16
+   │
+64 │         return left - right
+   │                ^^^^   ^^^^^ i64: Value => None
+   │                │       
+   │                i64: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:64:16
+   │
+64 │         return left - right
+   │                ^^^^^^^^^^^^ i64: Value => None
+
+note: 
    ┌─ features/checked_arithmetic.fe:66:5
    │  
 66 │ ╭     pub fn sub_i32(left: i32, right: i32) -> i32:
@@ -882,6 +1176,20 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/checked_arithmetic.fe:67:16
+   │
+67 │         return left - right
+   │                ^^^^   ^^^^^ i32: Value => None
+   │                │       
+   │                i32: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:67:16
+   │
+67 │         return left - right
+   │                ^^^^^^^^^^^^ i32: Value => None
 
 note: 
    ┌─ features/checked_arithmetic.fe:69:5
@@ -924,6 +1232,20 @@ note:
      }
 
 note: 
+   ┌─ features/checked_arithmetic.fe:70:16
+   │
+70 │         return left - right
+   │                ^^^^   ^^^^^ i16: Value => None
+   │                │       
+   │                i16: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:70:16
+   │
+70 │         return left - right
+   │                ^^^^^^^^^^^^ i16: Value => None
+
+note: 
    ┌─ features/checked_arithmetic.fe:72:5
    │  
 72 │ ╭     pub fn sub_i8(left: i8, right: i8) -> i8:
@@ -962,6 +1284,20 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/checked_arithmetic.fe:73:16
+   │
+73 │         return left - right
+   │                ^^^^   ^^^^^ i8: Value => None
+   │                │       
+   │                i8: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:73:16
+   │
+73 │         return left - right
+   │                ^^^^^^^^^^^^ i8: Value => None
 
 note: 
    ┌─ features/checked_arithmetic.fe:75:5
@@ -1004,6 +1340,20 @@ note:
      }
 
 note: 
+   ┌─ features/checked_arithmetic.fe:76:16
+   │
+76 │         return left / right
+   │                ^^^^   ^^^^^ u256: Value => None
+   │                │       
+   │                u256: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:76:16
+   │
+76 │         return left / right
+   │                ^^^^^^^^^^^^ u256: Value => None
+
+note: 
    ┌─ features/checked_arithmetic.fe:78:5
    │  
 78 │ ╭     pub fn div_u128(left: u128, right: u128) -> u128:
@@ -1042,6 +1392,20 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/checked_arithmetic.fe:79:16
+   │
+79 │         return left / right
+   │                ^^^^   ^^^^^ u128: Value => None
+   │                │       
+   │                u128: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:79:16
+   │
+79 │         return left / right
+   │                ^^^^^^^^^^^^ u128: Value => None
 
 note: 
    ┌─ features/checked_arithmetic.fe:81:5
@@ -1084,6 +1448,20 @@ note:
      }
 
 note: 
+   ┌─ features/checked_arithmetic.fe:82:16
+   │
+82 │         return left / right
+   │                ^^^^   ^^^^^ u64: Value => None
+   │                │       
+   │                u64: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:82:16
+   │
+82 │         return left / right
+   │                ^^^^^^^^^^^^ u64: Value => None
+
+note: 
    ┌─ features/checked_arithmetic.fe:84:5
    │  
 84 │ ╭     pub fn div_u32(left: u32, right: u32) -> u32:
@@ -1122,6 +1500,20 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/checked_arithmetic.fe:85:16
+   │
+85 │         return left / right
+   │                ^^^^   ^^^^^ u32: Value => None
+   │                │       
+   │                u32: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:85:16
+   │
+85 │         return left / right
+   │                ^^^^^^^^^^^^ u32: Value => None
 
 note: 
    ┌─ features/checked_arithmetic.fe:87:5
@@ -1164,6 +1556,20 @@ note:
      }
 
 note: 
+   ┌─ features/checked_arithmetic.fe:88:16
+   │
+88 │         return left / right
+   │                ^^^^   ^^^^^ u16: Value => None
+   │                │       
+   │                u16: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:88:16
+   │
+88 │         return left / right
+   │                ^^^^^^^^^^^^ u16: Value => None
+
+note: 
    ┌─ features/checked_arithmetic.fe:90:5
    │  
 90 │ ╭     pub fn div_u8(left: u8, right: u8) -> u8:
@@ -1202,6 +1608,20 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/checked_arithmetic.fe:91:16
+   │
+91 │         return left / right
+   │                ^^^^   ^^^^^ u8: Value => None
+   │                │       
+   │                u8: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:91:16
+   │
+91 │         return left / right
+   │                ^^^^^^^^^^^^ u8: Value => None
 
 note: 
    ┌─ features/checked_arithmetic.fe:93:5
@@ -1244,6 +1664,20 @@ note:
      }
 
 note: 
+   ┌─ features/checked_arithmetic.fe:94:16
+   │
+94 │         return left / right
+   │                ^^^^   ^^^^^ i256: Value => None
+   │                │       
+   │                i256: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:94:16
+   │
+94 │         return left / right
+   │                ^^^^^^^^^^^^ i256: Value => None
+
+note: 
    ┌─ features/checked_arithmetic.fe:96:5
    │  
 96 │ ╭     pub fn div_i128(left: i128, right: i128) -> i128:
@@ -1282,6 +1716,20 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/checked_arithmetic.fe:97:16
+   │
+97 │         return left / right
+   │                ^^^^   ^^^^^ i128: Value => None
+   │                │       
+   │                i128: Value => None
+
+note: 
+   ┌─ features/checked_arithmetic.fe:97:16
+   │
+97 │         return left / right
+   │                ^^^^^^^^^^^^ i128: Value => None
 
 note: 
     ┌─ features/checked_arithmetic.fe:99:5
@@ -1324,6 +1772,20 @@ note:
       }
 
 note: 
+    ┌─ features/checked_arithmetic.fe:100:16
+    │
+100 │         return left / right
+    │                ^^^^   ^^^^^ i64: Value => None
+    │                │       
+    │                i64: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:100:16
+    │
+100 │         return left / right
+    │                ^^^^^^^^^^^^ i64: Value => None
+
+note: 
     ┌─ features/checked_arithmetic.fe:102:5
     │  
 102 │ ╭     pub fn div_i32(left: i32, right: i32) -> i32:
@@ -1362,6 +1824,20 @@ note:
               ),
           ),
       }
+
+note: 
+    ┌─ features/checked_arithmetic.fe:103:16
+    │
+103 │         return left / right
+    │                ^^^^   ^^^^^ i32: Value => None
+    │                │       
+    │                i32: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:103:16
+    │
+103 │         return left / right
+    │                ^^^^^^^^^^^^ i32: Value => None
 
 note: 
     ┌─ features/checked_arithmetic.fe:105:5
@@ -1404,6 +1880,20 @@ note:
       }
 
 note: 
+    ┌─ features/checked_arithmetic.fe:106:16
+    │
+106 │         return left / right
+    │                ^^^^   ^^^^^ i16: Value => None
+    │                │       
+    │                i16: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:106:16
+    │
+106 │         return left / right
+    │                ^^^^^^^^^^^^ i16: Value => None
+
+note: 
     ┌─ features/checked_arithmetic.fe:108:5
     │  
 108 │ ╭     pub fn div_i8(left: i8, right: i8) -> i8:
@@ -1442,6 +1932,20 @@ note:
               ),
           ),
       }
+
+note: 
+    ┌─ features/checked_arithmetic.fe:109:16
+    │
+109 │         return left / right
+    │                ^^^^   ^^^^^ i8: Value => None
+    │                │       
+    │                i8: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:109:16
+    │
+109 │         return left / right
+    │                ^^^^^^^^^^^^ i8: Value => None
 
 note: 
     ┌─ features/checked_arithmetic.fe:111:5
@@ -1484,6 +1988,20 @@ note:
       }
 
 note: 
+    ┌─ features/checked_arithmetic.fe:112:16
+    │
+112 │         return left * right
+    │                ^^^^   ^^^^^ u256: Value => None
+    │                │       
+    │                u256: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:112:16
+    │
+112 │         return left * right
+    │                ^^^^^^^^^^^^ u256: Value => None
+
+note: 
     ┌─ features/checked_arithmetic.fe:114:5
     │  
 114 │ ╭     pub fn mul_u128(left: u128, right: u128) -> u128:
@@ -1522,6 +2040,20 @@ note:
               ),
           ),
       }
+
+note: 
+    ┌─ features/checked_arithmetic.fe:115:16
+    │
+115 │         return left * right
+    │                ^^^^   ^^^^^ u128: Value => None
+    │                │       
+    │                u128: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:115:16
+    │
+115 │         return left * right
+    │                ^^^^^^^^^^^^ u128: Value => None
 
 note: 
     ┌─ features/checked_arithmetic.fe:117:5
@@ -1564,6 +2096,20 @@ note:
       }
 
 note: 
+    ┌─ features/checked_arithmetic.fe:118:16
+    │
+118 │         return left * right
+    │                ^^^^   ^^^^^ u64: Value => None
+    │                │       
+    │                u64: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:118:16
+    │
+118 │         return left * right
+    │                ^^^^^^^^^^^^ u64: Value => None
+
+note: 
     ┌─ features/checked_arithmetic.fe:120:5
     │  
 120 │ ╭     pub fn mul_u32(left: u32, right: u32) -> u32:
@@ -1602,6 +2148,20 @@ note:
               ),
           ),
       }
+
+note: 
+    ┌─ features/checked_arithmetic.fe:121:16
+    │
+121 │         return left * right
+    │                ^^^^   ^^^^^ u32: Value => None
+    │                │       
+    │                u32: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:121:16
+    │
+121 │         return left * right
+    │                ^^^^^^^^^^^^ u32: Value => None
 
 note: 
     ┌─ features/checked_arithmetic.fe:123:5
@@ -1644,6 +2204,20 @@ note:
       }
 
 note: 
+    ┌─ features/checked_arithmetic.fe:124:16
+    │
+124 │         return left * right
+    │                ^^^^   ^^^^^ u16: Value => None
+    │                │       
+    │                u16: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:124:16
+    │
+124 │         return left * right
+    │                ^^^^^^^^^^^^ u16: Value => None
+
+note: 
     ┌─ features/checked_arithmetic.fe:126:5
     │  
 126 │ ╭     pub fn mul_u8(left: u8, right: u8) -> u8:
@@ -1682,6 +2256,20 @@ note:
               ),
           ),
       }
+
+note: 
+    ┌─ features/checked_arithmetic.fe:127:16
+    │
+127 │         return left * right
+    │                ^^^^   ^^^^^ u8: Value => None
+    │                │       
+    │                u8: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:127:16
+    │
+127 │         return left * right
+    │                ^^^^^^^^^^^^ u8: Value => None
 
 note: 
     ┌─ features/checked_arithmetic.fe:129:5
@@ -1724,6 +2312,20 @@ note:
       }
 
 note: 
+    ┌─ features/checked_arithmetic.fe:130:16
+    │
+130 │         return left * right
+    │                ^^^^   ^^^^^ i256: Value => None
+    │                │       
+    │                i256: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:130:16
+    │
+130 │         return left * right
+    │                ^^^^^^^^^^^^ i256: Value => None
+
+note: 
     ┌─ features/checked_arithmetic.fe:132:5
     │  
 132 │ ╭     pub fn mul_i128(left: i128, right: i128) -> i128:
@@ -1762,6 +2364,20 @@ note:
               ),
           ),
       }
+
+note: 
+    ┌─ features/checked_arithmetic.fe:133:16
+    │
+133 │         return left * right
+    │                ^^^^   ^^^^^ i128: Value => None
+    │                │       
+    │                i128: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:133:16
+    │
+133 │         return left * right
+    │                ^^^^^^^^^^^^ i128: Value => None
 
 note: 
     ┌─ features/checked_arithmetic.fe:135:5
@@ -1804,6 +2420,20 @@ note:
       }
 
 note: 
+    ┌─ features/checked_arithmetic.fe:136:16
+    │
+136 │         return left * right
+    │                ^^^^   ^^^^^ i64: Value => None
+    │                │       
+    │                i64: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:136:16
+    │
+136 │         return left * right
+    │                ^^^^^^^^^^^^ i64: Value => None
+
+note: 
     ┌─ features/checked_arithmetic.fe:138:5
     │  
 138 │ ╭     pub fn mul_i32(left: i32, right: i32) -> i32:
@@ -1842,6 +2472,20 @@ note:
               ),
           ),
       }
+
+note: 
+    ┌─ features/checked_arithmetic.fe:139:16
+    │
+139 │         return left * right
+    │                ^^^^   ^^^^^ i32: Value => None
+    │                │       
+    │                i32: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:139:16
+    │
+139 │         return left * right
+    │                ^^^^^^^^^^^^ i32: Value => None
 
 note: 
     ┌─ features/checked_arithmetic.fe:141:5
@@ -1884,6 +2528,20 @@ note:
       }
 
 note: 
+    ┌─ features/checked_arithmetic.fe:142:16
+    │
+142 │         return left * right
+    │                ^^^^   ^^^^^ i16: Value => None
+    │                │       
+    │                i16: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:142:16
+    │
+142 │         return left * right
+    │                ^^^^^^^^^^^^ i16: Value => None
+
+note: 
     ┌─ features/checked_arithmetic.fe:144:5
     │  
 144 │ ╭     pub fn mul_i8(left: i8, right: i8) -> i8:
@@ -1922,6 +2580,20 @@ note:
               ),
           ),
       }
+
+note: 
+    ┌─ features/checked_arithmetic.fe:145:16
+    │
+145 │         return left * right
+    │                ^^^^   ^^^^^ i8: Value => None
+    │                │       
+    │                i8: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:145:16
+    │
+145 │         return left * right
+    │                ^^^^^^^^^^^^ i8: Value => None
 
 note: 
     ┌─ features/checked_arithmetic.fe:147:5
@@ -1964,6 +2636,20 @@ note:
       }
 
 note: 
+    ┌─ features/checked_arithmetic.fe:148:16
+    │
+148 │         return left % right
+    │                ^^^^   ^^^^^ u256: Value => None
+    │                │       
+    │                u256: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:148:16
+    │
+148 │         return left % right
+    │                ^^^^^^^^^^^^ u256: Value => None
+
+note: 
     ┌─ features/checked_arithmetic.fe:150:5
     │  
 150 │ ╭     pub fn mod_u128(left: u128, right: u128) -> u128:
@@ -2002,6 +2688,20 @@ note:
               ),
           ),
       }
+
+note: 
+    ┌─ features/checked_arithmetic.fe:151:16
+    │
+151 │         return left % right
+    │                ^^^^   ^^^^^ u128: Value => None
+    │                │       
+    │                u128: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:151:16
+    │
+151 │         return left % right
+    │                ^^^^^^^^^^^^ u128: Value => None
 
 note: 
     ┌─ features/checked_arithmetic.fe:153:5
@@ -2044,6 +2744,20 @@ note:
       }
 
 note: 
+    ┌─ features/checked_arithmetic.fe:154:16
+    │
+154 │         return left % right
+    │                ^^^^   ^^^^^ u64: Value => None
+    │                │       
+    │                u64: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:154:16
+    │
+154 │         return left % right
+    │                ^^^^^^^^^^^^ u64: Value => None
+
+note: 
     ┌─ features/checked_arithmetic.fe:156:5
     │  
 156 │ ╭     pub fn mod_u32(left: u32, right: u32) -> u32:
@@ -2082,6 +2796,20 @@ note:
               ),
           ),
       }
+
+note: 
+    ┌─ features/checked_arithmetic.fe:157:16
+    │
+157 │         return left % right
+    │                ^^^^   ^^^^^ u32: Value => None
+    │                │       
+    │                u32: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:157:16
+    │
+157 │         return left % right
+    │                ^^^^^^^^^^^^ u32: Value => None
 
 note: 
     ┌─ features/checked_arithmetic.fe:159:5
@@ -2124,6 +2852,20 @@ note:
       }
 
 note: 
+    ┌─ features/checked_arithmetic.fe:160:16
+    │
+160 │         return left % right
+    │                ^^^^   ^^^^^ u16: Value => None
+    │                │       
+    │                u16: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:160:16
+    │
+160 │         return left % right
+    │                ^^^^^^^^^^^^ u16: Value => None
+
+note: 
     ┌─ features/checked_arithmetic.fe:162:5
     │  
 162 │ ╭     pub fn mod_u8(left: u8, right: u8) -> u8:
@@ -2162,6 +2904,20 @@ note:
               ),
           ),
       }
+
+note: 
+    ┌─ features/checked_arithmetic.fe:163:16
+    │
+163 │         return left % right
+    │                ^^^^   ^^^^^ u8: Value => None
+    │                │       
+    │                u8: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:163:16
+    │
+163 │         return left % right
+    │                ^^^^^^^^^^^^ u8: Value => None
 
 note: 
     ┌─ features/checked_arithmetic.fe:165:5
@@ -2204,6 +2960,20 @@ note:
       }
 
 note: 
+    ┌─ features/checked_arithmetic.fe:166:16
+    │
+166 │         return left % right
+    │                ^^^^   ^^^^^ i256: Value => None
+    │                │       
+    │                i256: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:166:16
+    │
+166 │         return left % right
+    │                ^^^^^^^^^^^^ i256: Value => None
+
+note: 
     ┌─ features/checked_arithmetic.fe:168:5
     │  
 168 │ ╭     pub fn mod_i128(left: i128, right: i128) -> i128:
@@ -2242,6 +3012,20 @@ note:
               ),
           ),
       }
+
+note: 
+    ┌─ features/checked_arithmetic.fe:169:16
+    │
+169 │         return left % right
+    │                ^^^^   ^^^^^ i128: Value => None
+    │                │       
+    │                i128: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:169:16
+    │
+169 │         return left % right
+    │                ^^^^^^^^^^^^ i128: Value => None
 
 note: 
     ┌─ features/checked_arithmetic.fe:171:5
@@ -2284,6 +3068,20 @@ note:
       }
 
 note: 
+    ┌─ features/checked_arithmetic.fe:172:16
+    │
+172 │         return left % right
+    │                ^^^^   ^^^^^ i64: Value => None
+    │                │       
+    │                i64: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:172:16
+    │
+172 │         return left % right
+    │                ^^^^^^^^^^^^ i64: Value => None
+
+note: 
     ┌─ features/checked_arithmetic.fe:174:5
     │  
 174 │ ╭     pub fn mod_i32(left: i32, right: i32) -> i32:
@@ -2322,6 +3120,20 @@ note:
               ),
           ),
       }
+
+note: 
+    ┌─ features/checked_arithmetic.fe:175:16
+    │
+175 │         return left % right
+    │                ^^^^   ^^^^^ i32: Value => None
+    │                │       
+    │                i32: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:175:16
+    │
+175 │         return left % right
+    │                ^^^^^^^^^^^^ i32: Value => None
 
 note: 
     ┌─ features/checked_arithmetic.fe:177:5
@@ -2364,6 +3176,20 @@ note:
       }
 
 note: 
+    ┌─ features/checked_arithmetic.fe:178:16
+    │
+178 │         return left % right
+    │                ^^^^   ^^^^^ i16: Value => None
+    │                │       
+    │                i16: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:178:16
+    │
+178 │         return left % right
+    │                ^^^^^^^^^^^^ i16: Value => None
+
+note: 
     ┌─ features/checked_arithmetic.fe:180:5
     │  
 180 │ ╭     pub fn mod_i8(left: i8, right: i8) -> i8:
@@ -2402,6 +3228,20 @@ note:
               ),
           ),
       }
+
+note: 
+    ┌─ features/checked_arithmetic.fe:181:16
+    │
+181 │         return left % right
+    │                ^^^^   ^^^^^ i8: Value => None
+    │                │       
+    │                i8: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:181:16
+    │
+181 │         return left % right
+    │                ^^^^^^^^^^^^ i8: Value => None
 
 note: 
     ┌─ features/checked_arithmetic.fe:183:5
@@ -2444,6 +3284,20 @@ note:
       }
 
 note: 
+    ┌─ features/checked_arithmetic.fe:184:16
+    │
+184 │         return left ** right
+    │                ^^^^    ^^^^^ u256: Value => None
+    │                │        
+    │                u256: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:184:16
+    │
+184 │         return left ** right
+    │                ^^^^^^^^^^^^^ u256: Value => None
+
+note: 
     ┌─ features/checked_arithmetic.fe:186:5
     │  
 186 │ ╭     pub fn pow_u128(left: u128, right: u128) -> u128:
@@ -2482,6 +3336,20 @@ note:
               ),
           ),
       }
+
+note: 
+    ┌─ features/checked_arithmetic.fe:187:16
+    │
+187 │         return left ** right
+    │                ^^^^    ^^^^^ u128: Value => None
+    │                │        
+    │                u128: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:187:16
+    │
+187 │         return left ** right
+    │                ^^^^^^^^^^^^^ u128: Value => None
 
 note: 
     ┌─ features/checked_arithmetic.fe:189:5
@@ -2524,6 +3392,20 @@ note:
       }
 
 note: 
+    ┌─ features/checked_arithmetic.fe:190:16
+    │
+190 │         return left ** right
+    │                ^^^^    ^^^^^ u64: Value => None
+    │                │        
+    │                u64: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:190:16
+    │
+190 │         return left ** right
+    │                ^^^^^^^^^^^^^ u64: Value => None
+
+note: 
     ┌─ features/checked_arithmetic.fe:192:5
     │  
 192 │ ╭     pub fn pow_u32(left: u32, right: u32) -> u32:
@@ -2562,6 +3444,20 @@ note:
               ),
           ),
       }
+
+note: 
+    ┌─ features/checked_arithmetic.fe:193:16
+    │
+193 │         return left ** right
+    │                ^^^^    ^^^^^ u32: Value => None
+    │                │        
+    │                u32: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:193:16
+    │
+193 │         return left ** right
+    │                ^^^^^^^^^^^^^ u32: Value => None
 
 note: 
     ┌─ features/checked_arithmetic.fe:195:5
@@ -2604,6 +3500,20 @@ note:
       }
 
 note: 
+    ┌─ features/checked_arithmetic.fe:196:16
+    │
+196 │         return left ** right
+    │                ^^^^    ^^^^^ u16: Value => None
+    │                │        
+    │                u16: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:196:16
+    │
+196 │         return left ** right
+    │                ^^^^^^^^^^^^^ u16: Value => None
+
+note: 
     ┌─ features/checked_arithmetic.fe:198:5
     │  
 198 │ ╭     pub fn pow_u8(left: u8, right: u8) -> u8:
@@ -2642,6 +3552,20 @@ note:
               ),
           ),
       }
+
+note: 
+    ┌─ features/checked_arithmetic.fe:199:16
+    │
+199 │         return left ** right
+    │                ^^^^    ^^^^^ u8: Value => None
+    │                │        
+    │                u8: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:199:16
+    │
+199 │         return left ** right
+    │                ^^^^^^^^^^^^^ u8: Value => None
 
 note: 
     ┌─ features/checked_arithmetic.fe:201:5
@@ -2684,6 +3608,20 @@ note:
       }
 
 note: 
+    ┌─ features/checked_arithmetic.fe:202:16
+    │
+202 │         return left ** right
+    │                ^^^^    ^^^^^ u256: Value => None
+    │                │        
+    │                i256: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:202:16
+    │
+202 │         return left ** right
+    │                ^^^^^^^^^^^^^ i256: Value => None
+
+note: 
     ┌─ features/checked_arithmetic.fe:204:5
     │  
 204 │ ╭     pub fn pow_i128(left: i128, right: u128) -> i128:
@@ -2722,6 +3660,20 @@ note:
               ),
           ),
       }
+
+note: 
+    ┌─ features/checked_arithmetic.fe:205:16
+    │
+205 │         return left ** right
+    │                ^^^^    ^^^^^ u128: Value => None
+    │                │        
+    │                i128: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:205:16
+    │
+205 │         return left ** right
+    │                ^^^^^^^^^^^^^ i128: Value => None
 
 note: 
     ┌─ features/checked_arithmetic.fe:207:5
@@ -2764,6 +3716,20 @@ note:
       }
 
 note: 
+    ┌─ features/checked_arithmetic.fe:208:16
+    │
+208 │         return left ** right
+    │                ^^^^    ^^^^^ u64: Value => None
+    │                │        
+    │                i64: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:208:16
+    │
+208 │         return left ** right
+    │                ^^^^^^^^^^^^^ i64: Value => None
+
+note: 
     ┌─ features/checked_arithmetic.fe:210:5
     │  
 210 │ ╭     pub fn pow_i32(left: i32, right: u32) -> i32:
@@ -2802,6 +3768,20 @@ note:
               ),
           ),
       }
+
+note: 
+    ┌─ features/checked_arithmetic.fe:211:16
+    │
+211 │         return left ** right
+    │                ^^^^    ^^^^^ u32: Value => None
+    │                │        
+    │                i32: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:211:16
+    │
+211 │         return left ** right
+    │                ^^^^^^^^^^^^^ i32: Value => None
 
 note: 
     ┌─ features/checked_arithmetic.fe:213:5
@@ -2844,6 +3824,20 @@ note:
       }
 
 note: 
+    ┌─ features/checked_arithmetic.fe:214:16
+    │
+214 │         return left ** right
+    │                ^^^^    ^^^^^ u16: Value => None
+    │                │        
+    │                i16: Value => None
+
+note: 
+    ┌─ features/checked_arithmetic.fe:214:16
+    │
+214 │         return left ** right
+    │                ^^^^^^^^^^^^^ i16: Value => None
+
+note: 
     ┌─ features/checked_arithmetic.fe:216:5
     │  
 216 │ ╭     pub fn pow_i8(left: i8, right: u8) -> i8:
@@ -2884,1294 +3878,12 @@ note:
       }
 
 note: 
-  ┌─ features/checked_arithmetic.fe:4:16
-  │
-4 │         return left + right
-  │                ^^^^ u256: Value => None
-
-note: 
-  ┌─ features/checked_arithmetic.fe:4:23
-  │
-4 │         return left + right
-  │                       ^^^^^ u256: Value => None
-
-note: 
-  ┌─ features/checked_arithmetic.fe:4:16
-  │
-4 │         return left + right
-  │                ^^^^^^^^^^^^ u256: Value => None
-
-note: 
-  ┌─ features/checked_arithmetic.fe:7:16
-  │
-7 │         return left + right
-  │                ^^^^ u128: Value => None
-
-note: 
-  ┌─ features/checked_arithmetic.fe:7:23
-  │
-7 │         return left + right
-  │                       ^^^^^ u128: Value => None
-
-note: 
-  ┌─ features/checked_arithmetic.fe:7:16
-  │
-7 │         return left + right
-  │                ^^^^^^^^^^^^ u128: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:10:16
-   │
-10 │         return left + right
-   │                ^^^^ u64: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:10:23
-   │
-10 │         return left + right
-   │                       ^^^^^ u64: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:10:16
-   │
-10 │         return left + right
-   │                ^^^^^^^^^^^^ u64: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:13:16
-   │
-13 │         return left + right
-   │                ^^^^ u32: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:13:23
-   │
-13 │         return left + right
-   │                       ^^^^^ u32: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:13:16
-   │
-13 │         return left + right
-   │                ^^^^^^^^^^^^ u32: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:16:16
-   │
-16 │         return left + right
-   │                ^^^^ u16: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:16:23
-   │
-16 │         return left + right
-   │                       ^^^^^ u16: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:16:16
-   │
-16 │         return left + right
-   │                ^^^^^^^^^^^^ u16: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:19:16
-   │
-19 │         return left + right
-   │                ^^^^ u8: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:19:23
-   │
-19 │         return left + right
-   │                       ^^^^^ u8: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:19:16
-   │
-19 │         return left + right
-   │                ^^^^^^^^^^^^ u8: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:22:16
-   │
-22 │         return left + right
-   │                ^^^^ i256: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:22:23
-   │
-22 │         return left + right
-   │                       ^^^^^ i256: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:22:16
-   │
-22 │         return left + right
-   │                ^^^^^^^^^^^^ i256: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:25:16
-   │
-25 │         return left + right
-   │                ^^^^ i128: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:25:23
-   │
-25 │         return left + right
-   │                       ^^^^^ i128: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:25:16
-   │
-25 │         return left + right
-   │                ^^^^^^^^^^^^ i128: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:28:16
-   │
-28 │         return left + right
-   │                ^^^^ i64: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:28:23
-   │
-28 │         return left + right
-   │                       ^^^^^ i64: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:28:16
-   │
-28 │         return left + right
-   │                ^^^^^^^^^^^^ i64: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:31:16
-   │
-31 │         return left + right
-   │                ^^^^ i32: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:31:23
-   │
-31 │         return left + right
-   │                       ^^^^^ i32: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:31:16
-   │
-31 │         return left + right
-   │                ^^^^^^^^^^^^ i32: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:34:16
-   │
-34 │         return left + right
-   │                ^^^^ i16: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:34:23
-   │
-34 │         return left + right
-   │                       ^^^^^ i16: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:34:16
-   │
-34 │         return left + right
-   │                ^^^^^^^^^^^^ i16: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:37:16
-   │
-37 │         return left + right
-   │                ^^^^ i8: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:37:23
-   │
-37 │         return left + right
-   │                       ^^^^^ i8: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:37:16
-   │
-37 │         return left + right
-   │                ^^^^^^^^^^^^ i8: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:40:16
-   │
-40 │         return left - right
-   │                ^^^^ u256: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:40:23
-   │
-40 │         return left - right
-   │                       ^^^^^ u256: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:40:16
-   │
-40 │         return left - right
-   │                ^^^^^^^^^^^^ u256: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:43:16
-   │
-43 │         return left - right
-   │                ^^^^ u128: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:43:23
-   │
-43 │         return left - right
-   │                       ^^^^^ u128: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:43:16
-   │
-43 │         return left - right
-   │                ^^^^^^^^^^^^ u128: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:46:16
-   │
-46 │         return left - right
-   │                ^^^^ u64: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:46:23
-   │
-46 │         return left - right
-   │                       ^^^^^ u64: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:46:16
-   │
-46 │         return left - right
-   │                ^^^^^^^^^^^^ u64: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:49:16
-   │
-49 │         return left - right
-   │                ^^^^ u32: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:49:23
-   │
-49 │         return left - right
-   │                       ^^^^^ u32: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:49:16
-   │
-49 │         return left - right
-   │                ^^^^^^^^^^^^ u32: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:52:16
-   │
-52 │         return left - right
-   │                ^^^^ u16: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:52:23
-   │
-52 │         return left - right
-   │                       ^^^^^ u16: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:52:16
-   │
-52 │         return left - right
-   │                ^^^^^^^^^^^^ u16: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:55:16
-   │
-55 │         return left - right
-   │                ^^^^ u8: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:55:23
-   │
-55 │         return left - right
-   │                       ^^^^^ u8: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:55:16
-   │
-55 │         return left - right
-   │                ^^^^^^^^^^^^ u8: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:58:16
-   │
-58 │         return left - right
-   │                ^^^^ i256: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:58:23
-   │
-58 │         return left - right
-   │                       ^^^^^ i256: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:58:16
-   │
-58 │         return left - right
-   │                ^^^^^^^^^^^^ i256: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:61:16
-   │
-61 │         return left - right
-   │                ^^^^ i128: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:61:23
-   │
-61 │         return left - right
-   │                       ^^^^^ i128: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:61:16
-   │
-61 │         return left - right
-   │                ^^^^^^^^^^^^ i128: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:64:16
-   │
-64 │         return left - right
-   │                ^^^^ i64: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:64:23
-   │
-64 │         return left - right
-   │                       ^^^^^ i64: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:64:16
-   │
-64 │         return left - right
-   │                ^^^^^^^^^^^^ i64: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:67:16
-   │
-67 │         return left - right
-   │                ^^^^ i32: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:67:23
-   │
-67 │         return left - right
-   │                       ^^^^^ i32: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:67:16
-   │
-67 │         return left - right
-   │                ^^^^^^^^^^^^ i32: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:70:16
-   │
-70 │         return left - right
-   │                ^^^^ i16: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:70:23
-   │
-70 │         return left - right
-   │                       ^^^^^ i16: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:70:16
-   │
-70 │         return left - right
-   │                ^^^^^^^^^^^^ i16: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:73:16
-   │
-73 │         return left - right
-   │                ^^^^ i8: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:73:23
-   │
-73 │         return left - right
-   │                       ^^^^^ i8: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:73:16
-   │
-73 │         return left - right
-   │                ^^^^^^^^^^^^ i8: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:76:16
-   │
-76 │         return left / right
-   │                ^^^^ u256: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:76:23
-   │
-76 │         return left / right
-   │                       ^^^^^ u256: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:76:16
-   │
-76 │         return left / right
-   │                ^^^^^^^^^^^^ u256: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:79:16
-   │
-79 │         return left / right
-   │                ^^^^ u128: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:79:23
-   │
-79 │         return left / right
-   │                       ^^^^^ u128: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:79:16
-   │
-79 │         return left / right
-   │                ^^^^^^^^^^^^ u128: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:82:16
-   │
-82 │         return left / right
-   │                ^^^^ u64: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:82:23
-   │
-82 │         return left / right
-   │                       ^^^^^ u64: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:82:16
-   │
-82 │         return left / right
-   │                ^^^^^^^^^^^^ u64: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:85:16
-   │
-85 │         return left / right
-   │                ^^^^ u32: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:85:23
-   │
-85 │         return left / right
-   │                       ^^^^^ u32: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:85:16
-   │
-85 │         return left / right
-   │                ^^^^^^^^^^^^ u32: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:88:16
-   │
-88 │         return left / right
-   │                ^^^^ u16: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:88:23
-   │
-88 │         return left / right
-   │                       ^^^^^ u16: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:88:16
-   │
-88 │         return left / right
-   │                ^^^^^^^^^^^^ u16: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:91:16
-   │
-91 │         return left / right
-   │                ^^^^ u8: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:91:23
-   │
-91 │         return left / right
-   │                       ^^^^^ u8: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:91:16
-   │
-91 │         return left / right
-   │                ^^^^^^^^^^^^ u8: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:94:16
-   │
-94 │         return left / right
-   │                ^^^^ i256: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:94:23
-   │
-94 │         return left / right
-   │                       ^^^^^ i256: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:94:16
-   │
-94 │         return left / right
-   │                ^^^^^^^^^^^^ i256: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:97:16
-   │
-97 │         return left / right
-   │                ^^^^ i128: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:97:23
-   │
-97 │         return left / right
-   │                       ^^^^^ i128: Value => None
-
-note: 
-   ┌─ features/checked_arithmetic.fe:97:16
-   │
-97 │         return left / right
-   │                ^^^^^^^^^^^^ i128: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:100:16
-    │
-100 │         return left / right
-    │                ^^^^ i64: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:100:23
-    │
-100 │         return left / right
-    │                       ^^^^^ i64: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:100:16
-    │
-100 │         return left / right
-    │                ^^^^^^^^^^^^ i64: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:103:16
-    │
-103 │         return left / right
-    │                ^^^^ i32: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:103:23
-    │
-103 │         return left / right
-    │                       ^^^^^ i32: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:103:16
-    │
-103 │         return left / right
-    │                ^^^^^^^^^^^^ i32: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:106:16
-    │
-106 │         return left / right
-    │                ^^^^ i16: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:106:23
-    │
-106 │         return left / right
-    │                       ^^^^^ i16: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:106:16
-    │
-106 │         return left / right
-    │                ^^^^^^^^^^^^ i16: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:109:16
-    │
-109 │         return left / right
-    │                ^^^^ i8: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:109:23
-    │
-109 │         return left / right
-    │                       ^^^^^ i8: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:109:16
-    │
-109 │         return left / right
-    │                ^^^^^^^^^^^^ i8: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:112:16
-    │
-112 │         return left * right
-    │                ^^^^ u256: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:112:23
-    │
-112 │         return left * right
-    │                       ^^^^^ u256: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:112:16
-    │
-112 │         return left * right
-    │                ^^^^^^^^^^^^ u256: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:115:16
-    │
-115 │         return left * right
-    │                ^^^^ u128: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:115:23
-    │
-115 │         return left * right
-    │                       ^^^^^ u128: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:115:16
-    │
-115 │         return left * right
-    │                ^^^^^^^^^^^^ u128: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:118:16
-    │
-118 │         return left * right
-    │                ^^^^ u64: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:118:23
-    │
-118 │         return left * right
-    │                       ^^^^^ u64: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:118:16
-    │
-118 │         return left * right
-    │                ^^^^^^^^^^^^ u64: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:121:16
-    │
-121 │         return left * right
-    │                ^^^^ u32: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:121:23
-    │
-121 │         return left * right
-    │                       ^^^^^ u32: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:121:16
-    │
-121 │         return left * right
-    │                ^^^^^^^^^^^^ u32: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:124:16
-    │
-124 │         return left * right
-    │                ^^^^ u16: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:124:23
-    │
-124 │         return left * right
-    │                       ^^^^^ u16: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:124:16
-    │
-124 │         return left * right
-    │                ^^^^^^^^^^^^ u16: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:127:16
-    │
-127 │         return left * right
-    │                ^^^^ u8: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:127:23
-    │
-127 │         return left * right
-    │                       ^^^^^ u8: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:127:16
-    │
-127 │         return left * right
-    │                ^^^^^^^^^^^^ u8: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:130:16
-    │
-130 │         return left * right
-    │                ^^^^ i256: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:130:23
-    │
-130 │         return left * right
-    │                       ^^^^^ i256: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:130:16
-    │
-130 │         return left * right
-    │                ^^^^^^^^^^^^ i256: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:133:16
-    │
-133 │         return left * right
-    │                ^^^^ i128: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:133:23
-    │
-133 │         return left * right
-    │                       ^^^^^ i128: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:133:16
-    │
-133 │         return left * right
-    │                ^^^^^^^^^^^^ i128: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:136:16
-    │
-136 │         return left * right
-    │                ^^^^ i64: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:136:23
-    │
-136 │         return left * right
-    │                       ^^^^^ i64: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:136:16
-    │
-136 │         return left * right
-    │                ^^^^^^^^^^^^ i64: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:139:16
-    │
-139 │         return left * right
-    │                ^^^^ i32: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:139:23
-    │
-139 │         return left * right
-    │                       ^^^^^ i32: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:139:16
-    │
-139 │         return left * right
-    │                ^^^^^^^^^^^^ i32: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:142:16
-    │
-142 │         return left * right
-    │                ^^^^ i16: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:142:23
-    │
-142 │         return left * right
-    │                       ^^^^^ i16: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:142:16
-    │
-142 │         return left * right
-    │                ^^^^^^^^^^^^ i16: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:145:16
-    │
-145 │         return left * right
-    │                ^^^^ i8: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:145:23
-    │
-145 │         return left * right
-    │                       ^^^^^ i8: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:145:16
-    │
-145 │         return left * right
-    │                ^^^^^^^^^^^^ i8: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:148:16
-    │
-148 │         return left % right
-    │                ^^^^ u256: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:148:23
-    │
-148 │         return left % right
-    │                       ^^^^^ u256: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:148:16
-    │
-148 │         return left % right
-    │                ^^^^^^^^^^^^ u256: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:151:16
-    │
-151 │         return left % right
-    │                ^^^^ u128: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:151:23
-    │
-151 │         return left % right
-    │                       ^^^^^ u128: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:151:16
-    │
-151 │         return left % right
-    │                ^^^^^^^^^^^^ u128: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:154:16
-    │
-154 │         return left % right
-    │                ^^^^ u64: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:154:23
-    │
-154 │         return left % right
-    │                       ^^^^^ u64: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:154:16
-    │
-154 │         return left % right
-    │                ^^^^^^^^^^^^ u64: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:157:16
-    │
-157 │         return left % right
-    │                ^^^^ u32: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:157:23
-    │
-157 │         return left % right
-    │                       ^^^^^ u32: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:157:16
-    │
-157 │         return left % right
-    │                ^^^^^^^^^^^^ u32: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:160:16
-    │
-160 │         return left % right
-    │                ^^^^ u16: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:160:23
-    │
-160 │         return left % right
-    │                       ^^^^^ u16: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:160:16
-    │
-160 │         return left % right
-    │                ^^^^^^^^^^^^ u16: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:163:16
-    │
-163 │         return left % right
-    │                ^^^^ u8: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:163:23
-    │
-163 │         return left % right
-    │                       ^^^^^ u8: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:163:16
-    │
-163 │         return left % right
-    │                ^^^^^^^^^^^^ u8: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:166:16
-    │
-166 │         return left % right
-    │                ^^^^ i256: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:166:23
-    │
-166 │         return left % right
-    │                       ^^^^^ i256: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:166:16
-    │
-166 │         return left % right
-    │                ^^^^^^^^^^^^ i256: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:169:16
-    │
-169 │         return left % right
-    │                ^^^^ i128: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:169:23
-    │
-169 │         return left % right
-    │                       ^^^^^ i128: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:169:16
-    │
-169 │         return left % right
-    │                ^^^^^^^^^^^^ i128: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:172:16
-    │
-172 │         return left % right
-    │                ^^^^ i64: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:172:23
-    │
-172 │         return left % right
-    │                       ^^^^^ i64: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:172:16
-    │
-172 │         return left % right
-    │                ^^^^^^^^^^^^ i64: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:175:16
-    │
-175 │         return left % right
-    │                ^^^^ i32: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:175:23
-    │
-175 │         return left % right
-    │                       ^^^^^ i32: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:175:16
-    │
-175 │         return left % right
-    │                ^^^^^^^^^^^^ i32: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:178:16
-    │
-178 │         return left % right
-    │                ^^^^ i16: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:178:23
-    │
-178 │         return left % right
-    │                       ^^^^^ i16: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:178:16
-    │
-178 │         return left % right
-    │                ^^^^^^^^^^^^ i16: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:181:16
-    │
-181 │         return left % right
-    │                ^^^^ i8: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:181:23
-    │
-181 │         return left % right
-    │                       ^^^^^ i8: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:181:16
-    │
-181 │         return left % right
-    │                ^^^^^^^^^^^^ i8: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:184:16
-    │
-184 │         return left ** right
-    │                ^^^^ u256: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:184:24
-    │
-184 │         return left ** right
-    │                        ^^^^^ u256: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:184:16
-    │
-184 │         return left ** right
-    │                ^^^^^^^^^^^^^ u256: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:187:16
-    │
-187 │         return left ** right
-    │                ^^^^ u128: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:187:24
-    │
-187 │         return left ** right
-    │                        ^^^^^ u128: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:187:16
-    │
-187 │         return left ** right
-    │                ^^^^^^^^^^^^^ u128: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:190:16
-    │
-190 │         return left ** right
-    │                ^^^^ u64: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:190:24
-    │
-190 │         return left ** right
-    │                        ^^^^^ u64: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:190:16
-    │
-190 │         return left ** right
-    │                ^^^^^^^^^^^^^ u64: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:193:16
-    │
-193 │         return left ** right
-    │                ^^^^ u32: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:193:24
-    │
-193 │         return left ** right
-    │                        ^^^^^ u32: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:193:16
-    │
-193 │         return left ** right
-    │                ^^^^^^^^^^^^^ u32: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:196:16
-    │
-196 │         return left ** right
-    │                ^^^^ u16: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:196:24
-    │
-196 │         return left ** right
-    │                        ^^^^^ u16: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:196:16
-    │
-196 │         return left ** right
-    │                ^^^^^^^^^^^^^ u16: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:199:16
-    │
-199 │         return left ** right
-    │                ^^^^ u8: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:199:24
-    │
-199 │         return left ** right
-    │                        ^^^^^ u8: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:199:16
-    │
-199 │         return left ** right
-    │                ^^^^^^^^^^^^^ u8: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:202:16
-    │
-202 │         return left ** right
-    │                ^^^^ i256: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:202:24
-    │
-202 │         return left ** right
-    │                        ^^^^^ u256: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:202:16
-    │
-202 │         return left ** right
-    │                ^^^^^^^^^^^^^ i256: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:205:16
-    │
-205 │         return left ** right
-    │                ^^^^ i128: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:205:24
-    │
-205 │         return left ** right
-    │                        ^^^^^ u128: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:205:16
-    │
-205 │         return left ** right
-    │                ^^^^^^^^^^^^^ i128: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:208:16
-    │
-208 │         return left ** right
-    │                ^^^^ i64: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:208:24
-    │
-208 │         return left ** right
-    │                        ^^^^^ u64: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:208:16
-    │
-208 │         return left ** right
-    │                ^^^^^^^^^^^^^ i64: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:211:16
-    │
-211 │         return left ** right
-    │                ^^^^ i32: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:211:24
-    │
-211 │         return left ** right
-    │                        ^^^^^ u32: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:211:16
-    │
-211 │         return left ** right
-    │                ^^^^^^^^^^^^^ i32: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:214:16
-    │
-214 │         return left ** right
-    │                ^^^^ i16: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:214:24
-    │
-214 │         return left ** right
-    │                        ^^^^^ u16: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:214:16
-    │
-214 │         return left ** right
-    │                ^^^^^^^^^^^^^ i16: Value => None
-
-note: 
     ┌─ features/checked_arithmetic.fe:217:16
     │
 217 │         return left ** right
-    │                ^^^^ i8: Value => None
-
-note: 
-    ┌─ features/checked_arithmetic.fe:217:24
-    │
-217 │         return left ** right
-    │                        ^^^^^ u8: Value => None
+    │                ^^^^    ^^^^^ u8: Value => None
+    │                │        
+    │                i8: Value => None
 
 note: 
     ┌─ features/checked_arithmetic.fe:217:16

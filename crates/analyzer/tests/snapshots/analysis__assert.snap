@@ -8,10 +8,6 @@ note:
   │
 2 │     my_bool: bool
   │     ^^^^^^^^^^^^^ bool
-
-note: 
-  ┌─ features/assert.fe:3:5
-  │
 3 │     my_string: String<5>
   │     ^^^^^^^^^^^^^^^^^^^^ String<5>
 
@@ -44,6 +40,20 @@ note:
     }
 
 note: 
+  ┌─ features/assert.fe:6:16
+  │
+6 │         assert baz > 5
+  │                ^^^   ^ u256: Value => None
+  │                │      
+  │                u256: Value => None
+
+note: 
+  ┌─ features/assert.fe:6:16
+  │
+6 │         assert baz > 5
+  │                ^^^^^^^ bool: Value => None
+
+note: 
   ┌─ features/assert.fe:8:5
   │  
 8 │ ╭     pub fn revert_with_static_string(baz: u256):
@@ -70,6 +80,22 @@ note:
             ),
         ),
     }
+
+note: 
+  ┌─ features/assert.fe:9:16
+  │
+9 │         assert baz > 5, "Must be greater than five"
+  │                ^^^   ^ u256: Value => None
+  │                │      
+  │                u256: Value => None
+
+note: 
+  ┌─ features/assert.fe:9:16
+  │
+9 │         assert baz > 5, "Must be greater than five"
+  │                ^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<25>: Memory => None
+  │                │         
+  │                bool: Value => None
 
 note: 
    ┌─ features/assert.fe:11:5
@@ -110,6 +136,22 @@ note:
      }
 
 note: 
+   ┌─ features/assert.fe:12:16
+   │
+12 │         assert baz > 5, reason
+   │                ^^^   ^ u256: Value => None
+   │                │      
+   │                u256: Value => None
+
+note: 
+   ┌─ features/assert.fe:12:16
+   │
+12 │         assert baz > 5, reason
+   │                ^^^^^^^  ^^^^^^ String<1000>: Memory => None
+   │                │         
+   │                bool: Value => None
+
+note: 
    ┌─ features/assert.fe:14:5
    │  
 14 │ ╭     pub fn assert_sto_bool(self):
@@ -126,6 +168,16 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/assert.fe:15:9
+   │
+15 │         self.my_bool = false
+   │         ^^^^^^^^^^^^   ^^^^^ bool: Value => None
+   │         │               
+   │         bool: Storage { nonce: Some(0) } => None
+16 │         assert self.my_bool
+   │                ^^^^^^^^^^^^ bool: Storage { nonce: Some(0) } => Some(Value)
 
 note: 
    ┌─ features/assert.fe:18:5
@@ -146,112 +198,16 @@ note:
      }
 
 note: 
-  ┌─ features/assert.fe:6:16
-  │
-6 │         assert baz > 5
-  │                ^^^ u256: Value => None
-
-note: 
-  ┌─ features/assert.fe:6:22
-  │
-6 │         assert baz > 5
-  │                      ^ u256: Value => None
-
-note: 
-  ┌─ features/assert.fe:6:16
-  │
-6 │         assert baz > 5
-  │                ^^^^^^^ bool: Value => None
-
-note: 
-  ┌─ features/assert.fe:9:16
-  │
-9 │         assert baz > 5, "Must be greater than five"
-  │                ^^^ u256: Value => None
-
-note: 
-  ┌─ features/assert.fe:9:22
-  │
-9 │         assert baz > 5, "Must be greater than five"
-  │                      ^ u256: Value => None
-
-note: 
-  ┌─ features/assert.fe:9:16
-  │
-9 │         assert baz > 5, "Must be greater than five"
-  │                ^^^^^^^ bool: Value => None
-
-note: 
-  ┌─ features/assert.fe:9:25
-  │
-9 │         assert baz > 5, "Must be greater than five"
-  │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<25>: Memory => None
-
-note: 
-   ┌─ features/assert.fe:12:16
-   │
-12 │         assert baz > 5, reason
-   │                ^^^ u256: Value => None
-
-note: 
-   ┌─ features/assert.fe:12:22
-   │
-12 │         assert baz > 5, reason
-   │                      ^ u256: Value => None
-
-note: 
-   ┌─ features/assert.fe:12:16
-   │
-12 │         assert baz > 5, reason
-   │                ^^^^^^^ bool: Value => None
-
-note: 
-   ┌─ features/assert.fe:12:25
-   │
-12 │         assert baz > 5, reason
-   │                         ^^^^^^ String<1000>: Memory => None
-
-note: 
-   ┌─ features/assert.fe:15:9
-   │
-15 │         self.my_bool = false
-   │         ^^^^^^^^^^^^ bool: Storage { nonce: Some(0) } => None
-
-note: 
-   ┌─ features/assert.fe:15:24
-   │
-15 │         self.my_bool = false
-   │                        ^^^^^ bool: Value => None
-
-note: 
-   ┌─ features/assert.fe:16:16
-   │
-16 │         assert self.my_bool
-   │                ^^^^^^^^^^^^ bool: Storage { nonce: Some(0) } => Some(Value)
-
-note: 
    ┌─ features/assert.fe:19:9
    │
 19 │         self.my_string = "hello"
-   │         ^^^^^^^^^^^^^^ String<5>: Storage { nonce: Some(1) } => None
-
-note: 
-   ┌─ features/assert.fe:19:26
-   │
-19 │         self.my_string = "hello"
-   │                          ^^^^^^^ String<5>: Memory => None
-
-note: 
-   ┌─ features/assert.fe:20:16
-   │
+   │         ^^^^^^^^^^^^^^   ^^^^^^^ String<5>: Memory => None
+   │         │                 
+   │         String<5>: Storage { nonce: Some(1) } => None
 20 │         assert false, self.my_string.to_mem()
-   │                ^^^^^ bool: Value => None
-
-note: 
-   ┌─ features/assert.fe:20:23
-   │
-20 │         assert false, self.my_string.to_mem()
-   │                       ^^^^^^^^^^^^^^ String<5>: Storage { nonce: Some(1) } => None
+   │                ^^^^^  ^^^^^^^^^^^^^^ String<5>: Storage { nonce: Some(1) } => None
+   │                │       
+   │                bool: Value => None
 
 note: 
    ┌─ features/assert.fe:20:23

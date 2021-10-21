@@ -1,5 +1,6 @@
 use crate::files::SourceFileId;
 use serde::{Deserialize, Serialize};
+use std::cmp;
 use std::fmt::{Debug, Formatter};
 use std::ops::{Add, AddAssign, Range};
 
@@ -24,8 +25,8 @@ impl Span {
     pub fn new(file_id: SourceFileId, start: usize, end: usize) -> Self {
         Span {
             file_id,
-            start,
-            end,
+            start: cmp::min(start, end),
+            end: cmp::max(start, end),
         }
     }
 

@@ -41,6 +41,24 @@ note:
     }
 
 note: 
+  ┌─ features/call_statement_with_args_2.fe:5:9
+  │
+5 │         self.baz[0] = val
+  │         ^^^^^^^^ ^ u256: Value => None
+  │         │         
+  │         Map<u256, u256>: Storage { nonce: Some(0) } => None
+
+note: 
+  ┌─ features/call_statement_with_args_2.fe:5:9
+  │
+5 │         self.baz[0] = val
+  │         ^^^^^^^^^^^   ^^^ u256: Value => None
+  │         │              
+  │         u256: Storage { nonce: None } => None
+6 │         return val
+  │                ^^^ u256: Value => None
+
+note: 
    ┌─ features/call_statement_with_args_2.fe:8:5
    │  
  8 │ ╭     pub fn bar(self) -> u256:
@@ -61,58 +79,20 @@ note:
      }
 
 note: 
-  ┌─ features/call_statement_with_args_2.fe:5:9
-  │
-5 │         self.baz[0] = val
-  │         ^^^^^^^^ Map<u256, u256>: Storage { nonce: Some(0) } => None
-
-note: 
-  ┌─ features/call_statement_with_args_2.fe:5:18
-  │
-5 │         self.baz[0] = val
-  │                  ^ u256: Value => None
-
-note: 
-  ┌─ features/call_statement_with_args_2.fe:5:9
-  │
-5 │         self.baz[0] = val
-  │         ^^^^^^^^^^^ u256: Storage { nonce: None } => None
-
-note: 
-  ┌─ features/call_statement_with_args_2.fe:5:23
-  │
-5 │         self.baz[0] = val
-  │                       ^^^ u256: Value => None
-
-note: 
-  ┌─ features/call_statement_with_args_2.fe:6:16
-  │
-6 │         return val
-  │                ^^^ u256: Value => None
-
-note: 
   ┌─ features/call_statement_with_args_2.fe:9:21
   │
 9 │         self.assign(100)
   │                     ^^^ u256: Value => None
 
 note: 
-  ┌─ features/call_statement_with_args_2.fe:9:9
-  │
-9 │         self.assign(100)
-  │         ^^^^^^^^^^^^^^^^ u256: Value => None
-
-note: 
-   ┌─ features/call_statement_with_args_2.fe:10:16
+   ┌─ features/call_statement_with_args_2.fe:9:9
    │
+ 9 │         self.assign(100)
+   │         ^^^^^^^^^^^^^^^^ u256: Value => None
 10 │         return self.baz[0]
-   │                ^^^^^^^^ Map<u256, u256>: Storage { nonce: Some(0) } => None
-
-note: 
-   ┌─ features/call_statement_with_args_2.fe:10:25
-   │
-10 │         return self.baz[0]
-   │                         ^ u256: Value => None
+   │                ^^^^^^^^ ^ u256: Value => None
+   │                │         
+   │                Map<u256, u256>: Storage { nonce: Some(0) } => None
 
 note: 
    ┌─ features/call_statement_with_args_2.fe:10:16

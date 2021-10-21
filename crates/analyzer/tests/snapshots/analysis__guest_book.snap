@@ -48,6 +48,48 @@ note:
      }
 
 note: 
+   ┌─ demos/guest_book.fe:13:9
+   │
+13 │         self.messages[msg.sender] = book_msg
+   │         ^^^^^^^^^^^^^ ^^^^^^^^^^ address: Value => None
+   │         │              
+   │         Map<address, String<100>>: Storage { nonce: Some(0) } => None
+
+note: 
+   ┌─ demos/guest_book.fe:13:9
+   │
+13 │         self.messages[msg.sender] = book_msg
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^ String<100>: Memory => None
+   │         │                            
+   │         String<100>: Storage { nonce: None } => None
+   ·
+16 │         emit Signed(book_msg=book_msg)
+   │                              ^^^^^^^^ String<100>: Memory => None
+
+note: 
+   ┌─ demos/guest_book.fe:16:9
+   │
+16 │         emit Signed(book_msg=book_msg)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 3840771212935086148
+   │
+   = Event {
+         name: "Signed",
+         fields: [
+             EventField {
+                 name: "book_msg",
+                 typ: Ok(
+                     String(
+                         FeString {
+                             max_size: 100,
+                         },
+                     ),
+                 ),
+                 is_indexed: false,
+             },
+         ],
+     }
+
+note: 
    ┌─ demos/guest_book.fe:18:5
    │  
 18 │ ╭     pub fn get_msg(self, addr: address) -> String<100>:
@@ -78,46 +120,12 @@ note:
      }
 
 note: 
-   ┌─ demos/guest_book.fe:13:9
-   │
-13 │         self.messages[msg.sender] = book_msg
-   │         ^^^^^^^^^^^^^ Map<address, String<100>>: Storage { nonce: Some(0) } => None
-
-note: 
-   ┌─ demos/guest_book.fe:13:23
-   │
-13 │         self.messages[msg.sender] = book_msg
-   │                       ^^^^^^^^^^ address: Value => None
-
-note: 
-   ┌─ demos/guest_book.fe:13:9
-   │
-13 │         self.messages[msg.sender] = book_msg
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: None } => None
-
-note: 
-   ┌─ demos/guest_book.fe:13:37
-   │
-13 │         self.messages[msg.sender] = book_msg
-   │                                     ^^^^^^^^ String<100>: Memory => None
-
-note: 
-   ┌─ demos/guest_book.fe:16:30
-   │
-16 │         emit Signed(book_msg=book_msg)
-   │                              ^^^^^^^^ String<100>: Memory => None
-
-note: 
    ┌─ demos/guest_book.fe:21:16
    │
 21 │         return self.messages[addr].to_mem()
-   │                ^^^^^^^^^^^^^ Map<address, String<100>>: Storage { nonce: Some(0) } => None
-
-note: 
-   ┌─ demos/guest_book.fe:21:30
-   │
-21 │         return self.messages[addr].to_mem()
-   │                              ^^^^ address: Value => None
+   │                ^^^^^^^^^^^^^ ^^^^ address: Value => None
+   │                │              
+   │                Map<address, String<100>>: Storage { nonce: Some(0) } => None
 
 note: 
    ┌─ demos/guest_book.fe:21:16
@@ -130,29 +138,6 @@ note:
    │
 21 │         return self.messages[addr].to_mem()
    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: None } => Some(Memory)
-
-note: 
-   ┌─ demos/guest_book.fe:16:9
-   │
-16 │         emit Signed(book_msg=book_msg)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 3840771212935086148
-   │
-   = Event {
-         name: "Signed",
-         fields: [
-             EventField {
-                 name: "book_msg",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 100,
-                         },
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-         ],
-     }
 
 note: 
    ┌─ demos/guest_book.fe:21:16

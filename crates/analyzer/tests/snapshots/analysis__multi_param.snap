@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/multi_param.fe\", &src, module, &db)"
+expression: "build_snapshot(&files, module, &db)"
 
 ---
 note: 
@@ -61,87 +61,51 @@ note:
     }
 
 note: 
-  ┌─ features/multi_param.fe:4:9
-  │
-4 │         my_array[0] = x
-  │         ^^^^^^^^ Array<u256, 3>: Memory => None
-
-note: 
-  ┌─ features/multi_param.fe:4:18
-  │
-4 │         my_array[0] = x
-  │                  ^ u256: Value => None
-
-note: 
-  ┌─ features/multi_param.fe:4:9
-  │
-4 │         my_array[0] = x
-  │         ^^^^^^^^^^^ u256: Memory => None
-
-note: 
-  ┌─ features/multi_param.fe:4:23
-  │
-4 │         my_array[0] = x
-  │                       ^ u256: Value => None
-
-note: 
-  ┌─ features/multi_param.fe:5:9
-  │
-5 │         my_array[1] = y
-  │         ^^^^^^^^ Array<u256, 3>: Memory => None
-
-note: 
-  ┌─ features/multi_param.fe:5:18
-  │
-5 │         my_array[1] = y
-  │                  ^ u256: Value => None
-
-note: 
-  ┌─ features/multi_param.fe:5:9
-  │
-5 │         my_array[1] = y
-  │         ^^^^^^^^^^^ u256: Memory => None
-
-note: 
-  ┌─ features/multi_param.fe:5:23
-  │
-5 │         my_array[1] = y
-  │                       ^ u256: Value => None
-
-note: 
-  ┌─ features/multi_param.fe:6:9
-  │
-6 │         my_array[2] = z
-  │         ^^^^^^^^ Array<u256, 3>: Memory => None
-
-note: 
-  ┌─ features/multi_param.fe:6:18
-  │
-6 │         my_array[2] = z
-  │                  ^ u256: Value => None
-
-note: 
-  ┌─ features/multi_param.fe:6:9
-  │
-6 │         my_array[2] = z
-  │         ^^^^^^^^^^^ u256: Memory => None
-
-note: 
-  ┌─ features/multi_param.fe:6:23
-  │
-6 │         my_array[2] = z
-  │                       ^ u256: Value => None
-
-note: 
-  ┌─ features/multi_param.fe:7:16
-  │
-7 │         return my_array
-  │                ^^^^^^^^ Array<u256, 3>: Memory => None
-
-note: 
   ┌─ features/multi_param.fe:3:23
   │
 3 │         let my_array: Array<u256, 3>
   │                       ^^^^^^^^^^^^^^ Array<u256, 3>
+
+note: 
+  ┌─ features/multi_param.fe:4:9
+  │
+4 │         my_array[0] = x
+  │         ^^^^^^^^ ^ u256: Value => None
+  │         │         
+  │         Array<u256, 3>: Memory => None
+
+note: 
+  ┌─ features/multi_param.fe:4:9
+  │
+4 │         my_array[0] = x
+  │         ^^^^^^^^^^^   ^ u256: Value => None
+  │         │              
+  │         u256: Memory => None
+5 │         my_array[1] = y
+  │         ^^^^^^^^ ^ u256: Value => None
+  │         │         
+  │         Array<u256, 3>: Memory => None
+
+note: 
+  ┌─ features/multi_param.fe:5:9
+  │
+5 │         my_array[1] = y
+  │         ^^^^^^^^^^^   ^ u256: Value => None
+  │         │              
+  │         u256: Memory => None
+6 │         my_array[2] = z
+  │         ^^^^^^^^ ^ u256: Value => None
+  │         │         
+  │         Array<u256, 3>: Memory => None
+
+note: 
+  ┌─ features/multi_param.fe:6:9
+  │
+6 │         my_array[2] = z
+  │         ^^^^^^^^^^^   ^ u256: Value => None
+  │         │              
+  │         u256: Memory => None
+7 │         return my_array
+  │                ^^^^^^^^ Array<u256, 3>: Memory => None
 
 

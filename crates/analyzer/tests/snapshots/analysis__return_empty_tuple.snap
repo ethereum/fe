@@ -38,6 +38,12 @@ note:
     }
 
 note: 
+  ┌─ features/return_unit.fe:7:12
+  │
+7 │     return ()
+  │            ^^ (): Value => None
+
+note: 
    ┌─ features/return_unit.fe:9:3
    │  
  9 │ ╭   pub fn explicit_return_b1() -> ():
@@ -72,6 +78,12 @@ note:
      }
 
 note: 
+   ┌─ features/return_unit.fe:13:12
+   │
+13 │     return ()
+   │            ^^ (): Value => None
+
+note: 
    ┌─ features/return_unit.fe:15:3
    │  
 15 │ ╭   pub fn implicit_a1():
@@ -104,17 +116,5 @@ note:
              ),
          ),
      }
-
-note: 
-  ┌─ features/return_unit.fe:7:12
-  │
-7 │     return ()
-  │            ^^ (): Value => None
-
-note: 
-   ┌─ features/return_unit.fe:13:12
-   │
-13 │     return ()
-   │            ^^ (): Value => None
 
 

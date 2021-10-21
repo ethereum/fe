@@ -40,6 +40,20 @@ note:
     }
 
 note: 
+  ┌─ features/u64_u64_map.fe:5:16
+  │
+5 │         return self.bar[key]
+  │                ^^^^^^^^ ^^^ u64: Value => None
+  │                │         
+  │                Map<u64, u64>: Storage { nonce: Some(0) } => None
+
+note: 
+  ┌─ features/u64_u64_map.fe:5:16
+  │
+5 │         return self.bar[key]
+  │                ^^^^^^^^^^^^^ u64: Storage { nonce: None } => Some(Value)
+
+note: 
   ┌─ features/u64_u64_map.fe:7:5
   │  
 7 │ ╭     pub fn write_bar(self, key: u64, value: u64):
@@ -78,45 +92,19 @@ note:
     }
 
 note: 
-  ┌─ features/u64_u64_map.fe:5:16
+  ┌─ features/u64_u64_map.fe:8:9
   │
-5 │         return self.bar[key]
-  │                ^^^^^^^^ Map<u64, u64>: Storage { nonce: Some(0) } => None
-
-note: 
-  ┌─ features/u64_u64_map.fe:5:25
-  │
-5 │         return self.bar[key]
-  │                         ^^^ u64: Value => None
-
-note: 
-  ┌─ features/u64_u64_map.fe:5:16
-  │
-5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ u64: Storage { nonce: None } => Some(Value)
+8 │         self.bar[key] = value
+  │         ^^^^^^^^ ^^^ u64: Value => None
+  │         │         
+  │         Map<u64, u64>: Storage { nonce: Some(0) } => None
 
 note: 
   ┌─ features/u64_u64_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^ Map<u64, u64>: Storage { nonce: Some(0) } => None
-
-note: 
-  ┌─ features/u64_u64_map.fe:8:18
-  │
-8 │         self.bar[key] = value
-  │                  ^^^ u64: Value => None
-
-note: 
-  ┌─ features/u64_u64_map.fe:8:9
-  │
-8 │         self.bar[key] = value
-  │         ^^^^^^^^^^^^^ u64: Storage { nonce: None } => None
-
-note: 
-  ┌─ features/u64_u64_map.fe:8:25
-  │
-8 │         self.bar[key] = value
-  │                         ^^^^^ u64: Value => None
+  │         ^^^^^^^^^^^^^   ^^^^^ u64: Value => None
+  │         │                
+  │         u64: Storage { nonce: None } => None
 
 

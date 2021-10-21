@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/balances.fe\", &src, module, &db)"
+expression: "build_snapshot(&files, module, &db)"
 
 ---
 note: 
@@ -21,6 +21,22 @@ note:
             ),
         ),
     }
+
+note: 
+  ┌─ features/balances.fe:3:16
+  │
+3 │         return balance()
+  │                ^^^^^^^^^ u256: Value => None
+
+note: 
+  ┌─ features/balances.fe:3:16
+  │
+3 │         return balance()
+  │                ^^^^^^^ attributes hash: 16310782615237733127
+  │
+  = BuiltinFunction(
+        Balance,
+    )
 
 note: 
   ┌─ features/balances.fe:5:5
@@ -51,12 +67,6 @@ note:
     }
 
 note: 
-  ┌─ features/balances.fe:3:16
-  │
-3 │         return balance()
-  │                ^^^^^^^^^ u256: Value => None
-
-note: 
   ┌─ features/balances.fe:6:27
   │
 6 │         return balance_of(someone)
@@ -67,16 +77,6 @@ note:
   │
 6 │         return balance_of(someone)
   │                ^^^^^^^^^^^^^^^^^^^ u256: Value => None
-
-note: 
-  ┌─ features/balances.fe:3:16
-  │
-3 │         return balance()
-  │                ^^^^^^^ attributes hash: 16310782615237733127
-  │
-  = BuiltinFunction(
-        Balance,
-    )
 
 note: 
   ┌─ features/balances.fe:6:16

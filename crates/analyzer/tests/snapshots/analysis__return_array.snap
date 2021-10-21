@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/return_array.fe\", &src, module, &db)"
+expression: "build_snapshot(&files, module, &db)"
 
 ---
 note: 
@@ -39,39 +39,27 @@ note:
     }
 
 note: 
-  ┌─ features/return_array.fe:4:9
-  │
-4 │         my_array[3] = x
-  │         ^^^^^^^^ Array<u256, 5>: Memory => None
-
-note: 
-  ┌─ features/return_array.fe:4:18
-  │
-4 │         my_array[3] = x
-  │                  ^ u256: Value => None
-
-note: 
-  ┌─ features/return_array.fe:4:9
-  │
-4 │         my_array[3] = x
-  │         ^^^^^^^^^^^ u256: Memory => None
-
-note: 
-  ┌─ features/return_array.fe:4:23
-  │
-4 │         my_array[3] = x
-  │                       ^ u256: Value => None
-
-note: 
-  ┌─ features/return_array.fe:5:16
-  │
-5 │         return my_array
-  │                ^^^^^^^^ Array<u256, 5>: Memory => None
-
-note: 
   ┌─ features/return_array.fe:3:23
   │
 3 │         let my_array: Array<u256,5>
   │                       ^^^^^^^^^^^^^ Array<u256, 5>
+
+note: 
+  ┌─ features/return_array.fe:4:9
+  │
+4 │         my_array[3] = x
+  │         ^^^^^^^^ ^ u256: Value => None
+  │         │         
+  │         Array<u256, 5>: Memory => None
+
+note: 
+  ┌─ features/return_array.fe:4:9
+  │
+4 │         my_array[3] = x
+  │         ^^^^^^^^^^^   ^ u256: Value => None
+  │         │              
+  │         u256: Memory => None
+5 │         return my_array
+  │                ^^^^^^^^ Array<u256, 5>: Memory => None
 
 

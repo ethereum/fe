@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/aug_assign.fe\", &src, module, &db)"
+expression: "build_snapshot(&files, module, &db)"
 
 ---
 note: 
@@ -51,6 +51,16 @@ note:
     }
 
 note: 
+  ┌─ features/aug_assign.fe:5:9
+  │
+5 │         a += b
+  │         ^    ^ u256: Value => None
+  │         │     
+  │         u256: Value => None
+6 │         return a
+  │                ^ u256: Value => None
+
+note: 
    ┌─ features/aug_assign.fe:8:5
    │  
  8 │ ╭     pub fn sub(a: u256, b: u256) -> u256:
@@ -90,6 +100,16 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/aug_assign.fe:9:9
+   │
+ 9 │         a -= b
+   │         ^    ^ u256: Value => None
+   │         │     
+   │         u256: Value => None
+10 │         return a
+   │                ^ u256: Value => None
 
 note: 
    ┌─ features/aug_assign.fe:12:5
@@ -133,6 +153,16 @@ note:
      }
 
 note: 
+   ┌─ features/aug_assign.fe:13:9
+   │
+13 │         a *= b
+   │         ^    ^ u256: Value => None
+   │         │     
+   │         u256: Value => None
+14 │         return a
+   │                ^ u256: Value => None
+
+note: 
    ┌─ features/aug_assign.fe:16:5
    │  
 16 │ ╭     pub fn div(a: u256, b: u256) -> u256:
@@ -172,6 +202,16 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/aug_assign.fe:17:9
+   │
+17 │         a /= b
+   │         ^    ^ u256: Value => None
+   │         │     
+   │         u256: Value => None
+18 │         return a
+   │                ^ u256: Value => None
 
 note: 
    ┌─ features/aug_assign.fe:20:5
@@ -215,6 +255,16 @@ note:
      }
 
 note: 
+   ┌─ features/aug_assign.fe:21:9
+   │
+21 │         a %= b
+   │         ^    ^ u256: Value => None
+   │         │     
+   │         u256: Value => None
+22 │         return a
+   │                ^ u256: Value => None
+
+note: 
    ┌─ features/aug_assign.fe:24:5
    │  
 24 │ ╭     pub fn pow(a: u256, b: u256) -> u256:
@@ -254,6 +304,16 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/aug_assign.fe:25:9
+   │
+25 │         a **= b
+   │         ^     ^ u256: Value => None
+   │         │      
+   │         u256: Value => None
+26 │         return a
+   │                ^ u256: Value => None
 
 note: 
    ┌─ features/aug_assign.fe:28:5
@@ -297,6 +357,16 @@ note:
      }
 
 note: 
+   ┌─ features/aug_assign.fe:29:9
+   │
+29 │         a <<= b
+   │         ^     ^ u8: Value => None
+   │         │      
+   │         u8: Value => None
+30 │         return a
+   │                ^ u8: Value => None
+
+note: 
    ┌─ features/aug_assign.fe:32:5
    │  
 32 │ ╭     pub fn rshift(a: u8, b: u8) -> u8:
@@ -336,6 +406,16 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/aug_assign.fe:33:9
+   │
+33 │         a >>= b
+   │         ^     ^ u8: Value => None
+   │         │      
+   │         u8: Value => None
+34 │         return a
+   │                ^ u8: Value => None
 
 note: 
    ┌─ features/aug_assign.fe:36:5
@@ -379,6 +459,16 @@ note:
      }
 
 note: 
+   ┌─ features/aug_assign.fe:37:9
+   │
+37 │         a |= b
+   │         ^    ^ u8: Value => None
+   │         │     
+   │         u8: Value => None
+38 │         return a
+   │                ^ u8: Value => None
+
+note: 
    ┌─ features/aug_assign.fe:40:5
    │  
 40 │ ╭     pub fn bit_xor(a: u8, b: u8) -> u8:
@@ -418,6 +508,16 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/aug_assign.fe:41:9
+   │
+41 │         a ^= b
+   │         ^    ^ u8: Value => None
+   │         │     
+   │         u8: Value => None
+42 │         return a
+   │                ^ u8: Value => None
 
 note: 
    ┌─ features/aug_assign.fe:44:5
@@ -461,6 +561,16 @@ note:
      }
 
 note: 
+   ┌─ features/aug_assign.fe:45:9
+   │
+45 │         a &= b
+   │         ^    ^ u8: Value => None
+   │         │     
+   │         u8: Value => None
+46 │         return a
+   │                ^ u8: Value => None
+
+note: 
    ┌─ features/aug_assign.fe:48:5
    │  
 48 │ ╭     pub fn add_from_sto(self, a: u256, b: u256) -> u256:
@@ -501,6 +611,20 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/aug_assign.fe:49:9
+   │
+49 │         self.my_num = a
+   │         ^^^^^^^^^^^   ^ u256: Value => None
+   │         │              
+   │         u256: Storage { nonce: Some(0) } => None
+50 │         self.my_num += b
+   │         ^^^^^^^^^^^    ^ u256: Value => None
+   │         │               
+   │         u256: Storage { nonce: Some(0) } => None
+51 │         return self.my_num
+   │                ^^^^^^^^^^^ u256: Storage { nonce: Some(0) } => Some(Value)
 
 note: 
    ┌─ features/aug_assign.fe:53:5
@@ -546,303 +670,47 @@ note:
      }
 
 note: 
-  ┌─ features/aug_assign.fe:5:9
-  │
-5 │         a += b
-  │         ^ u256: Value => None
-
-note: 
-  ┌─ features/aug_assign.fe:5:14
-  │
-5 │         a += b
-  │              ^ u256: Value => None
-
-note: 
-  ┌─ features/aug_assign.fe:6:16
-  │
-6 │         return a
-  │                ^ u256: Value => None
-
-note: 
-  ┌─ features/aug_assign.fe:9:9
-  │
-9 │         a -= b
-  │         ^ u256: Value => None
-
-note: 
-  ┌─ features/aug_assign.fe:9:14
-  │
-9 │         a -= b
-  │              ^ u256: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:10:16
+   ┌─ features/aug_assign.fe:54:23
    │
-10 │         return a
-   │                ^ u256: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:13:9
-   │
-13 │         a *= b
-   │         ^ u256: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:13:14
-   │
-13 │         a *= b
-   │              ^ u256: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:14:16
-   │
-14 │         return a
-   │                ^ u256: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:17:9
-   │
-17 │         a /= b
-   │         ^ u256: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:17:14
-   │
-17 │         a /= b
-   │              ^ u256: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:18:16
-   │
-18 │         return a
-   │                ^ u256: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:21:9
-   │
-21 │         a %= b
-   │         ^ u256: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:21:14
-   │
-21 │         a %= b
-   │              ^ u256: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:22:16
-   │
-22 │         return a
-   │                ^ u256: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:25:9
-   │
-25 │         a **= b
-   │         ^ u256: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:25:15
-   │
-25 │         a **= b
-   │               ^ u256: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:26:16
-   │
-26 │         return a
-   │                ^ u256: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:29:9
-   │
-29 │         a <<= b
-   │         ^ u8: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:29:15
-   │
-29 │         a <<= b
-   │               ^ u8: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:30:16
-   │
-30 │         return a
-   │                ^ u8: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:33:9
-   │
-33 │         a >>= b
-   │         ^ u8: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:33:15
-   │
-33 │         a >>= b
-   │               ^ u8: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:34:16
-   │
-34 │         return a
-   │                ^ u8: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:37:9
-   │
-37 │         a |= b
-   │         ^ u8: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:37:14
-   │
-37 │         a |= b
-   │              ^ u8: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:38:16
-   │
-38 │         return a
-   │                ^ u8: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:41:9
-   │
-41 │         a ^= b
-   │         ^ u8: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:41:14
-   │
-41 │         a ^= b
-   │              ^ u8: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:42:16
-   │
-42 │         return a
-   │                ^ u8: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:45:9
-   │
-45 │         a &= b
-   │         ^ u8: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:45:14
-   │
-45 │         a &= b
-   │              ^ u8: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:46:16
-   │
-46 │         return a
-   │                ^ u8: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:49:9
-   │
-49 │         self.my_num = a
-   │         ^^^^^^^^^^^ u256: Storage { nonce: Some(0) } => None
-
-note: 
-   ┌─ features/aug_assign.fe:49:23
-   │
-49 │         self.my_num = a
-   │                       ^ u256: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:50:9
-   │
-50 │         self.my_num += b
-   │         ^^^^^^^^^^^ u256: Storage { nonce: Some(0) } => None
-
-note: 
-   ┌─ features/aug_assign.fe:50:24
-   │
-50 │         self.my_num += b
-   │                        ^ u256: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:51:16
-   │
-51 │         return self.my_num
-   │                ^^^^^^^^^^^ u256: Storage { nonce: Some(0) } => Some(Value)
+54 │         let my_array: Array<u256, 10>
+   │                       ^^^^^^^^^^^^^^^ Array<u256, 10>
 
 note: 
    ┌─ features/aug_assign.fe:55:9
    │
 55 │         my_array[7] = a
-   │         ^^^^^^^^ Array<u256, 10>: Memory => None
-
-note: 
-   ┌─ features/aug_assign.fe:55:18
-   │
-55 │         my_array[7] = a
-   │                  ^ u256: Value => None
+   │         ^^^^^^^^ ^ u256: Value => None
+   │         │         
+   │         Array<u256, 10>: Memory => None
 
 note: 
    ┌─ features/aug_assign.fe:55:9
    │
 55 │         my_array[7] = a
-   │         ^^^^^^^^^^^ u256: Memory => None
-
-note: 
-   ┌─ features/aug_assign.fe:55:23
-   │
-55 │         my_array[7] = a
-   │                       ^ u256: Value => None
+   │         ^^^^^^^^^^^   ^ u256: Value => None
+   │         │              
+   │         u256: Memory => None
+56 │         my_array[7] += b
+   │         ^^^^^^^^ ^ u256: Value => None
+   │         │         
+   │         Array<u256, 10>: Memory => None
 
 note: 
    ┌─ features/aug_assign.fe:56:9
    │
 56 │         my_array[7] += b
-   │         ^^^^^^^^ Array<u256, 10>: Memory => None
-
-note: 
-   ┌─ features/aug_assign.fe:56:18
-   │
-56 │         my_array[7] += b
-   │                  ^ u256: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:56:9
-   │
-56 │         my_array[7] += b
-   │         ^^^^^^^^^^^ u256: Memory => None
-
-note: 
-   ┌─ features/aug_assign.fe:56:24
-   │
-56 │         my_array[7] += b
-   │                        ^ u256: Value => None
-
-note: 
-   ┌─ features/aug_assign.fe:57:16
-   │
+   │         ^^^^^^^^^^^    ^ u256: Value => None
+   │         │               
+   │         u256: Memory => None
 57 │         return my_array[7]
-   │                ^^^^^^^^ Array<u256, 10>: Memory => None
-
-note: 
-   ┌─ features/aug_assign.fe:57:25
-   │
-57 │         return my_array[7]
-   │                         ^ u256: Value => None
+   │                ^^^^^^^^ ^ u256: Value => None
+   │                │         
+   │                Array<u256, 10>: Memory => None
 
 note: 
    ┌─ features/aug_assign.fe:57:16
    │
 57 │         return my_array[7]
    │                ^^^^^^^^^^^ u256: Memory => Some(Value)
-
-note: 
-   ┌─ features/aug_assign.fe:54:23
-   │
-54 │         let my_array: Array<u256, 10>
-   │                       ^^^^^^^^^^^^^^^ Array<u256, 10>
 
 

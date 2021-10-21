@@ -21,6 +21,12 @@ note:
     }
 
 note: 
+  ┌─ features/return_builtin_attributes.fe:3:16
+  │
+3 │         return block.coinbase
+  │                ^^^^^^^^^^^^^^ address: Value => None
+
+note: 
   ┌─ features/return_builtin_attributes.fe:5:5
   │  
 5 │ ╭     pub fn difficulty() -> u256:
@@ -38,6 +44,12 @@ note:
             ),
         ),
     }
+
+note: 
+  ┌─ features/return_builtin_attributes.fe:6:16
+  │
+6 │         return block.difficulty
+  │                ^^^^^^^^^^^^^^^^ u256: Value => None
 
 note: 
   ┌─ features/return_builtin_attributes.fe:8:5
@@ -59,6 +71,12 @@ note:
     }
 
 note: 
+  ┌─ features/return_builtin_attributes.fe:9:16
+  │
+9 │         return block.number
+  │                ^^^^^^^^^^^^ u256: Value => None
+
+note: 
    ┌─ features/return_builtin_attributes.fe:11:5
    │  
 11 │ ╭     pub fn timestamp() -> u256:
@@ -76,6 +94,12 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/return_builtin_attributes.fe:12:16
+   │
+12 │         return block.timestamp
+   │                ^^^^^^^^^^^^^^^ u256: Value => None
 
 note: 
    ┌─ features/return_builtin_attributes.fe:14:5
@@ -97,6 +121,12 @@ note:
      }
 
 note: 
+   ┌─ features/return_builtin_attributes.fe:15:16
+   │
+15 │         return chain.id
+   │                ^^^^^^^^ u256: Value => None
+
+note: 
    ┌─ features/return_builtin_attributes.fe:17:5
    │  
 17 │ ╭     pub fn sender() -> address:
@@ -112,6 +142,12 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/return_builtin_attributes.fe:18:16
+   │
+18 │         return msg.sender
+   │                ^^^^^^^^^^ address: Value => None
 
 note: 
    ┌─ features/return_builtin_attributes.fe:20:5
@@ -133,6 +169,12 @@ note:
      }
 
 note: 
+   ┌─ features/return_builtin_attributes.fe:21:16
+   │
+21 │         return msg.value
+   │                ^^^^^^^^^ u256: Value => None
+
+note: 
    ┌─ features/return_builtin_attributes.fe:23:5
    │  
 23 │ ╭     pub fn origin() -> address:
@@ -148,6 +190,12 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/return_builtin_attributes.fe:24:16
+   │
+24 │         return tx.origin
+   │                ^^^^^^^^^ address: Value => None
 
 note: 
    ┌─ features/return_builtin_attributes.fe:26:5
@@ -167,54 +215,6 @@ note:
              ),
          ),
      }
-
-note: 
-  ┌─ features/return_builtin_attributes.fe:3:16
-  │
-3 │         return block.coinbase
-  │                ^^^^^^^^^^^^^^ address: Value => None
-
-note: 
-  ┌─ features/return_builtin_attributes.fe:6:16
-  │
-6 │         return block.difficulty
-  │                ^^^^^^^^^^^^^^^^ u256: Value => None
-
-note: 
-  ┌─ features/return_builtin_attributes.fe:9:16
-  │
-9 │         return block.number
-  │                ^^^^^^^^^^^^ u256: Value => None
-
-note: 
-   ┌─ features/return_builtin_attributes.fe:12:16
-   │
-12 │         return block.timestamp
-   │                ^^^^^^^^^^^^^^^ u256: Value => None
-
-note: 
-   ┌─ features/return_builtin_attributes.fe:15:16
-   │
-15 │         return chain.id
-   │                ^^^^^^^^ u256: Value => None
-
-note: 
-   ┌─ features/return_builtin_attributes.fe:18:16
-   │
-18 │         return msg.sender
-   │                ^^^^^^^^^^ address: Value => None
-
-note: 
-   ┌─ features/return_builtin_attributes.fe:21:16
-   │
-21 │         return msg.value
-   │                ^^^^^^^^^ u256: Value => None
-
-note: 
-   ┌─ features/return_builtin_attributes.fe:24:16
-   │
-24 │         return tx.origin
-   │                ^^^^^^^^^ address: Value => None
 
 note: 
    ┌─ features/return_builtin_attributes.fe:27:16

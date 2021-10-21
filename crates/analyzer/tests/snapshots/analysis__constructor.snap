@@ -10,44 +10,6 @@ note:
   │     ^^^^^^^^^^^^^^^^^^^^ Map<u256, u256>
 
 note: 
-  ┌─ features/constructor.fe:4:5
-  │  
-4 │ ╭     pub fn __init__(self, baz: u256, bing: u256):
-5 │ │         self.bar[42] = baz + bing
-  │ ╰─────────────────────────────────^ attributes hash: 13108393064012885630
-  │  
-  = FunctionSignature {
-        self_decl: Mutable,
-        params: [
-            FunctionParam {
-                name: "baz",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                ),
-            },
-            FunctionParam {
-                name: "bing",
-                typ: Ok(
-                    Base(
-                        Numeric(
-                            U256,
-                        ),
-                    ),
-                ),
-            },
-        ],
-        return_type: Ok(
-            Base(
-                Unit,
-            ),
-        ),
-    }
-
-note: 
   ┌─ features/constructor.fe:7:5
   │  
 7 │ ╭     pub fn read_bar(self) -> u256:
@@ -67,52 +29,12 @@ note:
     }
 
 note: 
-  ┌─ features/constructor.fe:5:9
-  │
-5 │         self.bar[42] = baz + bing
-  │         ^^^^^^^^ Map<u256, u256>: Storage { nonce: Some(0) } => None
-
-note: 
-  ┌─ features/constructor.fe:5:18
-  │
-5 │         self.bar[42] = baz + bing
-  │                  ^^ u256: Value => None
-
-note: 
-  ┌─ features/constructor.fe:5:9
-  │
-5 │         self.bar[42] = baz + bing
-  │         ^^^^^^^^^^^^ u256: Storage { nonce: None } => None
-
-note: 
-  ┌─ features/constructor.fe:5:24
-  │
-5 │         self.bar[42] = baz + bing
-  │                        ^^^ u256: Value => None
-
-note: 
-  ┌─ features/constructor.fe:5:30
-  │
-5 │         self.bar[42] = baz + bing
-  │                              ^^^^ u256: Value => None
-
-note: 
-  ┌─ features/constructor.fe:5:24
-  │
-5 │         self.bar[42] = baz + bing
-  │                        ^^^^^^^^^^ u256: Value => None
-
-note: 
   ┌─ features/constructor.fe:8:16
   │
 8 │         return self.bar[42]
-  │                ^^^^^^^^ Map<u256, u256>: Storage { nonce: Some(0) } => None
-
-note: 
-  ┌─ features/constructor.fe:8:25
-  │
-8 │         return self.bar[42]
-  │                         ^^ u256: Value => None
+  │                ^^^^^^^^ ^^ u256: Value => None
+  │                │         
+  │                Map<u256, u256>: Storage { nonce: Some(0) } => None
 
 note: 
   ┌─ features/constructor.fe:8:16

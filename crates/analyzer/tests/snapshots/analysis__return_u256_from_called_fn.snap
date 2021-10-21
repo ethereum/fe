@@ -23,6 +23,24 @@ note:
     }
 
 note: 
+  ┌─ features/return_u256_from_called_fn.fe:5:16
+  │
+5 │         return foo()
+  │                ^^^^^ u256: Value => None
+
+note: 
+  ┌─ features/return_u256_from_called_fn.fe:5:16
+  │
+5 │         return foo()
+  │                ^^^ attributes hash: 6696068954755293271
+  │
+  = Pure(
+        FunctionId(
+            1,
+        ),
+    )
+
+note: 
   ┌─ features/return_u256_from_called_fn.fe:7:5
   │  
 7 │ ╭     pub fn foo() -> u256:
@@ -42,27 +60,9 @@ note:
     }
 
 note: 
-  ┌─ features/return_u256_from_called_fn.fe:5:16
-  │
-5 │         return foo()
-  │                ^^^^^ u256: Value => None
-
-note: 
   ┌─ features/return_u256_from_called_fn.fe:8:16
   │
 8 │         return 42
   │                ^^ u256: Value => None
-
-note: 
-  ┌─ features/return_u256_from_called_fn.fe:5:16
-  │
-5 │         return foo()
-  │                ^^^ attributes hash: 6696068954755293271
-  │
-  = Pure(
-        FunctionId(
-            1,
-        ),
-    )
 
 

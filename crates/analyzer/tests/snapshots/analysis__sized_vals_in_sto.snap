@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/sized_vals_in_sto.fe\", &src, module, &db)"
+expression: "build_snapshot(&files, module, &db)"
 
 ---
 note: 
@@ -8,16 +8,8 @@ note:
   │
 2 │     num: u256
   │     ^^^^^^^^^ u256
-
-note: 
-  ┌─ features/sized_vals_in_sto.fe:3:5
-  │
 3 │     nums: Array<u256, 42>
   │     ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 42>
-
-note: 
-  ┌─ features/sized_vals_in_sto.fe:4:5
-  │
 4 │     str: String<26>
   │     ^^^^^^^^^^^^^^^ String<26>
 
@@ -26,16 +18,8 @@ note:
   │
 7 │         num: u256
   │         ^^^^^^^^^ u256
-
-note: 
-  ┌─ features/sized_vals_in_sto.fe:8:9
-  │
 8 │         nums: Array<u256, 42>
   │         ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 42>
-
-note: 
-  ┌─ features/sized_vals_in_sto.fe:9:9
-  │
 9 │         str: String<26>
   │         ^^^^^^^^^^^^^^^ String<26>
 
@@ -68,6 +52,14 @@ note:
      }
 
 note: 
+   ┌─ features/sized_vals_in_sto.fe:12:9
+   │
+12 │         self.num = x
+   │         ^^^^^^^^   ^ u256: Value => None
+   │         │           
+   │         u256: Storage { nonce: Some(0) } => None
+
+note: 
    ┌─ features/sized_vals_in_sto.fe:14:5
    │  
 14 │ ╭     pub fn read_num(self) -> u256:
@@ -85,6 +77,12 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:15:16
+   │
+15 │         return self.num
+   │                ^^^^^^^^ u256: Storage { nonce: Some(0) } => Some(Value)
 
 note: 
    ┌─ features/sized_vals_in_sto.fe:17:5
@@ -118,6 +116,14 @@ note:
      }
 
 note: 
+   ┌─ features/sized_vals_in_sto.fe:18:9
+   │
+18 │         self.nums = x
+   │         ^^^^^^^^^   ^ Array<u256, 42>: Memory => None
+   │         │            
+   │         Array<u256, 42>: Storage { nonce: Some(1) } => None
+
+note: 
    ┌─ features/sized_vals_in_sto.fe:20:5
    │  
 20 │ ╭     pub fn read_nums(self) -> Array<u256, 42>:
@@ -138,6 +144,26 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:21:16
+   │
+21 │         return self.nums.to_mem()
+   │                ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => None
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:21:16
+   │
+21 │         return self.nums.to_mem()
+   │                ^^^^^^^^^^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => Some(Memory)
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:21:16
+   │
+21 │         return self.nums.to_mem()
+   │                ^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
+   │
+   = ValueAttribute
 
 note: 
    ┌─ features/sized_vals_in_sto.fe:23:5
@@ -168,6 +194,14 @@ note:
      }
 
 note: 
+   ┌─ features/sized_vals_in_sto.fe:24:9
+   │
+24 │         self.str = x
+   │         ^^^^^^^^   ^ String<26>: Memory => None
+   │         │           
+   │         String<26>: Storage { nonce: Some(2) } => None
+
+note: 
    ┌─ features/sized_vals_in_sto.fe:26:5
    │  
 26 │ ╭     pub fn read_str(self) -> String<26>:
@@ -185,6 +219,26 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:27:16
+   │
+27 │         return self.str.to_mem()
+   │                ^^^^^^^^ String<26>: Storage { nonce: Some(2) } => None
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:27:16
+   │
+27 │         return self.str.to_mem()
+   │                ^^^^^^^^^^^^^^^^^ String<26>: Storage { nonce: Some(2) } => Some(Memory)
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:27:16
+   │
+27 │         return self.str.to_mem()
+   │                ^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
+   │
+   = ValueAttribute
 
 note: 
    ┌─ features/sized_vals_in_sto.fe:29:5
@@ -208,80 +262,10 @@ note:
      }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:12:9
-   │
-12 │         self.num = x
-   │         ^^^^^^^^ u256: Storage { nonce: Some(0) } => None
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:12:20
-   │
-12 │         self.num = x
-   │                    ^ u256: Value => None
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:15:16
-   │
-15 │         return self.num
-   │                ^^^^^^^^ u256: Storage { nonce: Some(0) } => Some(Value)
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:18:9
-   │
-18 │         self.nums = x
-   │         ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => None
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:18:21
-   │
-18 │         self.nums = x
-   │                     ^ Array<u256, 42>: Memory => None
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:21:16
-   │
-21 │         return self.nums.to_mem()
-   │                ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => None
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:21:16
-   │
-21 │         return self.nums.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => Some(Memory)
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:24:9
-   │
-24 │         self.str = x
-   │         ^^^^^^^^ String<26>: Storage { nonce: Some(2) } => None
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:24:20
-   │
-24 │         self.str = x
-   │                    ^ String<26>: Memory => None
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:27:16
-   │
-27 │         return self.str.to_mem()
-   │                ^^^^^^^^ String<26>: Storage { nonce: Some(2) } => None
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:27:16
-   │
-27 │         return self.str.to_mem()
-   │                ^^^^^^^^^^^^^^^^^ String<26>: Storage { nonce: Some(2) } => Some(Memory)
-
-note: 
    ┌─ features/sized_vals_in_sto.fe:31:17
    │
 31 │             num=self.num,
    │                 ^^^^^^^^ u256: Storage { nonce: Some(0) } => Some(Value)
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:32:18
-   │
 32 │             nums=self.nums.to_mem(),
    │                  ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => None
 
@@ -290,10 +274,6 @@ note:
    │
 32 │             nums=self.nums.to_mem(),
    │                  ^^^^^^^^^^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => Some(Memory)
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:33:17
-   │
 33 │             str=self.str.to_mem()
    │                 ^^^^^^^^ String<26>: Storage { nonce: Some(2) } => None
 
@@ -354,22 +334,6 @@ note:
              },
          ],
      }
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:21:16
-   │
-21 │         return self.nums.to_mem()
-   │                ^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
-   │
-   = ValueAttribute
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:27:16
-   │
-27 │         return self.str.to_mem()
-   │                ^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
-   │
-   = ValueAttribute
 
 note: 
    ┌─ features/sized_vals_in_sto.fe:32:18

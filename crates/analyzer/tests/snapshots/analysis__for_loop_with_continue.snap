@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/for_loop_with_continue.fe\", &src, module, &db)"
+expression: "build_snapshot(&files, module, &db)"
 
 ---
 note: 
@@ -28,207 +28,112 @@ note:
      }
 
 note: 
-  ┌─ features/for_loop_with_continue.fe:5:9
-  │
-5 │         my_array[0] = 2
-  │         ^^^^^^^^ Array<u256, 5>: Memory => None
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:5:18
-  │
-5 │         my_array[0] = 2
-  │                  ^ u256: Value => None
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:5:9
-  │
-5 │         my_array[0] = 2
-  │         ^^^^^^^^^^^ u256: Memory => None
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:5:23
-  │
-5 │         my_array[0] = 2
-  │                       ^ u256: Value => None
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:6:9
-  │
-6 │         my_array[1] = 3
-  │         ^^^^^^^^ Array<u256, 5>: Memory => None
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:6:18
-  │
-6 │         my_array[1] = 3
-  │                  ^ u256: Value => None
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:6:9
-  │
-6 │         my_array[1] = 3
-  │         ^^^^^^^^^^^ u256: Memory => None
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:6:23
-  │
-6 │         my_array[1] = 3
-  │                       ^ u256: Value => None
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:7:9
-  │
-7 │         my_array[2] = 5
-  │         ^^^^^^^^ Array<u256, 5>: Memory => None
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:7:18
-  │
-7 │         my_array[2] = 5
-  │                  ^ u256: Value => None
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:7:9
-  │
-7 │         my_array[2] = 5
-  │         ^^^^^^^^^^^ u256: Memory => None
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:7:23
-  │
-7 │         my_array[2] = 5
-  │                       ^ u256: Value => None
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:8:9
-  │
-8 │         my_array[3] = 6
-  │         ^^^^^^^^ Array<u256, 5>: Memory => None
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:8:18
-  │
-8 │         my_array[3] = 6
-  │                  ^ u256: Value => None
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:8:9
-  │
-8 │         my_array[3] = 6
-  │         ^^^^^^^^^^^ u256: Memory => None
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:8:23
-  │
-8 │         my_array[3] = 6
-  │                       ^ u256: Value => None
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:9:9
-  │
-9 │         my_array[4] = 9
-  │         ^^^^^^^^ Array<u256, 5>: Memory => None
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:9:18
-  │
-9 │         my_array[4] = 9
-  │                  ^ u256: Value => None
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:9:9
-  │
-9 │         my_array[4] = 9
-  │         ^^^^^^^^^^^ u256: Memory => None
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:9:23
-  │
-9 │         my_array[4] = 9
-  │                       ^ u256: Value => None
-
-note: 
-   ┌─ features/for_loop_with_continue.fe:10:25
+   ┌─ features/for_loop_with_continue.fe:4:23
    │
+ 4 │         let my_array: Array<u256, 5>
+   │                       ^^^^^^^^^^^^^^ Array<u256, 5>
+   ·
+10 │         let sum: u256 = 0
+   │                  ^^^^ u256
+
+note: 
+  ┌─ features/for_loop_with_continue.fe:5:9
+  │
+5 │         my_array[0] = 2
+  │         ^^^^^^^^ ^ u256: Value => None
+  │         │         
+  │         Array<u256, 5>: Memory => None
+
+note: 
+  ┌─ features/for_loop_with_continue.fe:5:9
+  │
+5 │         my_array[0] = 2
+  │         ^^^^^^^^^^^   ^ u256: Value => None
+  │         │              
+  │         u256: Memory => None
+6 │         my_array[1] = 3
+  │         ^^^^^^^^ ^ u256: Value => None
+  │         │         
+  │         Array<u256, 5>: Memory => None
+
+note: 
+  ┌─ features/for_loop_with_continue.fe:6:9
+  │
+6 │         my_array[1] = 3
+  │         ^^^^^^^^^^^   ^ u256: Value => None
+  │         │              
+  │         u256: Memory => None
+7 │         my_array[2] = 5
+  │         ^^^^^^^^ ^ u256: Value => None
+  │         │         
+  │         Array<u256, 5>: Memory => None
+
+note: 
+  ┌─ features/for_loop_with_continue.fe:7:9
+  │
+7 │         my_array[2] = 5
+  │         ^^^^^^^^^^^   ^ u256: Value => None
+  │         │              
+  │         u256: Memory => None
+8 │         my_array[3] = 6
+  │         ^^^^^^^^ ^ u256: Value => None
+  │         │         
+  │         Array<u256, 5>: Memory => None
+
+note: 
+  ┌─ features/for_loop_with_continue.fe:8:9
+  │
+8 │         my_array[3] = 6
+  │         ^^^^^^^^^^^   ^ u256: Value => None
+  │         │              
+  │         u256: Memory => None
+9 │         my_array[4] = 9
+  │         ^^^^^^^^ ^ u256: Value => None
+  │         │         
+  │         Array<u256, 5>: Memory => None
+
+note: 
+   ┌─ features/for_loop_with_continue.fe:9:9
+   │
+ 9 │         my_array[4] = 9
+   │         ^^^^^^^^^^^   ^ u256: Value => None
+   │         │              
+   │         u256: Memory => None
 10 │         let sum: u256 = 0
    │                         ^ u256: Value => None
-
-note: 
-   ┌─ features/for_loop_with_continue.fe:11:18
-   │
 11 │         for i in my_array:
    │                  ^^^^^^^^ Array<u256, 5>: Memory => None
+12 │             if i % 2 == 0:
+   │                ^   ^ u256: Value => None
+   │                │    
+   │                u256: Value => None
 
 note: 
    ┌─ features/for_loop_with_continue.fe:12:16
    │
 12 │             if i % 2 == 0:
-   │                ^ u256: Value => None
-
-note: 
-   ┌─ features/for_loop_with_continue.fe:12:20
-   │
-12 │             if i % 2 == 0:
-   │                    ^ u256: Value => None
-
-note: 
-   ┌─ features/for_loop_with_continue.fe:12:16
-   │
-12 │             if i % 2 == 0:
-   │                ^^^^^ u256: Value => None
-
-note: 
-   ┌─ features/for_loop_with_continue.fe:12:25
-   │
-12 │             if i % 2 == 0:
-   │                         ^ u256: Value => None
+   │                ^^^^^    ^ u256: Value => None
+   │                │         
+   │                u256: Value => None
 
 note: 
    ┌─ features/for_loop_with_continue.fe:12:16
    │
 12 │             if i % 2 == 0:
    │                ^^^^^^^^^^ bool: Value => None
-
-note: 
-   ┌─ features/for_loop_with_continue.fe:14:13
-   │
+13 │                 continue
 14 │             sum = sum + i
-   │             ^^^ u256: Value => None
-
-note: 
-   ┌─ features/for_loop_with_continue.fe:14:19
-   │
-14 │             sum = sum + i
-   │                   ^^^ u256: Value => None
-
-note: 
-   ┌─ features/for_loop_with_continue.fe:14:25
-   │
-14 │             sum = sum + i
-   │                         ^ u256: Value => None
+   │             ^^^   ^^^   ^ u256: Value => None
+   │             │     │      
+   │             │     u256: Value => None
+   │             u256: Value => None
 
 note: 
    ┌─ features/for_loop_with_continue.fe:14:19
    │
 14 │             sum = sum + i
    │                   ^^^^^^^ u256: Value => None
-
-note: 
-   ┌─ features/for_loop_with_continue.fe:15:16
-   │
 15 │         return sum
    │                ^^^ u256: Value => None
-
-note: 
-  ┌─ features/for_loop_with_continue.fe:4:23
-  │
-4 │         let my_array: Array<u256, 5>
-  │                       ^^^^^^^^^^^^^^ Array<u256, 5>
-
-note: 
-   ┌─ features/for_loop_with_continue.fe:10:18
-   │
-10 │         let sum: u256 = 0
-   │                  ^^^^ u256
 
 
