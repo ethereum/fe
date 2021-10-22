@@ -926,11 +926,27 @@ fn expr_call_type_constructor(
             }
             Ok(ExpressionAttributes::new(typ, Location::Value))
         }
-        Type::Base(Base::Numeric(_)) => {
+        Type::Base(Base::Numeric(integer)) => {
             if let Some(arg) = args.kind.first() {
                 // This will check if the literal fits inside int_type.
-                assignable_expr(scope, &arg.kind.value, Some(&typ))?;
-                validate_is_numeric_literal(scope, &arg.kind.value);
+                let arg_exp = assignable_expr(scope, &arg.kind.value, Some(&typ))?;
+                match arg_exp.typ {
+                    Type::Base(Base::Numeric(new_type)) => {
+                        let sign_differs = integer.is_signed() != new_type.is_signed();
+                        let size_differs = integer.size() != new_type.size();
+
+                        if sign_differs && size_differs {
+                            scope.error("Casting between numeric values can change the sign or size but not both at once", arg.span, &format!("can not cast from `{}` to `{}` in a single step", arg_exp.typ, typ));
+                        }
+                    }
+                    _ => {
+                        scope.error(
+                            "type mismatch",
+                            arg.span,
+                            &format!("expected a numeric type but was `{}`", arg_exp.typ),
+                        );
+                    }
+                }
             }
             Ok(ExpressionAttributes::new(typ, Location::Value))
         }
@@ -1604,18 +1620,6 @@ fn expr_attribute_call_type(
     }
 
     unreachable!()
-}
-
-fn validate_is_numeric_literal(scope: &mut BlockScope, value: &Node<fe::Expr>) -> Option<BigInt> {
-    if let fe::Expr::UnaryOperation { operand, op: _ } = &value.kind {
-        if let fe::Expr::Num(num) = &operand.kind {
-            return Some(-to_bigint(num));
-        }
-    } else if let fe::Expr::Num(num) = &value.kind {
-        return Some(to_bigint(num));
-    }
-    scope.error("type mismatch", value.span, "expected a number literal");
-    None
 }
 
 fn validate_numeric_literal_fits_type(
