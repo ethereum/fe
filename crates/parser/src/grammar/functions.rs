@@ -295,20 +295,19 @@ fn parse_expr_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
             )
         }
         Some(tk) => {
+            let tok = par.next()?;
             if let Some(op) = aug_assign_op(tk) {
-                let op_tok = par.next()?;
                 let value = parse_expr(par)?;
                 let span = expr.span + value.span;
                 Node::new(
                     FuncStmt::AugAssign {
                         target: expr,
-                        op: Node::new(op, op_tok.span),
+                        op: Node::new(op, tok.span),
                         value,
                     },
                     span,
                 )
             } else {
-                let tok = par.next()?;
                 par.unexpected_token_error(tok.span, "invalid syntax in function body", vec![]);
                 return Err(ParseFailed);
             }
