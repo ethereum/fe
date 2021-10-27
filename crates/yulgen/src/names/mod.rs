@@ -5,6 +5,11 @@ use yultsur::*;
 
 pub mod abi;
 
+/// Generate a function name to perform checked negation
+pub fn checked_neg(size: &Integer) -> yul::Identifier {
+    identifier! {(format!("checked_neg_{}", size.as_ref().to_lowercase()))}
+}
+
 /// Generate a function name to perform checked addition
 pub fn checked_add(size: &Integer) -> yul::Identifier {
     identifier! {(format!("checked_add_{}", size.as_ref().to_lowercase()))}

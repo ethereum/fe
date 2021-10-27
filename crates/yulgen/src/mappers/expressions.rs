@@ -311,10 +311,12 @@ pub fn expr_unary_operation(context: &mut FnContext, exp: &Node<fe::Expr>) -> yu
             .typ;
 
         return match &op.kind {
-            fe::UnaryOperator::USub => {
-                let zero = literal_expression! {0};
-                expression! { sub([zero], [yul_operand]) }
-            }
+            fe::UnaryOperator::USub => match typ {
+                Type::Base(Base::Numeric(integer)) if integer.is_signed() => {
+                    expression! { [names::checked_neg(integer)]([yul_operand]) }
+                }
+                _ => unreachable!(),
+            },
             fe::UnaryOperator::Not => expression! { iszero([yul_operand]) },
             fe::UnaryOperator::Invert => match typ {
                 Type::Base(Base::Numeric(integer)) => {
