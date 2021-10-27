@@ -4,6 +4,19 @@ use crate::operations::revert as revert_operations;
 use fe_analyzer::namespace::types::Integer;
 use yultsur::*;
 
+/// Return a vector of runtime functions for negations with over-/underflow
+/// protection
+pub fn checked_neg_fns() -> Vec<yul::Statement> {
+    vec![
+        checked_neg_signed(Integer::I256),
+        checked_neg_signed(Integer::I128),
+        checked_neg_signed(Integer::I64),
+        checked_neg_signed(Integer::I32),
+        checked_neg_signed(Integer::I16),
+        checked_neg_signed(Integer::I8),
+    ]
+}
+
 /// Return a vector of runtime functions for additions with over-/underflow
 /// protection
 pub fn checked_add_fns() -> Vec<yul::Statement> {
@@ -122,6 +135,7 @@ pub fn all() -> Vec<yul::Statement> {
         checked_mod_fns(),
         checked_mul_fns(),
         checked_sub_fns(),
+        checked_neg_fns(),
         adjust_numeric_size_fns(),
     ]
     .concat()
@@ -133,6 +147,21 @@ fn revert_with_over_or_under_flow() -> yul::Statement {
 
 fn revert_with_div_or_mod_by_zero() -> yul::Statement {
     revert_operations::panic_revert(PANIC_DIV_OR_MOD_BY_ZERO)
+}
+
+fn checked_neg_signed(size: Integer) -> yul::Statement {
+    if !size.is_signed() {
+        panic!("Expected signed integer")
+    }
+    let (min_value, _) = get_min_max(size);
+    let fn_name = names::checked_neg(&size);
+    function_definition! {
+        function [fn_name](val1) -> result {
+            // overflow for min_val
+            (if ((eq(val1, [min_value]))) { [revert_with_over_or_under_flow()] })
+            (result := sub(0, val1))
+        }
+    }
 }
 
 fn checked_mod_unsigned() -> yul::Statement {
