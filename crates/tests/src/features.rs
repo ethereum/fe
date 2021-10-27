@@ -1164,6 +1164,16 @@ fn structs() {
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
         ];
         let token = ethabi::Token::Bytes(ethabi::Bytes::from(encoded_house));
+
+        let house = ethabi::Token::Tuple(vec![
+            uint_token(1000000),
+            uint_token(250),
+            uint_token(6),
+            bool_token(true),
+        ]);
+        harness.test_function(&mut executor, "set_house", &[house.clone()], None);
+        harness.test_function(&mut executor, "get_house", &[], Some(&house));
+
         harness.test_function(&mut executor, "encode_house", &[], Some(&token));
 
         harness.test_function(
