@@ -7,6 +7,12 @@ struct House:
 contract Foo:
     my_house: House
 
+    pub fn set_house(self, data: House):
+        self.my_house = data
+
+    pub fn get_house(self) -> House:
+        return self.my_house.to_mem()
+
     pub fn create_house(self):
         self.my_house = House(
             price=1,
