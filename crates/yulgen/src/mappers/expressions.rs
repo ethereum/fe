@@ -318,8 +318,19 @@ pub fn expr_unary_operation(context: &mut FnContext, exp: &Node<fe::Expr>) -> yu
 
         return match &op.kind {
             fe::UnaryOperator::USub => {
-                let zero = literal_expression! {0};
-                expression! { sub([zero], [yul_operand]) }
+                match typ {
+                    Type::Base(Base::Numeric(integer)) => {
+                        if let fe::Expr::Num(_) = &operand.kind {
+                            // Literals are checked at compile time (e.g. -128) so there's no point
+                            // in adding a runtime check.
+                            let zero = literal_expression! {0};
+                            expression! { sub([zero], [yul_operand]) }
+                        } else {
+                            expression! { [names::checked_neg(integer)]([yul_operand]) }
+                        }
+                    }
+                    _ => unreachable!(),
+                }
             }
             fe::UnaryOperator::Not => expression! { iszero([yul_operand]) },
             fe::UnaryOperator::Invert => match typ {
