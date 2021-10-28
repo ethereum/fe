@@ -224,7 +224,7 @@ fn test_runtime_abi_unpack() {
                 (let a := 0x0042002600530000000000000000000000000000000000000000000000000000)
                 (let packed := alloc_mstoren(a, 32))
                 (let unpacked := avail())
-                (abi_unpack(packed, 3, 2))
+                (abi_unpack(packed, 3, 2, 0))
 
                 (let elem0 := mload(unpacked))
                 (let elem1 := mload((add(unpacked, 32))))

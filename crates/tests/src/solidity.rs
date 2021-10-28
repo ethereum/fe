@@ -84,3 +84,18 @@ fn test_revert_reason_encoding(reason_str: &str, expected_encoding: &str) {
     let encoded = encode_error_reason(reason_str);
     assert_eq!(format!("0x{}", hex::encode(&encoded)), expected_encoding);
 }
+
+#[rstest(
+    method,
+    params,
+    expected,
+    case("bar", &[int_token(-10)], Some(int_array_token(&[-10]))),
+)]
+fn signext_int_array(method: &str, params: &[ethabi::Token], expected: Option<ethabi::Token>) {
+    with_executor(&|mut executor| {
+        let harness =
+            deploy_solidity_contract(&mut executor, "solidity/arrays.sol", "Foo", &[], true);
+
+        harness.test_function(&mut executor, method, params, expected.as_ref());
+    })
+}
