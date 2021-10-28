@@ -1,0 +1,9 @@
+
+
+contract Foo:
+
+    some_thing: i8[1]
+
+    pub fn bar(self, val: i8) -> i8[1]:
+        self.some_thing[0] = val
+        return self.some_thing.to_mem()
