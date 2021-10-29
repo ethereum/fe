@@ -92,6 +92,7 @@ impl<'a> DualHarness {
 proptest! {
 
     #[test]
+    #[ignore]
     fn math_u8(val in 0u8..=255, val2 in 0u8..=255) {
         with_executor(&|mut executor| {
 
@@ -117,6 +118,7 @@ proptest! {
     }
 
     #[test]
+    #[ignore]
     fn math_i8(val in -128i8..=127i8, val2 in -128i8..=127i8, val3 in 0u8..=255, val4 in 0u8..=255) {
         with_executor(&|mut executor| {
             let harness = DualHarness::from_fixture(&mut executor, "math_i8", "Foo", &[]);

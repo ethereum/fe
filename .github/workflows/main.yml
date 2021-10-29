@@ -112,7 +112,7 @@ jobs:
       - name: Build
         run: cargo build --all-features --verbose
       - name: Run tests
-        run: cargo test --workspace --features solc-backend --verbose
+        run: cargo test --workspace --features solc-backend --verbose -- --include-ignored
 
   wasm-test:
       runs-on: ubuntu-latest

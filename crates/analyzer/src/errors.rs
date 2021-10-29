@@ -22,13 +22,7 @@ use std::fmt::Display;
 /// by calling an error function on an [`AnalyzerContext`](crate::context::AnalyzerContext).
 /// Please don't try to work around this restriction.
 ///
-/// # Example
-/// ```ignore
-/// pub fn check_something(context: &mut dyn AnalyzerContext, span: Span) -> Result<(), TypeError> {
-///     // check failed! emit a diagnostic and return an error
-///     let voucher = context.error("something is wrong", span, "this");
-///     Err(TypeError::new(voucher))
-/// }
+/// Example: `TypeError::new(context.error("something is wrong", some_span, "this thing"))`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeError(DiagnosticVoucher);
 impl TypeError {
