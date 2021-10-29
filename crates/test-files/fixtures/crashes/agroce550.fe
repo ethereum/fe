@@ -1,0 +1,3 @@
+contract Foo:
+  pub fn o():
+    [-1>>0]

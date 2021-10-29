@@ -658,9 +658,18 @@ fn expr_bin_operation(
     expected_type: Option<Integer>,
 ) -> Result<ExpressionAttributes, FatalError> {
     if let fe::Expr::BinOperation { left, op, right } = &exp.kind {
-        let expected = expected_type.map(Type::int);
-        let left_attributes = value_expr(scope, left, expected.as_ref())?;
-        let right_attributes = value_expr(scope, right, expected.as_ref())?;
+        let (left_expected, right_expected) = match &op.kind {
+            // In shift operations, the right hand side may have a different type than the left hand side
+            // because the right hand side needs to be unsigned. The type of the entire expression is
+            // determined by the left hand side anyway so we don't try to coerce the right hand side in this case.
+            fe::BinOperator::LShift | fe::BinOperator::RShift => {
+                (expected_type.map(Type::int), None)
+            }
+            _ => (expected_type.map(Type::int), expected_type.map(Type::int)),
+        };
+
+        let left_attributes = value_expr(scope, left, left_expected.as_ref())?;
+        let right_attributes = value_expr(scope, right, right_expected.as_ref())?;
 
         let typ = match operations::bin(&left_attributes.typ, &op.kind, &right_attributes.typ) {
             Err(err) => {
