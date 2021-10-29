@@ -1,0 +1,4 @@
+contract Foo:
+    pub fn bar() -> i64:
+        let x: i64 = -1 << 0
+        return x

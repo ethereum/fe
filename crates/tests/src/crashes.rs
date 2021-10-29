@@ -16,3 +16,4 @@ macro_rules! test_file {
 }
 
 test_file! { agroce531 }
+test_file! { agroce550 }

@@ -326,6 +326,7 @@ fn test_assert() {
     case("return_bitwiseshr_u256.fe", &[uint_token(212), uint_token(1)], uint_token(106)),
     case("return_bitwiseshr_i256.fe", &[int_token(212), uint_token(0)], int_token(212)),
     case("return_bitwiseshr_i256.fe", &[int_token(212), uint_token(1)], int_token(106)),
+    case("return_bitwiseshl_i64_coerced.fe", &[], int_token(-1)),
     // comparison operators
     case("return_eq_u256.fe", &[uint_token(1), uint_token(1)], bool_token(true)),
     case("return_eq_u256.fe", &[uint_token(1), uint_token(2)], bool_token(false)),
