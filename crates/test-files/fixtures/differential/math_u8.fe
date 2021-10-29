@@ -47,3 +47,15 @@ contract Foo:
 
   pub fn order_of_operation(val1: u8, val2: u8) -> u8:
     return val1 - val2 * (val1 + val2 / 4 * val1 - val2**val1) + val1
+
+  pub fn sqrt(val: u256) -> u256:
+    let z: u256
+    if (val > 3):
+        z = val
+        let x: u256 = val / 2 + 1
+        while (x < z):
+            z = x
+            x = (val / x + x) / 2
+    elif (val != 0):
+        z = 1
+    return z

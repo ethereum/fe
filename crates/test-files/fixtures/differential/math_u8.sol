@@ -63,4 +63,17 @@ contract Foo {
   function order_of_operation(uint8 val1, uint8 val2) public pure returns (uint8){
     return val1 - val2 * (val1 + val2 / 4 * val1 - val2**val1) + val1;
   }
+
+  function sqrt(uint val) public pure returns (uint z) {
+      if (val > 3) {
+          z = val;
+          uint x = val / 2 + 1;
+          while (x < z) {
+              z = x;
+              x = (val / x + x) / 2;
+          }
+      } else if (val != 0) {
+          z = 1;
+      }
+  }
 }
