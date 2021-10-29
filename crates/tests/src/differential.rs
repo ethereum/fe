@@ -199,6 +199,7 @@ proptest! {
             harness.capture_call(&mut executor, "cast1", &[uint_token(val.into())]).assert_perfomed_equal();
             harness.capture_call(&mut executor, "cast2", &[uint_token(val.into())]).assert_perfomed_equal();
             harness.capture_call(&mut executor, "cast3", &[uint_token(val.into())]).assert_perfomed_equal();
+            harness.capture_call(&mut executor, "sqrt", &[uint_token(val.into())]).assert_perfomed_equal().assert_fe_max_percentage_more_gas(120);
         });
     }
 
