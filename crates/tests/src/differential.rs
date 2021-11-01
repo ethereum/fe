@@ -26,6 +26,7 @@ impl<'a> CaptureResult<'a> {
         )
     }
 
+    #[allow(dead_code)]
     pub fn assert_reverted(&self) {
         if !matches!(
             (self.fe_capture.clone(), self.solidity_capture.clone()),
@@ -41,6 +42,7 @@ impl<'a> CaptureResult<'a> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn performed_equal(&self) -> bool {
         self.fe_capture == self.solidity_capture
     }
@@ -119,7 +121,7 @@ proptest! {
 
     #[test]
     #[ignore]
-    fn math_i8(val in -128i8..=127i8, val2 in -128i8..=127i8, val3 in 0u8..=255, val4 in 0u8..=255) {
+    fn math_i8(val in -128i8..=127i8, val2 in -128i8..=127i8, val3 in 0u8..=255) {
         with_executor(&|mut executor| {
             let harness = DualHarness::from_fixture(&mut executor, "math_i8", "Foo", &[]);
 
@@ -127,15 +129,6 @@ proptest! {
             harness.capture_call(&mut executor, "subtract", &[int_token(val.into()), int_token(val2.into())]).assert_perfomed_equal();
             harness.capture_call(&mut executor, "divide", &[int_token(val.into()), int_token(val2.into())]).assert_perfomed_equal();
             harness.capture_call(&mut executor, "multiply", &[int_token(val.into()), int_token(val2.into())]).assert_perfomed_equal();
-            let inputs = &[int_token(val3.into()), uint_token(val4.into())];
-            let result = harness.capture_call(&mut executor, "pow", inputs);
-            if !result.performed_equal() {
-                // If they didn't performed equal then we further assert that at least both reverted. Solidity reverts
-                // with zero revert data when a pow operation overflows whereas Fe uses a proper revert error.
-                // We tolerate the divergence and assume its a TODO on the Solidity side :)
-                result.assert_reverted();
-            }
-
             harness.capture_call(&mut executor, "modulo", &[int_token(val.into()), int_token(val2.into())]).assert_perfomed_equal();
             harness.capture_call(&mut executor, "leftshift", &[int_token(val.into()), uint_token(val3.into())]).assert_perfomed_equal();
             harness.capture_call(&mut executor, "rightshift", &[int_token(val.into()), uint_token(val3.into())]).assert_perfomed_equal();

@@ -16,10 +16,6 @@ contract Foo {
     return val1 / val2;
   }
 
-  function pow(int8 val1, uint8 val2) public pure returns (int8) {
-    return int8(uint8(val1) ** val2);
-  }
-
   function modulo(int8 val1, int8 val2) public pure returns (int8){
     return val1 % val2;
   }
