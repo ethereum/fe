@@ -1,0 +1,51 @@
+name: Expensive
+
+on:
+  schedule:
+    - cron:  '*/30 * * * *'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    # Build & Test runs on all platforms
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache Rust dependencies
+        uses: actions/cache@v1.1.2
+        with:
+          # There's a problem with caching serde, hence we exclude it here
+          path: |
+            target
+            !target/**/*serde*
+          key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install Mac System dependencies
+        if: startsWith(matrix.os,'macOS')
+        run: |
+          brew install boost
+      - name: Install Linux dependencies
+        if: startsWith(matrix.os,'ubuntu')
+        run: |
+          "${GITHUB_WORKSPACE}/.github/install_deps.sh"
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Build
+        run: cargo build --all-features --verbose
+      - name: Run expensive tests
+        id: expensive_tests
+        run: cargo test --workspace --features solc-backend --verbose -- --ignored
+      - name: Report
+        if: failure() && steps.expensive_tests.outcome == 'failure'
+        run: |
+          cat ./crates/tests/proptest-regressions/differential.txt
+
