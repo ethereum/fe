@@ -10,6 +10,174 @@ Fe is moving fast. Read up on all the latest improvements.
 **WARNING: All Fe releases are alpha releases and only meant to share the development progress with developers and enthusiasts. It is NOT yet ready for production usage.**
 
 [//]: # (towncrier release notes start)
+## 0.10.0-alpha (2021-10-31)## 0.10.0-alpha (2021-10-31)
+
+
+### Features
+
+
+- Support for module level constants for base types
+
+  Example:
+
+  ```
+  const TEN = 10
+
+  contract
+
+    pub fn do_moon_math(self) -> u256:
+      return 4711 * TEN
+  ```
+
+  The values of base type constants are always inlined. ([#192](https://github.com/ethereum/fe/issues/192))
+- Encode revert errors for ABI decoding as `Error(0x103)` not `Panic(0x99)` ([#492](https://github.com/ethereum/fe/issues/492))
+- Replaced `import` statements with `use` statements.
+
+  Example:
+
+  ```
+  use foo::{bar::*, baz as baz26}
+  ```
+
+  Note: this only adds support for parsing `use` statements. ([#547](https://github.com/ethereum/fe/issues/547))
+- Functions can no be defined outside of contracts. Example:
+
+  ```
+  fn add_bonus(x: u256) -> u256:
+      return x + 10
+
+  contract PointTracker:
+      points: Map<address, u256>
+
+      pub fn add_points(self, user: address, val: u256):
+          self.points[user] += add_bonus(val)
+  ``` ([#566](https://github.com/ethereum/fe/issues/566))
+- Implemented a `send_value(to: address, value_in_wei: u256)` function.
+
+  The function is similar to the [`sendValue` function by OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/5b28259dacf47fc208e03611eb3ba8eeaed63cc0/contracts/utils/Address.sol#L54-L59) with the differences being that:
+
+  1. It reverts with `Error(0x100)` instead of `Error("Address: insufficient balance")` to
+  safe more gas.
+
+  2. It uses `selfbalance()` instead of `balance(address())` to safe more gas
+
+  3. It reverts with `Error(0x101)` instead of `Error("Address: unable to send value, recipient may have reverted")` also to safe more gas. ([#567](https://github.com/ethereum/fe/issues/567))
+- Added support for `unsafe` functions and `unsafe` blocks within functions.
+  Note that there's currently no functionality within Fe that requires the use
+  of `unsafe`, but we plan to add built-in `unsafe` functions that perform raw
+  evm operations which will only callable within an `unsafe` block or function. ([#569](https://github.com/ethereum/fe/issues/569))
+- Added `balance()` and `balance_of(account: address)` methods. ([#572](https://github.com/ethereum/fe/issues/572))
+- Added support for explicit casting between numeric types.
+
+  Example:
+
+  ```
+  let a: i8 = i8(-1)
+  let a1: i16 = i16(a)
+  let a2: u16 = u16(a1)
+
+  assert a2 == u16(65535)
+
+  let b: i8 = i8(-1)
+  let b1: u8 = u8(b)
+  let b2: u16 = u16(b1)
+
+  assert b2 == u16(255)
+  ```
+
+  Notice that Fe allows casting between any two numeric types but does not allow
+  to change both the sign and the size of the type in one step as that would leave
+  room for ambiguity as the example above demonstrates. ([#576](https://github.com/ethereum/fe/issues/576))
+
+
+### Bugfixes
+
+
+- Adjust numeric values loaded from memory or storage
+
+  Previous to this fix numeric values that were loaded from either memory or storage
+  were not properly loaded on the stack which could result in numeric values not
+  treated as intended.
+
+  Example:
+
+  ```
+  contract Foo:
+
+      pub fn bar() -> i8:
+          let in_memory: i8[1] = [-3]
+          return in_memory[0]
+  ```
+
+  In the example above `bar()` would not return `-3` but `253` instead. ([#524](https://github.com/ethereum/fe/issues/524))
+- Propagate reverts from external contract calls.
+
+  Before this fix the following code to `should_revert()` or `should_revert2()`
+  would succeed even though it clearly should not.
+
+  ```
+  contract A:
+    contract_b: B
+    pub fn __init__(contract_b: address):
+      self.contract_b = B(contract_b)
+
+    pub fn should_revert():
+      self.contract_b.fail()
+
+    pub fn should_revert2():
+      self.contract_b.fail_with_custom_error()
+
+  struct SomeError:
+    pass
+
+  contract B:
+
+    pub fn fail():
+      revert
+
+    pub fn fail_with_custom_error():
+      revert SomeError()
+  ```
+
+  With this fix the revert errors are properly passed upwards the call hierachy. ([#574](https://github.com/ethereum/fe/issues/574))
+- Fixed bug in left shift operation.
+
+  Example:
+
+  Let's consider the value `1` as an `u8` which is represented as
+  the following 256 bit item on the EVM stack `00..|00000001|`.
+  A left shift of `8` bits (`val << 8`) turns that into `00..01|00000000|`.
+
+  Previous to this fix this resulted in the compiler taking `256` as the
+  value for the `u8` when clearly `256` is not even in the range of `u8`
+  anymore. With this fix the left shift operations was fixed to properly
+  "clean up" the result of the shift so that `00..01|00000000|` turns into
+  `00..00|00000000|`. ([#575](https://github.com/ethereum/fe/issues/575))
+- Ensure negation is checked and reverts with over/underflow if needed.
+
+  Example:
+
+  The minimum value for an `i8` is `-128` but the maximum value of an `i8`
+  is `127` which means that negating `-128` should lead to an overflow since
+  `128` does not fit into an `i8`. Before this fix, negation operations where
+  not checked for over/underflow resulting in returning the oversized value. ([#578](https://github.com/ethereum/fe/issues/578))
+
+
+### Internal Changes - for Fe Contributors
+
+
+- In the analysis stage, all name resolution (of variable names, function names,
+  type names, etc used in code) now happens via a single `resolve_name` pathway,
+  so we can catch more cases of name collisions and log more helpful error messages. ([#555](https://github.com/ethereum/fe/issues/555))
+- Added a new category of tests: differential contract testing.
+
+  Each of these tests is pased on a pair of contracts where one implementation
+  is written in Fe and the other one is written in Solidity. The implementations
+  should have the same public APIs and are assumed to always return identical
+  results given equal inputs. The inputs are randomly generated using `proptest`
+  and hence are expected to discover unknown bugs. ([#578](https://github.com/ethereum/fe/issues/578))
+
+
 ## 0.9.0-alpha (2021-09-29)## 0.9.0-alpha (2021-09-29)
 
 
