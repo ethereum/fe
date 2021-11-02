@@ -1,4 +1,4 @@
-# Comparision Operators
+# Comparison Operators
 
 > **<sup>Syntax</sup>**\
 > _ComparisonExpression_ :\

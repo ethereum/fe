@@ -659,7 +659,7 @@ Fe is moving fast. Read up on all the latest improvements.
 - Reject non-string assert reasons as type error ([#335](https://github.com/ethereum/fe/issues/335))
 - Properly reject code that creates a circular dependency when using `create` or `create2`.
 
-  Example, the follwing code is now rightfully rejected because it tries to create an
+  Example, the following code is now rightfully rejected because it tries to create an
   instance of `Foo` from within the `Foo` contract itself.
 
   ```
@@ -822,7 +822,7 @@ Fe is moving fast. Read up on all the latest improvements.
   i.e.
 
   ```
-  # Would both overwite output files and run the Yul optimizer. 
+  # Would both overwrite output files and run the Yul optimizer. 
   $ fe my_contract.fe --overwrite
   ```
 
@@ -1029,7 +1029,7 @@ Fe is moving fast. Read up on all the latest improvements.
 
   With this change all additions (e.g `x + y`) for signed and unsigned
   integers check for over- and underflows and revert if necessary. ([#265](https://github.com/ethereum/fe/issues/265))
-- Added a builtin function `abi_encode()` that can be used to encode stucts. The return type is a 
+- Added a builtin function `abi_encode()` that can be used to encode structs. The return type is a 
   fixed-size array of bytes that is equal in size to the encoding. The type system does not support 
   dynamically-sized arrays yet, which is why we used fixed. ([#266](https://github.com/ethereum/fe/issues/266))
 

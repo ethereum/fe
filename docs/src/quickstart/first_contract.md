@@ -80,7 +80,7 @@ contract GuestBook:
       self.messages[msg.sender] = book_msg
 ```
 
-The code should look familar to those of us that have written Python before except that in Fe every method that is defined without the [`pub`](/docs/spec/index.html#311-visibility-and-privacy) keyword becomes private. Since we want people to interact with our contract and call the `sign` method we have to prefix it with `pub`.
+The code should look familiar to those of us that have written Python before except that in Fe every method that is defined without the [`pub`](/docs/spec/index.html#311-visibility-and-privacy) keyword becomes private. Since we want people to interact with our contract and call the `sign` method we have to prefix it with `pub`.
 
 Let's recompile the contract again and see what happens.
 
