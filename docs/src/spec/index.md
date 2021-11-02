@@ -43,7 +43,7 @@
     * [Name expressions](expr_name.md)
     * [Literal expressions](expr_literal.md)
     * [Arithmetic Operators](expr_arithmetic_operators.md)
-    * [Comparision Operators](expr_comparision_operators.md)
+    * [Comparison Operators](expr_comparison_operators.md)
     * [Boolean Operators](expr_boolean_operators.md)
     * [Unary Operators](expr_unary_operators.md)
 * [Type System](type_system.md)

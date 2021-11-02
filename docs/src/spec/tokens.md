@@ -63,7 +63,7 @@ a form of constant expression, so is evaluated (primarily) at compile time.
 > **<sup>Lexer</sup>**\
 > STRING_LITERAL :\
 > &nbsp;&nbsp; `"` (\
-> &nbsp;&nbsp; &nbsp;&nbsp; PRINTABE_ASCII_CHAR\
+> &nbsp;&nbsp; &nbsp;&nbsp; PRINTABLE_ASCII_CHAR\
 > &nbsp;&nbsp; &nbsp;&nbsp; | QUOTE_ESCAPE\
 > &nbsp;&nbsp; &nbsp;&nbsp; | ASCII_ESCAPE\
 > &nbsp;&nbsp; )<sup>\*</sup> `"`
