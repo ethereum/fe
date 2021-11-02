@@ -25,7 +25,7 @@ pub fn parse_module(par: &mut Parser) -> ParseResult<Node<Module>> {
             }
         }
     }
-    let span = Span::zero() + body.first() + body.last();
+    let span = Span::zero(par.file_id) + body.first() + body.last();
     Ok(Node::new(Module { body }, span))
 }
 
@@ -37,7 +37,7 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
         TokenKind::Contract => ModuleStmt::Contract(parse_contract_def(par)?),
         TokenKind::Struct => ModuleStmt::Struct(parse_struct_def(par)?),
         TokenKind::Type => ModuleStmt::TypeAlias(parse_type_alias(par)?),
-        TokenKind::Const => ModuleStmt::Constant(parse_constant(par)?),
+        TokenKind::Const => ModuleStmt::Constant(Box::new(parse_constant(par)?)),
 
         // Let these be parse errors for now:
         // TokenKind::Event => todo!("module-level event def"),

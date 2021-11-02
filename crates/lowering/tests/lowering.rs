@@ -8,26 +8,26 @@ use wasm_bindgen_test::wasm_bindgen_test;
 
 fn lower(src: &str, id: SourceFileId, files: &FileStore) -> fe::Module {
     let fe_module = parse_file(src, id, files);
-    let (db, module_id) = analyze(fe_module, id, files);
+    let (db, module_id) = analyze(fe_module, files);
     fe_lowering::lower(&db, module_id)
 }
 
-fn analyze(module: fe::Module, id: SourceFileId, files: &FileStore) -> (Db, ModuleId) {
+fn analyze(module: fe::Module, files: &FileStore) -> (Db, ModuleId) {
     let db = Db::default();
     match fe_analyzer::analyze(&db, module) {
         Ok(id) => (db, id),
         Err(diagnostics) => {
-            print_diagnostics(&diagnostics, id, files);
+            print_diagnostics(&diagnostics, files);
             panic!("analysis failed");
         }
     }
 }
 
 fn parse_file(src: &str, id: SourceFileId, files: &FileStore) -> fe::Module {
-    match fe_parser::parse_file(src) {
+    match fe_parser::parse_file(id, src) {
         Ok((module, diags)) if diags.is_empty() => module,
         Ok((_, diags)) | Err(diags) => {
-            print_diagnostics(&diags, id, files);
+            print_diagnostics(&diags, files);
             panic!("failed to parse file");
         }
     }

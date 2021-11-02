@@ -1,3 +1,4 @@
+use fe_common::files::SourceFileId;
 use wasm_bindgen_test::wasm_bindgen_test;
 
 macro_rules! test_file {
@@ -7,7 +8,7 @@ macro_rules! test_file {
         fn $name() {
             let path = concat!("crashes/", stringify!($name), ".fe");
             let src = test_files::fixture(path);
-            fe_driver::compile(src, true, true).ok();
+            fe_driver::compile(SourceFileId::default(), src, true, true).ok();
         }
     };
 }

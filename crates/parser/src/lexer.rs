@@ -1,17 +1,20 @@
 mod token;
 use crate::node::Span;
+use fe_common::files::SourceFileId;
 use logos::Logos;
 pub use token::{Token, TokenKind};
 
 #[derive(Clone)]
 pub struct Lexer<'a> {
+    file_id: SourceFileId,
     inner: logos::Lexer<'a, TokenKind>,
 }
 
 impl<'a> Lexer<'a> {
     /// Create a new lexer with the given source code string.
-    pub fn new(src: &'a str) -> Lexer {
+    pub fn new(file_id: SourceFileId, src: &'a str) -> Lexer {
         Lexer {
+            file_id,
             inner: TokenKind::lexer(src),
         }
     }
@@ -34,6 +37,7 @@ impl<'a> Iterator for Lexer<'a> {
             kind,
             text,
             span: Span {
+                file_id: self.file_id,
                 start: span.start,
                 end: span.end,
             },
@@ -44,10 +48,11 @@ impl<'a> Iterator for Lexer<'a> {
 #[cfg(test)]
 mod tests {
     use crate::lexer::{Lexer, TokenKind};
+    use fe_common::files::SourceFileId;
     use TokenKind::*;
 
     fn check(input: &str, expected: &[TokenKind]) {
-        let lex = Lexer::new(input);
+        let lex = Lexer::new(SourceFileId::default(), input);
 
         let actual = lex.map(|t| t.kind).collect::<Vec<_>>();
 
@@ -73,7 +78,7 @@ mod tests {
     #[test]
     fn strings() {
         let rawstr = r#""string \t with \n escapes \" \"""#;
-        let mut lex = Lexer::new(rawstr);
+        let mut lex = Lexer::new(SourceFileId::default(), rawstr);
         let lexedstr = lex.next().unwrap();
         assert!(lexedstr.kind == Text);
         assert!(lexedstr.text == rawstr);

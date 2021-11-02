@@ -13,11 +13,11 @@ where
 {
     let mut files = fe_common::files::FileStore::new();
     let id = files.add_file(test_name, src);
-    let mut parser = Parser::new(src);
+    let mut parser = Parser::new(id, src);
 
     if let Ok(ast) = parse_fn(&mut parser) {
         if !parser.diagnostics.is_empty() {
-            print_diagnostics(&parser.diagnostics, id, &files);
+            print_diagnostics(&parser.diagnostics, &files);
             panic!("parse error");
         }
         to_ron_string_pretty(&ast).unwrap()
@@ -30,12 +30,12 @@ where
                     tok.span,
                     "this is the next token at time of parsing failure",
                 );
-                print_diagnostics(&parser.diagnostics, id, &files);
+                print_diagnostics(&parser.diagnostics, &files);
             } else {
                 eprintln!("parser is at end of file");
             }
         } else {
-            print_diagnostics(&parser.diagnostics, id, &files);
+            print_diagnostics(&parser.diagnostics, &files);
         }
         panic!("parse failed");
     }

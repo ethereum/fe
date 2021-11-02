@@ -26,6 +26,7 @@ pub type ParseResult<T> = Result<T, ParseFailed>;
 ///
 /// See [`BTParser`] if you need backtrackable parser.
 pub struct Parser<'a> {
+    pub file_id: SourceFileId,
     lexer: Lexer<'a>,
 
     /// Tokens that have been "peeked", or split from a larger token.
@@ -43,16 +44,17 @@ pub struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     /// Create a new parser for a source code string and associated file id.
-    pub fn new(content: &'a str) -> Self {
+    pub fn new(file_id: SourceFileId, content: &'a str) -> Self {
         Parser {
-            lexer: Lexer::new(content),
+            file_id,
+            lexer: Lexer::new(file_id, content),
             buffered: vec![],
             enclosure_stack: vec![],
             indent_stack: vec![BlockIndent {
-                context_span: Span::zero(),
+                context_span: Span::zero(file_id),
                 context_name: "module".into(),
                 indent: "",
-                indent_span: Span::zero(),
+                indent_span: Span::zero(file_id),
             }],
             indent_style: None,
             diagnostics: vec![],
@@ -99,7 +101,11 @@ impl<'a> Parser<'a> {
             Ok(tok)
         } else {
             self.error(
-                Span::new(self.lexer.source().len(), self.lexer.source().len()),
+                Span::new(
+                    self.file_id,
+                    self.lexer.source().len(),
+                    self.lexer.source().len(),
+                ),
                 "unexpected end of file",
             );
             Err(ParseFailed)
@@ -120,7 +126,10 @@ impl<'a> Parser<'a> {
             Ok(tk)
         } else {
             let index = self.lexer.source().len();
-            self.error(Span::new(index, index), "unexpected end of file");
+            self.error(
+                Span::new(self.file_id, index, index),
+                "unexpected end of file",
+            );
             Err(ParseFailed)
         }
     }
@@ -173,13 +182,13 @@ impl<'a> Parser<'a> {
         self.buffered.push(Token {
             kind: TokenKind::Gt,
             text: gt2,
-            span: Span::new(gtgt.span.start + 1, gtgt.span.end),
+            span: Span::new(self.file_id, gtgt.span.start + 1, gtgt.span.end),
         });
 
         Ok(Token {
             kind: TokenKind::Gt,
             text: gt1,
-            span: Span::new(gtgt.span.start, gtgt.span.end - 1),
+            span: Span::new(self.file_id, gtgt.span.start, gtgt.span.end - 1),
         })
     }
 
@@ -297,7 +306,7 @@ impl<'a> Parser<'a> {
             self.fancy_error(
                 format!("missing colon in {}", context_name),
                 vec![Label::primary(
-                    Span::new(context_span.end, context_span.end),
+                    Span::new(self.file_id, context_span.end, context_span.end),
                     "expected `:` here",
                 )],
                 vec![],
@@ -374,7 +383,7 @@ impl<'a> Parser<'a> {
                     return Ok(());
                 }
 
-                let (indent, indent_span) = indent_str(&last_nl);
+                let (indent, indent_span) = indent_str(self.file_id, &last_nl);
                 self.check_indent_style(indent, indent_span)?;
 
                 if indent.len() > self.last_indent().len() {
@@ -482,6 +491,7 @@ pub struct BTParser<'a, 'b> {
 impl<'a, 'b> BTParser<'a, 'b> {
     pub fn new(snapshot: &'b mut Parser<'a>) -> Self {
         let parser = Parser {
+            file_id: snapshot.file_id,
             lexer: snapshot.lexer.clone(),
             buffered: snapshot.buffered.clone(),
             enclosure_stack: snapshot.enclosure_stack.clone(),
@@ -524,10 +534,14 @@ fn indent_char_name(c: char) -> &'static str {
     }
 }
 
-fn indent_str<'a>(tok: &Token<'a>) -> (&'a str, Span) {
+fn indent_str<'a>(file_id: SourceFileId, tok: &Token<'a>) -> (&'a str, Span) {
     assert_eq!(tok.kind, TokenKind::Newline);
     let text = tok.text.trim_start_matches(&['\r', '\n'][..]);
-    let span = Span::new(tok.span.start + (tok.text.len() - text.len()), tok.span.end);
+    let span = Span::new(
+        file_id,
+        tok.span.start + (tok.text.len() - text.len()),
+        tok.span.end,
+    );
     (text, span)
 }
 

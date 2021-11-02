@@ -18,7 +18,7 @@ pub enum ModuleStmt {
     Use(Node<Use>),
     TypeAlias(Node<TypeAlias>),
     Contract(Node<Contract>),
-    Constant(Node<ConstantDecl>),
+    Constant(Box<Node<ConstantDecl>>),
     Struct(Node<Struct>),
     Function(Node<Function>),
 }

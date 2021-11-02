@@ -71,7 +71,7 @@ pub fn module_all_items(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<Vec<Item>> 
             )))),
             ast::ModuleStmt::Constant(node) => Some(Item::Constant(db.intern_module_const(
                 Rc::new(ModuleConstant {
-                    ast: node.clone(),
+                    ast: *node.clone(),
                     module,
                 }),
             ))),

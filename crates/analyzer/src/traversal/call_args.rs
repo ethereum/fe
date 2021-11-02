@@ -156,7 +156,7 @@ pub fn validate_arg_labels(
                         scope.fancy_error(
                             "missing argument label",
                             vec![Label::primary(
-                                Span::new(arg_val.span.start, arg_val.span.start),
+                                Span::new(arg_val.span.file_id, arg_val.span.start, arg_val.span.start),
                                 format!("add `{}=` here", expected_label),
                             )],
                             vec![format!(

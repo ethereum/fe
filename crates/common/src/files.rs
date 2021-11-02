@@ -15,7 +15,7 @@ pub struct SourceFile {
     line_starts: Vec<usize>,
 }
 
-#[derive(PartialEq, Copy, Clone, Eq, Hash, Debug)]
+#[derive(PartialEq, Copy, Clone, Eq, Hash, Debug, Default)]
 pub struct SourceFileId(pub u128);
 
 impl SourceFile {
@@ -42,7 +42,7 @@ impl SourceFile {
         } else {
             *self.line_starts.get(line_index + 1)?
         };
-        Some(Span::new(*self.line_starts.get(line_index)?, end))
+        Some(Span::new(self.id, *self.line_starts.get(line_index)?, end))
     }
 }
 

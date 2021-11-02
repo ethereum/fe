@@ -1,9 +1,11 @@
+use fe_common::files::SourceFileId;
 use fe_parser::parse_file;
 use fe_test_files::fixture;
 use wasm_bindgen_test::wasm_bindgen_test;
 
 fn parse_and_print(src: &str) -> String {
-    let (module, _) = parse_file(src).expect("failed to parse source file");
+    let (module, _) =
+        parse_file(SourceFileId::default(), src).expect("failed to parse source file");
     format!("{}", module)
 }
 
