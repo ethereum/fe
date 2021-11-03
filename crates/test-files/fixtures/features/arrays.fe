@@ -1,0 +1,5 @@
+contract Foo:
+  data: u256[10]
+
+  pub fn get_item(self, index: u256) -> u256:
+    return self.data[index]

@@ -132,6 +132,19 @@ fn test_revert() {
 }
 
 #[test]
+fn test_arrays() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "arrays.fe", "Foo", &[]);
+
+
+        validate_revert(
+            harness.capture_call(&mut executor, "get_item", &[uint_token(20)]),
+             &[] // TODO pick the right panic code
+        );
+    })
+}
+
+#[test]
 fn test_balances() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, "balances.fe", "Foo", &[]);
