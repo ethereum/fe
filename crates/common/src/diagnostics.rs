@@ -5,11 +5,6 @@ use codespan_reporting::term;
 pub use cs::Severity;
 use term::termcolor::{BufferWriter, ColorChoice};
 
-// Note: for now `Label`s don't store a file id, which means that a single
-// diagnostic can't refer to multiple files. (Which is ok for now, because we don't
-// support multiple files yet anyway.)
-// Ultimately, I think `Span` should contain the file id.
-
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Diagnostic {
     pub severity: Severity,
@@ -18,7 +13,7 @@ pub struct Diagnostic {
     pub notes: Vec<String>,
 }
 impl Diagnostic {
-    pub fn into_cs(self, file_id: SourceFileId) -> cs::Diagnostic<SourceFileId> {
+    pub fn into_cs(self) -> cs::Diagnostic<SourceFileId> {
         cs::Diagnostic {
             severity: self.severity,
             code: None,
@@ -26,7 +21,7 @@ impl Diagnostic {
             labels: self
                 .labels
                 .into_iter()
-                .map(|label| label.into_cs_label(file_id))
+                .map(|label| label.into_cs_label())
                 .collect(),
             notes: self.notes,
         }
@@ -75,10 +70,10 @@ impl Label {
     }
 
     /// Convert into a [`codespan_reporting::Diagnostic::Label`]
-    pub fn into_cs_label(self, file_id: SourceFileId) -> cs::Label<SourceFileId> {
+    pub fn into_cs_label(self) -> cs::Label<SourceFileId> {
         cs::Label {
             style: self.style.into(),
-            file_id,
+            file_id: self.span.file_id,
             range: self.span.into(),
             message: self.message,
         }
@@ -86,30 +81,26 @@ impl Label {
 }
 
 /// Print the given diagnostics to stderr.
-pub fn print_diagnostics(diagnostics: &[Diagnostic], file_id: SourceFileId, files: &FileStore) {
+pub fn print_diagnostics(diagnostics: &[Diagnostic], files: &FileStore) {
     let writer = BufferWriter::stderr(ColorChoice::Auto);
     let mut buffer = writer.buffer();
     let config = term::Config::default();
 
     for diag in diagnostics {
-        term::emit(&mut buffer, &config, files, &diag.clone().into_cs(file_id)).unwrap();
+        term::emit(&mut buffer, &config, files, &diag.clone().into_cs()).unwrap();
     }
     // If we use `writer` here, the output won't be captured by rust's test system.
     eprintln!("{}", std::str::from_utf8(buffer.as_slice()).unwrap());
 }
 
 /// Format the given diagnostics as a string.
-pub fn diagnostics_string(
-    diagnostics: &[Diagnostic],
-    file_id: SourceFileId,
-    files: &FileStore,
-) -> String {
+pub fn diagnostics_string(diagnostics: &[Diagnostic], files: &FileStore) -> String {
     let writer = BufferWriter::stderr(ColorChoice::Never);
     let mut buffer = writer.buffer();
     let config = term::Config::default();
 
     for diag in diagnostics {
-        term::emit(&mut buffer, &config, files, &diag.clone().into_cs(file_id))
+        term::emit(&mut buffer, &config, files, &diag.clone().into_cs())
             .expect("failed to emit diagnostic");
     }
     std::str::from_utf8(buffer.as_slice()).unwrap().to_string()

@@ -10,10 +10,10 @@ fn error_string(path: &str, src: &str) -> String {
     let mut files = FileStore::new();
     let id = files.add_file(path, src);
 
-    let fe_module = match fe_parser::parse_file(src) {
+    let fe_module = match fe_parser::parse_file(id, src) {
         Ok((module, _)) => module,
         Err(diags) => {
-            print_diagnostics(&diags, id, &files);
+            print_diagnostics(&diags, &files);
             panic!("parsing failed");
         }
     };
@@ -21,7 +21,7 @@ fn error_string(path: &str, src: &str) -> String {
     let db = Db::default();
     match fe_analyzer::analyze(&db, fe_module) {
         Ok(_) => panic!("expected analysis to fail with an error"),
-        Err(diags) => diagnostics_string(&diags, id, &files),
+        Err(diags) => diagnostics_string(&diags, &files),
     }
 }
 

@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/pure_fn_standalone.fe\", &src, module, &db)"
+expression: "build_snapshot(files, module, &db)"
 
 ---
 note: 
@@ -284,28 +284,22 @@ note:
    ┌─ features/pure_fn_standalone.fe:17:9
    │
 17 │         self.add_points(a, 100)
-   │         ^^^^^^^^^^^^^^^ attributes hash: 8626870049799486243
+   │         ^^^^^^^^^^^^^^^ attributes hash: 5094765954567266946
    │
    = SelfAttribute {
          func_name: "add_points",
-         self_span: Span {
-             start: 400,
-             end: 404,
-         },
+         self_span: 400..404,
      }
 
 note: 
    ┌─ features/pure_fn_standalone.fe:19:9
    │
 19 │         self.add_points(a, 100)
-   │         ^^^^^^^^^^^^^^^ attributes hash: 13248801714086080881
+   │         ^^^^^^^^^^^^^^^ attributes hash: 5317772279976617936
    │
    = SelfAttribute {
          func_name: "add_points",
-         self_span: Span {
-             start: 466,
-             end: 470,
-         },
+         self_span: 466..470,
      }
 
 

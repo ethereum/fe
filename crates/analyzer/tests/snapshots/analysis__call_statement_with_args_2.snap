@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/call_statement_with_args_2.fe\", &src, module, &db)"
+expression: "build_snapshot(files, module, &db)"
 
 ---
 note: 
@@ -124,14 +124,11 @@ note:
   ┌─ features/call_statement_with_args_2.fe:9:9
   │
 9 │         self.assign(100)
-  │         ^^^^^^^^^^^ attributes hash: 511266823031776296
+  │         ^^^^^^^^^^^ attributes hash: 2997557065728909304
   │
   = SelfAttribute {
         func_name: "assign",
-        self_span: Span {
-            start: 164,
-            end: 168,
-        },
+        self_span: 164..168,
     }
 
 

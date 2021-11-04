@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"demos/erc20_token.fe\", &src, module, &db)"
+expression: "build_snapshot(files, module, &db)"
 
 ---
 note: 
@@ -1949,14 +1949,11 @@ note:
    ┌─ demos/erc20_token.fe:23:9
    │
 23 │         self._mint(msg.sender, 1000000000000000000000000)
-   │         ^^^^^^^^^^ attributes hash: 16096825613720258282
+   │         ^^^^^^^^^^ attributes hash: 3032414134331615192
    │
    = SelfAttribute {
          func_name: "_mint",
-         self_span: Span {
-             start: 542,
-             end: 546,
-         },
+         self_span: 542..546,
      }
 
 note: 
@@ -1979,84 +1976,66 @@ note:
    ┌─ demos/erc20_token.fe:41:9
    │
 41 │         self._transfer(msg.sender, recipient, value)
-   │         ^^^^^^^^^^^^^^ attributes hash: 11998329377771437848
+   │         ^^^^^^^^^^^^^^ attributes hash: 15399895119751945816
    │
    = SelfAttribute {
          func_name: "_transfer",
-         self_span: Span {
-             start: 1052,
-             end: 1056,
-         },
+         self_span: 1052..1056,
      }
 
 note: 
    ┌─ demos/erc20_token.fe:48:9
    │
 48 │         self._approve(msg.sender, spender, value)
-   │         ^^^^^^^^^^^^^ attributes hash: 47467343444821621
+   │         ^^^^^^^^^^^^^ attributes hash: 10047856837296232623
    │
    = SelfAttribute {
          func_name: "_approve",
-         self_span: Span {
-             start: 1310,
-             end: 1314,
-         },
+         self_span: 1310..1314,
      }
 
 note: 
    ┌─ demos/erc20_token.fe:53:9
    │
 53 │         self._transfer(sender, recipient, value)
-   │         ^^^^^^^^^^^^^^ attributes hash: 14187559596189701922
+   │         ^^^^^^^^^^^^^^ attributes hash: 13311941709994158162
    │
    = SelfAttribute {
          func_name: "_transfer",
-         self_span: Span {
-             start: 1531,
-             end: 1535,
-         },
+         self_span: 1531..1535,
      }
 
 note: 
    ┌─ demos/erc20_token.fe:54:9
    │
 54 │         self._approve(sender, msg.sender, self._allowances[sender][msg.sender] - value)
-   │         ^^^^^^^^^^^^^ attributes hash: 337359114556530356
+   │         ^^^^^^^^^^^^^ attributes hash: 5596759839039037729
    │
    = SelfAttribute {
          func_name: "_approve",
-         self_span: Span {
-             start: 1580,
-             end: 1584,
-         },
+         self_span: 1580..1584,
      }
 
 note: 
    ┌─ demos/erc20_token.fe:58:9
    │
 58 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] + addedValue)
-   │         ^^^^^^^^^^^^^ attributes hash: 10097494349759349093
+   │         ^^^^^^^^^^^^^ attributes hash: 10420458525874606876
    │
    = SelfAttribute {
          func_name: "_approve",
-         self_span: Span {
-             start: 1769,
-             end: 1773,
-         },
+         self_span: 1769..1773,
      }
 
 note: 
    ┌─ demos/erc20_token.fe:62:9
    │
 62 │         self._approve(msg.sender, spender, self._allowances[msg.sender][spender] - subtractedValue)
-   │         ^^^^^^^^^^^^^ attributes hash: 9207024764946008481
+   │         ^^^^^^^^^^^^^ attributes hash: 1575892034280724253
    │
    = SelfAttribute {
          func_name: "_approve",
-         self_span: Span {
-             start: 1970,
-             end: 1974,
-         },
+         self_span: 1970..1974,
      }
 
 note: 

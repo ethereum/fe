@@ -1,3 +1,4 @@
+use fe_common::files::SourceFileId;
 use fe_common::Span;
 use fe_parser::node::Node;
 
@@ -5,7 +6,7 @@ use fe_parser::node::Node;
 pub trait ZeroSpanNode: Sized {
     /// Wrap the value in a `Node` with a span of zero.
     fn into_node(self) -> Node<Self> {
-        Node::new(self, Span::zero())
+        Node::new(self, Span::zero(SourceFileId::default()))
     }
 
     /// Wrap the value in a boxed `Node` with a span of zero

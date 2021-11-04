@@ -1,5 +1,6 @@
 use fe_analyzer::Db;
 use fe_common::diagnostics::Diagnostic;
+use fe_common::files::SourceFileId;
 use fe_parser::parse_file;
 #[cfg(feature = "solc-backend")]
 use serde_json::Value;
@@ -28,6 +29,7 @@ pub struct CompileError(pub Vec<Diagnostic>);
 /// If `with_bytecode` is set to false, the compiler will skip the final Yul ->
 /// Bytecode pass. This is useful when debugging invalid Yul code.
 pub fn compile(
+    file_id: SourceFileId,
     src: &str,
     _with_bytecode: bool,
     _optimize: bool,
@@ -36,7 +38,7 @@ pub fn compile(
 
     let mut errors = vec![];
 
-    let (fe_module, parser_diagnostics) = parse_file(src).map_err(CompileError)?;
+    let (fe_module, parser_diagnostics) = parse_file(file_id, src).map_err(CompileError)?;
     errors.extend(parser_diagnostics.into_iter());
 
     let src_ast = format!("{:#?}", &fe_module);

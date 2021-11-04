@@ -7,7 +7,7 @@ use std::path::Path;
 use clap::{arg_enum, values_t, App, Arg};
 
 use fe_common::diagnostics::print_diagnostics;
-use fe_common::files::FileStore;
+use fe_common::files::{FileStore, SourceFileId};
 use fe_common::panic::install_panic_hook;
 use fe_driver::CompiledModule;
 
@@ -92,11 +92,11 @@ pub fn main() {
     }
     let (content, id) = file.unwrap();
 
-    let compiled_module = match fe_driver::compile(&content, with_bytecode, optimize) {
+    let compiled_module = match fe_driver::compile(id, &content, with_bytecode, optimize) {
         Ok(module) => module,
         Err(error) => {
             eprintln!("Unable to compile {}.", input_file);
-            print_diagnostics(&error.0, id, &files);
+            print_diagnostics(&error.0, &files);
             std::process::exit(1)
         }
     };
@@ -143,7 +143,7 @@ fn write_compiled_module(
 
     if targets.contains(&CompilationTarget::Tokens) {
         let tokens = {
-            let lexer = fe_parser::lexer::Lexer::new(file_content);
+            let lexer = fe_parser::lexer::Lexer::new(SourceFileId::default(), file_content);
             lexer.collect::<Vec<_>>()
         };
         write_output(&output_dir.join("module.tokens"), &format!("{:#?}", tokens))?;

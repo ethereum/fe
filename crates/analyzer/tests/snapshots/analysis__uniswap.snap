@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"demos/uniswap.fe\", &src, module, &db)"
+expression: "build_snapshot(files, module, &db)"
 
 ---
 note: 
@@ -5800,42 +5800,33 @@ note:
    ┌─ demos/uniswap.fe:95:9
    │
 95 │         self._approve(msg.sender, spender, value)
-   │         ^^^^^^^^^^^^^ attributes hash: 10018161393539106403
+   │         ^^^^^^^^^^^^^ attributes hash: 14531113974490967627
    │
    = SelfAttribute {
          func_name: "_approve",
-         self_span: Span {
-             start: 2409,
-             end: 2413,
-         },
+         self_span: 2409..2413,
      }
 
 note: 
    ┌─ demos/uniswap.fe:99:9
    │
 99 │         self._transfer(msg.sender, to, value)
-   │         ^^^^^^^^^^^^^^ attributes hash: 10093895704938982127
+   │         ^^^^^^^^^^^^^^ attributes hash: 7946469693452924957
    │
    = SelfAttribute {
          func_name: "_transfer",
-         self_span: Span {
-             start: 2541,
-             end: 2545,
-         },
+         self_span: 2541..2545,
      }
 
 note: 
     ┌─ demos/uniswap.fe:106:9
     │
 106 │         self._transfer(from, to, value)
-    │         ^^^^^^^^^^^^^^ attributes hash: 12907935190801646102
+    │         ^^^^^^^^^^^^^^ attributes hash: 9013399514526062924
     │
     = SelfAttribute {
           func_name: "_transfer",
-          self_span: Span {
-              start: 2833,
-              end: 2837,
-          },
+          self_span: 2833..2837,
       }
 
 note: 
@@ -5903,14 +5894,11 @@ note:
     ┌─ demos/uniswap.fe:151:25
     │
 151 │                         self._mint(fee_to, liquidity)
-    │                         ^^^^^^^^^^ attributes hash: 5774063433734111386
+    │                         ^^^^^^^^^^ attributes hash: 12418659184498534900
     │
     = SelfAttribute {
           func_name: "_mint",
-          self_span: Span {
-              start: 5111,
-              end: 5115,
-          },
+          self_span: 5111..5115,
       }
 
 note: 
@@ -5967,14 +5955,11 @@ note:
     ┌─ demos/uniswap.fe:167:28
     │
 167 │         let fee_on: bool = self._mint_fee(reserve0, reserve1)
-    │                            ^^^^^^^^^^^^^^ attributes hash: 5706709587227470482
+    │                            ^^^^^^^^^^^^^^ attributes hash: 16080475652312567395
     │
     = SelfAttribute {
           func_name: "_mint_fee",
-          self_span: Span {
-              start: 5772,
-              end: 5776,
-          },
+          self_span: 5772..5776,
       }
 
 note: 
@@ -5993,14 +5978,11 @@ note:
     ┌─ demos/uniswap.fe:172:13
     │
 172 │             self._mint(address(0), MINIMUM_LIQUIDITY) # permanently lock the first MINIMUM_LIQUIDITY tokens
-    │             ^^^^^^^^^^ attributes hash: 1138819520748010179
+    │             ^^^^^^^^^^ attributes hash: 7856352234549907196
     │
     = SelfAttribute {
           func_name: "_mint",
-          self_span: Span {
-              start: 6077,
-              end: 6081,
-          },
+          self_span: 6077..6081,
       }
 
 note: 
@@ -6031,28 +6013,22 @@ note:
     ┌─ demos/uniswap.fe:178:9
     │
 178 │         self._mint(to, liquidity)
-    │         ^^^^^^^^^^ attributes hash: 11733924240468847297
+    │         ^^^^^^^^^^ attributes hash: 15101716191511699734
     │
     = SelfAttribute {
           func_name: "_mint",
-          self_span: Span {
-              start: 6372,
-              end: 6376,
-          },
+          self_span: 6372..6376,
       }
 
 note: 
     ┌─ demos/uniswap.fe:179:9
     │
 179 │         self._update(balance0, balance1, reserve0, reserve1)
-    │         ^^^^^^^^^^^^ attributes hash: 13255950405190274570
+    │         ^^^^^^^^^^^^ attributes hash: 3915756169872662167
     │
     = SelfAttribute {
           func_name: "_update",
-          self_span: Span {
-              start: 6406,
-              end: 6410,
-          },
+          self_span: 6406..6410,
       }
 
 note: 
@@ -6109,28 +6085,22 @@ note:
     ┌─ demos/uniswap.fe:197:28
     │
 197 │         let fee_on: bool = self._mint_fee(reserve0, reserve1)
-    │                            ^^^^^^^^^^^^^^ attributes hash: 5536339678205451361
+    │                            ^^^^^^^^^^^^^^ attributes hash: 9805941357832028794
     │
     = SelfAttribute {
           func_name: "_mint_fee",
-          self_span: Span {
-              start: 7186,
-              end: 7190,
-          },
+          self_span: 7186..7190,
       }
 
 note: 
     ┌─ demos/uniswap.fe:202:9
     │
 202 │         self._burn(self.address, liquidity)
-    │         ^^^^^^^^^^ attributes hash: 4813635634628659472
+    │         ^^^^^^^^^^ attributes hash: 11916723560899393221
     │
     = SelfAttribute {
           func_name: "_burn",
-          self_span: Span {
-              start: 7671,
-              end: 7675,
-          },
+          self_span: 7671..7675,
       }
 
 note: 
@@ -6169,14 +6139,11 @@ note:
     ┌─ demos/uniswap.fe:208:9
     │
 208 │         self._update(balance0, balance1, reserve0, reserve1)
-    │         ^^^^^^^^^^^^ attributes hash: 15351211589753982846
+    │         ^^^^^^^^^^^^ attributes hash: 2808373337661029670
     │
     = SelfAttribute {
           func_name: "_update",
-          self_span: Span {
-              start: 7890,
-              end: 7894,
-          },
+          self_span: 7890..7894,
       }
 
 note: 
@@ -6273,14 +6240,11 @@ note:
     ┌─ demos/uniswap.fe:252:9
     │
 252 │         self._update(balance0, balance1, reserve0, reserve1)
-    │         ^^^^^^^^^^^^ attributes hash: 5918725660327764465
+    │         ^^^^^^^^^^^^ attributes hash: 2670672044438645764
     │
     = SelfAttribute {
           func_name: "_update",
-          self_span: Span {
-              start: 10100,
-              end: 10104,
-          },
+          self_span: 10100..10104,
       }
 
 note: 
@@ -6387,14 +6351,11 @@ note:
     ┌─ demos/uniswap.fe:267:9
     │
 267 │         self._update(token0.balanceOf(self.address), token1.balanceOf(self.address), self.reserve0, self.reserve1)
-    │         ^^^^^^^^^^^^ attributes hash: 15796683777521125666
+    │         ^^^^^^^^^^^^ attributes hash: 11941105680565576248
     │
     = SelfAttribute {
           func_name: "_update",
-          self_span: Span {
-              start: 10760,
-              end: 10764,
-          },
+          self_span: 10760..10764,
       }
 
 note: 

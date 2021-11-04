@@ -24,10 +24,10 @@ macro_rules! test_analysis {
             let mut files = FileStore::new();
             let src = test_files::fixture($path);
             let id = files.add_file($path, src);
-            let fe_module = match fe_parser::parse_file(&src) {
+            let fe_module = match fe_parser::parse_file(id, &src) {
                 Ok((module, _)) => module,
                 Err(diags) => {
-                    print_diagnostics(&diags, id, &files);
+                    print_diagnostics(&diags, &files);
                     panic!("parsing failed");
                 }
             };
@@ -36,7 +36,7 @@ macro_rules! test_analysis {
             let module = db.intern_module(Rc::new(items::Module { ast: fe_module }));
             let diagnostics = module.diagnostics(&db);
             if !diagnostics.is_empty() {
-                print_diagnostics(&diagnostics, id, &files);
+                print_diagnostics(&diagnostics, &files);
                 panic!("analysis failed")
             }
 
@@ -46,10 +46,10 @@ macro_rules! test_analysis {
                 //  for larger diffs. I recommend commenting out all tests but one.
                 fe_common::assert_snapshot_wasm!(
                     concat!("snapshots/analysis__", stringify!($name), ".snap"),
-                    build_snapshot($path, &src, module, &db)
+                    build_snapshot(files, module, &db)
                 );
             } else {
-                assert_snapshot!(build_snapshot($path, &src, module, &db));
+                assert_snapshot!(build_snapshot(files, module, &db));
             }
         }
     };
@@ -162,10 +162,7 @@ test_analysis! { data_copying_stress, "stress/data_copying_stress.fe"}
 test_analysis! { tuple_stress, "stress/tuple_stress.fe"}
 test_analysis! { type_aliases, "features/type_aliases.fe"}
 
-fn build_snapshot(path: &str, src: &str, module: items::ModuleId, db: &dyn AnalyzerDb) -> String {
-    let mut file_store = FileStore::new();
-    let id = file_store.add_file(path, src);
-
+fn build_snapshot(file_store: FileStore, module: items::ModuleId, db: &dyn AnalyzerDb) -> String {
     // contract and struct types aren't worth printing
     let type_aliases = module
         .all_items(db)
@@ -286,7 +283,7 @@ fn build_snapshot(path: &str, src: &str, module: items::ModuleId, db: &dyn Analy
     ]
     .concat();
 
-    diagnostics_string(&diagnostics, id, &file_store)
+    diagnostics_string(&diagnostics, &file_store)
 }
 
 fn lookup_spans<T: Clone>(

@@ -10,10 +10,10 @@ where
 {
     let mut files = fe_common::files::FileStore::new();
     let id = files.add_file(test_name, src);
-    let mut parser = Parser::new(src);
+    let mut parser = Parser::new(id, src);
 
     let parse_failed = parse_fn(&mut parser).is_err();
-    let diag = diagnostics_string(&parser.diagnostics, id, &files);
+    let diag = diagnostics_string(&parser.diagnostics, &files);
     if parse_failed != should_fail {
         panic!(
             "expected parsing to {}fail. Diagnostics:\n{}",
