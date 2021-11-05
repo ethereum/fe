@@ -376,47 +376,47 @@ pub fn parse_type_desc(par: &mut Parser) -> ParseResult<Node<TypeDesc>> {
             if let Ok(dimension) = size_token.text.parse::<usize>();
             if let Some(r_brack) = par.optional(TokenKind::BracketClose);
             then {
-            let span = typ.span + l_brack + r_brack.span;
-            par.fancy_error(
-                "Outdated array syntax",
-                vec![
-                Label::primary(
+                let span = typ.span + l_brack + r_brack.span;
+                par.fancy_error(
+                    "Outdated array syntax",
+                    vec![
+                        Label::primary(
+                            span,
+                            ""
+                        )
+                    ],
+                    vec![
+                        format!("Hint: Use `Array<{}, {}>`", typ.kind, dimension)
+                    ]
+                );
+                typ = Node::new(
+                    TypeDesc::Generic {
+                        base: Node::new("Array".to_string(), typ.span),
+                        args: Node::new(vec![
+                            GenericArg::TypeDesc(
+                                Node::new(typ.kind, typ.span)
+                            ),
+                            GenericArg::Int(
+                                Node::new(dimension, size_token.span)
+                            )
+                        ], span)
+                    },
                     span,
-                    ""
-                )
-                ],
-                vec![
-                format!("Hint: Use `Array<{}, {}>`", typ.kind, dimension)
-                ]
-            );
-            typ = Node::new(
-                TypeDesc::Generic {
-                base: Node::new("Array".to_string(), Span::zero()),
-                args: Node::new(vec![
-                    GenericArg::TypeDesc(
-                    Node::new(typ.kind, typ.span)
-                    ),
-                    GenericArg::Int(
-                    Node::new(dimension, size_token.span)
-                    )
-                ], span)
-                },
-                span,
-            );
+                );
             } else {
-            par.fancy_error(
-                "Unexpected token while parsing type description",
-                vec![
-                Label::primary(
-                    l_brack,
-                    "Unexpected token"
-                )
-                ],
-                vec![
-                format!("Hint: To define an array type use `Array<{}, 10>`", typ.kind)
-                ]
-            );
-            return Err(ParseFailed);
+                par.fancy_error(
+                    "Unexpected token while parsing type description",
+                    vec![
+                        Label::primary(
+                            l_brack,
+                            "Unexpected token"
+                        )
+                    ],
+                    vec![
+                        format!("Hint: To define an array type use `Array<{}, 10>`", typ.kind)
+                    ]
+                );
+                return Err(ParseFailed);
             }
         }
     }
