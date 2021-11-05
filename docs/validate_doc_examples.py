@@ -19,33 +19,32 @@ CODE_SNIPPET_END_MARKER = '```'
 # could be further minimized: https://github.com/rust-lang/mdBook/issues/1475
 # TRY TO KEEP THIS LIST SHORT
 SKIP_LIST = [
-    'release_notes.md_f004dd3a3facab60a470d9437ad682c7b48476d4.fe',
-    'sequence_types_in_memory.md_d0c350a8f03869f88b1bae6308f168b2a53ba091.fe',
-    'to_mem_function.md_947ff72560701a3e190ba73683c3ae685f065188.fe',
-    'visibility_and_privacy.md_6482a7013a176c42a2cad1e126074a010edb4d74.fe',
-    'clone_function.md_b5723756c9f8ecc9364a6a871a161dcb4607f2a3.fe',
-    'tokens.md_e3f3d78fba190e6ed6072f18136e063d3ee3fb94.fe',
-    # This one should be removed when the ICE is fixed
-    'statement_let.md_c444f724992ccfee7bb2acf630cf642b832f62fe.fe',
-    'constant_size_values_in_storage.md_c48b7ec7779fb87a61d140585729ef1e4c40a2cd.fe',
-    'stack.md_e985510948163c9aa6f7bbd245a3ce1a6bc9b064.fe',
-    'functions.md_5a6a3b458a39ef0ec9696e59e36e747a8f7779c9.fe',
-    'first_contract.md_1fe46f24899f78d00da0444bf5fa1dfe40eb0a2a.fe',
-    'first_contract.md_2992d9a656129dc8e4192e598f90b394bc151750.fe'
+    'release_notes.md_0.fe',
+    'sequence_types_in_memory.md_0.fe',
+    'to_mem_function.md_0.fe',
+    'visibility_and_privacy.md_0.fe',
+    'clone_function.md_0.fe',
+    'tokens.md_0.fe',
+    'constant_size_values_in_storage.md_0.fe',
+    'stack.md_0.fe',
+    'functions.md_0.fe',
+    'first_contract.md_0.fe',
+    'first_contract.md_2.fe'
 ]
 
 class CodeSnippet(NamedTuple):
     path: pathlib.Path
+    index: int
     content: str
 
     def append_content(self, line: str) -> 'CodeSnippet':
-        return CodeSnippet(path=self.path, content=self.content + line)
+        return CodeSnippet(path=self.path, index=self.index, content=self.content + line)
 
     def get_snippet_hash(self) -> str:
         return hashlib.sha1(self.content.encode('utf-8')).hexdigest()
 
     def unique_name(self) -> str:
-        return f"{self.path.name}_{self.get_snippet_hash()}.fe"
+        return f"{self.path.name}_{self.index}.fe"
 
 def get_all_doc_files() -> Iterable[pathlib.Path]:
     for path in BOOK_SRC_DIR.rglob('*.md'):
@@ -55,9 +54,11 @@ def get_all_snippets_in_file(path: pathlib.Path) -> Iterable[CodeSnippet]:
     with open(path) as f:
         lines = f.readlines()
         snippet = None
+        snippet_index = 0
         for line in lines:
             if line.strip().startswith(CODE_SNIPPET_START_MARKER):
-                snippet = CodeSnippet(path=path, content='')
+                snippet = CodeSnippet(path=path, index=snippet_index, content='')
+                snippet_index += 1
             elif line.strip().startswith(CODE_SNIPPET_END_MARKER):
                 if snippet != None:
                     yield snippet
