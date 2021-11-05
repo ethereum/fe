@@ -1,5 +1,5 @@
 contract Foo:
-    my_array: u256[3]
+    my_array: Array<u256, 3>
 
     pub fn bar(self):
         for i in self.my_array:

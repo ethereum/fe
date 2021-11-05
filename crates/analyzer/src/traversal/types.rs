@@ -1,9 +1,7 @@
 use crate::context::{AnalyzerContext, NamedThing};
 use crate::errors::TypeError;
 use crate::namespace::items::Item;
-use crate::namespace::types::{
-    Array, FixedSize, GenericArg, GenericParamKind, GenericType, Tuple, Type,
-};
+use crate::namespace::types::{FixedSize, GenericArg, GenericParamKind, GenericType, Tuple, Type};
 use crate::traversal::call_args::validate_arg_count;
 use fe_common::diagnostics::Label;
 use fe_common::utils::humanize::pluralize_conditionally;
@@ -174,20 +172,6 @@ pub fn type_desc(
 ) -> Result<Type, TypeError> {
     match &desc.kind {
         ast::TypeDesc::Base { base } => resolve_concrete_type(context, base, desc.span, None),
-        ast::TypeDesc::Array { typ, dimension } => {
-            if let Type::Base(base) = type_desc(context, typ)? {
-                Ok(Type::Array(Array {
-                    inner: base,
-                    size: *dimension,
-                }))
-            } else {
-                Err(TypeError::new(context.error(
-                    "arrays can only hold primitive types",
-                    typ.span,
-                    "can't be stored in an array",
-                )))
-            }
-        }
         ast::TypeDesc::Generic { base, args } => {
             resolve_concrete_type(context, &base.kind, base.span, Some(args))
         }

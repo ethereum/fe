@@ -82,7 +82,7 @@ note:
 note: 
    ┌─ features/structs.fe:67:5
    │  
-67 │ ╭     pub fn encode_house() -> u8[128]:
+67 │ ╭     pub fn encode_house() -> Array<u8, 128>:
 68 │ │         let house: House = House(
 69 │ │             price=300,
 70 │ │             size=500,
@@ -1118,7 +1118,7 @@ note:
    ┌─ features/structs.fe:74:16
    │
 74 │         return house.abi_encode()
-   │                ^^^^^^^^^^^^^^^^^^ u8[128]: Memory => None
+   │                ^^^^^^^^^^^^^^^^^^ Array<u8, 128>: Memory => None
 
 note: 
    ┌─ features/structs.fe:78:19
@@ -1172,7 +1172,7 @@ note:
    ┌─ features/structs.fe:83:26
    │
 83 │         return keccak256(house.abi_encode())
-   │                          ^^^^^^^^^^^^^^^^^^ u8[128]: Memory => None
+   │                          ^^^^^^^^^^^^^^^^^^ Array<u8, 128>: Memory => None
 
 note: 
    ┌─ features/structs.fe:83:16

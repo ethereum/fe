@@ -100,6 +100,8 @@ test_parse_err! { stmt_vardecl_missing_type_annotation_2, functions::parse_stmt,
 test_parse_err! { stmt_vardecl_missing_type_annotation_3, functions::parse_stmt, true, "let x:" }
 test_parse_err! { stmt_vardecl_invalid_type_annotation, functions::parse_stmt, true, "let x: y + z" }
 test_parse_err! { stmt_vardecl_invalid_name, functions::parse_stmt, true, "let x + y: u8" }
+test_parse_err! { array_old_syntax, functions::parse_stmt, false, "let x: u8[10]" }
+test_parse_err! { array_old_syntax_invalid, functions::parse_stmt, true, "let x: u8[10" }
 
 // assert_snapshot! doesn't like the invalid escape code
 #[test]

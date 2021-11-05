@@ -116,9 +116,18 @@ fn build_type_desc(typ: &FixedSize) -> ast::TypeDesc {
         FixedSize::Base(base) => ast::TypeDesc::Base {
             base: names::base_type_name(base),
         },
-        FixedSize::Array(array) => ast::TypeDesc::Array {
-            dimension: array.size,
-            typ: build_type_desc(&array.inner.into()).into_boxed_node(),
+        FixedSize::Array(array) => ast::TypeDesc::Generic {
+            base: "Array".to_string().into_node(),
+            args: vec![
+                ast::GenericArg::TypeDesc(
+                    ast::TypeDesc::Base {
+                        base: array.inner.to_string(),
+                    }
+                    .into_node(),
+                ),
+                ast::GenericArg::Int(array.size.into_node()),
+            ]
+            .into_node(),
         },
         FixedSize::Tuple(tuple) => ast::TypeDesc::Base {
             base: names::tuple_struct_name(tuple),

@@ -928,6 +928,13 @@ fn expr_call_type_constructor(
                 "",
             )))
         }
+        Type::Array(_) => {
+            return Err(FatalError::new(scope.error(
+                "`Array` type is not callable",
+                name_span,
+                "",
+            )))
+        }
         _ => {}
     }
 
@@ -1002,9 +1009,7 @@ fn expr_call_type_constructor(
         Type::Tuple(_) => unreachable!(),         // rejected in expr_call_type
         Type::Struct(_) => unreachable!(),        // handled above
         Type::Map(_) => unreachable!(),           // handled above
-        // The current array type syntax is parsed as an index operation in this case (eg `u8[10](5)`),
-        // and won't end up here.
-        Type::Array(_) => unreachable!(),
+        Type::Array(_) => unreachable!(),         // handled above
     }
 }
 

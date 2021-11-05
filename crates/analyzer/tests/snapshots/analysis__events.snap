@@ -48,14 +48,14 @@ note:
 note: 
    ┌─ features/events.fe:14:9
    │
-14 │         my_bytes: u8[100]
-   │         ^^^^^^^^^^^^^^^^^ u8[100]
+14 │         my_bytes: Array<u8, 100>
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 100>
 
 note: 
    ┌─ features/events.fe:17:9
    │
-17 │         addrs: address[2]
-   │         ^^^^^^^^^^^^^^^^^ address[2]
+17 │         addrs: Array<address, 2>
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^ Array<address, 2>
 
 note: 
    ┌─ features/events.fe:19:5
@@ -103,7 +103,7 @@ note:
 note: 
    ┌─ features/events.fe:25:5
    │  
-25 │ ╭     pub fn emit_mix(addr: address, my_bytes: u8[100]):
+25 │ ╭     pub fn emit_mix(addr: address, my_bytes: Array<u8, 100>):
 26 │ │         emit Mix(num1=26, addr, num2=42, my_bytes)
    │ ╰──────────────────────────────────────────────────^ attributes hash: 11181555056051097974
    │  
@@ -143,7 +143,7 @@ note:
    ┌─ features/events.fe:28:5
    │  
 28 │ ╭     pub fn emit_addresses(addr1: address, addr2: address):
-29 │ │         let addrs: address[2]
+29 │ │         let addrs: Array<address, 2>
 30 │ │         addrs[0] = addr1
 31 │ │         addrs[1] = addr2
 32 │ │         emit Addresses(addrs)
@@ -222,13 +222,13 @@ note:
    ┌─ features/events.fe:26:42
    │
 26 │         emit Mix(num1=26, addr, num2=42, my_bytes)
-   │                                          ^^^^^^^^ u8[100]: Memory => None
+   │                                          ^^^^^^^^ Array<u8, 100>: Memory => None
 
 note: 
    ┌─ features/events.fe:30:9
    │
 30 │         addrs[0] = addr1
-   │         ^^^^^ address[2]: Memory => None
+   │         ^^^^^ Array<address, 2>: Memory => None
 
 note: 
    ┌─ features/events.fe:30:15
@@ -252,7 +252,7 @@ note:
    ┌─ features/events.fe:31:9
    │
 31 │         addrs[1] = addr2
-   │         ^^^^^ address[2]: Memory => None
+   │         ^^^^^ Array<address, 2>: Memory => None
 
 note: 
    ┌─ features/events.fe:31:15
@@ -276,7 +276,7 @@ note:
    ┌─ features/events.fe:32:24
    │
 32 │         emit Addresses(addrs)
-   │                        ^^^^^ address[2]: Memory => None
+   │                        ^^^^^ Array<address, 2>: Memory => None
 
 note: 
    ┌─ features/events.fe:20:9
@@ -428,7 +428,7 @@ note:
 note: 
    ┌─ features/events.fe:29:20
    │
-29 │         let addrs: address[2]
-   │                    ^^^^^^^^^^ address[2]
+29 │         let addrs: Array<address, 2>
+   │                    ^^^^^^^^^^^^^^^^^ Array<address, 2>
 
 

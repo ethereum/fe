@@ -12,8 +12,8 @@ note:
 note: 
   ┌─ features/sized_vals_in_sto.fe:3:5
   │
-3 │     nums: u256[42]
-  │     ^^^^^^^^^^^^^^ u256[42]
+3 │     nums: Array<u256, 42>
+  │     ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 42>
 
 note: 
   ┌─ features/sized_vals_in_sto.fe:4:5
@@ -30,8 +30,8 @@ note:
 note: 
   ┌─ features/sized_vals_in_sto.fe:8:9
   │
-8 │         nums: u256[42]
-  │         ^^^^^^^^^^^^^^ u256[42]
+8 │         nums: Array<u256, 42>
+  │         ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 42>
 
 note: 
   ┌─ features/sized_vals_in_sto.fe:9:9
@@ -89,7 +89,7 @@ note:
 note: 
    ┌─ features/sized_vals_in_sto.fe:17:5
    │  
-17 │ ╭     pub fn write_nums(self, x: u256[42]):
+17 │ ╭     pub fn write_nums(self, x: Array<u256, 42>):
 18 │ │         self.nums = x
    │ ╰─────────────────────^ attributes hash: 1325911840329576752
    │  
@@ -120,7 +120,7 @@ note:
 note: 
    ┌─ features/sized_vals_in_sto.fe:20:5
    │  
-20 │ ╭     pub fn read_nums(self) -> u256[42]:
+20 │ ╭     pub fn read_nums(self) -> Array<u256, 42>:
 21 │ │         return self.nums.to_mem()
    │ ╰─────────────────────────────────^ attributes hash: 15090171079052983265
    │  
@@ -229,25 +229,25 @@ note:
    ┌─ features/sized_vals_in_sto.fe:18:9
    │
 18 │         self.nums = x
-   │         ^^^^^^^^^ u256[42]: Storage { nonce: Some(1) } => None
+   │         ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => None
 
 note: 
    ┌─ features/sized_vals_in_sto.fe:18:21
    │
 18 │         self.nums = x
-   │                     ^ u256[42]: Memory => None
+   │                     ^ Array<u256, 42>: Memory => None
 
 note: 
    ┌─ features/sized_vals_in_sto.fe:21:16
    │
 21 │         return self.nums.to_mem()
-   │                ^^^^^^^^^ u256[42]: Storage { nonce: Some(1) } => None
+   │                ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => None
 
 note: 
    ┌─ features/sized_vals_in_sto.fe:21:16
    │
 21 │         return self.nums.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^ u256[42]: Storage { nonce: Some(1) } => Some(Memory)
+   │                ^^^^^^^^^^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => Some(Memory)
 
 note: 
    ┌─ features/sized_vals_in_sto.fe:24:9
@@ -283,13 +283,13 @@ note:
    ┌─ features/sized_vals_in_sto.fe:32:18
    │
 32 │             nums=self.nums.to_mem(),
-   │                  ^^^^^^^^^ u256[42]: Storage { nonce: Some(1) } => None
+   │                  ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => None
 
 note: 
    ┌─ features/sized_vals_in_sto.fe:32:18
    │
 32 │             nums=self.nums.to_mem(),
-   │                  ^^^^^^^^^^^^^^^^^^ u256[42]: Storage { nonce: Some(1) } => Some(Memory)
+   │                  ^^^^^^^^^^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => Some(Memory)
 
 note: 
    ┌─ features/sized_vals_in_sto.fe:33:17

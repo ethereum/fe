@@ -28,9 +28,9 @@ contract Foo:
         num1: u256
         idx addr: address
         num2: u256
-        my_bytes: u8[100]
+        my_bytes: Array<u8, 100>
 
-    pub fn emit_mix(addr: address, my_bytes: u8[100]):
+    pub fn emit_mix(addr: address, my_bytes: Array<u8, 100>):
         emit Mix(num1=26, addr, num2=42, my_bytes)
 ```
 

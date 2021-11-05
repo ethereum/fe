@@ -1,6 +1,6 @@
 contract Foo:
 
   pub fn foo():
-    let x:u256[10]
-    let y:u256[10]
-    let c:u256[20] = x + y
+    let x: Array<u256, 10>
+    let y: Array<u256, 10>
+    let c: Array<u256, 20> = x + y

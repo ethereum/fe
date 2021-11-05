@@ -119,10 +119,10 @@ test_parse! { stmt_var_decl_tuples, functions::parse_stmt, "let (a, (b, (c, d)))
 
 test_parse! { type_def, types::parse_type_alias, "type X = Map<address, u256>" }
 test_parse! { type_name, types::parse_type_desc, "MyType" }
-test_parse! { type_array, types::parse_type_desc, "address[25]" }
-test_parse! { type_3d, types::parse_type_desc, "u256[4][4][4]" }
+test_parse! { type_array, types::parse_type_desc, "Array<address, 25>" }
+test_parse! { type_3d, types::parse_type_desc, "Array<Array<Array<u256, 4>, 4>, 4>" }
 test_parse! { type_string, types::parse_type_desc, "string<100>" }
-test_parse! { type_generic, types::parse_type_desc, "foo<a, b<c>, d[10]>" }
+test_parse! { type_generic, types::parse_type_desc, "foo<a, b<c>, Array<d, 10>>" }
 test_parse! { type_generic_int, types::parse_type_desc, "foo<1, 2>" }
 test_parse! { type_map1, types::parse_type_desc, "Map<address, u256>" }
 test_parse! { type_map2, types::parse_type_desc, "Map<address, Map<u8, u256>>" }
@@ -200,7 +200,7 @@ contract B:
 "# }
 
 test_parse! { guest_book, module::parse_module, r#"
-type BookMsg = bytes[100]
+type BookMsg = Array<bytes, 100>
 
 contract GuestBook:
     pub guest_book: Map<address, BookMsg>

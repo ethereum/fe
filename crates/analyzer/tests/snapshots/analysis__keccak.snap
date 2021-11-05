@@ -6,7 +6,7 @@ expression: "build_snapshot(\"features/keccak.fe\", &src, module, &db)"
 note: 
   ┌─ features/keccak.fe:3:5
   │  
-3 │ ╭     pub fn return_hash_from_u8(val: u8[1]) -> u256:
+3 │ ╭     pub fn return_hash_from_u8(val: Array<u8, 1>) -> u256:
 4 │ │         return keccak256(val)
   │ ╰─────────────────────────────^ attributes hash: 9819456037818510846
   │  
@@ -39,7 +39,7 @@ note:
 note: 
   ┌─ features/keccak.fe:6:5
   │  
-6 │ ╭     pub fn return_hash_from_foo(val: u8[3]) -> u256:
+6 │ ╭     pub fn return_hash_from_foo(val: Array<u8, 3>) -> u256:
 7 │ │         return keccak256(val)
   │ ╰─────────────────────────────^ attributes hash: 1978781307898700312
   │  
@@ -72,7 +72,7 @@ note:
 note: 
    ┌─ features/keccak.fe:9:5
    │  
- 9 │ ╭     pub fn return_hash_from_u256(val: u8[32]) -> u256:
+ 9 │ ╭     pub fn return_hash_from_u256(val: Array<u8, 32>) -> u256:
 10 │ │         return keccak256(val)
    │ ╰─────────────────────────────^ attributes hash: 9430369799730084939
    │  
@@ -106,7 +106,7 @@ note:
   ┌─ features/keccak.fe:4:26
   │
 4 │         return keccak256(val)
-  │                          ^^^ u8[1]: Memory => None
+  │                          ^^^ Array<u8, 1>: Memory => None
 
 note: 
   ┌─ features/keccak.fe:4:16
@@ -118,7 +118,7 @@ note:
   ┌─ features/keccak.fe:7:26
   │
 7 │         return keccak256(val)
-  │                          ^^^ u8[3]: Memory => None
+  │                          ^^^ Array<u8, 3>: Memory => None
 
 note: 
   ┌─ features/keccak.fe:7:16
@@ -130,7 +130,7 @@ note:
    ┌─ features/keccak.fe:10:26
    │
 10 │         return keccak256(val)
-   │                          ^^^ u8[32]: Memory => None
+   │                          ^^^ Array<u8, 32>: Memory => None
 
 note: 
    ┌─ features/keccak.fe:10:16

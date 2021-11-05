@@ -135,7 +135,7 @@ pub struct FunctionParam {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, EnumString, AsRefStr, EnumIter)]
 pub enum GenericType {
-    // Array, // TODO: when array syntax is changed
+    Array,
     String,
     Map,
 }
@@ -160,6 +160,16 @@ impl GenericType {
                     kind: GenericParamKind::AnyType,
                 },
             ],
+            GenericType::Array => vec![
+                GenericParam {
+                    name: "element type".into(),
+                    kind: GenericParamKind::PrimitiveType,
+                },
+                GenericParam {
+                    name: "size".into(),
+                    kind: GenericParamKind::Int,
+                },
+            ],
         }
     }
 
@@ -176,6 +186,13 @@ impl GenericType {
                 [GenericArg::Type(key), GenericArg::Type(value)] => Some(Type::Map(Map {
                     key: key.as_primitive()?,
                     value: Box::new(value.clone()),
+                })),
+                _ => None,
+            },
+            GenericType::Array => match args {
+                [GenericArg::Type(element), GenericArg::Int(size)] => Some(Type::Array(Array {
+                    size: *size,
+                    inner: element.as_primitive()?,
                 })),
                 _ => None,
             },
@@ -326,6 +343,10 @@ impl Type {
             Type::Map(Map { key, value }) => match idx {
                 0 => Some(Type::Base(*key)),
                 1 => Some((**value).clone()),
+                _ => None,
+            },
+            Type::Array(array) => match idx {
+                0 => Some(Type::Base(array.inner)),
                 _ => None,
             },
             _ => None,
@@ -639,7 +660,7 @@ impl fmt::Display for Integer {
 
 impl fmt::Display for Array {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}[{}]", self.inner, self.size)
+        write!(f, "Array<{}, {}>", self.inner, self.size)
     }
 }
 

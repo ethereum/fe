@@ -143,7 +143,7 @@ contract Foo:
   fn baz(x: address) -> u256:
     add(10, 20)
     revert
-  pub fn bar(x: u256) -> u256[10]:
+  pub fn bar(x: u256) -> Array<u256, 10>:
     revert"#;
 
         let module = parse_code_chunk(parse_module, contract)

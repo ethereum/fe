@@ -11,7 +11,7 @@ Example:
 
 ```python
 contract Foo:
-  some_array: u256[10]
+  some_array: Array<u256, 10>
 
   pub fn bar(self):
     let val1: u256 = 10

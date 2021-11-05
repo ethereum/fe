@@ -34,7 +34,7 @@ An example of a `continue` statement used within a [`for`] loop.
 ```python
 contract Foo:
 
-    pub fn bar(values: u256[10]) -> u256:
+    pub fn bar(values: Array<u256, 10>) -> u256:
         let sum: u256
         for i in values:
             sum = sum + i

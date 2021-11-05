@@ -415,7 +415,7 @@ note:
 note: 
    ┌─ stress/tuple_stress.fe:45:5
    │  
-45 │ ╭     pub fn encode_my_tuple(my_tuple: (u256, bool, address)) -> u8[96]:
+45 │ ╭     pub fn encode_my_tuple(my_tuple: (u256, bool, address)) -> Array<u8, 96>:
 46 │ │         return my_tuple.abi_encode()
    │ ╰────────────────────────────────────^ attributes hash: 4037443094215636083
    │  
@@ -724,7 +724,7 @@ note:
    ┌─ stress/tuple_stress.fe:46:16
    │
 46 │         return my_tuple.abi_encode()
-   │                ^^^^^^^^^^^^^^^^^^^^^ u8[96]: Memory => None
+   │                ^^^^^^^^^^^^^^^^^^^^^ Array<u8, 96>: Memory => None
 
 note: 
    ┌─ stress/tuple_stress.fe:27:9

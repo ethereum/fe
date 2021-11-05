@@ -3,10 +3,10 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(\"[snippet]\", &src)"
 
 ---
-error: arrays can only hold primitive types
-  ┌─ [snippet]:3:10
+error: `Array` element type must be a primitive type
+  ┌─ [snippet]:3:16
   │
-3 │   let x: (u8, u8)[10]
-  │          ^^^^^^^^ can't be stored in an array
+3 │   let x: Array<(u8, u8), 10>
+  │                ^^^^^^^^ this has type `(u8, u8)`; expected a primitive type
 
 

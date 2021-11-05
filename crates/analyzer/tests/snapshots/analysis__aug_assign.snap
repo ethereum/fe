@@ -506,7 +506,7 @@ note:
    ┌─ features/aug_assign.fe:53:5
    │  
 53 │ ╭     pub fn add_from_mem(a: u256, b: u256) -> u256:
-54 │ │         let my_array: u256[10]
+54 │ │         let my_array: Array<u256, 10>
 55 │ │         my_array[7] = a
 56 │ │         my_array[7] += b
 57 │ │         return my_array[7]
@@ -777,7 +777,7 @@ note:
    ┌─ features/aug_assign.fe:55:9
    │
 55 │         my_array[7] = a
-   │         ^^^^^^^^ u256[10]: Memory => None
+   │         ^^^^^^^^ Array<u256, 10>: Memory => None
 
 note: 
    ┌─ features/aug_assign.fe:55:18
@@ -801,7 +801,7 @@ note:
    ┌─ features/aug_assign.fe:56:9
    │
 56 │         my_array[7] += b
-   │         ^^^^^^^^ u256[10]: Memory => None
+   │         ^^^^^^^^ Array<u256, 10>: Memory => None
 
 note: 
    ┌─ features/aug_assign.fe:56:18
@@ -825,7 +825,7 @@ note:
    ┌─ features/aug_assign.fe:57:16
    │
 57 │         return my_array[7]
-   │                ^^^^^^^^ u256[10]: Memory => None
+   │                ^^^^^^^^ Array<u256, 10>: Memory => None
 
 note: 
    ┌─ features/aug_assign.fe:57:25
@@ -842,7 +842,7 @@ note:
 note: 
    ┌─ features/aug_assign.fe:54:23
    │
-54 │         let my_array: u256[10]
-   │                       ^^^^^^^^ u256[10]
+54 │         let my_array: Array<u256, 10>
+   │                       ^^^^^^^^^^^^^^^ Array<u256, 10>
 
 

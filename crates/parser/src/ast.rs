@@ -87,10 +87,6 @@ pub enum TypeDesc {
     Base {
         base: String,
     },
-    Array {
-        typ: Box<Node<TypeDesc>>,
-        dimension: usize,
-    },
     Tuple {
         items: Vec1<Node<TypeDesc>>,
     },
@@ -522,7 +518,6 @@ impl fmt::Display for TypeDesc {
         match self {
             TypeDesc::Unit => write!(f, "()"),
             TypeDesc::Base { base } => write!(f, "{}", base),
-            TypeDesc::Array { typ, dimension } => write!(f, "{}[{}]", typ.kind, dimension),
             TypeDesc::Tuple { items } => write!(f, "({})", node_comma_joined(items)),
             TypeDesc::Generic { base, args } => {
                 write!(f, "{}<{}>", base.kind, comma_joined(&args.kind))

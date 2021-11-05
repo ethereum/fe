@@ -1,8 +1,8 @@
 contract Foo:
-    bar: Map<address, u8[10]>
+    bar: Map<address, Array<u8, 10>>
 
-    pub fn read_bar(self, key: address) -> u8[10]:
+    pub fn read_bar(self, key: address) -> Array<u8, 10>:
         return self.bar[key].to_mem()
 
-    pub fn write_bar(self, key: address, value: u8[10]):
+    pub fn write_bar(self, key: address, value: Array<u8, 10>):
         self.bar[key] = value

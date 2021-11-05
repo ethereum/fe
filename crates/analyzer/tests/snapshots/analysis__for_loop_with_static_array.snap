@@ -7,7 +7,7 @@ note:
    ┌─ features/for_loop_with_static_array.fe:3:5
    │  
  3 │ ╭     pub fn bar() -> u256:
- 4 │ │         let my_array: u256[3]
+ 4 │ │         let my_array: Array<u256, 3>
  5 │ │         my_array[0] = 5
  6 │ │         my_array[1] = 10
    · │
@@ -31,7 +31,7 @@ note:
   ┌─ features/for_loop_with_static_array.fe:5:9
   │
 5 │         my_array[0] = 5
-  │         ^^^^^^^^ u256[3]: Memory => None
+  │         ^^^^^^^^ Array<u256, 3>: Memory => None
 
 note: 
   ┌─ features/for_loop_with_static_array.fe:5:18
@@ -55,7 +55,7 @@ note:
   ┌─ features/for_loop_with_static_array.fe:6:9
   │
 6 │         my_array[1] = 10
-  │         ^^^^^^^^ u256[3]: Memory => None
+  │         ^^^^^^^^ Array<u256, 3>: Memory => None
 
 note: 
   ┌─ features/for_loop_with_static_array.fe:6:18
@@ -79,7 +79,7 @@ note:
   ┌─ features/for_loop_with_static_array.fe:7:9
   │
 7 │         my_array[2] = 15
-  │         ^^^^^^^^ u256[3]: Memory => None
+  │         ^^^^^^^^ Array<u256, 3>: Memory => None
 
 note: 
   ┌─ features/for_loop_with_static_array.fe:7:18
@@ -109,7 +109,7 @@ note:
   ┌─ features/for_loop_with_static_array.fe:9:18
   │
 9 │         for i in my_array:
-  │                  ^^^^^^^^ u256[3]: Memory => None
+  │                  ^^^^^^^^ Array<u256, 3>: Memory => None
 
 note: 
    ┌─ features/for_loop_with_static_array.fe:10:13
@@ -144,8 +144,8 @@ note:
 note: 
   ┌─ features/for_loop_with_static_array.fe:4:23
   │
-4 │         let my_array: u256[3]
-  │                       ^^^^^^^ u256[3]
+4 │         let my_array: Array<u256, 3>
+  │                       ^^^^^^^^^^^^^^ Array<u256, 3>
 
 note: 
   ┌─ features/for_loop_with_static_array.fe:8:18

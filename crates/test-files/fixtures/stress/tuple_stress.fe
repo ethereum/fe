@@ -42,5 +42,5 @@ contract Foo:
         )
         emit_my_event(my_tuple)
 
-    pub fn encode_my_tuple(my_tuple: (u256, bool, address)) -> u8[96]:
+    pub fn encode_my_tuple(my_tuple: (u256, bool, address)) -> Array<u8, 96>:
         return my_tuple.abi_encode()

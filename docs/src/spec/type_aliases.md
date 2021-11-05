@@ -11,7 +11,7 @@ For example, the following defines the type `BookMsg` as a synonym for the type
 `u8[100]`, a sequence of `100` `u8` numbers which is how sequences of bytes are represented in Fe.
 
 ```
-type BookMsg = u8[100]
+type BookMsg = Array<u8, 100>
 ```
 
 [IDENTIFIER]: identifiers.md
