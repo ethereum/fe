@@ -58,9 +58,9 @@ note:
    ┌─ features/events.fe:20:24
    │
 20 │         emit Nums(num1=26, num2=42)
-   │                        ^^       ^^ u256: Value => None
+   │                        ^^       ^^ u256: Value
    │                        │         
-   │                        u256: Value => None
+   │                        u256: Value
 
 note: 
    ┌─ features/events.fe:20:9
@@ -126,9 +126,9 @@ note:
    ┌─ features/events.fe:23:24
    │
 23 │         emit Bases(num=26, addr)
-   │                        ^^  ^^^^ address: Value => None
+   │                        ^^  ^^^^ address: Value
    │                        │    
-   │                        u256: Value => None
+   │                        u256: Value
 
 note: 
    ┌─ features/events.fe:23:9
@@ -205,11 +205,11 @@ note:
    ┌─ features/events.fe:26:23
    │
 26 │         emit Mix(num1=26, addr, num2=42, my_bytes)
-   │                       ^^  ^^^^       ^^  ^^^^^^^^ Array<u8, 100>: Memory => None
+   │                       ^^  ^^^^       ^^  ^^^^^^^^ Array<u8, 100>: Memory
    │                       │   │          │    
-   │                       │   │          u256: Value => None
-   │                       │   address: Value => None
-   │                       u256: Value => None
+   │                       │   │          u256: Value
+   │                       │   address: Value
+   │                       u256: Value
 
 note: 
    ┌─ features/events.fe:26:9
@@ -315,31 +315,31 @@ note:
    ┌─ features/events.fe:30:9
    │
 30 │         addrs[0] = addr1
-   │         ^^^^^ ^ u256: Value => None
+   │         ^^^^^ ^ u256: Value
    │         │      
-   │         Array<address, 2>: Memory => None
+   │         Array<address, 2>: Memory
 
 note: 
    ┌─ features/events.fe:30:9
    │
 30 │         addrs[0] = addr1
-   │         ^^^^^^^^   ^^^^^ address: Value => None
+   │         ^^^^^^^^   ^^^^^ address: Value
    │         │           
-   │         address: Memory => None
+   │         address: Memory
 31 │         addrs[1] = addr2
-   │         ^^^^^ ^ u256: Value => None
+   │         ^^^^^ ^ u256: Value
    │         │      
-   │         Array<address, 2>: Memory => None
+   │         Array<address, 2>: Memory
 
 note: 
    ┌─ features/events.fe:31:9
    │
 31 │         addrs[1] = addr2
-   │         ^^^^^^^^   ^^^^^ address: Value => None
+   │         ^^^^^^^^   ^^^^^ address: Value
    │         │           
-   │         address: Memory => None
+   │         address: Memory
 32 │         emit Addresses(addrs)
-   │                        ^^^^^ Array<address, 2>: Memory => None
+   │                        ^^^^^ Array<address, 2>: Memory
 
 note: 
    ┌─ features/events.fe:32:9

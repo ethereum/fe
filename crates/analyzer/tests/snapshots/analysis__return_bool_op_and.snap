@@ -41,14 +41,14 @@ note:
   ┌─ features/return_bool_op_and.fe:3:16
   │
 3 │         return x and y
-  │                ^     ^ bool: Value => None
+  │                ^     ^ bool: Value
   │                │      
-  │                bool: Value => None
+  │                bool: Value
 
 note: 
   ┌─ features/return_bool_op_and.fe:3:16
   │
 3 │         return x and y
-  │                ^^^^^^^ bool: Value => None
+  │                ^^^^^^^ bool: Value
 
 

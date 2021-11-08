@@ -37,23 +37,23 @@ note:
   ┌─ features/ternary_expression.fe:4:21
   │
 4 │         return 1 if input > 5 else 0
-  │                     ^^^^^   ^ u256: Value => None
+  │                     ^^^^^   ^ u256: Value
   │                     │        
-  │                     u256: Value => None
+  │                     u256: Value
 
 note: 
   ┌─ features/ternary_expression.fe:4:16
   │
 4 │         return 1 if input > 5 else 0
-  │                ^    ^^^^^^^^^      ^ u256: Value => None
+  │                ^    ^^^^^^^^^      ^ u256: Value
   │                │    │               
-  │                │    bool: Value => None
-  │                u256: Value => None
+  │                │    bool: Value
+  │                u256: Value
 
 note: 
   ┌─ features/ternary_expression.fe:4:16
   │
 4 │         return 1 if input > 5 else 0
-  │                ^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
+  │                ^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 

@@ -8,10 +8,12 @@ note:
   │  
 4 │ ╭     pub fn bar(self) -> u256:
 5 │ │         return foo()
-  │ ╰────────────────────^ attributes hash: 16482263331346774611
+  │ ╰────────────────────^ attributes hash: 2875164910451995213
   │  
   = FunctionSignature {
-        self_decl: Mutable,
+        self_decl: Some(
+            Mutable,
+        ),
         params: [],
         return_type: Ok(
             Base(
@@ -26,19 +28,13 @@ note:
   ┌─ features/return_u256_from_called_fn.fe:5:16
   │
 5 │         return foo()
-  │                ^^^^^ u256: Value => None
+  │                ^^^^^ u256: Value
 
 note: 
   ┌─ features/return_u256_from_called_fn.fe:5:16
   │
 5 │         return foo()
-  │                ^^^ attributes hash: 6696068954755293271
-  │
-  = Pure(
-        FunctionId(
-            1,
-        ),
-    )
+  │                ^^^ Pure(FunctionId(1))
 
 note: 
   ┌─ features/return_u256_from_called_fn.fe:7:5
@@ -63,6 +59,6 @@ note:
   ┌─ features/return_u256_from_called_fn.fe:8:16
   │
 8 │         return 42
-  │                ^^ u256: Value => None
+  │                ^^ u256: Value
 
 

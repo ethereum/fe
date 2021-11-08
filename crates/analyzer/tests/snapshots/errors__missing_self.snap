@@ -10,6 +10,15 @@ error: `self` is not defined
   │         ^^^^ undefined value
   │
   = add `self` to the scope by including it in the function signature
-  = Example: `fn foo(self, bar: bool)`
+  = Example: `fn pure_fn(self, foo: bool)`
+
+error: `self` is not defined
+   ┌─ compile_errors/missing_self.fe:12:16
+   │
+12 │         return self.x
+   │                ^^^^ undefined value
+   │
+   = add `self` to the scope by including it in the function signature
+   = Example: `fn f(self, foo: bool)`
 
 

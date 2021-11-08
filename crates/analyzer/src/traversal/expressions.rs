@@ -1,13 +1,13 @@
 use crate::builtins::{
-    BlockField, ChainField, ContractTypeMethod, GlobalMethod, MsgField, Object, SelfField, TxField,
-    ValueMethod,
+    BlockField, ChainField, ContractSelfField, ContractTypeMethod, GlobalFunction, GlobalObject,
+    MsgField, TxField, ValueMethod,
 };
 use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, Location, NamedThing};
 use crate::errors::{FatalError, IndexingError, NotFixedSize};
-use crate::namespace::items::{ContractId, FunctionId, Item};
+use crate::namespace::items::{Class, FunctionId, Item};
 use crate::namespace::scopes::{BlockScope, BlockScopeType};
 use crate::namespace::types::{
-    Array, Base, Contract, FeString, Integer, SelfDecl, Struct, Tuple, Type, TypeDowncast, U256,
+    Array, Base, Contract, FeString, Integer, Struct, Tuple, Type, TypeDowncast, U256,
 };
 use crate::operations;
 use crate::traversal::call_args::{validate_arg_count, validate_named_args, LabelPolicy};
@@ -19,7 +19,6 @@ use fe_common::Span;
 use fe_parser::ast as fe;
 use fe_parser::ast::UnaryOperator;
 use fe_parser::node::Node;
-use if_chain::if_chain;
 use num_bigint::BigInt;
 use std::convert::TryInto;
 use std::ops::RangeInclusive;
@@ -43,7 +42,11 @@ pub fn expr(
         fe::Expr::BinOperation { .. } => expr_bin_operation(scope, exp, expected_type.as_int()),
         fe::Expr::UnaryOperation { .. } => expr_unary_operation(scope, exp, expected_type),
         fe::Expr::CompOperation { .. } => expr_comp_operation(scope, exp),
-        fe::Expr::Call { .. } => expr_call(scope, exp),
+        fe::Expr::Call {
+            func,
+            generic_args,
+            args,
+        } => expr_call(scope, func, generic_args, args),
         fe::Expr::List { elts } => expr_list(scope, elts, expected_type.as_array()),
         fe::Expr::Tuple { .. } => expr_tuple(scope, exp, expected_type.as_tuple()),
         fe::Expr::Str(_) => expr_str(scope, exp),
@@ -189,6 +192,15 @@ pub fn assignable_expr(
                 attributes.move_location = Some(Location::Memory);
             }
         }
+        SelfContract(_) => {
+            // We can't tell from here how `self is being misused; it might be
+            // `x = self` or `f(self)` or `for x in self` or ...
+            return Err(FatalError::new(scope.error(
+                "invalid use of contract `self`",
+                exp.span,
+                "`self` can't be used here",
+            )));
+        }
         Map(_) => {
             return Err(FatalError::new(scope.error(
                 "`Map` type cannot reside in memory",
@@ -258,6 +270,43 @@ fn expr_name(
             let typ = typ?;
             let location = Location::assign_location(&typ);
             Ok(ExpressionAttributes::new(typ.into(), location))
+        }
+        Some(NamedThing::SelfValue { decl, class, .. }) => {
+            if let Some(class) = class {
+                if decl.is_none() {
+                    scope.fancy_error(
+                        "`self` is not defined",
+                        vec![Label::primary(exp.span, "undefined value")],
+                        vec![
+                            "add `self` to the scope by including it in the function signature"
+                                .to_string(),
+                            format!(
+                                "Example: `fn {}(self, foo: bool)`",
+                                scope.root.function.name(scope.db())
+                            ),
+                        ],
+                    );
+                }
+                match class {
+                    Class::Struct(id) => Ok(ExpressionAttributes::new(
+                        Type::Struct(Struct::from_id(id, scope.db())),
+                        Location::Memory,
+                    )),
+                    Class::Contract(id) => Ok(ExpressionAttributes::new(
+                        Type::SelfContract(Contract::from_id(id, scope.db())),
+                        Location::Value,
+                    )),
+                }
+            } else {
+                Err(FatalError::new(scope.fancy_error(
+                    "`self` can only be used in contract or struct functions",
+                    vec![Label::primary(
+                        exp.span,
+                        "not allowed in functions defined outside of a contract or struct",
+                    )],
+                    vec![],
+                )))
+            }
         }
         Some(NamedThing::Item(Item::Constant(id))) => {
             let typ = id
@@ -428,157 +477,170 @@ fn expr_attribute(
     scope: &mut BlockScope,
     exp: &Node<fe::Expr>,
 ) -> Result<ExpressionAttributes, FatalError> {
-    if let fe::Expr::Attribute { value, attr } = &exp.kind {
-        let base_type = |typ| Ok(ExpressionAttributes::new(Type::Base(typ), Location::Value));
+    let (target, field) = match &exp.kind {
+        fe::Expr::Attribute { value, attr } => (value, attr),
+        _ => unreachable!(),
+    };
+    let base_type = |typ| Ok(ExpressionAttributes::new(Type::Base(typ), Location::Value));
 
-        // If the value is a name, check if it is a builtin object and attribute.
-        if let fe::Expr::Name(name) = &value.kind {
-            match Object::from_str(name) {
-                Ok(Object::Self_) => return expr_attribute_self(scope, value, attr),
-                Ok(Object::Block) => {
-                    return match BlockField::from_str(&attr.kind) {
-                        Ok(BlockField::Coinbase) => base_type(Base::Address),
-                        Ok(BlockField::Difficulty) => base_type(U256),
-                        Ok(BlockField::Number) => base_type(U256),
-                        Ok(BlockField::Timestamp) => base_type(U256),
-                        Err(_) => {
-                            Err(FatalError::new(scope.fancy_error(
-                                "Not a block field",
-                                vec![
-                                    Label::primary(
-                                        attr.span,
-                                        "",
-                                    ),
-                                ],
-                                vec!["Note: Only `coinbase`, `difficulty`, `number` and `timestamp` can be accessed on `block`.".into()],
-                            )))
-                        }
-                    }
-                }
-                Ok(Object::Chain) => {
-                    return match ChainField::from_str(&attr.kind) {
-                        Ok(ChainField::Id) => base_type(U256),
-                        Err(_) => {
-                            Err(FatalError::new(scope.fancy_error(
-                                "Not a chain field",
-                                vec![Label::primary(attr.span, "")],
-                                vec!["Note: Only `id` can be accessed on `chain`.".into()],
-                            )))
-                        }
-                    }
-                }
-                Ok(Object::Msg) => {
-                    return match MsgField::from_str(&attr.kind) {
-                        Ok(MsgField::Sender) => base_type(Base::Address),
-                        Ok(MsgField::Sig) => base_type(U256),
-                        Ok(MsgField::Value) => base_type(U256),
-                        Err(_) => {
-                            Err(FatalError::new(scope.fancy_error(
-                                "Not a `msg` field",
-                                vec![
-                                    Label::primary(
-                                        attr.span,
-                                        "",
-                                    ),
-                                ],
-                                vec!["Note: Only `sender`, `sig` and `value` can be accessed on `msg`.".into()],
-                            )))
-                        }
-                    }
-                }
-                Ok(Object::Tx) => {
-                    return match TxField::from_str(&attr.kind) {
-                        Ok(TxField::GasPrice) => base_type(U256),
-                        Ok(TxField::Origin) => base_type(Base::Address),
-                        Err(_) => {
-                            Err(FatalError::new(scope.fancy_error(
-                                "Not a `tx` field",
-                                vec![Label::primary(attr.span, "")],
-                                vec![
-                                    "Note: Only `gas_price` and `origin` can be accessed on `tx`."
-                                        .into(),
-                                ],
-                            )))
-                        }
-                    }
-                }
-                Err(_) => {}
-            }
-        }
+    // We have to check if its a global object first, because the global
+    // objects are magical type-less things that don't work with normal expr checking.
+    // This will all go away when the `Context` struct is ready.
 
-        // We attempt to analyze the value as an expression. If this is successful, we
-        // build a new set of attributes from the value attributes.
-        let expression_attributes = expr(scope, value, None)?;
-        return match expression_attributes {
-            // If the value is a struct, we return the type of the attribute. The location stays the
-            // same and can be memory or storage.
-            ExpressionAttributes {
-                typ: Type::Struct(struct_),
-                location,
-                ..
-            } => {
-                if let Some(field) = struct_.id.field(scope.db(), &attr.kind) {
-                    Ok(ExpressionAttributes::new(
-                        field.typ(scope.db())?.into(),
-                        location,
-                    ))
-                } else {
-                    Err(FatalError::new(scope.fancy_error(
-                        &format!(
-                            "No field `{}` exists on struct `{}`",
-                            &attr.kind, struct_.name
-                        ),
-                        vec![Label::primary(attr.span, "undefined field")],
-                        vec![],
-                    )))
-                }
-            }
-            ExpressionAttributes {
-                typ: Type::Tuple(tuple),
-                location,
-                ..
-            } => {
-                let item_index = match tuple_item_index(&attr.kind) {
-                    Some(index) => index,
-                    None => {
-                        return Err(FatalError::new(scope.fancy_error(
-                            &format!("No field `{}` exists on this tuple", &attr.kind),
+    if let fe::Expr::Name(name) = &target.kind {
+        match GlobalObject::from_str(name) {
+            Ok(GlobalObject::Block) => {
+                return match BlockField::from_str(&field.kind) {
+                    Ok(BlockField::Coinbase) => base_type(Base::Address),
+                    Ok(BlockField::Difficulty) => base_type(U256),
+                    Ok(BlockField::Number) => base_type(U256),
+                    Ok(BlockField::Timestamp) => base_type(U256),
+                    Err(_) => {
+                        Err(FatalError::new(scope.fancy_error(
+                            "Not a block field",
                             vec![
                                 Label::primary(
-                                    attr.span,
-                                    "undefined field",
-                                )
+                                    field.span,
+                                    "",
+                                ),
                             ],
-                            vec!["Note: Tuple values are accessed via `itemN` properties such as `item0` or `item1`".into()],
-                        )));
+                            vec!["Note: Only `coinbase`, `difficulty`, `number` and `timestamp` can be accessed on `block`.".into()],
+                        )))
                     }
-                };
-
-                if let Some(typ) = tuple.items.get(item_index) {
-                    Ok(ExpressionAttributes::new(typ.to_owned().into(), location))
-                } else {
-                    Err(FatalError::new(scope.fancy_error(
-                        &format!("No field `item{}` exists on this tuple", item_index),
-                        vec![Label::primary(attr.span, "unknown field")],
-                        vec![format!(
-                            "Note: The highest possible field for this tuple is `item{}`",
-                            tuple.items.len() - 1
-                        )],
-                    )))
                 }
             }
-            _ => Err(FatalError::new(scope.fancy_error(
-                &format!(
-                    "No field `{}` exists on type {}",
-                    &attr.kind, expression_attributes.typ
-                ),
-                vec![Label::primary(attr.span, "unknown field")],
-                vec![],
-            ))),
-        };
+            Ok(GlobalObject::Chain) => {
+                return match ChainField::from_str(&field.kind) {
+                    Ok(ChainField::Id) => base_type(U256),
+                    Err(_) => {
+                        Err(FatalError::new(scope.fancy_error(
+                            "Not a chain field",
+                            vec![Label::primary(field.span, "")],
+                            vec!["Note: Only `id` can be accessed on `chain`.".into()],
+                        )))
+                    }
+                }
+            }
+            Ok(GlobalObject::Msg) => {
+                return match MsgField::from_str(&field.kind) {
+                    Ok(MsgField::Sender) => base_type(Base::Address),
+                    Ok(MsgField::Sig) => base_type(U256),
+                    Ok(MsgField::Value) => base_type(U256),
+                    Err(_) => {
+                        Err(FatalError::new(scope.fancy_error(
+                            "Not a `msg` field",
+                            vec![
+                                Label::primary(
+                                    field.span,
+                                    "",
+                                ),
+                            ],
+                            vec!["Note: Only `sender`, `sig` and `value` can be accessed on `msg`.".into()],
+                        )))
+                    }
+                }
+            }
+            Ok(GlobalObject::Tx) => {
+                return match TxField::from_str(&field.kind) {
+                    Ok(TxField::GasPrice) => base_type(U256),
+                    Ok(TxField::Origin) => base_type(Base::Address),
+                    Err(_) => {
+                        Err(FatalError::new(scope.fancy_error(
+                            "Not a `tx` field",
+                            vec![Label::primary(field.span, "")],
+                            vec![
+                                "Note: Only `gas_price` and `origin` can be accessed on `tx`."
+                                    .into(),
+                            ],
+                        )))
+                    }
+                }
+            }
+            Err(_) => {}
+        }
     }
 
-    unreachable!()
+    let attrs = expr(scope, target, None)?;
+    return match attrs.typ {
+        Type::SelfContract(contract) => {
+            // Check built-in `.address` field first. (This will go away soon.)
+            if let Ok(ContractSelfField::Address) = ContractSelfField::from_str(&field.kind) {
+                return Ok(ExpressionAttributes::new(
+                    Type::Base(Base::Address),
+                    Location::Value,
+                ));
+            }
+
+            match contract.id.field_type(scope.db(), &field.kind) {
+                Some((typ, nonce)) => Ok(ExpressionAttributes::new(
+                    typ?,
+                    Location::Storage { nonce: Some(nonce) },
+                )),
+                None => Err(FatalError::new(scope.fancy_error(
+                    &format!("No field `{}` exists on this contract", &field.kind),
+                    vec![Label::primary(field.span, "undefined field")],
+                    vec![],
+                ))),
+            }
+        }
+        // If the value is a struct, we return the type of the struct field. The location stays the
+        // same and can be memory or storage.
+        Type::Struct(struct_) => {
+            if let Some(field) = struct_.id.field(scope.db(), &field.kind) {
+                Ok(ExpressionAttributes::new(
+                    field.typ(scope.db())?.into(),
+                    attrs.location,
+                ))
+            } else {
+                Err(FatalError::new(scope.fancy_error(
+                    &format!(
+                        "No field `{}` exists on struct `{}`",
+                        &field.kind, struct_.name
+                    ),
+                    vec![Label::primary(field.span, "undefined field")],
+                    vec![],
+                )))
+            }
+        }
+        Type::Tuple(tuple) => {
+            let item_index = match tuple_item_index(&field.kind) {
+                Some(index) => index,
+                None => {
+                    return Err(FatalError::new(scope.fancy_error(
+                        &format!("No field `{}` exists on this tuple", &field.kind),
+                        vec![
+                            Label::primary(
+                                field.span,
+                                "undefined field",
+                            )
+                        ],
+                        vec!["Note: Tuple values are accessed via `itemN` properties such as `item0` or `item1`".into()],
+                    )));
+                }
+            };
+
+            if let Some(typ) = tuple.items.get(item_index) {
+                Ok(ExpressionAttributes::new(
+                    typ.to_owned().into(),
+                    attrs.location,
+                ))
+            } else {
+                Err(FatalError::new(scope.fancy_error(
+                    &format!("No field `item{}` exists on this tuple", item_index),
+                    vec![Label::primary(field.span, "unknown field")],
+                    vec![format!(
+                        "Note: The highest possible field for this tuple is `item{}`",
+                        tuple.items.len() - 1
+                    )],
+                )))
+            }
+        }
+        _ => Err(FatalError::new(scope.fancy_error(
+            &format!("No field `{}` exists on type {}", &field.kind, attrs.typ),
+            vec![Label::primary(field.span, "unknown field")],
+            vec![],
+        ))),
+    };
 }
 
 /// Pull the item index from the attribute string (e.g. "item4" -> "4").
@@ -587,33 +649,6 @@ fn tuple_item_index(item: &str) -> Option<usize> {
         None
     } else {
         item[4..].parse::<usize>().ok()
-    }
-}
-
-fn expr_attribute_self(
-    scope: &mut BlockScope,
-    value: &Node<fe::Expr>,
-    attr: &Node<String>,
-) -> Result<ExpressionAttributes, FatalError> {
-    let contract = resolve_self(scope, value.span)?;
-
-    if let Ok(SelfField::Address) = SelfField::from_str(&attr.kind) {
-        return Ok(ExpressionAttributes::new(
-            Type::Base(Base::Address),
-            Location::Value,
-        ));
-    }
-
-    match contract.field_type(scope.db(), &attr.kind) {
-        Some((typ, nonce)) => Ok(ExpressionAttributes::new(
-            typ?,
-            Location::Storage { nonce: Some(nonce) },
-        )),
-        None => Err(FatalError::new(scope.fancy_error(
-            &format!("No field `{}` exists on this contract", &attr.kind),
-            vec![Label::primary(attr.span, "undefined field")],
-            vec![],
-        ))),
     }
 }
 
@@ -714,45 +749,188 @@ fn expr_unary_operation(
 
 fn expr_call(
     scope: &mut BlockScope,
-    exp: &Node<fe::Expr>,
+    func: &Node<fe::Expr>,
+    generic_args: &Option<Node<Vec<fe::GenericArg>>>,
+    args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<ExpressionAttributes, FatalError> {
-    if let fe::Expr::Call {
-        func,
-        generic_args,
-        args,
-    } = &exp.kind
-    {
-        return match expr_call_type(scope, func, generic_args.as_ref())? {
-            CallType::BuiltinFunction(builtin) => {
-                expr_call_builtin_function(scope, builtin, func.span, args)
-            }
-            CallType::TypeConstructor { typ } => {
-                expr_call_type_constructor(scope, func.span, typ, args)
-            }
-            CallType::SelfAttribute {
-                func_name,
-                self_span,
-            } => expr_call_self_attribute(scope, &func_name, func.span, self_span, args),
-            CallType::Pure(func_id) => expr_call_pure(scope, func.span, func_id, args),
-            CallType::ValueAttribute => expr_call_value_attribute(scope, func, args),
-            CallType::TypeAttribute { typ, func_name } => {
-                expr_call_type_attribute(scope, typ, &func_name, func.span, args)
-            }
-        };
+    let (attributes, call_type) = match &func.kind {
+        fe::Expr::Name(name) => expr_call_name(scope, name, func.span, generic_args, args)?,
+        fe::Expr::Attribute { value, attr } => {
+            // TODO: err if there are generic args
+            expr_call_method(scope, value, attr, generic_args, args)?
+        }
+        _ => {
+            let expression = expr(scope, func, None)?;
+            return Err(FatalError::new(scope.fancy_error(
+                &format!("`{}` type is not callable", expression.typ),
+                vec![Label::primary(
+                    func.span,
+                    format!("this has type `{}`", expression.typ),
+                )],
+                vec![],
+            )));
+        }
+    };
+
+    if !scope.inherits_type(BlockScopeType::Unsafe) && call_type.is_unsafe(scope.db()) {
+        let mut labels = vec![Label::primary(func.span, "call to unsafe function")];
+        let fn_name = call_type.function_name(scope.db());
+        if let Some(function) = call_type.function() {
+            let def_name_span = function.name_span(scope.db());
+            let unsafe_span = function.unsafe_span(scope.db());
+            labels.push(Label::secondary(
+                def_name_span + unsafe_span,
+                format!("`{}` is defined here as unsafe", &fn_name),
+            ))
+        }
+        scope.fancy_error(&format!("unsafe function `{}` can only be called in an unsafe function or block",
+                                   &fn_name),
+                          labels,
+                          vec!["Hint: put this call in an `unsafe` block if you're confident that it's safe to use here".into()],
+        );
     }
 
-    unreachable!()
+    scope.root.add_call(func, call_type);
+    Ok(attributes)
+}
+
+fn expr_call_name(
+    scope: &mut BlockScope,
+    name: &str,
+    name_span: Span,
+    generic_args: &Option<Node<Vec<fe::GenericArg>>>,
+    args: &Node<Vec<Node<fe::CallArg>>>,
+) -> Result<(ExpressionAttributes, CallType), FatalError> {
+    check_for_call_to_init_fn(scope, name, name_span)?;
+
+    let named_item = scope.resolve_name(name).ok_or_else(|| {
+        // Check for call to a fn in the current class that takes self.
+        if let Some(function) = scope
+            .root
+            .function
+            .parent(scope.db())
+            .and_then(|class| class.self_function(scope.db(), name))
+        {
+            // TODO: this doesn't have to be fatal
+            FatalError::new(scope.fancy_error(
+                &format!("`{}` must be called via `self`", name),
+                vec![
+                    Label::primary(
+                        function.name_span(scope.db()),
+                        &format!("`{}` is defined here as a function that takes `self`", name),
+                    ),
+                    Label::primary(
+                        name_span,
+                        format!("`{}` is called here as a standalone function", name),
+                    ),
+                ],
+                vec![format!(
+                    "Suggestion: use `self.{}(...)` instead of `{}(...)`",
+                    name, name
+                )],
+            ))
+        } else {
+            FatalError::new(scope.error(
+                &format!("`{}` is not defined", name),
+                name_span,
+                &format!("`{}` has not been defined in this scope", name),
+            ))
+        }
+    })?;
+
+    match named_item {
+        NamedThing::Item(Item::BuiltinFunction(function)) => {
+            expr_call_builtin_function(scope, function, name_span, generic_args, args)
+        }
+        NamedThing::Item(Item::Function(function)) => {
+            expr_call_pure(scope, function, generic_args, args)
+        }
+        NamedThing::Item(Item::Type(id)) => {
+            if let Some(args) = generic_args {
+                scope.fancy_error(
+                    &format!("`{}` type is not generic", name),
+                    vec![Label::primary(
+                        args.span,
+                        "unexpected generic argument list",
+                    )],
+                    vec![],
+                );
+            }
+            expr_call_type_constructor(scope, id.typ(scope.db())?, name_span, args)
+        }
+        NamedThing::Item(Item::GenericType(generic)) => {
+            let concrete_type =
+                apply_generic_type_args(scope, generic, name_span, generic_args.as_ref())?;
+            expr_call_type_constructor(scope, concrete_type, name_span, args)
+        }
+
+        // Nothing else is callable (for now at least)
+        NamedThing::SelfValue { .. } => Err(FatalError::new(scope.error(
+            "`self` is not callable",
+            name_span,
+            "can't be used as a function",
+        ))),
+        NamedThing::Variable { typ, span, .. } => Err(FatalError::new(scope.fancy_error(
+            &format!("`{}` is not callable", name),
+            vec![
+                Label::secondary(span, format!("`{}` has type `{}`", name, typ?)),
+                Label::primary(name_span, format!("`{}` can't be used as a function", name)),
+            ],
+            vec![],
+        ))),
+        NamedThing::Item(Item::Constant(id)) => Err(FatalError::new(scope.error(
+            &format!("`{}` is not callable", name),
+            name_span,
+            &format!(
+                "`{}` is a constant of type `{}`, and can't be used as a function",
+                name,
+                id.typ(scope.db())?,
+            ),
+        ))),
+        NamedThing::Item(Item::Object(_)) => Err(FatalError::new(scope.error(
+            &format!("`{}` is not callable", name),
+            name_span,
+            &format!(
+                "`{}` is a built-in object, and can't be used as a function",
+                name
+            ),
+        ))),
+        NamedThing::Item(Item::Event(_)) => Err(FatalError::new(scope.fancy_error(
+            &format!("`{}` is not callable", name),
+            vec![Label::primary(
+                name_span,
+                &format!(
+                    "`{}` is an event, and can't be constructed in this context",
+                    name
+                ),
+            )],
+            vec![format!("Hint: to emit an event, use `emit {}(..)`", name)],
+        ))),
+    }
 }
 
 fn expr_call_builtin_function(
     scope: &mut BlockScope,
-    function: GlobalMethod,
+    function: GlobalFunction,
     name_span: Span,
+    generic_args: &Option<Node<Vec<fe::GenericArg>>>,
     args: &Node<Vec<Node<fe::CallArg>>>,
-) -> Result<ExpressionAttributes, FatalError> {
+) -> Result<(ExpressionAttributes, CallType), FatalError> {
+    if let Some(args) = generic_args {
+        scope.error(
+            &format!(
+                "`{}` function does not expect generic arguments",
+                function.as_ref()
+            ),
+            args.span,
+            "unexpected generic argument list",
+        );
+    }
+
     let argument_attributes = expr_call_args(scope, args)?;
-    match function {
-        GlobalMethod::Keccak256 => {
+
+    let attrs = match function {
+        GlobalFunction::Keccak256 => {
             validate_arg_count(scope, function.as_ref(), name_span, args, 1, "argument");
             expect_no_label_on_arg(scope, args, 0);
 
@@ -778,14 +956,13 @@ fn expr_call_builtin_function(
                     );
                 }
             };
-
-            Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value))
+            ExpressionAttributes::new(Type::Base(U256), Location::Value)
         }
-        GlobalMethod::Balance => {
+        GlobalFunction::Balance => {
             validate_arg_count(scope, function.as_ref(), name_span, args, 0, "argument");
-            Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value))
+            ExpressionAttributes::new(Type::Base(U256), Location::Value)
         }
-        GlobalMethod::BalanceOf => {
+        GlobalFunction::BalanceOf => {
             validate_arg_count(scope, function.as_ref(), name_span, args, 1, "argument");
             expect_no_label_on_arg(scope, args, 0);
 
@@ -805,9 +982,9 @@ fn expr_call_builtin_function(
                     );
                 }
             };
-            Ok(ExpressionAttributes::new(Type::Base(U256), Location::Value))
+            ExpressionAttributes::new(Type::Base(U256), Location::Value)
         }
-        GlobalMethod::SendValue => {
+        GlobalFunction::SendValue => {
             validate_arg_count(scope, function.as_ref(), name_span, args, 2, "argument");
             // There's no label support for builtin functions today. That problem disappears as soon as they are written in Fe
             expect_no_label_on_arg(scope, args, 0);
@@ -853,63 +1030,54 @@ fn expr_call_builtin_function(
                 }
             }
 
-            Ok(ExpressionAttributes::new(Type::unit(), Location::Value))
+            ExpressionAttributes::new(Type::unit(), Location::Value)
         }
-    }
+    };
+    Ok((attrs, CallType::BuiltinFunction(function)))
 }
 
-fn expr_call_struct_constructor(
+fn expr_call_pure(
     scope: &mut BlockScope,
-    name_span: Span,
-    struct_: Struct,
+    function: FunctionId,
+    generic_args: &Option<Node<Vec<fe::GenericArg>>>,
     args: &Node<Vec<Node<fe::CallArg>>>,
-) -> Result<ExpressionAttributes, FatalError> {
-    let db = scope.root.db;
-    let fields = struct_
-        .id
-        .fields(db)
-        .iter()
-        .map(|(name, field)| (name.clone(), field.typ(db)))
-        .collect::<Vec<_>>();
-    validate_named_args(
-        scope,
-        &struct_.name,
-        name_span,
-        args,
-        &fields,
-        LabelPolicy::AllowUnlabledIfNameEqual,
-    )?;
-
-    Ok(ExpressionAttributes::new(
-        Type::Struct(struct_),
-        Location::Memory,
-    ))
-}
-
-fn expect_no_label_on_arg(
-    scope: &mut BlockScope,
-    args: &Node<Vec<Node<fe::CallArg>>>,
-    arg_index: usize,
-) {
-    if let Some(label) = args
-        .kind
-        .get(arg_index)
-        .and_then(|arg| arg.kind.label.as_ref())
-    {
-        scope.error(
-            "argument should not be labeled",
-            label.span,
-            "remove this label",
+) -> Result<(ExpressionAttributes, CallType), FatalError> {
+    let fn_name = function.name(scope.db());
+    if let Some(args) = generic_args {
+        scope.fancy_error(
+            &format!("`{}` function is not generic", fn_name),
+            vec![Label::primary(
+                args.span,
+                "unexpected generic argument list",
+            )],
+            vec![],
         );
     }
+
+    let sig = function.signature(scope.db());
+    validate_named_args(
+        scope,
+        &fn_name,
+        function.name_span(scope.db()),
+        args,
+        &sig.params,
+        LabelPolicy::AllowAnyUnlabeled,
+    )?;
+
+    let return_type = sig.return_type.clone()?;
+    let return_location = Location::assign_location(&return_type);
+    Ok((
+        ExpressionAttributes::new(return_type.into(), return_location),
+        CallType::Pure(function),
+    ))
 }
 
 fn expr_call_type_constructor(
     scope: &mut BlockScope,
-    name_span: Span,
     typ: Type,
+    name_span: Span,
     args: &Node<Vec<Node<fe::CallArg>>>,
-) -> Result<ExpressionAttributes, FatalError> {
+) -> Result<(ExpressionAttributes, CallType), FatalError> {
     match typ {
         Type::Struct(struct_type) => {
             return expr_call_struct_constructor(scope, name_span, struct_type, args)
@@ -942,13 +1110,13 @@ fn expr_call_type_constructor(
     validate_arg_count(scope, &format!("{}", typ), name_span, args, 1, "argument");
     expect_no_label_on_arg(scope, args, 0);
 
-    match &typ {
+    let expr_attrs = match &typ {
         Type::String(string_type) => {
             if let Some(arg) = args.kind.first() {
                 assignable_expr(scope, &arg.kind.value, None)?;
                 validate_str_literal_fits_type(scope, &arg.kind.value, string_type);
             }
-            Ok(ExpressionAttributes::new(typ, Location::Memory))
+            ExpressionAttributes::new(typ.clone(), Location::Memory)
         }
         Type::Contract(_) => {
             if let Some(arg) = args.kind.first() {
@@ -957,7 +1125,7 @@ fn expr_call_type_constructor(
                     scope.type_error("type mismatch", arg.span, &Base::Address, &typ);
                 }
             }
-            Ok(ExpressionAttributes::new(typ, Location::Value))
+            ExpressionAttributes::new(typ.clone(), Location::Value)
         }
         Type::Base(Base::Numeric(integer)) => {
             if let Some(arg) = args.kind.first() {
@@ -981,15 +1149,13 @@ fn expr_call_type_constructor(
                     }
                 }
             }
-            Ok(ExpressionAttributes::new(typ, Location::Value))
+            ExpressionAttributes::new(typ.clone(), Location::Value)
         }
         Type::Base(Base::Address) => {
             if let Some(arg) = args.kind.first() {
                 let arg_attr = assignable_expr(scope, &arg.kind.value, None)?;
                 match arg_attr.typ {
-                    Type::Contract(_)
-                    | Type::Base(Base::Numeric(_))
-                    | Type::Base(Base::Address) => {}
+                    Type::Contract(_) | Type::Base(Base::Numeric(_) | Base::Address) => {}
                     _ => {
                         scope.fancy_error(
                             &format!("`{}` can not be used as a parameter to `address(..)`", arg_attr.typ),
@@ -999,10 +1165,7 @@ fn expr_call_type_constructor(
                     }
                 }
             };
-            Ok(ExpressionAttributes::new(
-                Type::Base(Base::Address),
-                Location::Value,
-            ))
+            ExpressionAttributes::new(Type::Base(Base::Address), Location::Value)
         }
         Type::Base(Base::Unit) => unreachable!(), // rejected in expr_call_type
         Type::Base(Base::Bool) => unreachable!(), // handled above
@@ -1010,7 +1173,455 @@ fn expr_call_type_constructor(
         Type::Struct(_) => unreachable!(),        // handled above
         Type::Map(_) => unreachable!(),           // handled above
         Type::Array(_) => unreachable!(),         // handled above
+        Type::SelfContract(_) => unreachable!(), // unnameable; contract names all become Type::Contract
+    };
+    Ok((expr_attrs, CallType::TypeConstructor(typ)))
+}
+
+fn expr_call_struct_constructor(
+    scope: &mut BlockScope,
+    name_span: Span,
+    struct_: Struct,
+    args: &Node<Vec<Node<fe::CallArg>>>,
+) -> Result<(ExpressionAttributes, CallType), FatalError> {
+    let db = scope.root.db;
+    let fields = struct_
+        .id
+        .fields(db)
+        .iter()
+        .map(|(name, field)| (name.clone(), field.typ(db)))
+        .collect::<Vec<_>>();
+    validate_named_args(
+        scope,
+        &struct_.name,
+        name_span,
+        args,
+        &fields,
+        LabelPolicy::AllowUnlabledIfNameEqual,
+    )?;
+
+    Ok((
+        ExpressionAttributes::new(Type::Struct(struct_.clone()), Location::Memory),
+        CallType::TypeConstructor(Type::Struct(struct_)),
+    ))
+}
+
+fn expr_call_method(
+    scope: &mut BlockScope,
+    target: &Node<fe::Expr>,
+    field: &Node<String>,
+    generic_args: &Option<Node<Vec<fe::GenericArg>>>,
+    args: &Node<Vec<Node<fe::CallArg>>>,
+) -> Result<(ExpressionAttributes, CallType), FatalError> {
+    // We need to check if the target is a type or a global object before calling `expr()`.
+    // When the type method call syntax is changed to `MyType::foo()` and the global objects
+    // are replaced by `Context`, we can remove this.
+    // All other `NamedThing`s will be handled correctly by `expr()`.
+    if let fe::Expr::Name(name) = &target.kind {
+        match scope.resolve_name(name) {
+            Some(NamedThing::Item(Item::Type(id))) => {
+                return expr_call_type_attribute(
+                    scope,
+                    id.typ(scope.db())?,
+                    target.span,
+                    field,
+                    generic_args,
+                    args,
+                )
+            }
+            Some(NamedThing::Item(Item::Object(object))) => {
+                return Err(FatalError::new(scope.error(
+                    &format!(
+                        "no function `{}` exists on `{}`",
+                        &field.kind,
+                        object.as_ref(),
+                    ),
+                    target.span + field.span,
+                    "undefined function",
+                )));
+            }
+            _ => {}
+        }
     }
+
+    let target_attributes = expr(scope, target, None)?;
+
+    // Check built-in methods.
+    if let Ok(method) = ValueMethod::from_str(&field.kind) {
+        return expr_call_builtin_value_method(
+            scope,
+            target_attributes,
+            target,
+            method,
+            field,
+            args,
+        );
+    }
+
+    // If the target is a "class" type (contract or struct), check for a member function
+    if let Some(class) = target_attributes.typ.as_class() {
+        if matches!(class, Class::Contract(_)) {
+            check_for_call_to_init_fn(scope, &field.kind, field.span)?;
+        }
+        if let Some(method) = class.function(scope.db(), &field.kind) {
+            let is_self = is_self_value(target);
+
+            if is_self && !method.takes_self(scope.db()) {
+                scope.fancy_error(
+                    &format!("`{}` must be called without `self`", &field.kind),
+                    vec![Label::primary(field.span, "function does not take self")],
+                    vec![format!(
+                        "Suggestion: try `{}(...)` instead of `self.{}(...)`",
+                        &field.kind, &field.kind
+                    )],
+                );
+            } else if !is_self && !method.is_public(scope.db()) {
+                scope.fancy_error(
+                    &format!(
+                        "The function `{}` on `{} {}` is private",
+                        &field.kind,
+                        class.kind(),
+                        class.name(scope.db())
+                    ),
+                    vec![
+                        Label::primary(field.span, "this function is not `pub`"),
+                        Label::secondary(
+                            method.data(scope.db()).ast.span,
+                            format!("`{}` is defined here", &field.kind),
+                        ),
+                    ],
+                    vec![],
+                );
+            }
+
+            match class {
+                Class::Contract(_) => {
+                    if !is_self {
+                        // External contract address must be loaded onto the stack.
+                        scope.root.update_expression(
+                            target,
+                            target_attributes
+                                .into_loaded()
+                                .expect("should be able to move contract type to stack"),
+                        );
+                    }
+                }
+                Class::Struct(_) => {
+                    if matches!(target_attributes.final_location(), Location::Storage { .. }) {
+                        scope.fancy_error(
+                            "struct functions can only be called on structs in memory",
+                            vec![
+                                Label::primary(target.span, "this value is in storage"),
+                                Label::secondary(
+                                    field.span,
+                                    "hint: copy the struct to memory with `.to_mem()`",
+                                ),
+                            ],
+                            vec![],
+                        );
+                    }
+                }
+            }
+
+            let sig = method.signature(scope.db());
+            let return_type = sig.return_type.clone()?;
+
+            validate_named_args(
+                scope,
+                &field.kind,
+                field.span,
+                args,
+                &sig.params,
+                LabelPolicy::AllowAnyUnlabeled,
+            )?;
+
+            let location = Location::assign_location(&return_type);
+            return Ok((
+                ExpressionAttributes::new(return_type.into(), location),
+                CallType::ValueMethod {
+                    is_self,
+                    class,
+                    method,
+                },
+            ));
+        }
+    }
+    Err(FatalError::new(scope.fancy_error(
+        &format!(
+            "No function `{}` exists on type `{}`",
+            &field.kind, &target_attributes.typ
+        ),
+        vec![Label::primary(field.span, "undefined function")],
+        vec![],
+    )))
+}
+
+fn expr_call_builtin_value_method(
+    scope: &mut BlockScope,
+    value_attrs: ExpressionAttributes,
+    value: &Node<fe::Expr>,
+    method: ValueMethod,
+    method_name: &Node<String>,
+    args: &Node<Vec<Node<fe::CallArg>>>,
+) -> Result<(ExpressionAttributes, CallType), FatalError> {
+    // for now all of these functions expect 0 arguments
+    validate_arg_count(
+        scope,
+        &method_name.kind,
+        method_name.span,
+        args,
+        0,
+        "argument",
+    );
+
+    let calltype = CallType::BuiltinValueMethod(method);
+    match method {
+        ValueMethod::Clone => {
+            match value_attrs.location {
+                Location::Storage { .. } => {
+                    scope.fancy_error(
+                        "`clone()` called on value in storage",
+                        vec![
+                            Label::primary(value.span, "this value is in storage"),
+                            Label::secondary(method_name.span, "hint: try `to_mem()` here"),
+                        ],
+                        vec![],
+                    );
+                }
+                Location::Value => {
+                    scope.fancy_error(
+                        "`clone()` called on primitive type",
+                        vec![
+                            Label::primary(value.span, "this value does not need to be cloned"),
+                            Label::secondary(method_name.span, "hint: remove `.clone()`"),
+                        ],
+                        vec![],
+                    );
+                }
+                Location::Memory => {}
+            }
+            Ok((value_attrs.into_cloned(), calltype))
+        }
+        ValueMethod::ToMem => {
+            match value_attrs.location {
+                Location::Storage { .. } => {}
+                Location::Value => {
+                    scope.fancy_error(
+                        "`to_mem()` called on primitive type",
+                        vec![
+                            Label::primary(
+                                value.span,
+                                "this value does not need to be copied to memory",
+                            ),
+                            Label::secondary(method_name.span, "hint: remove `.to_mem()`"),
+                        ],
+                        vec![],
+                    );
+                }
+                Location::Memory => {
+                    scope.fancy_error(
+                        "`to_mem()` called on value in memory",
+                        vec![
+                            Label::primary(value.span, "this value is already in memory"),
+                            Label::secondary(
+                                method_name.span,
+                                "hint: to make a copy, use `.clone()` here",
+                            ),
+                        ],
+                        vec![],
+                    );
+                }
+            }
+            Ok((value_attrs.into_cloned(), calltype))
+        }
+        ValueMethod::AbiEncode => match &value_attrs.typ {
+            Type::Struct(struct_) => {
+                if value_attrs.final_location() != Location::Memory {
+                    scope.fancy_error(
+                        "value must be copied to memory",
+                        vec![Label::primary(value.span, "this value is in storage")],
+                        vec!["Hint: values located in storage can be copied to memory using the `to_mem` function.".into(),
+                             "Example: `self.my_array.to_mem().abi_encode()`".into(),
+                        ],
+                    );
+                }
+
+                Ok((
+                    ExpressionAttributes::new(
+                        Type::Array(Array {
+                            inner: Base::Numeric(Integer::U8),
+                            size: struct_.id.fields(scope.db()).len() * 32,
+                        }),
+                        Location::Memory,
+                    ),
+                    calltype,
+                ))
+            }
+            Type::Tuple(tuple) => {
+                if value_attrs.final_location() != Location::Memory {
+                    scope.fancy_error(
+                        "value must be copied to memory",
+                        vec![Label::primary(value.span, "this value is in storage")],
+                        vec!["Hint: values located in storage can be copied to memory using the `to_mem` function.".into(),
+                             "Example: `self.my_array.to_mem().abi_encode()`".into(),
+                        ],
+                    );
+                }
+
+                Ok((
+                    ExpressionAttributes::new(
+                        Type::Array(Array {
+                            inner: Base::Numeric(Integer::U8),
+                            size: tuple.items.len() * 32,
+                        }),
+                        Location::Memory,
+                    ),
+                    calltype,
+                ))
+            }
+            _ => Err(FatalError::new(scope.fancy_error(
+                &format!(
+                    "value of type `{}` does not support `abi_encode()`",
+                    value_attrs.typ
+                ),
+                vec![Label::primary(
+                    value.span,
+                    "this value cannot be encoded using `abi_encode()`",
+                )],
+                vec![
+                    "Hint: struct and tuple values can be encoded.".into(),
+                    "Example: `(42,).abi_encode()`".into(),
+                ],
+            ))),
+        },
+    }
+}
+
+fn expr_call_type_attribute(
+    scope: &mut BlockScope,
+    typ: Type,
+    target_span: Span,
+    field: &Node<String>,
+    generic_args: &Option<Node<Vec<fe::GenericArg>>>,
+    args: &Node<Vec<Node<fe::CallArg>>>,
+) -> Result<(ExpressionAttributes, CallType), FatalError> {
+    if let Some(generic_args) = generic_args {
+        scope.error(
+            "unexpected generic argument list",
+            generic_args.span,
+            "unexpected",
+        );
+    }
+
+    let arg_attributes = expr_call_args(scope, args)?;
+
+    if let Some(class) = typ.as_class() {
+        let class_name = class.name(scope.db());
+
+        if let Class::Contract(contract) = class {
+            // Check for Foo.create/create2 (this will go away when the context object is ready)
+            if let Ok(function) = ContractTypeMethod::from_str(&field.kind) {
+                if scope.root.function.parent(scope.db()) == Some(Class::Contract(contract)) {
+                    scope.fancy_error(
+                        &format!("`{contract}.{}(...)` called within `{contract}` creates an illegal circular dependency", function.as_ref(), contract=&class_name),
+                        vec![Label::primary(field.span, "Contract creation")],
+                        vec![format!("Note: Consider using a dedicated factory contract to create instances of `{}`", &class_name)]);
+                }
+                let arg_count = function.arg_count();
+                validate_arg_count(scope, &field.kind, field.span, args, arg_count, "argument");
+
+                for i in 0..arg_count {
+                    if let Some(attrs) = arg_attributes.get(i) {
+                        if !matches!(&attrs.typ, Type::Base(Base::Numeric(_))) {
+                            scope.fancy_error(
+                                &format!(
+                                    "incorrect type for argument to `{}.{}`",
+                                    &class_name,
+                                    function.as_ref()
+                                ),
+                                vec![Label::primary(
+                                    args.kind[i].span,
+                                    format!("this has type `{}`; expected a number", &attrs.typ),
+                                )],
+                                vec![],
+                            );
+                        }
+                    }
+                }
+                return Ok((
+                    ExpressionAttributes::new(typ, Location::Value),
+                    CallType::BuiltinAssociatedFunction { contract, function },
+                ));
+            }
+        }
+
+        if let Some(function) = class.function(scope.db(), &field.kind) {
+            if function.takes_self(scope.db()) {
+                return Err(FatalError::new(scope.fancy_error(
+                    &format!(
+                        "`{}` function `{}` must be called on an instance of `{}`",
+                        &class_name, &field.kind, &class_name,
+                    ),
+                    vec![Label::primary(
+                        target_span,
+                        format!(
+                            "expected a value of type `{}`, found type name",
+                            &class_name
+                        ),
+                    )],
+                    vec![],
+                )));
+            }
+
+            if !function.is_public(scope.db())
+                && scope.root.function.parent(scope.db()) != Some(class)
+            {
+                scope.fancy_error(
+                    &format!(
+                        "the function `{}.{}` is private",
+                        &class_name,
+                        &field.kind,
+                    ),
+                    vec![
+                        Label::primary(field.span, "this function is not `pub`"),
+                        Label::secondary(
+                            function.data(scope.db()).ast.span,
+                            format!("`{}` is defined here", &field.kind),
+                        ),
+                    ],
+                    vec![
+                        format!("`{}.{}` can only be called from other functions within `{}`", &class_name, &field.kind, &class_name),
+                        format!("Hint: use `pub fn {fun}(..` to make `{cls}.{fun}` callable from outside of `{cls}`", fun=&field.kind, cls=&class_name),
+                    ],
+                );
+            }
+
+            if matches!(class, Class::Contract(_)) {
+                // TODO: `MathLibContract::square(x)` can't be called yet, because yulgen doesn't compile-in
+                // pure functions defined on external contracts.
+                // We should also discuss how/if this will work when the external contract is deployed
+                // and called via STATICCALL or whatever.
+                scope.not_yet_implemented(
+                    &format!("calling contract-associated pure functions. Consider moving `{}` outside of `{}`",
+                             &field.kind, class_name),
+                    target_span + field.span,
+                );
+            }
+
+            let ret_type = function.signature(scope.db()).return_type.clone()?;
+            let location = Location::assign_location(&ret_type);
+            return Ok((
+                ExpressionAttributes::new(ret_type.into(), location),
+                CallType::AssociatedFunction { class, function },
+            ));
+        }
+    }
+
+    Err(FatalError::new(scope.fancy_error(
+        &format!("No function `{}` exists on type `{}`", &field.kind, &typ),
+        vec![Label::primary(field.span, "undefined function")],
+        vec![],
+    )))
 }
 
 fn expr_call_args(
@@ -1021,6 +1632,24 @@ fn expr_call_args(
         .iter()
         .map(|arg| assignable_expr(scope, &arg.kind.value, None))
         .collect::<Result<Vec<_>, _>>()
+}
+
+fn expect_no_label_on_arg(
+    scope: &mut BlockScope,
+    args: &Node<Vec<Node<fe::CallArg>>>,
+    arg_index: usize,
+) {
+    if let Some(label) = args
+        .kind
+        .get(arg_index)
+        .and_then(|arg| arg.kind.label.as_ref())
+    {
+        scope.error(
+            "argument should not be labeled",
+            label.span,
+            "remove this label",
+        );
+    }
 }
 
 fn check_for_call_to_init_fn(
@@ -1040,617 +1669,6 @@ fn check_for_call_to_init_fn(
     } else {
         Ok(())
     }
-}
-
-fn resolve_self(scope: &mut BlockScope, use_span: Span) -> Result<ContractId, FatalError> {
-    let contract = scope.root.function.contract(scope.db()).ok_or_else(|| {
-        FatalError::new(scope.fancy_error(
-            "`self` can only be used in contract functions",
-            vec![Label::primary(
-                use_span,
-                "not allowed in functions defined outside of a contract",
-            )],
-            vec![],
-        ))
-    })?;
-
-    if scope.root.function.signature(scope.db()).self_decl == SelfDecl::None {
-        scope.fancy_error(
-            "`self` is not defined",
-            vec![Label::primary(use_span, "undefined value")],
-            vec![
-                "add `self` to the scope by including it in the function signature".to_string(),
-                "Example: `fn foo(self, bar: bool)`".to_string(),
-            ],
-        );
-    }
-    Ok(contract)
-}
-
-fn check_for_unsafe_call_outside_unsafe(
-    scope: &mut BlockScope,
-    fn_name: &str,
-    call_name_span: Span,
-    function: FunctionId,
-) {
-    if_chain! {
-        if !scope.inherits_type(BlockScopeType::Unsafe);
-        if let Some(unsafe_span) = function.unsafe_span(scope.db());
-        then {
-            let def_name_span = function.name_span(scope.db());
-            scope.fancy_error(&format!("unsafe function `{}` can only be called in an unsafe function or block",
-                                       fn_name),
-                              vec![Label::primary(call_name_span, "call to unsafe function"),
-                                   Label::secondary(unsafe_span + def_name_span, format!("`{}` is defined here as unsafe", fn_name))],
-                              vec!["Hint: put this call in an `unsafe` block if you're confident that it's safe to use here".into()],
-            );
-        }
-    }
-}
-
-fn expr_call_self_attribute(
-    scope: &mut BlockScope,
-    func_name: &str,
-    name_span: Span,
-    self_span: Span,
-    args: &Node<Vec<Node<fe::CallArg>>>,
-) -> Result<ExpressionAttributes, FatalError> {
-    check_for_call_to_init_fn(scope, func_name, name_span)?;
-    let contract = resolve_self(scope, self_span)?;
-
-    if let Some(func) = contract.self_function(scope.db(), func_name) {
-        check_for_unsafe_call_outside_unsafe(scope, func_name, name_span, func);
-
-        let sig = func.signature(scope.root.db);
-        validate_named_args(
-            scope,
-            func_name,
-            name_span,
-            args,
-            &sig.params,
-            LabelPolicy::AllowAnyUnlabeled,
-        )?;
-
-        let return_type = sig.return_type.clone()?;
-        let return_location = Location::assign_location(&return_type);
-        Ok(ExpressionAttributes::new(
-            return_type.into(),
-            return_location,
-        ))
-    } else {
-        let voucher = if contract.pure_function(scope.db(), func_name).is_none() {
-            scope.fancy_error(
-                &format!("no function named `{}` exists in this contract", func_name),
-                vec![Label::primary(name_span, "undefined function")],
-                vec![],
-            )
-        } else {
-            scope.fancy_error(
-                &format!("`{}` must be called without `self`", func_name),
-                vec![Label::primary(name_span, "function does not take self")],
-                vec![format!(
-                    "Suggestion: try `{}(...)` instead of `self.{}(...)`",
-                    func_name, func_name
-                )],
-            )
-        };
-        Err(FatalError::new(voucher))
-    }
-}
-
-fn expr_call_pure(
-    scope: &mut BlockScope,
-    call_name_span: Span,
-    function: FunctionId,
-    args: &Node<Vec<Node<fe::CallArg>>>,
-) -> Result<ExpressionAttributes, FatalError> {
-    assert!(function.is_pure(scope.db()));
-
-    let fn_name = function.name(scope.db());
-    check_for_unsafe_call_outside_unsafe(scope, &fn_name, call_name_span, function);
-
-    let sig = function.signature(scope.db());
-    validate_named_args(
-        scope,
-        &fn_name,
-        function.name_span(scope.db()),
-        args,
-        &sig.params,
-        LabelPolicy::AllowAnyUnlabeled,
-    )?;
-
-    let return_type = sig.return_type.clone()?;
-    let return_location = Location::assign_location(&return_type);
-    Ok(ExpressionAttributes::new(
-        return_type.into(),
-        return_location,
-    ))
-}
-
-fn expr_call_value_attribute(
-    scope: &mut BlockScope,
-    func: &Node<fe::Expr>,
-    args: &Node<Vec<Node<fe::CallArg>>>,
-) -> Result<ExpressionAttributes, FatalError> {
-    if let fe::Expr::Attribute { value, attr } = &func.kind {
-        let value_attributes = expr(scope, value, None)?;
-
-        if let Type::Contract(contract) = &value_attributes.typ {
-            // We must ensure the expression is loaded onto the stack.
-            let expression = value_attributes.clone().into_loaded().map_err(|_| {
-                // TODO: Add test code that triggers this
-                FatalError::new(scope.fancy_error(
-                    "can't move value onto stack",
-                    vec![Label::primary(value.span, "Value to be moved")],
-                    vec![format!(
-                        "Note: Can't move `{}` types on the stack",
-                        value_attributes.typ
-                    )],
-                ))
-            })?;
-
-            scope.root.update_expression(value, expression);
-            return expr_call_contract_attribute(
-                scope,
-                contract.to_owned(),
-                &attr.kind,
-                attr.span,
-                args,
-            );
-        }
-
-        // for now all of these functions expect 0 arguments
-        validate_arg_count(scope, &attr.kind, attr.span, args, 0, "argument");
-
-        return match ValueMethod::from_str(&attr.kind) {
-            Err(_) => {
-                return Err(FatalError::new(scope.fancy_error(
-                    &format!(
-                        "No function `{}` exists on type `{}`",
-                        &attr.kind, &value_attributes.typ
-                    ),
-                    vec![Label::primary(attr.span, "undefined function")],
-                    vec![],
-                )));
-            }
-            Ok(ValueMethod::Clone) => {
-                match value_attributes.location {
-                    Location::Storage { .. } => {
-                        scope.fancy_error(
-                            "`clone()` called on value in storage",
-                            vec![
-                                Label::primary(value.span, "this value is in storage"),
-                                Label::secondary(attr.span, "hint: try `to_mem()` here"),
-                            ],
-                            vec![],
-                        );
-                    }
-                    Location::Value => {
-                        scope.fancy_error(
-                            "`clone()` called on primitive type",
-                            vec![
-                                Label::primary(value.span, "this value does not need to be cloned"),
-                                Label::secondary(attr.span, "hint: remove `.clone()`"),
-                            ],
-                            vec![],
-                        );
-                    }
-                    Location::Memory => {}
-                }
-                Ok(value_attributes.into_cloned())
-            }
-            Ok(ValueMethod::ToMem) => {
-                match value_attributes.location {
-                    Location::Storage { .. } => {}
-                    Location::Value => {
-                        scope.fancy_error(
-                            "`to_mem()` called on primitive type",
-                            vec![
-                                Label::primary(
-                                    value.span,
-                                    "this value does not need to be copied to memory",
-                                ),
-                                Label::secondary(attr.span, "hint: remove `.to_mem()`"),
-                            ],
-                            vec![],
-                        );
-                    }
-                    Location::Memory => {
-                        scope.fancy_error(
-                            "`to_mem()` called on value in memory",
-                            vec![
-                                Label::primary(value.span, "this value is already in memory"),
-                                Label::secondary(
-                                    attr.span,
-                                    "hint: to make a copy, use `.clone()` here",
-                                ),
-                            ],
-                            vec![],
-                        );
-                    }
-                }
-                Ok(value_attributes.into_cloned())
-            }
-            Ok(ValueMethod::AbiEncode) => match &value_attributes.typ {
-                Type::Struct(struct_) => {
-                    if value_attributes.final_location() != Location::Memory {
-                        scope.fancy_error(
-                            "value must be copied to memory",
-                            vec![Label::primary(value.span, "this value is in storage")],
-                            vec!["Hint: values located in storage can be copied to memory using the `to_mem` function.".into(),
-                                 "Example: `self.my_array.to_mem().abi_encode()`".into(),
-                            ],
-                        );
-                    }
-
-                    Ok(ExpressionAttributes::new(
-                        Type::Array(Array {
-                            inner: Base::Numeric(Integer::U8),
-                            size: struct_.id.fields(scope.db()).len() * 32,
-                        }),
-                        Location::Memory,
-                    ))
-                }
-                Type::Tuple(tuple) => {
-                    if value_attributes.final_location() != Location::Memory {
-                        scope.fancy_error(
-                            "value must be copied to memory",
-                            vec![Label::primary(value.span, "this value is in storage")],
-                            vec!["Hint: values located in storage can be copied to memory using the `to_mem` function.".into(),
-                                 "Example: `self.my_array.to_mem().abi_encode()`".into(),
-                            ],
-                        );
-                    }
-
-                    Ok(ExpressionAttributes::new(
-                        Type::Array(Array {
-                            inner: Base::Numeric(Integer::U8),
-                            size: tuple.items.len() * 32,
-                        }),
-                        Location::Memory,
-                    ))
-                }
-                _ => {
-                    scope.fancy_error(
-                        &format!(
-                            "value of type `{}` does not support `abi_encode()`",
-                            value_attributes.typ
-                        ),
-                        vec![Label::primary(
-                            value.span,
-                            "this value cannot be encoded using `abi_encode()`",
-                        )],
-                        vec![
-                            "Hint: struct and tuple values can be encoded.".into(),
-                            "Example: `(42,).abi_encode()`".into(),
-                        ],
-                    );
-
-                    Ok(ExpressionAttributes::new(Type::unit(), Location::Value))
-                }
-            },
-        };
-    }
-
-    unreachable!()
-}
-
-fn expr_call_type_attribute(
-    scope: &mut BlockScope,
-    typ: Type,
-    func_name: &str,
-    name_span: Span,
-    args: &Node<Vec<Node<fe::CallArg>>>,
-) -> Result<ExpressionAttributes, FatalError> {
-    let arg_attributes = expr_call_args(scope, args)?;
-
-    let report_circular_dependency = |scope: &mut BlockScope, contract: &str, method: &str| {
-        scope.fancy_error(
-            &format!("`{contract}.{}(...)` called within `{contract}` creates an illegal circular dependency", method, contract=contract),
-            vec![Label::primary(name_span, "Contract creation")],
-            vec![format!("Note: Consider using a dedicated factory contract to create instances of `{}`", contract)]);
-    };
-
-    // TODO: we should check for SomeContract.__init__() here and suggest create/create2
-
-    match (typ.clone(), ContractTypeMethod::from_str(func_name)) {
-        (Type::Contract(contract), Ok(ContractTypeMethod::Create2)) => {
-            validate_arg_count(scope, func_name, name_span, args, 2, "argument");
-
-            if scope.contract_name().as_ref() == Some(&contract.name) {
-                report_circular_dependency(
-                    scope,
-                    &contract.name,
-                    ContractTypeMethod::Create2.as_ref(),
-                );
-            }
-
-            if !matches!(
-                (&arg_attributes[0].typ, &arg_attributes[1].typ),
-                (Type::Base(Base::Numeric(_)), Type::Base(Base::Numeric(_)))
-            ) {
-                scope.fancy_error(
-                    "function `create2` expects numeric parameters",
-                    vec![Label::primary(args.span, "invalid argument")],
-                    vec![],
-                );
-            }
-            Ok(ExpressionAttributes::new(
-                Type::Contract(contract),
-                Location::Value,
-            ))
-        }
-        (Type::Contract(contract), Ok(ContractTypeMethod::Create)) => {
-            validate_arg_count(scope, func_name, name_span, args, 1, "argument");
-
-            if scope.contract_name().as_ref() == Some(&contract.name) {
-                report_circular_dependency(
-                    scope,
-                    &contract.name,
-                    ContractTypeMethod::Create.as_ref(),
-                );
-            }
-
-            if !matches!(&arg_attributes[0].typ, Type::Base(Base::Numeric(_))) {
-                scope.fancy_error(
-                    "function `create` expects numeric parameter",
-                    vec![Label::primary(args.span, "invalid argument")],
-                    vec![],
-                );
-            }
-
-            Ok(ExpressionAttributes::new(
-                Type::Contract(contract),
-                Location::Value,
-            ))
-        }
-        _ => Err(FatalError::new(scope.fancy_error(
-            &format!("No function `{}` exists on type `{}`", func_name, &typ),
-            vec![Label::primary(name_span, "undefined function")],
-            vec![],
-        ))),
-    }
-}
-
-fn expr_call_contract_attribute(
-    scope: &mut BlockScope,
-    contract: Contract,
-    func_name: &str,
-    name_span: Span,
-    args: &Node<Vec<Node<fe::CallArg>>>,
-) -> Result<ExpressionAttributes, FatalError> {
-    check_for_call_to_init_fn(scope, func_name, name_span)?;
-
-    if let Some(function) = contract.id.public_function(scope.db(), func_name) {
-        let sig = function.signature(scope.db());
-        let return_type = sig.return_type.clone()?;
-
-        validate_named_args(
-            scope,
-            func_name,
-            name_span,
-            args,
-            &sig.params,
-            LabelPolicy::AllowAnyUnlabeled,
-        )?;
-
-        let location = Location::assign_location(&return_type);
-        Ok(ExpressionAttributes::new(return_type.into(), location))
-    } else if let Some(function) = contract.id.function(scope.db(), func_name) {
-        Err(FatalError::new(scope.fancy_error(
-            &format!(
-                "The function `{}` on `contract {}` is private",
-                func_name, contract.name
-            ),
-            vec![
-                Label::primary(name_span, "this function is not `pub`"),
-                Label::secondary(
-                    function.data(scope.db()).ast.span,
-                    format!("`{}` is defined here", func_name),
-                ),
-            ],
-            vec![],
-        )))
-    } else {
-        Err(FatalError::new(scope.fancy_error(
-            &format!(
-                "No function `{}` exists on contract `{}`",
-                func_name, contract.name
-            ),
-            vec![Label::primary(name_span, "undefined function")],
-            vec![],
-        )))
-    }
-}
-
-fn expr_call_type(
-    scope: &mut BlockScope,
-    func: &Node<fe::Expr>,
-    generic_args: Option<&Node<Vec<fe::GenericArg>>>,
-) -> Result<CallType, FatalError> {
-    let call_type = match &func.kind {
-        fe::Expr::Name(name) => expr_name_call_type(scope, name, func.span, generic_args),
-        fe::Expr::Attribute { .. } => {
-            // TODO: err if there are generic args
-            expr_attribute_call_type(scope, func)
-        }
-        _ => {
-            let expression = expr(scope, func, None)?;
-            Err(FatalError::new(scope.fancy_error(
-                &format!("`{}` type is not callable", expression.typ),
-                vec![Label::primary(
-                    func.span,
-                    format!("this has type `{}`", expression.typ),
-                )],
-                vec![],
-            )))
-        }
-    }?;
-
-    scope.root.add_call(func, call_type.clone());
-    Ok(call_type)
-}
-
-fn expr_name_call_type(
-    scope: &mut BlockScope,
-    name: &str,
-    name_span: Span,
-    generic_args: Option<&Node<Vec<fe::GenericArg>>>,
-) -> Result<CallType, FatalError> {
-    check_for_call_to_init_fn(scope, name, name_span)?;
-
-    let named_item = scope.resolve_name(name).ok_or_else(|| {
-        if let Some(function) = scope
-            .root
-            .function
-            .contract(scope.db())
-            .and_then(|contract| contract.self_function(scope.db(), name))
-        {
-            FatalError::new(scope.fancy_error(
-                &format!("`{}` must be called via `self`", name),
-                vec![
-                    Label::primary(
-                        function.name_span(scope.db()),
-                        &format!("`{}` is defined here as a function that takes `self`", name),
-                    ),
-                    Label::primary(
-                        name_span,
-                        format!("`{}` is called here as a standalone function", name),
-                    ),
-                ],
-                vec![format!(
-                    "Suggestion: use `self.{}(...)` instead of `{}(...)`",
-                    name, name
-                )],
-            ))
-        } else {
-            FatalError::new(scope.error(
-                &format!("`{}` is not defined", name),
-                name_span,
-                &format!("`{}` has not been defined in this scope", name),
-            ))
-        }
-    })?;
-
-    match named_item {
-        NamedThing::Variable { typ, span, .. } => Err(FatalError::new(scope.fancy_error(
-            &format!("`{}` is not callable", name),
-            vec![
-                Label::secondary(span, format!("`{}` has type `{}`", name, typ?)),
-                Label::primary(name_span, format!("`{}` can't be used as a function", name)),
-            ],
-            vec![],
-        ))),
-        NamedThing::Item(Item::Constant(id)) => Err(FatalError::new(scope.error(
-            &format!("`{}` is not callable", name),
-            name_span,
-            &format!(
-                "`{}` is a constant of type `{}`, and can't be used as a function",
-                name,
-                id.typ(scope.db())?,
-            ),
-        ))),
-        NamedThing::Item(Item::Object(_)) => Err(FatalError::new(scope.error(
-            &format!("`{}` is not callable", name),
-            name_span,
-            &format!(
-                "`{}` is a built-in object, and can't be used as a function",
-                name
-            ),
-        ))),
-        NamedThing::Item(Item::Event(_)) => Err(FatalError::new(scope.fancy_error(
-            &format!("`{}` is not callable", name),
-            vec![Label::primary(
-                name_span,
-                &format!(
-                    "`{}` is an event, and can't be constructed in this context",
-                    name
-                ),
-            )],
-            vec![format!("Hint: to emit an event, use `emit {}(..)`", name)],
-        ))),
-        NamedThing::Item(Item::BuiltinFunction(function)) => {
-            if let Some(args) = generic_args {
-                scope.error(
-                    &format!("`{}` function does not expect generic arguments", name),
-                    args.span,
-                    "unexpected generic argument list",
-                );
-            }
-            Ok(CallType::BuiltinFunction(function))
-        }
-
-        NamedThing::Item(Item::Function(function)) => {
-            if let Some(args) = generic_args {
-                scope.fancy_error(
-                    &format!("`{}` function is not generic", name),
-                    vec![Label::primary(
-                        args.span,
-                        "unexpected generic argument list",
-                    )],
-                    vec![],
-                );
-            }
-            Ok(CallType::Pure(function))
-        }
-        NamedThing::Item(Item::Type(id)) => {
-            if let Some(args) = generic_args {
-                scope.fancy_error(
-                    &format!("`{}` type is not generic", name),
-                    vec![Label::primary(
-                        args.span,
-                        "unexpected generic argument list",
-                    )],
-                    vec![],
-                );
-            }
-            Ok(CallType::TypeConstructor {
-                typ: id.typ(scope.db())?,
-            })
-        }
-        NamedThing::Item(Item::GenericType(generic)) => Ok(CallType::TypeConstructor {
-            typ: apply_generic_type_args(scope, generic, name_span, generic_args)?,
-        }),
-    }
-}
-
-fn expr_attribute_call_type(
-    scope: &mut BlockScope,
-    exp: &Node<fe::Expr>,
-) -> Result<CallType, FatalError> {
-    if let fe::Expr::Attribute { value, attr } = &exp.kind {
-        if let fe::Expr::Name(name) = &value.kind {
-            match scope.resolve_name(name) {
-                Some(NamedThing::Item(Item::Object(object))) => match object {
-                    Object::Self_ => {
-                        return Ok(CallType::SelfAttribute {
-                            func_name: attr.kind.to_string(),
-                            self_span: value.span,
-                        })
-                    }
-                    Object::Block | Object::Chain | Object::Msg | Object::Tx => {
-                        return Err(FatalError::new(scope.fancy_error(
-                            &format!("no function `{}` exists on builtin `{}`", &attr.kind, &name),
-                            vec![Label::primary(exp.span, "undefined function")],
-                            vec![],
-                        )));
-                    }
-                },
-                Some(NamedThing::Item(Item::Type(id))) => {
-                    return Ok(CallType::TypeAttribute {
-                        typ: id.typ(scope.db())?,
-                        func_name: attr.kind.to_string(),
-                    })
-                }
-                // Everything else is handled in expr_call_value_attribute
-                _ => {}
-            };
-        }
-
-        return Ok(CallType::ValueAttribute);
-    }
-
-    unreachable!()
 }
 
 fn validate_numeric_literal_fits_type(
@@ -1808,4 +1826,12 @@ fn to_bigint(num: &str) -> BigInt {
     numeric::Literal::new(num)
         .parse::<BigInt>()
         .expect("the numeric literal contains a invalid digit")
+}
+
+fn is_self_value(expr: &Node<fe::Expr>) -> bool {
+    if let fe::Expr::Name(name) = &expr.kind {
+        name == "self"
+    } else {
+        false
+    }
 }

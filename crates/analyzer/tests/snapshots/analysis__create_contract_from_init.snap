@@ -26,7 +26,7 @@ note:
   ┌─ features/create_contract_from_init.fe:3:16
   │
 3 │         return 42
-  │                ^^ u256: Value => None
+  │                ^^ u256: Value
 
 note: 
   ┌─ features/create_contract_from_init.fe:6:5
@@ -39,10 +39,12 @@ note:
    │  
 11 │ ╭     pub fn get_foo_addr(self) -> address:
 12 │ │         return self.foo_addr
-   │ ╰────────────────────────────^ attributes hash: 17651916811868111914
+   │ ╰────────────────────────────^ attributes hash: 10447292744135180405
    │  
    = FunctionSignature {
-         self_decl: Mutable,
+         self_decl: Some(
+             Mutable,
+         ),
          params: [],
          return_type: Ok(
              Base(
@@ -55,6 +57,12 @@ note:
    ┌─ features/create_contract_from_init.fe:12:16
    │
 12 │         return self.foo_addr
-   │                ^^^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Some(Value)
+   │                ^^^^ FooFactory: Value
+
+note: 
+   ┌─ features/create_contract_from_init.fe:12:16
+   │
+12 │         return self.foo_addr
+   │                ^^^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Value
 
 

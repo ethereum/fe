@@ -60,6 +60,7 @@ test_analysis! { guest_book, "demos/guest_book.fe"}
 test_analysis! { uniswap, "demos/uniswap.fe"}
 test_analysis! { address_bytes10_map, "features/address_bytes10_map.fe"}
 test_analysis! { assert, "features/assert.fe"}
+test_analysis! { associated_fns, "features/associated_fns.fe"}
 test_analysis! { aug_assign, "features/aug_assign.fe"}
 test_analysis! { base_tuple, "features/base_tuple.fe"}
 test_analysis! { call_statement_with_args, "features/call_statement_with_args.fe"}
@@ -145,6 +146,7 @@ test_analysis! { balances, "features/balances.fe"}
 test_analysis! { sized_vals_in_sto, "features/sized_vals_in_sto.fe"}
 test_analysis! { strings, "features/strings.fe"}
 test_analysis! { structs, "features/structs.fe"}
+test_analysis! { struct_fns, "features/struct_fns.fe"}
 test_analysis! { ternary_expression, "features/ternary_expression.fe"}
 test_analysis! { two_contracts, "features/two_contracts.fe"}
 test_analysis! { u8_u8_map, "features/u8_u8_map.fe"}
@@ -171,19 +173,28 @@ fn build_snapshot(file_store: &FileStore, module: items::ModuleId, db: &dyn Anal
                 alias.data(db).ast.span,
                 &alias.typ(db).unwrap(),
             )],
-            Item::Type(TypeDef::Struct(struct_)) => [label_in_non_overlapping_groups(
+            Item::Type(TypeDef::Struct(struct_)) => [
+                label_in_non_overlapping_groups(
                 &struct_
-                    .all_fields(db)
-                    .iter()
+                    .fields(db)
+                    .values()
                     .map(|field| (field.data(db).ast.span, field.typ(db).unwrap()))
                     .collect::<Vec<_>>(),
-            )]
+
+                ),
+                struct_
+                    .functions(db)
+                    .values()
+                    .map(|id| function_diagnostics(*id, db))
+                    .flatten()
+                    .collect(),
+            ]
             .concat(),
             Item::Type(TypeDef::Contract(contract)) => [
                 label_in_non_overlapping_groups(
                     &contract
-                        .all_fields(db)
-                        .iter()
+                        .fields(db)
+                        .values()
                         .map(|field| (field.data(db).ast.span, field.typ(db).unwrap()))
                         .collect::<Vec<_>>(),
                 ),
@@ -205,11 +216,11 @@ fn build_snapshot(file_store: &FileStore, module: items::ModuleId, db: &dyn Anal
             Item::Function(id) => function_diagnostics(*id, db),
             Item::Constant(id) => vec![build_display_diagnostic(id.span(db), &id.typ(db).unwrap())],
 
-            // Events can't be defined at the module level yet.
-            Item::Event(_) => vec![],
 
+            // Events can't be defined at the module level yet.
+            Item::Event(_)
             // Built-in stuff
-            Item::Type(TypeDef::Primitive(_))
+            | Item::Type(TypeDef::Primitive(_))
             | Item::GenericType(_)
             | Item::BuiltinFunction(_)
             | Item::Object(_) => vec![],
@@ -217,7 +228,7 @@ fn build_snapshot(file_store: &FileStore, module: items::ModuleId, db: &dyn Anal
         .flatten()
         .collect::<Vec<_>>();
 
-    diagnostics_string(&diagnostics, &file_store)
+    diagnostics_string(&diagnostics, file_store)
 }
 
 fn new_diagnostic(labels: Vec<Label>) -> Diagnostic {
@@ -287,7 +298,7 @@ fn function_diagnostics(fun: items::FunctionId, db: &dyn AnalyzerDb) -> Vec<Diag
                 .collect::<Vec<(Span, Rc<Event>)>>(),
         ),
         // calls
-        build_debug_diagnostics(&lookup_spans(&body.calls, &body.spans)),
+        label_in_non_overlapping_groups(&lookup_spans(&body.calls, &body.spans)),
     ]
     .concat()
 }

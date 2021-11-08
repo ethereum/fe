@@ -73,10 +73,6 @@ pub trait AnalyzerDb {
     fn contract_function_map(&self, id: ContractId) -> Analysis<Rc<IndexMap<String, FunctionId>>>;
     #[salsa::invoke(queries::contracts::contract_public_function_map)]
     fn contract_public_function_map(&self, id: ContractId) -> Rc<IndexMap<String, FunctionId>>;
-    #[salsa::invoke(queries::contracts::contract_pure_function_map)]
-    fn contract_pure_function_map(&self, id: ContractId) -> Rc<IndexMap<String, FunctionId>>;
-    #[salsa::invoke(queries::contracts::contract_self_function_map)]
-    fn contract_self_function_map(&self, id: ContractId) -> Rc<IndexMap<String, FunctionId>>;
     #[salsa::invoke(queries::contracts::contract_init_function)]
     fn contract_init_function(&self, id: ContractId) -> Analysis<Option<FunctionId>>;
 
@@ -114,6 +110,10 @@ pub trait AnalyzerDb {
         &self,
         field: StructFieldId,
     ) -> Analysis<Result<types::FixedSize, TypeError>>;
+    #[salsa::invoke(queries::structs::struct_all_functions)]
+    fn struct_all_functions(&self, id: StructId) -> Rc<Vec<FunctionId>>;
+    #[salsa::invoke(queries::structs::struct_function_map)]
+    fn struct_function_map(&self, id: StructId) -> Analysis<Rc<IndexMap<String, FunctionId>>>;
 
     // Event
     #[salsa::invoke(queries::events::event_type)]

@@ -51,22 +51,16 @@ error: type name conflicts with built-in object
 9 │ type chain = u8
   │      ^^^^^ `chain` is a built-in object
 
-error: type name conflicts with built-in object
-   ┌─ compile_errors/shadow_builtin_type.fe:10:6
-   │
-10 │ type self = u8
-   │      ^^^^ `self` is a built-in object
-
 error: function parameter name `u8` conflicts with built-in type
-   ┌─ compile_errors/shadow_builtin_type.fe:13:8
+   ┌─ compile_errors/shadow_builtin_type.fe:12:8
    │
-13 │   fn f(u8: u256):
+12 │   fn f(u8: u256):
    │        ^^ `u8` is a built-in type
 
 error: function parameter name `keccak256` conflicts with built-in function
-   ┌─ compile_errors/shadow_builtin_type.fe:16:8
+   ┌─ compile_errors/shadow_builtin_type.fe:15:8
    │
-16 │   fn g(keccak256: u8):
+15 │   fn g(keccak256: u8):
    │        ^^^^^^^^^ `keccak256` is a built-in function
 
 

@@ -66,10 +66,10 @@ note:
   ┌─ features/external_contract.fe:8:22
   │
 8 │         emit MyEvent(my_num, my_addrs, my_string)
-  │                      ^^^^^^  ^^^^^^^^  ^^^^^^^^^ String<11>: Memory => None
+  │                      ^^^^^^  ^^^^^^^^  ^^^^^^^^^ String<11>: Memory
   │                      │       │          
-  │                      │       Array<address, 5>: Memory => None
-  │                      u256: Value => None
+  │                      │       Array<address, 5>: Memory
+  │                      u256: Value
 
 note: 
   ┌─ features/external_contract.fe:8:9
@@ -174,50 +174,50 @@ note:
    ┌─ features/external_contract.fe:12:9
    │
 12 │         my_array[0] = a
-   │         ^^^^^^^^ ^ u256: Value => None
+   │         ^^^^^^^^ ^ u256: Value
    │         │         
-   │         Array<u256, 3>: Memory => None
+   │         Array<u256, 3>: Memory
 
 note: 
    ┌─ features/external_contract.fe:12:9
    │
 12 │         my_array[0] = a
-   │         ^^^^^^^^^^^   ^ u256: Value => None
+   │         ^^^^^^^^^^^   ^ u256: Value
    │         │              
-   │         u256: Memory => None
+   │         u256: Memory
 13 │         my_array[1] = a * b
-   │         ^^^^^^^^ ^ u256: Value => None
+   │         ^^^^^^^^ ^ u256: Value
    │         │         
-   │         Array<u256, 3>: Memory => None
+   │         Array<u256, 3>: Memory
 
 note: 
    ┌─ features/external_contract.fe:13:9
    │
 13 │         my_array[1] = a * b
-   │         ^^^^^^^^^^^   ^   ^ u256: Value => None
+   │         ^^^^^^^^^^^   ^   ^ u256: Value
    │         │             │    
-   │         │             u256: Value => None
-   │         u256: Memory => None
+   │         │             u256: Value
+   │         u256: Memory
 
 note: 
    ┌─ features/external_contract.fe:13:23
    │
 13 │         my_array[1] = a * b
-   │                       ^^^^^ u256: Value => None
+   │                       ^^^^^ u256: Value
 14 │         my_array[2] = b
-   │         ^^^^^^^^ ^ u256: Value => None
+   │         ^^^^^^^^ ^ u256: Value
    │         │         
-   │         Array<u256, 3>: Memory => None
+   │         Array<u256, 3>: Memory
 
 note: 
    ┌─ features/external_contract.fe:14:9
    │
 14 │         my_array[2] = b
-   │         ^^^^^^^^^^^   ^ u256: Value => None
+   │         ^^^^^^^^^^^   ^ u256: Value
    │         │              
-   │         u256: Memory => None
+   │         u256: Memory
 15 │         return my_array
-   │                ^^^^^^^^ Array<u256, 3>: Memory => None
+   │                ^^^^^^^^ Array<u256, 3>: Memory
 
 note: 
    ┌─ features/external_contract.fe:18:5
@@ -291,50 +291,33 @@ note:
    ┌─ features/external_contract.fe:24:28
    │
 24 │         let foo: Foo = Foo(foo_address)
-   │                            ^^^^^^^^^^^ address: Value => None
+   │                            ^^^^^^^^^^^ address: Value
 
 note: 
    ┌─ features/external_contract.fe:24:24
    │
 24 │         let foo: Foo = Foo(foo_address)
-   │                        ^^^^^^^^^^^^^^^^ Foo: Value => None
+   │                        ^^^^^^^^^^^^^^^^ Foo: Value
 25 │         foo.emit_event(my_num, my_addrs, my_string)
-   │         ^^^            ^^^^^^  ^^^^^^^^  ^^^^^^^^^ String<11>: Memory => None
+   │         ^^^            ^^^^^^  ^^^^^^^^  ^^^^^^^^^ String<11>: Memory
    │         │              │       │          
-   │         │              │       Array<address, 5>: Memory => None
-   │         │              u256: Value => None
-   │         Foo: Value => None
+   │         │              │       Array<address, 5>: Memory
+   │         │              u256: Value
+   │         Foo: Value
 
 note: 
    ┌─ features/external_contract.fe:25:9
    │
 25 │         foo.emit_event(my_num, my_addrs, my_string)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value => None
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 
 note: 
    ┌─ features/external_contract.fe:24:24
    │
 24 │         let foo: Foo = Foo(foo_address)
-   │                        ^^^ attributes hash: 1647454659037951517
-   │
-   = TypeConstructor {
-         typ: Contract(
-             Contract {
-                 name: "Foo",
-                 id: ContractId(
-                     0,
-                 ),
-             },
-         ),
-     }
-
-note: 
-   ┌─ features/external_contract.fe:25:9
-   │
+   │                        ^^^ TypeConstructor(Contract(Contract { name: "Foo", id: ContractId(0) }))
 25 │         foo.emit_event(my_num, my_addrs, my_string)
-   │         ^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
-   │
-   = ValueAttribute
+   │         ^^^^^^^^^^^^^^ ValueMethod { is_self: false, class: Contract(ContractId(0)), method: FunctionId(0) }
 
 note: 
    ┌─ features/external_contract.fe:27:5
@@ -402,48 +385,31 @@ note:
    ┌─ features/external_contract.fe:32:28
    │
 32 │         let foo: Foo = Foo(foo_address)
-   │                            ^^^^^^^^^^^ address: Value => None
+   │                            ^^^^^^^^^^^ address: Value
 
 note: 
    ┌─ features/external_contract.fe:32:24
    │
 32 │         let foo: Foo = Foo(foo_address)
-   │                        ^^^^^^^^^^^^^^^^ Foo: Value => None
+   │                        ^^^^^^^^^^^^^^^^ Foo: Value
 33 │         return foo.build_array(a, b)
-   │                ^^^             ^  ^ u256: Value => None
+   │                ^^^             ^  ^ u256: Value
    │                │               │   
-   │                │               u256: Value => None
-   │                Foo: Value => None
+   │                │               u256: Value
+   │                Foo: Value
 
 note: 
    ┌─ features/external_contract.fe:33:16
    │
 33 │         return foo.build_array(a, b)
-   │                ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 3>: Memory => None
+   │                ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 3>: Memory
 
 note: 
    ┌─ features/external_contract.fe:32:24
    │
 32 │         let foo: Foo = Foo(foo_address)
-   │                        ^^^ attributes hash: 1647454659037951517
-   │
-   = TypeConstructor {
-         typ: Contract(
-             Contract {
-                 name: "Foo",
-                 id: ContractId(
-                     0,
-                 ),
-             },
-         ),
-     }
-
-note: 
-   ┌─ features/external_contract.fe:33:16
-   │
+   │                        ^^^ TypeConstructor(Contract(Contract { name: "Foo", id: ContractId(0) }))
 33 │         return foo.build_array(a, b)
-   │                ^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
-   │
-   = ValueAttribute
+   │                ^^^^^^^^^^^^^^^ ValueMethod { is_self: false, class: Contract(ContractId(0)), method: FunctionId(1) }
 
 

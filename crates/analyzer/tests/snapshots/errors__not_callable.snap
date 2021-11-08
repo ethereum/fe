@@ -27,6 +27,6 @@ error: `self` is not callable
    ┌─ compile_errors/not_callable.fe:16:5
    │
 16 │     self()
-   │     ^^^^ `self` is a built-in object, and can't be used as a function
+   │     ^^^^ can't be used as a function
 
 

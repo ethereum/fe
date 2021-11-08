@@ -1,7 +1,8 @@
+use crate::builtins;
 use crate::context::AnalyzerContext;
 use crate::db::Analysis;
 use crate::errors::TypeError;
-use crate::namespace::items::{StructField, StructFieldId, StructId};
+use crate::namespace::items::{self, Function, FunctionId, StructField, StructFieldId, StructId};
 use crate::namespace::scopes::ItemScope;
 use crate::namespace::types;
 use crate::traversal::types::type_desc;
@@ -9,12 +10,13 @@ use crate::AnalyzerDb;
 use fe_parser::ast;
 use indexmap::map::{Entry, IndexMap};
 use std::rc::Rc;
+use std::str::FromStr;
 
 pub fn struct_type(db: &dyn AnalyzerDb, struct_: StructId) -> Rc<types::Struct> {
     Rc::new(types::Struct {
         name: struct_.name(db),
         id: struct_,
-        field_count: struct_.all_fields(db).len(),
+        field_count: struct_.fields(db).len(),
     })
 }
 
@@ -103,6 +105,81 @@ pub fn struct_field_type(
 
     Analysis {
         value: typ,
+        diagnostics: Rc::new(scope.diagnostics),
+    }
+}
+
+pub fn struct_all_functions(db: &dyn AnalyzerDb, struct_: StructId) -> Rc<Vec<FunctionId>> {
+    let struct_data = struct_.data(db);
+    let fields = struct_data
+        .ast
+        .kind
+        .functions
+        .iter()
+        .map(|node| {
+            db.intern_function(Rc::new(Function {
+                ast: node.clone(),
+                module: struct_data.module,
+                parent: Some(items::Class::Struct(struct_)),
+            }))
+        })
+        .collect();
+    Rc::new(fields)
+}
+
+pub fn struct_function_map(
+    db: &dyn AnalyzerDb,
+    struct_: StructId,
+) -> Analysis<Rc<IndexMap<String, FunctionId>>> {
+    let mut scope = ItemScope::new(db, struct_.module(db));
+    let mut map = IndexMap::<String, FunctionId>::new();
+
+    for func in db.struct_all_functions(struct_).iter() {
+        let def = &func.data(db).ast;
+        let def_name = def.name();
+        if def_name == "__init__" {
+            continue;
+        }
+
+        if let Some(named_item) = scope.resolve_name(def_name) {
+            scope.name_conflict_error(
+                "function",
+                def_name,
+                &named_item,
+                named_item.name_span(db),
+                def.kind.name.span,
+            );
+            continue;
+        }
+
+        if builtins::ValueMethod::from_str(def_name).is_ok() {
+            scope.error(
+                &format!(
+                    "function name `{}` conflicts with built-in function",
+                    def_name
+                ),
+                def.kind.name.span,
+                &format!("`{}` is a built-in function", def_name),
+            );
+            continue;
+        }
+
+        match map.entry(def_name.to_string()) {
+            Entry::Occupied(entry) => {
+                scope.duplicate_name_error(
+                    &format!("duplicate function names in `struct {}`", struct_.name(db)),
+                    entry.key(),
+                    entry.get().data(db).ast.span,
+                    def.span,
+                );
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(*func);
+            }
+        }
+    }
+    Analysis {
+        value: Rc::new(map),
         diagnostics: Rc::new(scope.diagnostics),
     }
 }

@@ -81,16 +81,16 @@ note:
    ┌─ stress/tuple_stress.fe:12:17
    │
 12 │         return (my_num, my_bool, my_address)
-   │                 ^^^^^^  ^^^^^^^  ^^^^^^^^^^ address: Value => None
+   │                 ^^^^^^  ^^^^^^^  ^^^^^^^^^^ address: Value
    │                 │       │         
-   │                 │       bool: Value => None
-   │                 u256: Value => None
+   │                 │       bool: Value
+   │                 u256: Value
 
 note: 
    ┌─ stress/tuple_stress.fe:12:16
    │
 12 │         return (my_num, my_bool, my_address)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (u256, bool, address): Memory => None
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (u256, bool, address): Memory
 
 note: 
    ┌─ stress/tuple_stress.fe:14:5
@@ -138,13 +138,13 @@ note:
    ┌─ stress/tuple_stress.fe:15:16
    │
 15 │         return my_tuple.item0
-   │                ^^^^^^^^ (u256, bool, address): Memory => None
+   │                ^^^^^^^^ (u256, bool, address): Memory
 
 note: 
    ┌─ stress/tuple_stress.fe:15:16
    │
 15 │         return my_tuple.item0
-   │                ^^^^^^^^^^^^^^ u256: Memory => Some(Value)
+   │                ^^^^^^^^^^^^^^ u256: Memory => Value
 
 note: 
    ┌─ stress/tuple_stress.fe:17:5
@@ -190,13 +190,13 @@ note:
    ┌─ stress/tuple_stress.fe:18:16
    │
 18 │         return my_tuple.item1
-   │                ^^^^^^^^ (u256, bool, address): Memory => None
+   │                ^^^^^^^^ (u256, bool, address): Memory
 
 note: 
    ┌─ stress/tuple_stress.fe:18:16
    │
 18 │         return my_tuple.item1
-   │                ^^^^^^^^^^^^^^ bool: Memory => Some(Value)
+   │                ^^^^^^^^^^^^^^ bool: Memory => Value
 
 note: 
    ┌─ stress/tuple_stress.fe:20:5
@@ -242,13 +242,13 @@ note:
    ┌─ stress/tuple_stress.fe:21:16
    │
 21 │         return my_tuple.item2
-   │                ^^^^^^^^ (u256, bool, address): Memory => None
+   │                ^^^^^^^^ (u256, bool, address): Memory
 
 note: 
    ┌─ stress/tuple_stress.fe:21:16
    │
 21 │         return my_tuple.item2
-   │                ^^^^^^^^^^^^^^ address: Memory => Some(Value)
+   │                ^^^^^^^^^^^^^^ address: Memory => Value
 
 note: 
    ┌─ stress/tuple_stress.fe:23:5
@@ -336,13 +336,13 @@ note:
    ┌─ stress/tuple_stress.fe:24:16
    │
 24 │         return my_tuple.item10
-   │                ^^^^^^^^ (u256, u256, u256, u256, u256, u256, u256, u256, u256, u256, address): Memory => None
+   │                ^^^^^^^^ (u256, u256, u256, u256, u256, u256, u256, u256, u256, u256, address): Memory
 
 note: 
    ┌─ stress/tuple_stress.fe:24:16
    │
 24 │         return my_tuple.item10
-   │                ^^^^^^^^^^^^^^^ address: Memory => Some(Value)
+   │                ^^^^^^^^^^^^^^^ address: Memory => Value
 
 note: 
    ┌─ stress/tuple_stress.fe:26:5
@@ -388,7 +388,7 @@ note:
    ┌─ stress/tuple_stress.fe:27:22
    │
 27 │         emit MyEvent(my_tuple)
-   │                      ^^^^^^^^ (u256, bool, address): Memory => None
+   │                      ^^^^^^^^ (u256, bool, address): Memory
 
 note: 
    ┌─ stress/tuple_stress.fe:27:9
@@ -431,10 +431,12 @@ note:
 29 │ ╭     pub fn set_my_sto_tuple(self, my_u256: u256, my_i32: i32):
 30 │ │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
 31 │ │         self.my_sto_tuple = (my_u256, my_i32)
-   │ ╰─────────────────────────────────────────────^ attributes hash: 5930645998145376015
+   │ ╰─────────────────────────────────────────────^ attributes hash: 13883869095305465208
    │  
    = FunctionSignature {
-         self_decl: Mutable,
+         self_decl: Some(
+             Mutable,
+         ),
          params: [
              FunctionParam {
                  name: "my_u256",
@@ -468,104 +470,104 @@ note:
    ┌─ stress/tuple_stress.fe:30:16
    │
 30 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
-   │                ^^^^^^^^^^^^^^^^^ (u256, i32): Storage { nonce: Some(0) } => None
+   │                ^^^^ Foo: Value
 
 note: 
    ┌─ stress/tuple_stress.fe:30:16
    │
 30 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^         ^ u256: Value => None
+   │                ^^^^^^^^^^^^^^^^^ (u256, i32): Storage { nonce: Some(0) }
+
+note: 
+   ┌─ stress/tuple_stress.fe:30:16
+   │
+30 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^         ^ u256: Value
    │                │                                
-   │                u256: Storage { nonce: Some(0) } => Some(Value)
+   │                u256: Storage { nonce: Some(0) } => Value
 
 note: 
    ┌─ stress/tuple_stress.fe:30:43
    │
 30 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
-   │                                           ^^^^^^^ u256: Value => None
+   │                                           ^^^^^^^ u256: Value
 
 note: 
    ┌─ stress/tuple_stress.fe:30:16
    │
 30 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^     ^^^^^^^^^^^^^^^^^ (u256, i32): Storage { nonce: Some(0) } => None
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^     ^^^^ Foo: Value
    │                │                                       
-   │                bool: Value => None
+   │                bool: Value
 
 note: 
    ┌─ stress/tuple_stress.fe:30:55
    │
 30 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
-   │                                                       ^^^^^^^^^^^^^^^^^^^^^^^        ^ i32: Value => None
+   │                                                       ^^^^^^^^^^^^^^^^^ (u256, i32): Storage { nonce: Some(0) }
+
+note: 
+   ┌─ stress/tuple_stress.fe:30:55
+   │
+30 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
+   │                                                       ^^^^^^^^^^^^^^^^^^^^^^^        ^ i32: Value
    │                                                       │                               
-   │                                                       i32: Storage { nonce: Some(0) } => Some(Value)
+   │                                                       i32: Storage { nonce: Some(0) } => Value
 
 note: 
    ┌─ stress/tuple_stress.fe:30:82
    │
 30 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
-   │                                                                                  ^^^^^^ i32: Value => None
+   │                                                                                  ^^^^^^ i32: Value
 
 note: 
    ┌─ stress/tuple_stress.fe:30:55
    │
 30 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
-   │                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value => None
+   │                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
 
 note: 
    ┌─ stress/tuple_stress.fe:30:16
    │
 30 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value => None
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
 31 │         self.my_sto_tuple = (my_u256, my_i32)
-   │         ^^^^^^^^^^^^^^^^^    ^^^^^^^  ^^^^^^ i32: Value => None
+   │         ^^^^ Foo: Value
+
+note: 
+   ┌─ stress/tuple_stress.fe:31:9
+   │
+31 │         self.my_sto_tuple = (my_u256, my_i32)
+   │         ^^^^^^^^^^^^^^^^^    ^^^^^^^  ^^^^^^ i32: Value
    │         │                    │         
-   │         │                    u256: Value => None
-   │         (u256, i32): Storage { nonce: Some(0) } => None
+   │         │                    u256: Value
+   │         (u256, i32): Storage { nonce: Some(0) }
 
 note: 
    ┌─ stress/tuple_stress.fe:31:29
    │
 31 │         self.my_sto_tuple = (my_u256, my_i32)
-   │                             ^^^^^^^^^^^^^^^^^ (u256, i32): Memory => None
+   │                             ^^^^^^^^^^^^^^^^^ (u256, i32): Memory
 
 note: 
    ┌─ stress/tuple_stress.fe:30:43
    │
 30 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
-   │                                           ^^^^ attributes hash: 2391147244535208323
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:30:82
-   │
-30 │         assert self.my_sto_tuple.item0 == u256(0) and self.my_sto_tuple.item1 == i32(0)
-   │                                                                                  ^^^ attributes hash: 14092528269543401556
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 I32,
-             ),
-         ),
-     }
+   │                                           ^^^^                                   ^^^ TypeConstructor(Base(Numeric(I32)))
+   │                                           │                                       
+   │                                           TypeConstructor(Base(Numeric(U256)))
 
 note: 
    ┌─ stress/tuple_stress.fe:33:5
    │  
 33 │ ╭     pub fn get_my_sto_tuple(self) -> (u256, i32):
 34 │ │         return self.my_sto_tuple.to_mem()
-   │ ╰─────────────────────────────────────────^ attributes hash: 8140983257972799311
+   │ ╰─────────────────────────────────────────^ attributes hash: 6192946144527924451
    │  
    = FunctionSignature {
-         self_decl: Mutable,
+         self_decl: Some(
+             Mutable,
+         ),
          params: [],
          return_type: Ok(
              Tuple(
@@ -591,21 +593,25 @@ note:
    ┌─ stress/tuple_stress.fe:34:16
    │
 34 │         return self.my_sto_tuple.to_mem()
-   │                ^^^^^^^^^^^^^^^^^ (u256, i32): Storage { nonce: Some(0) } => None
+   │                ^^^^ Foo: Value
 
 note: 
    ┌─ stress/tuple_stress.fe:34:16
    │
 34 │         return self.my_sto_tuple.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ (u256, i32): Storage { nonce: Some(0) } => Some(Memory)
+   │                ^^^^^^^^^^^^^^^^^ (u256, i32): Storage { nonce: Some(0) }
 
 note: 
    ┌─ stress/tuple_stress.fe:34:16
    │
 34 │         return self.my_sto_tuple.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ (u256, i32): Storage { nonce: Some(0) } => Memory
+
+note: 
+   ┌─ stress/tuple_stress.fe:34:16
    │
-   = ValueAttribute
+34 │         return self.my_sto_tuple.to_mem()
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
 
 note: 
    ┌─ stress/tuple_stress.fe:36:5
@@ -617,10 +623,12 @@ note:
    · │
 42 │ │         )
 43 │ │         emit_my_event(my_tuple)
-   │ ╰───────────────────────────────^ attributes hash: 4369441865732737140
+   │ ╰───────────────────────────────^ attributes hash: 17603814563784536273
    │  
    = FunctionSignature {
-         self_decl: Mutable,
+         self_decl: Some(
+             Mutable,
+         ),
          params: [],
          return_type: Ok(
              Base(
@@ -641,40 +649,52 @@ note:
    ┌─ stress/tuple_stress.fe:37:28
    │
 37 │         let my_num: u256 = self.my_sto_tuple.item0
-   │                            ^^^^^^^^^^^^^^^^^ (u256, i32): Storage { nonce: Some(0) } => None
+   │                            ^^^^ Foo: Value
 
 note: 
    ┌─ stress/tuple_stress.fe:37:28
    │
 37 │         let my_num: u256 = self.my_sto_tuple.item0
-   │                            ^^^^^^^^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(0) } => Some(Value)
+   │                            ^^^^^^^^^^^^^^^^^ (u256, i32): Storage { nonce: Some(0) }
+
+note: 
+   ┌─ stress/tuple_stress.fe:37:28
+   │
+37 │         let my_num: u256 = self.my_sto_tuple.item0
+   │                            ^^^^^^^^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
 38 │         let my_tuple: (u256, bool, address) = (
 39 │             self.my_sto_tuple.item0,
-   │             ^^^^^^^^^^^^^^^^^ (u256, i32): Storage { nonce: Some(0) } => None
+   │             ^^^^ Foo: Value
 
 note: 
    ┌─ stress/tuple_stress.fe:39:13
    │
 39 │             self.my_sto_tuple.item0,
-   │             ^^^^^^^^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(0) } => Some(Value)
+   │             ^^^^^^^^^^^^^^^^^ (u256, i32): Storage { nonce: Some(0) }
+
+note: 
+   ┌─ stress/tuple_stress.fe:39:13
+   │
+39 │             self.my_sto_tuple.item0,
+   │             ^^^^^^^^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
 40 │             true and false,
-   │             ^^^^     ^^^^^ bool: Value => None
+   │             ^^^^     ^^^^^ bool: Value
    │             │         
-   │             bool: Value => None
+   │             bool: Value
 
 note: 
    ┌─ stress/tuple_stress.fe:40:13
    │
 40 │             true and false,
-   │             ^^^^^^^^^^^^^^ bool: Value => None
+   │             ^^^^^^^^^^^^^^ bool: Value
 41 │             address(26)
-   │                     ^^ u256: Value => None
+   │                     ^^ u256: Value
 
 note: 
    ┌─ stress/tuple_stress.fe:41:13
    │
 41 │             address(26)
-   │             ^^^^^^^^^^^ address: Value => None
+   │             ^^^^^^^^^^^ address: Value
 
 note: 
    ┌─ stress/tuple_stress.fe:38:47
@@ -685,39 +705,24 @@ note:
 40 │ │             true and false,
 41 │ │             address(26)
 42 │ │         )
-   │ ╰─────────^ (u256, bool, address): Memory => None
+   │ ╰─────────^ (u256, bool, address): Memory
 43 │           emit_my_event(my_tuple)
-   │                         ^^^^^^^^ (u256, bool, address): Memory => None
+   │                         ^^^^^^^^ (u256, bool, address): Memory
 
 note: 
    ┌─ stress/tuple_stress.fe:43:9
    │
 43 │         emit_my_event(my_tuple)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^ (): Value => None
+   │         ^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 
 note: 
    ┌─ stress/tuple_stress.fe:41:13
    │
 41 │             address(26)
-   │             ^^^^^^^ attributes hash: 14203407709342965641
-   │
-   = TypeConstructor {
-         typ: Base(
-             Address,
-         ),
-     }
-
-note: 
-   ┌─ stress/tuple_stress.fe:43:9
-   │
+   │             ^^^^^^^ TypeConstructor(Base(Address))
+42 │         )
 43 │         emit_my_event(my_tuple)
-   │         ^^^^^^^^^^^^^ attributes hash: 12310327282992125219
-   │
-   = Pure(
-         FunctionId(
-             5,
-         ),
-     )
+   │         ^^^^^^^^^^^^^ Pure(FunctionId(5))
 
 note: 
    ┌─ stress/tuple_stress.fe:45:5
@@ -768,20 +773,18 @@ note:
    ┌─ stress/tuple_stress.fe:46:16
    │
 46 │         return my_tuple.abi_encode()
-   │                ^^^^^^^^ (u256, bool, address): Memory => None
+   │                ^^^^^^^^ (u256, bool, address): Memory
 
 note: 
    ┌─ stress/tuple_stress.fe:46:16
    │
 46 │         return my_tuple.abi_encode()
-   │                ^^^^^^^^^^^^^^^^^^^^^ Array<u8, 96>: Memory => None
+   │                ^^^^^^^^^^^^^^^^^^^^^ Array<u8, 96>: Memory
 
 note: 
    ┌─ stress/tuple_stress.fe:46:16
    │
 46 │         return my_tuple.abi_encode()
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
-   │
-   = ValueAttribute
+   │                ^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(AbiEncode)
 
 

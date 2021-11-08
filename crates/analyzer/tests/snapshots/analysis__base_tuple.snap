@@ -54,14 +54,14 @@ note:
   ┌─ features/base_tuple.fe:3:17
   │
 3 │         return (my_num, my_bool)
-  │                 ^^^^^^  ^^^^^^^ bool: Value => None
+  │                 ^^^^^^  ^^^^^^^ bool: Value
   │                 │        
-  │                 u256: Value => None
+  │                 u256: Value
 
 note: 
   ┌─ features/base_tuple.fe:3:16
   │
 3 │         return (my_num, my_bool)
-  │                ^^^^^^^^^^^^^^^^^ (u256, bool): Memory => None
+  │                ^^^^^^^^^^^^^^^^^ (u256, bool): Memory
 
 

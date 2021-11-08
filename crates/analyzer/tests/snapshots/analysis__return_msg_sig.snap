@@ -26,6 +26,6 @@ note:
   ┌─ features/return_msg_sig.fe:3:16
   │
 3 │         return msg.sig
-  │                ^^^^^^^ u256: Value => None
+  │                ^^^^^^^ u256: Value
 
 

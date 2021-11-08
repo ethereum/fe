@@ -4,3 +4,9 @@ contract Foo:
 
     fn mut_fn(self):
         pass
+
+struct Bar:
+    x: u8
+
+    fn f() -> u8:
+        return self.x

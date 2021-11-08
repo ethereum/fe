@@ -388,6 +388,8 @@ fn test_assert() {
     case("radix_binary.fe", &[], uint_token(0b10)),
     case::map_tuple("map_tuple.fe", &[uint_token(1234)], uint_token(1234)),
     case::int_literal_coercion("int_literal_coercion.fe", &[], uint_token(300)),
+    case::associated_fns("associated_fns.fe", &[uint_token(12)], uint_token(144)),
+    case::struct_fns("struct_fns.fe", &[uint_token(10), uint_token(20)], uint_token(100)),
 )]
 fn test_method_return(fixture_file: &str, input: &[ethabi::Token], expected: ethabi::Token) {
     with_executor(&|mut executor| {
@@ -1154,7 +1156,7 @@ fn structs() {
         let harness = deploy_contract(&mut executor, "structs.fe", "Foo", &[]);
 
         harness.test_function(&mut executor, "create_house", &[], None);
-        harness.test_function(&mut executor, "bar", &[], Some(&uint_token(2)));
+        harness.test_function(&mut executor, "bar", &[], Some(&uint_token(102)));
 
         let encoded_house = [
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

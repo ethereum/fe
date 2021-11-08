@@ -4,10 +4,10 @@ expression: "error_string(&path, &src)"
 
 ---
 error: `Foo.create2(...)` called within `Foo` creates an illegal circular dependency
-  ┌─ compile_errors/circular_dependency_create2.fe:3:24
+  ┌─ compile_errors/circular_dependency_create2.fe:3:28
   │
 3 │         let foo: Foo = Foo.create2(2, 0)
-  │                        ^^^^^^^^^^^ Contract creation
+  │                            ^^^^^^^ Contract creation
   │
   = Note: Consider using a dedicated factory contract to create instances of `Foo`
 

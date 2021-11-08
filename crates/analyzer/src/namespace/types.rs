@@ -1,5 +1,6 @@
 use crate::errors::{NotFixedSize, TypeError};
-use crate::namespace::items::{ContractId, StructId};
+use crate::namespace::items::{Class, ContractId, StructId};
+use crate::AnalyzerDb;
 
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
@@ -38,7 +39,11 @@ pub enum Type {
     Map(Map),
     Tuple(Tuple),
     String(FeString),
+    /// An "external" contract. Effectively just a `newtype`d address.
     Contract(Contract),
+    /// The type of a contract while it's being executed. Ie. the type
+    /// of `self` within a contract function.
+    SelfContract(Contract),
     Struct(Struct),
 }
 
@@ -102,11 +107,28 @@ pub struct Struct {
     pub id: StructId,
     pub field_count: usize,
 }
+impl Struct {
+    pub fn from_id(id: StructId, db: &dyn AnalyzerDb) -> Self {
+        Self {
+            name: id.name(db),
+            id,
+            field_count: id.fields(db).len(),
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Contract {
     pub name: String,
     pub id: ContractId,
+}
+impl Contract {
+    pub fn from_id(id: ContractId, db: &dyn AnalyzerDb) -> Self {
+        Self {
+            name: id.name(db),
+            id,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
@@ -116,14 +138,13 @@ pub struct FeString {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FunctionSignature {
-    pub self_decl: SelfDecl,
+    pub self_decl: Option<SelfDecl>,
     pub params: Vec<FunctionParam>,
     pub return_type: Result<FixedSize, TypeError>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub enum SelfDecl {
-    None,
     Mutable,
 }
 
@@ -322,18 +343,6 @@ impl Type {
         *self == Type::Base(Base::Unit)
     }
 
-    pub fn is_fixed_size(&self) -> bool {
-        match self {
-            Type::Array(_) => true,
-            Type::Base(_) => true,
-            Type::Tuple(_) => true,
-            Type::String(_) => true,
-            Type::Struct(_) => true,
-            Type::Contract(_) => true,
-            Type::Map(_) => false,
-        }
-    }
-
     pub fn int(int_type: Integer) -> Self {
         Type::Base(Base::Numeric(int_type))
     }
@@ -361,6 +370,7 @@ pub trait TypeDowncast {
     fn as_map(&self) -> Option<&Map>;
     fn as_int(&self) -> Option<Integer>;
     fn as_primitive(&self) -> Option<Base>;
+    fn as_class(&self) -> Option<Class>;
 }
 
 impl TypeDowncast for Type {
@@ -400,6 +410,14 @@ impl TypeDowncast for Type {
             _ => None,
         }
     }
+    fn as_class(&self) -> Option<Class> {
+        match self {
+            Type::Struct(inner) => Some(Class::Struct(inner.id)),
+            Type::Contract(inner) => Some(Class::Contract(inner.id)),
+            Type::SelfContract(inner) => Some(Class::Contract(inner.id)),
+            _ => None,
+        }
+    }
 }
 
 impl TypeDowncast for Option<&Type> {
@@ -420,6 +438,9 @@ impl TypeDowncast for Option<&Type> {
     }
     fn as_primitive(&self) -> Option<Base> {
         self.and_then(|t| t.as_primitive())
+    }
+    fn as_class(&self) -> Option<Class> {
+        self.and_then(|t| t.as_class())
     }
 }
 
@@ -512,6 +533,7 @@ impl TryFrom<Type> for FixedSize {
             Type::Struct(val) => Ok(FixedSize::Struct(val)),
             Type::Map(_) => Err(NotFixedSize),
             Type::Contract(contract) => Ok(FixedSize::Contract(contract)),
+            Type::SelfContract(_) => Err(NotFixedSize),
         }
     }
 }
@@ -608,6 +630,7 @@ impl fmt::Display for Type {
             Type::Tuple(inner) => inner.fmt(f),
             Type::String(inner) => inner.fmt(f),
             Type::Contract(inner) => inner.fmt(f),
+            Type::SelfContract(inner) => inner.fmt(f),
             Type::Struct(inner) => inner.fmt(f),
         }
     }

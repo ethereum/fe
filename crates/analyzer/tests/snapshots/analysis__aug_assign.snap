@@ -54,11 +54,11 @@ note:
   ┌─ features/aug_assign.fe:5:9
   │
 5 │         a += b
-  │         ^    ^ u256: Value => None
+  │         ^    ^ u256: Value
   │         │     
-  │         u256: Value => None
+  │         u256: Value
 6 │         return a
-  │                ^ u256: Value => None
+  │                ^ u256: Value
 
 note: 
    ┌─ features/aug_assign.fe:8:5
@@ -105,11 +105,11 @@ note:
    ┌─ features/aug_assign.fe:9:9
    │
  9 │         a -= b
-   │         ^    ^ u256: Value => None
+   │         ^    ^ u256: Value
    │         │     
-   │         u256: Value => None
+   │         u256: Value
 10 │         return a
-   │                ^ u256: Value => None
+   │                ^ u256: Value
 
 note: 
    ┌─ features/aug_assign.fe:12:5
@@ -156,11 +156,11 @@ note:
    ┌─ features/aug_assign.fe:13:9
    │
 13 │         a *= b
-   │         ^    ^ u256: Value => None
+   │         ^    ^ u256: Value
    │         │     
-   │         u256: Value => None
+   │         u256: Value
 14 │         return a
-   │                ^ u256: Value => None
+   │                ^ u256: Value
 
 note: 
    ┌─ features/aug_assign.fe:16:5
@@ -207,11 +207,11 @@ note:
    ┌─ features/aug_assign.fe:17:9
    │
 17 │         a /= b
-   │         ^    ^ u256: Value => None
+   │         ^    ^ u256: Value
    │         │     
-   │         u256: Value => None
+   │         u256: Value
 18 │         return a
-   │                ^ u256: Value => None
+   │                ^ u256: Value
 
 note: 
    ┌─ features/aug_assign.fe:20:5
@@ -258,11 +258,11 @@ note:
    ┌─ features/aug_assign.fe:21:9
    │
 21 │         a %= b
-   │         ^    ^ u256: Value => None
+   │         ^    ^ u256: Value
    │         │     
-   │         u256: Value => None
+   │         u256: Value
 22 │         return a
-   │                ^ u256: Value => None
+   │                ^ u256: Value
 
 note: 
    ┌─ features/aug_assign.fe:24:5
@@ -309,11 +309,11 @@ note:
    ┌─ features/aug_assign.fe:25:9
    │
 25 │         a **= b
-   │         ^     ^ u256: Value => None
+   │         ^     ^ u256: Value
    │         │      
-   │         u256: Value => None
+   │         u256: Value
 26 │         return a
-   │                ^ u256: Value => None
+   │                ^ u256: Value
 
 note: 
    ┌─ features/aug_assign.fe:28:5
@@ -360,11 +360,11 @@ note:
    ┌─ features/aug_assign.fe:29:9
    │
 29 │         a <<= b
-   │         ^     ^ u8: Value => None
+   │         ^     ^ u8: Value
    │         │      
-   │         u8: Value => None
+   │         u8: Value
 30 │         return a
-   │                ^ u8: Value => None
+   │                ^ u8: Value
 
 note: 
    ┌─ features/aug_assign.fe:32:5
@@ -411,11 +411,11 @@ note:
    ┌─ features/aug_assign.fe:33:9
    │
 33 │         a >>= b
-   │         ^     ^ u8: Value => None
+   │         ^     ^ u8: Value
    │         │      
-   │         u8: Value => None
+   │         u8: Value
 34 │         return a
-   │                ^ u8: Value => None
+   │                ^ u8: Value
 
 note: 
    ┌─ features/aug_assign.fe:36:5
@@ -462,11 +462,11 @@ note:
    ┌─ features/aug_assign.fe:37:9
    │
 37 │         a |= b
-   │         ^    ^ u8: Value => None
+   │         ^    ^ u8: Value
    │         │     
-   │         u8: Value => None
+   │         u8: Value
 38 │         return a
-   │                ^ u8: Value => None
+   │                ^ u8: Value
 
 note: 
    ┌─ features/aug_assign.fe:40:5
@@ -513,11 +513,11 @@ note:
    ┌─ features/aug_assign.fe:41:9
    │
 41 │         a ^= b
-   │         ^    ^ u8: Value => None
+   │         ^    ^ u8: Value
    │         │     
-   │         u8: Value => None
+   │         u8: Value
 42 │         return a
-   │                ^ u8: Value => None
+   │                ^ u8: Value
 
 note: 
    ┌─ features/aug_assign.fe:44:5
@@ -564,11 +564,11 @@ note:
    ┌─ features/aug_assign.fe:45:9
    │
 45 │         a &= b
-   │         ^    ^ u8: Value => None
+   │         ^    ^ u8: Value
    │         │     
-   │         u8: Value => None
+   │         u8: Value
 46 │         return a
-   │                ^ u8: Value => None
+   │                ^ u8: Value
 
 note: 
    ┌─ features/aug_assign.fe:48:5
@@ -577,10 +577,12 @@ note:
 49 │ │         self.my_num = a
 50 │ │         self.my_num += b
 51 │ │         return self.my_num
-   │ ╰──────────────────────────^ attributes hash: 2855001974628647253
+   │ ╰──────────────────────────^ attributes hash: 12434239357523874673
    │  
    = FunctionSignature {
-         self_decl: Mutable,
+         self_decl: Some(
+             Mutable,
+         ),
          params: [
              FunctionParam {
                  name: "a",
@@ -616,15 +618,33 @@ note:
    ┌─ features/aug_assign.fe:49:9
    │
 49 │         self.my_num = a
-   │         ^^^^^^^^^^^   ^ u256: Value => None
+   │         ^^^^ Foo: Value
+
+note: 
+   ┌─ features/aug_assign.fe:49:9
+   │
+49 │         self.my_num = a
+   │         ^^^^^^^^^^^   ^ u256: Value
    │         │              
-   │         u256: Storage { nonce: Some(0) } => None
+   │         u256: Storage { nonce: Some(0) }
 50 │         self.my_num += b
-   │         ^^^^^^^^^^^    ^ u256: Value => None
+   │         ^^^^ Foo: Value
+
+note: 
+   ┌─ features/aug_assign.fe:50:9
+   │
+50 │         self.my_num += b
+   │         ^^^^^^^^^^^    ^ u256: Value
    │         │               
-   │         u256: Storage { nonce: Some(0) } => None
+   │         u256: Storage { nonce: Some(0) }
 51 │         return self.my_num
-   │                ^^^^^^^^^^^ u256: Storage { nonce: Some(0) } => Some(Value)
+   │                ^^^^ Foo: Value
+
+note: 
+   ┌─ features/aug_assign.fe:51:16
+   │
+51 │         return self.my_num
+   │                ^^^^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
 
 note: 
    ┌─ features/aug_assign.fe:53:5
@@ -679,38 +699,38 @@ note:
    ┌─ features/aug_assign.fe:55:9
    │
 55 │         my_array[7] = a
-   │         ^^^^^^^^ ^ u256: Value => None
+   │         ^^^^^^^^ ^ u256: Value
    │         │         
-   │         Array<u256, 10>: Memory => None
+   │         Array<u256, 10>: Memory
 
 note: 
    ┌─ features/aug_assign.fe:55:9
    │
 55 │         my_array[7] = a
-   │         ^^^^^^^^^^^   ^ u256: Value => None
+   │         ^^^^^^^^^^^   ^ u256: Value
    │         │              
-   │         u256: Memory => None
+   │         u256: Memory
 56 │         my_array[7] += b
-   │         ^^^^^^^^ ^ u256: Value => None
+   │         ^^^^^^^^ ^ u256: Value
    │         │         
-   │         Array<u256, 10>: Memory => None
+   │         Array<u256, 10>: Memory
 
 note: 
    ┌─ features/aug_assign.fe:56:9
    │
 56 │         my_array[7] += b
-   │         ^^^^^^^^^^^    ^ u256: Value => None
+   │         ^^^^^^^^^^^    ^ u256: Value
    │         │               
-   │         u256: Memory => None
+   │         u256: Memory
 57 │         return my_array[7]
-   │                ^^^^^^^^ ^ u256: Value => None
+   │                ^^^^^^^^ ^ u256: Value
    │                │         
-   │                Array<u256, 10>: Memory => None
+   │                Array<u256, 10>: Memory
 
 note: 
    ┌─ features/aug_assign.fe:57:16
    │
 57 │         return my_array[7]
-   │                ^^^^^^^^^^^ u256: Memory => Some(Value)
+   │                ^^^^^^^^^^^ u256: Memory => Value
 
 

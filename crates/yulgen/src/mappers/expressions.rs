@@ -4,12 +4,13 @@ use crate::operations::{
     abi as abi_operations, contracts as contract_operations, data as data_operations,
     math as math_operations, structs as struct_operations,
 };
-use crate::types::AsAbiType;
-use crate::types::EvmSized;
-use builtins::{BlockField, ChainField, MsgField, Object, TxField};
-use fe_analyzer::builtins;
-use fe_analyzer::builtins::{ContractTypeMethod, GlobalMethod};
+use crate::types::{AsAbiType, EvmSized};
+use fe_analyzer::builtins::{
+    self, BlockField, ChainField, ContractSelfField, ContractTypeMethod, GlobalFunction,
+    GlobalObject, MsgField, TxField,
+};
 use fe_analyzer::context::{CallType, Location};
+use fe_analyzer::namespace::items::Class;
 use fe_analyzer::namespace::types::{Base, FixedSize, Type};
 use fe_common::numeric;
 use fe_common::utils::keccak;
@@ -104,7 +105,7 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
 
     return match call_type {
         CallType::BuiltinFunction(func) => match func {
-            GlobalMethod::Keccak256 => {
+            GlobalFunction::Keccak256 => {
                 let first_arg = &args.kind.first().expect("Missing argument").kind.value;
                 let attributes = context
                     .expression_attributes(first_arg)
@@ -114,92 +115,110 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
                 let size = identifier_expression! { (size.size()) };
                 expression! { [func_name]([yul_args[0].to_owned()], [size]) }
             }
-            GlobalMethod::SendValue => {
+            GlobalFunction::SendValue => {
                 expression! { send_value([yul_args[0].to_owned()], [yul_args[1].to_owned()]) }
             }
-            GlobalMethod::Balance => {
+            GlobalFunction::Balance => {
                 expression! { selfbalance() }
             }
-            GlobalMethod::BalanceOf => {
+            GlobalFunction::BalanceOf => {
                 expression! { balance([yul_args[0].to_owned()]) }
             }
         },
-        CallType::TypeConstructor {
-            typ: Type::Struct(val),
-        } => struct_operations::new(&val, yul_args),
-        CallType::TypeConstructor {
-            typ: Type::Base(Base::Numeric(integer)),
-        } => math_operations::adjust_numeric_size(&integer, yul_args[0].to_owned()),
-        CallType::TypeConstructor { .. } => yul_args[0].to_owned(),
+        CallType::BuiltinValueMethod(method) => {
+            let target = match &func.kind {
+                fe::Expr::Attribute { value, .. } => value,
+                _ => unreachable!(),
+            };
+            match method {
+                // Copying is done in `expr(..)` based on the move location set
+                // in the expression's attributes, so we just map the value for
+                // `to_mem` and `clone`.
+                builtins::ValueMethod::ToMem => expr(context, target),
+                builtins::ValueMethod::Clone => expr(context, target),
+                builtins::ValueMethod::AbiEncode => match context
+                    .expression_attributes(target)
+                    .expect("missing expr attributes")
+                    .typ
+                    .clone()
+                {
+                    Type::Struct(struct_) => abi_operations::encode(
+                        &[struct_.as_abi_type(context.db)],
+                        vec![expr(context, target)],
+                    ),
+                    _ => panic!("invalid attributes"),
+                },
+            }
+        }
+        CallType::TypeConstructor(Type::Struct(val)) => struct_operations::new(&val, yul_args),
+        CallType::TypeConstructor(Type::Base(Base::Numeric(integer))) => {
+            math_operations::adjust_numeric_size(&integer, yul_args[0].to_owned())
+        }
+        CallType::TypeConstructor(_) => yul_args[0].to_owned(),
         CallType::Pure(func) => {
             let func_name = names::func_name(&func.name(context.db));
             expression! { [func_name]([yul_args...]) }
         }
-        CallType::SelfAttribute { func_name, .. } => {
-            let func_name = names::func_name(&func_name);
+        CallType::BuiltinAssociatedFunction { contract, function } => {
+            let contract_name = contract.name(context.db);
+            context
+                .contract
+                .created_contracts
+                .insert(contract_name.clone());
+            match function {
+                ContractTypeMethod::Create2 => contract_operations::create2(
+                    &contract_name,
+                    yul_args[0].to_owned(),
+                    yul_args[1].to_owned(),
+                ),
+                ContractTypeMethod::Create => {
+                    contract_operations::create(&contract_name, yul_args[0].to_owned())
+                }
+            }
+        }
+        CallType::AssociatedFunction { class, function } => {
+            assert!(
+                matches!(class, Class::Struct(_)),
+                "call to contract-associated fn should be rejected by analyzer as not-yet-implemented"
+            );
+            let func_name = names::associated_function_name(
+                &class.name(context.db),
+                &function.name(context.db),
+            );
             expression! { [func_name]([yul_args...]) }
         }
+        CallType::ValueMethod {
+            is_self,
+            class,
+            method,
+        } => {
+            let target = match &func.kind {
+                fe::Expr::Attribute { value, .. } => value,
+                _ => unreachable!(),
+            };
 
-        CallType::ValueAttribute => {
-            if let fe::Expr::Attribute { value, attr } = &func.kind {
-                let value_attributes = context
-                    .expression_attributes(value)
-                    .expect("invalid attributes");
-
-                return match (value_attributes.typ.to_owned(), &attr.kind) {
-                    (Type::Contract(contract), func_name) => contract_operations::call(
-                        contract,
-                        func_name,
-                        expr(context, value),
-                        yul_args,
-                    ),
-                    (typ, func_name) => {
-                        match builtins::ValueMethod::from_str(func_name)
-                            .expect("uncaught analyzer error")
-                        {
-                            // Copying is done in `expr(..)` based on the move location set
-                            // in the expression's attributes, so we just map the value for
-                            // `to_mem` and `clone`.
-                            builtins::ValueMethod::ToMem => expr(context, value),
-                            builtins::ValueMethod::Clone => expr(context, value),
-                            builtins::ValueMethod::AbiEncode => match typ {
-                                Type::Struct(struct_) => abi_operations::encode(
-                                    &[struct_.as_abi_type(context.db)],
-                                    vec![expr(context, value)],
-                                ),
-                                _ => panic!("invalid attributes"),
-                            },
-                        }
+            let class_name = class.name(context.db);
+            match class {
+                Class::Contract(contract) => {
+                    if is_self {
+                        // TODO: contract fns should use names::associated_function_name
+                        let fn_name = names::func_name(&method.name(context.db));
+                        expression! { [fn_name]([yul_args...]) }
+                    } else {
+                        let address = expr(context, target);
+                        let fn_name = names::contract_call(
+                            &contract.name(context.db),
+                            &method.name(context.db),
+                        );
+                        expression! { [fn_name]([address], [yul_args...]) }
                     }
-                };
-            }
-
-            panic!("invalid attributes")
-        }
-        CallType::TypeAttribute { typ, func_name } => {
-            match (
-                typ,
-                ContractTypeMethod::from_str(func_name.as_str()).expect("invalid attributes"),
-            ) {
-                (Type::Contract(contract), ContractTypeMethod::Create2) => {
-                    context
-                        .contract
-                        .created_contracts
-                        .insert(contract.name.clone());
-                    contract_operations::create2(
-                        &contract,
-                        yul_args[0].to_owned(),
-                        yul_args[1].to_owned(),
-                    )
                 }
-                (Type::Contract(contract), ContractTypeMethod::Create) => {
-                    context
-                        .contract
-                        .created_contracts
-                        .insert(contract.name.clone());
-                    contract_operations::create(&contract, yul_args[0].to_owned())
+                Class::Struct(_) => {
+                    let target = expr(context, target);
+                    let fn_name =
+                        names::associated_function_name(&class_name, &method.name(context.db));
+                    expression! { [fn_name]([target], [yul_args...]) }
                 }
-                _ => panic!("invalid attributes"),
             }
         }
     };
@@ -421,76 +440,74 @@ fn expr_subscript(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Express
 }
 
 fn expr_attribute(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
-    if let fe::Expr::Attribute { value, attr } = &exp.kind {
-        // If the given value has expression attributes, we handle it as an expression
-        // by first mapping the value and then performing the expected operation
-        // inferred from the attribute name.
-        //
-        // If the given value does not have expression attributes, we assume it is a
-        // builtin object and map it as such.
-        return if let Some(attributes) = context.expression_attributes(value).cloned() {
-            let value = expr(context, value);
+    let (target, field) = match &exp.kind {
+        fe::Expr::Attribute { value, attr } => (value, attr),
+        _ => unreachable!(),
+    };
 
-            match &attributes.typ {
-                Type::Struct(struct_) => {
-                    struct_operations::get_attribute(struct_, &attr.kind, value)
-                }
-                _ => panic!("invalid attributes"),
-            }
-        } else {
-            match Object::from_str(&expr_name_string(value)) {
-                Ok(Object::Self_) => expr_attribute_self(context, exp),
-                Ok(Object::Block) => match BlockField::from_str(&attr.kind) {
-                    Ok(BlockField::Coinbase) => expression! { coinbase() },
-                    Ok(BlockField::Difficulty) => expression! { difficulty() },
-                    Ok(BlockField::Number) => expression! { number() },
-                    Ok(BlockField::Timestamp) => expression! { timestamp() },
-                    Err(_) => panic!("invalid `block` attribute name"),
-                },
-                Ok(Object::Chain) => match ChainField::from_str(&attr.kind) {
-                    Ok(ChainField::Id) => expression! { chainid() },
-                    Err(_) => panic!("invalid `chain` attribute name"),
-                },
-                Ok(Object::Msg) => match MsgField::from_str(&attr.kind) {
-                    Ok(MsgField::Sender) => expression! { caller() },
-                    Ok(MsgField::Sig) => expression! { cloadn(0, 4) },
-                    Ok(MsgField::Value) => expression! { callvalue() },
-                    Err(_) => panic!("invalid `msg` attribute name"),
-                },
-                Ok(Object::Tx) => match TxField::from_str(&attr.kind) {
-                    Ok(TxField::GasPrice) => expression! { gasprice() },
-                    Ok(TxField::Origin) => expression! { origin() },
-                    Err(_) => panic!("invalid `msg` attribute name"),
-                },
-                Err(_) => panic!("invalid attributes"),
-            }
-        };
-    }
-
-    unreachable!()
-}
-
-fn expr_attribute_self(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
-    if let fe::Expr::Attribute { attr, .. } = &exp.kind {
-        if let Ok(builtins::SelfField::Address) = builtins::SelfField::from_str(&attr.kind) {
-            return expression! { address() };
+    // Check if it's a magical global object first.
+    if let fe::Expr::Name(name) = &target.kind {
+        match GlobalObject::from_str(name) {
+            Ok(GlobalObject::Block) => match BlockField::from_str(&field.kind) {
+                Ok(BlockField::Coinbase) => return expression! { coinbase() },
+                Ok(BlockField::Difficulty) => return expression! { difficulty() },
+                Ok(BlockField::Number) => return expression! { number() },
+                Ok(BlockField::Timestamp) => return expression! { timestamp() },
+                Err(_) => panic!("invalid `block` attribute name"),
+            },
+            Ok(GlobalObject::Chain) => match ChainField::from_str(&field.kind) {
+                Ok(ChainField::Id) => return expression! { chainid() },
+                Err(_) => panic!("invalid `chain` attribute name"),
+            },
+            Ok(GlobalObject::Msg) => match MsgField::from_str(&field.kind) {
+                Ok(MsgField::Sender) => return expression! { caller() },
+                Ok(MsgField::Sig) => return expression! { cloadn(0, 4) },
+                Ok(MsgField::Value) => return expression! { callvalue() },
+                Err(_) => panic!("invalid `msg` attribute name"),
+            },
+            Ok(GlobalObject::Tx) => match TxField::from_str(&field.kind) {
+                Ok(TxField::GasPrice) => return expression! { gasprice() },
+                Ok(TxField::Origin) => return expression! { origin() },
+                Err(_) => panic!("invalid `msg` attribute name"),
+            },
+            Err(_) => {}
         }
     }
 
-    if let Some(attributes) = context.expression_attributes(exp) {
-        let nonce = if let Location::Storage { nonce: Some(nonce) } = attributes.location {
-            nonce
-        } else {
-            panic!("invalid attributes");
-        };
+    let target_attrs = context
+        .expression_attributes(target)
+        .unwrap_or_else(|| panic!("missing attributes for expr: {:?}", target))
+        .clone();
 
-        return match attributes.typ {
-            Type::Map(_) => literal_expression! { (nonce) },
-            _ => nonce_to_ptr(nonce),
-        };
+    match &target_attrs.typ {
+        Type::Contract(_) => {
+            // TODO: verify that this is caught by analyzer
+            unreachable!("only `self` contract fields can be accessed for now")
+        }
+        Type::SelfContract(_) => {
+            if let Ok(ContractSelfField::Address) = ContractSelfField::from_str(&field.kind) {
+                return expression! { address() };
+            }
+            let exp_attrs = context
+                .expression_attributes(exp)
+                .expect("missing expr attributes");
+            let nonce = match exp_attrs.location {
+                Location::Storage { nonce: Some(nonce) } => nonce,
+                _ => unreachable!("expected contract `self` field to be in storage and have nonce"),
+            };
+            match exp_attrs.typ {
+                Type::Map(_) => literal_expression! { (nonce) },
+                _ => nonce_to_ptr(nonce),
+            }
+        }
+        Type::Struct(struct_) => {
+            // struct `self` is handled like any other struct value,
+            // and keeps the name `self` in the generated yul.
+            let target = expr(context, target);
+            struct_operations::get_attribute(struct_, &field.kind, target)
+        }
+        _ => panic!("invalid type for field access: {:?}", &target_attrs.typ),
     }
-
-    panic!("missing attributes")
 }
 
 /// Converts a storage nonce into a pointer based on the keccak256 hash

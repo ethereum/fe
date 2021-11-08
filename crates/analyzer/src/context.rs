@@ -1,7 +1,7 @@
-use crate::builtins::GlobalMethod;
+use crate::builtins::{ContractTypeMethod, GlobalFunction, ValueMethod};
 use crate::errors::{self, CannotMove, TypeError};
-use crate::namespace::items::{DiagnosticSink, EventId, FunctionId, Item};
-use crate::namespace::types::{FixedSize, Type};
+use crate::namespace::items::{Class, ContractId, DiagnosticSink, EventId, FunctionId, Item};
+use crate::namespace::types::{FixedSize, SelfDecl, Type};
 use crate::AnalyzerDb;
 use fe_common::diagnostics::Diagnostic;
 pub use fe_common::diagnostics::Label;
@@ -96,6 +96,16 @@ pub trait AnalyzerContext {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NamedThing {
     Item(Item),
+    SelfValue {
+        /// Function `self` parameter.
+        decl: Option<SelfDecl>,
+
+        /// The function's parent, if any. If `None`, `self` has been
+        /// used in a module-level function.
+        class: Option<Class>,
+        span: Option<Span>,
+    },
+    // SelfType // when/if we add a `Self` type keyword
     Variable {
         name: String,
         typ: Result<FixedSize, TypeError>,
@@ -107,6 +117,7 @@ impl NamedThing {
     pub fn name_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
         match self {
             NamedThing::Item(item) => item.name_span(db),
+            NamedThing::SelfValue { span, .. } => *span,
             NamedThing::Variable { span, .. } => Some(*span),
         }
     }
@@ -115,6 +126,7 @@ impl NamedThing {
         match self {
             NamedThing::Item(item) => item.is_builtin(),
             NamedThing::Variable { .. } => false,
+            NamedThing::SelfValue { .. } => false,
         }
     }
 
@@ -122,6 +134,7 @@ impl NamedThing {
         match self {
             NamedThing::Item(item) => item.item_kind_display_name(),
             NamedThing::Variable { .. } => "variable",
+            NamedThing::SelfValue { .. } => "value",
         }
     }
 }
@@ -210,16 +223,15 @@ impl ExpressionAttributes {
     /// Adds a move to value, if it is in storage or memory.
     pub fn into_loaded(mut self) -> Result<Self, CannotMove> {
         match self.typ {
-            Type::Base(_) => {}
-            Type::Contract(_) => {}
-            _ => return Err(CannotMove),
-        }
+            Type::Base(_) | Type::Contract(_) => {
+                if self.location != Location::Value {
+                    self.move_location = Some(Location::Value);
+                }
 
-        if self.location != Location::Value {
-            self.move_location = Some(Location::Value);
+                Ok(self)
+            }
+            _ => Err(CannotMove),
         }
-
-        Ok(self)
     }
 
     /// The final location of an expression after a possible move.
@@ -233,21 +245,77 @@ impl ExpressionAttributes {
 
 impl fmt::Display for ExpressionAttributes {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(
-            f,
-            "{}: {:?} => {:?}",
-            self.typ, self.location, self.move_location
-        )
+        if let Some(move_to) = self.move_location {
+            write!(f, "{}: {:?} => {:?}", self.typ, self.location, move_to)
+        } else {
+            write!(f, "{}: {:?}", self.typ, self.location)
+        }
     }
 }
 
 /// The type of a function call.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CallType {
-    BuiltinFunction(GlobalMethod),
-    TypeConstructor { typ: Type },
-    SelfAttribute { func_name: String, self_span: Span },
+    BuiltinFunction(GlobalFunction),
+    BuiltinValueMethod(ValueMethod),
+
+    // create, create2 (will be methods of the context struct soon)
+    BuiltinAssociatedFunction {
+        contract: ContractId,
+        function: ContractTypeMethod,
+    },
+
+    // MyStruct.foo() (soon MyStruct::foo())
+    AssociatedFunction {
+        class: Class,
+        function: FunctionId,
+    },
+    ValueMethod {
+        is_self: bool,
+        class: Class,
+        method: FunctionId,
+    },
     Pure(FunctionId),
-    ValueAttribute,
-    TypeAttribute { typ: Type, func_name: String },
+    TypeConstructor(Type),
+}
+
+impl CallType {
+    pub fn function(&self) -> Option<FunctionId> {
+        use CallType::*;
+        match self {
+            BuiltinFunction(_)
+            | BuiltinValueMethod(_)
+            | TypeConstructor(_)
+            | BuiltinAssociatedFunction { .. } => None,
+            AssociatedFunction { function: id, .. } | ValueMethod { method: id, .. } | Pure(id) => {
+                Some(*id)
+            }
+        }
+    }
+
+    pub fn function_name(&self, db: &dyn AnalyzerDb) -> String {
+        match self {
+            CallType::BuiltinFunction(f) => f.as_ref().to_string(),
+            CallType::BuiltinValueMethod(f) => f.as_ref().to_string(),
+            CallType::BuiltinAssociatedFunction { function, .. } => function.as_ref().to_string(),
+
+            CallType::AssociatedFunction { function: id, .. }
+            | CallType::ValueMethod { method: id, .. }
+            | CallType::Pure(id) => id.name(db),
+            CallType::TypeConstructor(typ) => typ.to_string(),
+        }
+    }
+
+    pub fn is_unsafe(&self, db: &dyn AnalyzerDb) -> bool {
+        // There are no built-in unsafe fns yet
+        self.function()
+            .map(|id| id.unsafe_span(db).is_some())
+            .unwrap_or(false)
+    }
+}
+
+impl fmt::Display for CallType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(f, "{:?}", self)
+    }
 }

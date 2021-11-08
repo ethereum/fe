@@ -1,0 +1,16 @@
+
+struct Lib: # This can't be a contract, yet
+  pub fn square(x: u256) -> u256:
+    return x * x
+
+struct MyStruct:
+  x: u256
+  pub fn new(x: u256) -> MyStruct:
+    return MyStruct(x)
+
+contract Foo:
+  my_struct: MyStruct
+
+  pub fn bar(self, val: u256) -> u256:
+    self.my_struct = MyStruct.new(val)
+    return Lib.square(self.my_struct.x)

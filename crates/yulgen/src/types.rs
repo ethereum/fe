@@ -222,8 +222,8 @@ impl AsAbiType for Struct {
     fn as_abi_type(&self, db: &dyn AnalyzerDb) -> AbiType {
         let components = self
             .id
-            .all_fields(db)
-            .iter()
+            .fields(db)
+            .values()
             .map(|field| {
                 field
                     .typ(db)

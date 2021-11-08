@@ -47,14 +47,14 @@ note:
   ┌─ features/return_mod_u256.fe:3:16
   │
 3 │         return x % y
-  │                ^   ^ u256: Value => None
+  │                ^   ^ u256: Value
   │                │    
-  │                u256: Value => None
+  │                u256: Value
 
 note: 
   ┌─ features/return_mod_u256.fe:3:16
   │
 3 │         return x % y
-  │                ^^^^^ u256: Value => None
+  │                ^^^^^ u256: Value
 
 

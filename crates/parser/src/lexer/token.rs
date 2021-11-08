@@ -83,8 +83,6 @@ pub enum TokenKind {
     Idx,
     #[token("if")]
     If,
-    #[token("import")]
-    Import,
     #[token("pragma")]
     Pragma,
     #[token("pass")]
@@ -97,6 +95,8 @@ pub enum TokenKind {
     Return,
     #[token("revert")]
     Revert,
+    #[token("self")]
+    SelfValue,
     #[token("struct")]
     Struct,
     #[token("type")]
@@ -209,107 +209,97 @@ pub enum TokenKind {
 
 impl TokenKind {
     /// Return a user-friendly description of the token kind. E.g.
-    /// `TokenKind::Newline => "a newline"`
-    /// Returns [`TokenKind::symbol_str`] for symbol tokens.
-    pub fn friendly_str(&self) -> Option<&'static str> {
+    /// TokenKind::Newline => "a newline"
+    /// TokenKind::Colon => "`:`"
+    pub fn describe(&self) -> &str {
         use TokenKind::*;
-        let val = match self {
+        match self {
             Newline => "a newline",
             Dedent => "a dedent",
+            Indent => "an indentation",
             Name => "a name",
             Int => "a number",
             Hex => "a hexadecimal number",
             Octal => "an octal number",
             Binary => "a binary number",
             Text => "a string",
-            _ => return self.symbol_str(),
-        };
-        Some(val)
-    }
 
-    /// If the token is a symbol or keyword, return the string representation.
-    /// E.g. `TokenKind::EqEq => "=="`
-    pub fn symbol_str(&self) -> Option<&'static str> {
-        use TokenKind::*;
-        let val = match self {
-            True => "true",
-            False => "false",
-            Assert => "assert",
-            Break => "break",
-            Continue => "continue",
-            Contract => "contract",
-            Fn => "fn",
-            Const => "const",
-            Let => "let",
-            Elif => "elif",
-            Else => "else",
-            Emit => "emit",
-            Event => "event",
-            Idx => "idx",
-            If => "if",
-            Import => "import",
-            Pragma => "pragma",
-            Pass => "pass",
-            For => "for",
-            Pub => "pub",
-            Return => "return",
-            Revert => "revert",
-            Struct => "struct",
-            Type => "type",
-            Unsafe => "unsafe",
-            While => "while",
-            And => "and",
-            As => "as",
-            In => "in",
-            Not => "not",
-            Or => "or",
-            Use => "use",
-            ParenOpen => "(",
-            ParenClose => ")",
-            BracketOpen => "[",
-            BracketClose => "]",
-            BraceOpen => "{",
-            BraceClose => "}",
-            Colon => ":",
-            ColonColon => "::",
-            Comma => ",",
-            Semi => "",
-            Plus => "+",
-            Minus => "-",
-            Star => "*",
-            Slash => "/",
-            Pipe => "|",
-            Amper => "&",
-            Lt => "<",
-            LtLt => "<<",
-            Gt => ">",
-            GtGt => ">>",
-            Eq => "=",
-            Dot => ".",
-            Percent => "%",
-            EqEq => "==",
-            NotEq => "!=",
-            LtEq => "<=",
-            GtEq => ">=",
-            Tilde => "~",
-            Hat => "^",
-            StarStar => "**",
-            StarStarEq => "**=",
-            PlusEq => "+=",
-            MinusEq => "-=",
-            StarEq => "*=",
-            SlashEq => "/=",
-            PercentEq => "%=",
-            AmperEq => "&=",
-            PipeEq => "|=",
-            HatEq => "^=",
-            LtLtEq => "<<=",
-            GtGtEq => ">>=",
-            Arrow => "->",
-            Error | Newline | Indent | Dedent | Name | Int | Hex | Octal | Binary | Text => {
-                return None
-            }
-        };
-        Some(val)
+            True => "keyword `true`",
+            False => "keyword `false`",
+            Assert => "keyword `assert`",
+            Break => "keyword `break`",
+            Continue => "keyword `continue`",
+            Contract => "keyword `contract`",
+            Fn => "keyword `fn`",
+            Const => "keyword `const`",
+            Let => "keyword `let`",
+            Elif => "keyword `elif`",
+            Else => "keyword `else`",
+            Emit => "keyword `emit`",
+            Event => "keyword `event`",
+            Idx => "keyword `idx`",
+            If => "keyword `if`",
+            Pragma => "keyword `pragma`",
+            Pass => "keyword `pass`",
+            For => "keyword `for`",
+            Pub => "keyword `pub`",
+            Return => "keyword `return`",
+            Revert => "keyword `revert`",
+            SelfValue => "keyword `self`",
+            Struct => "keyword `struct`",
+            Type => "keyword `type`",
+            Unsafe => "keyword `unsafe`",
+            While => "keyword `while`",
+            And => "keyword `and`",
+            As => "keyword `as`",
+            In => "keyword `in`",
+            Not => "keyword `not`",
+            Or => "keyword `or`",
+            Use => "keyword `use`",
+            ParenOpen => "symbol `(`",
+            ParenClose => "symbol `)`",
+            BracketOpen => "symbol `[`",
+            BracketClose => "symbol `]`",
+            BraceOpen => "symbol `{`",
+            BraceClose => "symbol `}`",
+            Colon => "symbol `:`",
+            ColonColon => "symbol `::`",
+            Comma => "symbol `,`",
+            Semi => "symbol ``",
+            Plus => "symbol `+`",
+            Minus => "symbol `-`",
+            Star => "symbol `*`",
+            Slash => "symbol `/`",
+            Pipe => "symbol `|`",
+            Amper => "symbol `&`",
+            Lt => "symbol `<`",
+            LtLt => "symbol `<<`",
+            Gt => "symbol `>`",
+            GtGt => "symbol `>>`",
+            Eq => "symbol `=`",
+            Dot => "symbol `.`",
+            Percent => "symbol `%`",
+            EqEq => "symbol `==`",
+            NotEq => "symbol `!=`",
+            LtEq => "symbol `<=`",
+            GtEq => "symbol `>=`",
+            Tilde => "symbol `~`",
+            Hat => "symbol `^`",
+            StarStar => "symbol `**`",
+            StarStarEq => "symbol `**=`",
+            PlusEq => "symbol `+=`",
+            MinusEq => "symbol `-=`",
+            StarEq => "symbol `*=`",
+            SlashEq => "symbol `/=`",
+            PercentEq => "symbol `%=`",
+            AmperEq => "symbol `&=`",
+            PipeEq => "symbol `|=`",
+            HatEq => "symbol `^=`",
+            LtLtEq => "symbol `<<=`",
+            GtGtEq => "symbol `>>=`",
+            Arrow => "symbol `->`",
+
+            Error => unreachable!(),
+        }
     }
 }

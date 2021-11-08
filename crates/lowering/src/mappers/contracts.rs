@@ -9,22 +9,28 @@ use fe_parser::node::Node;
 pub fn contract_def(context: &mut ModuleContext, contract: ContractId) -> Node<ast::Contract> {
     let db = context.db;
     let fields = contract
-        .all_fields(db)
-        .iter()
+        .fields(db)
+        .values()
         .map(|field| contract_field(context, *field))
         .collect();
 
     let events = contract
-        .all_events(db)
-        .iter()
+        .events(db)
+        .values()
         .map(|event| ast::ContractStmt::Event(event_def(context, *event)))
         .collect::<Vec<_>>();
 
-    let functions = contract
-        .all_functions(db)
-        .iter()
+    let mut functions = contract
+        .functions(db)
+        .values()
         .map(|function| ast::ContractStmt::Function(functions::func_def(context, *function)))
-        .collect();
+        .collect::<Vec<_>>();
+
+    if let Some(init_fn) = contract.init_function(db) {
+        functions.push(ast::ContractStmt::Function(functions::func_def(
+            context, init_fn,
+        )));
+    }
 
     let node = &contract.data(context.db).ast;
     Node::new(

@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(files, module, &db)"
+expression: "build_snapshot(&files, module, &db)"
 
 ---
 note: 
@@ -14,10 +14,12 @@ note:
   │  
 4 │ ╭     fn assign(self, val: u256):
 5 │ │         self.baz[0] = val
-  │ ╰─────────────────────────^ attributes hash: 254453825868610726
+  │ ╰─────────────────────────^ attributes hash: 7431471554531340963
   │  
   = FunctionSignature {
-        self_decl: Mutable,
+        self_decl: Some(
+            Mutable,
+        ),
         params: [
             FunctionParam {
                 name: "val",
@@ -41,17 +43,23 @@ note:
   ┌─ features/call_statement_with_args.fe:5:9
   │
 5 │         self.baz[0] = val
-  │         ^^^^^^^^ ^ u256: Value => None
-  │         │         
-  │         Map<u256, u256>: Storage { nonce: Some(0) } => None
+  │         ^^^^ Foo: Value
 
 note: 
   ┌─ features/call_statement_with_args.fe:5:9
   │
 5 │         self.baz[0] = val
-  │         ^^^^^^^^^^^   ^^^ u256: Value => None
+  │         ^^^^^^^^ ^ u256: Value
+  │         │         
+  │         Map<u256, u256>: Storage { nonce: Some(0) }
+
+note: 
+  ┌─ features/call_statement_with_args.fe:5:9
+  │
+5 │         self.baz[0] = val
+  │         ^^^^^^^^^^^   ^^^ u256: Value
   │         │              
-  │         u256: Storage { nonce: None } => None
+  │         u256: Storage { nonce: None }
 
 note: 
   ┌─ features/call_statement_with_args.fe:7:5
@@ -59,10 +67,12 @@ note:
 7 │ ╭     pub fn bar(self) -> u256:
 8 │ │         self.assign(100)
 9 │ │         return self.baz[0]
-  │ ╰──────────────────────────^ attributes hash: 16482263331346774611
+  │ ╰──────────────────────────^ attributes hash: 2875164910451995213
   │  
   = FunctionSignature {
-        self_decl: Mutable,
+        self_decl: Some(
+            Mutable,
+        ),
         params: [],
         return_type: Ok(
             Base(
@@ -74,36 +84,39 @@ note:
     }
 
 note: 
-  ┌─ features/call_statement_with_args.fe:8:21
+  ┌─ features/call_statement_with_args.fe:8:9
   │
 8 │         self.assign(100)
-  │                     ^^^ u256: Value => None
+  │         ^^^^        ^^^ u256: Value
+  │         │            
+  │         Foo: Value
 
 note: 
   ┌─ features/call_statement_with_args.fe:8:9
   │
 8 │         self.assign(100)
-  │         ^^^^^^^^^^^^^^^^ (): Value => None
+  │         ^^^^^^^^^^^^^^^^ (): Value
 9 │         return self.baz[0]
-  │                ^^^^^^^^ ^ u256: Value => None
-  │                │         
-  │                Map<u256, u256>: Storage { nonce: Some(0) } => None
+  │                ^^^^ Foo: Value
 
 note: 
   ┌─ features/call_statement_with_args.fe:9:16
   │
 9 │         return self.baz[0]
-  │                ^^^^^^^^^^^ u256: Storage { nonce: None } => Some(Value)
+  │                ^^^^^^^^ ^ u256: Value
+  │                │         
+  │                Map<u256, u256>: Storage { nonce: Some(0) }
+
+note: 
+  ┌─ features/call_statement_with_args.fe:9:16
+  │
+9 │         return self.baz[0]
+  │                ^^^^^^^^^^^ u256: Storage { nonce: None } => Value
 
 note: 
   ┌─ features/call_statement_with_args.fe:8:9
   │
 8 │         self.assign(100)
-  │         ^^^^^^^^^^^ attributes hash: 8522453005002335674
-  │
-  = SelfAttribute {
-        func_name: "assign",
-        self_span: 137..141,
-    }
+  │         ^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(0)), method: FunctionId(0) }
 
 

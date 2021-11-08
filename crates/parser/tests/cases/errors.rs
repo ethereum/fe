@@ -90,7 +90,7 @@ test_parse_err! { if_no_body, functions::parse_stmt, true, "if x:\nelse:\n x" }
 test_parse_err! { use_bad_name, module::parse_use, true, "use x as 123" }
 test_parse_err! { module_bad_stmt, module::parse_module, true, "if x:\n y" }
 test_parse_err! { module_nonsense, module::parse_module, true, "))" }
-test_parse_err! { struct_bad_field_name, types::parse_struct_def, true, "struct f:\n pub fn" }
+test_parse_err! { struct_bad_field_name, types::parse_struct_def, true, "struct f:\n pub event" }
 test_parse_err! { stmt_vardecl_attr, functions::parse_stmt, true, "f.s : u" }
 test_parse_err! { stmt_vardecl_tuple, functions::parse_stmt, true, "(a, x+1) : u256" }
 test_parse_err! { stmt_vardecl_tuple_empty, functions::parse_stmt, true, "(a, ()) : u256" }
@@ -102,6 +102,13 @@ test_parse_err! { stmt_vardecl_invalid_type_annotation, functions::parse_stmt, t
 test_parse_err! { stmt_vardecl_invalid_name, functions::parse_stmt, true, "let x + y: u8" }
 test_parse_err! { array_old_syntax, functions::parse_stmt, false, "let x: u8[10]" }
 test_parse_err! { array_old_syntax_invalid, functions::parse_stmt, true, "let x: u8[10" }
+
+test_parse_err! { self_const, module::parse_module, true, "const self: u8 = 10" }
+test_parse_err! { self_contract, module::parse_module, true, "contract self:\n pass" }
+test_parse_err! { self_struct, module::parse_module, true, "struct self:\n pass" }
+test_parse_err! { self_fn, module::parse_module, true, "pub fn self():\n pass" }
+test_parse_err! { self_use1, module::parse_module, true, "use self as bar" }
+test_parse_err! { self_use2, module::parse_module, true, "use bar as self" }
 
 // assert_snapshot! doesn't like the invalid escape code
 #[test]

@@ -7,7 +7,7 @@ error: failed to parse field definition
   ┌─ fn_def_kw:2:10
   │
 2 │  pub def f(x: u8):
-  │          ^ Unexpected token. Expected `:`
+  │          ^ expected symbol `:`, found a name
   │
   = Hint: use `fn` to define a function
   = Example: `pub fn f( ...`

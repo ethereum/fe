@@ -14,10 +14,12 @@ note:
   │  
 7 │ ╭     pub fn read_bar(self) -> u256:
 8 │ │         return self.bar[42]
-  │ ╰───────────────────────────^ attributes hash: 16482263331346774611
+  │ ╰───────────────────────────^ attributes hash: 2875164910451995213
   │  
   = FunctionSignature {
-        self_decl: Mutable,
+        self_decl: Some(
+            Mutable,
+        ),
         params: [],
         return_type: Ok(
             Base(
@@ -32,14 +34,20 @@ note:
   ┌─ features/constructor.fe:8:16
   │
 8 │         return self.bar[42]
-  │                ^^^^^^^^ ^^ u256: Value => None
-  │                │         
-  │                Map<u256, u256>: Storage { nonce: Some(0) } => None
+  │                ^^^^ Foo: Value
 
 note: 
   ┌─ features/constructor.fe:8:16
   │
 8 │         return self.bar[42]
-  │                ^^^^^^^^^^^^ u256: Storage { nonce: None } => Some(Value)
+  │                ^^^^^^^^ ^^ u256: Value
+  │                │         
+  │                Map<u256, u256>: Storage { nonce: Some(0) }
+
+note: 
+  ┌─ features/constructor.fe:8:16
+  │
+8 │         return self.bar[42]
+  │                ^^^^^^^^^^^^ u256: Storage { nonce: None } => Value
 
 

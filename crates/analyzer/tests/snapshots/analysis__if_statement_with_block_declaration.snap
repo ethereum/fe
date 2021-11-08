@@ -40,15 +40,15 @@ note:
   ┌─ features/if_statement_with_block_declaration.fe:4:12
   │
 4 │         if true:
-  │            ^^^^ bool: Value => None
+  │            ^^^^ bool: Value
 5 │             let y: u256 = 1
-  │                           ^ u256: Value => None
+  │                           ^ u256: Value
 6 │             return y
-  │                    ^ u256: Value => None
+  │                    ^ u256: Value
 7 │         else:
 8 │             let y: u256 = 1
-  │                           ^ u256: Value => None
+  │                           ^ u256: Value
 9 │             return y
-  │                    ^ u256: Value => None
+  │                    ^ u256: Value
 
 

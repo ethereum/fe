@@ -14,10 +14,12 @@ note:
   │  
 4 │ ╭     pub fn read_bar(self, key: address) -> Array<u8, 10>:
 5 │ │         return self.bar[key].to_mem()
-  │ ╰─────────────────────────────────────^ attributes hash: 8899857923785283493
+  │ ╰─────────────────────────────────────^ attributes hash: 17131555945527520636
   │  
   = FunctionSignature {
-        self_decl: Mutable,
+        self_decl: Some(
+            Mutable,
+        ),
         params: [
             FunctionParam {
                 name: "key",
@@ -44,39 +46,45 @@ note:
   ┌─ features/address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
-  │                ^^^^^^^^ ^^^ address: Value => None
+  │                ^^^^ Foo: Value
+
+note: 
+  ┌─ features/address_bytes10_map.fe:5:16
+  │
+5 │         return self.bar[key].to_mem()
+  │                ^^^^^^^^ ^^^ address: Value
   │                │         
-  │                Map<address, Array<u8, 10>>: Storage { nonce: Some(0) } => None
+  │                Map<address, Array<u8, 10>>: Storage { nonce: Some(0) }
 
 note: 
   ┌─ features/address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
-  │                ^^^^^^^^^^^^^ Array<u8, 10>: Storage { nonce: None } => None
+  │                ^^^^^^^^^^^^^ Array<u8, 10>: Storage { nonce: None }
 
 note: 
   ┌─ features/address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
-  │                ^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 10>: Storage { nonce: None } => Some(Memory)
+  │                ^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 10>: Storage { nonce: None } => Memory
 
 note: 
   ┌─ features/address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
-  │                ^^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
-  │
-  = ValueAttribute
+  │                ^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
 
 note: 
   ┌─ features/address_bytes10_map.fe:7:5
   │  
 7 │ ╭     pub fn write_bar(self, key: address, value: Array<u8, 10>):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 8250642936007969286
+  │ ╰─────────────────────────────^ attributes hash: 427041985524849514
   │  
   = FunctionSignature {
-        self_decl: Mutable,
+        self_decl: Some(
+            Mutable,
+        ),
         params: [
             FunctionParam {
                 name: "key",
@@ -111,16 +119,22 @@ note:
   ┌─ features/address_bytes10_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^ ^^^ address: Value => None
-  │         │         
-  │         Map<address, Array<u8, 10>>: Storage { nonce: Some(0) } => None
+  │         ^^^^ Foo: Value
 
 note: 
   ┌─ features/address_bytes10_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^^^^^^   ^^^^^ Array<u8, 10>: Memory => None
+  │         ^^^^^^^^ ^^^ address: Value
+  │         │         
+  │         Map<address, Array<u8, 10>>: Storage { nonce: Some(0) }
+
+note: 
+  ┌─ features/address_bytes10_map.fe:8:9
+  │
+8 │         self.bar[key] = value
+  │         ^^^^^^^^^^^^^   ^^^^^ Array<u8, 10>: Memory
   │         │                
-  │         Array<u8, 10>: Storage { nonce: None } => None
+  │         Array<u8, 10>: Storage { nonce: None }
 
 

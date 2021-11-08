@@ -42,22 +42,22 @@ note:
   ┌─ features/if_statement_2.fe:4:12
   │
 4 │         if val > 5:
-  │            ^^^   ^ u256: Value => None
+  │            ^^^   ^ u256: Value
   │            │      
-  │            u256: Value => None
+  │            u256: Value
 
 note: 
   ┌─ features/if_statement_2.fe:4:12
   │
 4 │         if val > 5:
-  │            ^^^^^^^ bool: Value => None
+  │            ^^^^^^^ bool: Value
 5 │             return 1
-  │                    ^ u256: Value => None
+  │                    ^ u256: Value
 6 │         else:
 7 │             assert true
-  │                    ^^^^ bool: Value => None
+  │                    ^^^^ bool: Value
 8 │ 
 9 │         return 0
-  │                ^ u256: Value => None
+  │                ^ u256: Value
 
 

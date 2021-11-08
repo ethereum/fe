@@ -249,17 +249,16 @@ impl<'a> Parser<'a> {
         if tok.kind == expected {
             Ok(tok)
         } else {
-            let label = if let Some(symbol) = expected.symbol_str() {
-                format!("Unexpected token. Expected `{}`", symbol)
-            } else {
-                format!(
-                    "Unexpected token. Expected {}",
-                    expected.friendly_str().unwrap()
-                )
-            };
             self.fancy_error(
                 message.into(),
-                vec![Label::primary(tok.span, label)],
+                vec![Label::primary(
+                    tok.span,
+                    format!(
+                        "expected {}, found {}",
+                        expected.describe(),
+                        tok.kind.describe()
+                    ),
+                )],
                 notes_fn(&tok),
             );
             Err(ParseFailed)

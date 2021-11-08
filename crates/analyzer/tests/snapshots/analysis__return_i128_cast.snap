@@ -26,32 +26,24 @@ note:
   ┌─ features/return_i128_cast.fe:3:22
   │
 3 │         return i128(-3)
-  │                      ^ u256: Value => None
+  │                      ^ u256: Value
 
 note: 
   ┌─ features/return_i128_cast.fe:3:21
   │
 3 │         return i128(-3)
-  │                     ^^ i128: Value => None
+  │                     ^^ i128: Value
 
 note: 
   ┌─ features/return_i128_cast.fe:3:16
   │
 3 │         return i128(-3)
-  │                ^^^^^^^^ i128: Value => None
+  │                ^^^^^^^^ i128: Value
 
 note: 
   ┌─ features/return_i128_cast.fe:3:16
   │
 3 │         return i128(-3)
-  │                ^^^^ attributes hash: 17259437597606577465
-  │
-  = TypeConstructor {
-        typ: Base(
-            Numeric(
-                I128,
-            ),
-        ),
-    }
+  │                ^^^^ TypeConstructor(Base(Numeric(I128)))
 
 

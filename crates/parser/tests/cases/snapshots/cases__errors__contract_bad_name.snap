@@ -7,7 +7,7 @@ error: failed to parse contract definition
   ┌─ contract_bad_name:1:10
   │
 1 │ contract 1X:
-  │          ^ Unexpected token. Expected a name
+  │          ^ expected a name, found a number
   │
   = Note: `contract` must be followed by a name, which must start with a letter and contain only letters, numbers, or underscores
 

@@ -26,7 +26,7 @@ note:
   ┌─ features/create_contract.fe:3:16
   │
 3 │         return 42
-  │                ^^ u256: Value => None
+  │                ^^ u256: Value
 
 note: 
   ┌─ features/create_contract.fe:6:5
@@ -56,50 +56,28 @@ note:
   ┌─ features/create_contract.fe:7:35
   │
 7 │         let foo: Foo = Foo.create(0)
-  │                                   ^ u256: Value => None
+  │                                   ^ u256: Value
 
 note: 
   ┌─ features/create_contract.fe:7:24
   │
 7 │         let foo: Foo = Foo.create(0)
-  │                        ^^^^^^^^^^^^^ Foo: Value => None
+  │                        ^^^^^^^^^^^^^ Foo: Value
 8 │         return address(foo)
-  │                        ^^^ Foo: Value => None
+  │                        ^^^ Foo: Value
 
 note: 
   ┌─ features/create_contract.fe:8:16
   │
 8 │         return address(foo)
-  │                ^^^^^^^^^^^^ address: Value => None
+  │                ^^^^^^^^^^^^ address: Value
 
 note: 
   ┌─ features/create_contract.fe:7:24
   │
 7 │         let foo: Foo = Foo.create(0)
-  │                        ^^^^^^^^^^ attributes hash: 6749875126898824118
-  │
-  = TypeAttribute {
-        typ: Contract(
-            Contract {
-                name: "Foo",
-                id: ContractId(
-                    0,
-                ),
-            },
-        ),
-        func_name: "create",
-    }
-
-note: 
-  ┌─ features/create_contract.fe:8:16
-  │
+  │                        ^^^^^^^^^^ BuiltinAssociatedFunction { contract: ContractId(0), function: Create }
 8 │         return address(foo)
-  │                ^^^^^^^ attributes hash: 14203407709342965641
-  │
-  = TypeConstructor {
-        typ: Base(
-            Address,
-        ),
-    }
+  │                ^^^^^^^ TypeConstructor(Base(Address))
 
 

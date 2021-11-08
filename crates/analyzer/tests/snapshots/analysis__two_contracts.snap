@@ -32,62 +32,43 @@ note:
   ┌─ features/two_contracts.fe:6:28
   │
 6 │         return Bar(address(0)).bar()
-  │                            ^ u256: Value => None
+  │                            ^ u256: Value
 
 note: 
   ┌─ features/two_contracts.fe:6:20
   │
 6 │         return Bar(address(0)).bar()
-  │                    ^^^^^^^^^^ address: Value => None
+  │                    ^^^^^^^^^^ address: Value
 
 note: 
   ┌─ features/two_contracts.fe:6:16
   │
 6 │         return Bar(address(0)).bar()
-  │                ^^^^^^^^^^^^^^^ Bar: Value => None
+  │                ^^^^^^^^^^^^^^^ Bar: Value
 
 note: 
   ┌─ features/two_contracts.fe:6:16
   │
 6 │         return Bar(address(0)).bar()
-  │                ^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
-
-note: 
-  ┌─ features/two_contracts.fe:6:16
-  │
-6 │         return Bar(address(0)).bar()
-  │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
-  │
-  = ValueAttribute
-
-note: 
-  ┌─ features/two_contracts.fe:6:16
-  │
-6 │         return Bar(address(0)).bar()
-  │                ^^^ attributes hash: 6689852709950325620
-  │
-  = TypeConstructor {
-        typ: Contract(
-            Contract {
-                name: "Bar",
-                id: ContractId(
-                    1,
-                ),
-            },
-        ),
-    }
+  │                ^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
   ┌─ features/two_contracts.fe:6:20
   │
 6 │         return Bar(address(0)).bar()
-  │                    ^^^^^^^ attributes hash: 14203407709342965641
+  │                    ^^^^^^^ TypeConstructor(Base(Address))
+
+note: 
+  ┌─ features/two_contracts.fe:6:16
   │
-  = TypeConstructor {
-        typ: Base(
-            Address,
-        ),
-    }
+6 │         return Bar(address(0)).bar()
+  │                ^^^ TypeConstructor(Contract(Contract { name: "Bar", id: ContractId(1) }))
+
+note: 
+  ┌─ features/two_contracts.fe:6:16
+  │
+6 │         return Bar(address(0)).bar()
+  │                ^^^^^^^^^^^^^^^^^^^ ValueMethod { is_self: false, class: Contract(ContractId(1)), method: FunctionId(3) }
 
 note: 
   ┌─ features/two_contracts.fe:8:5
@@ -112,7 +93,7 @@ note:
   ┌─ features/two_contracts.fe:9:16
   │
 9 │         return 42
-  │                ^^ u256: Value => None
+  │                ^^ u256: Value
 
 note: 
    ┌─ features/two_contracts.fe:13:5
@@ -143,62 +124,43 @@ note:
    ┌─ features/two_contracts.fe:16:28
    │
 16 │         return Foo(address(0)).foo()
-   │                            ^ u256: Value => None
+   │                            ^ u256: Value
 
 note: 
    ┌─ features/two_contracts.fe:16:20
    │
 16 │         return Foo(address(0)).foo()
-   │                    ^^^^^^^^^^ address: Value => None
+   │                    ^^^^^^^^^^ address: Value
 
 note: 
    ┌─ features/two_contracts.fe:16:16
    │
 16 │         return Foo(address(0)).foo()
-   │                ^^^^^^^^^^^^^^^ Foo: Value => None
+   │                ^^^^^^^^^^^^^^^ Foo: Value
 
 note: 
    ┌─ features/two_contracts.fe:16:16
    │
 16 │         return Foo(address(0)).foo()
-   │                ^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
-
-note: 
-   ┌─ features/two_contracts.fe:16:16
-   │
-16 │         return Foo(address(0)).foo()
-   │                ^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
-   │
-   = ValueAttribute
-
-note: 
-   ┌─ features/two_contracts.fe:16:16
-   │
-16 │         return Foo(address(0)).foo()
-   │                ^^^ attributes hash: 1647454659037951517
-   │
-   = TypeConstructor {
-         typ: Contract(
-             Contract {
-                 name: "Foo",
-                 id: ContractId(
-                     0,
-                 ),
-             },
-         ),
-     }
+   │                ^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
    ┌─ features/two_contracts.fe:16:20
    │
 16 │         return Foo(address(0)).foo()
-   │                    ^^^^^^^ attributes hash: 14203407709342965641
+   │                    ^^^^^^^ TypeConstructor(Base(Address))
+
+note: 
+   ┌─ features/two_contracts.fe:16:16
    │
-   = TypeConstructor {
-         typ: Base(
-             Address,
-         ),
-     }
+16 │         return Foo(address(0)).foo()
+   │                ^^^ TypeConstructor(Contract(Contract { name: "Foo", id: ContractId(0) }))
+
+note: 
+   ┌─ features/two_contracts.fe:16:16
+   │
+16 │         return Foo(address(0)).foo()
+   │                ^^^^^^^^^^^^^^^^^^^ ValueMethod { is_self: false, class: Contract(ContractId(0)), method: FunctionId(1) }
 
 note: 
    ┌─ features/two_contracts.fe:18:5
@@ -223,6 +185,6 @@ note:
    ┌─ features/two_contracts.fe:19:16
    │
 19 │         return 26
-   │                ^^ u256: Value => None
+   │                ^^ u256: Value
 
 

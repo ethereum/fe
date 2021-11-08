@@ -185,7 +185,7 @@ fn parse_expr_head(par: &mut Parser) -> ParseResult<Node<Expr>> {
     use TokenKind::*;
 
     match par.peek_or_err()? {
-        Name | Int | Hex | Octal | Binary | Text | True | False => {
+        Name | SelfValue | Int | Hex | Octal | Binary | Text | True | False => {
             let tok = par.next()?;
             Ok(atom(par, &tok))
         }
@@ -355,7 +355,7 @@ fn atom(par: &mut Parser, tok: &Token) -> Node<Expr> {
     use TokenKind::*;
 
     let expr = match tok.kind {
-        Name => Expr::Name(tok.text.to_owned()),
+        Name | SelfValue => Expr::Name(tok.text.to_owned()),
         Int | Hex | Octal | Binary => Expr::Num(tok.text.to_owned()),
         True | False => Expr::Bool(tok.kind == True),
         Text => {

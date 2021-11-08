@@ -2,6 +2,6 @@ contract Bar:
     pass
 
 contract Foo:
-
     pub fn foo():
         Bar.create(true)
+        Bar.create()     # agroce #447

@@ -14,10 +14,12 @@ note:
   │  
 4 │ ╭     pub fn read_bar(self, key: u16) -> u16:
 5 │ │         return self.bar[key]
-  │ ╰────────────────────────────^ attributes hash: 13277112481715403660
+  │ ╰────────────────────────────^ attributes hash: 9873798429331488760
   │  
   = FunctionSignature {
-        self_decl: Mutable,
+        self_decl: Some(
+            Mutable,
+        ),
         params: [
             FunctionParam {
                 name: "key",
@@ -43,25 +45,33 @@ note:
   ┌─ features/u16_u16_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^ ^^^ u16: Value => None
-  │                │         
-  │                Map<u16, u16>: Storage { nonce: Some(0) } => None
+  │                ^^^^ Foo: Value
 
 note: 
   ┌─ features/u16_u16_map.fe:5:16
   │
 5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ u16: Storage { nonce: None } => Some(Value)
+  │                ^^^^^^^^ ^^^ u16: Value
+  │                │         
+  │                Map<u16, u16>: Storage { nonce: Some(0) }
+
+note: 
+  ┌─ features/u16_u16_map.fe:5:16
+  │
+5 │         return self.bar[key]
+  │                ^^^^^^^^^^^^^ u16: Storage { nonce: None } => Value
 
 note: 
   ┌─ features/u16_u16_map.fe:7:5
   │  
 7 │ ╭     pub fn write_bar(self, key: u16, value: u16):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 14682981866604087396
+  │ ╰─────────────────────────────^ attributes hash: 6039485858219602437
   │  
   = FunctionSignature {
-        self_decl: Mutable,
+        self_decl: Some(
+            Mutable,
+        ),
         params: [
             FunctionParam {
                 name: "key",
@@ -95,16 +105,22 @@ note:
   ┌─ features/u16_u16_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^ ^^^ u16: Value => None
-  │         │         
-  │         Map<u16, u16>: Storage { nonce: Some(0) } => None
+  │         ^^^^ Foo: Value
 
 note: 
   ┌─ features/u16_u16_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^^^^^^   ^^^^^ u16: Value => None
+  │         ^^^^^^^^ ^^^ u16: Value
+  │         │         
+  │         Map<u16, u16>: Storage { nonce: Some(0) }
+
+note: 
+  ┌─ features/u16_u16_map.fe:8:9
+  │
+8 │         self.bar[key] = value
+  │         ^^^^^^^^^^^^^   ^^^^^ u16: Value
   │         │                
-  │         u16: Storage { nonce: None } => None
+  │         u16: Storage { nonce: None }
 
 

@@ -40,57 +40,57 @@ note:
   ┌─ features/for_loop_with_static_array.fe:5:9
   │
 5 │         my_array[0] = 5
-  │         ^^^^^^^^ ^ u256: Value => None
+  │         ^^^^^^^^ ^ u256: Value
   │         │         
-  │         Array<u256, 3>: Memory => None
+  │         Array<u256, 3>: Memory
 
 note: 
   ┌─ features/for_loop_with_static_array.fe:5:9
   │
 5 │         my_array[0] = 5
-  │         ^^^^^^^^^^^   ^ u256: Value => None
+  │         ^^^^^^^^^^^   ^ u256: Value
   │         │              
-  │         u256: Memory => None
+  │         u256: Memory
 6 │         my_array[1] = 10
-  │         ^^^^^^^^ ^ u256: Value => None
+  │         ^^^^^^^^ ^ u256: Value
   │         │         
-  │         Array<u256, 3>: Memory => None
+  │         Array<u256, 3>: Memory
 
 note: 
   ┌─ features/for_loop_with_static_array.fe:6:9
   │
 6 │         my_array[1] = 10
-  │         ^^^^^^^^^^^   ^^ u256: Value => None
+  │         ^^^^^^^^^^^   ^^ u256: Value
   │         │              
-  │         u256: Memory => None
+  │         u256: Memory
 7 │         my_array[2] = 15
-  │         ^^^^^^^^ ^ u256: Value => None
+  │         ^^^^^^^^ ^ u256: Value
   │         │         
-  │         Array<u256, 3>: Memory => None
+  │         Array<u256, 3>: Memory
 
 note: 
    ┌─ features/for_loop_with_static_array.fe:7:9
    │
  7 │         my_array[2] = 15
-   │         ^^^^^^^^^^^   ^^ u256: Value => None
+   │         ^^^^^^^^^^^   ^^ u256: Value
    │         │              
-   │         u256: Memory => None
+   │         u256: Memory
  8 │         let sum: u256 = 0
-   │                         ^ u256: Value => None
+   │                         ^ u256: Value
  9 │         for i in my_array:
-   │                  ^^^^^^^^ Array<u256, 3>: Memory => None
+   │                  ^^^^^^^^ Array<u256, 3>: Memory
 10 │             sum = sum + i
-   │             ^^^   ^^^   ^ u256: Value => None
+   │             ^^^   ^^^   ^ u256: Value
    │             │     │      
-   │             │     u256: Value => None
-   │             u256: Value => None
+   │             │     u256: Value
+   │             u256: Value
 
 note: 
    ┌─ features/for_loop_with_static_array.fe:10:19
    │
 10 │             sum = sum + i
-   │                   ^^^^^^^ u256: Value => None
+   │                   ^^^^^^^ u256: Value
 11 │         return sum
-   │                ^^^ u256: Value => None
+   │                ^^^ u256: Value
 
 

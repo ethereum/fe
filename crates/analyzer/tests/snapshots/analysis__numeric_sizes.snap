@@ -26,27 +26,19 @@ note:
   ┌─ features/numeric_sizes.fe:4:19
   │
 4 │         return u8(0)
-  │                   ^ u8: Value => None
+  │                   ^ u8: Value
 
 note: 
   ┌─ features/numeric_sizes.fe:4:16
   │
 4 │         return u8(0)
-  │                ^^^^^ u8: Value => None
+  │                ^^^^^ u8: Value
 
 note: 
   ┌─ features/numeric_sizes.fe:4:16
   │
 4 │         return u8(0)
-  │                ^^ attributes hash: 4311289215688173045
-  │
-  = TypeConstructor {
-        typ: Base(
-            Numeric(
-                U8,
-            ),
-        ),
-    }
+  │                ^^ TypeConstructor(Base(Numeric(U8)))
 
 note: 
   ┌─ features/numeric_sizes.fe:6:5
@@ -71,27 +63,19 @@ note:
   ┌─ features/numeric_sizes.fe:7:20
   │
 7 │         return u16(0)
-  │                    ^ u16: Value => None
+  │                    ^ u16: Value
 
 note: 
   ┌─ features/numeric_sizes.fe:7:16
   │
 7 │         return u16(0)
-  │                ^^^^^^ u16: Value => None
+  │                ^^^^^^ u16: Value
 
 note: 
   ┌─ features/numeric_sizes.fe:7:16
   │
 7 │         return u16(0)
-  │                ^^^ attributes hash: 14916054204896698573
-  │
-  = TypeConstructor {
-        typ: Base(
-            Numeric(
-                U16,
-            ),
-        ),
-    }
+  │                ^^^ TypeConstructor(Base(Numeric(U16)))
 
 note: 
    ┌─ features/numeric_sizes.fe:9:5
@@ -116,27 +100,19 @@ note:
    ┌─ features/numeric_sizes.fe:10:20
    │
 10 │         return u32(0)
-   │                    ^ u32: Value => None
+   │                    ^ u32: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:10:16
    │
 10 │         return u32(0)
-   │                ^^^^^^ u32: Value => None
+   │                ^^^^^^ u32: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:10:16
    │
 10 │         return u32(0)
-   │                ^^^ attributes hash: 14354300448608025539
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 U32,
-             ),
-         ),
-     }
+   │                ^^^ TypeConstructor(Base(Numeric(U32)))
 
 note: 
    ┌─ features/numeric_sizes.fe:12:5
@@ -161,27 +137,19 @@ note:
    ┌─ features/numeric_sizes.fe:13:20
    │
 13 │         return u64(0)
-   │                    ^ u64: Value => None
+   │                    ^ u64: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:13:16
    │
 13 │         return u64(0)
-   │                ^^^^^^ u64: Value => None
+   │                ^^^^^^ u64: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:13:16
    │
 13 │         return u64(0)
-   │                ^^^ attributes hash: 12468012384939114225
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 U64,
-             ),
-         ),
-     }
+   │                ^^^ TypeConstructor(Base(Numeric(U64)))
 
 note: 
    ┌─ features/numeric_sizes.fe:15:5
@@ -206,27 +174,19 @@ note:
    ┌─ features/numeric_sizes.fe:16:21
    │
 16 │         return u128(0)
-   │                     ^ u128: Value => None
+   │                     ^ u128: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:16:16
    │
 16 │         return u128(0)
-   │                ^^^^^^^ u128: Value => None
+   │                ^^^^^^^ u128: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:16:16
    │
 16 │         return u128(0)
-   │                ^^^^ attributes hash: 2454885421097624260
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 U128,
-             ),
-         ),
-     }
+   │                ^^^^ TypeConstructor(Base(Numeric(U128)))
 
 note: 
    ┌─ features/numeric_sizes.fe:18:5
@@ -251,27 +211,19 @@ note:
    ┌─ features/numeric_sizes.fe:19:21
    │
 19 │         return u256(0)
-   │                     ^ u256: Value => None
+   │                     ^ u256: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:19:16
    │
 19 │         return u256(0)
-   │                ^^^^^^^ u256: Value => None
+   │                ^^^^^^^ u256: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:19:16
    │
 19 │         return u256(0)
-   │                ^^^^ attributes hash: 2391147244535208323
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-     }
+   │                ^^^^ TypeConstructor(Base(Numeric(U256)))
 
 note: 
    ┌─ features/numeric_sizes.fe:21:5
@@ -296,33 +248,25 @@ note:
    ┌─ features/numeric_sizes.fe:22:20
    │
 22 │         return i8(-128)
-   │                    ^^^ u256: Value => None
+   │                    ^^^ u256: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:22:19
    │
 22 │         return i8(-128)
-   │                   ^^^^ i8: Value => None
+   │                   ^^^^ i8: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:22:16
    │
 22 │         return i8(-128)
-   │                ^^^^^^^^ i8: Value => None
+   │                ^^^^^^^^ i8: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:22:16
    │
 22 │         return i8(-128)
-   │                ^^ attributes hash: 2086885688824652821
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 I8,
-             ),
-         ),
-     }
+   │                ^^ TypeConstructor(Base(Numeric(I8)))
 
 note: 
    ┌─ features/numeric_sizes.fe:24:5
@@ -347,33 +291,25 @@ note:
    ┌─ features/numeric_sizes.fe:25:21
    │
 25 │         return i16(-32768)
-   │                     ^^^^^ u256: Value => None
+   │                     ^^^^^ u256: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:25:20
    │
 25 │         return i16(-32768)
-   │                    ^^^^^^ i16: Value => None
+   │                    ^^^^^^ i16: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:25:16
    │
 25 │         return i16(-32768)
-   │                ^^^^^^^^^^^ i16: Value => None
+   │                ^^^^^^^^^^^ i16: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:25:16
    │
 25 │         return i16(-32768)
-   │                ^^^ attributes hash: 1890852259110831876
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 I16,
-             ),
-         ),
-     }
+   │                ^^^ TypeConstructor(Base(Numeric(I16)))
 
 note: 
    ┌─ features/numeric_sizes.fe:27:5
@@ -398,33 +334,25 @@ note:
    ┌─ features/numeric_sizes.fe:28:21
    │
 28 │         return i32(-2147483648)
-   │                     ^^^^^^^^^^ u256: Value => None
+   │                     ^^^^^^^^^^ u256: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:28:20
    │
 28 │         return i32(-2147483648)
-   │                    ^^^^^^^^^^^ i32: Value => None
+   │                    ^^^^^^^^^^^ i32: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:28:16
    │
 28 │         return i32(-2147483648)
-   │                ^^^^^^^^^^^^^^^^ i32: Value => None
+   │                ^^^^^^^^^^^^^^^^ i32: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:28:16
    │
 28 │         return i32(-2147483648)
-   │                ^^^ attributes hash: 14092528269543401556
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 I32,
-             ),
-         ),
-     }
+   │                ^^^ TypeConstructor(Base(Numeric(I32)))
 
 note: 
    ┌─ features/numeric_sizes.fe:30:5
@@ -449,33 +377,25 @@ note:
    ┌─ features/numeric_sizes.fe:31:21
    │
 31 │         return i64(-9223372036854775808)
-   │                     ^^^^^^^^^^^^^^^^^^^ u256: Value => None
+   │                     ^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:31:20
    │
 31 │         return i64(-9223372036854775808)
-   │                    ^^^^^^^^^^^^^^^^^^^^ i64: Value => None
+   │                    ^^^^^^^^^^^^^^^^^^^^ i64: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:31:16
    │
 31 │         return i64(-9223372036854775808)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^ i64: Value => None
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^ i64: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:31:16
    │
 31 │         return i64(-9223372036854775808)
-   │                ^^^ attributes hash: 4849552154822743063
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 I64,
-             ),
-         ),
-     }
+   │                ^^^ TypeConstructor(Base(Numeric(I64)))
 
 note: 
    ┌─ features/numeric_sizes.fe:33:5
@@ -500,33 +420,25 @@ note:
    ┌─ features/numeric_sizes.fe:34:22
    │
 34 │         return i128(-170141183460469231731687303715884105728)
-   │                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
+   │                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:34:21
    │
 34 │         return i128(-170141183460469231731687303715884105728)
-   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i128: Value => None
+   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i128: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:34:16
    │
 34 │         return i128(-170141183460469231731687303715884105728)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i128: Value => None
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i128: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:34:16
    │
 34 │         return i128(-170141183460469231731687303715884105728)
-   │                ^^^^ attributes hash: 17259437597606577465
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 I128,
-             ),
-         ),
-     }
+   │                ^^^^ TypeConstructor(Base(Numeric(I128)))
 
 note: 
    ┌─ features/numeric_sizes.fe:36:5
@@ -551,33 +463,25 @@ note:
    ┌─ features/numeric_sizes.fe:37:22
    │
 37 │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
-   │                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
+   │                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:37:21
    │
 37 │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
-   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i256: Value => None
+   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i256: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:37:16
    │
 37 │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i256: Value => None
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i256: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:37:16
    │
 37 │         return i256(-57896044618658097711785492504343953926634992332820282019728792003956564819968)
-   │                ^^^^ attributes hash: 2888144854755155377
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 I256,
-             ),
-         ),
-     }
+   │                ^^^^ TypeConstructor(Base(Numeric(I256)))
 
 note: 
    ┌─ features/numeric_sizes.fe:39:5
@@ -602,27 +506,19 @@ note:
    ┌─ features/numeric_sizes.fe:40:19
    │
 40 │         return u8(255)
-   │                   ^^^ u8: Value => None
+   │                   ^^^ u8: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:40:16
    │
 40 │         return u8(255)
-   │                ^^^^^^^ u8: Value => None
+   │                ^^^^^^^ u8: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:40:16
    │
 40 │         return u8(255)
-   │                ^^ attributes hash: 4311289215688173045
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 U8,
-             ),
-         ),
-     }
+   │                ^^ TypeConstructor(Base(Numeric(U8)))
 
 note: 
    ┌─ features/numeric_sizes.fe:42:5
@@ -647,27 +543,19 @@ note:
    ┌─ features/numeric_sizes.fe:43:20
    │
 43 │         return u16(65535)
-   │                    ^^^^^ u16: Value => None
+   │                    ^^^^^ u16: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:43:16
    │
 43 │         return u16(65535)
-   │                ^^^^^^^^^^ u16: Value => None
+   │                ^^^^^^^^^^ u16: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:43:16
    │
 43 │         return u16(65535)
-   │                ^^^ attributes hash: 14916054204896698573
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 U16,
-             ),
-         ),
-     }
+   │                ^^^ TypeConstructor(Base(Numeric(U16)))
 
 note: 
    ┌─ features/numeric_sizes.fe:45:5
@@ -692,27 +580,19 @@ note:
    ┌─ features/numeric_sizes.fe:46:20
    │
 46 │         return u32(4294967295)
-   │                    ^^^^^^^^^^ u32: Value => None
+   │                    ^^^^^^^^^^ u32: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:46:16
    │
 46 │         return u32(4294967295)
-   │                ^^^^^^^^^^^^^^^ u32: Value => None
+   │                ^^^^^^^^^^^^^^^ u32: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:46:16
    │
 46 │         return u32(4294967295)
-   │                ^^^ attributes hash: 14354300448608025539
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 U32,
-             ),
-         ),
-     }
+   │                ^^^ TypeConstructor(Base(Numeric(U32)))
 
 note: 
    ┌─ features/numeric_sizes.fe:48:5
@@ -737,27 +617,19 @@ note:
    ┌─ features/numeric_sizes.fe:49:20
    │
 49 │         return u64(18446744073709551615)
-   │                    ^^^^^^^^^^^^^^^^^^^^ u64: Value => None
+   │                    ^^^^^^^^^^^^^^^^^^^^ u64: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:49:16
    │
 49 │         return u64(18446744073709551615)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^ u64: Value => None
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^ u64: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:49:16
    │
 49 │         return u64(18446744073709551615)
-   │                ^^^ attributes hash: 12468012384939114225
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 U64,
-             ),
-         ),
-     }
+   │                ^^^ TypeConstructor(Base(Numeric(U64)))
 
 note: 
    ┌─ features/numeric_sizes.fe:51:5
@@ -782,27 +654,19 @@ note:
    ┌─ features/numeric_sizes.fe:52:21
    │
 52 │         return u128(340282366920938463463374607431768211455)
-   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u128: Value => None
+   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u128: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:52:16
    │
 52 │         return u128(340282366920938463463374607431768211455)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u128: Value => None
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u128: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:52:16
    │
 52 │         return u128(340282366920938463463374607431768211455)
-   │                ^^^^ attributes hash: 2454885421097624260
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 U128,
-             ),
-         ),
-     }
+   │                ^^^^ TypeConstructor(Base(Numeric(U128)))
 
 note: 
    ┌─ features/numeric_sizes.fe:54:5
@@ -827,27 +691,19 @@ note:
    ┌─ features/numeric_sizes.fe:55:21
    │
 55 │         return u256(115792089237316195423570985008687907853269984665640564039457584007913129639935)
-   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
+   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:55:16
    │
 55 │         return u256(115792089237316195423570985008687907853269984665640564039457584007913129639935)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value => None
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:55:16
    │
 55 │         return u256(115792089237316195423570985008687907853269984665640564039457584007913129639935)
-   │                ^^^^ attributes hash: 2391147244535208323
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 U256,
-             ),
-         ),
-     }
+   │                ^^^^ TypeConstructor(Base(Numeric(U256)))
 
 note: 
    ┌─ features/numeric_sizes.fe:57:5
@@ -872,27 +728,19 @@ note:
    ┌─ features/numeric_sizes.fe:58:19
    │
 58 │         return i8(127)
-   │                   ^^^ i8: Value => None
+   │                   ^^^ i8: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:58:16
    │
 58 │         return i8(127)
-   │                ^^^^^^^ i8: Value => None
+   │                ^^^^^^^ i8: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:58:16
    │
 58 │         return i8(127)
-   │                ^^ attributes hash: 2086885688824652821
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 I8,
-             ),
-         ),
-     }
+   │                ^^ TypeConstructor(Base(Numeric(I8)))
 
 note: 
    ┌─ features/numeric_sizes.fe:60:5
@@ -917,27 +765,19 @@ note:
    ┌─ features/numeric_sizes.fe:61:20
    │
 61 │         return i16(32767)
-   │                    ^^^^^ i16: Value => None
+   │                    ^^^^^ i16: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:61:16
    │
 61 │         return i16(32767)
-   │                ^^^^^^^^^^ i16: Value => None
+   │                ^^^^^^^^^^ i16: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:61:16
    │
 61 │         return i16(32767)
-   │                ^^^ attributes hash: 1890852259110831876
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 I16,
-             ),
-         ),
-     }
+   │                ^^^ TypeConstructor(Base(Numeric(I16)))
 
 note: 
    ┌─ features/numeric_sizes.fe:63:5
@@ -962,27 +802,19 @@ note:
    ┌─ features/numeric_sizes.fe:64:20
    │
 64 │         return i32(2147483647)
-   │                    ^^^^^^^^^^ i32: Value => None
+   │                    ^^^^^^^^^^ i32: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:64:16
    │
 64 │         return i32(2147483647)
-   │                ^^^^^^^^^^^^^^^ i32: Value => None
+   │                ^^^^^^^^^^^^^^^ i32: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:64:16
    │
 64 │         return i32(2147483647)
-   │                ^^^ attributes hash: 14092528269543401556
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 I32,
-             ),
-         ),
-     }
+   │                ^^^ TypeConstructor(Base(Numeric(I32)))
 
 note: 
    ┌─ features/numeric_sizes.fe:66:5
@@ -1007,27 +839,19 @@ note:
    ┌─ features/numeric_sizes.fe:67:20
    │
 67 │         return i64(9223372036854775807)
-   │                    ^^^^^^^^^^^^^^^^^^^ i64: Value => None
+   │                    ^^^^^^^^^^^^^^^^^^^ i64: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:67:16
    │
 67 │         return i64(9223372036854775807)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^ i64: Value => None
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^ i64: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:67:16
    │
 67 │         return i64(9223372036854775807)
-   │                ^^^ attributes hash: 4849552154822743063
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 I64,
-             ),
-         ),
-     }
+   │                ^^^ TypeConstructor(Base(Numeric(I64)))
 
 note: 
    ┌─ features/numeric_sizes.fe:69:5
@@ -1052,27 +876,19 @@ note:
    ┌─ features/numeric_sizes.fe:70:21
    │
 70 │         return i128(170141183460469231731687303715884105727)
-   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i128: Value => None
+   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i128: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:70:16
    │
 70 │         return i128(170141183460469231731687303715884105727)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i128: Value => None
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i128: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:70:16
    │
 70 │         return i128(170141183460469231731687303715884105727)
-   │                ^^^^ attributes hash: 17259437597606577465
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 I128,
-             ),
-         ),
-     }
+   │                ^^^^ TypeConstructor(Base(Numeric(I128)))
 
 note: 
    ┌─ features/numeric_sizes.fe:72:5
@@ -1097,26 +913,18 @@ note:
    ┌─ features/numeric_sizes.fe:73:21
    │
 73 │         return i256(57896044618658097711785492504343953926634992332820282019728792003956564819967)
-   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i256: Value => None
+   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i256: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:73:16
    │
 73 │         return i256(57896044618658097711785492504343953926634992332820282019728792003956564819967)
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i256: Value => None
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i256: Value
 
 note: 
    ┌─ features/numeric_sizes.fe:73:16
    │
 73 │         return i256(57896044618658097711785492504343953926634992332820282019728792003956564819967)
-   │                ^^^^ attributes hash: 2888144854755155377
-   │
-   = TypeConstructor {
-         typ: Base(
-             Numeric(
-                 I256,
-             ),
-         ),
-     }
+   │                ^^^^ TypeConstructor(Base(Numeric(I256)))
 
 

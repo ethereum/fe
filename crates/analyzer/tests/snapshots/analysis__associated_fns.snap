@@ -1,0 +1,195 @@
+---
+source: crates/analyzer/tests/analysis.rs
+expression: "build_snapshot(\"features/associated_fns.fe\", &src, module, &db)"
+
+---
+note: 
+  ┌─ features/associated_fns.fe:3:3
+  │  
+3 │ ╭   pub fn square(x: u256) -> u256:
+4 │ │     return x * x
+  │ ╰────────────────^ attributes hash: 10491700091878076414
+  │  
+  = FunctionSignature {
+        self_decl: None,
+        params: [
+            FunctionParam {
+                name: "x",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U256,
+                        ),
+                    ),
+                ),
+            },
+        ],
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U256,
+                ),
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/associated_fns.fe:4:12
+  │
+4 │     return x * x
+  │            ^   ^ u256: Value
+  │            │    
+  │            u256: Value
+
+note: 
+  ┌─ features/associated_fns.fe:4:12
+  │
+4 │     return x * x
+  │            ^^^^^ u256: Value
+
+note: 
+  ┌─ features/associated_fns.fe:7:3
+  │
+7 │   x: u256
+  │   ^^^^^^^ u256
+
+note: 
+  ┌─ features/associated_fns.fe:8:3
+  │  
+8 │ ╭   pub fn new(x: u256) -> MyStruct:
+9 │ │     return MyStruct(x)
+  │ ╰──────────────────────^ attributes hash: 12320534675640633934
+  │  
+  = FunctionSignature {
+        self_decl: None,
+        params: [
+            FunctionParam {
+                name: "x",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U256,
+                        ),
+                    ),
+                ),
+            },
+        ],
+        return_type: Ok(
+            Struct(
+                Struct {
+                    name: "MyStruct",
+                    id: StructId(
+                        1,
+                    ),
+                    field_count: 1,
+                },
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/associated_fns.fe:9:21
+  │
+9 │     return MyStruct(x)
+  │                     ^ u256: Value
+
+note: 
+  ┌─ features/associated_fns.fe:9:12
+  │
+9 │     return MyStruct(x)
+  │            ^^^^^^^^^^^ MyStruct: Memory
+
+note: 
+  ┌─ features/associated_fns.fe:9:12
+  │
+9 │     return MyStruct(x)
+  │            ^^^^^^^^ TypeConstructor(Struct(Struct { name: "MyStruct", id: StructId(1), field_count: 1 }))
+
+note: 
+   ┌─ features/associated_fns.fe:12:3
+   │
+12 │   my_struct: MyStruct
+   │   ^^^^^^^^^^^^^^^^^^^ MyStruct
+
+note: 
+   ┌─ features/associated_fns.fe:14:3
+   │  
+14 │ ╭   pub fn bar(self, val: u256) -> u256:
+15 │ │     self.my_struct = MyStruct.new(val)
+16 │ │     return Lib.square(self.my_struct.x)
+   │ ╰───────────────────────────────────────^ attributes hash: 18287971674339323054
+   │  
+   = FunctionSignature {
+         self_decl: Some(
+             Mutable,
+         ),
+         params: [
+             FunctionParam {
+                 name: "val",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/associated_fns.fe:15:5
+   │
+15 │     self.my_struct = MyStruct.new(val)
+   │     ^^^^ Foo: Value
+
+note: 
+   ┌─ features/associated_fns.fe:15:5
+   │
+15 │     self.my_struct = MyStruct.new(val)
+   │     ^^^^^^^^^^^^^^                ^^^ u256: Value
+   │     │                              
+   │     MyStruct: Storage { nonce: Some(0) }
+
+note: 
+   ┌─ features/associated_fns.fe:15:22
+   │
+15 │     self.my_struct = MyStruct.new(val)
+   │                      ^^^^^^^^^^^^^^^^^ MyStruct: Memory
+16 │     return Lib.square(self.my_struct.x)
+   │                       ^^^^ Foo: Value
+
+note: 
+   ┌─ features/associated_fns.fe:16:23
+   │
+16 │     return Lib.square(self.my_struct.x)
+   │                       ^^^^^^^^^^^^^^ MyStruct: Storage { nonce: Some(0) }
+
+note: 
+   ┌─ features/associated_fns.fe:16:23
+   │
+16 │     return Lib.square(self.my_struct.x)
+   │                       ^^^^^^^^^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
+
+note: 
+   ┌─ features/associated_fns.fe:16:12
+   │
+16 │     return Lib.square(self.my_struct.x)
+   │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256: Value
+
+note: 
+   ┌─ features/associated_fns.fe:15:22
+   │
+15 │     self.my_struct = MyStruct.new(val)
+   │                      ^^^^^^^^^^^^ AssociatedFunction { class: Struct(StructId(1)), function: FunctionId(1) }
+16 │     return Lib.square(self.my_struct.x)
+   │            ^^^^^^^^^^ AssociatedFunction { class: Struct(StructId(0)), function: FunctionId(0) }
+
+

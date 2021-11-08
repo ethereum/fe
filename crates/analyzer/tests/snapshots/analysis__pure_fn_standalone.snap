@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(files, module, &db)"
+expression: "build_snapshot(&files, module, &db)"
 
 ---
 note: 
@@ -37,15 +37,15 @@ note:
   ┌─ features/pure_fn_standalone.fe:3:12
   │
 3 │     return x + 10
-  │            ^   ^^ u256: Value => None
+  │            ^   ^^ u256: Value
   │            │    
-  │            u256: Value => None
+  │            u256: Value
 
 note: 
   ┌─ features/pure_fn_standalone.fe:3:12
   │
 3 │     return x + 10
-  │            ^^^^^^ u256: Value => None
+  │            ^^^^^^ u256: Value
 
 note: 
   ┌─ features/pure_fn_standalone.fe:6:5
@@ -63,10 +63,12 @@ note:
 11 │ │             self.points[user] += add_bonus(val)
 12 │ │         else:
 13 │ │             self.points[user] += val
-   │ ╰────────────────────────────────────^ attributes hash: 316895463975841295
+   │ ╰────────────────────────────────────^ attributes hash: 17719730205805698134
    │  
    = FunctionSignature {
-         self_decl: Mutable,
+         self_decl: Some(
+             Mutable,
+         ),
          params: [
              FunctionParam {
                  name: "user",
@@ -98,58 +100,70 @@ note:
    ┌─ features/pure_fn_standalone.fe:10:12
    │
 10 │         if self.cool_users[user]:
-   │            ^^^^^^^^^^^^^^^ ^^^^ address: Value => None
-   │            │                
-   │            Map<address, bool>: Storage { nonce: Some(0) } => None
+   │            ^^^^ Foo: Value
 
 note: 
    ┌─ features/pure_fn_standalone.fe:10:12
    │
 10 │         if self.cool_users[user]:
-   │            ^^^^^^^^^^^^^^^^^^^^^ bool: Storage { nonce: None } => Some(Value)
+   │            ^^^^^^^^^^^^^^^ ^^^^ address: Value
+   │            │                
+   │            Map<address, bool>: Storage { nonce: Some(0) }
+
+note: 
+   ┌─ features/pure_fn_standalone.fe:10:12
+   │
+10 │         if self.cool_users[user]:
+   │            ^^^^^^^^^^^^^^^^^^^^^ bool: Storage { nonce: None } => Value
 11 │             self.points[user] += add_bonus(val)
-   │             ^^^^^^^^^^^ ^^^^ address: Value => None
-   │             │            
-   │             Map<address, u256>: Storage { nonce: Some(1) } => None
+   │             ^^^^ Foo: Value
 
 note: 
    ┌─ features/pure_fn_standalone.fe:11:13
    │
 11 │             self.points[user] += add_bonus(val)
-   │             ^^^^^^^^^^^^^^^^^              ^^^ u256: Value => None
+   │             ^^^^^^^^^^^ ^^^^ address: Value
+   │             │            
+   │             Map<address, u256>: Storage { nonce: Some(1) }
+
+note: 
+   ┌─ features/pure_fn_standalone.fe:11:13
+   │
+11 │             self.points[user] += add_bonus(val)
+   │             ^^^^^^^^^^^^^^^^^              ^^^ u256: Value
    │             │                               
-   │             u256: Storage { nonce: None } => None
+   │             u256: Storage { nonce: None }
 
 note: 
    ┌─ features/pure_fn_standalone.fe:11:34
    │
 11 │             self.points[user] += add_bonus(val)
-   │                                  ^^^^^^^^^^^^^^ u256: Value => None
+   │                                  ^^^^^^^^^^^^^^ u256: Value
 12 │         else:
 13 │             self.points[user] += val
-   │             ^^^^^^^^^^^ ^^^^ address: Value => None
-   │             │            
-   │             Map<address, u256>: Storage { nonce: Some(1) } => None
+   │             ^^^^ Foo: Value
 
 note: 
    ┌─ features/pure_fn_standalone.fe:13:13
    │
 13 │             self.points[user] += val
-   │             ^^^^^^^^^^^^^^^^^    ^^^ u256: Value => None
+   │             ^^^^^^^^^^^ ^^^^ address: Value
+   │             │            
+   │             Map<address, u256>: Storage { nonce: Some(1) }
+
+note: 
+   ┌─ features/pure_fn_standalone.fe:13:13
+   │
+13 │             self.points[user] += val
+   │             ^^^^^^^^^^^^^^^^^    ^^^ u256: Value
    │             │                     
-   │             u256: Storage { nonce: None } => None
+   │             u256: Storage { nonce: None }
 
 note: 
    ┌─ features/pure_fn_standalone.fe:11:34
    │
 11 │             self.points[user] += add_bonus(val)
-   │                                  ^^^^^^^^^ attributes hash: 6251600114237252411
-   │
-   = Pure(
-         FunctionId(
-             0,
-         ),
-     )
+   │                                  ^^^^^^^^^ Pure(FunctionId(0))
 
 note: 
    ┌─ features/pure_fn_standalone.fe:15:5
@@ -160,10 +174,12 @@ note:
 18 │ │         self.cool_users[a] = true
 19 │ │         self.add_points(a, 100)
 20 │ │         return self.points[a]
-   │ ╰─────────────────────────────^ attributes hash: 14124651018748084078
+   │ ╰─────────────────────────────^ attributes hash: 11582699020310544004
    │  
    = FunctionSignature {
-         self_decl: Mutable,
+         self_decl: Some(
+             Mutable,
+         ),
          params: [
              FunctionParam {
                  name: "x",
@@ -195,88 +211,79 @@ note:
    ┌─ features/pure_fn_standalone.fe:16:34
    │
 16 │         let a: address = address(x)
-   │                                  ^ u256: Value => None
+   │                                  ^ u256: Value
 
 note: 
    ┌─ features/pure_fn_standalone.fe:16:26
    │
 16 │         let a: address = address(x)
-   │                          ^^^^^^^^^^ address: Value => None
+   │                          ^^^^^^^^^^ address: Value
 17 │         self.add_points(a, 100)
-   │                         ^  ^^^ u256: Value => None
-   │                         │   
-   │                         address: Value => None
+   │         ^^^^            ^  ^^^ u256: Value
+   │         │               │   
+   │         │               address: Value
+   │         Foo: Value
 
 note: 
    ┌─ features/pure_fn_standalone.fe:17:9
    │
 17 │         self.add_points(a, 100)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^ (): Value => None
+   │         ^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 18 │         self.cool_users[a] = true
-   │         ^^^^^^^^^^^^^^^ ^ address: Value => None
-   │         │                
-   │         Map<address, bool>: Storage { nonce: Some(0) } => None
+   │         ^^^^ Foo: Value
 
 note: 
    ┌─ features/pure_fn_standalone.fe:18:9
    │
 18 │         self.cool_users[a] = true
-   │         ^^^^^^^^^^^^^^^^^^   ^^^^ bool: Value => None
+   │         ^^^^^^^^^^^^^^^ ^ address: Value
+   │         │                
+   │         Map<address, bool>: Storage { nonce: Some(0) }
+
+note: 
+   ┌─ features/pure_fn_standalone.fe:18:9
+   │
+18 │         self.cool_users[a] = true
+   │         ^^^^^^^^^^^^^^^^^^   ^^^^ bool: Value
    │         │                     
-   │         bool: Storage { nonce: None } => None
+   │         bool: Storage { nonce: None }
 19 │         self.add_points(a, 100)
-   │                         ^  ^^^ u256: Value => None
-   │                         │   
-   │                         address: Value => None
+   │         ^^^^            ^  ^^^ u256: Value
+   │         │               │   
+   │         │               address: Value
+   │         Foo: Value
 
 note: 
    ┌─ features/pure_fn_standalone.fe:19:9
    │
 19 │         self.add_points(a, 100)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^ (): Value => None
+   │         ^^^^^^^^^^^^^^^^^^^^^^^ (): Value
 20 │         return self.points[a]
-   │                ^^^^^^^^^^^ ^ address: Value => None
-   │                │            
-   │                Map<address, u256>: Storage { nonce: Some(1) } => None
+   │                ^^^^ Foo: Value
 
 note: 
    ┌─ features/pure_fn_standalone.fe:20:16
    │
 20 │         return self.points[a]
-   │                ^^^^^^^^^^^^^^ u256: Storage { nonce: None } => Some(Value)
+   │                ^^^^^^^^^^^ ^ address: Value
+   │                │            
+   │                Map<address, u256>: Storage { nonce: Some(1) }
+
+note: 
+   ┌─ features/pure_fn_standalone.fe:20:16
+   │
+20 │         return self.points[a]
+   │                ^^^^^^^^^^^^^^ u256: Storage { nonce: None } => Value
 
 note: 
    ┌─ features/pure_fn_standalone.fe:16:26
    │
 16 │         let a: address = address(x)
-   │                          ^^^^^^^ attributes hash: 14203407709342965641
-   │
-   = TypeConstructor {
-         typ: Base(
-             Address,
-         ),
-     }
-
-note: 
-   ┌─ features/pure_fn_standalone.fe:17:9
-   │
+   │                          ^^^^^^^ TypeConstructor(Base(Address))
 17 │         self.add_points(a, 100)
-   │         ^^^^^^^^^^^^^^^ attributes hash: 5094765954567266946
-   │
-   = SelfAttribute {
-         func_name: "add_points",
-         self_span: 400..404,
-     }
-
-note: 
-   ┌─ features/pure_fn_standalone.fe:19:9
-   │
+   │         ^^^^^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(0)), method: FunctionId(1) }
+18 │         self.cool_users[a] = true
 19 │         self.add_points(a, 100)
-   │         ^^^^^^^^^^^^^^^ attributes hash: 5317772279976617936
-   │
-   = SelfAttribute {
-         func_name: "add_points",
-         self_span: 466..470,
-     }
+   │         ^^^^^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(0)), method: FunctionId(1) }
 
 

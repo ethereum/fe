@@ -1,5 +1,5 @@
 use crate::context::ModuleContext;
-use crate::mappers::{contracts, functions, types};
+use crate::mappers::{contracts, functions, structs, types};
 use crate::names;
 use crate::utils::ZeroSpanNode;
 use fe_analyzer::namespace::items::{Item, ModuleId, TypeDef};
@@ -41,7 +41,10 @@ pub fn module(db: &dyn AnalyzerDb, module: ModuleId) -> ast::Module {
                     id.span(db),
                 )))
             }
-            TypeDef::Struct(id) => Some(ast::ModuleStmt::Struct(id.data(db).ast.clone())),
+            TypeDef::Struct(id) => Some(ast::ModuleStmt::Struct(structs::struct_def(
+                &mut context,
+                *id,
+            ))),
             TypeDef::Contract(id) => Some(ast::ModuleStmt::Contract(contracts::contract_def(
                 &mut context,
                 *id,
@@ -97,6 +100,7 @@ fn build_tuple_struct(tuple: &Tuple) -> ast::Struct {
     ast::Struct {
         name: names::tuple_struct_name(tuple).into_node(),
         fields,
+        functions: vec![],
     }
 }
 

@@ -24,10 +24,12 @@ note:
 14 │ │ 
 15 │ │         # Emit the `Signed` event
 16 │ │         emit Signed(book_msg=book_msg)
-   │ ╰──────────────────────────────────────^ attributes hash: 726352713514806227
+   │ ╰──────────────────────────────────────^ attributes hash: 13094560277149760495
    │  
    = FunctionSignature {
-         self_decl: Mutable,
+         self_decl: Some(
+             Mutable,
+         ),
          params: [
              FunctionParam {
                  name: "book_msg",
@@ -51,20 +53,26 @@ note:
    ┌─ demos/guest_book.fe:13:9
    │
 13 │         self.messages[msg.sender] = book_msg
-   │         ^^^^^^^^^^^^^ ^^^^^^^^^^ address: Value => None
-   │         │              
-   │         Map<address, String<100>>: Storage { nonce: Some(0) } => None
+   │         ^^^^ GuestBook: Value
 
 note: 
    ┌─ demos/guest_book.fe:13:9
    │
 13 │         self.messages[msg.sender] = book_msg
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^ String<100>: Memory => None
+   │         ^^^^^^^^^^^^^ ^^^^^^^^^^ address: Value
+   │         │              
+   │         Map<address, String<100>>: Storage { nonce: Some(0) }
+
+note: 
+   ┌─ demos/guest_book.fe:13:9
+   │
+13 │         self.messages[msg.sender] = book_msg
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^ String<100>: Memory
    │         │                            
-   │         String<100>: Storage { nonce: None } => None
+   │         String<100>: Storage { nonce: None }
    ·
 16 │         emit Signed(book_msg=book_msg)
-   │                              ^^^^^^^^ String<100>: Memory => None
+   │                              ^^^^^^^^ String<100>: Memory
 
 note: 
    ┌─ demos/guest_book.fe:16:9
@@ -96,10 +104,12 @@ note:
 19 │ │         # Copying data from storage to memory
 20 │ │         # has to be done explicitly via `to_mem()`
 21 │ │         return self.messages[addr].to_mem()
-   │ ╰───────────────────────────────────────────^ attributes hash: 13118977016650692130
+   │ ╰───────────────────────────────────────────^ attributes hash: 9675466326050585910
    │  
    = FunctionSignature {
-         self_decl: Mutable,
+         self_decl: Some(
+             Mutable,
+         ),
          params: [
              FunctionParam {
                  name: "addr",
@@ -123,28 +133,32 @@ note:
    ┌─ demos/guest_book.fe:21:16
    │
 21 │         return self.messages[addr].to_mem()
-   │                ^^^^^^^^^^^^^ ^^^^ address: Value => None
+   │                ^^^^ GuestBook: Value
+
+note: 
+   ┌─ demos/guest_book.fe:21:16
+   │
+21 │         return self.messages[addr].to_mem()
+   │                ^^^^^^^^^^^^^ ^^^^ address: Value
    │                │              
-   │                Map<address, String<100>>: Storage { nonce: Some(0) } => None
+   │                Map<address, String<100>>: Storage { nonce: Some(0) }
 
 note: 
    ┌─ demos/guest_book.fe:21:16
    │
 21 │         return self.messages[addr].to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: None } => None
+   │                ^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: None }
 
 note: 
    ┌─ demos/guest_book.fe:21:16
    │
 21 │         return self.messages[addr].to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: None } => Some(Memory)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<100>: Storage { nonce: None } => Memory
 
 note: 
    ┌─ demos/guest_book.fe:21:16
    │
 21 │         return self.messages[addr].to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
-   │
-   = ValueAttribute
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
 
 

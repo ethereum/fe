@@ -103,10 +103,10 @@ fn parse_fn_param_list(par: &mut Parser) -> ParseResult<Node<Vec<Node<FunctionAr
                 span += par.next()?.span;
                 break;
             }
-            TokenKind::Name => {
+            TokenKind::Name | TokenKind::SelfValue => {
                 let name = par.next()?;
 
-                if name.text == "self" {
+                if name.kind == TokenKind::SelfValue {
                     params.push(Node::new(FunctionArg::Zelf, name.span));
                 } else {
                     par.expect_with_notes(
@@ -200,7 +200,7 @@ fn aug_assign_op(tk: TokenKind) -> Option<BinOperator> {
 /// Panics if the next token isn't one of the above.
 pub fn parse_single_word_stmt(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
     let tok = par.next()?;
-    par.expect_newline(tok.kind.symbol_str().unwrap())?;
+    par.expect_newline(tok.kind.describe())?;
     let stmt = match tok.kind {
         TokenKind::Continue => FuncStmt::Continue,
         TokenKind::Break => FuncStmt::Break,

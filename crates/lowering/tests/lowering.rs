@@ -41,7 +41,7 @@ macro_rules! test_file {
             let mut files = FileStore::new();
 
             let src = test_files::fixture($path);
-            let src_id = files.add_file(src, $path);
+            let src_id = files.add_file($path, src);
             let lowered_code = format!("{}", lower(src, src_id, &files));
 
             if cfg!(target_arch = "wasm32") {
@@ -69,5 +69,6 @@ test_file! { type_alias_tuple, "lowering/type_alias_tuple.fe" }
 test_file! { tuple_destruct, "lowering/tuple_destruct.fe" }
 test_file! { module_const, "lowering/module_const.fe" }
 test_file! { module_fn, "lowering/module_fn.fe" }
+test_file! { struct_fn, "lowering/struct_fn.fe" }
 // TODO: the analyzer rejects lowered nested tuples.
 // test_file!(array_tuple, "lowering/array_tuple.fe");

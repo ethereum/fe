@@ -65,7 +65,7 @@ note:
    ┌─ features/strings.fe:15:16
    │
 15 │         return s2
-   │                ^^ String<100>: Memory => None
+   │                ^^ String<100>: Memory
 
 note: 
    ┌─ features/strings.fe:17:5
@@ -90,7 +90,7 @@ note:
    ┌─ features/strings.fe:18:16
    │
 18 │         return "The quick brown fox jumps over the lazy dog"
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<43>: Memory => None
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<43>: Memory
 
 note: 
    ┌─ features/strings.fe:20:5
@@ -115,27 +115,19 @@ note:
    ┌─ features/strings.fe:21:28
    │
 21 │         return String<100>("foo")
-   │                            ^^^^^ String<3>: Memory => None
+   │                            ^^^^^ String<3>: Memory
 
 note: 
    ┌─ features/strings.fe:21:16
    │
 21 │         return String<100>("foo")
-   │                ^^^^^^^^^^^^^^^^^^ String<100>: Memory => None
+   │                ^^^^^^^^^^^^^^^^^^ String<100>: Memory
 
 note: 
    ┌─ features/strings.fe:21:16
    │
 21 │         return String<100>("foo")
-   │                ^^^^^^ attributes hash: 5923227283421640461
-   │
-   = TypeConstructor {
-         typ: String(
-             FeString {
-                 max_size: 100,
-             },
-         ),
-     }
+   │                ^^^^^^ TypeConstructor(String(FeString { max_size: 100 }))
 
 note: 
    ┌─ features/strings.fe:23:5
@@ -163,6 +155,6 @@ note:
 24 │           return "\n\"'\r\t
    │ ╭────────────────^
 25 │ │         foo\\"
-   │ ╰──────────────^ String<18>: Memory => None
+   │ ╰──────────────^ String<18>: Memory
 
 

@@ -41,7 +41,7 @@ note:
   ┌─ features/return_unit.fe:7:12
   │
 7 │     return ()
-  │            ^^ (): Value => None
+  │            ^^ (): Value
 
 note: 
    ┌─ features/return_unit.fe:9:3
@@ -81,7 +81,7 @@ note:
    ┌─ features/return_unit.fe:13:12
    │
 13 │     return ()
-   │            ^^ (): Value => None
+   │            ^^ (): Value
 
 note: 
    ┌─ features/return_unit.fe:15:3

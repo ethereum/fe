@@ -1,7 +1,7 @@
 use crate::context::{AnalyzerContext, FunctionBody};
 use crate::db::{Analysis, AnalyzerDb};
 use crate::errors::TypeError;
-use crate::namespace::items::FunctionId;
+use crate::namespace::items::{Class, FunctionId};
 use crate::namespace::scopes::{BlockScope, BlockScopeType, FunctionScope, ItemScope};
 use crate::namespace::types::{self, FixedSize, SelfDecl};
 use crate::traversal::functions::traverse_statements;
@@ -24,10 +24,10 @@ pub fn function_signature(
     let def = &node.kind;
 
     let mut scope = ItemScope::new(db, function.module(db));
-    let contract = function.contract(db);
+    let fn_parent = function.parent(db);
 
     if_chain! {
-        if contract.is_some();
+        if let Some(Class::Contract(_)) = fn_parent;
         if let Some(pub_span) = function.pub_span(db);
         if let Some(unsafe_span) = function.unsafe_span(db);
         then {
@@ -37,7 +37,7 @@ pub fn function_signature(
         }
     }
 
-    let mut self_decl = SelfDecl::None;
+    let mut self_decl = None;
     let mut names = HashMap::new();
     let params = def
         .args
@@ -45,14 +45,14 @@ pub fn function_signature(
         .enumerate()
         .filter_map(|(index, arg)| match &arg.kind {
             ast::FunctionArg::Zelf => {
-                if contract.is_none() {
+                if fn_parent.is_none() {
                     scope.error(
-                        "`self` can only be used in contract functions",
+                        "`self` can only be used in contract or struct functions",
                         arg.span,
-                        "not allowed in functions defined outside of a contract",
+                        "not allowed in functions defined outside of a contract or struct",
                     );
                 } else {
-                    self_decl = SelfDecl::Mutable;
+                    self_decl = Some(SelfDecl::Mutable);
                     if index != 0 {
                         scope.error(
                             "`self` is not the first parameter",
