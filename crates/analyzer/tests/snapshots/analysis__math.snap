@@ -39,6 +39,108 @@ note:
      }
 
 note: 
+  ┌─ features/math.fe:5:16
+  │
+5 │         let z: u256
+  │                ^^^^ u256
+  ·
+8 │             let x: u256 = val / 2 + 1
+  │                    ^^^^ u256
+
+note: 
+  ┌─ features/math.fe:6:13
+  │
+6 │         if (val > 3):
+  │             ^^^   ^ u256: Value
+  │             │      
+  │             u256: Value
+
+note: 
+  ┌─ features/math.fe:6:12
+  │
+6 │         if (val > 3):
+  │            ^^^^^^^^^ bool: Value
+7 │             z = val
+  │             ^   ^^^ u256: Value
+  │             │    
+  │             u256: Value
+8 │             let x: u256 = val / 2 + 1
+  │                           ^^^   ^ u256: Value
+  │                           │      
+  │                           u256: Value
+
+note: 
+  ┌─ features/math.fe:8:27
+  │
+8 │             let x: u256 = val / 2 + 1
+  │                           ^^^^^^^   ^ u256: Value
+  │                           │          
+  │                           u256: Value
+
+note: 
+  ┌─ features/math.fe:8:27
+  │
+8 │             let x: u256 = val / 2 + 1
+  │                           ^^^^^^^^^^^ u256: Value
+9 │             while (x < z):
+  │                    ^   ^ u256: Value
+  │                    │    
+  │                    u256: Value
+
+note: 
+   ┌─ features/math.fe:9:19
+   │
+ 9 │             while (x < z):
+   │                   ^^^^^^^ bool: Value
+10 │                 z = x
+   │                 ^   ^ u256: Value
+   │                 │    
+   │                 u256: Value
+11 │                 x = (val / x + x) / 2
+   │                 ^    ^^^   ^ u256: Value
+   │                 │    │      
+   │                 │    u256: Value
+   │                 u256: Value
+
+note: 
+   ┌─ features/math.fe:11:22
+   │
+11 │                 x = (val / x + x) / 2
+   │                      ^^^^^^^   ^ u256: Value
+   │                      │          
+   │                      u256: Value
+
+note: 
+   ┌─ features/math.fe:11:21
+   │
+11 │                 x = (val / x + x) / 2
+   │                     ^^^^^^^^^^^^^   ^ u256: Value
+   │                     │                
+   │                     u256: Value
+
+note: 
+   ┌─ features/math.fe:11:21
+   │
+11 │                 x = (val / x + x) / 2
+   │                     ^^^^^^^^^^^^^^^^^ u256: Value
+12 │         elif (val != 0):
+   │               ^^^    ^ u256: Value
+   │               │       
+   │               u256: Value
+
+note: 
+   ┌─ features/math.fe:12:14
+   │
+12 │         elif (val != 0):
+   │              ^^^^^^^^^^ bool: Value
+13 │             z = 1
+   │             ^   ^ u256: Value
+   │             │    
+   │             u256: Value
+14 │         return z
+   │                ^ u256: Value
+
+note: 
    ┌─ features/math.fe:16:5
    │  
 16 │ ╭     pub fn min(x: u256, y: u256) -> u256:
@@ -79,225 +181,26 @@ note:
      }
 
 note: 
-  ┌─ features/math.fe:6:13
-  │
-6 │         if (val > 3):
-  │             ^^^ u256: Value => None
-
-note: 
-  ┌─ features/math.fe:6:19
-  │
-6 │         if (val > 3):
-  │                   ^ u256: Value => None
-
-note: 
-  ┌─ features/math.fe:6:12
-  │
-6 │         if (val > 3):
-  │            ^^^^^^^^^ bool: Value => None
-
-note: 
-  ┌─ features/math.fe:7:13
-  │
-7 │             z = val
-  │             ^ u256: Value => None
-
-note: 
-  ┌─ features/math.fe:7:17
-  │
-7 │             z = val
-  │                 ^^^ u256: Value => None
-
-note: 
-  ┌─ features/math.fe:8:27
-  │
-8 │             let x: u256 = val / 2 + 1
-  │                           ^^^ u256: Value => None
-
-note: 
-  ┌─ features/math.fe:8:33
-  │
-8 │             let x: u256 = val / 2 + 1
-  │                                 ^ u256: Value => None
-
-note: 
-  ┌─ features/math.fe:8:27
-  │
-8 │             let x: u256 = val / 2 + 1
-  │                           ^^^^^^^ u256: Value => None
-
-note: 
-  ┌─ features/math.fe:8:37
-  │
-8 │             let x: u256 = val / 2 + 1
-  │                                     ^ u256: Value => None
-
-note: 
-  ┌─ features/math.fe:8:27
-  │
-8 │             let x: u256 = val / 2 + 1
-  │                           ^^^^^^^^^^^ u256: Value => None
-
-note: 
-  ┌─ features/math.fe:9:20
-  │
-9 │             while (x < z):
-  │                    ^ u256: Value => None
-
-note: 
-  ┌─ features/math.fe:9:24
-  │
-9 │             while (x < z):
-  │                        ^ u256: Value => None
-
-note: 
-  ┌─ features/math.fe:9:19
-  │
-9 │             while (x < z):
-  │                   ^^^^^^^ bool: Value => None
-
-note: 
-   ┌─ features/math.fe:10:17
-   │
-10 │                 z = x
-   │                 ^ u256: Value => None
-
-note: 
-   ┌─ features/math.fe:10:21
-   │
-10 │                 z = x
-   │                     ^ u256: Value => None
-
-note: 
-   ┌─ features/math.fe:11:17
-   │
-11 │                 x = (val / x + x) / 2
-   │                 ^ u256: Value => None
-
-note: 
-   ┌─ features/math.fe:11:22
-   │
-11 │                 x = (val / x + x) / 2
-   │                      ^^^ u256: Value => None
-
-note: 
-   ┌─ features/math.fe:11:28
-   │
-11 │                 x = (val / x + x) / 2
-   │                            ^ u256: Value => None
-
-note: 
-   ┌─ features/math.fe:11:22
-   │
-11 │                 x = (val / x + x) / 2
-   │                      ^^^^^^^ u256: Value => None
-
-note: 
-   ┌─ features/math.fe:11:32
-   │
-11 │                 x = (val / x + x) / 2
-   │                                ^ u256: Value => None
-
-note: 
-   ┌─ features/math.fe:11:21
-   │
-11 │                 x = (val / x + x) / 2
-   │                     ^^^^^^^^^^^^^ u256: Value => None
-
-note: 
-   ┌─ features/math.fe:11:37
-   │
-11 │                 x = (val / x + x) / 2
-   │                                     ^ u256: Value => None
-
-note: 
-   ┌─ features/math.fe:11:21
-   │
-11 │                 x = (val / x + x) / 2
-   │                     ^^^^^^^^^^^^^^^^^ u256: Value => None
-
-note: 
-   ┌─ features/math.fe:12:15
-   │
-12 │         elif (val != 0):
-   │               ^^^ u256: Value => None
-
-note: 
-   ┌─ features/math.fe:12:22
-   │
-12 │         elif (val != 0):
-   │                      ^ u256: Value => None
-
-note: 
-   ┌─ features/math.fe:12:14
-   │
-12 │         elif (val != 0):
-   │              ^^^^^^^^^^ bool: Value => None
-
-note: 
-   ┌─ features/math.fe:13:13
-   │
-13 │             z = 1
-   │             ^ u256: Value => None
-
-note: 
-   ┌─ features/math.fe:13:17
-   │
-13 │             z = 1
-   │                 ^ u256: Value => None
-
-note: 
-   ┌─ features/math.fe:14:16
-   │
-14 │         return z
-   │                ^ u256: Value => None
-
-note: 
    ┌─ features/math.fe:17:21
    │
 17 │         return x if x < y else y
-   │                     ^ u256: Value => None
-
-note: 
-   ┌─ features/math.fe:17:25
-   │
-17 │         return x if x < y else y
-   │                         ^ u256: Value => None
-
-note: 
-   ┌─ features/math.fe:17:21
-   │
-17 │         return x if x < y else y
-   │                     ^^^^^ bool: Value => None
+   │                     ^   ^ u256: Value
+   │                     │    
+   │                     u256: Value
 
 note: 
    ┌─ features/math.fe:17:16
    │
 17 │         return x if x < y else y
-   │                ^ u256: Value => None
-
-note: 
-   ┌─ features/math.fe:17:32
-   │
-17 │         return x if x < y else y
-   │                                ^ u256: Value => None
+   │                ^    ^^^^^      ^ u256: Value
+   │                │    │           
+   │                │    bool: Value
+   │                u256: Value
 
 note: 
    ┌─ features/math.fe:17:16
    │
 17 │         return x if x < y else y
-   │                ^^^^^^^^^^^^^^^^^ u256: Value => None
-
-note: 
-  ┌─ features/math.fe:5:16
-  │
-5 │         let z: u256
-  │                ^^^^ u256
-
-note: 
-  ┌─ features/math.fe:8:20
-  │
-8 │             let x: u256 = val / 2 + 1
-  │                    ^^^^ u256
+   │                ^^^^^^^^^^^^^^^^^ u256: Value
 
 

@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/keccak.fe\", &src, module, &db)"
+expression: "build_snapshot(&files, module, &db)"
 
 ---
 note: 
@@ -37,6 +37,24 @@ note:
     }
 
 note: 
+  ┌─ features/keccak.fe:4:26
+  │
+4 │         return keccak256(val)
+  │                          ^^^ Array<u8, 1>: Memory
+
+note: 
+  ┌─ features/keccak.fe:4:16
+  │
+4 │         return keccak256(val)
+  │                ^^^^^^^^^^^^^^ u256: Value
+
+note: 
+  ┌─ features/keccak.fe:4:16
+  │
+4 │         return keccak256(val)
+  │                ^^^^^^^^^ BuiltinFunction(Keccak256)
+
+note: 
   ┌─ features/keccak.fe:6:5
   │  
 6 │ ╭     pub fn return_hash_from_foo(val: Array<u8, 3>) -> u256:
@@ -68,6 +86,24 @@ note:
             ),
         ),
     }
+
+note: 
+  ┌─ features/keccak.fe:7:26
+  │
+7 │         return keccak256(val)
+  │                          ^^^ Array<u8, 3>: Memory
+
+note: 
+  ┌─ features/keccak.fe:7:16
+  │
+7 │         return keccak256(val)
+  │                ^^^^^^^^^^^^^^ u256: Value
+
+note: 
+  ┌─ features/keccak.fe:7:16
+  │
+7 │         return keccak256(val)
+  │                ^^^^^^^^^ BuiltinFunction(Keccak256)
 
 note: 
    ┌─ features/keccak.fe:9:5
@@ -103,69 +139,21 @@ note:
      }
 
 note: 
-  ┌─ features/keccak.fe:4:26
-  │
-4 │         return keccak256(val)
-  │                          ^^^ Array<u8, 1>: Memory => None
-
-note: 
-  ┌─ features/keccak.fe:4:16
-  │
-4 │         return keccak256(val)
-  │                ^^^^^^^^^^^^^^ u256: Value => None
-
-note: 
-  ┌─ features/keccak.fe:7:26
-  │
-7 │         return keccak256(val)
-  │                          ^^^ Array<u8, 3>: Memory => None
-
-note: 
-  ┌─ features/keccak.fe:7:16
-  │
-7 │         return keccak256(val)
-  │                ^^^^^^^^^^^^^^ u256: Value => None
-
-note: 
    ┌─ features/keccak.fe:10:26
    │
 10 │         return keccak256(val)
-   │                          ^^^ Array<u8, 32>: Memory => None
+   │                          ^^^ Array<u8, 32>: Memory
 
 note: 
    ┌─ features/keccak.fe:10:16
    │
 10 │         return keccak256(val)
-   │                ^^^^^^^^^^^^^^ u256: Value => None
-
-note: 
-  ┌─ features/keccak.fe:4:16
-  │
-4 │         return keccak256(val)
-  │                ^^^^^^^^^ attributes hash: 3985281278010092305
-  │
-  = BuiltinFunction(
-        Keccak256,
-    )
-
-note: 
-  ┌─ features/keccak.fe:7:16
-  │
-7 │         return keccak256(val)
-  │                ^^^^^^^^^ attributes hash: 3985281278010092305
-  │
-  = BuiltinFunction(
-        Keccak256,
-    )
+   │                ^^^^^^^^^^^^^^ u256: Value
 
 note: 
    ┌─ features/keccak.fe:10:16
    │
 10 │         return keccak256(val)
-   │                ^^^^^^^^^ attributes hash: 3985281278010092305
-   │
-   = BuiltinFunction(
-         Keccak256,
-     )
+   │                ^^^^^^^^^ BuiltinFunction(Keccak256)
 
 

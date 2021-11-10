@@ -517,6 +517,7 @@ dependencies = [
  "rstest",
  "salsa",
  "semver 1.0.0",
+ "smallvec",
  "strum",
  "vec1",
  "wasm-bindgen-test",

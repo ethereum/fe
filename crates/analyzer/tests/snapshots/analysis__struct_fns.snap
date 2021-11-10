@@ -1,0 +1,778 @@
+---
+source: crates/analyzer/tests/analysis.rs
+expression: "build_snapshot(&files, module, &db)"
+
+---
+note: 
+  ┌─ features/struct_fns.fe:2:3
+  │
+2 │   x: u64
+  │   ^^^^^^ u64
+3 │   y: u64
+  │   ^^^^^^ u64
+
+note: 
+  ┌─ features/struct_fns.fe:5:3
+  │  
+5 │ ╭   pub fn new(x: u64, y: u64) -> Point:
+6 │ │     return Point(x, y)
+  │ ╰──────────────────────^ attributes hash: 15239695565073513268
+  │  
+  = FunctionSignature {
+        self_decl: None,
+        params: [
+            FunctionParam {
+                name: "x",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U64,
+                        ),
+                    ),
+                ),
+            },
+            FunctionParam {
+                name: "y",
+                typ: Ok(
+                    Base(
+                        Numeric(
+                            U64,
+                        ),
+                    ),
+                ),
+            },
+        ],
+        return_type: Ok(
+            Struct(
+                Struct {
+                    name: "Point",
+                    id: StructId(
+                        0,
+                    ),
+                    field_count: 2,
+                },
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/struct_fns.fe:6:18
+  │
+6 │     return Point(x, y)
+  │                  ^  ^ u64: Value
+  │                  │   
+  │                  u64: Value
+
+note: 
+  ┌─ features/struct_fns.fe:6:12
+  │
+6 │     return Point(x, y)
+  │            ^^^^^^^^^^^ Point: Memory
+
+note: 
+  ┌─ features/struct_fns.fe:6:12
+  │
+6 │     return Point(x, y)
+  │            ^^^^^ TypeConstructor(Struct(Struct { name: "Point", id: StructId(0), field_count: 2 }))
+
+note: 
+  ┌─ features/struct_fns.fe:8:3
+  │  
+8 │ ╭   pub fn origin() -> Point:
+9 │ │     return Point(x=0, y=0)
+  │ ╰──────────────────────────^ attributes hash: 1766050550231886475
+  │  
+  = FunctionSignature {
+        self_decl: None,
+        params: [],
+        return_type: Ok(
+            Struct(
+                Struct {
+                    name: "Point",
+                    id: StructId(
+                        0,
+                    ),
+                    field_count: 2,
+                },
+            ),
+        ),
+    }
+
+note: 
+  ┌─ features/struct_fns.fe:9:20
+  │
+9 │     return Point(x=0, y=0)
+  │                    ^    ^ u64: Value
+  │                    │     
+  │                    u64: Value
+
+note: 
+  ┌─ features/struct_fns.fe:9:12
+  │
+9 │     return Point(x=0, y=0)
+  │            ^^^^^^^^^^^^^^^ Point: Memory
+
+note: 
+  ┌─ features/struct_fns.fe:9:12
+  │
+9 │     return Point(x=0, y=0)
+  │            ^^^^^ TypeConstructor(Struct(Struct { name: "Point", id: StructId(0), field_count: 2 }))
+
+note: 
+   ┌─ features/struct_fns.fe:12:3
+   │  
+12 │ ╭   pub fn x(self) -> u64:
+13 │ │     return self.x
+   │ ╰─────────────────^ attributes hash: 10750879109964165534
+   │  
+   = FunctionSignature {
+         self_decl: Some(
+             Mutable,
+         ),
+         params: [],
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U64,
+                 ),
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/struct_fns.fe:13:12
+   │
+13 │     return self.x
+   │            ^^^^ Point: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:13:12
+   │
+13 │     return self.x
+   │            ^^^^^^ u64: Memory => Value
+
+note: 
+   ┌─ features/struct_fns.fe:15:3
+   │  
+15 │ ╭   pub fn set_x(self, x: u64) -> u64:
+16 │ │     let old: u64 = self.x
+17 │ │     self.x = x
+18 │ │     return old
+   │ ╰──────────────^ attributes hash: 14269972139460780041
+   │  
+   = FunctionSignature {
+         self_decl: Some(
+             Mutable,
+         ),
+         params: [
+             FunctionParam {
+                 name: "x",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U64,
+                         ),
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U64,
+                 ),
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/struct_fns.fe:16:14
+   │
+16 │     let old: u64 = self.x
+   │              ^^^ u64
+
+note: 
+   ┌─ features/struct_fns.fe:16:20
+   │
+16 │     let old: u64 = self.x
+   │                    ^^^^ Point: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:16:20
+   │
+16 │     let old: u64 = self.x
+   │                    ^^^^^^ u64: Memory => Value
+17 │     self.x = x
+   │     ^^^^ Point: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:17:5
+   │
+17 │     self.x = x
+   │     ^^^^^^   ^ u64: Value
+   │     │         
+   │     u64: Memory
+18 │     return old
+   │            ^^^ u64: Value
+
+note: 
+   ┌─ features/struct_fns.fe:20:3
+   │  
+20 │ ╭   pub fn reflect(self):
+21 │ │     let x: u64 = self.x
+22 │ │     let y: u64 = self.y
+23 │ │     # self.x = self.y panics. see issue #590
+24 │ │     self.x = y
+25 │ │     self.y = x
+   │ ╰──────────────^ attributes hash: 17603814563784536273
+   │  
+   = FunctionSignature {
+         self_decl: Some(
+             Mutable,
+         ),
+         params: [],
+         return_type: Ok(
+             Base(
+                 Unit,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/struct_fns.fe:21:12
+   │
+21 │     let x: u64 = self.x
+   │            ^^^ u64
+22 │     let y: u64 = self.y
+   │            ^^^ u64
+
+note: 
+   ┌─ features/struct_fns.fe:21:18
+   │
+21 │     let x: u64 = self.x
+   │                  ^^^^ Point: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:21:18
+   │
+21 │     let x: u64 = self.x
+   │                  ^^^^^^ u64: Memory => Value
+22 │     let y: u64 = self.y
+   │                  ^^^^ Point: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:22:18
+   │
+22 │     let y: u64 = self.y
+   │                  ^^^^^^ u64: Memory => Value
+23 │     # self.x = self.y panics. see issue #590
+24 │     self.x = y
+   │     ^^^^ Point: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:24:5
+   │
+24 │     self.x = y
+   │     ^^^^^^   ^ u64: Value
+   │     │         
+   │     u64: Memory
+25 │     self.y = x
+   │     ^^^^ Point: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:25:5
+   │
+25 │     self.y = x
+   │     ^^^^^^   ^ u64: Value
+   │     │         
+   │     u64: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:27:3
+   │  
+27 │ ╭   pub fn translate(self, x: u64, y: u64):
+28 │ │     self.x += x
+29 │ │     self.y += y
+   │ ╰───────────────^ attributes hash: 7098045318883584041
+   │  
+   = FunctionSignature {
+         self_decl: Some(
+             Mutable,
+         ),
+         params: [
+             FunctionParam {
+                 name: "x",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U64,
+                         ),
+                     ),
+                 ),
+             },
+             FunctionParam {
+                 name: "y",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U64,
+                         ),
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Unit,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/struct_fns.fe:28:5
+   │
+28 │     self.x += x
+   │     ^^^^ Point: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:28:5
+   │
+28 │     self.x += x
+   │     ^^^^^^    ^ u64: Value
+   │     │          
+   │     u64: Memory
+29 │     self.y += y
+   │     ^^^^ Point: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:29:5
+   │
+29 │     self.y += y
+   │     ^^^^^^    ^ u64: Value
+   │     │          
+   │     u64: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:31:3
+   │  
+31 │ ╭   pub fn add(self, other: Point) -> Point:
+32 │ │     let x: u64 = self.x + other.x
+33 │ │     let y: u64 = self.y + other.y
+34 │ │     return Point(x, y)
+   │ ╰──────────────────────^ attributes hash: 15351893842694786918
+   │  
+   = FunctionSignature {
+         self_decl: Some(
+             Mutable,
+         ),
+         params: [
+             FunctionParam {
+                 name: "other",
+                 typ: Ok(
+                     Struct(
+                         Struct {
+                             name: "Point",
+                             id: StructId(
+                                 0,
+                             ),
+                             field_count: 2,
+                         },
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Struct(
+                 Struct {
+                     name: "Point",
+                     id: StructId(
+                         0,
+                     ),
+                     field_count: 2,
+                 },
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/struct_fns.fe:32:12
+   │
+32 │     let x: u64 = self.x + other.x
+   │            ^^^ u64
+33 │     let y: u64 = self.y + other.y
+   │            ^^^ u64
+
+note: 
+   ┌─ features/struct_fns.fe:32:18
+   │
+32 │     let x: u64 = self.x + other.x
+   │                  ^^^^ Point: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:32:18
+   │
+32 │     let x: u64 = self.x + other.x
+   │                  ^^^^^^   ^^^^^ Point: Memory
+   │                  │         
+   │                  u64: Memory => Value
+
+note: 
+   ┌─ features/struct_fns.fe:32:27
+   │
+32 │     let x: u64 = self.x + other.x
+   │                           ^^^^^^^ u64: Memory => Value
+
+note: 
+   ┌─ features/struct_fns.fe:32:18
+   │
+32 │     let x: u64 = self.x + other.x
+   │                  ^^^^^^^^^^^^^^^^ u64: Value
+33 │     let y: u64 = self.y + other.y
+   │                  ^^^^ Point: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:33:18
+   │
+33 │     let y: u64 = self.y + other.y
+   │                  ^^^^^^   ^^^^^ Point: Memory
+   │                  │         
+   │                  u64: Memory => Value
+
+note: 
+   ┌─ features/struct_fns.fe:33:27
+   │
+33 │     let y: u64 = self.y + other.y
+   │                           ^^^^^^^ u64: Memory => Value
+
+note: 
+   ┌─ features/struct_fns.fe:33:18
+   │
+33 │     let y: u64 = self.y + other.y
+   │                  ^^^^^^^^^^^^^^^^ u64: Value
+34 │     return Point(x, y)
+   │                  ^  ^ u64: Value
+   │                  │   
+   │                  u64: Value
+
+note: 
+   ┌─ features/struct_fns.fe:34:12
+   │
+34 │     return Point(x, y)
+   │            ^^^^^^^^^^^ Point: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:34:12
+   │
+34 │     return Point(x, y)
+   │            ^^^^^ TypeConstructor(Struct(Struct { name: "Point", id: StructId(0), field_count: 2 }))
+
+note: 
+   ┌─ features/struct_fns.fe:36:1
+   │  
+36 │ ╭ pub fn do_pointy_things():
+37 │ │   let p1: Point = Point.origin()
+38 │ │   p1.translate(5, 10)
+39 │ │ 
+   · │
+42 │ │ 
+43 │ │   assert p3.x == 6 and p3.y == 12
+   │ ╰─────────────────────────────────^ attributes hash: 15148455653558261645
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         params: [],
+         return_type: Ok(
+             Base(
+                 Unit,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/struct_fns.fe:37:11
+   │
+37 │   let p1: Point = Point.origin()
+   │           ^^^^^ Point
+   ·
+40 │   let p2: Point = Point(x=1, y=2)
+   │           ^^^^^ Point
+41 │   let p3: Point = p1.add(p2)
+   │           ^^^^^ Point
+
+note: 
+   ┌─ features/struct_fns.fe:37:19
+   │
+37 │   let p1: Point = Point.origin()
+   │                   ^^^^^^^^^^^^^^ Point: Memory
+38 │   p1.translate(5, 10)
+   │   ^^           ^  ^^ u64: Value
+   │   │            │   
+   │   │            u64: Value
+   │   Point: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:38:3
+   │
+38 │   p1.translate(5, 10)
+   │   ^^^^^^^^^^^^^^^^^^^ (): Value
+39 │ 
+40 │   let p2: Point = Point(x=1, y=2)
+   │                           ^    ^ u64: Value
+   │                           │     
+   │                           u64: Value
+
+note: 
+   ┌─ features/struct_fns.fe:40:19
+   │
+40 │   let p2: Point = Point(x=1, y=2)
+   │                   ^^^^^^^^^^^^^^^ Point: Memory
+41 │   let p3: Point = p1.add(p2)
+   │                   ^^     ^^ Point: Memory
+   │                   │       
+   │                   Point: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:41:19
+   │
+41 │   let p3: Point = p1.add(p2)
+   │                   ^^^^^^^^^^ Point: Memory
+42 │ 
+43 │   assert p3.x == 6 and p3.y == 12
+   │          ^^ Point: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:43:10
+   │
+43 │   assert p3.x == 6 and p3.y == 12
+   │          ^^^^    ^ u64: Value
+   │          │        
+   │          u64: Memory => Value
+
+note: 
+   ┌─ features/struct_fns.fe:43:10
+   │
+43 │   assert p3.x == 6 and p3.y == 12
+   │          ^^^^^^^^^     ^^ Point: Memory
+   │          │              
+   │          bool: Value
+
+note: 
+   ┌─ features/struct_fns.fe:43:24
+   │
+43 │   assert p3.x == 6 and p3.y == 12
+   │                        ^^^^    ^^ u64: Value
+   │                        │        
+   │                        u64: Memory => Value
+
+note: 
+   ┌─ features/struct_fns.fe:43:24
+   │
+43 │   assert p3.x == 6 and p3.y == 12
+   │                        ^^^^^^^^^^ bool: Value
+
+note: 
+   ┌─ features/struct_fns.fe:43:10
+   │
+43 │   assert p3.x == 6 and p3.y == 12
+   │          ^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+
+note: 
+   ┌─ features/struct_fns.fe:37:19
+   │
+37 │   let p1: Point = Point.origin()
+   │                   ^^^^^^^^^^^^ AssociatedFunction { class: Struct(StructId(0)), function: FunctionId(2) }
+38 │   p1.translate(5, 10)
+   │   ^^^^^^^^^^^^ ValueMethod { is_self: false, class: Struct(StructId(0)), method: FunctionId(6) }
+39 │ 
+40 │   let p2: Point = Point(x=1, y=2)
+   │                   ^^^^^ TypeConstructor(Struct(Struct { name: "Point", id: StructId(0), field_count: 2 }))
+41 │   let p3: Point = p1.add(p2)
+   │                   ^^^^^^ ValueMethod { is_self: false, class: Struct(StructId(0)), method: FunctionId(7) }
+
+note: 
+   ┌─ features/struct_fns.fe:48:3
+   │  
+48 │ ╭   pub fn bar(x: u64, y: u64) -> u64:
+49 │ │     do_pointy_things()
+50 │ │ 
+51 │ │     let p: Point = Point.new(x, y)
+   · │
+55 │ │     assert p.x() == y and p.y == 100
+56 │ │     return p.y
+   │ ╰──────────────^ attributes hash: 11047046466719380007
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         params: [
+             FunctionParam {
+                 name: "x",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U64,
+                         ),
+                     ),
+                 ),
+             },
+             FunctionParam {
+                 name: "y",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U64,
+                         ),
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U64,
+                 ),
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/struct_fns.fe:51:12
+   │
+51 │     let p: Point = Point.new(x, y)
+   │            ^^^^^ Point
+
+note: 
+   ┌─ features/struct_fns.fe:49:5
+   │
+49 │     do_pointy_things()
+   │     ^^^^^^^^^^^^^^^^^^ (): Value
+50 │ 
+51 │     let p: Point = Point.new(x, y)
+   │                              ^  ^ u64: Value
+   │                              │   
+   │                              u64: Value
+
+note: 
+   ┌─ features/struct_fns.fe:51:20
+   │
+51 │     let p: Point = Point.new(x, y)
+   │                    ^^^^^^^^^^^^^^^ Point: Memory
+52 │     assert p.x == x and p.y == y
+   │            ^ Point: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:52:12
+   │
+52 │     assert p.x == x and p.y == y
+   │            ^^^    ^ u64: Value
+   │            │       
+   │            u64: Memory => Value
+
+note: 
+   ┌─ features/struct_fns.fe:52:12
+   │
+52 │     assert p.x == x and p.y == y
+   │            ^^^^^^^^     ^ Point: Memory
+   │            │             
+   │            bool: Value
+
+note: 
+   ┌─ features/struct_fns.fe:52:25
+   │
+52 │     assert p.x == x and p.y == y
+   │                         ^^^    ^ u64: Value
+   │                         │       
+   │                         u64: Memory => Value
+
+note: 
+   ┌─ features/struct_fns.fe:52:25
+   │
+52 │     assert p.x == x and p.y == y
+   │                         ^^^^^^^^ bool: Value
+
+note: 
+   ┌─ features/struct_fns.fe:52:12
+   │
+52 │     assert p.x == x and p.y == y
+   │            ^^^^^^^^^^^^^^^^^^^^^ bool: Value
+53 │     p.set_x(100)
+   │     ^       ^^^ u64: Value
+   │     │        
+   │     Point: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:53:5
+   │
+53 │     p.set_x(100)
+   │     ^^^^^^^^^^^^ u64: Value
+54 │     p.reflect()
+   │     ^ Point: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:54:5
+   │
+54 │     p.reflect()
+   │     ^^^^^^^^^^^ (): Value
+55 │     assert p.x() == y and p.y == 100
+   │            ^ Point: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:55:12
+   │
+55 │     assert p.x() == y and p.y == 100
+   │            ^^^^^    ^ u64: Value
+   │            │         
+   │            u64: Value
+
+note: 
+   ┌─ features/struct_fns.fe:55:12
+   │
+55 │     assert p.x() == y and p.y == 100
+   │            ^^^^^^^^^^     ^ Point: Memory
+   │            │               
+   │            bool: Value
+
+note: 
+   ┌─ features/struct_fns.fe:55:27
+   │
+55 │     assert p.x() == y and p.y == 100
+   │                           ^^^    ^^^ u64: Value
+   │                           │       
+   │                           u64: Memory => Value
+
+note: 
+   ┌─ features/struct_fns.fe:55:27
+   │
+55 │     assert p.x() == y and p.y == 100
+   │                           ^^^^^^^^^^ bool: Value
+
+note: 
+   ┌─ features/struct_fns.fe:55:12
+   │
+55 │     assert p.x() == y and p.y == 100
+   │            ^^^^^^^^^^^^^^^^^^^^^^^^^ bool: Value
+56 │     return p.y
+   │            ^ Point: Memory
+
+note: 
+   ┌─ features/struct_fns.fe:56:12
+   │
+56 │     return p.y
+   │            ^^^ u64: Memory => Value
+
+note: 
+   ┌─ features/struct_fns.fe:49:5
+   │
+49 │     do_pointy_things()
+   │     ^^^^^^^^^^^^^^^^ Pure(FunctionId(0))
+50 │ 
+51 │     let p: Point = Point.new(x, y)
+   │                    ^^^^^^^^^ AssociatedFunction { class: Struct(StructId(0)), function: FunctionId(1) }
+52 │     assert p.x == x and p.y == y
+53 │     p.set_x(100)
+   │     ^^^^^^^ ValueMethod { is_self: false, class: Struct(StructId(0)), method: FunctionId(4) }
+54 │     p.reflect()
+   │     ^^^^^^^^^ ValueMethod { is_self: false, class: Struct(StructId(0)), method: FunctionId(5) }
+55 │     assert p.x() == y and p.y == 100
+   │            ^^^ ValueMethod { is_self: false, class: Struct(StructId(0)), method: FunctionId(3) }
+
+

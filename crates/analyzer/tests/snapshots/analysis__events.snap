@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/events.fe\", &src, module, &db)"
+expression: "build_snapshot(&files, module, &db)"
 
 ---
 note: 
@@ -8,10 +8,6 @@ note:
   │
 3 │         idx num1: u256
   │         ^^^^^^^^^^^^^^ u256
-
-note: 
-  ┌─ features/events.fe:4:9
-  │
 4 │         num2: u256
   │         ^^^^^^^^^^ u256
 
@@ -20,10 +16,6 @@ note:
   │
 7 │         num: u256
   │         ^^^^^^^^^ u256
-
-note: 
-  ┌─ features/events.fe:8:9
-  │
 8 │         addr: address
   │         ^^^^^^^^^^^^^ address
 
@@ -32,22 +24,10 @@ note:
    │
 11 │         num1: u256
    │         ^^^^^^^^^^ u256
-
-note: 
-   ┌─ features/events.fe:12:9
-   │
 12 │         idx addr: address
    │         ^^^^^^^^^^^^^^^^^ address
-
-note: 
-   ┌─ features/events.fe:13:9
-   │
 13 │         num2: u256
    │         ^^^^^^^^^^ u256
-
-note: 
-   ┌─ features/events.fe:14:9
-   │
 14 │         my_bytes: Array<u8, 100>
    │         ^^^^^^^^^^^^^^^^^^^^^^^^ Array<u8, 100>
 
@@ -75,6 +55,48 @@ note:
      }
 
 note: 
+   ┌─ features/events.fe:20:24
+   │
+20 │         emit Nums(num1=26, num2=42)
+   │                        ^^       ^^ u256: Value
+   │                        │         
+   │                        u256: Value
+
+note: 
+   ┌─ features/events.fe:20:9
+   │
+20 │         emit Nums(num1=26, num2=42)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4681095448721924839
+   │
+   = Event {
+         name: "Nums",
+         fields: [
+             EventField {
+                 name: "num1",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 ),
+                 is_indexed: true,
+             },
+             EventField {
+                 name: "num2",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 ),
+                 is_indexed: false,
+             },
+         ],
+     }
+
+note: 
    ┌─ features/events.fe:22:5
    │  
 22 │ ╭     pub fn emit_bases(addr: address):
@@ -98,6 +120,46 @@ note:
                  Unit,
              ),
          ),
+     }
+
+note: 
+   ┌─ features/events.fe:23:24
+   │
+23 │         emit Bases(num=26, addr)
+   │                        ^^  ^^^^ address: Value
+   │                        │    
+   │                        u256: Value
+
+note: 
+   ┌─ features/events.fe:23:9
+   │
+23 │         emit Bases(num=26, addr)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4407350417102602838
+   │
+   = Event {
+         name: "Bases",
+         fields: [
+             EventField {
+                 name: "num",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 ),
+                 is_indexed: false,
+             },
+             EventField {
+                 name: "addr",
+                 typ: Ok(
+                     Base(
+                         Address,
+                     ),
+                 ),
+                 is_indexed: false,
+             },
+         ],
      }
 
 note: 
@@ -140,209 +202,14 @@ note:
      }
 
 note: 
-   ┌─ features/events.fe:28:5
-   │  
-28 │ ╭     pub fn emit_addresses(addr1: address, addr2: address):
-29 │ │         let addrs: Array<address, 2>
-30 │ │         addrs[0] = addr1
-31 │ │         addrs[1] = addr2
-32 │ │         emit Addresses(addrs)
-   │ ╰─────────────────────────────^ attributes hash: 13018113254659996848
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         params: [
-             FunctionParam {
-                 name: "addr1",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 name: "addr2",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
-
-note: 
-   ┌─ features/events.fe:20:24
-   │
-20 │         emit Nums(num1=26, num2=42)
-   │                        ^^ u256: Value => None
-
-note: 
-   ┌─ features/events.fe:20:33
-   │
-20 │         emit Nums(num1=26, num2=42)
-   │                                 ^^ u256: Value => None
-
-note: 
-   ┌─ features/events.fe:23:24
-   │
-23 │         emit Bases(num=26, addr)
-   │                        ^^ u256: Value => None
-
-note: 
-   ┌─ features/events.fe:23:28
-   │
-23 │         emit Bases(num=26, addr)
-   │                            ^^^^ address: Value => None
-
-note: 
    ┌─ features/events.fe:26:23
    │
 26 │         emit Mix(num1=26, addr, num2=42, my_bytes)
-   │                       ^^ u256: Value => None
-
-note: 
-   ┌─ features/events.fe:26:27
-   │
-26 │         emit Mix(num1=26, addr, num2=42, my_bytes)
-   │                           ^^^^ address: Value => None
-
-note: 
-   ┌─ features/events.fe:26:38
-   │
-26 │         emit Mix(num1=26, addr, num2=42, my_bytes)
-   │                                      ^^ u256: Value => None
-
-note: 
-   ┌─ features/events.fe:26:42
-   │
-26 │         emit Mix(num1=26, addr, num2=42, my_bytes)
-   │                                          ^^^^^^^^ Array<u8, 100>: Memory => None
-
-note: 
-   ┌─ features/events.fe:30:9
-   │
-30 │         addrs[0] = addr1
-   │         ^^^^^ Array<address, 2>: Memory => None
-
-note: 
-   ┌─ features/events.fe:30:15
-   │
-30 │         addrs[0] = addr1
-   │               ^ u256: Value => None
-
-note: 
-   ┌─ features/events.fe:30:9
-   │
-30 │         addrs[0] = addr1
-   │         ^^^^^^^^ address: Memory => None
-
-note: 
-   ┌─ features/events.fe:30:20
-   │
-30 │         addrs[0] = addr1
-   │                    ^^^^^ address: Value => None
-
-note: 
-   ┌─ features/events.fe:31:9
-   │
-31 │         addrs[1] = addr2
-   │         ^^^^^ Array<address, 2>: Memory => None
-
-note: 
-   ┌─ features/events.fe:31:15
-   │
-31 │         addrs[1] = addr2
-   │               ^ u256: Value => None
-
-note: 
-   ┌─ features/events.fe:31:9
-   │
-31 │         addrs[1] = addr2
-   │         ^^^^^^^^ address: Memory => None
-
-note: 
-   ┌─ features/events.fe:31:20
-   │
-31 │         addrs[1] = addr2
-   │                    ^^^^^ address: Value => None
-
-note: 
-   ┌─ features/events.fe:32:24
-   │
-32 │         emit Addresses(addrs)
-   │                        ^^^^^ Array<address, 2>: Memory => None
-
-note: 
-   ┌─ features/events.fe:20:9
-   │
-20 │         emit Nums(num1=26, num2=42)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4681095448721924839
-   │
-   = Event {
-         name: "Nums",
-         fields: [
-             EventField {
-                 name: "num1",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-                 is_indexed: true,
-             },
-             EventField {
-                 name: "num2",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-         ],
-     }
-
-note: 
-   ┌─ features/events.fe:23:9
-   │
-23 │         emit Bases(num=26, addr)
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 4407350417102602838
-   │
-   = Event {
-         name: "Bases",
-         fields: [
-             EventField {
-                 name: "num",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-             EventField {
-                 name: "addr",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-         ],
-     }
+   │                       ^^  ^^^^       ^^  ^^^^^^^^ Array<u8, 100>: Memory
+   │                       │   │          │    
+   │                       │   │          u256: Value
+   │                       │   address: Value
+   │                       u256: Value
 
 note: 
    ┌─ features/events.fe:26:9
@@ -402,6 +269,79 @@ note:
      }
 
 note: 
+   ┌─ features/events.fe:28:5
+   │  
+28 │ ╭     pub fn emit_addresses(addr1: address, addr2: address):
+29 │ │         let addrs: Array<address, 2>
+30 │ │         addrs[0] = addr1
+31 │ │         addrs[1] = addr2
+32 │ │         emit Addresses(addrs)
+   │ ╰─────────────────────────────^ attributes hash: 13018113254659996848
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         params: [
+             FunctionParam {
+                 name: "addr1",
+                 typ: Ok(
+                     Base(
+                         Address,
+                     ),
+                 ),
+             },
+             FunctionParam {
+                 name: "addr2",
+                 typ: Ok(
+                     Base(
+                         Address,
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Unit,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/events.fe:29:20
+   │
+29 │         let addrs: Array<address, 2>
+   │                    ^^^^^^^^^^^^^^^^^ Array<address, 2>
+
+note: 
+   ┌─ features/events.fe:30:9
+   │
+30 │         addrs[0] = addr1
+   │         ^^^^^ ^ u256: Value
+   │         │      
+   │         Array<address, 2>: Memory
+
+note: 
+   ┌─ features/events.fe:30:9
+   │
+30 │         addrs[0] = addr1
+   │         ^^^^^^^^   ^^^^^ address: Value
+   │         │           
+   │         address: Memory
+31 │         addrs[1] = addr2
+   │         ^^^^^ ^ u256: Value
+   │         │      
+   │         Array<address, 2>: Memory
+
+note: 
+   ┌─ features/events.fe:31:9
+   │
+31 │         addrs[1] = addr2
+   │         ^^^^^^^^   ^^^^^ address: Value
+   │         │           
+   │         address: Memory
+32 │         emit Addresses(addrs)
+   │                        ^^^^^ Array<address, 2>: Memory
+
+note: 
    ┌─ features/events.fe:32:9
    │
 32 │         emit Addresses(addrs)
@@ -424,11 +364,5 @@ note:
              },
          ],
      }
-
-note: 
-   ┌─ features/events.fe:29:20
-   │
-29 │         let addrs: Array<address, 2>
-   │                    ^^^^^^^^^^^^^^^^^ Array<address, 2>
 
 

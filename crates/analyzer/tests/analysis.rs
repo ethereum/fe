@@ -1,6 +1,5 @@
-use fe_analyzer::context;
 use fe_analyzer::namespace::items::{self, Item, TypeDef};
-use fe_analyzer::namespace::types::{Event, FixedSize, FunctionSignature, Type};
+use fe_analyzer::namespace::types::{Event, FixedSize};
 use fe_analyzer::{AnalyzerDb, Db};
 use fe_common::diagnostics::{diagnostics_string, print_diagnostics, Diagnostic, Label, Severity};
 use fe_common::files::FileStore;
@@ -8,6 +7,7 @@ use fe_parser::node::NodeId;
 use fe_parser::node::Span;
 use indexmap::IndexMap;
 use insta::assert_snapshot;
+use smallvec::SmallVec;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -46,10 +46,10 @@ macro_rules! test_analysis {
                 //  for larger diffs. I recommend commenting out all tests but one.
                 fe_common::assert_snapshot_wasm!(
                     concat!("snapshots/analysis__", stringify!($name), ".snap"),
-                    build_snapshot(files, module, &db)
+                    build_snapshot(&files, module, &db)
                 );
             } else {
-                assert_snapshot!(build_snapshot(files, module, &db));
+                assert_snapshot!(build_snapshot(&files, module, &db));
             }
         }
     };
@@ -60,6 +60,7 @@ test_analysis! { guest_book, "demos/guest_book.fe"}
 test_analysis! { uniswap, "demos/uniswap.fe"}
 test_analysis! { address_bytes10_map, "features/address_bytes10_map.fe"}
 test_analysis! { assert, "features/assert.fe"}
+test_analysis! { associated_fns, "features/associated_fns.fe"}
 test_analysis! { aug_assign, "features/aug_assign.fe"}
 test_analysis! { base_tuple, "features/base_tuple.fe"}
 test_analysis! { call_statement_with_args, "features/call_statement_with_args.fe"}
@@ -145,6 +146,7 @@ test_analysis! { balances, "features/balances.fe"}
 test_analysis! { sized_vals_in_sto, "features/sized_vals_in_sto.fe"}
 test_analysis! { strings, "features/strings.fe"}
 test_analysis! { structs, "features/structs.fe"}
+test_analysis! { struct_fns, "features/struct_fns.fe"}
 test_analysis! { ternary_expression, "features/ternary_expression.fe"}
 test_analysis! { two_contracts, "features/two_contracts.fe"}
 test_analysis! { u8_u8_map, "features/u8_u8_map.fe"}
@@ -162,128 +164,164 @@ test_analysis! { data_copying_stress, "stress/data_copying_stress.fe"}
 test_analysis! { tuple_stress, "stress/tuple_stress.fe"}
 test_analysis! { type_aliases, "features/type_aliases.fe"}
 
-fn build_snapshot(file_store: FileStore, module: items::ModuleId, db: &dyn AnalyzerDb) -> String {
-    // contract and struct types aren't worth printing
-    let type_aliases = module
+fn build_snapshot(file_store: &FileStore, module: items::ModuleId, db: &dyn AnalyzerDb) -> String {
+    let diagnostics = module
         .all_items(db)
         .iter()
-        .filter_map(|def| match def {
-            Item::Type(TypeDef::Alias(alias)) => {
-                Some((alias.data(db).ast.span, alias.typ(db).unwrap()))
-            }
-            _ => None,
+        .map(|item| match item {
+            Item::Type(TypeDef::Alias(alias)) => vec![build_display_diagnostic(
+                alias.data(db).ast.span,
+                &alias.typ(db).unwrap(),
+            )],
+            Item::Type(TypeDef::Struct(struct_)) => [
+                label_in_non_overlapping_groups(
+                &struct_
+                    .fields(db)
+                    .values()
+                    .map(|field| (field.data(db).ast.span, field.typ(db).unwrap()))
+                    .collect::<Vec<_>>(),
+
+                ),
+                struct_
+                    .functions(db)
+                    .values()
+                    .map(|id| function_diagnostics(*id, db))
+                    .flatten()
+                    .collect(),
+            ]
+            .concat(),
+            Item::Type(TypeDef::Contract(contract)) => [
+                label_in_non_overlapping_groups(
+                    &contract
+                        .fields(db)
+                        .values()
+                        .map(|field| (field.data(db).ast.span, field.typ(db).unwrap()))
+                        .collect::<Vec<_>>(),
+                ),
+                contract
+                    .events(db)
+                    .values()
+                    .map(|id| event_diagnostics(*id, db))
+                    .flatten()
+                    .collect(),
+                contract
+                    .functions(db)
+                    .values()
+                    .map(|id| function_diagnostics(*id, db))
+                    .flatten()
+                    .collect(),
+            ]
+            .concat(),
+
+            Item::Function(id) => function_diagnostics(*id, db),
+            Item::Constant(id) => vec![build_display_diagnostic(id.span(db), &id.typ(db).unwrap())],
+
+
+            // Events can't be defined at the module level yet.
+            Item::Event(_)
+            // Built-in stuff
+            | Item::Type(TypeDef::Primitive(_))
+            | Item::GenericType(_)
+            | Item::BuiltinFunction(_)
+            | Item::Object(_) => vec![],
         })
-        .collect::<Vec<(Span, Type)>>();
-
-    let struct_fields: Vec<(Span, Type)> = module
-        .all_structs(db)
-        .iter()
-        .map(|struc| {
-            struc
-                .all_fields(db)
-                .iter()
-                .map(|field| (field.data(db).ast.span, field.typ(db).unwrap().into()))
-                .collect::<Vec<_>>()
-        })
-        .flatten()
-        .collect();
-
-    let contract_ids = module.all_contracts(db);
-    let contract_fields: Vec<(Span, Type)> = contract_ids
-        .iter()
-        .map(|contract| {
-            contract
-                .all_fields(db)
-                .iter()
-                .map(|field| (field.data(db).ast.span, field.typ(db).unwrap()))
-                .collect::<Vec<_>>()
-        })
-        .flatten()
-        .collect();
-    let event_fields = contract_ids
-        .iter()
-        .map(|contract| {
-            contract
-                .all_events(db)
-                .iter()
-                .map(|event| {
-                    // Event field spans are a bit of a hassle right now
-                    event
-                        .data(db)
-                        .ast
-                        .kind
-                        .fields
-                        .iter()
-                        .map(|node| node.span)
-                        .zip(
-                            event
-                                .typ(db)
-                                .fields
-                                .iter()
-                                .map(|field| field.typ.clone().unwrap()),
-                        )
-                        .collect::<Vec<(Span, FixedSize)>>()
-                })
-                .flatten()
-                .collect::<Vec<(Span, FixedSize)>>()
-        })
-        .flatten()
-        .collect::<Vec<(Span, FixedSize)>>();
-
-    let all_function_ids: Vec<items::FunctionId> = contract_ids
-        .iter()
-        .map(|contract| contract.all_functions(db).as_ref().clone())
-        .flatten()
-        .collect();
-
-    let function_sigs = all_function_ids
-        .iter()
-        .map(|fun| (fun.data(db).ast.span, fun.signature(db)))
-        .collect::<Vec<(Span, Rc<FunctionSignature>)>>();
-
-    let all_function_bodies: Vec<Rc<context::FunctionBody>> =
-        all_function_ids.iter().map(|func| func.body(db)).collect();
-
-    let expressions = all_function_bodies
-        .iter()
-        .map(|body| lookup_spans(&body.expressions, &body.spans))
         .flatten()
         .collect::<Vec<_>>();
-    let emits = all_function_bodies
+
+    diagnostics_string(&diagnostics, file_store)
+}
+
+fn new_diagnostic(labels: Vec<Label>) -> Diagnostic {
+    Diagnostic {
+        severity: Severity::Note,
+        message: String::new(),
+        labels: labels.to_vec(),
+        notes: vec![],
+    }
+}
+
+fn label_in_non_overlapping_groups(spans: &[(Span, impl Display)]) -> Vec<Diagnostic> {
+    // Accumulate labels in a vec until we reach a span that overlaps
+    // the labeled range, then emit a Diagnostic with the accumulated labels
+    // and begin again. This assumes that all spans are within the same file.
+    let file_id = if let Some((span, _)) = spans.first() {
+        span.file_id
+    } else {
+        return vec![];
+    };
+
+    spans
         .iter()
-        .map(|body| {
-            lookup_spans(&body.emits, &body.spans)
+        .enumerate()
+        .scan(
+            (Span::zero(file_id), vec![]),
+            |(labeled, labels), (idx, (span, attr))| {
+                let mut diags = SmallVec::<[Diagnostic; 2]>::new();
+
+                let overlaps = span.start < labeled.end && span.end > labeled.start;
+
+                // If the current span overlaps with the union of the current set of labels,
+                // emit a diagnostic, and clear the set of labels.
+                if overlaps {
+                    diags.push(new_diagnostic(labels.to_vec()));
+                    labels.clear();
+                    *labeled = *span;
+                }
+                labels.push(Label::primary(*span, format!("{}", attr)));
+                *labeled += *span;
+
+                // If this is the last thing to label, emit a diagnostic.
+                if idx == spans.len() - 1 {
+                    diags.push(new_diagnostic(labels.to_vec()));
+                }
+                Some(diags)
+            },
+        )
+        .flatten()
+        .collect()
+}
+
+fn function_diagnostics(fun: items::FunctionId, db: &dyn AnalyzerDb) -> Vec<Diagnostic> {
+    let body = fun.body(db);
+    [
+        // signature
+        build_debug_diagnostics(&[(fun.data(db).ast.span, &fun.signature(db))]),
+        // declarations
+        label_in_non_overlapping_groups(&lookup_spans(&body.var_decl_types, &body.spans)),
+        // expressions
+        label_in_non_overlapping_groups(&lookup_spans(&body.expressions, &body.spans)),
+        // emits
+        build_debug_diagnostics(
+            &lookup_spans(&body.emits, &body.spans)
                 .into_iter()
                 .map(|(span, eventid)| (span, eventid.typ(db)))
-                .collect::<Vec<(Span, Rc<Event>)>>()
-        })
-        .flatten()
-        .collect::<Vec<_>>();
-    let declarations = all_function_bodies
-        .iter()
-        .map(|body| lookup_spans(&body.var_decl_types, &body.spans))
-        .flatten()
-        .collect::<Vec<_>>();
-    let calls = all_function_bodies
-        .iter()
-        .map(|body| lookup_spans(&body.calls, &body.spans))
-        .flatten()
-        .collect::<Vec<_>>();
-
-    let diagnostics = [
-        build_display_diagnostics(&type_aliases),
-        build_display_diagnostics(&struct_fields),
-        build_display_diagnostics(&contract_fields),
-        build_display_diagnostics(&event_fields),
-        build_debug_diagnostics(&function_sigs),
-        build_display_diagnostics(&expressions),
-        build_debug_diagnostics(&emits),
-        build_display_diagnostics(&declarations),
-        build_debug_diagnostics(&calls),
+                .collect::<Vec<(Span, Rc<Event>)>>(),
+        ),
+        // calls
+        label_in_non_overlapping_groups(&lookup_spans(&body.calls, &body.spans)),
     ]
-    .concat();
+    .concat()
+}
 
-    diagnostics_string(&diagnostics, &file_store)
+fn event_diagnostics(event: items::EventId, db: &dyn AnalyzerDb) -> Vec<Diagnostic> {
+    // Event field spans are a bit of a hassle right now
+    label_in_non_overlapping_groups(
+        &event
+            .data(db)
+            .ast
+            .kind
+            .fields
+            .iter()
+            .map(|node| node.span)
+            .zip(
+                event
+                    .typ(db)
+                    .fields
+                    .iter()
+                    .map(|field| field.typ.clone().unwrap()),
+            )
+            .collect::<Vec<(Span, FixedSize)>>(),
+    )
 }
 
 fn lookup_spans<T: Clone>(
@@ -314,15 +352,7 @@ fn build_debug_diagnostic<T: Debug>(span: Span, attributes: &T) -> Diagnostic {
     }
 }
 
-fn build_display_diagnostics<T: Display>(spanned_attributes: &[(Span, T)]) -> Vec<Diagnostic> {
-    spanned_attributes
-        .iter()
-        .map(|(span, attributes)| build_display_diagnostic(*span, attributes))
-        .collect::<Vec<_>>()
-}
-
 fn build_display_diagnostic<T: Display>(span: Span, attributes: &T) -> Diagnostic {
-    // Hash the attributes and label the span with it.
     let label = Label::primary(span, format!("{}", attributes));
     Diagnostic {
         severity: Severity::Note,

@@ -4,12 +4,6 @@ expression: "build_snapshot(\"features/create_contract_from_init.fe\", &src, mod
 
 ---
 note: 
-  ┌─ features/create_contract_from_init.fe:6:5
-  │
-6 │     foo_addr: address
-  │     ^^^^^^^^^^^^^^^^^ address
-
-note: 
   ┌─ features/create_contract_from_init.fe:2:5
   │  
 2 │ ╭     pub fn get_my_num() -> u256:
@@ -29,31 +23,28 @@ note:
     }
 
 note: 
-  ┌─ features/create_contract_from_init.fe:8:5
-  │  
-8 │ ╭     pub fn __init__(self):
-9 │ │         self.foo_addr = address(Foo.create(0))
-  │ ╰──────────────────────────────────────────────^ attributes hash: 4369441865732737140
-  │  
-  = FunctionSignature {
-        self_decl: Mutable,
-        params: [],
-        return_type: Ok(
-            Base(
-                Unit,
-            ),
-        ),
-    }
+  ┌─ features/create_contract_from_init.fe:3:16
+  │
+3 │         return 42
+  │                ^^ u256: Value
+
+note: 
+  ┌─ features/create_contract_from_init.fe:6:5
+  │
+6 │     foo_addr: address
+  │     ^^^^^^^^^^^^^^^^^ address
 
 note: 
    ┌─ features/create_contract_from_init.fe:11:5
    │  
 11 │ ╭     pub fn get_foo_addr(self) -> address:
 12 │ │         return self.foo_addr
-   │ ╰────────────────────────────^ attributes hash: 17651916811868111914
+   │ ╰────────────────────────────^ attributes hash: 10447292744135180405
    │  
    = FunctionSignature {
-         self_decl: Mutable,
+         self_decl: Some(
+             Mutable,
+         ),
          params: [],
          return_type: Ok(
              Base(
@@ -63,69 +54,15 @@ note:
      }
 
 note: 
-  ┌─ features/create_contract_from_init.fe:3:16
-  │
-3 │         return 42
-  │                ^^ u256: Value => None
-
-note: 
-  ┌─ features/create_contract_from_init.fe:9:9
-  │
-9 │         self.foo_addr = address(Foo.create(0))
-  │         ^^^^^^^^^^^^^ address: Storage { nonce: Some(0) } => None
-
-note: 
-  ┌─ features/create_contract_from_init.fe:9:44
-  │
-9 │         self.foo_addr = address(Foo.create(0))
-  │                                            ^ u256: Value => None
-
-note: 
-  ┌─ features/create_contract_from_init.fe:9:33
-  │
-9 │         self.foo_addr = address(Foo.create(0))
-  │                                 ^^^^^^^^^^^^^ Foo: Value => None
-
-note: 
-  ┌─ features/create_contract_from_init.fe:9:25
-  │
-9 │         self.foo_addr = address(Foo.create(0))
-  │                         ^^^^^^^^^^^^^^^^^^^^^^ address: Value => None
+   ┌─ features/create_contract_from_init.fe:12:16
+   │
+12 │         return self.foo_addr
+   │                ^^^^ FooFactory: Value
 
 note: 
    ┌─ features/create_contract_from_init.fe:12:16
    │
 12 │         return self.foo_addr
-   │                ^^^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Some(Value)
-
-note: 
-  ┌─ features/create_contract_from_init.fe:9:25
-  │
-9 │         self.foo_addr = address(Foo.create(0))
-  │                         ^^^^^^^ attributes hash: 14203407709342965641
-  │
-  = TypeConstructor {
-        typ: Base(
-            Address,
-        ),
-    }
-
-note: 
-  ┌─ features/create_contract_from_init.fe:9:33
-  │
-9 │         self.foo_addr = address(Foo.create(0))
-  │                                 ^^^^^^^^^^ attributes hash: 6749875126898824118
-  │
-  = TypeAttribute {
-        typ: Contract(
-            Contract {
-                name: "Foo",
-                id: ContractId(
-                    0,
-                ),
-            },
-        ),
-        func_name: "create",
-    }
+   │                ^^^^^^^^^^^^^ address: Storage { nonce: Some(0) } => Value
 
 

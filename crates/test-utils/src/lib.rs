@@ -245,7 +245,7 @@ pub fn deploy_contract(
     let mut files = FileStore::new();
     let id = files.add_file(fixture, src);
 
-    let compiled_module = match driver::compile(id, src, true, true) {
+    let compiled_module = match driver::compile(&files, id, src, true, true) {
         Ok(module) => module,
         Err(error) => {
             fe_common::diagnostics::print_diagnostics(&error.0, &files);
@@ -448,7 +448,7 @@ pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> Contr
     let mut files = FileStore::new();
     let src = test_files::fixture(fixture);
     let id = files.add_file(fixture, src);
-    let compiled_module = match driver::compile(id, src, true, true) {
+    let compiled_module = match driver::compile(&files, id, src, true, true) {
         Ok(module) => module,
         Err(err) => {
             print_diagnostics(&err.0, &files);

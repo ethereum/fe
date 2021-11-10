@@ -7,6 +7,6 @@ error: failed to parse `for` statement
   ┌─ for_no_in:1:6
   │
 1 │ for x:
-  │      ^ Unexpected token. Expected `in`
+  │      ^ expected keyword `in`, found symbol `:`
 
 

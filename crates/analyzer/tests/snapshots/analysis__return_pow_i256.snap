@@ -47,18 +47,14 @@ note:
   ┌─ features/return_pow_i256.fe:3:16
   │
 3 │         return x ** y
-  │                ^ i8: Value => None
-
-note: 
-  ┌─ features/return_pow_i256.fe:3:21
-  │
-3 │         return x ** y
-  │                     ^ u8: Value => None
+  │                ^    ^ u8: Value
+  │                │     
+  │                i8: Value
 
 note: 
   ┌─ features/return_pow_i256.fe:3:16
   │
 3 │         return x ** y
-  │                ^^^^^^ i8: Value => None
+  │                ^^^^^^ i8: Value
 
 

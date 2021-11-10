@@ -32,10 +32,12 @@ fn std_prelude_items() -> IndexMap<String, Item> {
         types::GenericType::iter().map(|typ| (typ.name().to_string(), Item::GenericType(typ))),
     );
     items.extend(
-        builtins::GlobalMethod::iter()
+        builtins::GlobalFunction::iter()
             .map(|fun| (fun.as_ref().to_string(), Item::BuiltinFunction(fun))),
     );
-    items.extend(builtins::Object::iter().map(|obj| (obj.as_ref().to_string(), Item::Object(obj))));
+    items.extend(
+        builtins::GlobalObject::iter().map(|obj| (obj.as_ref().to_string(), Item::Object(obj))),
+    );
     items
 }
 
@@ -78,8 +80,8 @@ pub fn module_all_items(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<Vec<Item>> 
             ast::ModuleStmt::Function(node) => {
                 Some(Item::Function(db.intern_function(Rc::new(Function {
                     ast: node.clone(),
-                    contract: None,
                     module,
+                    parent: None,
                 }))))
             }
             ast::ModuleStmt::Pragma(_) => None,

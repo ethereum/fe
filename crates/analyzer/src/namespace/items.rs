@@ -2,7 +2,7 @@ use crate::builtins;
 use crate::context;
 use crate::errors::{self, TypeError};
 use crate::impl_intern_key;
-use crate::namespace::types::{self, GenericType, SelfDecl};
+use crate::namespace::types::{self, GenericType};
 use crate::traversal::pragma::check_pragma_version;
 use crate::AnalyzerDb;
 use fe_common::diagnostics::Diagnostic;
@@ -17,7 +17,6 @@ use std::rc::Rc;
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Item {
     // Module   // TODO: modules don't have names yet
-    // Constant // TODO: when `const` is implemented
     Type(TypeDef),
     // GenericType probably shouldn't be a separate category.
     // Any of the items inside TypeDef (struct, alias, etc)
@@ -30,12 +29,12 @@ pub enum Item {
     Constant(ModuleConstantId),
     // Needed until we can represent keccak256 as a FunctionId.
     // We can't represent keccak256's arg type yet.
-    BuiltinFunction(builtins::GlobalMethod),
+    BuiltinFunction(builtins::GlobalFunction),
 
     // This should go away soon. The globals (block, msg, etc) will be replaced
     // with a context struct that'll appear in the fn parameter list.
     // `self` should just be removed from here and handled as a special parameter.
-    Object(builtins::Object),
+    Object(builtins::GlobalObject),
 }
 
 impl Item {
@@ -353,11 +352,6 @@ impl ContractId {
         db.contract_field_map(*self).value
     }
 
-    /// All field ids, including those with duplicate names
-    pub fn all_fields(&self, db: &dyn AnalyzerDb) -> Rc<Vec<ContractFieldId>> {
-        db.contract_all_fields(*self)
-    }
-
     pub fn field_type(
         &self,
         db: &dyn AnalyzerDb,
@@ -369,7 +363,8 @@ impl ContractId {
     }
 
     pub fn resolve_name(&self, db: &dyn AnalyzerDb, name: &str) -> Option<Item> {
-        self.pure_function(db, name)
+        self.function(db, name)
+            .filter(|f| !f.takes_self(db))
             .map(Item::Function)
             .or_else(|| self.event(db, name).map(Item::Event))
             .or_else(|| self.module(db).resolve_name(db, name))
@@ -394,34 +389,9 @@ impl ContractId {
         db.contract_public_function_map(*self)
     }
 
-    /// Lookup a function by name. Matches on public and private functions, excludes init function.
-    pub fn public_function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
-        self.public_functions(db).get(name).copied()
-    }
-
-    /// Functions that do not have a self parameter.
-    pub fn pure_functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, FunctionId>> {
-        db.contract_pure_function_map(*self)
-    }
-
-    /// Get a pure function by its name.
-    pub fn pure_function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
-        self.pure_functions(db).get(name).copied()
-    }
-
-    /// Functions that have a self parameter.
-    pub fn self_functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, FunctionId>> {
-        db.contract_self_function_map(*self)
-    }
-
     /// Get a function that takes self by its name.
     pub fn self_function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
-        self.self_functions(db).get(name).copied()
-    }
-
-    /// A `Vec` of every function defined in the contract, including duplicates and the init function.
-    pub fn all_functions(&self, db: &dyn AnalyzerDb) -> Rc<Vec<FunctionId>> {
-        db.contract_all_functions(*self)
+        self.function(db, name).filter(|f| f.takes_self(db))
     }
 
     /// Lookup an event by name.
@@ -432,11 +402,6 @@ impl ContractId {
     /// A map of events defined within the contract.
     pub fn events(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, EventId>> {
         db.contract_event_map(*self).value
-    }
-
-    /// A `Vec` of all events defined within the contract, including those with duplicate names.
-    pub fn all_events(&self, db: &dyn AnalyzerDb) -> Rc<Vec<EventId>> {
-        db.contract_all_events(*self)
     }
 
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
@@ -488,8 +453,8 @@ impl ContractFieldId {
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Function {
     pub ast: Node<ast::Function>,
-    pub contract: Option<ContractId>,
     pub module: ModuleId,
+    pub parent: Option<Class>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
@@ -508,15 +473,31 @@ impl FunctionId {
     pub fn name_span(&self, db: &dyn AnalyzerDb) -> Span {
         self.data(db).ast.kind.name.span
     }
-    pub fn contract(&self, db: &dyn AnalyzerDb) -> Option<ContractId> {
-        self.data(db).contract
+
+    pub fn parent(&self, db: &dyn AnalyzerDb) -> Option<Class> {
+        self.data(db).parent
     }
+
     pub fn module(&self, db: &dyn AnalyzerDb) -> ModuleId {
         self.data(db).module
     }
-    pub fn is_pure(&self, db: &dyn AnalyzerDb) -> bool {
-        self.signature(db).self_decl == SelfDecl::None
+
+    pub fn takes_self(&self, db: &dyn AnalyzerDb) -> bool {
+        self.signature(db).self_decl.is_some()
     }
+    pub fn self_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
+        if self.takes_self(db) {
+            self.data(db)
+                .ast
+                .kind
+                .args
+                .iter()
+                .find_map(|arg| matches!(arg.kind, ast::FunctionArg::Zelf).then(|| arg.span))
+        } else {
+            None
+        }
+    }
+
     pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
         self.pub_span(db).is_some()
     }
@@ -536,6 +517,44 @@ impl FunctionId {
         sink.push_all(db.function_signature(*self).diagnostics.iter());
         sink.push_all(db.function_body(*self).diagnostics.iter());
     }
+}
+
+/// A `Class` is an item that can have member functions.
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub enum Class {
+    Contract(ContractId),
+    Struct(StructId),
+}
+impl Class {
+    pub fn function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
+        match self {
+            Class::Contract(id) => id.function(db, name),
+            Class::Struct(id) => id.function(db, name),
+        }
+    }
+    pub fn self_function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
+        let fun = self.function(db, name)?;
+        fun.takes_self(db).then(|| fun)
+    }
+
+    pub fn name(&self, db: &dyn AnalyzerDb) -> String {
+        match self {
+            Class::Contract(inner) => inner.name(db),
+            Class::Struct(inner) => inner.name(db),
+        }
+    }
+    pub fn kind(&self) -> &str {
+        match self {
+            Class::Contract(_) => "contract",
+            Class::Struct(_) => "struct",
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub enum MemberFunction {
+    BuiltIn(builtins::ValueMethod),
+    Function(FunctionId),
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -570,19 +589,35 @@ impl StructId {
     pub fn field(&self, db: &dyn AnalyzerDb, name: &str) -> Option<StructFieldId> {
         self.fields(db).get(name).copied()
     }
-    /// All fields, including duplicates
-    pub fn all_fields(&self, db: &dyn AnalyzerDb) -> Rc<Vec<StructFieldId>> {
-        db.struct_all_fields(*self)
+    pub fn field_type(
+        &self,
+        db: &dyn AnalyzerDb,
+        name: &str,
+    ) -> Option<Result<types::FixedSize, TypeError>> {
+        Some(self.field(db, name)?.typ(db))
     }
+
     pub fn fields(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, StructFieldId>> {
         db.struct_field_map(*self).value
     }
-
+    pub fn functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, FunctionId>> {
+        db.struct_function_map(*self).value
+    }
+    pub fn function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
+        self.functions(db).get(name).copied()
+    }
+    pub fn self_function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
+        self.function(db, name).filter(|f| f.takes_self(db))
+    }
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         sink.push_all(db.struct_field_map(*self).diagnostics.iter());
         db.struct_all_fields(*self)
             .iter()
-            .for_each(|field| field.sink_diagnostics(db, sink));
+            .for_each(|id| id.sink_diagnostics(db, sink));
+
+        db.struct_all_functions(*self)
+            .iter()
+            .for_each(|id| id.sink_diagnostics(db, sink));
     }
 }
 

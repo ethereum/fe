@@ -89,7 +89,9 @@ mod tests {
     fn errors() {
         check(
             "contract Foo@ 5u8 \n  self.bar",
-            &[Contract, Name, Error, Int, Name, Newline, Name, Dot, Name],
+            &[
+                Contract, Name, Error, Int, Name, Newline, SelfValue, Dot, Name,
+            ],
         );
     }
 

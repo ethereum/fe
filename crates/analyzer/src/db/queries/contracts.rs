@@ -11,6 +11,7 @@ use indexmap::map::{Entry, IndexMap};
 
 use std::rc::Rc;
 
+/// A `Vec` of every function defined in the contract, including duplicates and the init function.
 pub fn contract_all_functions(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<Vec<FunctionId>> {
     let module = contract.module(db);
     let body = &contract.data(db).ast.kind.body;
@@ -21,8 +22,8 @@ pub fn contract_all_functions(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<V
                 ast::ContractStmt::Function(node) => {
                     Some(db.intern_function(Rc::new(items::Function {
                         ast: node.clone(),
-                        contract: Some(contract),
                         module,
+                        parent: Some(items::Class::Contract(contract)),
                     })))
                 }
             })
@@ -37,7 +38,7 @@ pub fn contract_function_map(
     let mut scope = ItemScope::new(db, contract.module(db));
     let mut map = IndexMap::<String, FunctionId>::new();
 
-    for func in contract.all_functions(db).iter() {
+    for func in db.contract_all_functions(contract).iter() {
         let def = &func.data(db).ast;
         let def_name = def.name();
         if def_name == "__init__" {
@@ -102,37 +103,11 @@ pub fn contract_public_function_map(
     )
 }
 
-pub fn contract_pure_function_map(
-    db: &dyn AnalyzerDb,
-    contract: ContractId,
-) -> Rc<IndexMap<String, FunctionId>> {
-    Rc::new(
-        contract
-            .functions(db)
-            .iter()
-            .filter_map(|(name, func)| func.is_pure(db).then(|| (name.clone(), *func)))
-            .collect(),
-    )
-}
-
-pub fn contract_self_function_map(
-    db: &dyn AnalyzerDb,
-    contract: ContractId,
-) -> Rc<IndexMap<String, FunctionId>> {
-    Rc::new(
-        contract
-            .functions(db)
-            .iter()
-            .filter_map(|(name, func)| (!func.is_pure(db)).then(|| (name.clone(), *func)))
-            .collect(),
-    )
-}
-
 pub fn contract_init_function(
     db: &dyn AnalyzerDb,
     contract: ContractId,
 ) -> Analysis<Option<FunctionId>> {
-    let all_fns = contract.all_functions(db);
+    let all_fns = db.contract_all_functions(contract);
     let mut init_fns = all_fns.iter().filter_map(|func| {
         let def = &func.data(db).ast;
         (def.name() == "__init__").then(|| (func, def.span))
@@ -180,6 +155,7 @@ pub fn contract_init_function(
     }
 }
 
+/// A `Vec` of all events defined within the contract, including those with duplicate names.
 pub fn contract_all_events(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<Vec<EventId>> {
     let body = &contract.data(db).ast.kind.body;
     Rc::new(
@@ -227,6 +203,7 @@ pub fn contract_event_map(
     }
 }
 
+/// All field ids, including those with duplicate names
 pub fn contract_all_fields(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<Vec<ContractFieldId>> {
     let fields = contract
         .data(db)

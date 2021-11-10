@@ -7,6 +7,6 @@ error: failed to parse `use` tree
   ┌─ use_bad_name:1:10
   │
 1 │ use x as 123
-  │          ^^^ Unexpected token. Expected a name
+  │          ^^^ expected a name, found a number
 
 

@@ -26,26 +26,18 @@ note:
   ┌─ features/return_u128_cast.fe:3:21
   │
 3 │         return u128(42)
-  │                     ^^ u128: Value => None
+  │                     ^^ u128: Value
 
 note: 
   ┌─ features/return_u128_cast.fe:3:16
   │
 3 │         return u128(42)
-  │                ^^^^^^^^ u128: Value => None
+  │                ^^^^^^^^ u128: Value
 
 note: 
   ┌─ features/return_u128_cast.fe:3:16
   │
 3 │         return u128(42)
-  │                ^^^^ attributes hash: 2454885421097624260
-  │
-  = TypeConstructor {
-        typ: Base(
-            Numeric(
-                U128,
-            ),
-        ),
-    }
+  │                ^^^^ TypeConstructor(Base(Numeric(U128)))
 
 

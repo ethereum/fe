@@ -155,8 +155,13 @@ test_parse! { use_nested2, module::parse_use, r#"use std::bar::{
 test_parse! { struct_def, types::parse_struct_def, r#"struct S:
   x: address
   pub y: u8
-  const z: u8
-  pub const a: Map<u8, foo>
+  z: u8
+  pub a: Map<u8, foo>
+
+  pub fn foo(self) -> u8:
+    return self.z + self.y
+  unsafe fn bar():
+    pass
 "# }
 test_parse! { empty_struct_def, types::parse_struct_def, r#"struct S:
   pass

@@ -4,6 +4,19 @@ struct House:
     rooms: u8
     vacant: bool
 
+    pub fn encode(self) -> Array<u8, 128>:
+        return self.abi_encode()
+
+    pub fn hash(self) -> u256:
+        return keccak256(self.encode())
+
+    pub fn price_per_sqft(self) -> u256:
+        return self.price / self.size
+
+    pub fn expand(self):
+        self.rooms += 1
+        self.size += 100
+
 contract Foo:
     my_house: House
 
@@ -68,6 +81,11 @@ contract Foo:
         assert building.price == 1
         assert building.size == 2
         assert building.rooms == u8(10)
+
+        building.expand()
+        assert building.size == 102
+        assert building.rooms == 11
+
         return building.size
 
     pub fn encode_house() -> Array<u8, 128>:
@@ -77,7 +95,7 @@ contract Foo:
             rooms=u8(20),
             vacant=true
         )
-        return house.abi_encode()
+        return house.encode()
 
     pub fn hashed_house() -> u256:
         let house: House = House(
@@ -86,4 +104,4 @@ contract Foo:
             rooms=u8(20),
             vacant=true
         )
-        return keccak256(house.abi_encode())
+        return house.hash()

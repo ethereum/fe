@@ -78,6 +78,7 @@ pub struct Contract {
 pub struct Struct {
     pub name: Node<String>,
     pub fields: Vec<Node<Field>>,
+    pub functions: Vec<Node<Function>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -505,10 +506,14 @@ impl fmt::Display for Contract {
 impl fmt::Display for Struct {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         writeln!(f, "struct {}:", self.name.kind)?;
-        if self.fields.is_empty() {
+        if self.fields.is_empty() && self.functions.is_empty() {
             write!(indented(f), "pass")
         } else {
-            write!(indented(f), "{}", node_line_joined(&self.fields))
+            write!(indented(f), "{}", node_line_joined(&self.fields))?;
+            if !self.fields.is_empty() && !self.functions.is_empty() {
+                write!(f, "\n\n")?;
+            }
+            write!(indented(f), "{}", double_line_joined(&self.functions))
         }
     }
 }
@@ -564,6 +569,12 @@ impl fmt::Display for Event {
         } else {
             write!(indented(f), "{}", node_line_joined(&self.fields))
         }
+    }
+}
+
+impl fmt::Display for Node<Function> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        self.kind.fmt(f)
     }
 }
 

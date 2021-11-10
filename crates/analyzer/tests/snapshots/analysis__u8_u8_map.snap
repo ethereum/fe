@@ -14,10 +14,12 @@ note:
   │  
 4 │ ╭     pub fn read_bar(self, key: u8) -> u8:
 5 │ │         return self.bar[key]
-  │ ╰────────────────────────────^ attributes hash: 12371532813153398159
+  │ ╰────────────────────────────^ attributes hash: 2018683894208622187
   │  
   = FunctionSignature {
-        self_decl: Mutable,
+        self_decl: Some(
+            Mutable,
+        ),
         params: [
             FunctionParam {
                 name: "key",
@@ -40,14 +42,36 @@ note:
     }
 
 note: 
+  ┌─ features/u8_u8_map.fe:5:16
+  │
+5 │         return self.bar[key]
+  │                ^^^^ Foo: Value
+
+note: 
+  ┌─ features/u8_u8_map.fe:5:16
+  │
+5 │         return self.bar[key]
+  │                ^^^^^^^^ ^^^ u8: Value
+  │                │         
+  │                Map<u8, u8>: Storage { nonce: Some(0) }
+
+note: 
+  ┌─ features/u8_u8_map.fe:5:16
+  │
+5 │         return self.bar[key]
+  │                ^^^^^^^^^^^^^ u8: Storage { nonce: None } => Value
+
+note: 
   ┌─ features/u8_u8_map.fe:7:5
   │  
 7 │ ╭     pub fn write_bar(self, key: u8, value: u8):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 334915651172467174
+  │ ╰─────────────────────────────^ attributes hash: 10617957370555248465
   │  
   = FunctionSignature {
-        self_decl: Mutable,
+        self_decl: Some(
+            Mutable,
+        ),
         params: [
             FunctionParam {
                 name: "key",
@@ -78,45 +102,25 @@ note:
     }
 
 note: 
-  ┌─ features/u8_u8_map.fe:5:16
+  ┌─ features/u8_u8_map.fe:8:9
   │
-5 │         return self.bar[key]
-  │                ^^^^^^^^ Map<u8, u8>: Storage { nonce: Some(0) } => None
-
-note: 
-  ┌─ features/u8_u8_map.fe:5:25
-  │
-5 │         return self.bar[key]
-  │                         ^^^ u8: Value => None
-
-note: 
-  ┌─ features/u8_u8_map.fe:5:16
-  │
-5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ u8: Storage { nonce: None } => Some(Value)
+8 │         self.bar[key] = value
+  │         ^^^^ Foo: Value
 
 note: 
   ┌─ features/u8_u8_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^ Map<u8, u8>: Storage { nonce: Some(0) } => None
-
-note: 
-  ┌─ features/u8_u8_map.fe:8:18
-  │
-8 │         self.bar[key] = value
-  │                  ^^^ u8: Value => None
+  │         ^^^^^^^^ ^^^ u8: Value
+  │         │         
+  │         Map<u8, u8>: Storage { nonce: Some(0) }
 
 note: 
   ┌─ features/u8_u8_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^^^^^^ u8: Storage { nonce: None } => None
-
-note: 
-  ┌─ features/u8_u8_map.fe:8:25
-  │
-8 │         self.bar[key] = value
-  │                         ^^^^^ u8: Value => None
+  │         ^^^^^^^^^^^^^   ^^^^^ u8: Value
+  │         │                
+  │         u8: Storage { nonce: None }
 
 

@@ -1,6 +1,6 @@
 use fe_analyzer::Db;
-use fe_common::diagnostics::Diagnostic;
-use fe_common::files::SourceFileId;
+use fe_common::diagnostics::{print_diagnostics, Diagnostic};
+use fe_common::files::{FileStore, SourceFileId};
 use fe_parser::parse_file;
 #[cfg(feature = "solc-backend")]
 use serde_json::Value;
@@ -29,6 +29,7 @@ pub struct CompileError(pub Vec<Diagnostic>);
 /// If `with_bytecode` is set to false, the compiler will skip the final Yul ->
 /// Bytecode pass. This is useful when debugging invalid Yul code.
 pub fn compile(
+    files: &FileStore,
     file_id: SourceFileId,
     src: &str,
     _with_bytecode: bool,
@@ -65,8 +66,13 @@ pub fn compile(
     let lowered_ast = format!("{:#?}", &lowered_module);
 
     // analyze the lowered AST
-    let lowered_module_id =
-        fe_analyzer::analyze(&db, lowered_module).expect("failed to analyze lowered AST");
+    let lowered_module_id = match fe_analyzer::analyze(&db, lowered_module) {
+        Ok(id) => id,
+        Err(diags) => {
+            print_diagnostics(&diags, files);
+            panic!("Internal compiler errror: failed to analyze lowered AST");
+        }
+    };
 
     // compile to yul
     let yul_contracts = fe_yulgen::compile(&db, lowered_module_id);
@@ -89,6 +95,7 @@ pub fn compile(
                             .replace("\\\n", "\n")
                     )
                 }
+
                 panic!("Yul compilation failed with the above errors")
             }
             Ok(contracts) => contracts,

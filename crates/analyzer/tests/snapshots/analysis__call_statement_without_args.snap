@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(files, module, &db)"
+expression: "build_snapshot(&files, module, &db)"
 
 ---
 note: 
@@ -14,10 +14,12 @@ note:
   │  
 4 │ ╭     fn assign(self):
 5 │ │         self.baz[0] = 100
-  │ ╰─────────────────────────^ attributes hash: 4369441865732737140
+  │ ╰─────────────────────────^ attributes hash: 17603814563784536273
   │  
   = FunctionSignature {
-        self_decl: Mutable,
+        self_decl: Some(
+            Mutable,
+        ),
         params: [],
         return_type: Ok(
             Base(
@@ -27,15 +29,39 @@ note:
     }
 
 note: 
+  ┌─ features/call_statement_without_args.fe:5:9
+  │
+5 │         self.baz[0] = 100
+  │         ^^^^ Foo: Value
+
+note: 
+  ┌─ features/call_statement_without_args.fe:5:9
+  │
+5 │         self.baz[0] = 100
+  │         ^^^^^^^^ ^ u256: Value
+  │         │         
+  │         Map<u256, u256>: Storage { nonce: Some(0) }
+
+note: 
+  ┌─ features/call_statement_without_args.fe:5:9
+  │
+5 │         self.baz[0] = 100
+  │         ^^^^^^^^^^^   ^^^ u256: Value
+  │         │              
+  │         u256: Storage { nonce: None }
+
+note: 
   ┌─ features/call_statement_without_args.fe:7:5
   │  
 7 │ ╭     pub fn bar(self) -> u256:
 8 │ │         self.assign()
 9 │ │         return self.baz[0]
-  │ ╰──────────────────────────^ attributes hash: 16482263331346774611
+  │ ╰──────────────────────────^ attributes hash: 2875164910451995213
   │  
   = FunctionSignature {
-        self_decl: Mutable,
+        self_decl: Some(
+            Mutable,
+        ),
         params: [],
         return_type: Ok(
             Base(
@@ -47,62 +73,37 @@ note:
     }
 
 note: 
-  ┌─ features/call_statement_without_args.fe:5:9
+  ┌─ features/call_statement_without_args.fe:8:9
   │
-5 │         self.baz[0] = 100
-  │         ^^^^^^^^ Map<u256, u256>: Storage { nonce: Some(0) } => None
-
-note: 
-  ┌─ features/call_statement_without_args.fe:5:18
-  │
-5 │         self.baz[0] = 100
-  │                  ^ u256: Value => None
-
-note: 
-  ┌─ features/call_statement_without_args.fe:5:9
-  │
-5 │         self.baz[0] = 100
-  │         ^^^^^^^^^^^ u256: Storage { nonce: None } => None
-
-note: 
-  ┌─ features/call_statement_without_args.fe:5:23
-  │
-5 │         self.baz[0] = 100
-  │                       ^^^ u256: Value => None
+8 │         self.assign()
+  │         ^^^^ Foo: Value
 
 note: 
   ┌─ features/call_statement_without_args.fe:8:9
   │
 8 │         self.assign()
-  │         ^^^^^^^^^^^^^ (): Value => None
+  │         ^^^^^^^^^^^^^ (): Value
+9 │         return self.baz[0]
+  │                ^^^^ Foo: Value
 
 note: 
   ┌─ features/call_statement_without_args.fe:9:16
   │
 9 │         return self.baz[0]
-  │                ^^^^^^^^ Map<u256, u256>: Storage { nonce: Some(0) } => None
-
-note: 
-  ┌─ features/call_statement_without_args.fe:9:25
-  │
-9 │         return self.baz[0]
-  │                         ^ u256: Value => None
+  │                ^^^^^^^^ ^ u256: Value
+  │                │         
+  │                Map<u256, u256>: Storage { nonce: Some(0) }
 
 note: 
   ┌─ features/call_statement_without_args.fe:9:16
   │
 9 │         return self.baz[0]
-  │                ^^^^^^^^^^^ u256: Storage { nonce: None } => Some(Value)
+  │                ^^^^^^^^^^^ u256: Storage { nonce: None } => Value
 
 note: 
   ┌─ features/call_statement_without_args.fe:8:9
   │
 8 │         self.assign()
-  │         ^^^^^^^^^^^ attributes hash: 1845414425399096131
-  │
-  = SelfAttribute {
-        func_name: "assign",
-        self_span: 126..130,
-    }
+  │         ^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(0)), method: FunctionId(0) }
 
 

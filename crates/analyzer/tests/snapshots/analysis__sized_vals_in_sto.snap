@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/sized_vals_in_sto.fe\", &src, module, &db)"
+expression: "build_snapshot(&files, module, &db)"
 
 ---
 note: 
@@ -8,16 +8,8 @@ note:
   │
 2 │     num: u256
   │     ^^^^^^^^^ u256
-
-note: 
-  ┌─ features/sized_vals_in_sto.fe:3:5
-  │
 3 │     nums: Array<u256, 42>
   │     ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 42>
-
-note: 
-  ┌─ features/sized_vals_in_sto.fe:4:5
-  │
 4 │     str: String<26>
   │     ^^^^^^^^^^^^^^^ String<26>
 
@@ -26,16 +18,8 @@ note:
   │
 7 │         num: u256
   │         ^^^^^^^^^ u256
-
-note: 
-  ┌─ features/sized_vals_in_sto.fe:8:9
-  │
 8 │         nums: Array<u256, 42>
   │         ^^^^^^^^^^^^^^^^^^^^^ Array<u256, 42>
-
-note: 
-  ┌─ features/sized_vals_in_sto.fe:9:9
-  │
 9 │         str: String<26>
   │         ^^^^^^^^^^^^^^^ String<26>
 
@@ -44,10 +28,12 @@ note:
    │  
 11 │ ╭     pub fn write_num(self, x: u256):
 12 │ │         self.num = x
-   │ ╰────────────────────^ attributes hash: 1151125091578816070
+   │ ╰────────────────────^ attributes hash: 2697709601428271166
    │  
    = FunctionSignature {
-         self_decl: Mutable,
+         self_decl: Some(
+             Mutable,
+         ),
          params: [
              FunctionParam {
                  name: "x",
@@ -68,14 +54,30 @@ note:
      }
 
 note: 
+   ┌─ features/sized_vals_in_sto.fe:12:9
+   │
+12 │         self.num = x
+   │         ^^^^ Foo: Value
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:12:9
+   │
+12 │         self.num = x
+   │         ^^^^^^^^   ^ u256: Value
+   │         │           
+   │         u256: Storage { nonce: Some(0) }
+
+note: 
    ┌─ features/sized_vals_in_sto.fe:14:5
    │  
 14 │ ╭     pub fn read_num(self) -> u256:
 15 │ │         return self.num
-   │ ╰───────────────────────^ attributes hash: 16482263331346774611
+   │ ╰───────────────────────^ attributes hash: 2875164910451995213
    │  
    = FunctionSignature {
-         self_decl: Mutable,
+         self_decl: Some(
+             Mutable,
+         ),
          params: [],
          return_type: Ok(
              Base(
@@ -87,14 +89,28 @@ note:
      }
 
 note: 
+   ┌─ features/sized_vals_in_sto.fe:15:16
+   │
+15 │         return self.num
+   │                ^^^^ Foo: Value
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:15:16
+   │
+15 │         return self.num
+   │                ^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
+
+note: 
    ┌─ features/sized_vals_in_sto.fe:17:5
    │  
 17 │ ╭     pub fn write_nums(self, x: Array<u256, 42>):
 18 │ │         self.nums = x
-   │ ╰─────────────────────^ attributes hash: 1325911840329576752
+   │ ╰─────────────────────^ attributes hash: 11400956022302777281
    │  
    = FunctionSignature {
-         self_decl: Mutable,
+         self_decl: Some(
+             Mutable,
+         ),
          params: [
              FunctionParam {
                  name: "x",
@@ -118,14 +134,30 @@ note:
      }
 
 note: 
+   ┌─ features/sized_vals_in_sto.fe:18:9
+   │
+18 │         self.nums = x
+   │         ^^^^ Foo: Value
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:18:9
+   │
+18 │         self.nums = x
+   │         ^^^^^^^^^   ^ Array<u256, 42>: Memory
+   │         │            
+   │         Array<u256, 42>: Storage { nonce: Some(1) }
+
+note: 
    ┌─ features/sized_vals_in_sto.fe:20:5
    │  
 20 │ ╭     pub fn read_nums(self) -> Array<u256, 42>:
 21 │ │         return self.nums.to_mem()
-   │ ╰─────────────────────────────────^ attributes hash: 15090171079052983265
+   │ ╰─────────────────────────────────^ attributes hash: 17841580678646329188
    │  
    = FunctionSignature {
-         self_decl: Mutable,
+         self_decl: Some(
+             Mutable,
+         ),
          params: [],
          return_type: Ok(
              Array(
@@ -140,14 +172,40 @@ note:
      }
 
 note: 
+   ┌─ features/sized_vals_in_sto.fe:21:16
+   │
+21 │         return self.nums.to_mem()
+   │                ^^^^ Foo: Value
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:21:16
+   │
+21 │         return self.nums.to_mem()
+   │                ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:21:16
+   │
+21 │         return self.nums.to_mem()
+   │                ^^^^^^^^^^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => Memory
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:21:16
+   │
+21 │         return self.nums.to_mem()
+   │                ^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+
+note: 
    ┌─ features/sized_vals_in_sto.fe:23:5
    │  
 23 │ ╭     pub fn write_str(self, x: String<26>):
 24 │ │         self.str = x
-   │ ╰────────────────────^ attributes hash: 14732302597377039844
+   │ ╰────────────────────^ attributes hash: 14423886445128812604
    │  
    = FunctionSignature {
-         self_decl: Mutable,
+         self_decl: Some(
+             Mutable,
+         ),
          params: [
              FunctionParam {
                  name: "x",
@@ -168,14 +226,30 @@ note:
      }
 
 note: 
+   ┌─ features/sized_vals_in_sto.fe:24:9
+   │
+24 │         self.str = x
+   │         ^^^^ Foo: Value
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:24:9
+   │
+24 │         self.str = x
+   │         ^^^^^^^^   ^ String<26>: Memory
+   │         │           
+   │         String<26>: Storage { nonce: Some(2) }
+
+note: 
    ┌─ features/sized_vals_in_sto.fe:26:5
    │  
 26 │ ╭     pub fn read_str(self) -> String<26>:
 27 │ │         return self.str.to_mem()
-   │ ╰────────────────────────────────^ attributes hash: 5005215627723595894
+   │ ╰────────────────────────────────^ attributes hash: 17113643796584502543
    │  
    = FunctionSignature {
-         self_decl: Mutable,
+         self_decl: Some(
+             Mutable,
+         ),
          params: [],
          return_type: Ok(
              String(
@@ -187,6 +261,30 @@ note:
      }
 
 note: 
+   ┌─ features/sized_vals_in_sto.fe:27:16
+   │
+27 │         return self.str.to_mem()
+   │                ^^^^ Foo: Value
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:27:16
+   │
+27 │         return self.str.to_mem()
+   │                ^^^^^^^^ String<26>: Storage { nonce: Some(2) }
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:27:16
+   │
+27 │         return self.str.to_mem()
+   │                ^^^^^^^^^^^^^^^^^ String<26>: Storage { nonce: Some(2) } => Memory
+
+note: 
+   ┌─ features/sized_vals_in_sto.fe:27:16
+   │
+27 │         return self.str.to_mem()
+   │                ^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+
+note: 
    ┌─ features/sized_vals_in_sto.fe:29:5
    │  
 29 │ ╭     pub fn emit_event(self):
@@ -195,10 +293,12 @@ note:
 32 │ │             nums=self.nums.to_mem(),
 33 │ │             str=self.str.to_mem()
 34 │ │         )
-   │ ╰─────────^ attributes hash: 4369441865732737140
+   │ ╰─────────^ attributes hash: 17603814563784536273
    │  
    = FunctionSignature {
-         self_decl: Mutable,
+         self_decl: Some(
+             Mutable,
+         ),
          params: [],
          return_type: Ok(
              Base(
@@ -208,100 +308,44 @@ note:
      }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:12:9
+   ┌─ features/sized_vals_in_sto.fe:31:17
    │
-12 │         self.num = x
-   │         ^^^^^^^^ u256: Storage { nonce: Some(0) } => None
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:12:20
-   │
-12 │         self.num = x
-   │                    ^ u256: Value => None
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:15:16
-   │
-15 │         return self.num
-   │                ^^^^^^^^ u256: Storage { nonce: Some(0) } => Some(Value)
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:18:9
-   │
-18 │         self.nums = x
-   │         ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => None
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:18:21
-   │
-18 │         self.nums = x
-   │                     ^ Array<u256, 42>: Memory => None
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:21:16
-   │
-21 │         return self.nums.to_mem()
-   │                ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => None
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:21:16
-   │
-21 │         return self.nums.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => Some(Memory)
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:24:9
-   │
-24 │         self.str = x
-   │         ^^^^^^^^ String<26>: Storage { nonce: Some(2) } => None
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:24:20
-   │
-24 │         self.str = x
-   │                    ^ String<26>: Memory => None
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:27:16
-   │
-27 │         return self.str.to_mem()
-   │                ^^^^^^^^ String<26>: Storage { nonce: Some(2) } => None
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:27:16
-   │
-27 │         return self.str.to_mem()
-   │                ^^^^^^^^^^^^^^^^^ String<26>: Storage { nonce: Some(2) } => Some(Memory)
+31 │             num=self.num,
+   │                 ^^^^ Foo: Value
 
 note: 
    ┌─ features/sized_vals_in_sto.fe:31:17
    │
 31 │             num=self.num,
-   │                 ^^^^^^^^ u256: Storage { nonce: Some(0) } => Some(Value)
+   │                 ^^^^^^^^ u256: Storage { nonce: Some(0) } => Value
+32 │             nums=self.nums.to_mem(),
+   │                  ^^^^ Foo: Value
 
 note: 
    ┌─ features/sized_vals_in_sto.fe:32:18
    │
 32 │             nums=self.nums.to_mem(),
-   │                  ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => None
+   │                  ^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) }
 
 note: 
    ┌─ features/sized_vals_in_sto.fe:32:18
    │
 32 │             nums=self.nums.to_mem(),
-   │                  ^^^^^^^^^^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => Some(Memory)
+   │                  ^^^^^^^^^^^^^^^^^^ Array<u256, 42>: Storage { nonce: Some(1) } => Memory
+33 │             str=self.str.to_mem()
+   │                 ^^^^ Foo: Value
 
 note: 
    ┌─ features/sized_vals_in_sto.fe:33:17
    │
 33 │             str=self.str.to_mem()
-   │                 ^^^^^^^^ String<26>: Storage { nonce: Some(2) } => None
+   │                 ^^^^^^^^ String<26>: Storage { nonce: Some(2) }
 
 note: 
    ┌─ features/sized_vals_in_sto.fe:33:17
    │
 33 │             str=self.str.to_mem()
-   │                 ^^^^^^^^^^^^^^^^^ String<26>: Storage { nonce: Some(2) } => Some(Memory)
+   │                 ^^^^^^^^^^^^^^^^^ String<26>: Storage { nonce: Some(2) } => Memory
 
 note: 
    ┌─ features/sized_vals_in_sto.fe:30:9
@@ -356,35 +400,11 @@ note:
      }
 
 note: 
-   ┌─ features/sized_vals_in_sto.fe:21:16
-   │
-21 │         return self.nums.to_mem()
-   │                ^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
-   │
-   = ValueAttribute
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:27:16
-   │
-27 │         return self.str.to_mem()
-   │                ^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
-   │
-   = ValueAttribute
-
-note: 
    ┌─ features/sized_vals_in_sto.fe:32:18
    │
 32 │             nums=self.nums.to_mem(),
-   │                  ^^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
-   │
-   = ValueAttribute
-
-note: 
-   ┌─ features/sized_vals_in_sto.fe:33:17
-   │
+   │                  ^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
 33 │             str=self.str.to_mem()
-   │                 ^^^^^^^^^^^^^^^ attributes hash: 15856680294290209687
-   │
-   = ValueAttribute
+   │                 ^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
 
 

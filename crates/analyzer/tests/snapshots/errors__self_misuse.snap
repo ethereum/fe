@@ -1,0 +1,41 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: `self` can't be used as a variable name
+  ┌─ compile_errors/self_misuse.fe:2:7
+  │
+2 │   let self: u8 = 10
+  │       ^^^^ expected a name, found keyword `self`
+
+error: `self` can only be used in contract or struct functions
+  ┌─ compile_errors/self_misuse.fe:3:3
+  │
+3 │   self = 5
+  │   ^^^^ not allowed in functions defined outside of a contract or struct
+
+error: `self` is not callable
+   ┌─ compile_errors/self_misuse.fe:15:5
+   │
+15 │     self()
+   │     ^^^^ can't be used as a function
+
+error: `g` must be called via `self`
+   ┌─ compile_errors/self_misuse.fe:26:6
+   │
+26 │   fn g(self):
+   │      ^ `g` is defined here as a function that takes `self`
+   ·
+30 │     g(self)
+   │     ^ `g` is called here as a standalone function
+   │
+   = Suggestion: use `self.g(...)` instead of `g(...)`
+
+error: invalid use of contract `self`
+   ┌─ compile_errors/self_misuse.fe:33:9
+   │
+33 │     bar(self)
+   │         ^^^^ `self` can't be used here
+
+

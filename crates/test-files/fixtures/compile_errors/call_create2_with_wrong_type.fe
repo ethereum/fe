@@ -5,3 +5,5 @@ contract Foo:
 
     pub fn foo():
         Bar.create2(true, 1)
+        Bar.create2(1)  # agroce #447
+        Bar.create2()

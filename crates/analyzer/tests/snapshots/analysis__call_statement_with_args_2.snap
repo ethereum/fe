@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(files, module, &db)"
+expression: "build_snapshot(&files, module, &db)"
 
 ---
 note: 
@@ -15,10 +15,12 @@ note:
 4 │ ╭     fn assign(self, val: u256) -> u256:
 5 │ │         self.baz[0] = val
 6 │ │         return val
-  │ ╰──────────────────^ attributes hash: 13803375927344563415
+  │ ╰──────────────────^ attributes hash: 18287971674339323054
   │  
   = FunctionSignature {
-        self_decl: Mutable,
+        self_decl: Some(
+            Mutable,
+        ),
         params: [
             FunctionParam {
                 name: "val",
@@ -41,15 +43,41 @@ note:
     }
 
 note: 
+  ┌─ features/call_statement_with_args_2.fe:5:9
+  │
+5 │         self.baz[0] = val
+  │         ^^^^ Foo: Value
+
+note: 
+  ┌─ features/call_statement_with_args_2.fe:5:9
+  │
+5 │         self.baz[0] = val
+  │         ^^^^^^^^ ^ u256: Value
+  │         │         
+  │         Map<u256, u256>: Storage { nonce: Some(0) }
+
+note: 
+  ┌─ features/call_statement_with_args_2.fe:5:9
+  │
+5 │         self.baz[0] = val
+  │         ^^^^^^^^^^^   ^^^ u256: Value
+  │         │              
+  │         u256: Storage { nonce: None }
+6 │         return val
+  │                ^^^ u256: Value
+
+note: 
    ┌─ features/call_statement_with_args_2.fe:8:5
    │  
  8 │ ╭     pub fn bar(self) -> u256:
  9 │ │         self.assign(100)
 10 │ │         return self.baz[0]
-   │ ╰──────────────────────────^ attributes hash: 16482263331346774611
+   │ ╰──────────────────────────^ attributes hash: 2875164910451995213
    │  
    = FunctionSignature {
-         self_decl: Mutable,
+         self_decl: Some(
+             Mutable,
+         ),
          params: [],
          return_type: Ok(
              Base(
@@ -61,74 +89,39 @@ note:
      }
 
 note: 
-  ┌─ features/call_statement_with_args_2.fe:5:9
-  │
-5 │         self.baz[0] = val
-  │         ^^^^^^^^ Map<u256, u256>: Storage { nonce: Some(0) } => None
-
-note: 
-  ┌─ features/call_statement_with_args_2.fe:5:18
-  │
-5 │         self.baz[0] = val
-  │                  ^ u256: Value => None
-
-note: 
-  ┌─ features/call_statement_with_args_2.fe:5:9
-  │
-5 │         self.baz[0] = val
-  │         ^^^^^^^^^^^ u256: Storage { nonce: None } => None
-
-note: 
-  ┌─ features/call_statement_with_args_2.fe:5:23
-  │
-5 │         self.baz[0] = val
-  │                       ^^^ u256: Value => None
-
-note: 
-  ┌─ features/call_statement_with_args_2.fe:6:16
-  │
-6 │         return val
-  │                ^^^ u256: Value => None
-
-note: 
-  ┌─ features/call_statement_with_args_2.fe:9:21
-  │
-9 │         self.assign(100)
-  │                     ^^^ u256: Value => None
-
-note: 
   ┌─ features/call_statement_with_args_2.fe:9:9
   │
 9 │         self.assign(100)
-  │         ^^^^^^^^^^^^^^^^ u256: Value => None
+  │         ^^^^        ^^^ u256: Value
+  │         │            
+  │         Foo: Value
+
+note: 
+   ┌─ features/call_statement_with_args_2.fe:9:9
+   │
+ 9 │         self.assign(100)
+   │         ^^^^^^^^^^^^^^^^ u256: Value
+10 │         return self.baz[0]
+   │                ^^^^ Foo: Value
 
 note: 
    ┌─ features/call_statement_with_args_2.fe:10:16
    │
 10 │         return self.baz[0]
-   │                ^^^^^^^^ Map<u256, u256>: Storage { nonce: Some(0) } => None
-
-note: 
-   ┌─ features/call_statement_with_args_2.fe:10:25
-   │
-10 │         return self.baz[0]
-   │                         ^ u256: Value => None
+   │                ^^^^^^^^ ^ u256: Value
+   │                │         
+   │                Map<u256, u256>: Storage { nonce: Some(0) }
 
 note: 
    ┌─ features/call_statement_with_args_2.fe:10:16
    │
 10 │         return self.baz[0]
-   │                ^^^^^^^^^^^ u256: Storage { nonce: None } => Some(Value)
+   │                ^^^^^^^^^^^ u256: Storage { nonce: None } => Value
 
 note: 
   ┌─ features/call_statement_with_args_2.fe:9:9
   │
 9 │         self.assign(100)
-  │         ^^^^^^^^^^^ attributes hash: 2997557065728909304
-  │
-  = SelfAttribute {
-        func_name: "assign",
-        self_span: 164..168,
-    }
+  │         ^^^^^^^^^^^ ValueMethod { is_self: true, class: Contract(ContractId(0)), method: FunctionId(0) }
 
 

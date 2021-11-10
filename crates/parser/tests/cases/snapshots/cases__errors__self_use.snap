@@ -1,0 +1,15 @@
+---
+source: crates/parser/tests/cases/errors.rs
+expression: "err_string(stringify!(self_use), module::parse_module, true,\n           \"use self as self\")"
+
+---
+error: failed to parse path
+  ┌─ self_use:1:5
+  │
+1 │ use self as self
+  │     ^^^^ Expected a name, found keyword `self`. 
+  │
+  = Note: paths must start with a name
+  = Example: `foo::bar`
+
+

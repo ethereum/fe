@@ -8,108 +8,18 @@ note:
   │
 3 │         s2: String<26>
   │         ^^^^^^^^^^^^^^ String<26>
-
-note: 
-  ┌─ features/strings.fe:4:9
-  │
 4 │         u: u256
   │         ^^^^^^^ u256
-
-note: 
-  ┌─ features/strings.fe:5:9
-  │
 5 │         s1: String<42>
   │         ^^^^^^^^^^^^^^ String<42>
-
-note: 
-  ┌─ features/strings.fe:6:9
-  │
 6 │         s3: String<100>
   │         ^^^^^^^^^^^^^^^ String<100>
-
-note: 
-  ┌─ features/strings.fe:7:9
-  │
 7 │         a: address
   │         ^^^^^^^^^^ address
-
-note: 
-  ┌─ features/strings.fe:8:9
-  │
 8 │         s4: String<13>
   │         ^^^^^^^^^^^^^^ String<13>
-
-note: 
-  ┌─ features/strings.fe:9:9
-  │
 9 │         s5: String<100>
   │         ^^^^^^^^^^^^^^^ String<100>
-
-note: 
-   ┌─ features/strings.fe:11:5
-   │  
-11 │ ╭     pub fn __init__(s1: String<42>, a: address, s2: String<26>, u: u256, s3: String<100>):
-12 │ │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │ ╰─────────────────────────────────────────────────────────────────────────────────^ attributes hash: 2002059796134224129
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         params: [
-             FunctionParam {
-                 name: "s1",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 42,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 name: "a",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 name: "s2",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 26,
-                         },
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 name: "u",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 name: "s3",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 100,
-                         },
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Unit,
-             ),
-         ),
-     }
 
 note: 
    ┌─ features/strings.fe:14:5
@@ -152,6 +62,12 @@ note:
      }
 
 note: 
+   ┌─ features/strings.fe:15:16
+   │
+15 │         return s2
+   │                ^^ String<100>: Memory
+
+note: 
    ┌─ features/strings.fe:17:5
    │  
 17 │ ╭     pub fn return_static_string() -> String<43>:
@@ -171,6 +87,12 @@ note:
      }
 
 note: 
+   ┌─ features/strings.fe:18:16
+   │
+18 │         return "The quick brown fox jumps over the lazy dog"
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<43>: Memory
+
+note: 
    ┌─ features/strings.fe:20:5
    │  
 20 │ ╭     pub fn return_casted_static_string() -> String<100>:
@@ -188,6 +110,24 @@ note:
              ),
          ),
      }
+
+note: 
+   ┌─ features/strings.fe:21:28
+   │
+21 │         return String<100>("foo")
+   │                            ^^^^^ String<3>: Memory
+
+note: 
+   ┌─ features/strings.fe:21:16
+   │
+21 │         return String<100>("foo")
+   │                ^^^^^^^^^^^^^^^^^^ String<100>: Memory
+
+note: 
+   ┌─ features/strings.fe:21:16
+   │
+21 │         return String<100>("foo")
+   │                ^^^^^^ TypeConstructor(String(FeString { max_size: 100 }))
 
 note: 
    ┌─ features/strings.fe:23:5
@@ -210,198 +150,11 @@ note:
      }
 
 note: 
-   ┌─ features/strings.fe:12:22
-   │
-12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │                      ^^ String<26>: Memory => None
-
-note: 
-   ┌─ features/strings.fe:12:26
-   │
-12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │                          ^ u256: Value => None
-
-note: 
-   ┌─ features/strings.fe:12:29
-   │
-12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │                             ^^ String<42>: Memory => None
-
-note: 
-   ┌─ features/strings.fe:12:33
-   │
-12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │                                 ^^ String<100>: Memory => None
-
-note: 
-   ┌─ features/strings.fe:12:37
-   │
-12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │                                     ^ address: Value => None
-
-note: 
-   ┌─ features/strings.fe:12:43
-   │
-12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │                                           ^^^^^^^^^^^^^^^ String<13>: Memory => None
-
-note: 
-   ┌─ features/strings.fe:12:75
-   │
-12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │                                                                           ^^^^^ String<3>: Memory => None
-
-note: 
-   ┌─ features/strings.fe:12:63
-   │
-12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │                                                               ^^^^^^^^^^^^^^^^^^ String<100>: Memory => None
-
-note: 
-   ┌─ features/strings.fe:15:16
-   │
-15 │         return s2
-   │                ^^ String<100>: Memory => None
-
-note: 
-   ┌─ features/strings.fe:18:16
-   │
-18 │         return "The quick brown fox jumps over the lazy dog"
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ String<43>: Memory => None
-
-note: 
-   ┌─ features/strings.fe:21:28
-   │
-21 │         return String<100>("foo")
-   │                            ^^^^^ String<3>: Memory => None
-
-note: 
-   ┌─ features/strings.fe:21:16
-   │
-21 │         return String<100>("foo")
-   │                ^^^^^^^^^^^^^^^^^^ String<100>: Memory => None
-
-note: 
    ┌─ features/strings.fe:24:16
    │  
 24 │           return "\n\"'\r\t
    │ ╭────────────────^
 25 │ │         foo\\"
-   │ ╰──────────────^ String<18>: Memory => None
-
-note: 
-   ┌─ features/strings.fe:12:9
-   │
-12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attributes hash: 8651151160283516495
-   │
-   = Event {
-         name: "MyEvent",
-         fields: [
-             EventField {
-                 name: "s2",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 26,
-                         },
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-             EventField {
-                 name: "u",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-             EventField {
-                 name: "s1",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 42,
-                         },
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-             EventField {
-                 name: "s3",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 100,
-                         },
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-             EventField {
-                 name: "a",
-                 typ: Ok(
-                     Base(
-                         Address,
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-             EventField {
-                 name: "s4",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 13,
-                         },
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-             EventField {
-                 name: "s5",
-                 typ: Ok(
-                     String(
-                         FeString {
-                             max_size: 100,
-                         },
-                     ),
-                 ),
-                 is_indexed: false,
-             },
-         ],
-     }
-
-note: 
-   ┌─ features/strings.fe:12:63
-   │
-12 │         emit MyEvent(s2, u, s1, s3, a, s4="static string", s5=String<100>("foo"))
-   │                                                               ^^^^^^ attributes hash: 5923227283421640461
-   │
-   = TypeConstructor {
-         typ: String(
-             FeString {
-                 max_size: 100,
-             },
-         ),
-     }
-
-note: 
-   ┌─ features/strings.fe:21:16
-   │
-21 │         return String<100>("foo")
-   │                ^^^^^^ attributes hash: 5923227283421640461
-   │
-   = TypeConstructor {
-         typ: String(
-             FeString {
-                 max_size: 100,
-             },
-         ),
-     }
+   │ ╰──────────────^ String<18>: Memory
 
 

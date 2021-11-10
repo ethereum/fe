@@ -1,0 +1,33 @@
+fn foo():
+  let self: u8 = 10
+  self = 5
+
+fn change_x(s: S):
+  s.x = 100
+
+fn bar(c: C):
+  pass
+
+struct S:
+  x: u8
+
+  fn f(self):
+    self()
+
+  fn g(self):
+    self = S(x = 10)
+
+  fn h(self):
+    change_x(self) # allowed
+
+contract C:
+  x: u8
+
+  fn g(self):
+    pass
+
+  fn h(self):
+    g(self)
+
+  fn i(self):
+    bar(self)

@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/balances.fe\", &src, module, &db)"
+expression: "build_snapshot(&files, module, &db)"
 
 ---
 note: 
@@ -8,10 +8,12 @@ note:
   │  
 2 │ ╭     pub fn my_balance(self) -> u256:
 3 │ │         return balance()
-  │ ╰────────────────────────^ attributes hash: 16482263331346774611
+  │ ╰────────────────────────^ attributes hash: 2875164910451995213
   │  
   = FunctionSignature {
-        self_decl: Mutable,
+        self_decl: Some(
+            Mutable,
+        ),
         params: [],
         return_type: Ok(
             Base(
@@ -23,14 +25,28 @@ note:
     }
 
 note: 
+  ┌─ features/balances.fe:3:16
+  │
+3 │         return balance()
+  │                ^^^^^^^^^ u256: Value
+
+note: 
+  ┌─ features/balances.fe:3:16
+  │
+3 │         return balance()
+  │                ^^^^^^^ BuiltinFunction(Balance)
+
+note: 
   ┌─ features/balances.fe:5:5
   │  
 5 │ ╭     pub fn other_balance(self, someone: address) -> u256:
 6 │ │         return balance_of(someone)
-  │ ╰──────────────────────────────────^ attributes hash: 2478257718014019887
+  │ ╰──────────────────────────────────^ attributes hash: 4973462877553265717
   │  
   = FunctionSignature {
-        self_decl: Mutable,
+        self_decl: Some(
+            Mutable,
+        ),
         params: [
             FunctionParam {
                 name: "someone",
@@ -51,41 +67,21 @@ note:
     }
 
 note: 
-  ┌─ features/balances.fe:3:16
-  │
-3 │         return balance()
-  │                ^^^^^^^^^ u256: Value => None
-
-note: 
   ┌─ features/balances.fe:6:27
   │
 6 │         return balance_of(someone)
-  │                           ^^^^^^^ address: Value => None
+  │                           ^^^^^^^ address: Value
 
 note: 
   ┌─ features/balances.fe:6:16
   │
 6 │         return balance_of(someone)
-  │                ^^^^^^^^^^^^^^^^^^^ u256: Value => None
-
-note: 
-  ┌─ features/balances.fe:3:16
-  │
-3 │         return balance()
-  │                ^^^^^^^ attributes hash: 16310782615237733127
-  │
-  = BuiltinFunction(
-        Balance,
-    )
+  │                ^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
   ┌─ features/balances.fe:6:16
   │
 6 │         return balance_of(someone)
-  │                ^^^^^^^^^^ attributes hash: 17653883527447570056
-  │
-  = BuiltinFunction(
-        BalanceOf,
-    )
+  │                ^^^^^^^^^^ BuiltinFunction(BalanceOf)
 
 

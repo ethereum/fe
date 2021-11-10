@@ -24,6 +24,6 @@ note:
   ┌─ features/return_bool_false.fe:3:16
   │
 3 │         return false
-  │                ^^^^^ bool: Value => None
+  │                ^^^^^ bool: Value
 
 

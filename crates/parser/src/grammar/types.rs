@@ -1,6 +1,6 @@
 use crate::ast::{self, EventField, Field, GenericArg, TypeAlias, TypeDesc};
 use crate::grammar::expressions::parse_expr;
-use crate::grammar::functions::parse_single_word_stmt;
+use crate::grammar::functions::{parse_fn_def, parse_single_word_stmt};
 use crate::node::{Node, Span};
 use crate::{ParseFailed, ParseResult, Parser, TokenKind};
 use fe_common::diagnostics::Label;
@@ -11,32 +11,41 @@ use vec1::Vec1;
 /// # Panics
 /// Panics if the next token isn't `struct`.
 pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ast::Struct>> {
-    use TokenKind::*;
-    let struct_tok = par.assert(Struct);
-    let name = par.expect_with_notes(Name, "failed to parse struct definition", |_| {
+    let struct_tok = par.assert(TokenKind::Struct);
+    let name = par.expect_with_notes(TokenKind::Name, "failed to parse struct definition", |_| {
         vec!["Note: a struct name must start with a letter or underscore, and contain letters, numbers, or underscores".into()]
     })?;
 
     let mut fields = vec![];
+    let mut functions = vec![];
     par.enter_block(struct_tok.span + name.span, "struct definition")?;
     loop {
+        let pub_qual = par.optional(TokenKind::Pub).map(|tok| tok.span);
         match par.peek() {
-            Some(Name) | Some(Pub) | Some(Const) => {
-                let pub_qual = parse_opt_qualifier(par, Pub);
-                let const_qual = parse_opt_qualifier(par, Const);
-                fields.push(parse_field(par, pub_qual, const_qual)?);
+            Some(TokenKind::Name) => {
+                let field = parse_field(par, pub_qual, None)?;
+                if !functions.is_empty() {
+                    par.error(
+                        field.span,
+                        "struct field definitions must come before any function definitions",
+                    );
+                }
+                fields.push(field);
             }
-            Some(Dedent) => {
+            Some(TokenKind::Fn | TokenKind::Unsafe) => {
+                functions.push(parse_fn_def(par, pub_qual)?);
+            }
+            Some(TokenKind::Dedent) => {
                 par.next()?;
                 break;
             }
-            Some(Pass) => {
+            Some(TokenKind::Pass) => {
                 parse_single_word_stmt(par)?;
             }
             None => break,
             Some(_) => {
                 let tok = par.next()?;
-                par.unexpected_token_error(tok.span, "failed to parse struct def", vec![]);
+                par.unexpected_token_error(tok.span, "failed to parse struct definition", vec![]);
                 return Err(ParseFailed);
             }
         }
@@ -46,6 +55,7 @@ pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ast::Struct>> {
         ast::Struct {
             name: name.into(),
             fields,
+            functions,
         },
         span,
     ))

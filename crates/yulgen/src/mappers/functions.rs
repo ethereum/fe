@@ -6,7 +6,7 @@ use crate::operations::data as data_operations;
 use crate::operations::revert as revert_operations;
 use crate::types::{AbiType, AsAbiType, EvmSized};
 use fe_analyzer::context::ExpressionAttributes;
-use fe_analyzer::namespace::items::FunctionId;
+use fe_analyzer::namespace::items::{self, FunctionId};
 use fe_analyzer::namespace::types::Type;
 use fe_analyzer::AnalyzerDb;
 use fe_parser::ast as fe;
@@ -27,15 +27,21 @@ pub fn multiple_func_stmt(
 pub fn func_def(
     db: &dyn AnalyzerDb,
     context: &mut ContractContext,
+    function_name: yul::Identifier,
     function: FunctionId,
 ) -> yul::Statement {
-    let function_name = names::func_name(&function.name(db));
-    let param_names = function
-        .signature(db)
+    // let function_name = names::func_name(&function.name(db));
+    let sig = function.signature(db);
+    let mut param_names = sig
         .params
         .iter()
         .map(|param| names::var_name(&param.name))
         .collect::<Vec<_>>();
+
+    if sig.self_decl.is_some() && matches!(function.parent(db), Some(items::Class::Struct(_))) {
+        // struct member functions take `$self` in yul
+        param_names.insert(0, names::var_name("self"));
+    }
 
     let mut fn_context = FnContext::new(db, context, function.body(db));
     let function_statements = multiple_func_stmt(&mut fn_context, &function.data(db).ast.kind.body);

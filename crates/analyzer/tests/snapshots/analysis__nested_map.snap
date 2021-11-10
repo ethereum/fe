@@ -8,10 +8,6 @@ note:
   │
 2 │     bar: Map<address, Map<address, u256>>
   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, Map<address, u256>>
-
-note: 
-  ┌─ features/nested_map.fe:3:5
-  │
 3 │     baz: Map<address, Map<u256, bool>>
   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Map<address, Map<u256, bool>>
 
@@ -20,10 +16,12 @@ note:
   │  
 5 │ ╭     pub fn read_bar(self, a: address, b: address) -> u256:
 6 │ │         return self.bar[a][b]
-  │ ╰─────────────────────────────^ attributes hash: 10579681573605137522
+  │ ╰─────────────────────────────^ attributes hash: 11552336276528305972
   │  
   = FunctionSignature {
-        self_decl: Mutable,
+        self_decl: Some(
+            Mutable,
+        ),
         params: [
             FunctionParam {
                 name: "a",
@@ -52,14 +50,44 @@ note:
     }
 
 note: 
+  ┌─ features/nested_map.fe:6:16
+  │
+6 │         return self.bar[a][b]
+  │                ^^^^ Foo: Value
+
+note: 
+  ┌─ features/nested_map.fe:6:16
+  │
+6 │         return self.bar[a][b]
+  │                ^^^^^^^^ ^ address: Value
+  │                │         
+  │                Map<address, Map<address, u256>>: Storage { nonce: Some(0) }
+
+note: 
+  ┌─ features/nested_map.fe:6:16
+  │
+6 │         return self.bar[a][b]
+  │                ^^^^^^^^^^^ ^ address: Value
+  │                │            
+  │                Map<address, u256>: Storage { nonce: None }
+
+note: 
+  ┌─ features/nested_map.fe:6:16
+  │
+6 │         return self.bar[a][b]
+  │                ^^^^^^^^^^^^^^ u256: Storage { nonce: None } => Value
+
+note: 
   ┌─ features/nested_map.fe:8:5
   │  
 8 │ ╭     pub fn write_bar(self, a: address, b: address, value: u256):
 9 │ │         self.bar[a][b] = value
-  │ ╰──────────────────────────────^ attributes hash: 6159174104336834167
+  │ ╰──────────────────────────────^ attributes hash: 3270671894149924575
   │  
   = FunctionSignature {
-        self_decl: Mutable,
+        self_decl: Some(
+            Mutable,
+        ),
         params: [
             FunctionParam {
                 name: "a",
@@ -96,14 +124,46 @@ note:
     }
 
 note: 
+  ┌─ features/nested_map.fe:9:9
+  │
+9 │         self.bar[a][b] = value
+  │         ^^^^ Foo: Value
+
+note: 
+  ┌─ features/nested_map.fe:9:9
+  │
+9 │         self.bar[a][b] = value
+  │         ^^^^^^^^ ^ address: Value
+  │         │         
+  │         Map<address, Map<address, u256>>: Storage { nonce: Some(0) }
+
+note: 
+  ┌─ features/nested_map.fe:9:9
+  │
+9 │         self.bar[a][b] = value
+  │         ^^^^^^^^^^^ ^ address: Value
+  │         │            
+  │         Map<address, u256>: Storage { nonce: None }
+
+note: 
+  ┌─ features/nested_map.fe:9:9
+  │
+9 │         self.bar[a][b] = value
+  │         ^^^^^^^^^^^^^^   ^^^^^ u256: Value
+  │         │                 
+  │         u256: Storage { nonce: None }
+
+note: 
    ┌─ features/nested_map.fe:11:5
    │  
 11 │ ╭     pub fn read_baz(self, a: address, b: u256) -> bool:
 12 │ │         return self.baz[a][b]
-   │ ╰─────────────────────────────^ attributes hash: 4588948300794405674
+   │ ╰─────────────────────────────^ attributes hash: 14681365744320240516
    │  
    = FunctionSignature {
-         self_decl: Mutable,
+         self_decl: Some(
+             Mutable,
+         ),
          params: [
              FunctionParam {
                  name: "a",
@@ -132,14 +192,44 @@ note:
      }
 
 note: 
+   ┌─ features/nested_map.fe:12:16
+   │
+12 │         return self.baz[a][b]
+   │                ^^^^ Foo: Value
+
+note: 
+   ┌─ features/nested_map.fe:12:16
+   │
+12 │         return self.baz[a][b]
+   │                ^^^^^^^^ ^ address: Value
+   │                │         
+   │                Map<address, Map<u256, bool>>: Storage { nonce: Some(1) }
+
+note: 
+   ┌─ features/nested_map.fe:12:16
+   │
+12 │         return self.baz[a][b]
+   │                ^^^^^^^^^^^ ^ u256: Value
+   │                │            
+   │                Map<u256, bool>: Storage { nonce: None }
+
+note: 
+   ┌─ features/nested_map.fe:12:16
+   │
+12 │         return self.baz[a][b]
+   │                ^^^^^^^^^^^^^^ bool: Storage { nonce: None } => Value
+
+note: 
    ┌─ features/nested_map.fe:14:5
    │  
 14 │ ╭     pub fn write_baz(self, a: address, b: u256, value: bool):
 15 │ │         self.baz[a][b] = value
-   │ ╰──────────────────────────────^ attributes hash: 6894542203512356705
+   │ ╰──────────────────────────────^ attributes hash: 15885712977262083842
    │  
    = FunctionSignature {
-         self_decl: Mutable,
+         self_decl: Some(
+             Mutable,
+         ),
          params: [
              FunctionParam {
                  name: "a",
@@ -176,135 +266,33 @@ note:
      }
 
 note: 
-  ┌─ features/nested_map.fe:6:16
-  │
-6 │         return self.bar[a][b]
-  │                ^^^^^^^^ Map<address, Map<address, u256>>: Storage { nonce: Some(0) } => None
-
-note: 
-  ┌─ features/nested_map.fe:6:25
-  │
-6 │         return self.bar[a][b]
-  │                         ^ address: Value => None
-
-note: 
-  ┌─ features/nested_map.fe:6:16
-  │
-6 │         return self.bar[a][b]
-  │                ^^^^^^^^^^^ Map<address, u256>: Storage { nonce: None } => None
-
-note: 
-  ┌─ features/nested_map.fe:6:28
-  │
-6 │         return self.bar[a][b]
-  │                            ^ address: Value => None
-
-note: 
-  ┌─ features/nested_map.fe:6:16
-  │
-6 │         return self.bar[a][b]
-  │                ^^^^^^^^^^^^^^ u256: Storage { nonce: None } => Some(Value)
-
-note: 
-  ┌─ features/nested_map.fe:9:9
-  │
-9 │         self.bar[a][b] = value
-  │         ^^^^^^^^ Map<address, Map<address, u256>>: Storage { nonce: Some(0) } => None
-
-note: 
-  ┌─ features/nested_map.fe:9:18
-  │
-9 │         self.bar[a][b] = value
-  │                  ^ address: Value => None
-
-note: 
-  ┌─ features/nested_map.fe:9:9
-  │
-9 │         self.bar[a][b] = value
-  │         ^^^^^^^^^^^ Map<address, u256>: Storage { nonce: None } => None
-
-note: 
-  ┌─ features/nested_map.fe:9:21
-  │
-9 │         self.bar[a][b] = value
-  │                     ^ address: Value => None
-
-note: 
-  ┌─ features/nested_map.fe:9:9
-  │
-9 │         self.bar[a][b] = value
-  │         ^^^^^^^^^^^^^^ u256: Storage { nonce: None } => None
-
-note: 
-  ┌─ features/nested_map.fe:9:26
-  │
-9 │         self.bar[a][b] = value
-  │                          ^^^^^ u256: Value => None
-
-note: 
-   ┌─ features/nested_map.fe:12:16
+   ┌─ features/nested_map.fe:15:9
    │
-12 │         return self.baz[a][b]
-   │                ^^^^^^^^ Map<address, Map<u256, bool>>: Storage { nonce: Some(1) } => None
-
-note: 
-   ┌─ features/nested_map.fe:12:25
-   │
-12 │         return self.baz[a][b]
-   │                         ^ address: Value => None
-
-note: 
-   ┌─ features/nested_map.fe:12:16
-   │
-12 │         return self.baz[a][b]
-   │                ^^^^^^^^^^^ Map<u256, bool>: Storage { nonce: None } => None
-
-note: 
-   ┌─ features/nested_map.fe:12:28
-   │
-12 │         return self.baz[a][b]
-   │                            ^ u256: Value => None
-
-note: 
-   ┌─ features/nested_map.fe:12:16
-   │
-12 │         return self.baz[a][b]
-   │                ^^^^^^^^^^^^^^ bool: Storage { nonce: None } => Some(Value)
+15 │         self.baz[a][b] = value
+   │         ^^^^ Foo: Value
 
 note: 
    ┌─ features/nested_map.fe:15:9
    │
 15 │         self.baz[a][b] = value
-   │         ^^^^^^^^ Map<address, Map<u256, bool>>: Storage { nonce: Some(1) } => None
-
-note: 
-   ┌─ features/nested_map.fe:15:18
-   │
-15 │         self.baz[a][b] = value
-   │                  ^ address: Value => None
+   │         ^^^^^^^^ ^ address: Value
+   │         │         
+   │         Map<address, Map<u256, bool>>: Storage { nonce: Some(1) }
 
 note: 
    ┌─ features/nested_map.fe:15:9
    │
 15 │         self.baz[a][b] = value
-   │         ^^^^^^^^^^^ Map<u256, bool>: Storage { nonce: None } => None
-
-note: 
-   ┌─ features/nested_map.fe:15:21
-   │
-15 │         self.baz[a][b] = value
-   │                     ^ u256: Value => None
+   │         ^^^^^^^^^^^ ^ u256: Value
+   │         │            
+   │         Map<u256, bool>: Storage { nonce: None }
 
 note: 
    ┌─ features/nested_map.fe:15:9
    │
 15 │         self.baz[a][b] = value
-   │         ^^^^^^^^^^^^^^ bool: Storage { nonce: None } => None
-
-note: 
-   ┌─ features/nested_map.fe:15:26
-   │
-15 │         self.baz[a][b] = value
-   │                          ^^^^^ bool: Value => None
+   │         ^^^^^^^^^^^^^^   ^^^^^ bool: Value
+   │         │                 
+   │         bool: Storage { nonce: None }
 
 

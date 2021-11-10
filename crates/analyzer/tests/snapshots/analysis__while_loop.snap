@@ -28,93 +28,52 @@ note:
     }
 
 note: 
-  ┌─ features/while_loop.fe:3:25
-  │
-3 │         let val: u256 = 0
-  │                         ^ u256: Value => None
-
-note: 
-  ┌─ features/while_loop.fe:4:15
-  │
-4 │         while val < 2:
-  │               ^^^ u256: Value => None
-
-note: 
-  ┌─ features/while_loop.fe:4:21
-  │
-4 │         while val < 2:
-  │                     ^ u256: Value => None
-
-note: 
-  ┌─ features/while_loop.fe:4:15
-  │
-4 │         while val < 2:
-  │               ^^^^^^^ bool: Value => None
-
-note: 
-  ┌─ features/while_loop.fe:5:13
-  │
-5 │             val = val + 1
-  │             ^^^ u256: Value => None
-
-note: 
-  ┌─ features/while_loop.fe:5:19
-  │
-5 │             val = val + 1
-  │                   ^^^ u256: Value => None
-
-note: 
-  ┌─ features/while_loop.fe:5:25
-  │
-5 │             val = val + 1
-  │                         ^ u256: Value => None
-
-note: 
-  ┌─ features/while_loop.fe:5:19
-  │
-5 │             val = val + 1
-  │                   ^^^^^^^ u256: Value => None
-
-note: 
-  ┌─ features/while_loop.fe:6:16
-  │
-6 │             if val == 2:
-  │                ^^^ u256: Value => None
-
-note: 
-  ┌─ features/while_loop.fe:6:23
-  │
-6 │             if val == 2:
-  │                       ^ u256: Value => None
-
-note: 
-  ┌─ features/while_loop.fe:6:16
-  │
-6 │             if val == 2:
-  │                ^^^^^^^^ bool: Value => None
-
-note: 
-  ┌─ features/while_loop.fe:7:17
-  │
-7 │                 val = 3
-  │                 ^^^ u256: Value => None
-
-note: 
-  ┌─ features/while_loop.fe:7:23
-  │
-7 │                 val = 3
-  │                       ^ u256: Value => None
-
-note: 
-  ┌─ features/while_loop.fe:8:16
-  │
-8 │         return val
-  │                ^^^ u256: Value => None
-
-note: 
   ┌─ features/while_loop.fe:3:18
   │
 3 │         let val: u256 = 0
   │                  ^^^^ u256
+
+note: 
+  ┌─ features/while_loop.fe:3:25
+  │
+3 │         let val: u256 = 0
+  │                         ^ u256: Value
+4 │         while val < 2:
+  │               ^^^   ^ u256: Value
+  │               │      
+  │               u256: Value
+
+note: 
+  ┌─ features/while_loop.fe:4:15
+  │
+4 │         while val < 2:
+  │               ^^^^^^^ bool: Value
+5 │             val = val + 1
+  │             ^^^   ^^^   ^ u256: Value
+  │             │     │      
+  │             │     u256: Value
+  │             u256: Value
+
+note: 
+  ┌─ features/while_loop.fe:5:19
+  │
+5 │             val = val + 1
+  │                   ^^^^^^^ u256: Value
+6 │             if val == 2:
+  │                ^^^    ^ u256: Value
+  │                │       
+  │                u256: Value
+
+note: 
+  ┌─ features/while_loop.fe:6:16
+  │
+6 │             if val == 2:
+  │                ^^^^^^^^ bool: Value
+7 │                 val = 3
+  │                 ^^^   ^ u256: Value
+  │                 │      
+  │                 u256: Value
+8 │         return val
+  │                ^^^ u256: Value
 
 

@@ -13,6 +13,9 @@ struct MyStruct:
     field2: u256
     field3: address
 
+    pub fn field2_squared(self) -> u256:
+        return self.field2 * self.field2
+
 struct EmptyType:
     pass
 

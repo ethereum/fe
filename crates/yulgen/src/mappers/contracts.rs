@@ -1,8 +1,9 @@
 use crate::constructor;
 use crate::context::ContractContext;
 use crate::mappers::functions;
+use crate::names;
 use crate::runtime;
-use fe_analyzer::namespace::items::{ContractId, Item};
+use fe_analyzer::namespace::items::ContractId;
 use fe_analyzer::AnalyzerDb;
 use fe_common::utils::keccak;
 use std::collections::HashMap;
@@ -19,7 +20,7 @@ pub fn contract_def(
 
     let init_function = contract.init_function(db).map(|id| {
         (
-            functions::func_def(db, &mut context, id),
+            functions::func_def(db, &mut context, names::func_name(&id.name(db)), id),
             id.signature(db)
                 .params
                 .iter()
@@ -28,20 +29,15 @@ pub fn contract_def(
         )
     });
 
-    // All module fns are added to each contract, for now.
-    let module = contract.module(db);
     let user_functions = contract
         .functions(db)
         .values()
-        .chain(module.items(db).values().filter_map(|item| match item {
-            Item::Function(fid) => Some(fid),
-            _ => None,
-        }))
-        .map(|func| functions::func_def(db, &mut context, *func))
+        .map(|func| functions::func_def(db, &mut context, names::func_name(&func.name(db)), *func))
         .collect::<Vec<_>>();
 
     // build the set of functions needed during runtime
-    let runtime_functions = runtime::build_with_abi_dispatcher(db, &context, contract);
+    let runtime_functions = runtime::build(db, &mut context, contract);
+    let abi_dispatcher = runtime::build_abi_dispatcher(db, contract);
 
     // build data objects for static strings (also for constants in the future)
     let data = context
@@ -69,6 +65,7 @@ pub fn contract_def(
                 statements: statements! {
                     [user_functions...]
                     [runtime_functions...]
+                    [abi_dispatcher]
                 },
             },
         },
@@ -85,8 +82,7 @@ pub fn contract_def(
     // user-defined functions can be called from `__init__`.
     let (constructor_code, constructor_objects) =
         if let Some((init_func, init_params)) = init_function {
-            let init_runtime_functions =
-                [runtime::build(db, &context, contract), user_functions].concat();
+            let init_runtime_functions = [runtime_functions, user_functions].concat();
             let constructor_code = constructor::build_with_init(
                 db,
                 &contract_name,

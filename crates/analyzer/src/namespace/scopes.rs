@@ -2,7 +2,7 @@
 
 use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, FunctionBody, NamedThing};
 use crate::errors::{AlreadyDefined, TypeError};
-use crate::namespace::items::{EventId, FunctionId, ModuleId};
+use crate::namespace::items::{Class, EventId, FunctionId, ModuleId};
 use crate::namespace::types::FixedSize;
 use crate::AnalyzerDb;
 use fe_common::diagnostics::Diagnostic;
@@ -142,10 +142,18 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
     }
 
     fn resolve_name(&self, name: &str) -> Option<NamedThing> {
+        let sig = self.function.signature(self.db);
+
+        if name == "self" {
+            return Some(NamedThing::SelfValue {
+                decl: sig.self_decl,
+                class: self.function.parent(self.db),
+                span: self.function.self_span(self.db),
+            });
+        }
+
         // Getting param names and spans should be simpler
-        self.function
-            .signature(self.db)
-            .params
+        sig.params
             .iter()
             .find_map(|param| {
                 (param.name == name).then(|| {
@@ -167,7 +175,7 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
                 })
             })
             .or_else(|| {
-                if let Some(contract) = self.function.contract(self.db) {
+                if let Some(Class::Contract(contract)) = self.function.parent(self.db) {
                     contract.resolve_name(self.db, name)
                 } else {
                     self.function.module(self.db).resolve_name(self.db, name)
@@ -236,15 +244,6 @@ impl<'a, 'b> BlockScope<'a, 'b> {
         }
     }
 
-    pub fn contract_name(&self) -> Option<String> {
-        Some(
-            self.root
-                .function
-                .contract(self.root.db)?
-                .name(self.root.db),
-        )
-    }
-
     /// Add a variable to the block scope.
     pub fn add_var(
         &mut self,
@@ -252,36 +251,49 @@ impl<'a, 'b> BlockScope<'a, 'b> {
         typ: FixedSize,
         span: Span,
     ) -> Result<(), AlreadyDefined> {
-        if let Some(named_item) = self.resolve_name(name) {
-            if named_item.is_builtin() {
+        match self.resolve_name(name) {
+            Some(NamedThing::SelfValue { .. }) => {
                 self.error(
-                    &format!(
-                        "variable name conflicts with built-in {}",
-                        named_item.item_kind_display_name(),
-                    ),
+                    "`self` can't be used as a variable name",
                     span,
-                    &format!(
-                        "`{}` is a built-in {}",
-                        name,
-                        named_item.item_kind_display_name()
-                    ),
+                    "expected a name, found keyword `self`",
                 );
-                return Err(AlreadyDefined);
-            } else {
-                // It's (currently) an error to shadow a variable in a nested scope
-                self.duplicate_name_error(
-                    &format!("duplicate definition of variable `{}`", name),
-                    name,
-                    named_item
-                        .name_span(self.db())
-                        .expect("missing name_span of non-builtin"),
-                    span,
-                );
+                Err(AlreadyDefined)
             }
-            Err(AlreadyDefined)
-        } else {
-            self.variable_defs.insert(name.to_string(), (typ, span));
-            Ok(())
+
+            Some(named_item) => {
+                if named_item.is_builtin() {
+                    self.error(
+                        &format!(
+                            "variable name conflicts with built-in {}",
+                            named_item.item_kind_display_name(),
+                        ),
+                        span,
+                        &format!(
+                            "`{}` is a built-in {}",
+                            name,
+                            named_item.item_kind_display_name()
+                        ),
+                    );
+                    return Err(AlreadyDefined);
+                } else {
+                    // It's (currently) an error to shadow a variable in a nested scope
+                    self.duplicate_name_error(
+                        &format!("duplicate definition of variable `{}`", name),
+                        name,
+                        named_item
+                            .name_span(self.db())
+                            .expect("missing name_span of non-builtin"),
+                        span,
+                    );
+                }
+                Err(AlreadyDefined)
+            }
+
+            None => {
+                self.variable_defs.insert(name.to_string(), (typ, span));
+                Ok(())
+            }
         }
     }
 

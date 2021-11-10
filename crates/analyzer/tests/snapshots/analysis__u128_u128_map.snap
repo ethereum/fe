@@ -14,10 +14,12 @@ note:
   │  
 4 │ ╭     pub fn read_bar(self, key: u128) -> u128:
 5 │ │         return self.bar[key]
-  │ ╰────────────────────────────^ attributes hash: 14613607248451204655
+  │ ╰────────────────────────────^ attributes hash: 15921380287166345990
   │  
   = FunctionSignature {
-        self_decl: Mutable,
+        self_decl: Some(
+            Mutable,
+        ),
         params: [
             FunctionParam {
                 name: "key",
@@ -40,14 +42,36 @@ note:
     }
 
 note: 
+  ┌─ features/u128_u128_map.fe:5:16
+  │
+5 │         return self.bar[key]
+  │                ^^^^ Foo: Value
+
+note: 
+  ┌─ features/u128_u128_map.fe:5:16
+  │
+5 │         return self.bar[key]
+  │                ^^^^^^^^ ^^^ u128: Value
+  │                │         
+  │                Map<u128, u128>: Storage { nonce: Some(0) }
+
+note: 
+  ┌─ features/u128_u128_map.fe:5:16
+  │
+5 │         return self.bar[key]
+  │                ^^^^^^^^^^^^^ u128: Storage { nonce: None } => Value
+
+note: 
   ┌─ features/u128_u128_map.fe:7:5
   │  
 7 │ ╭     pub fn write_bar(self, key: u128, value: u128):
 8 │ │         self.bar[key] = value
-  │ ╰─────────────────────────────^ attributes hash: 10041566038914781122
+  │ ╰─────────────────────────────^ attributes hash: 10550763710156453898
   │  
   = FunctionSignature {
-        self_decl: Mutable,
+        self_decl: Some(
+            Mutable,
+        ),
         params: [
             FunctionParam {
                 name: "key",
@@ -78,45 +102,25 @@ note:
     }
 
 note: 
-  ┌─ features/u128_u128_map.fe:5:16
+  ┌─ features/u128_u128_map.fe:8:9
   │
-5 │         return self.bar[key]
-  │                ^^^^^^^^ Map<u128, u128>: Storage { nonce: Some(0) } => None
-
-note: 
-  ┌─ features/u128_u128_map.fe:5:25
-  │
-5 │         return self.bar[key]
-  │                         ^^^ u128: Value => None
-
-note: 
-  ┌─ features/u128_u128_map.fe:5:16
-  │
-5 │         return self.bar[key]
-  │                ^^^^^^^^^^^^^ u128: Storage { nonce: None } => Some(Value)
+8 │         self.bar[key] = value
+  │         ^^^^ Foo: Value
 
 note: 
   ┌─ features/u128_u128_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^ Map<u128, u128>: Storage { nonce: Some(0) } => None
-
-note: 
-  ┌─ features/u128_u128_map.fe:8:18
-  │
-8 │         self.bar[key] = value
-  │                  ^^^ u128: Value => None
+  │         ^^^^^^^^ ^^^ u128: Value
+  │         │         
+  │         Map<u128, u128>: Storage { nonce: Some(0) }
 
 note: 
   ┌─ features/u128_u128_map.fe:8:9
   │
 8 │         self.bar[key] = value
-  │         ^^^^^^^^^^^^^ u128: Storage { nonce: None } => None
-
-note: 
-  ┌─ features/u128_u128_map.fe:8:25
-  │
-8 │         self.bar[key] = value
-  │                         ^^^^^ u128: Value => None
+  │         ^^^^^^^^^^^^^   ^^^^^ u128: Value
+  │         │                
+  │         u128: Storage { nonce: None }
 
 

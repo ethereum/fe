@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(struct_def), types::parse_struct_def,\n           r#\"struct S:\n  x: address\n  pub y: u8\n  const z: u8\n  pub const a: Map<u8, foo>\n\"#)"
+expression: "ast_string(stringify!(struct_def), types::parse_struct_def,\n           r#\"struct S:\n  x: address\n  pub y: u8\n  z: u8\n  pub a: Map<u8, foo>\n\n  pub fn foo(self) -> u8:\n    return self.z + self.y\n  unsafe fn bar():\n    pass\n\"#)"
 
 ---
 Node(
@@ -70,12 +70,12 @@ Node(
       Node(
         kind: Field(
           is_pub: false,
-          is_const: true,
+          is_const: false,
           name: Node(
             kind: "z",
             span: Span(
-              start: 43,
-              end: 44,
+              start: 37,
+              end: 38,
             ),
           ),
           typ: Node(
@@ -83,26 +83,26 @@ Node(
               base: "u8",
             ),
             span: Span(
-              start: 46,
-              end: 48,
+              start: 40,
+              end: 42,
             ),
           ),
           value: None,
         ),
         span: Span(
           start: 37,
-          end: 48,
+          end: 42,
         ),
       ),
       Node(
         kind: Field(
           is_pub: true,
-          is_const: true,
+          is_const: false,
           name: Node(
             kind: "a",
             span: Span(
-              start: 61,
-              end: 62,
+              start: 49,
+              end: 50,
             ),
           ),
           typ: Node(
@@ -110,8 +110,8 @@ Node(
               base: Node(
                 kind: "Map",
                 span: Span(
-                  start: 64,
-                  end: 67,
+                  start: 52,
+                  end: 55,
                 ),
               ),
               args: Node(
@@ -121,8 +121,8 @@ Node(
                       base: "u8",
                     ),
                     span: Span(
-                      start: 68,
-                      end: 70,
+                      start: 56,
+                      end: 58,
                     ),
                   )),
                   TypeDesc(Node(
@@ -130,33 +130,173 @@ Node(
                       base: "foo",
                     ),
                     span: Span(
-                      start: 72,
-                      end: 75,
+                      start: 60,
+                      end: 63,
                     ),
                   )),
                 ],
                 span: Span(
-                  start: 67,
-                  end: 76,
+                  start: 55,
+                  end: 64,
                 ),
               ),
             ),
             span: Span(
-              start: 64,
-              end: 76,
+              start: 52,
+              end: 64,
             ),
           ),
           value: None,
         ),
         span: Span(
-          start: 51,
-          end: 76,
+          start: 45,
+          end: 64,
+        ),
+      ),
+    ],
+    functions: [
+      Node(
+        kind: Function(
+          pub_: Some(Span(
+            start: 68,
+            end: 71,
+          )),
+          unsafe_: None,
+          name: Node(
+            kind: "foo",
+            span: Span(
+              start: 75,
+              end: 78,
+            ),
+          ),
+          args: [
+            Node(
+              kind: Zelf,
+              span: Span(
+                start: 79,
+                end: 83,
+              ),
+            ),
+          ],
+          return_type: Some(Node(
+            kind: Base(
+              base: "u8",
+            ),
+            span: Span(
+              start: 88,
+              end: 90,
+            ),
+          )),
+          body: [
+            Node(
+              kind: Return(
+                value: Some(Node(
+                  kind: BinOperation(
+                    left: Node(
+                      kind: Attribute(
+                        value: Node(
+                          kind: Name("self"),
+                          span: Span(
+                            start: 103,
+                            end: 107,
+                          ),
+                        ),
+                        attr: Node(
+                          kind: "z",
+                          span: Span(
+                            start: 108,
+                            end: 109,
+                          ),
+                        ),
+                      ),
+                      span: Span(
+                        start: 103,
+                        end: 109,
+                      ),
+                    ),
+                    op: Node(
+                      kind: Add,
+                      span: Span(
+                        start: 110,
+                        end: 111,
+                      ),
+                    ),
+                    right: Node(
+                      kind: Attribute(
+                        value: Node(
+                          kind: Name("self"),
+                          span: Span(
+                            start: 112,
+                            end: 116,
+                          ),
+                        ),
+                        attr: Node(
+                          kind: "y",
+                          span: Span(
+                            start: 117,
+                            end: 118,
+                          ),
+                        ),
+                      ),
+                      span: Span(
+                        start: 112,
+                        end: 118,
+                      ),
+                    ),
+                  ),
+                  span: Span(
+                    start: 103,
+                    end: 118,
+                  ),
+                )),
+              ),
+              span: Span(
+                start: 96,
+                end: 118,
+              ),
+            ),
+          ],
+        ),
+        span: Span(
+          start: 68,
+          end: 118,
+        ),
+      ),
+      Node(
+        kind: Function(
+          pub_: None,
+          unsafe_: Some(Span(
+            start: 121,
+            end: 127,
+          )),
+          name: Node(
+            kind: "bar",
+            span: Span(
+              start: 131,
+              end: 134,
+            ),
+          ),
+          args: [],
+          return_type: None,
+          body: [
+            Node(
+              kind: Pass,
+              span: Span(
+                start: 142,
+                end: 146,
+              ),
+            ),
+          ],
+        ),
+        span: Span(
+          start: 121,
+          end: 146,
         ),
       ),
     ],
   ),
   span: Span(
     start: 0,
-    end: 76,
+    end: 64,
   ),
 )

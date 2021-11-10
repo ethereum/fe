@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/for_loop_with_break.fe\", &src, module, &db)"
+expression: "build_snapshot(&files, module, &db)"
 
 ---
 note: 
@@ -28,147 +28,80 @@ note:
      }
 
 note: 
-  ┌─ features/for_loop_with_break.fe:5:9
-  │
-5 │         my_array[0] = 5
-  │         ^^^^^^^^ Array<u256, 3>: Memory => None
-
-note: 
-  ┌─ features/for_loop_with_break.fe:5:18
-  │
-5 │         my_array[0] = 5
-  │                  ^ u256: Value => None
-
-note: 
-  ┌─ features/for_loop_with_break.fe:5:9
-  │
-5 │         my_array[0] = 5
-  │         ^^^^^^^^^^^ u256: Memory => None
-
-note: 
-  ┌─ features/for_loop_with_break.fe:5:23
-  │
-5 │         my_array[0] = 5
-  │                       ^ u256: Value => None
-
-note: 
-  ┌─ features/for_loop_with_break.fe:6:9
-  │
-6 │         my_array[1] = 10
-  │         ^^^^^^^^ Array<u256, 3>: Memory => None
-
-note: 
-  ┌─ features/for_loop_with_break.fe:6:18
-  │
-6 │         my_array[1] = 10
-  │                  ^ u256: Value => None
-
-note: 
-  ┌─ features/for_loop_with_break.fe:6:9
-  │
-6 │         my_array[1] = 10
-  │         ^^^^^^^^^^^ u256: Memory => None
-
-note: 
-  ┌─ features/for_loop_with_break.fe:6:23
-  │
-6 │         my_array[1] = 10
-  │                       ^^ u256: Value => None
-
-note: 
-  ┌─ features/for_loop_with_break.fe:7:9
-  │
-7 │         my_array[2] = 15
-  │         ^^^^^^^^ Array<u256, 3>: Memory => None
-
-note: 
-  ┌─ features/for_loop_with_break.fe:7:18
-  │
-7 │         my_array[2] = 15
-  │                  ^ u256: Value => None
-
-note: 
-  ┌─ features/for_loop_with_break.fe:7:9
-  │
-7 │         my_array[2] = 15
-  │         ^^^^^^^^^^^ u256: Memory => None
-
-note: 
-  ┌─ features/for_loop_with_break.fe:7:23
-  │
-7 │         my_array[2] = 15
-  │                       ^^ u256: Value => None
-
-note: 
-  ┌─ features/for_loop_with_break.fe:8:25
-  │
-8 │         let sum: u256 = 0
-  │                         ^ u256: Value => None
-
-note: 
-  ┌─ features/for_loop_with_break.fe:9:18
-  │
-9 │         for i in my_array:
-  │                  ^^^^^^^^ Array<u256, 3>: Memory => None
-
-note: 
-   ┌─ features/for_loop_with_break.fe:10:13
-   │
-10 │             sum = sum + i
-   │             ^^^ u256: Value => None
-
-note: 
-   ┌─ features/for_loop_with_break.fe:10:19
-   │
-10 │             sum = sum + i
-   │                   ^^^ u256: Value => None
-
-note: 
-   ┌─ features/for_loop_with_break.fe:10:25
-   │
-10 │             sum = sum + i
-   │                         ^ u256: Value => None
-
-note: 
-   ┌─ features/for_loop_with_break.fe:10:19
-   │
-10 │             sum = sum + i
-   │                   ^^^^^^^ u256: Value => None
-
-note: 
-   ┌─ features/for_loop_with_break.fe:11:16
-   │
-11 │             if sum == 15:
-   │                ^^^ u256: Value => None
-
-note: 
-   ┌─ features/for_loop_with_break.fe:11:23
-   │
-11 │             if sum == 15:
-   │                       ^^ u256: Value => None
-
-note: 
-   ┌─ features/for_loop_with_break.fe:11:16
-   │
-11 │             if sum == 15:
-   │                ^^^^^^^^^ bool: Value => None
-
-note: 
-   ┌─ features/for_loop_with_break.fe:13:16
-   │
-13 │         return sum
-   │                ^^^ u256: Value => None
-
-note: 
   ┌─ features/for_loop_with_break.fe:4:23
   │
 4 │         let my_array: Array<u256, 3>
   │                       ^^^^^^^^^^^^^^ Array<u256, 3>
-
-note: 
-  ┌─ features/for_loop_with_break.fe:8:18
-  │
+  ·
 8 │         let sum: u256 = 0
   │                  ^^^^ u256
+
+note: 
+  ┌─ features/for_loop_with_break.fe:5:9
+  │
+5 │         my_array[0] = 5
+  │         ^^^^^^^^ ^ u256: Value
+  │         │         
+  │         Array<u256, 3>: Memory
+
+note: 
+  ┌─ features/for_loop_with_break.fe:5:9
+  │
+5 │         my_array[0] = 5
+  │         ^^^^^^^^^^^   ^ u256: Value
+  │         │              
+  │         u256: Memory
+6 │         my_array[1] = 10
+  │         ^^^^^^^^ ^ u256: Value
+  │         │         
+  │         Array<u256, 3>: Memory
+
+note: 
+  ┌─ features/for_loop_with_break.fe:6:9
+  │
+6 │         my_array[1] = 10
+  │         ^^^^^^^^^^^   ^^ u256: Value
+  │         │              
+  │         u256: Memory
+7 │         my_array[2] = 15
+  │         ^^^^^^^^ ^ u256: Value
+  │         │         
+  │         Array<u256, 3>: Memory
+
+note: 
+   ┌─ features/for_loop_with_break.fe:7:9
+   │
+ 7 │         my_array[2] = 15
+   │         ^^^^^^^^^^^   ^^ u256: Value
+   │         │              
+   │         u256: Memory
+ 8 │         let sum: u256 = 0
+   │                         ^ u256: Value
+ 9 │         for i in my_array:
+   │                  ^^^^^^^^ Array<u256, 3>: Memory
+10 │             sum = sum + i
+   │             ^^^   ^^^   ^ u256: Value
+   │             │     │      
+   │             │     u256: Value
+   │             u256: Value
+
+note: 
+   ┌─ features/for_loop_with_break.fe:10:19
+   │
+10 │             sum = sum + i
+   │                   ^^^^^^^ u256: Value
+11 │             if sum == 15:
+   │                ^^^    ^^ u256: Value
+   │                │       
+   │                u256: Value
+
+note: 
+   ┌─ features/for_loop_with_break.fe:11:16
+   │
+11 │             if sum == 15:
+   │                ^^^^^^^^^ bool: Value
+12 │                 break
+13 │         return sum
+   │                ^^^ u256: Value
 
 

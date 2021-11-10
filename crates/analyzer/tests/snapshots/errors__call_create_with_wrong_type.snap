@@ -3,10 +3,18 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, &src)"
 
 ---
-error: function `create` expects numeric parameter
-  ┌─ compile_errors/call_create_with_wrong_type.fe:7:19
+error: incorrect type for argument to `Bar.create`
+  ┌─ compile_errors/call_create_with_wrong_type.fe:6:20
   │
-7 │         Bar.create(true)
-  │                   ^^^^^^ invalid argument
+6 │         Bar.create(true)
+  │                    ^^^^ this has type `bool`; expected a number
+
+error: `create` expects 1 argument, but 0 were provided
+  ┌─ compile_errors/call_create_with_wrong_type.fe:7:13
+  │
+7 │         Bar.create()     # agroce #447
+  │             ^^^^^^-- supplied 0 arguments
+  │             │      
+  │             expects 1 argument
 
 
