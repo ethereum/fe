@@ -1,15 +1,15 @@
 use fe_analyzer::Db;
 use fe_common::diagnostics::{print_diagnostics, Diagnostic};
 use fe_common::files::{FileStore, SourceFileId};
-use fe_parser::parse_file;
+use fe_parser::{ast, parse_file};
 #[cfg(feature = "solc-backend")]
 use serde_json::Value;
 use std::collections::HashMap;
 
 /// The artifacts of a compiled module.
 pub struct CompiledModule {
-    pub src_ast: String,
-    pub lowered_ast: String,
+    pub src_ast: ast::Module,
+    pub lowered_ast: ast::Module,
     pub contracts: HashMap<String, CompiledContract>,
 }
 
@@ -42,7 +42,7 @@ pub fn compile(
     let (fe_module, parser_diagnostics) = parse_file(file_id, src).map_err(CompileError)?;
     errors.extend(parser_diagnostics.into_iter());
 
-    let src_ast = format!("{:#?}", &fe_module);
+    let src_ast = fe_module.clone();
 
     let db = Db::default();
     let module_id = match fe_analyzer::analyze(&db, fe_module) {
@@ -63,7 +63,7 @@ pub fn compile(
 
     // lower the AST
     let lowered_module = fe_lowering::lower(&db, module_id);
-    let lowered_ast = format!("{:#?}", &lowered_module);
+    let lowered_ast = lowered_module.clone();
 
     // analyze the lowered AST
     let lowered_module_id = match fe_analyzer::analyze(&db, lowered_module) {

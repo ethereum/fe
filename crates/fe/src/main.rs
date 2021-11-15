@@ -134,11 +134,17 @@ fn write_compiled_module(
     fs::create_dir_all(output_dir).map_err(ioerr_to_string)?;
 
     if targets.contains(&CompilationTarget::Ast) {
-        write_output(&output_dir.join("module.ast"), &module.src_ast)?;
+        write_output(
+            &output_dir.join("module.ast.json"),
+            &serde_json::to_string_pretty(&module.src_ast).expect("json encoding failed"),
+        )?;
     }
 
     if targets.contains(&CompilationTarget::LoweredAst) {
-        write_output(&output_dir.join("lowered_module.ast"), &module.lowered_ast)?;
+        write_output(
+            &output_dir.join("lowered_module.ast.json"),
+            &serde_json::to_string_pretty(&module.lowered_ast).expect("json encoding failed"),
+        )?;
     }
 
     if targets.contains(&CompilationTarget::Tokens) {
