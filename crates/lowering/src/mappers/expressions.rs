@@ -8,6 +8,7 @@ use fe_parser::node::Node;
 
 /// Lowers an expression and all sub expressions.
 pub fn expr(context: &mut FnContext, exp: Node<fe::Expr>) -> Node<fe::Expr> {
+    let original_exp = exp.clone();
     let span = exp.span;
 
     let lowered_kind = match exp.kind {
@@ -66,7 +67,7 @@ pub fn expr(context: &mut FnContext, exp: Node<fe::Expr>) -> Node<fe::Expr> {
         fe::Expr::Unit => exp.kind,
     };
 
-    Node::new(lowered_kind, span)
+    Node::with_original_id(lowered_kind, span, original_exp.original_id)
 }
 
 /// Lowers and optional expression.
