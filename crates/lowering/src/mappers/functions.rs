@@ -1,12 +1,17 @@
+use crate::ast_utils::get_first_ternary_expressions;
+use crate::ast_utils::{
+    inject_before_expression, replace_node_with_name_expression, ternary_to_if,
+};
+use std::convert::TryFrom;
+
 use crate::context::{FnContext, ModuleContext};
 use crate::mappers::expressions;
 use crate::mappers::types;
 use crate::utils::ZeroSpanNode;
 use fe_analyzer::namespace::items::FunctionId;
-use fe_analyzer::namespace::types::TypeDowncast;
 use fe_analyzer::namespace::types::{Base, Type};
-use fe_parser::ast as fe;
-use fe_parser::ast::RegularFunctionArg;
+use fe_analyzer::namespace::types::{FixedSize, TypeDowncast};
+use fe_parser::ast::{self as fe, FuncStmt, RegularFunctionArg};
 use fe_parser::node::Node;
 
 /// Lowers a function definition.
@@ -43,6 +48,8 @@ pub fn func_def(context: &mut ModuleContext, function: FunctionId) -> Node<fe::F
         }
         lowered_body
     };
+
+    let lowered_body = lower_ternary_expressions(&mut fn_ctx, lowered_body);
 
     let param_types = {
         let params = &signature.params;
@@ -97,6 +104,43 @@ pub fn func_def(context: &mut ModuleContext, function: FunctionId) -> Node<fe::F
     };
 
     Node::new(lowered_function, node.span)
+}
+
+fn lower_ternary_expressions(
+    context: &mut FnContext,
+    statements: Vec<Node<FuncStmt>>,
+) -> Vec<Node<FuncStmt>> {
+    let mut current_statements = statements;
+
+    loop {
+        let terns = get_first_ternary_expressions(&current_statements);
+
+        if let Some(ternary) = terns.last() {
+            let expr_attr = context
+                .expression_attributes(ternary.original_id)
+                .expect("missing attributes");
+
+            let ternary_type =
+                FixedSize::try_from(expr_attr.typ.clone()).expect("Not a fixed size");
+
+            let unique_name = context.make_unique_name("ternary_result");
+            let generated_if_else = ternary_to_if(ternary_type.clone(), ternary, &unique_name);
+            current_statements = inject_before_expression(
+                &current_statements,
+                ternary.original_id,
+                &generated_if_else,
+            );
+            current_statements = replace_node_with_name_expression(
+                &current_statements,
+                ternary.original_id,
+                &unique_name,
+            );
+        } else {
+            break;
+        }
+    }
+
+    current_statements
 }
 
 fn func_stmt(context: &mut FnContext, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::FuncStmt>> {

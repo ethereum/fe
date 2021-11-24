@@ -2,6 +2,7 @@
 
 use fe_analyzer::namespace::items::{IngotId, ModuleId};
 
+mod ast_utils;
 mod context;
 pub mod db;
 mod mappers;

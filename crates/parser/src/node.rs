@@ -16,22 +16,30 @@ pub struct Node<T> {
     pub kind: T,
     #[serde(skip_serializing, skip_deserializing)]
     pub id: NodeId,
+    #[serde(skip_serializing, skip_deserializing)]
+    pub original_id: NodeId,
     pub span: Span,
 }
 
 impl<T> Node<T> {
     pub fn new(kind: T, span: Span) -> Self {
+        let id = NodeId::create();
         Self {
             kind,
-            id: NodeId::create(),
+            id,
+            original_id: id,
             span,
         }
     }
 
-    /// Sets a new node ID.
-    pub fn new_id(mut self) -> Self {
-        self.id = NodeId::create();
-        self
+    pub fn with_original_id(kind: T, span: Span, original_id: NodeId) -> Self {
+        let id = NodeId::create();
+        Self {
+            kind,
+            id,
+            original_id,
+            span,
+        }
     }
 }
 

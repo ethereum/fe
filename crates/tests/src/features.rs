@@ -1244,6 +1244,21 @@ fn keccak() {
 }
 
 #[test]
+fn ternary() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(
+            &mut executor,
+            "ternary_expression_with_revert.fe",
+            "Foo",
+            &[],
+        );
+        harness.test_function(&mut executor, "bar", &[uint_token(6)], Some(&uint_token(1)));
+
+        harness.test_function_reverts(&mut executor, "bar", &[uint_token(1)], &[]);
+    });
+}
+
+#[test]
 fn math() {
     with_executor(&|mut executor| {
         let harness = deploy_contract(&mut executor, "math.fe", "Math", &[]);

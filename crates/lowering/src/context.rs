@@ -2,8 +2,7 @@ use fe_analyzer::context::{ExpressionAttributes, FunctionBody};
 use fe_analyzer::namespace::items::{FunctionId, ModuleId};
 use fe_analyzer::namespace::types::{Array, FixedSize, Tuple};
 use fe_analyzer::AnalyzerDb;
-use fe_parser::ast;
-use fe_parser::node::Node;
+use fe_parser::node::NodeId;
 use indexmap::IndexSet;
 use std::rc::Rc;
 
@@ -59,11 +58,14 @@ impl<'a, 'db> FnContext<'a, 'db> {
         self.module.db
     }
 
-    pub fn expression_attributes(&self, node: &Node<ast::Expr>) -> Option<&ExpressionAttributes> {
-        self.body.expressions.get(&node.id)
+    pub fn expression_attributes<T: Into<NodeId>>(
+        &self,
+        node_id: T,
+    ) -> Option<&ExpressionAttributes> {
+        self.body.expressions.get(&node_id.into())
     }
-    pub fn var_decl_type(&self, node: &Node<ast::TypeDesc>) -> Option<&FixedSize> {
-        self.body.var_decl_types.get(&node.id)
+    pub fn var_decl_type<T: Into<NodeId>>(&self, node_id: T) -> Option<&FixedSize> {
+        self.body.var_decl_types.get(&node_id.into())
     }
 }
 
