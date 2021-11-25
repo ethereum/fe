@@ -63,6 +63,8 @@ pub fn module(db: &dyn AnalyzerDb, module: ModuleId) -> ast::Module {
         // All name expressions referring to constants are handled at the time of lowering,
         // which causes the constants to no longer serve a purpose.
         Item::Constant(_) => None,
+        Item::Ingot(_) => unreachable!("ingots cannot be defined in a module"),
+        Item::Module(_) => unreachable!("modules cannot be defined in modules (at least not yet)"),
     }));
 
     let struct_defs_from_tuples = context

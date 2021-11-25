@@ -8,3 +8,5 @@ repository = "https://github.com/ethereum/fe"
 
 [dependencies]
 include_dir = "0.6.0"
+walkdir = "2"
+fe-common = {path = "../common", version = "^0.10.0-alpha"}

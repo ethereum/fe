@@ -1,7 +1,8 @@
-use crate::ast::{self, EventField, Field, GenericArg, TypeAlias, TypeDesc};
+use crate::ast::{self, EventField, Field, GenericArg, Path, TypeAlias, TypeDesc};
 use crate::grammar::expressions::parse_expr;
 use crate::grammar::functions::{parse_fn_def, parse_single_word_stmt};
 use crate::node::{Node, Span};
+use crate::Token;
 use crate::{ParseFailed, ParseResult, Parser, TokenKind};
 use fe_common::diagnostics::Label;
 use if_chain::if_chain;
@@ -295,6 +296,24 @@ pub fn parse_generic_args(par: &mut Parser) -> ParseResult<Node<Vec<GenericArg>>
     Ok(Node::new(args, span))
 }
 
+/// Returns path and trailing `::` token, if present.
+pub fn parse_path_tail<'a>(
+    par: &mut Parser<'a>,
+    head: Node<String>,
+) -> (Path, Span, Option<Token<'a>>) {
+    let mut span = head.span;
+    let mut segments = vec![head];
+    while let Some(delim) = par.optional(TokenKind::ColonColon) {
+        if let Some(name) = par.optional(TokenKind::Name) {
+            span += name.span;
+            segments.push(name.into());
+        } else {
+            return (Path { segments }, span, Some(delim));
+        }
+    }
+    (Path { segments }, span, None)
+}
+
 /// Parse a type description, e.g. `u8` or `Map<address, u256>`.
 pub fn parse_type_desc(par: &mut Parser) -> ParseResult<Node<TypeDesc>> {
     use TokenKind::*;
@@ -303,6 +322,22 @@ pub fn parse_type_desc(par: &mut Parser) -> ParseResult<Node<TypeDesc>> {
         Name => {
             let name = par.next()?;
             match par.peek() {
+                Some(ColonColon) => {
+                    let (path, span, trailing_delim) = parse_path_tail(par, name.into());
+                    if let Some(colons) = trailing_delim {
+                        let next = par.next()?;
+                        par.fancy_error(
+                            "failed to parse type description",
+                            vec![
+                                Label::secondary(colons.span, "path delimiter"),
+                                Label::primary(next.span, "expected a name"),
+                            ],
+                            vec![],
+                        );
+                        return Err(ParseFailed);
+                    }
+                    Node::new(TypeDesc::Path(path), span)
+                }
                 Some(Lt) => {
                     let args = parse_generic_args(par)?;
                     let span = name.span + args.span;

@@ -1,0 +1,8 @@
+use bing::Bong::*
+use bing::Tong
+
+struct Foo:
+    my_num: u256
+
+struct Bar:
+    pass

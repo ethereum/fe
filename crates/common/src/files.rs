@@ -8,14 +8,15 @@ use std::ops::Range;
 use std::path::Path;
 use std::{fs, io};
 
+#[derive(PartialEq, Clone, Eq, Hash, Debug)]
 pub struct SourceFile {
-    id: SourceFileId,
-    name: String,
-    content: String,
+    pub id: SourceFileId,
+    pub name: String,
+    pub content: String,
     line_starts: Vec<usize>,
 }
 
-#[derive(PartialEq, Copy, Clone, Eq, Hash, Debug, Default)]
+#[derive(PartialEq, Copy, Clone, Eq, Hash, Debug, PartialOrd, Ord, Default)]
 pub struct SourceFileId(pub u128);
 
 impl SourceFile {
@@ -59,7 +60,7 @@ impl FileLoader for OsFileLoader {
 }
 
 pub struct FileStore {
-    files: HashMap<SourceFileId, SourceFile>,
+    pub files: HashMap<SourceFileId, SourceFile>,
     loader: Box<dyn FileLoader>,
 }
 
@@ -93,6 +94,10 @@ impl FileStore {
 
     pub fn get_file(&self, id: SourceFileId) -> Option<&SourceFile> {
         self.files.get(&id)
+    }
+
+    pub fn all_files(&self) -> Vec<SourceFileId> {
+        self.files.keys().copied().collect()
     }
 }
 

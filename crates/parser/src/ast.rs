@@ -30,8 +30,7 @@ pub struct Pragma {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Path {
-    pub names: Vec<Node<String>>,
-    pub trailing_delim: bool,
+    pub segments: Vec<Node<String>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -42,14 +41,14 @@ pub struct Use {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub enum UseTree {
     Glob {
-        prefix: Node<Path>,
+        prefix: Path,
     },
     Nested {
-        prefix: Node<Path>,
+        prefix: Path,
         children: Vec<Node<UseTree>>,
     },
     Simple {
-        path: Node<Path>,
+        path: Path,
         rename: Option<Node<String>>,
     },
 }
@@ -84,14 +83,17 @@ pub struct Struct {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub enum TypeDesc {
     Unit,
-    // TODO: change `Base { base: String }` to `Name(String)`
+    // TODO: replace with `Name(String)`, or eliminate in favor of `Path`?
     Base {
         base: String,
     },
+    Path(Path),
     Tuple {
         items: Vec1<Node<TypeDesc>>,
     },
     Generic {
+        // TODO: when we support user-defined generic types,
+        // this will have to be a `Path`
         base: Node<String>,
         args: Node<Vec<GenericArg>>,
     },
@@ -272,6 +274,7 @@ pub enum Expr {
     },
     Bool(bool),
     Name(String),
+    Path(Path),
     Num(String),
     Str(String),
     Unit,
@@ -440,16 +443,16 @@ impl fmt::Display for Use {
 impl fmt::Display for UseTree {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            UseTree::Glob { prefix } => write!(f, "{}*", prefix.kind),
+            UseTree::Glob { prefix } => write!(f, "{}::*", prefix),
             UseTree::Simple { path, rename } => {
                 if let Some(rename) = rename {
-                    write!(f, "{} as {}", path.kind, rename.kind)
+                    write!(f, "{} as {}", path, rename.kind)
                 } else {
-                    write!(f, "{}", path.kind)
+                    write!(f, "{}", path)
                 }
             }
             UseTree::Nested { prefix, children } => {
-                write!(f, "{}{{{}}}", prefix.kind, node_comma_joined(children))
+                write!(f, "{}::{{{}}}", prefix, node_comma_joined(children))
             }
         }
     }
@@ -458,16 +461,12 @@ impl fmt::Display for UseTree {
 impl fmt::Display for Path {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let joined_names = self
-            .names
+            .segments
             .iter()
             .map(|name| name.kind.to_string())
             .collect::<Vec<_>>()
             .join("::");
         write!(f, "{}", joined_names)?;
-
-        if self.trailing_delim {
-            write!(f, "::")?;
-        }
 
         Ok(())
     }
@@ -523,6 +522,7 @@ impl fmt::Display for TypeDesc {
         match self {
             TypeDesc::Unit => write!(f, "()"),
             TypeDesc::Base { base } => write!(f, "{}", base),
+            TypeDesc::Path(path) => write!(f, "{}", path),
             TypeDesc::Tuple { items } => write!(f, "({})", node_comma_joined(items)),
             TypeDesc::Generic { base, args } => {
                 write!(f, "{}<{}>", base.kind, comma_joined(&args.kind))
@@ -755,6 +755,7 @@ impl fmt::Display for Expr {
             Expr::Tuple { elts } => write!(f, "({})", node_comma_joined(elts)),
             Expr::Bool(bool) => write!(f, "{}", bool),
             Expr::Name(name) => write!(f, "{}", name),
+            Expr::Path(path) => write!(f, "{}", path),
             Expr::Num(num) => write!(f, "{}", num),
             Expr::Str(str) => write!(f, "\"{}\"", str),
             Expr::Unit => write!(f, "()"),
@@ -950,6 +951,7 @@ fn expr_left_binding_power(expr: &Expr) -> u8 {
         Expr::Tuple { .. } => max_power,
         Expr::Bool(_) => max_power,
         Expr::Name(_) => max_power,
+        Expr::Path(_) => max_power,
         Expr::Num(_) => max_power,
         Expr::Str(_) => max_power,
         Expr::Unit => max_power,
@@ -972,6 +974,7 @@ fn expr_right_binding_power(expr: &Expr) -> u8 {
         Expr::Tuple { .. } => max_power,
         Expr::Bool(_) => max_power,
         Expr::Name(_) => max_power,
+        Expr::Path(_) => max_power,
         Expr::Num(_) => max_power,
         Expr::Str(_) => max_power,
         Expr::Unit => max_power,

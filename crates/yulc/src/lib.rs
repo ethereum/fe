@@ -1,38 +1,30 @@
-//! Fe to EVM compiler.
-
-use fe_yulgen::{NamedYulContracts, YulIr};
-use std::collections::HashMap;
-
-/// The name of a Fe contract.
-pub type ContractName = String;
-/// The bytecode of a contract as string object.
-pub type Bytecode = String;
-/// A mapping of contract names and their bytecode.
-pub type NamedBytecodeContracts = HashMap<ContractName, Bytecode>;
+use indexmap::map::IndexMap;
 
 #[derive(Debug)]
 pub struct YulcError(pub String);
 
 /// Compile a map of Yul contracts to a map of bytecode contracts.
+///
+/// Returns a `contract_name -> hex_encoded_bytecode` map.
 pub fn compile(
-    mut contracts: NamedYulContracts,
+    mut contracts: IndexMap<String, String>,
     optimize: bool,
-) -> Result<NamedBytecodeContracts, YulcError> {
+) -> Result<IndexMap<String, String>, YulcError> {
     contracts
-        .drain()
+        .drain(0..)
         .map(|(name, yul_src)| {
             compile_single_contract(&name, yul_src, optimize).map(|bytecode| (name, bytecode))
         })
-        .collect::<Result<NamedBytecodeContracts, _>>()
+        .collect()
 }
 
 #[cfg(feature = "solc-backend")]
 /// Compiles a single Yul contract to bytecode.
 pub fn compile_single_contract(
     name: &str,
-    yul_src: YulIr,
+    yul_src: String,
     optimize: bool,
-) -> Result<Bytecode, YulcError> {
+) -> Result<String, YulcError> {
     let solc_temp = include_str!("solc_temp.json");
     let input = solc_temp
         .replace("{optimizer_enabled}", &optimize.to_string())
@@ -56,9 +48,9 @@ pub fn compile_single_contract(
 /// Compiles a single Yul contract to bytecode.
 pub fn compile_single_contract(
     _name: &str,
-    _yul_src: YulIr,
+    _yul_src: String,
     _optimize: bool,
-) -> Result<Bytecode, YulcError> {
+) -> Result<String, YulcError> {
     // This is ugly, but required (as far as I can tell) to make
     // `cargo test --workspace` work without solc.
     panic!("fe-yulc requires 'solc-backend' feature")

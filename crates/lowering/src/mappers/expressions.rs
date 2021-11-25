@@ -12,6 +12,7 @@ pub fn expr(context: &mut FnContext, exp: Node<fe::Expr>) -> Node<fe::Expr> {
 
     let lowered_kind = match exp.kind {
         fe::Expr::Name(_) => expr_name(context, exp),
+        fe::Expr::Path(_) => exp.kind,
         fe::Expr::Num(_) => exp.kind,
         fe::Expr::Bool(_) => exp.kind,
         fe::Expr::Subscript { value, index } => fe::Expr::Subscript {

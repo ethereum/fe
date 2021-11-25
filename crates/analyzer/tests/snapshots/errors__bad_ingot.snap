@@ -1,0 +1,72 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: error_string_ingot(&path)
+
+---
+error: cannot glob import from type
+  ┌─ compile_errors/bad_ingot/src/foo.fe:1:11
+  │
+1 │ use bing::Bong::*
+  │           ^^^^ prefix item must be a module
+
+error: unresolved path item
+  ┌─ compile_errors/bad_ingot/src/foo.fe:2:11
+  │
+2 │ use bing::Tong
+  │           ^^^^ not found
+
+error: unresolved path item
+  ┌─ compile_errors/bad_ingot/src/main.fe:2:5
+  │
+2 │ use bar::Baz
+  │     ^^^ not found
+
+error: unresolved path item
+  ┌─ compile_errors/bad_ingot/src/main.fe:3:33
+  │
+3 │ use biz::bad::{Bur, Bud as Bar, Boo}
+  │                                 ^^^ not found
+
+error: unresolved path item
+  ┌─ compile_errors/bad_ingot/src/main.fe:4:10
+  │
+4 │ use biz::Bark
+  │          ^^^^ not found
+
+error: unresolved path item
+  ┌─ compile_errors/bad_ingot/src/main.fe:5:5
+  │
+5 │ use none::*
+  │     ^^^^ not found
+
+error: a type with the same name has already been imported
+  ┌─ compile_errors/bad_ingot/src/main.fe:3:16
+  │
+3 │ use biz::bad::{Bur, Bud as Bar, Boo}
+  │                ^^^ `Bur` first defined here
+  ·
+6 │ use bing::Bong as Bur
+  │                   --- `Bur` redefined here
+
+error: import name conflicts with built-in type
+  ┌─ compile_errors/bad_ingot/src/main.fe:7:17
+  │
+7 │ use foo::Bar as address
+  │                 ^^^^^^^ `address` is a built-in type
+
+error: a type with the same name has already been imported
+  ┌─ compile_errors/bad_ingot/src/main.fe:3:28
+  │
+3 │ use biz::bad::{Bur, Bud as Bar, Boo}
+  │                            ^^^ `Bar` first defined here
+  ·
+9 │ contract Bar:
+  │          --- `Bar` redefined here
+
+error: incorrect type for `Foo` argument `my_num`
+   ┌─ compile_errors/bad_ingot/src/main.fe:12:27
+   │
+12 │         return Foo(my_num=true)
+   │                           ^^^^ this has type `bool`; expected type `u256`
+
+

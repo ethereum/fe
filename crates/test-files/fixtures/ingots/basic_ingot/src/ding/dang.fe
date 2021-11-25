@@ -1,0 +1,1 @@
+type Dang = Array<u256, 42>

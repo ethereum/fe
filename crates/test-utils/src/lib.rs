@@ -245,11 +245,43 @@ pub fn deploy_contract(
     let mut files = FileStore::new();
     let id = files.add_file(fixture, src);
 
-    let compiled_module = match driver::compile(&files, id, src, true, true) {
+    let compiled_module = match driver::compile_module(&files, id, true, true) {
         Ok(module) => module,
         Err(error) => {
             fe_common::diagnostics::print_diagnostics(&error.0, &files);
             panic!("failed to compile module: {}", fixture)
+        }
+    };
+
+    let compiled_contract = compiled_module
+        .contracts
+        .get(contract_name)
+        .expect("could not find contract in fixture");
+
+    _deploy_contract(
+        executor,
+        &compiled_contract.bytecode,
+        &compiled_contract.json_abi,
+        init_params,
+    )
+}
+
+#[allow(dead_code)]
+#[cfg(feature = "solc-backend")]
+pub fn deploy_contract_from_ingot(
+    executor: &mut Executor,
+    path: &str,
+    contract_name: &str,
+    init_params: &[ethabi::Token],
+) -> ContractHarness {
+    let files = test_files::build_filestore(path);
+
+    let compiled_module = match driver::compile_ingot(path, &files, &files.all_files(), true, true)
+    {
+        Ok(module) => module,
+        Err(error) => {
+            fe_common::diagnostics::print_diagnostics(&error.0, &files);
+            panic!("failed to compile ingot: {}", path)
         }
     };
 
@@ -448,7 +480,7 @@ pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> Contr
     let mut files = FileStore::new();
     let src = test_files::fixture(fixture);
     let id = files.add_file(fixture, src);
-    let compiled_module = match driver::compile(&files, id, src, true, true) {
+    let compiled_module = match driver::compile_module(&files, id, true, true) {
         Ok(module) => module,
         Err(err) => {
             print_diagnostics(&err.0, &files);

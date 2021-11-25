@@ -11,6 +11,8 @@ mod differential;
 #[cfg(test)]
 mod features;
 #[cfg(test)]
+mod ingots;
+#[cfg(test)]
 mod runtime;
 #[cfg(test)]
 mod solidity;

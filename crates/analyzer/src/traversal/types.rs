@@ -109,25 +109,37 @@ fn friendly_generic_arg_example_string(generic: GenericType) -> String {
     format!("Example: `{}<{}>`", generic.name(), example_args.join(", "))
 }
 
-pub fn resolve_concrete_type(
+pub fn resolve_concrete_type_name<T: std::fmt::Display>(
     context: &mut dyn AnalyzerContext,
     name: &str,
-    name_span: Span,
+    base_desc: &Node<T>,
     generic_args: Option<&Node<Vec<ast::GenericArg>>>,
 ) -> Result<Type, TypeError> {
-    let named_item = context.resolve_name(name).ok_or_else(|| {
-        TypeError::new(context.error(
-            "undefined type",
-            name_span,
-            &format!("`{}` has not been defined", name),
-        ))
-    })?;
+    let named_thing = context.resolve_name(name);
+    resolve_concrete_type_named_thing(context, named_thing, base_desc, generic_args)
+}
 
-    match named_item {
-        NamedThing::Item(Item::Type(id)) => {
+pub fn resolve_concrete_type_path<T: std::fmt::Display>(
+    context: &mut dyn AnalyzerContext,
+    path: &ast::Path,
+    base_desc: &Node<T>,
+    generic_args: Option<&Node<Vec<ast::GenericArg>>>,
+) -> Result<Type, TypeError> {
+    let named_thing = context.resolve_path(path);
+    resolve_concrete_type_named_thing(context, named_thing, base_desc, generic_args)
+}
+
+pub fn resolve_concrete_type_named_thing<T: std::fmt::Display>(
+    context: &mut dyn AnalyzerContext,
+    named_thing: Option<NamedThing>,
+    base_desc: &Node<T>,
+    generic_args: Option<&Node<Vec<ast::GenericArg>>>,
+) -> Result<Type, TypeError> {
+    match named_thing {
+        Some(NamedThing::Item(Item::Type(id))) => {
             if let Some(args) = generic_args {
                 context.fancy_error(
-                    &format!("`{}` type is not generic", name),
+                    &format!("`{}` type is not generic", base_desc.kind),
                     vec![Label::primary(
                         args.span,
                         "unexpected generic argument list",
@@ -137,30 +149,42 @@ pub fn resolve_concrete_type(
             }
             id.typ(context.db())
         }
-        NamedThing::Item(Item::GenericType(generic)) => {
-            apply_generic_type_args(context, generic, name_span, generic_args)
+        Some(NamedThing::Item(Item::GenericType(generic))) => {
+            apply_generic_type_args(context, generic, base_desc.span, generic_args)
         }
-        _ => Err(TypeError::new(context.fancy_error(
-            &format!("`{}` is not a type name", name),
-            if let Some(def_span) = named_item.name_span(context.db()) {
+        Some(named_thing) => Err(TypeError::new(context.fancy_error(
+            &format!("`{}` is not a type name", base_desc.kind),
+            if let Some(def_span) = named_thing.name_span(context.db()) {
                 vec![
                     Label::primary(
                         def_span,
                         format!(
                             "`{}` is defined here as a {}",
-                            name,
-                            named_item.item_kind_display_name()
+                            base_desc.kind,
+                            named_thing.item_kind_display_name()
                         ),
                     ),
-                    Label::primary(name_span, format!("`{}` is used here as a type", name)),
+                    Label::primary(
+                        base_desc.span,
+                        format!("`{}` is used here as a type", base_desc.kind),
+                    ),
                 ]
             } else {
                 vec![Label::primary(
-                    name_span,
-                    format!("`{}` is a {}", name, named_item.item_kind_display_name()),
+                    base_desc.span,
+                    format!(
+                        "`{}` is a {}",
+                        base_desc.kind,
+                        named_thing.item_kind_display_name()
+                    ),
                 )]
             },
             vec![],
+        ))),
+        None => Err(TypeError::new(context.error(
+            "undefined type",
+            base_desc.span,
+            &format!("`{}` has not been defined", base_desc.kind),
         ))),
     }
 }
@@ -171,9 +195,11 @@ pub fn type_desc(
     desc: &Node<ast::TypeDesc>,
 ) -> Result<Type, TypeError> {
     match &desc.kind {
-        ast::TypeDesc::Base { base } => resolve_concrete_type(context, base, desc.span, None),
+        ast::TypeDesc::Base { base } => resolve_concrete_type_name(context, base, desc, None),
+        ast::TypeDesc::Path(path) => resolve_concrete_type_path(context, path, desc, None),
+        // generic will need to allow for paths too
         ast::TypeDesc::Generic { base, args } => {
-            resolve_concrete_type(context, &base.kind, base.span, Some(args))
+            resolve_concrete_type_name(context, &base.kind, base, Some(args))
         }
         ast::TypeDesc::Tuple { items } => {
             let types = items

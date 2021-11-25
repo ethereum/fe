@@ -19,3 +19,4 @@ fe-lowering = {path = "../lowering", version = "^0.10.0-alpha"}
 fe-parser = {path = "../parser", version = "^0.10.0-alpha"}
 fe-yulgen = {path = "../yulgen", version = "^0.10.0-alpha"}
 fe-yulc = {path = "../yulc", version = "^0.10.0-alpha", features = ["solc-backend"], optional = true}
+indexmap = "1.6.2"

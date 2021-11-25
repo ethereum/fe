@@ -9,7 +9,7 @@ use test1::{test1_1, test1_2::{test_1_2_1::*}}
 type MyType = String<42>
 
 struct MyStruct:
-    field1: bool
+    field1: foo::Bar
     field2: u256
     field3: address
 
@@ -31,7 +31,7 @@ contract Foo:
         field2: String<42>
 
     pub fn my_func():
-        pass
+        std::solidity::bytes2::from_array([1, 2])
 
     fn my_other_func():
         pass

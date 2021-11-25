@@ -1,22 +1,28 @@
 use crate::builtins;
 use crate::context;
+use crate::context::Analysis;
 use crate::errors::{self, TypeError};
 use crate::impl_intern_key;
 use crate::namespace::types::{self, GenericType};
 use crate::traversal::pragma::check_pragma_version;
 use crate::AnalyzerDb;
 use fe_common::diagnostics::Diagnostic;
+use fe_common::files::{SourceFile, SourceFileId};
 use fe_parser::ast;
 use fe_parser::ast::Expr;
 use fe_parser::node::{Node, Span};
+use indexmap::indexmap;
 use indexmap::IndexMap;
+use std::collections::BTreeMap;
 use std::rc::Rc;
 
 /// A named item. This does not include things inside of
 /// a function body.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Item {
-    // Module   // TODO: modules don't have names yet
+    Ingot(IngotId),
+    Module(ModuleId),
+    // Constant // TODO: when `const` is implemented
     Type(TypeDef),
     // GenericType probably shouldn't be a separate category.
     // Any of the items inside TypeDef (struct, alias, etc)
@@ -47,6 +53,8 @@ impl Item {
             Item::BuiltinFunction(id) => id.as_ref().to_string(),
             Item::Object(id) => id.as_ref().to_string(),
             Item::Constant(id) => id.name(db),
+            Item::Ingot(id) => id.name(db),
+            Item::Module(id) => id.name(db),
         }
     }
 
@@ -59,6 +67,8 @@ impl Item {
             Item::BuiltinFunction(_) => None,
             Item::Object(_) => None,
             Item::Constant(id) => Some(id.name_span(db)),
+            Item::Ingot(_) => None,
+            Item::Module(_) => None,
         }
     }
 
@@ -72,6 +82,8 @@ impl Item {
             Item::BuiltinFunction(_) => true,
             Item::Object(_) => true,
             Item::Constant(_) => false,
+            Item::Ingot(_) => false,
+            Item::Module(_) => false,
         }
     }
 
@@ -84,6 +96,47 @@ impl Item {
             Item::BuiltinFunction(_) => "function",
             Item::Object(_) => "object",
             Item::Constant(_) => "constant",
+            Item::Ingot(_) => "ingot",
+            Item::Module(_) => "module",
+        }
+    }
+
+    pub fn items(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, Item>> {
+        match self {
+            Item::Ingot(_) => todo!("cannot access items in ingots yet"),
+            Item::Module(module) => module.items(db),
+            Item::Type(_) => todo!("cannot access items in types yet"),
+            Item::GenericType(_)
+            | Item::Event(_)
+            | Item::Function(_)
+            | Item::Constant(_)
+            | Item::BuiltinFunction(_)
+            | Item::Object(_) => Rc::new(indexmap! {}),
+        }
+    }
+
+    pub fn resolve_path(&self, db: &dyn AnalyzerDb, path: &ast::Path) -> Analysis<Option<Item>> {
+        let mut curr_item = *self;
+
+        for node in path.segments.iter() {
+            curr_item = match curr_item.items(db).get(&node.kind) {
+                Some(item) => *item,
+                None => {
+                    return Analysis {
+                        value: None,
+                        diagnostics: Rc::new(vec![errors::error(
+                            "unresolved path item",
+                            node.span,
+                            "not found",
+                        )]),
+                    }
+                }
+            }
+        }
+
+        Analysis {
+            value: Some(curr_item),
+            diagnostics: Rc::new(vec![]),
         }
     }
 
@@ -96,16 +149,93 @@ impl Item {
             Item::BuiltinFunction(_) => {}
             Item::Object(_) => {}
             Item::Constant(id) => id.sink_diagnostics(db, sink),
+            Item::Ingot(id) => id.sink_diagnostics(db, sink),
+            Item::Module(id) => id.sink_diagnostics(db, sink),
         }
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Default)]
+pub struct Global {
+    ingots: BTreeMap<String, IngotId>,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+pub struct GlobalId(pub(crate) u32);
+impl_intern_key!(GlobalId);
+impl GlobalId {}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub struct Ingot {
+    pub name: String,
+    // pub version: String,
+    pub global: GlobalId,
+    // `BTreeMap` implements `Hash`, which is required for an ID.
+    pub fe_files: BTreeMap<SourceFileId, (SourceFile, ast::Module)>,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+pub struct IngotId(pub(crate) u32);
+impl_intern_key!(IngotId);
+impl IngotId {
+    pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<Ingot> {
+        db.lookup_intern_ingot(*self)
+    }
+
+    pub fn name(&self, db: &dyn AnalyzerDb) -> String {
+        self.data(db).name.clone()
+    }
+
+    pub fn main_module(&self, db: &dyn AnalyzerDb) -> Option<ModuleId> {
+        db.ingot_main_module(*self).value
+    }
+
+    pub fn diagnostics(&self, db: &dyn AnalyzerDb) -> Vec<Diagnostic> {
+        let mut diagnostics = vec![];
+        self.sink_diagnostics(db, &mut diagnostics);
+        diagnostics
+    }
+
+    pub fn all_modules(&self, db: &dyn AnalyzerDb) -> Rc<Vec<ModuleId>> {
+        db.ingot_all_modules(*self)
+    }
+
+    pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
+        let modules = self.all_modules(db);
+
+        for module in modules.iter() {
+            module.sink_diagnostics(db, sink)
+        }
+
+        sink.push_all(db.ingot_main_module(*self).diagnostics.iter());
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub enum ModuleFileContent {
+    Dir {
+        // directories will have a corresponding source file. we can remove
+        // the `dir_path` attribute when this is added.
+        // file: SourceFileId,
+        dir_path: String,
+    },
+    File {
+        file: SourceFileId,
+    },
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub enum ModuleContext {
+    Ingot(IngotId),
+    Global(GlobalId),
+}
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Module {
+    pub name: String,
+    pub context: ModuleContext,
+    pub file_content: ModuleFileContent,
     pub ast: ast::Module,
-    // When we support multiple files, a module should know its file id,
-    // but for now this isn't used.
-    // pub file: SourceFileId,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
@@ -114,6 +244,32 @@ impl_intern_key!(ModuleId);
 impl ModuleId {
     pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<Module> {
         db.lookup_intern_module(*self)
+    }
+
+    pub fn name(&self, db: &dyn AnalyzerDb) -> String {
+        self.data(db).name.clone()
+    }
+
+    pub fn file_content(&self, db: &dyn AnalyzerDb) -> ModuleFileContent {
+        self.data(db).file_content.clone()
+    }
+
+    pub fn ingot_path(&self, db: &dyn AnalyzerDb) -> String {
+        match self.context(db) {
+            ModuleContext::Ingot(ingot) => match self.file_content(db) {
+                ModuleFileContent::Dir { dir_path } => dir_path,
+                ModuleFileContent::File { file } => ingot.data(db).fe_files[&file].0.name.clone(),
+            },
+            ModuleContext::Global(_) => panic!("cannot get path"),
+        }
+    }
+
+    pub fn ast(&self, db: &dyn AnalyzerDb) -> ast::Module {
+        self.data(db).ast.clone()
+    }
+
+    pub fn context(&self, db: &dyn AnalyzerDb) -> ModuleContext {
+        self.data(db).context.clone()
     }
 
     /// Returns a map of the named items in the module
@@ -126,21 +282,41 @@ impl ModuleId {
         db.module_all_items(*self)
     }
 
-    pub fn imported_items(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, Item>> {
-        db.module_imported_item_map(*self)
+    /// Returns a `name -> (name_span, external_item)` map for all `use` statements in a module.
+    pub fn used_items(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, (Span, Item)>> {
+        db.module_used_item_map(*self).value
+    }
+
+    /// Returns a `name -> (name_span, external_item)` map for a single `use` tree.
+    pub fn resolve_use_tree(
+        &self,
+        db: &dyn AnalyzerDb,
+        tree: &Node<ast::UseTree>,
+    ) -> Rc<IndexMap<String, (Span, Item)>> {
+        db.module_resolve_use_tree(*self, tree.to_owned()).value
     }
 
     pub fn resolve_name(&self, db: &dyn AnalyzerDb, name: &str) -> Option<Item> {
-        self.items(db)
-            .get(name)
-            .copied()
-            .or_else(|| self.imported_items(db).get(name).copied())
+        self.items(db).get(name).copied()
+    }
+
+    pub fn sub_modules(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, ModuleId>> {
+        db.module_sub_modules(*self)
+    }
+
+    pub fn adjacent_modules(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, ModuleId>> {
+        db.module_adjacent_modules(*self)
+    }
+
+    pub fn parent_module(&self, db: &dyn AnalyzerDb) -> Option<ModuleId> {
+        db.module_parent_module(*self)
     }
 
     /// All contracts, including duplicates
     pub fn all_contracts(&self, db: &dyn AnalyzerDb) -> Rc<Vec<ContractId>> {
         db.module_contracts(*self)
     }
+
     /// All structs, including duplicates
     pub fn all_structs(&self, db: &dyn AnalyzerDb) -> Rc<Vec<StructId>> {
         db.module_structs(*self)
@@ -155,16 +331,10 @@ impl ModuleId {
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         let ast::Module { body } = &self.data(db).ast;
         for stmt in body {
-            match stmt {
-                ast::ModuleStmt::Pragma(inner) => {
-                    if let Some(diag) = check_pragma_version(inner) {
-                        sink.push(&diag)
-                    }
+            if let ast::ModuleStmt::Pragma(inner) = stmt {
+                if let Some(diag) = check_pragma_version(inner) {
+                    sink.push(&diag)
                 }
-                ast::ModuleStmt::Use(inner) => {
-                    sink.push(&errors::not_yet_implemented("use", inner.span));
-                }
-                _ => {} // everything else is a type def, handled below.
             }
         }
 
@@ -211,7 +381,7 @@ impl ModuleConstantId {
         self.data(db).ast.kind.name.span
     }
 
-    pub fn value(&self, db: &dyn AnalyzerDb) -> fe_parser::ast::Expr {
+    pub fn value(&self, db: &dyn AnalyzerDb) -> ast::Expr {
         self.data(db).ast.kind.value.kind.clone()
     }
 

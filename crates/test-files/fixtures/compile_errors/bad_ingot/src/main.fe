@@ -1,0 +1,12 @@
+use foo::Foo
+use bar::Baz
+use biz::bad::{Bur, Bud as Bar, Boo}
+use biz::Bark
+use none::*
+use bing::Bong as Bur
+use foo::Bar as address
+
+contract Bar:
+
+    pub fn a() -> Foo:
+        return Foo(my_num=true)

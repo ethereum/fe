@@ -9,6 +9,7 @@ repository = "https://github.com/ethereum/fe"
 [dependencies]
 fe-abi = {path = "../abi", version = "^0.10.0-alpha"}
 fe-analyzer = {path = "../analyzer", version = "^0.10.0-alpha"}
+fe-lowering = {path = "../lowering", version = "^0.10.0-alpha"}
 fe-common = {path = "../common", version = "^0.10.0-alpha"}
 fe-parser = {path = "../parser", version = "^0.10.0-alpha"}
 indexmap = "1.6.2"

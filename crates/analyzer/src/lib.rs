@@ -7,28 +7,31 @@
 pub mod builtins;
 pub mod constants;
 pub mod context;
-mod db;
+pub mod db;
 pub mod errors;
 pub mod namespace;
 mod operations;
 mod traversal;
 
-pub use db::{AnalyzerDb, Db};
+use crate::namespace::items::{IngotId, ModuleId};
+pub use db::{AnalyzerDb, TestDb};
 use fe_common::diagnostics::Diagnostic;
-use fe_parser::ast;
-use namespace::items;
-use std::rc::Rc;
 
-/// Performs semantic analysis of the source program
-pub fn analyze(
-    db: &dyn AnalyzerDb,
-    module: ast::Module,
-) -> Result<items::ModuleId, Vec<Diagnostic>> {
-    let module_id = db.intern_module(Rc::new(items::Module { ast: module }));
+pub fn analyze_ingot(db: &dyn AnalyzerDb, ingot_id: IngotId) -> Result<(), Vec<Diagnostic>> {
+    let diagnostics = ingot_id.diagnostics(db);
 
-    let diagnostics = module_id.diagnostics(db);
     if diagnostics.is_empty() {
-        Ok(module_id)
+        Ok(())
+    } else {
+        Err(diagnostics)
+    }
+}
+
+pub fn analyze_module(db: &dyn AnalyzerDb, module_id: ModuleId) -> Result<(), Vec<Diagnostic>> {
+    let diagnostics = module_id.diagnostics(db);
+
+    if diagnostics.is_empty() {
+        Ok(())
     } else {
         Err(diagnostics)
     }

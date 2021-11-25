@@ -66,6 +66,7 @@ test_parse! { expr_num1, expressions::parse_expr, "12345" }
 test_parse! { expr_num2, expressions::parse_expr, "00001" }
 test_parse! { expr_hex1, expressions::parse_expr, "0xbeefbeef" }
 test_parse! { expr_hex2, expressions::parse_expr, "0xFEED1234" }
+test_parse! { expr_path_call, expressions::parse_expr, "foo::bar::abc1()" }
 test_parse! { expr_string, expressions::parse_expr, r#""hi \tmom\n""# }
 test_parse! { expr_list, expressions::parse_expr, "[]" }
 test_parse! { expr_list2, expressions::parse_expr, "[x, y, z,]" }
@@ -102,11 +103,11 @@ test_parse! { stmt_aug_rsh, functions::parse_stmt, "x >>= y" }
 test_parse! { stmt_aug_exp, functions::parse_stmt, "x **= y" }
 test_parse! { stmt_emit1, functions::parse_stmt, "emit Foo()" }
 test_parse! { stmt_emit2, functions::parse_stmt, "emit Foo(1, 2, x=y)" }
+test_parse! { stmt_path_type, functions::parse_stmt, "let x: foo::Bar = foo::Bar(1, 2)" }
 test_parse! { stmt_return1, functions::parse_stmt, "return" }
 test_parse! { stmt_return2, functions::parse_stmt, "return x" }
 test_parse! { stmt_return3, functions::parse_stmt, "return not x" }
 test_parse! { stmt_revert1, functions::parse_stmt, "revert" }
-
 test_parse! { stmt_revert2, functions::parse_stmt, "revert something" }
 
 test_parse! { stmt_if, functions::parse_stmt, "if a:\n b" }

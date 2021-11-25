@@ -5,6 +5,8 @@ mod span;
 pub mod utils;
 pub use span::{Span, Spanned};
 pub mod panic;
+mod upcast;
+pub use upcast::Upcast;
 
 #[macro_export]
 #[cfg(target_arch = "wasm32")]

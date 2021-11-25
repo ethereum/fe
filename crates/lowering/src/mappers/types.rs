@@ -6,7 +6,7 @@ use fe_parser::node::Node;
 
 pub fn type_desc(context: &mut ModuleContext, desc: Node<TypeDesc>, typ: &Type) -> Node<TypeDesc> {
     match desc.kind {
-        TypeDesc::Unit | TypeDesc::Base { .. } => desc,
+        TypeDesc::Unit | TypeDesc::Base { .. } | TypeDesc::Path(_) => desc,
 
         TypeDesc::Tuple { items } => {
             let typ = typ.as_tuple().expect("expected tuple type");

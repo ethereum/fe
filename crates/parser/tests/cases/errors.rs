@@ -75,6 +75,7 @@ contract C:
 "#
 }
 
+test_parse_err! { type_desc_path_number, module::parse_module, true, "type Foo = some::mod::Foo::5000" }
 test_parse_err! { contract_pub_event, contracts::parse_contract_def, false, "contract C:\n pub event E:\n  x: u8" }
 test_parse_err! { contract_const_pub, contracts::parse_contract_def, false, "contract C:\n const pub x: u8" }
 test_parse_err! { contract_const_fn, contracts::parse_contract_def, false, "contract C:\n const fn f():\n  pass" }
@@ -82,6 +83,9 @@ test_parse_err! { emit_no_args, functions::parse_stmt, true, "emit x" }
 test_parse_err! { emit_expr, functions::parse_stmt, true, "emit x + 1" }
 test_parse_err! { emit_bad_call, functions::parse_stmt, true, "emit MyEvent(1)()" }
 test_parse_err! { expr_bad_prefix, expressions::parse_expr, true, "*x + 1" }
+test_parse_err! { expr_path_left, expressions::parse_expr, true, "(1 + 2)::foo::bar" }
+test_parse_err! { expr_path_right, expressions::parse_expr, true, "foo::10::bar" }
+test_parse_err! { expr_dotted_number, expressions::parse_expr, true, "3.14" }
 test_parse_err! { for_no_in, functions::parse_stmt, true, "for x:\n pass" }
 test_parse_err! { fn_no_args, module::parse_module, false, "fn f:\n  return 5" }
 test_parse_err! { fn_unsafe_pub, module::parse_module, false, "unsafe pub fn f():\n  return 5" }

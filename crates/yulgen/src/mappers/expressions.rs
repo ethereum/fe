@@ -25,6 +25,7 @@ use yultsur::*;
 pub fn expr(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
     let expression = match &exp.kind {
         fe::Expr::Name(_) => expr_name(exp),
+        fe::Expr::Path(_) => panic!("path expressions should be lowered or rejected"),
         fe::Expr::Num(_) => expr_num(exp),
         fe::Expr::Bool(_) => expr_bool(exp),
         fe::Expr::Subscript { .. } => expr_subscript(context, exp),

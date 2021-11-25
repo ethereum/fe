@@ -1,8 +1,8 @@
 use super::contracts::parse_contract_def;
 use super::expressions::parse_expr;
 use super::functions::parse_fn_def;
-use super::types::{parse_struct_def, parse_type_alias, parse_type_desc};
-use crate::ast::{ConstantDecl, Module, ModuleStmt, Path, Pragma, Use, UseTree};
+use super::types::{parse_path_tail, parse_struct_def, parse_type_alias, parse_type_desc};
+use crate::ast::{ConstantDecl, Module, ModuleStmt, Pragma, Use, UseTree};
 use crate::node::{Node, Span};
 use crate::{Label, ParseFailed, ParseResult, Parser, TokenKind};
 
@@ -130,60 +130,20 @@ pub fn parse_use(par: &mut Parser) -> ParseResult<Node<Use>> {
     Ok(Node::new(Use { tree }, use_tok.span + tree_span))
 }
 
-/// Parse a `::` delimited path.
-pub fn parse_path(par: &mut Parser) -> ParseResult<Node<Path>> {
-    let mut names = vec![];
-
-    let name = par.expect_with_notes(TokenKind::Name, "failed to parse path", |_| {
-        vec![
-            "Note: paths must start with a name".into(),
-            "Example: `foo::bar`".into(),
-        ]
-    })?;
-
-    names.push(Node::new(name.text.to_string(), name.span));
-
-    loop {
-        if par.peek() == Some(TokenKind::ColonColon) {
-            let delim_tok = par.next()?;
-
-            if par.peek() == Some(TokenKind::Name) {
-                let name = par.next()?;
-
-                names.push(Node::new(name.text.to_string(), name.span));
-            } else {
-                let span =
-                    names.first().expect("`names` should not be empty").span + delim_tok.span;
-
-                return Ok(Node::new(
-                    Path {
-                        names,
-                        trailing_delim: true,
-                    },
-                    span,
-                ));
-            }
-        } else {
-            let span = names.first().expect("`names` should not be empty").span
-                + names.last().expect("").span;
-
-            return Ok(Node::new(
-                Path {
-                    names,
-                    trailing_delim: false,
-                },
-                span,
-            ));
-        }
-    }
-}
-
 /// Parse a `use` tree.
 pub fn parse_use_tree(par: &mut Parser) -> ParseResult<Node<UseTree>> {
-    let path = parse_path(par)?;
-    let path_span = path.span;
+    let (path, path_span, trailing_delim) = {
+        let path_head =
+            par.expect_with_notes(TokenKind::Name, "failed to parse `use` statement", |_| {
+                vec![
+                    "Note: `use` paths must start with a name".into(),
+                    "Example: `use foo::bar`".into(),
+                ]
+            })?;
+        parse_path_tail(par, path_head.into())
+    };
 
-    if path.kind.trailing_delim {
+    if trailing_delim.is_some() {
         match par.peek() {
             Some(TokenKind::BraceOpen) => {
                 par.next()?;
@@ -193,19 +153,16 @@ pub fn parse_use_tree(par: &mut Parser) -> ParseResult<Node<UseTree>> {
 
                 loop {
                     children.push(parse_use_tree(par)?);
-
-                    match par.peek() {
-                        Some(TokenKind::Comma) => {
-                            par.next()?;
+                    let tok = par.next()?;
+                    match tok.kind {
+                        TokenKind::Comma => {
                             continue;
                         }
-                        Some(TokenKind::BraceClose) => {
-                            let tok = par.next()?;
+                        TokenKind::BraceClose => {
                             close_brace_span = tok.span;
                             break;
                         }
                         _ => {
-                            let tok = par.next()?;
                             par.unexpected_token_error(
                                 tok.span,
                                 "failed to parse `use` tree",
