@@ -31,7 +31,7 @@ pub fn expr(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
         fe::Expr::Subscript { .. } => expr_subscript(context, exp),
         fe::Expr::Attribute { .. } => expr_attribute(context, exp),
         fe::Expr::Ternary { .. } => panic!("ternary expressions should be lowered"),
-        fe::Expr::BoolOperation { .. } => expr_bool_operation(context, exp),
+        fe::Expr::BoolOperation { .. } => panic!("bool operation expressions should be lowered"),
         fe::Expr::BinOperation { .. } => expr_bin_operation(context, exp),
         fe::Expr::UnaryOperation { .. } => expr_unary_operation(context, exp),
         fe::Expr::CompOperation { .. } => expr_comp_operation(context, exp),
@@ -507,18 +507,4 @@ pub fn nonce_to_ptr(nonce: usize) -> yul::Expression {
     // set the last byte to `0x00` to ensure our pointer sits at the start of a word
     let ptr = keccak::partial_right_padded(nonce.to_string().as_bytes(), 31);
     literal_expression! { (ptr) }
-}
-
-fn expr_bool_operation(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
-    if let fe::Expr::BoolOperation { left, op, right } = &exp.kind {
-        let yul_left = expr(context, left);
-        let yul_right = expr(context, right);
-
-        return match op.kind {
-            fe::BoolOperator::And => expression! {and([yul_left], [yul_right])},
-            fe::BoolOperator::Or => expression! {or([yul_left], [yul_right])},
-        };
-    }
-
-    unreachable!()
 }

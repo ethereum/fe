@@ -1,0 +1,55 @@
+contract Foo:
+
+    pub fn bar():
+        return baz(false or true)
+
+    pub fn nested():
+        if true:
+            let a: bool = true
+            let b: bool = false
+            let x: bool = true
+            let y: bool = false
+            return double_baz(a and b, x or y)
+
+    pub fn nested_ternary():
+        let a: bool = true
+        let b: bool = false
+        let x: bool = true
+        let y: bool = false
+        return baz(a and b) and (x and y)
+
+    pub fn in_dec():
+        let a: bool = true
+        let b: bool = false
+        let x: bool = true
+        let y: bool = false
+
+        let z: (bool, bool) = (a and b, x or y)
+
+    pub fn short_or(first: bool, second: bool, third: bool, fourth: bool) -> bool:
+        return first or second or third or fourth
+
+    pub fn short_or2(first: bool, second: bool, third: bool, fourth: bool) -> bool:
+        return (first or second) or (third or fourth)
+
+    pub fn short_or3(first: bool, second: bool, third: bool, fourth: bool) -> bool:
+        return (first or second) or third or fourth
+
+    pub fn short_and(first: bool, second: bool, third: bool, fourth: bool) -> bool:
+        return first and second and third and fourth
+
+    pub fn short_and2(first: bool, second: bool, third: bool, fourth: bool) -> bool:
+        return (first and second) and (third and fourth)
+
+    pub fn short_and3(first: bool, second: bool, third: bool, fourth: bool) -> bool:
+        return (first and second) and third and fourth
+
+    pub fn short_mixed(first: bool, second: bool, third: bool, fourth: bool) -> bool:
+        return (first or second) and third or fourth
+
+    pub fn baz(val: bool):
+        pass
+
+    pub fn double_baz(val: bool, val2: bool):
+        pass
+

@@ -1,8 +1,0 @@
-contract Foo:
-
-    pub fn bar(input: u256) -> u256:
-        return 1 if input > 5 else revert_me()
-
-    fn revert_me() -> u256:
-        revert
-        return 0

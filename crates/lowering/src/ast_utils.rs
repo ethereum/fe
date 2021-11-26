@@ -1,5 +1,5 @@
 use fe_analyzer::namespace::types::FixedSize;
-use fe_parser::ast::{CallArg, Expr, FuncStmt, VarDeclTarget};
+use fe_parser::ast::{BoolOperator, CallArg, Expr, FuncStmt, UnaryOperator, VarDeclTarget};
 use fe_parser::node::{Node, NodeId};
 
 use crate::names;
@@ -494,6 +494,85 @@ pub fn ternary_to_if(
     unreachable!()
 }
 
+/// Turns a boolean expression into a set of statements resembling an if/else block with equal
+/// functionality. Expects the type and variable result name to be provided as parameters.
+pub fn boolean_expr_to_if(
+    expr_type: FixedSize,
+    expr: &Node<Expr>,
+    result_name: &str,
+) -> Vec<Node<FuncStmt>> {
+    if let Expr::BoolOperation { left, op, right } = &expr.kind {
+        return match op.kind {
+            BoolOperator::And => {
+                // from: left && right
+
+                // into:
+                // res: bool = false
+                // if left:
+                //     res = right
+
+                let mut stmts = vec![FuncStmt::VarDecl {
+                    target: VarDeclTarget::Name(result_name.to_string()).into_node(),
+                    typ: names::fixed_size_type_desc(&expr_type).into_node(),
+                    value: Some(Expr::Bool(false).into_node()),
+                }
+                .into_node()];
+                let if_branch = FuncStmt::Assign {
+                    target: Expr::Name(result_name.to_string()).into_node(),
+                    value: right.kind.clone().into_traceable_node(right.original_id),
+                }
+                .into_node();
+
+                stmts.push(
+                    FuncStmt::If {
+                        test: left.kind.clone().into_traceable_node(left.original_id),
+                        body: vec![if_branch],
+                        or_else: vec![],
+                    }
+                    .into_node(),
+                );
+                stmts
+            }
+            BoolOperator::Or => {
+                // from: left || right
+                // into:
+                // res: bool = true
+                // if not left:
+                //     res = right
+                let mut stmts = vec![FuncStmt::VarDecl {
+                    target: VarDeclTarget::Name(result_name.to_string()).into_node(),
+                    typ: names::fixed_size_type_desc(&expr_type).into_node(),
+                    value: Some(Expr::Bool(true).into_node()),
+                }
+                .into_node()];
+                let if_branch = FuncStmt::Assign {
+                    target: Expr::Name(result_name.to_string()).into_node(),
+                    value: right.kind.clone().into_traceable_node(right.original_id),
+                }
+                .into_node();
+
+                stmts.push(
+                    FuncStmt::If {
+                        test: Expr::UnaryOperation {
+                            op: UnaryOperator::Not.into_node(),
+                            operand: Box::new(
+                                left.kind.clone().into_traceable_node(left.original_id),
+                            ),
+                        }
+                        .into_node(),
+                        body: vec![if_branch],
+                        or_else: vec![],
+                    }
+                    .into_node(),
+                );
+                stmts
+            }
+        };
+    }
+
+    unreachable!()
+}
+
 /// Returns a vector of expressions with all ternary expressions that are
 /// contained within the given function statement. The last expression
 /// in the list is the outermost ternary expression found in the statement.
@@ -517,6 +596,36 @@ pub fn get_all_ternary_expressions(node: &Node<FuncStmt>) -> Vec<Node<Expr>> {
 pub fn get_first_ternary_expressions(nodes: &[Node<FuncStmt>]) -> Vec<Node<Expr>> {
     for node in nodes {
         let result = get_all_ternary_expressions(node);
+        if !result.is_empty() {
+            return result;
+        }
+    }
+    vec![]
+}
+
+/// Returns a vector of expressions with all boolean expressions that are
+/// contained within the given function statement. The last expression
+/// in the list is the outermost boolean expression found in the statement.
+pub fn get_all_boolean_expressions(node: &Node<FuncStmt>) -> Vec<Node<Expr>> {
+    let mut expressions = vec![];
+    map_ast_node(node.clone().into(), &mut |exp| {
+        if let StmtOrExpr::Expr(expr) = &exp {
+            if let Expr::BoolOperation { .. } = expr.kind {
+                expressions.push(expr.clone())
+            }
+        }
+
+        exp
+    });
+
+    expressions
+}
+
+/// For a given set of nodes returns the first set of boolean expressions that can be found.
+/// The last expression in the list is the outermost boolean expression found in the statement.
+pub fn get_first_boolean_expressions(nodes: &[Node<FuncStmt>]) -> Vec<Node<Expr>> {
+    for node in nodes {
+        let result = get_all_boolean_expressions(node);
         if !result.is_empty() {
             return result;
         }

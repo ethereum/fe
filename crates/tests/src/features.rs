@@ -1244,17 +1244,28 @@ fn keccak() {
 }
 
 #[test]
-fn ternary() {
+fn short_circuit() {
     with_executor(&|mut executor| {
-        let harness = deploy_contract(
-            &mut executor,
-            "ternary_expression_with_revert.fe",
-            "Foo",
-            &[],
-        );
+        let harness = deploy_contract(&mut executor, "short_circuit.fe", "Foo", &[]);
         harness.test_function(&mut executor, "bar", &[uint_token(6)], Some(&uint_token(1)));
 
         harness.test_function_reverts(&mut executor, "bar", &[uint_token(1)], &[]);
+
+        harness.test_function(
+            &mut executor,
+            "short_circuit_and",
+            &[bool_token(false)],
+            Some(&bool_token(false)),
+        );
+        harness.test_function_reverts(&mut executor, "short_circuit_and", &[bool_token(true)], &[]);
+
+        harness.test_function(
+            &mut executor,
+            "short_circuit_or",
+            &[bool_token(true)],
+            Some(&bool_token(true)),
+        );
+        harness.test_function_reverts(&mut executor, "short_circuit_or", &[bool_token(false)], &[]);
     });
 }
 
