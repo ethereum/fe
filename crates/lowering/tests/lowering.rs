@@ -75,5 +75,6 @@ test_file! { module_const, "lowering/module_const.fe" }
 test_file! { module_fn, "lowering/module_fn.fe" }
 test_file! { struct_fn, "lowering/struct_fn.fe" }
 test_file! { ternary, "lowering/ternary.fe" }
+test_file! { and_or, "lowering/and_or.fe" }
 // TODO: the analyzer rejects lowered nested tuples.
 // test_file!(array_tuple, "lowering/array_tuple.fe");

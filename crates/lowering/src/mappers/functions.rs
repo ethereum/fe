@@ -1,4 +1,6 @@
-use crate::ast_utils::get_first_ternary_expressions;
+use crate::ast_utils::{
+    boolean_expr_to_if, get_first_boolean_expressions, get_first_ternary_expressions,
+};
 use crate::ast_utils::{
     inject_before_expression, replace_node_with_name_expression, ternary_to_if,
 };
@@ -11,7 +13,7 @@ use crate::utils::ZeroSpanNode;
 use fe_analyzer::namespace::items::FunctionId;
 use fe_analyzer::namespace::types::{Base, Type};
 use fe_analyzer::namespace::types::{FixedSize, TypeDowncast};
-use fe_parser::ast::{self as fe, FuncStmt, RegularFunctionArg};
+use fe_parser::ast::{self as fe, Expr, FuncStmt, RegularFunctionArg};
 use fe_parser::node::Node;
 
 /// Lowers a function definition.
@@ -49,7 +51,20 @@ pub fn func_def(context: &mut ModuleContext, function: FunctionId) -> Node<fe::F
         lowered_body
     };
 
-    let lowered_body = lower_ternary_expressions(&mut fn_ctx, lowered_body);
+    let lowered_body = lower_iteratively(
+        &mut fn_ctx,
+        lowered_body,
+        "ternary_result",
+        &get_first_ternary_expressions,
+        &ternary_to_if,
+    );
+    let lowered_body = lower_iteratively(
+        &mut fn_ctx,
+        lowered_body,
+        "boolean_expr_result",
+        &get_first_boolean_expressions,
+        &boolean_expr_to_if,
+    );
 
     let param_types = {
         let params = &signature.params;
@@ -106,33 +121,37 @@ pub fn func_def(context: &mut ModuleContext, function: FunctionId) -> Node<fe::F
     Node::new(lowered_function, node.span)
 }
 
-fn lower_ternary_expressions(
+fn lower_iteratively(
     context: &mut FnContext,
     statements: Vec<Node<FuncStmt>>,
+    result_name: &str,
+    getter_fn: &dyn Fn(&[Node<FuncStmt>]) -> Vec<Node<Expr>>,
+    mapper_fn: &dyn Fn(FixedSize, &Node<Expr>, &str) -> Vec<Node<FuncStmt>>,
 ) -> Vec<Node<FuncStmt>> {
     let mut current_statements = statements;
 
     loop {
-        let terns = get_first_ternary_expressions(&current_statements);
+        let expressions = getter_fn(&current_statements);
 
-        if let Some(ternary) = terns.last() {
+        if let Some(current_expression) = expressions.last() {
             let expr_attr = context
-                .expression_attributes(ternary.original_id)
+                .expression_attributes(current_expression.original_id)
                 .expect("missing attributes");
 
-            let ternary_type =
+            let expression_type =
                 FixedSize::try_from(expr_attr.typ.clone()).expect("Not a fixed size");
 
-            let unique_name = context.make_unique_name("ternary_result");
-            let generated_if_else = ternary_to_if(ternary_type.clone(), ternary, &unique_name);
+            let unique_name = context.make_unique_name(result_name);
+            let generated_statements =
+                mapper_fn(expression_type.clone(), current_expression, &unique_name);
             current_statements = inject_before_expression(
                 &current_statements,
-                ternary.original_id,
-                &generated_if_else,
+                current_expression.original_id,
+                &generated_statements,
             );
             current_statements = replace_node_with_name_expression(
                 &current_statements,
-                ternary.original_id,
+                current_expression.original_id,
                 &unique_name,
             );
         } else {
