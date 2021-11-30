@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(&files, module, &db)"
+expression: "build_snapshot(&files, module_id, &db)"
 
 ---
 note: 
@@ -136,7 +136,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:27:16
    │
 27 │         return self.my_addrs.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │                ^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 5, inner: Address }) }
 
 note: 
    ┌─ stress/abi_encoding_stress.fe:29:5
@@ -302,7 +302,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:39:16
    │
 39 │         return self.my_string.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │                ^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 10 }) }
 
 note: 
    ┌─ stress/abi_encoding_stress.fe:41:5
@@ -397,7 +397,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:45:16
    │
 45 │         return self.my_u16s.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │                ^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 255, inner: Numeric(U16) }) }
 
 note: 
    ┌─ stress/abi_encoding_stress.fe:47:5
@@ -565,7 +565,7 @@ note:
    ┌─ stress/abi_encoding_stress.fe:57:16
    │
 57 │         return self.my_bytes.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │                ^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 100, inner: Numeric(U8) }) }
 
 note: 
    ┌─ stress/abi_encoding_stress.fe:59:5
@@ -948,14 +948,14 @@ note:
    ┌─ stress/abi_encoding_stress.fe:76:22
    │
 76 │             my_addrs=self.my_addrs.to_mem(),
-   │                      ^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │                      ^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 5, inner: Address }) }
 77 │             my_u128=self.my_u128,
 78 │             my_string=self.my_string.to_mem(),
-   │                       ^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │                       ^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 10 }) }
 79 │             my_u16s=self.my_u16s.to_mem(),
-   │                     ^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │                     ^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 255, inner: Numeric(U16) }) }
 80 │             my_bool=self.my_bool,
 81 │             my_bytes=self.my_bytes.to_mem()
-   │                      ^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │                      ^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 100, inner: Numeric(U8) }) }
 
 

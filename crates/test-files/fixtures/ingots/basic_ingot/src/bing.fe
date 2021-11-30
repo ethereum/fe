@@ -4,7 +4,6 @@ struct Bing:
 fn get_42_backend() -> u256:
     return 42
 
-# currently disallowed
-#contract BingContract:
-#    pub fn foo():
-#        pass
+contract BingContract:
+   pub fn add(x: u256, y: u256) -> u256:
+       return x + y

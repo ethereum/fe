@@ -1,41 +1,21 @@
-use crate::AnalyzerDb;
+use crate::{AnalyzerDb, YulgenDb};
 use fe_analyzer::context::{CallType, ExpressionAttributes, FunctionBody};
-use fe_analyzer::namespace::types::{Event, FeString, FixedSize, Struct};
+use fe_analyzer::namespace::types::{Event, FixedSize};
 use fe_parser::ast;
 use fe_parser::node::Node;
-use indexmap::IndexSet;
 use std::rc::Rc;
 
-#[derive(Default)]
-pub struct ContractContext {
-    /// String literals used in the contract
-    pub string_literals: IndexSet<String>,
-
-    /// Names of contracts that have been created inside of this contract.
-    pub created_contracts: IndexSet<String>,
-
-    /// Strings that can be used as revert error in assertions
-    pub assert_strings: IndexSet<FeString>,
-
-    /// Structs that can be used as errors in revert statements
-    pub revert_errors: IndexSet<Struct>,
-}
-
-pub struct FnContext<'a, 'b> {
-    pub db: &'a dyn AnalyzerDb,
-    pub contract: &'b mut ContractContext,
+pub struct FnContext<'a> {
+    pub adb: &'a dyn AnalyzerDb,
+    pub db: &'a dyn YulgenDb,
     fn_body: Rc<FunctionBody>,
 }
 
-impl<'a, 'b> FnContext<'a, 'b> {
-    pub fn new(
-        db: &'a dyn AnalyzerDb,
-        contract: &'b mut ContractContext,
-        fn_body: Rc<FunctionBody>,
-    ) -> Self {
+impl<'a> FnContext<'a> {
+    pub fn new(db: &'a dyn YulgenDb, fn_body: Rc<FunctionBody>) -> Self {
         Self {
+            adb: db.upcast(),
             db,
-            contract,
             fn_body,
         }
     }
@@ -60,6 +40,6 @@ impl<'a, 'b> FnContext<'a, 'b> {
         self.fn_body
             .emits
             .get(&emit_stmt.id)
-            .map(|event| event.typ(self.db))
+            .map(|event| event.typ(self.adb))
     }
 }

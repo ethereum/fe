@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/assert.fe\", &src, module, &db)"
+expression: "build_snapshot(&files, module_id, &db)"
 
 ---
 note: 
@@ -247,6 +247,6 @@ note:
    ┌─ features/assert.fe:20:23
    │
 20 │         assert false, self.my_string.to_mem()
-   │                       ^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │                       ^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 5 }) }
 
 

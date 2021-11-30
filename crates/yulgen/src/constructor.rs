@@ -1,8 +1,7 @@
 use crate::names::abi as abi_names;
 use crate::operations::abi as abi_operations;
-use crate::types::{to_abi_types, AbiDecodeLocation};
-use fe_analyzer::namespace::types::FixedSize;
-use fe_analyzer::AnalyzerDb;
+use crate::runtime::functions;
+use crate::types::{AbiDecodeLocation, AbiType};
 use yultsur::*;
 
 /// Builds a constructor for a contract with no init function.
@@ -16,25 +15,23 @@ pub fn build() -> yul::Code {
 }
 
 /// Builds a constructor for a contract with an init function.
-///
-/// We include the entire contact runtime inside of the constructor (without the
-/// ABI dispatcher), run the init function, and return the contract code.
 pub fn build_with_init(
-    db: &dyn AnalyzerDb,
     contract_name: &str,
-    init_func: yul::Statement,
-    init_params: Vec<FixedSize>,
-    runtime: Vec<yul::Statement>,
+    init_function_name: &str,
+    init_params: &[AbiType],
+    init_callgraph: Vec<yul::Statement>,
 ) -> yul::Code {
     // Generate names for our constructor parameters.
     let (param_idents, param_exprs) = abi_names::vals("init", init_params.len());
+
+    let decode_fns = functions::abi::decode_functions(init_params, AbiDecodeLocation::Memory);
 
     // Decode the parameters, if any are given.
     let maybe_decode_params = if init_params.is_empty() {
         statements! {}
     } else {
         let decode_expr = abi_operations::decode_data(
-            &to_abi_types(db, &init_params),
+            init_params,
             expression! { params_start_mem },
             expression! { params_end_mem },
             AbiDecodeLocation::Memory,
@@ -44,7 +41,7 @@ pub fn build_with_init(
     };
 
     // init function name after it is mapped.
-    let init_func_name = identifier! { ("$$__init__") };
+    let init_function_name = identifier! { (init_function_name) };
 
     let contract_name = literal_expression! { (format!("\"{}\"", contract_name)) };
 
@@ -58,11 +55,9 @@ pub fn build_with_init(
     // `mem_start`. From there, parameters are decoded and passed into the
     // init function.
     code! {
-        // add init function to the scope
-        [init_func]
-
-        // add the entire contract runtime
-        [runtime...]
+        // add init function and dependencies to scope
+        [init_callgraph...]
+        [decode_fns...]
 
         // copy the encoded parameters to memory
         (let params_start_code := datasize([contract_name]))
@@ -76,7 +71,7 @@ pub fn build_with_init(
         [maybe_decode_params...]
 
         // call the init function defined above
-        (pop(([init_func_name]([param_exprs...]))))
+        (pop(([init_function_name]([param_exprs...]))))
 
         // deploy the contract
         [deployment...]

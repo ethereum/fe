@@ -156,7 +156,7 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
         if name == "self" {
             return Some(NamedThing::SelfValue {
                 decl: sig.self_decl,
-                class: self.function.parent(self.db),
+                class: self.function.class(self.db),
                 span: self.function.self_span(self.db),
             });
         }
@@ -184,7 +184,7 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
                 })
             })
             .or_else(|| {
-                if let Some(Class::Contract(contract)) = self.function.parent(self.db) {
+                if let Some(Class::Contract(contract)) = self.function.class(self.db) {
                     contract.resolve_name(self.db, name)
                 } else {
                     self.function.module(self.db).resolve_name(self.db, name)

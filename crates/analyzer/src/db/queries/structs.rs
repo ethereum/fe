@@ -2,9 +2,12 @@ use crate::builtins;
 use crate::context::AnalyzerContext;
 use crate::db::Analysis;
 use crate::errors::TypeError;
-use crate::namespace::items::{self, Function, FunctionId, StructField, StructFieldId, StructId};
+use crate::namespace::items::{
+    self, DepGraph, DepGraphWrapper, DepLocality, Function, FunctionId, Item, StructField,
+    StructFieldId, StructId, TypeDef,
+};
 use crate::namespace::scopes::ItemScope;
-use crate::namespace::types;
+use crate::namespace::types::{self, Contract, FixedSize, Struct};
 use crate::traversal::types::type_desc;
 use crate::AnalyzerDb;
 use fe_parser::ast;
@@ -182,4 +185,36 @@ pub fn struct_function_map(
         value: Rc::new(map),
         diagnostics: Rc::new(scope.diagnostics),
     }
+}
+
+pub fn struct_dependency_graph(db: &dyn AnalyzerDb, struct_: StructId) -> DepGraphWrapper {
+    // A struct depends on the types of its fields and on everything they depend on. It *does not*
+    // depend on its public functions; those will only be part of the broader dependency graph if
+    // they're in the call graph of some public contract function.
+
+    let root = Item::Type(TypeDef::Struct(struct_));
+    let fields = struct_
+        .fields(db)
+        .values()
+        .filter_map(|field| match field.typ(db).ok()? {
+            FixedSize::Contract(Contract { id, .. }) => Some((
+                root,
+                Item::Type(TypeDef::Contract(id)),
+                DepLocality::External,
+            )),
+            // Not possible yet, but it will be soon
+            FixedSize::Struct(Struct { id, .. }) => {
+                Some((root, Item::Type(TypeDef::Struct(id)), DepLocality::Local))
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    let mut graph = DepGraph::from_edges(fields.iter());
+    for (_, item, _) in fields {
+        if let Some(subgraph) = item.dependency_graph(db) {
+            graph.extend(subgraph.all_edges())
+        }
+    }
+    DepGraphWrapper(Rc::new(graph))
 }

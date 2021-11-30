@@ -3,7 +3,7 @@ use bing::Bing as Bong
 use bing::get_42_backend
 use ding::{dang::Dang as Dung, dong}
 
-#use bing::BingContract
+use bing::BingContract
 
 contract Foo:
     pub fn get_my_baz() -> Baz:
@@ -15,12 +15,13 @@ contract Foo:
     pub fn get_42() -> u256:
         return get_42_backend()
 
-#    pub fn get_my_dong() -> dong::Dong:
-#        return dong::Dong(
-#            my_address=address(26),
-#            my_u256=42,
-#            my_i8=-1
-#        )
+    pub fn get_my_dyng() -> dong::Dyng:
+        return dong::Dyng(
+            my_address=address(8),
+            my_u256=42,
+            my_i8=-1
+        )
 
-#    pub fn create_bing_contract():
-#        BingContract.create(0)
+    pub fn create_bing_contract() -> u256:
+        let bing: BingContract = BingContract.create(0)
+        return bing.add(40, 50)

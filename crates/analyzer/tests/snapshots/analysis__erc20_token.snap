@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(&files, module, &db)"
+expression: "build_snapshot(&files, module_id, &db)"
 
 ---
 note: 
@@ -82,7 +82,7 @@ note:
    ┌─ demos/erc20_token.fe:26:16
    │
 26 │         return self._name.to_mem()
-   │                ^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │                ^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 100 }) }
 
 note: 
    ┌─ demos/erc20_token.fe:28:5
@@ -127,7 +127,7 @@ note:
    ┌─ demos/erc20_token.fe:29:16
    │
 29 │         return self._symbol.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │                ^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 100 }) }
 
 note: 
    ┌─ demos/erc20_token.fe:31:5

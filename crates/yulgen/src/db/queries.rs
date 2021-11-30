@@ -4,9 +4,13 @@ use fe_analyzer::namespace::items::ModuleId;
 use indexmap::map::IndexMap;
 use yultsur::yul;
 
+pub mod contracts;
+pub mod events;
+pub mod functions;
+pub mod structs;
+
 pub fn compile_module(db: &dyn YulgenDb, module: ModuleId) -> IndexMap<String, String> {
-    let analyzer_db = db.upcast();
-    mappers::module::module(analyzer_db, module)
+    mappers::module::module(db, module)
         .drain()
         .map(|(name, object)| (name, to_safe_json(object)))
         .collect()

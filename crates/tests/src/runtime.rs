@@ -2,9 +2,7 @@
 
 #![cfg(feature = "solc-backend")]
 
-use fe_analyzer::namespace::types::{Base, FixedSize, Integer};
 use fe_compiler_test_utils::*;
-use fe_yulgen::runtime::functions;
 use yultsur::*;
 
 macro_rules! assert_eq {
@@ -292,73 +290,6 @@ fn test_runtime_set_zero() {
             })
             .execute(&mut executor)
             .expect_success();
-    })
-}
-
-#[test]
-fn test_runtime_house_struct() {
-    let house_api = functions::structs::struct_apis(
-        "House",
-        &[
-            (
-                "price".to_string(),
-                FixedSize::Base(Base::Numeric(Integer::U256)),
-            ),
-            (
-                "size".to_string(),
-                FixedSize::Base(Base::Numeric(Integer::U256)),
-            ),
-            (
-                "rooms".to_string(),
-                FixedSize::Base(Base::Numeric(Integer::U8)),
-            ),
-            ("vacant".to_string(), FixedSize::Base(Base::Bool)),
-        ],
-    );
-
-    with_executor(&|mut executor| {
-        Runtime::new().with_functions([functions::std(), house_api.clone()].concat()).with_test_statements(
-            statements! {
-                (let price := 42)
-                (let size := 26)
-                (let rooms := 5)
-                (let vacant := true)
-
-                (let house := struct_House_new(price, size, rooms, vacant))
-
-                // For now, all values in a struct occupy a full word. Here we test
-                // that the word at the given word offset contains the correct 32
-                // byte value.
-                //
-                // This test confirms that each value is being stored right-aligned
-                // and in the correct word.
-                [assert_eq!(price, (mload(house)))]
-                [assert_eq!(size, (mload((add(house, 32)))))]
-                [assert_eq!(rooms, (mload((add(house, 64)))))]
-                [assert_eq!(vacant, (mload((add(house, 96)))))]
-
-                // To retrieve an individual struct value, we need a pointer that
-                // references the start of the value.
-                [assert_eq!(price, (mloadn((struct_House_get_price_ptr(house)), 32)))]
-                [assert_eq!(size, (mloadn((struct_House_get_size_ptr(house)), 32)))]
-                [assert_eq!(rooms, (mloadn((struct_House_get_rooms_ptr(house)), 1)))]
-                [assert_eq!(vacant, (mloadn((struct_House_get_vacant_ptr(house)), 1)))]
-
-
-                // We test the same thing in storage.
-
-                // Note that the storage pointer for `house` is a multiple of 32.
-                (let house_storage := 2048)
-                (bytes_mcopys(house, house_storage, 128))
-
-                [assert_eq!(price, (bytes_sloadn((struct_House_get_price_ptr(house_storage)), 32)))]
-                [assert_eq!(size, (bytes_sloadn((struct_House_get_size_ptr(house_storage)), 32)))]
-                [assert_eq!(rooms, (bytes_sloadn((struct_House_get_rooms_ptr(house_storage)), 1)))]
-                [assert_eq!(vacant, (bytes_sloadn((struct_House_get_vacant_ptr(house_storage)), 1)))]
-            },
-        )
-        .execute(&mut executor)
-        .expect_success();
     })
 }
 

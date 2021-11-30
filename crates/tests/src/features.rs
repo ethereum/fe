@@ -1267,11 +1267,7 @@ fn math() {
 fn two_contracts() {
     with_executor(&|mut executor| {
         let foo_harness = deploy_contract(&mut executor, "two_contracts.fe", "Foo", &[]);
-        let bar_harness = deploy_contract(&mut executor, "two_contracts.fe", "Bar", &[]);
-
         foo_harness.test_function(&mut executor, "foo", &[], Some(&uint_token(42)));
-
-        bar_harness.test_function(&mut executor, "bar", &[], Some(&uint_token(26)));
     })
 }
 

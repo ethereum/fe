@@ -93,7 +93,12 @@ impl ContractHarness {
         output: Option<&ethabi::Token>,
     ) {
         let actual_output = self.call_function(executor, name, input);
-        assert_eq!(output.map(|token| token.to_owned()), actual_output)
+        assert_eq!(
+            output.map(|token| token.to_owned()),
+            actual_output,
+            "unexpected output from `fn {}`",
+            name
+        )
     }
 
     pub fn call_function(

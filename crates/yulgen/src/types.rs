@@ -82,7 +82,7 @@ impl EvmSized for Contract {
 }
 
 /// Solidity ABI type with extra information needed for generation encoding/decoding functions.
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub enum AbiType {
     StaticArray { inner: Box<AbiType>, size: usize },
     Tuple { components: Vec<AbiType> },
@@ -94,7 +94,7 @@ pub enum AbiType {
     Bytes { size: usize },
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Copy)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub enum AbiDecodeLocation {
     Calldata,
     Memory,

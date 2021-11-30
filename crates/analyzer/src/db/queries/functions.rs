@@ -1,9 +1,11 @@
-use crate::context::{AnalyzerContext, FunctionBody};
+use crate::context::{AnalyzerContext, CallType, FunctionBody};
 use crate::db::{Analysis, AnalyzerDb};
 use crate::errors::TypeError;
-use crate::namespace::items::{Class, FunctionId};
+use crate::namespace::items::{
+    Class, DepGraph, DepGraphWrapper, DepLocality, FunctionId, Item, TypeDef,
+};
 use crate::namespace::scopes::{BlockScope, BlockScopeType, FunctionScope, ItemScope};
-use crate::namespace::types::{self, FixedSize, SelfDecl};
+use crate::namespace::types::{self, Contract, FixedSize, SelfDecl, Struct, Type};
 use crate::traversal::functions::traverse_statements;
 use crate::traversal::types::type_desc;
 use fe_common::diagnostics::Label;
@@ -24,7 +26,7 @@ pub fn function_signature(
     let def = &node.kind;
 
     let mut scope = ItemScope::new(db, function.module(db));
-    let fn_parent = function.parent(db);
+    let fn_parent = function.class(db);
 
     if_chain! {
         if let Some(Class::Contract(_)) = fn_parent;
@@ -214,4 +216,118 @@ fn all_paths_return_or_revert(block: &[Node<ast::FuncStmt>]) -> bool {
     }
 
     false
+}
+
+pub fn function_dependency_graph(db: &dyn AnalyzerDb, function: FunctionId) -> DepGraphWrapper {
+    let root = Item::Function(function);
+
+    // Edges to direct dependencies.
+    let mut directs = vec![];
+
+    let sig = function.signature(db);
+    directs.extend(
+        sig.return_type
+            .clone()
+            .into_iter()
+            .chain(sig.params.iter().filter_map(|param| param.typ.clone().ok()))
+            .filter_map(|typ| match typ {
+                FixedSize::Contract(Contract { id, .. }) => {
+                    // Contract types that are taken as (non-self) args or returned are "external",
+                    // meaning that they're addresses of other contracts, so we don't have direct
+                    // access to their fields, etc.
+                    Some((
+                        root,
+                        Item::Type(TypeDef::Contract(id)),
+                        DepLocality::External,
+                    ))
+                }
+                FixedSize::Struct(Struct { id, .. }) => {
+                    Some((root, Item::Type(TypeDef::Struct(id)), DepLocality::Local))
+                }
+                _ => None,
+            }),
+    );
+    // A function that takes `self` depends on the type of `self`, so that any
+    // relevant struct getters/setters are included when compiling.
+    if let Some(class) = function.class(db) {
+        directs.push((root, class.as_item(), DepLocality::Local));
+    }
+
+    let body = function.body(db);
+    for calltype in body.calls.values() {
+        match calltype {
+            CallType::Pure(function) | CallType::AssociatedFunction { function, .. } => {
+                directs.push((root, Item::Function(*function), DepLocality::Local));
+            }
+            CallType::ValueMethod { class, method, .. } => {
+                // Including the "class" type here is probably redundant; the type will
+                // also be part of the fn sig, or some type decl, or some create/create2 call, or...
+                directs.push((root, class.as_item(), DepLocality::Local));
+                directs.push((root, Item::Function(*method), DepLocality::Local));
+            }
+            CallType::External { contract, function } => {
+                directs.push((root, Item::Function(*function), DepLocality::External));
+                // Probably redundant:
+                directs.push((
+                    root,
+                    Item::Type(TypeDef::Contract(*contract)),
+                    DepLocality::External,
+                ));
+            }
+            CallType::TypeConstructor(Type::Struct(Struct { id, .. })) => {
+                directs.push((root, Item::Type(TypeDef::Struct(*id)), DepLocality::Local));
+            }
+            CallType::TypeConstructor(Type::Contract(Contract { id, .. })) => {
+                directs.push((
+                    root,
+                    Item::Type(TypeDef::Contract(*id)),
+                    DepLocality::External,
+                ));
+            }
+            CallType::TypeConstructor(_) => {}
+            CallType::BuiltinAssociatedFunction { contract, .. } => {
+                // create/create2 call. The contract type is "external" for dependency graph purposes.
+                directs.push((
+                    root,
+                    Item::Type(TypeDef::Contract(*contract)),
+                    DepLocality::External,
+                ));
+            }
+            // Builtin functions aren't part of the dependency graph yet.
+            CallType::BuiltinFunction(_) | CallType::BuiltinValueMethod { .. } => {}
+        }
+    }
+
+    directs.extend(
+        body.emits
+            .values()
+            .map(|event| (root, Item::Event(*event), DepLocality::Local)),
+    );
+    directs.extend(body.var_decl_types.values().filter_map(|typ| match typ {
+        FixedSize::Contract(Contract { id, .. }) => Some((
+            root,
+            Item::Type(TypeDef::Contract(*id)),
+            DepLocality::External,
+        )),
+        FixedSize::Struct(Struct { id, .. }) => {
+            Some((root, Item::Type(TypeDef::Struct(*id)), DepLocality::Local))
+        }
+        _ => None,
+    }));
+
+    let mut graph = DepGraph::from_edges(directs.iter());
+    for (_, item, _) in directs {
+        if let Some(subgraph) = item.dependency_graph(db) {
+            graph.extend(subgraph.all_edges())
+        }
+    }
+    DepGraphWrapper(Rc::new(graph))
+}
+
+pub fn function_dependency_graph_cycle(
+    _db: &dyn AnalyzerDb,
+    _cycle: &[String],
+    _function: &FunctionId,
+) -> DepGraphWrapper {
+    DepGraphWrapper(Rc::new(DepGraph::new()))
 }

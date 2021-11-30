@@ -1,14 +1,16 @@
 use crate::context::{AnalyzerContext, NamedThing};
 use crate::db::{Analysis, AnalyzerDb};
 use crate::errors;
-use crate::namespace::items::{self, ContractFieldId, ContractId, EventId, FunctionId, Item};
+use crate::namespace::items::{
+    self, ContractFieldId, ContractId, DepGraph, DepGraphWrapper, DepLocality, EventId, FunctionId,
+    Item, TypeDef,
+};
 use crate::namespace::scopes::ItemScope;
-use crate::namespace::types;
+use crate::namespace::types::{self, Contract, Struct, Type};
 use crate::traversal::types::type_desc;
 use fe_common::diagnostics::Label;
 use fe_parser::ast;
 use indexmap::map::{Entry, IndexMap};
-
 use std::rc::Rc;
 
 /// A `Vec` of every function defined in the contract, including duplicates and the init function.
@@ -276,4 +278,78 @@ pub fn contract_field_type(
         value: typ,
         diagnostics: Rc::new(scope.diagnostics),
     }
+}
+
+pub fn contract_dependency_graph(db: &dyn AnalyzerDb, contract: ContractId) -> DepGraphWrapper {
+    // A contract depends on the types of its fields, and the things those types depend on.
+    // Note that this *does not* include the contract's public function graph.
+    // (See `contract_runtime_dependency_graph` below)
+
+    let fields = contract.fields(db);
+    let field_types = fields
+        .values()
+        .filter_map(|field| match field.typ(db).ok()? {
+            // We don't want
+            Type::Contract(Contract { id, .. }) => Some(Item::Type(TypeDef::Contract(id))),
+            Type::Struct(Struct { id, .. }) => Some(Item::Type(TypeDef::Struct(id))),
+            // TODO: when tuples can contain non-primitive items,
+            // we'll have to depend on tuple element types
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    let root = Item::Type(TypeDef::Contract(contract));
+    let mut graph = DepGraph::from_edges(
+        field_types
+            .iter()
+            .map(|item| (root, *item, DepLocality::Local)),
+    );
+
+    for item in field_types {
+        if let Some(subgraph) = item.dependency_graph(db) {
+            graph.extend(subgraph.all_edges())
+        }
+    }
+    DepGraphWrapper(Rc::new(graph))
+}
+
+pub fn contract_dependency_graph_cycle(
+    _db: &dyn AnalyzerDb,
+    _cycle: &[String],
+    _contract: &ContractId,
+) -> DepGraphWrapper {
+    DepGraphWrapper(Rc::new(DepGraph::new()))
+}
+
+pub fn contract_runtime_dependency_graph(
+    db: &dyn AnalyzerDb,
+    contract: ContractId,
+) -> DepGraphWrapper {
+    // This is the dependency graph of the (as yet imaginary) `__call__` function, which
+    // dispatches to the contract's public functions. This should be used when compiling
+    // the runtime object for a contract.
+
+    let root = Item::Type(TypeDef::Contract(contract));
+    let pub_fns = contract
+        .public_functions(db)
+        .values()
+        .map(|fun| (root, Item::Function(*fun), DepLocality::Local))
+        .collect::<Vec<_>>();
+
+    let mut graph = DepGraph::from_edges(pub_fns.iter());
+
+    for (_, item, _) in pub_fns {
+        if let Some(subgraph) = item.dependency_graph(db) {
+            graph.extend(subgraph.all_edges())
+        }
+    }
+    DepGraphWrapper(Rc::new(graph))
+}
+
+pub fn contract_runtime_dependency_graph_cycle(
+    _db: &dyn AnalyzerDb,
+    _cycle: &[String],
+    _contract: &ContractId,
+) -> DepGraphWrapper {
+    DepGraphWrapper(Rc::new(DepGraph::new()))
 }

@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(&files, module, &db)"
+expression: "build_snapshot(&files, module_id, &db)"
 
 ---
 note: 
@@ -506,7 +506,7 @@ note:
    ┌─ stress/data_copying_stress.fe:52:16
    │
 52 │         return my_array.clone()
-   │                ^^^^^^^^^^^^^^ BuiltinValueMethod(Clone)
+   │                ^^^^^^^^^^^^^^ BuiltinValueMethod { method: Clone, typ: Array(Array { size: 10, inner: Numeric(U256) }) }
 
 note: 
    ┌─ stress/data_copying_stress.fe:54:5
@@ -573,7 +573,7 @@ note:
    ┌─ stress/data_copying_stress.fe:55:9
    │
 55 │         my_array.clone()[3] = 5
-   │         ^^^^^^^^^^^^^^ BuiltinValueMethod(Clone)
+   │         ^^^^^^^^^^^^^^ BuiltinValueMethod { method: Clone, typ: Array(Array { size: 10, inner: Numeric(U256) }) }
 
 note: 
    ┌─ stress/data_copying_stress.fe:58:5
@@ -726,7 +726,7 @@ note:
    ┌─ stress/data_copying_stress.fe:65:23
    │
 65 │         my_nums_mem = self.my_nums.to_mem()
-   │                       ^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │                       ^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 5, inner: Numeric(U256) }) }
 
 note: 
    ┌─ stress/data_copying_stress.fe:68:5
@@ -795,9 +795,9 @@ note:
    ┌─ stress/data_copying_stress.fe:70:13
    │
 70 │             self.my_string.to_mem(),
-   │             ^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │             ^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 42 }) }
 71 │             self.my_u256.to_mem()
-   │             ^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │             ^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Base(Numeric(U256)) }
 
 note: 
    ┌─ stress/data_copying_stress.fe:69:9

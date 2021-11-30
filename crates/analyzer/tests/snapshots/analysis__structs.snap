@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(&files, module, &db)"
+expression: "build_snapshot(&files, module_id, &db)"
 
 ---
 note: 
@@ -55,7 +55,7 @@ note:
   ┌─ features/structs.fe:8:16
   │
 8 │         return self.abi_encode()
-  │                ^^^^^^^^^^^^^^^ BuiltinValueMethod(AbiEncode)
+  │                ^^^^^^^^^^^^^^^ BuiltinValueMethod { method: AbiEncode, typ: Struct(Struct { name: "House", id: StructId(0), field_count: 4 }) }
 
 note: 
    ┌─ features/structs.fe:10:5
@@ -300,7 +300,7 @@ note:
    ┌─ features/structs.fe:27:16
    │
 27 │         return self.my_house.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │                ^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Struct(Struct { name: "House", id: StructId(0), field_count: 4 }) }
 
 note: 
    ┌─ features/structs.fe:29:5

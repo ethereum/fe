@@ -1,8 +1,8 @@
 use crate::context::{Analysis, FunctionBody};
 use crate::errors::TypeError;
 use crate::namespace::items::{
-    self, ContractFieldId, ContractId, EventId, FunctionId, GlobalId, IngotId, Item,
-    ModuleConstantId, ModuleId, StructFieldId, StructId, TypeAliasId,
+    self, ContractFieldId, ContractId, DepGraphWrapper, EventId, FunctionId, GlobalId, IngotId,
+    Item, ModuleConstantId, ModuleId, StructFieldId, StructId, TypeAliasId,
 };
 use crate::namespace::types;
 use fe_common::Span;
@@ -119,12 +119,21 @@ pub trait AnalyzerDb {
         &self,
         field: ContractFieldId,
     ) -> Analysis<Result<types::Type, TypeError>>;
+    #[salsa::cycle(queries::contracts::contract_dependency_graph_cycle)]
+    #[salsa::invoke(queries::contracts::contract_dependency_graph)]
+    fn contract_dependency_graph(&self, id: ContractId) -> DepGraphWrapper;
+    #[salsa::cycle(queries::contracts::contract_runtime_dependency_graph_cycle)]
+    #[salsa::invoke(queries::contracts::contract_runtime_dependency_graph)]
+    fn contract_runtime_dependency_graph(&self, id: ContractId) -> DepGraphWrapper;
 
     // Function
     #[salsa::invoke(queries::functions::function_signature)]
     fn function_signature(&self, id: FunctionId) -> Analysis<Rc<types::FunctionSignature>>;
     #[salsa::invoke(queries::functions::function_body)]
     fn function_body(&self, id: FunctionId) -> Analysis<Rc<FunctionBody>>;
+    #[salsa::cycle(queries::functions::function_dependency_graph_cycle)]
+    #[salsa::invoke(queries::functions::function_dependency_graph)]
+    fn function_dependency_graph(&self, id: FunctionId) -> DepGraphWrapper;
 
     // Struct
     #[salsa::invoke(queries::structs::struct_type)]
@@ -142,6 +151,8 @@ pub trait AnalyzerDb {
     fn struct_all_functions(&self, id: StructId) -> Rc<Vec<FunctionId>>;
     #[salsa::invoke(queries::structs::struct_function_map)]
     fn struct_function_map(&self, id: StructId) -> Analysis<Rc<IndexMap<String, FunctionId>>>;
+    #[salsa::invoke(queries::structs::struct_dependency_graph)]
+    fn struct_dependency_graph(&self, id: StructId) -> DepGraphWrapper;
 
     // Event
     #[salsa::invoke(queries::events::event_type)]

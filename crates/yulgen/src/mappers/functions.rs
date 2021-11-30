@@ -1,14 +1,12 @@
 use crate::constants::PANIC_FAILED_ASSERTION;
-use crate::context::{ContractContext, FnContext};
+use crate::context::FnContext;
 use crate::mappers::{assignments, declarations, expressions};
 use crate::names;
 use crate::operations::data as data_operations;
 use crate::operations::revert as revert_operations;
 use crate::types::{AbiType, AsAbiType, EvmSized};
 use fe_analyzer::context::ExpressionAttributes;
-use fe_analyzer::namespace::items::{self, FunctionId};
 use fe_analyzer::namespace::types::Type;
-use fe_analyzer::AnalyzerDb;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use yultsur::*;
@@ -21,37 +19,6 @@ pub fn multiple_func_stmt(
         .iter()
         .map(|statement| func_stmt(context, statement))
         .collect()
-}
-
-/// Builds a Yul function definition from a Fe function definition.
-pub fn func_def(
-    db: &dyn AnalyzerDb,
-    context: &mut ContractContext,
-    function_name: yul::Identifier,
-    function: FunctionId,
-) -> yul::Statement {
-    // let function_name = names::func_name(&function.name(db));
-    let sig = function.signature(db);
-    let mut param_names = sig
-        .params
-        .iter()
-        .map(|param| names::var_name(&param.name))
-        .collect::<Vec<_>>();
-
-    if sig.self_decl.is_some() && matches!(function.parent(db), Some(items::Class::Struct(_))) {
-        // struct member functions take `$self` in yul
-        param_names.insert(0, names::var_name("self"));
-    }
-
-    let mut fn_context = FnContext::new(db, context, function.body(db));
-    let function_statements = multiple_func_stmt(&mut fn_context, &function.data(db).ast.kind.body);
-
-    // all user-defined functions are given a return value during lowering
-    function_definition! {
-        function [function_name]([param_names...]) -> return_val {
-            [function_statements...]
-        }
-    }
 }
 
 fn func_stmt(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
@@ -146,11 +113,9 @@ fn revert(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement 
                 .clone();
 
             if let Type::Struct(struct_) = &error_attributes.typ {
-                context.contract.revert_errors.insert(struct_.clone());
-
                 revert_operations::revert(
                     &struct_.name,
-                    &struct_.as_abi_type(context.db),
+                    &struct_.as_abi_type(context.adb),
                     expressions::expr(context, error_expr),
                 )
             } else {
@@ -182,7 +147,7 @@ fn emit(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
                             .typ
                             .clone()
                             .expect("event field type error")
-                            .as_abi_type(context.db),
+                            .as_abi_type(context.adb),
                         field.is_indexed,
                     )
                 })
@@ -209,9 +174,7 @@ fn assert(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement 
                     .clone();
 
                 if let Type::String(string) = msg_attributes.typ {
-                    let abi_type = string.as_abi_type(context.db);
-                    context.contract.assert_strings.insert(string);
-
+                    let abi_type = string.as_abi_type(context.adb);
                     statement! {
                         if (iszero([test])) {
                             [revert_operations::error_revert(&abi_type, msg)]
