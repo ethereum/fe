@@ -18,11 +18,10 @@ use std::rc::Rc;
 
 /// A named item. This does not include things inside of
 /// a function body.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Clone, Copy)]
 pub enum Item {
     Ingot(IngotId),
     Module(ModuleId),
-    // Constant // TODO: when `const` is implemented
     Type(TypeDef),
     // GenericType probably shouldn't be a separate category.
     // Any of the items inside TypeDef (struct, alias, etc)
@@ -39,7 +38,6 @@ pub enum Item {
 
     // This should go away soon. The globals (block, msg, etc) will be replaced
     // with a context struct that'll appear in the fn parameter list.
-    // `self` should just be removed from here and handled as a special parameter.
     Object(builtins::GlobalObject),
 }
 
@@ -115,6 +113,21 @@ impl Item {
         }
     }
 
+    pub fn parent(&self, db: &dyn AnalyzerDb) -> Option<Item> {
+        // Only ingots *should* be parentless, but built-in items currently don't
+        match self {
+            Item::Type(id) => id.parent(db),
+            Item::GenericType(_) => None,
+            Item::Event(id) => Some(id.parent(db)),
+            Item::Function(id) => Some(id.parent(db)),
+            Item::BuiltinFunction(_) => None,
+            Item::Object(_) => None,
+            Item::Constant(id) => Some(id.parent(db)),
+            Item::Ingot(_) => None,
+            Item::Module(id) => id.parent(db),
+        }
+    }
+
     pub fn resolve_path(&self, db: &dyn AnalyzerDb, path: &ast::Path) -> Analysis<Option<Item>> {
         let mut curr_item = *self;
 
@@ -137,6 +150,40 @@ impl Item {
         Analysis {
             value: Some(curr_item),
             diagnostics: Rc::new(vec![]),
+        }
+    }
+
+    pub fn path(&self, db: &dyn AnalyzerDb) -> Rc<Vec<String>> {
+        // The path is used to generate a yul identifier,
+        // eg `foo::Bar::new` becomes `$$foo$Bar$new`.
+        // Right now, the ingot name is the os path, so it could
+        // be "my project/src".
+        // For now, we'll just leave the ingot out of the path,
+        // because we can only compile a single ingot anyway.
+        match self.parent(db) {
+            Some(Item::Ingot(_)) | None => Rc::new(vec![self.name(db)]),
+            Some(parent) => {
+                let mut path = parent.path(db).as_ref().clone();
+                path.push(self.name(db));
+                Rc::new(path)
+            }
+        }
+    }
+
+    pub fn dependency_graph(&self, db: &dyn AnalyzerDb) -> Option<Rc<DepGraph>> {
+        match self {
+            Item::Type(TypeDef::Contract(id)) => Some(id.dependency_graph(db)),
+            Item::Type(TypeDef::Struct(id)) => Some(id.dependency_graph(db)),
+            Item::Function(id) => Some(id.dependency_graph(db)),
+            _ => None,
+        }
+    }
+
+    /// Downcast utility function
+    pub fn as_contract(&self) -> Option<ContractId> {
+        match self {
+            Item::Type(TypeDef::Contract(id)) => Some(*id),
+            _ => None,
         }
     }
 
@@ -174,7 +221,7 @@ pub struct Ingot {
     pub fe_files: BTreeMap<SourceFileId, (SourceFile, ast::Module)>,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub struct IngotId(pub(crate) u32);
 impl_intern_key!(IngotId);
 impl IngotId {
@@ -238,7 +285,7 @@ pub struct Module {
     pub ast: ast::Module,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub struct ModuleId(pub(crate) u32);
 impl_intern_key!(ModuleId);
 impl ModuleId {
@@ -308,6 +355,16 @@ impl ModuleId {
         db.module_adjacent_modules(*self)
     }
 
+    pub fn parent(&self, db: &dyn AnalyzerDb) -> Option<Item> {
+        self.parent_module(db).map(Item::Module).or_else(|| {
+            if let ModuleContext::Ingot(ingot) = self.data(db).context {
+                Some(Item::Ingot(ingot))
+            } else {
+                None
+            }
+        })
+    }
+
     pub fn parent_module(&self, db: &dyn AnalyzerDb) -> Option<ModuleId> {
         db.module_parent_module(*self)
     }
@@ -354,7 +411,7 @@ pub struct ModuleConstant {
     pub module: ModuleId,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub struct ModuleConstantId(pub(crate) u32);
 impl_intern_key!(ModuleConstantId);
 
@@ -385,6 +442,10 @@ impl ModuleConstantId {
         self.data(db).ast.kind.value.kind.clone()
     }
 
+    pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
+        Item::Module(self.data(db).module)
+    }
+
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         db.module_constant_type(*self)
             .diagnostics
@@ -404,7 +465,7 @@ impl ModuleConstantId {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub enum TypeDef {
     Alias(TypeAliasId),
     Struct(StructId),
@@ -446,6 +507,15 @@ impl TypeDef {
         }
     }
 
+    pub fn parent(&self, db: &dyn AnalyzerDb) -> Option<Item> {
+        match self {
+            TypeDef::Alias(id) => Some(id.parent(db)),
+            TypeDef::Struct(id) => Some(id.parent(db)),
+            TypeDef::Contract(id) => Some(id.parent(db)),
+            TypeDef::Primitive(_) => None,
+        }
+    }
+
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         match self {
             TypeDef::Alias(id) => id.sink_diagnostics(db, sink),
@@ -462,7 +532,7 @@ pub struct TypeAlias {
     pub module: ModuleId,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub struct TypeAliasId(pub(crate) u32);
 impl_intern_key!(TypeAliasId);
 
@@ -482,6 +552,9 @@ impl TypeAliasId {
     pub fn typ(&self, db: &dyn AnalyzerDb) -> Result<types::Type, TypeError> {
         db.type_alias_type(*self).value
     }
+    pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
+        Item::Module(self.data(db).module)
+    }
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         db.type_alias_type(*self)
             .diagnostics
@@ -497,7 +570,7 @@ pub struct Contract {
     pub module: ModuleId,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub struct ContractId(pub(crate) u32);
 impl_intern_key!(ContractId);
 impl ContractId {
@@ -574,6 +647,24 @@ impl ContractId {
         db.contract_event_map(*self).value
     }
 
+    pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
+        Item::Module(self.data(db).module)
+    }
+
+    /// Dependency graph of the contract type, which consists of the field types
+    /// and the dependencies of those types.
+    ///
+    /// NOTE: Contract items should *only*
+    pub fn dependency_graph(&self, db: &dyn AnalyzerDb) -> Rc<DepGraph> {
+        db.contract_dependency_graph(*self).0
+    }
+
+    /// Dependency graph of the (imaginary) `__call__` function, which
+    /// dispatches to the contract's public functions.
+    pub fn runtime_dependency_graph(&self, db: &dyn AnalyzerDb) -> Rc<DepGraph> {
+        db.contract_runtime_dependency_graph(*self).0
+    }
+
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         // fields
         db.contract_field_map(*self).sink_diagnostics(sink);
@@ -602,7 +693,7 @@ pub struct ContractField {
     pub parent: ContractId,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub struct ContractFieldId(pub(crate) u32);
 impl_intern_key!(ContractFieldId);
 impl ContractFieldId {
@@ -627,7 +718,7 @@ pub struct Function {
     pub parent: Option<Class>,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub struct FunctionId(pub(crate) u32);
 impl_intern_key!(FunctionId);
 impl FunctionId {
@@ -644,8 +735,15 @@ impl FunctionId {
         self.data(db).ast.kind.name.span
     }
 
-    pub fn parent(&self, db: &dyn AnalyzerDb) -> Option<Class> {
+    // This should probably be scrapped in favor of `parent()`
+    pub fn class(&self, db: &dyn AnalyzerDb) -> Option<Class> {
         self.data(db).parent
+    }
+    pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
+        let data = self.data(db);
+        data.parent
+            .map(|class| class.as_item())
+            .unwrap_or(Item::Module(data.module))
     }
 
     pub fn module(&self, db: &dyn AnalyzerDb) -> ModuleId {
@@ -671,6 +769,9 @@ impl FunctionId {
     pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
         self.pub_span(db).is_some()
     }
+    pub fn is_constructor(&self, db: &dyn AnalyzerDb) -> bool {
+        self.name(db) == "__init__"
+    }
     pub fn pub_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
         self.data(db).ast.kind.pub_
     }
@@ -682,6 +783,9 @@ impl FunctionId {
     }
     pub fn body(&self, db: &dyn AnalyzerDb) -> Rc<context::FunctionBody> {
         db.function_body(*self).value
+    }
+    pub fn dependency_graph(&self, db: &dyn AnalyzerDb) -> Rc<DepGraph> {
+        db.function_dependency_graph(*self).0
     }
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         sink.push_all(db.function_signature(*self).diagnostics.iter());
@@ -719,6 +823,12 @@ impl Class {
             Class::Struct(_) => "struct",
         }
     }
+    pub fn as_item(&self) -> Item {
+        match self {
+            Class::Contract(id) => Item::Type(TypeDef::Contract(*id)),
+            Class::Struct(id) => Item::Type(TypeDef::Struct(*id)),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -733,7 +843,7 @@ pub struct Struct {
     pub module: ModuleId,
 }
 
-#[derive(Default, Debug, PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub struct StructId(pub(crate) u32);
 impl_intern_key!(StructId);
 impl StructId {
@@ -779,6 +889,12 @@ impl StructId {
     pub fn self_function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
         self.function(db, name).filter(|f| f.takes_self(db))
     }
+    pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
+        Item::Module(self.data(db).module)
+    }
+    pub fn dependency_graph(&self, db: &dyn AnalyzerDb) -> Rc<DepGraph> {
+        db.struct_dependency_graph(*self).0
+    }
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         sink.push_all(db.struct_field_map(*self).diagnostics.iter());
         db.struct_all_fields(*self)
@@ -797,7 +913,7 @@ pub struct StructField {
     pub parent: StructId,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub struct StructFieldId(pub(crate) u32);
 impl_intern_key!(StructFieldId);
 impl StructFieldId {
@@ -821,7 +937,7 @@ pub struct Event {
     pub contract: ContractId,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub struct EventId(pub(crate) u32);
 impl_intern_key!(EventId);
 
@@ -841,6 +957,9 @@ impl EventId {
     pub fn module(&self, db: &dyn AnalyzerDb) -> ModuleId {
         self.data(db).contract.module(db)
     }
+    pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
+        Item::Type(TypeDef::Contract(self.data(db).contract))
+    }
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         sink.push_all(db.event_type(*self).diagnostics.iter());
     }
@@ -859,5 +978,39 @@ impl DiagnosticSink for Vec<Diagnostic> {
     }
     fn push_all<'a>(&mut self, iter: impl Iterator<Item = &'a Diagnostic>) {
         self.extend(iter.cloned())
+    }
+}
+
+pub type DepGraph = petgraph::graphmap::DiGraphMap<Item, DepLocality>;
+#[derive(Debug, Clone)]
+pub struct DepGraphWrapper(pub Rc<DepGraph>);
+impl PartialEq for DepGraphWrapper {
+    fn eq(&self, other: &DepGraphWrapper) -> bool {
+        self.0.all_edges().eq(other.0.all_edges()) && self.0.nodes().eq(other.0.nodes())
+    }
+}
+impl Eq for DepGraphWrapper {}
+
+/// [`DepGraph`] edge label. "Locality" refers to the deployed state;
+/// `Local` dependencies are those that will be compiled together, while
+/// `External` dependencies will only be reachable via an evm CALL* op.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DepLocality {
+    Local,
+    External,
+}
+
+pub fn walk_local_dependencies<F>(graph: &DepGraph, root: Item, mut fun: F)
+where
+    F: FnMut(Item),
+{
+    use petgraph::visit::{Bfs, EdgeFiltered};
+
+    let mut bfs = Bfs::new(
+        &EdgeFiltered::from_fn(graph, |(_, _, loc)| *loc == DepLocality::Local),
+        root,
+    );
+    while let Some(node) = bfs.next(&graph) {
+        fun(node)
     }
 }

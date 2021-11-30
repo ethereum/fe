@@ -8,7 +8,9 @@ pub enum ValueMethod {
     AbiEncode,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, EnumString, AsRefStr, Hash, EnumIter)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, EnumString, AsRefStr, EnumIter,
+)]
 #[strum(serialize_all = "snake_case")]
 pub enum GlobalFunction {
     Keccak256,
@@ -33,7 +35,9 @@ impl ContractTypeMethod {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, EnumString, EnumIter, AsRefStr)]
+#[derive(
+    Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, EnumString, EnumIter, AsRefStr,
+)]
 #[strum(serialize_all = "lowercase")]
 pub enum GlobalObject {
     Block,

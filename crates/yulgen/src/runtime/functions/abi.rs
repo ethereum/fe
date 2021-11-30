@@ -17,65 +17,38 @@ pub fn all() -> Vec<yul::Statement> {
         // revert functions.
         // It will be removed in https://github.com/ethereum/fe/pull/478 along with all other
         // batches of runtime functions.
-        encode(vec![AbiType::Uint { size: 32 }]),
+        encode(&[AbiType::Uint { size: 32 }]),
     ]
 }
 
-/// Creates a batch of encoding function for the given type arrays.
-///
-/// It sorts the functions and removes duplicates.
-pub fn batch_encode(batch: Vec<Vec<AbiType>>) -> Vec<yul::Statement> {
-    let mut yul_functions: Vec<_> = batch.into_iter().map(encode).collect();
-    yul_functions.sort();
-    yul_functions.dedup();
-    yul_functions
-}
-
-/// Creates a batch of decoding function for the given types and decode
-/// locations.
-///
-/// It sorts the functions and removes duplicates.
-pub fn batch_decode(data_batch: Vec<(Vec<AbiType>, AbiDecodeLocation)>) -> Vec<yul::Statement> {
-    let component_batch = data_batch
-        .iter()
-        .fold(vec![], |mut accum, (types, location)| {
-            for typ in types.to_owned() {
-                accum.push((typ, *location));
+/// Returns a yul function that decodes a block of abi-encoded data into the
+/// specified [`AbiType`] componenets, eg `abi_decode_data_u256_Foo_u8_calldata`.
+/// The decoding of each component is handled by a separate function, eg.
+/// `abi_decode_component_uint32_mem`; these component decoding functions
+/// are also included in the returned `Vec`.
+pub fn decode_functions(types: &[AbiType], location: AbiDecodeLocation) -> Vec<yul::Statement> {
+    let mut component_fns: Vec<_> = types.iter().fold(vec![], |mut funcs, typ| {
+        funcs.push(decode_component(typ, location));
+        match typ {
+            AbiType::Tuple { components } => {
+                for ctyp in components {
+                    funcs.push(decode_component(ctyp, location))
+                }
             }
-            accum
-        });
+            AbiType::StaticArray { inner, .. } => funcs.push(decode_component(inner, location)),
+            _ => {}
+        };
+        funcs
+    });
 
-    let data_functions: Vec<_> = data_batch
-        .into_iter()
-        .map(|(types, location)| decode_data(&types, location))
-        .collect();
-    let component_functions: Vec<_> = component_batch
-        .into_iter()
-        .map(|(typ, location)| {
-            let top_function = decode_component(&typ, location);
-
-            let inner_functions = match &typ {
-                AbiType::Tuple { components } => components
-                    .iter()
-                    .map(|typ| decode_component(typ, location))
-                    .collect(),
-                AbiType::StaticArray { inner, .. } => vec![decode_component(inner, location)],
-                _ => vec![],
-            };
-
-            [vec![top_function], inner_functions].concat()
-        })
-        .flatten()
-        .collect();
-
-    let mut yul_functions: Vec<_> = [data_functions, component_functions].concat();
-    yul_functions.sort();
-    yul_functions.dedup();
-    yul_functions
+    component_fns.sort();
+    component_fns.dedup();
+    component_fns.push(decode_data(types, location));
+    component_fns
 }
 
 /// Creates a function that decodes ABI encoded data.
-pub fn decode_data(types: &[AbiType], location: AbiDecodeLocation) -> yul::Statement {
+fn decode_data(types: &[AbiType], location: AbiDecodeLocation) -> yul::Statement {
     #[derive(Clone)]
     struct IdentExpr {
         ident: yul::Identifier,
@@ -525,8 +498,8 @@ pub fn unpack() -> yul::Statement {
 }
 
 /// Generates an encoding function for any set of type parameters.
-pub fn encode(types: Vec<AbiType>) -> yul::Statement {
-    let func_name = abi_names::encode(&types);
+pub fn encode(types: &[AbiType]) -> yul::Statement {
+    let func_name = abi_names::encode(types);
 
     // Create names for each of the values we're encoding.
     let (param_idents, param_exprs) = abi_names::vals("encode", types.len());
@@ -563,7 +536,7 @@ pub fn encode(types: Vec<AbiType>) -> yul::Statement {
             // Set the return to the available memory address.
             (return_ptr := avail())
             // The data section begins at the end of the head.
-            (let data_offset := [abi_operations::encoding_head_size(&types)])
+            (let data_offset := [abi_operations::encoding_head_size(types)])
             [head_encode_stmts...]
             [data_encode_stmts...]
         }

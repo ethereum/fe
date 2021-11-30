@@ -20,6 +20,7 @@ parking_lot_core = { version = "=0.8.0" } # used by salsa; version pinned for wa
 indexmap = "1.6.2"
 if_chain = "1.0.1"
 smallvec = { version = "1.6.1", features = ["union"] }
+petgraph = "0.6.0"
 
 [dev-dependencies]
 insta = "1.7.1"

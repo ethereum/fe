@@ -29,5 +29,21 @@ fn test_basic_ingot() {
         );
 
         harness.test_function(&mut executor, "get_42", &[], Some(&uint_token(42)));
+        harness.test_function(
+            &mut executor,
+            "get_my_dyng",
+            &[],
+            Some(&tuple_token(&[
+                address_token("8"),
+                uint_token(42),
+                int_token(-1),
+            ])),
+        );
+        harness.test_function(
+            &mut executor,
+            "create_bing_contract",
+            &[],
+            Some(&uint_token(90)),
+        );
     })
 }

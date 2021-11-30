@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"demos/guest_book.fe\", &src, module, &db)"
+expression: "build_snapshot(&files, module_id, &db)"
 
 ---
 note: 
@@ -159,6 +159,6 @@ note:
    ┌─ demos/guest_book.fe:21:16
    │
 21 │         return self.messages[addr].to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 100 }) }
 
 

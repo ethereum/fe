@@ -1,11 +1,8 @@
-use fe_analyzer::namespace::types::{Base, FixedSize};
 use fe_yulgen::constructor;
 use fe_yulgen::names::abi as abi_names;
 use fe_yulgen::operations::{abi as abi_operations, data as data_operations};
 use fe_yulgen::runtime::abi_dispatcher;
-use fe_yulgen::runtime::functions::{
-    abi as abi_functions, revert as revert_functions, structs as structs_functions,
-};
+use fe_yulgen::runtime::functions::{abi as abi_functions, revert as revert_functions};
 use fe_yulgen::types::{AbiDecodeLocation, AbiType};
 use insta::assert_display_snapshot;
 use wasm_bindgen_test::wasm_bindgen_test;
@@ -31,15 +28,17 @@ macro_rules! test_yulgen {
 // constructor
 test_yulgen! { constructor_no_init,  constructor::build() }
 
-fn functions() -> Vec<(String, Vec<AbiType>, Option<AbiType>)> {
+fn functions() -> Vec<(String, String, Vec<AbiType>, Option<AbiType>)> {
     vec![
         (
             "hello_world".to_string(),
+            "$$somemod$hello_world".to_string(),
             vec![],
             Some(AbiType::String { max_size: 42 }),
         ),
         (
             "add".to_string(),
+            "$$somemod$add".to_string(),
             vec![AbiType::Uint { size: 32 }, AbiType::Uint { size: 32 }],
             Some(AbiType::Uint { size: 32 }),
         ),
@@ -47,29 +46,29 @@ fn functions() -> Vec<(String, Vec<AbiType>, Option<AbiType>)> {
 }
 
 // ABI dispatcher
-test_yulgen! { abi_dispatcher,  abi_dispatcher::dispatcher(functions()) }
+test_yulgen! { abi_dispatcher,  abi_dispatcher::dispatcher(&functions()) }
 
 // ABI encoding functions
 test_yulgen! {
     abi_encode_u256_address_function,
-    abi_functions::encode(vec![AbiType::Uint { size: 32 }, AbiType::Address])
+    abi_functions::encode(&[AbiType::Uint { size: 32 }, AbiType::Address])
 }
 
 // ABI decoding functions
 test_yulgen! {
     abi_decode_data_address_bool_mem_function,
-    abi_functions::decode_data(&[AbiType::Bool, AbiType::Address], AbiDecodeLocation::Memory)
+    yul::Block { statements: abi_functions::decode_functions(&[AbiType::Bool, AbiType::Address], AbiDecodeLocation::Memory) }
 }
 test_yulgen! {
     abi_decode_data_u256_bytes_string_bool_address_bytes_calldata_function,
-    abi_functions::decode_data(&[
+    yul::Block { statements: abi_functions::decode_functions(&[
         AbiType::Uint { size: 32 },
         AbiType::Bytes { size: 100 },
         AbiType::String { max_size: 42 },
         AbiType::Bool,
         AbiType::Address,
         AbiType::Bytes { size: 100 },
-    ], AbiDecodeLocation::Calldata)
+    ], AbiDecodeLocation::Calldata) }
 }
 test_yulgen! {
     abi_decode_component_uint256_mem_function,
@@ -105,31 +104,6 @@ test_yulgen! {
 test_yulgen! {
     abi_decode_component_string_26_calldata_function,
     abi_functions::decode_component_bytes(26, AbiDecodeLocation::Calldata)
-}
-
-fn struct_bool_bool_fields() -> Vec<(String, FixedSize)> {
-    vec![
-        ("bar".into(), FixedSize::Base(Base::Bool)),
-        ("bar2".into(), FixedSize::Base(Base::Bool)),
-    ]
-}
-
-// struct functions
-test_yulgen! {
-    struct_empty_function,
-    structs_functions::generate_new_fn("Foo", &[])
-}
-test_yulgen! {
-    struct_new_gen_function,
-    structs_functions::generate_new_fn("Foo", &struct_bool_bool_fields())
-}
-test_yulgen! {
-    struct_getter_gen_bar_function,
-    structs_functions::generate_get_fn("Foo", &struct_bool_bool_fields()[0], 0)
-}
-test_yulgen! {
-    struct_getter_gen_bar2_function,
-    structs_functions::generate_get_fn("Foo", &struct_bool_bool_fields()[1], 1)
 }
 
 // data operations

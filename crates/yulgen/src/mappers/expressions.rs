@@ -38,10 +38,7 @@ pub fn expr(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
         fe::Expr::Call { .. } => expr_call(context, exp),
         fe::Expr::List { .. } => panic!("list expressions should be lowered"),
         fe::Expr::Tuple { .. } => panic!("tuple expressions should be lowered"),
-        fe::Expr::Str(val) => {
-            context.contract.string_literals.insert(val.clone());
-            expr_str(exp)
-        }
+        fe::Expr::Str(_) => expr_str(exp),
         fe::Expr::Unit => expression! { 0x0 },
     };
 
@@ -126,7 +123,7 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
                 expression! { balance([yul_args[0].to_owned()]) }
             }
         },
-        CallType::BuiltinValueMethod(method) => {
+        CallType::BuiltinValueMethod { method, typ } => {
             let target = match &func.kind {
                 fe::Expr::Attribute { value, .. } => value,
                 _ => unreachable!(),
@@ -137,35 +134,28 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
                 // `to_mem` and `clone`.
                 builtins::ValueMethod::ToMem => expr(context, target),
                 builtins::ValueMethod::Clone => expr(context, target),
-                builtins::ValueMethod::AbiEncode => match context
-                    .expression_attributes(target)
-                    .expect("missing expr attributes")
-                    .typ
-                    .clone()
-                {
+                builtins::ValueMethod::AbiEncode => match typ {
                     Type::Struct(struct_) => abi_operations::encode(
-                        &[struct_.as_abi_type(context.db)],
+                        &[struct_.as_abi_type(context.adb)],
                         vec![expr(context, target)],
                     ),
                     _ => panic!("invalid attributes"),
                 },
             }
         }
-        CallType::TypeConstructor(Type::Struct(val)) => struct_operations::new(&val, yul_args),
+        CallType::TypeConstructor(Type::Struct(val)) => {
+            struct_operations::init(context.db, val.id, yul_args)
+        }
         CallType::TypeConstructor(Type::Base(Base::Numeric(integer))) => {
             math_operations::adjust_numeric_size(&integer, yul_args[0].to_owned())
         }
         CallType::TypeConstructor(_) => yul_args[0].to_owned(),
         CallType::Pure(func) => {
-            let func_name = names::func_name(&func.name(context.db));
+            let func_name = identifier! { (context.db.function_yul_name(func)) };
             expression! { [func_name]([yul_args...]) }
         }
         CallType::BuiltinAssociatedFunction { contract, function } => {
-            let contract_name = contract.name(context.db);
-            context
-                .contract
-                .created_contracts
-                .insert(contract_name.clone());
+            let contract_name = contract.name(context.adb);
             match function {
                 ContractTypeMethod::Create2 => contract_operations::create2(
                     &contract_name,
@@ -182,10 +172,7 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
                 matches!(class, Class::Struct(_)),
                 "call to contract-associated fn should be rejected by analyzer as not-yet-implemented"
             );
-            let func_name = names::associated_function_name(
-                &class.name(context.db),
-                &function.name(context.db),
-            );
+            let func_name = identifier! { (context.db.function_yul_name(function)) };
             expression! { [func_name]([yul_args...]) }
         }
         CallType::ValueMethod {
@@ -198,29 +185,30 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
                 _ => unreachable!(),
             };
 
-            let class_name = class.name(context.db);
             match class {
-                Class::Contract(contract) => {
-                    if is_self {
-                        // TODO: contract fns should use names::associated_function_name
-                        let fn_name = names::func_name(&method.name(context.db));
-                        expression! { [fn_name]([yul_args...]) }
-                    } else {
-                        let address = expr(context, target);
-                        let fn_name = names::contract_call(
-                            &contract.name(context.db),
-                            &method.name(context.db),
-                        );
-                        expression! { [fn_name]([address], [yul_args...]) }
-                    }
+                Class::Contract(_) => {
+                    assert!(
+                        is_self,
+                        "non-self contract calls should be CallType::External"
+                    );
+                    let fn_name = identifier! { (context.db.function_yul_name(method)) };
+                    expression! { [fn_name]([yul_args...]) }
                 }
                 Class::Struct(_) => {
                     let target = expr(context, target);
-                    let fn_name =
-                        names::associated_function_name(&class_name, &method.name(context.db));
+                    let fn_name = identifier! { (context.db.function_yul_name(method)) };
                     expression! { [fn_name]([target], [yul_args...]) }
                 }
             }
+        }
+        CallType::External { function, .. } => {
+            let target = match &func.kind {
+                fe::Expr::Attribute { value, .. } => value,
+                _ => unreachable!(),
+            };
+            let address = expr(context, target);
+            let fn_name = identifier! { (context.db.function_external_call_name(function)) };
+            expression! { [fn_name]([address], [yul_args...]) }
         }
     };
 }
@@ -505,7 +493,7 @@ fn expr_attribute(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Express
             // struct `self` is handled like any other struct value,
             // and keeps the name `self` in the generated yul.
             let target = expr(context, target);
-            struct_operations::get_attribute(struct_, &field.kind, target)
+            struct_operations::get_attribute(context.db, struct_.id, &field.kind, target)
         }
         _ => panic!("invalid type for field access: {:?}", &target_attrs.typ),
     }

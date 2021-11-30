@@ -401,6 +401,13 @@ fn expr_str(
             scope.error("String contains invalid byte sequence", exp.span, "");
         };
 
+        scope
+            .root
+            .body
+            .borrow_mut()
+            .string_literals
+            .insert(string.clone());
+
         return Ok(ExpressionAttributes::new(
             Type::String(FeString {
                 max_size: string.len(),
@@ -846,7 +853,7 @@ fn expr_call_name<T: std::fmt::Display>(
         if let Some(function) = scope
             .root
             .function
-            .parent(scope.db())
+            .class(scope.db())
             .and_then(|class| class.self_function(scope.db(), name))
         {
             // TODO: this doesn't have to be fatal
@@ -1382,9 +1389,25 @@ fn expr_call_method(
                 );
             }
 
-            match class {
-                Class::Contract(_) => {
-                    if !is_self {
+            let sig = method.signature(scope.db());
+            validate_named_args(
+                scope,
+                &field.kind,
+                field.span,
+                args,
+                &sig.params,
+                LabelPolicy::AllowAnyUnlabeled,
+            )?;
+
+            let calltype = match class {
+                Class::Contract(contract) => {
+                    if is_self {
+                        CallType::ValueMethod {
+                            is_self,
+                            class,
+                            method,
+                        }
+                    } else {
                         // External contract address must be loaded onto the stack.
                         scope.root.update_expression(
                             target,
@@ -1392,6 +1415,11 @@ fn expr_call_method(
                                 .into_loaded()
                                 .expect("should be able to move contract type to stack"),
                         );
+
+                        CallType::External {
+                            contract,
+                            function: method,
+                        }
                     }
                 }
                 Class::Struct(_) => {
@@ -1408,29 +1436,19 @@ fn expr_call_method(
                             vec![],
                         );
                     }
+                    CallType::ValueMethod {
+                        is_self,
+                        class,
+                        method,
+                    }
                 }
-            }
+            };
 
-            let sig = method.signature(scope.db());
             let return_type = sig.return_type.clone()?;
-
-            validate_named_args(
-                scope,
-                &field.kind,
-                field.span,
-                args,
-                &sig.params,
-                LabelPolicy::AllowAnyUnlabeled,
-            )?;
-
             let location = Location::assign_location(&return_type);
             return Ok((
                 ExpressionAttributes::new(return_type.into(), location),
-                CallType::ValueMethod {
-                    is_self,
-                    class,
-                    method,
-                },
+                calltype,
             ));
         }
     }
@@ -1462,7 +1480,10 @@ fn expr_call_builtin_value_method(
         "argument",
     );
 
-    let calltype = CallType::BuiltinValueMethod(method);
+    let calltype = CallType::BuiltinValueMethod {
+        method,
+        typ: value_attrs.typ.clone(),
+    };
     match method {
         ValueMethod::Clone => {
             match value_attrs.location {
@@ -1609,7 +1630,7 @@ fn expr_call_type_attribute(
         if let Class::Contract(contract) = class {
             // Check for Foo.create/create2 (this will go away when the context object is ready)
             if let Ok(function) = ContractTypeMethod::from_str(&field.kind) {
-                if scope.root.function.parent(scope.db()) == Some(Class::Contract(contract)) {
+                if scope.root.function.class(scope.db()) == Some(Class::Contract(contract)) {
                     scope.fancy_error(
                         &format!("`{contract}.{}(...)` called within `{contract}` creates an illegal circular dependency", function.as_ref(), contract=&class_name),
                         vec![Label::primary(field.span, "Contract creation")],
@@ -1662,7 +1683,7 @@ fn expr_call_type_attribute(
             }
 
             if !function.is_public(scope.db())
-                && scope.root.function.parent(scope.db()) != Some(class)
+                && scope.root.function.class(scope.db()) != Some(class)
             {
                 scope.fancy_error(
                     &format!(

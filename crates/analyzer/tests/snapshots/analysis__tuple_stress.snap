@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(&files, module, &db)"
+expression: "build_snapshot(&files, module_id, &db)"
 
 ---
 note: 
@@ -611,7 +611,7 @@ note:
    ┌─ stress/tuple_stress.fe:34:16
    │
 34 │         return self.my_sto_tuple.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Tuple(Tuple { items: [Base(Numeric(U256)), Base(Numeric(I32))] }) }
 
 note: 
    ┌─ stress/tuple_stress.fe:36:5
@@ -785,6 +785,6 @@ note:
    ┌─ stress/tuple_stress.fe:46:16
    │
 46 │         return my_tuple.abi_encode()
-   │                ^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(AbiEncode)
+   │                ^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: AbiEncode, typ: Tuple(Tuple { items: [Base(Numeric(U256)), Base(Bool), Base(Address)] }) }
 
 

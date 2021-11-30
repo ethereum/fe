@@ -1,23 +1,26 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/two_contracts.fe\", &src, module, &db)"
+expression: "build_snapshot(&files, module_id, &db)"
 
 ---
 note: 
-  ┌─ features/two_contracts.fe:3:5
+  ┌─ features/two_contracts.fe:2:5
   │
-3 │     other: Bar
+2 │     other: Bar
   │     ^^^^^^^^^^ Bar
 
 note: 
-  ┌─ features/two_contracts.fe:5:5
+  ┌─ features/two_contracts.fe:7:5
   │  
-5 │ ╭     pub fn external_bar() -> u256:
-6 │ │         return Bar(address(0)).bar()
-  │ ╰────────────────────────────────────^ attributes hash: 17979516652885443340
+7 │ ╭     pub fn foo(self) -> u256:
+8 │ │         self.other.set_foo_addr(self.address)
+9 │ │         return self.other.answer()
+  │ ╰──────────────────────────────────^ attributes hash: 2875164910451995213
   │  
   = FunctionSignature {
-        self_decl: None,
+        self_decl: Some(
+            Mutable,
+        ),
         params: [],
         return_type: Ok(
             Base(
@@ -29,87 +32,178 @@ note:
     }
 
 note: 
-  ┌─ features/two_contracts.fe:6:28
+  ┌─ features/two_contracts.fe:8:9
   │
-6 │         return Bar(address(0)).bar()
-  │                            ^ u256: Value
+8 │         self.other.set_foo_addr(self.address)
+  │         ^^^^ Foo: Value
 
 note: 
-  ┌─ features/two_contracts.fe:6:20
+  ┌─ features/two_contracts.fe:8:9
   │
-6 │         return Bar(address(0)).bar()
-  │                    ^^^^^^^^^^ address: Value
+8 │         self.other.set_foo_addr(self.address)
+  │         ^^^^^^^^^^              ^^^^ Foo: Value
+  │         │                        
+  │         Bar: Storage { nonce: Some(0) } => Value
 
 note: 
-  ┌─ features/two_contracts.fe:6:16
+  ┌─ features/two_contracts.fe:8:33
   │
-6 │         return Bar(address(0)).bar()
-  │                ^^^^^^^^^^^^^^^ Bar: Value
+8 │         self.other.set_foo_addr(self.address)
+  │                                 ^^^^^^^^^^^^ address: Value
 
 note: 
-  ┌─ features/two_contracts.fe:6:16
+  ┌─ features/two_contracts.fe:8:9
   │
-6 │         return Bar(address(0)).bar()
-  │                ^^^^^^^^^^^^^^^^^^^^^ u256: Value
-
-note: 
-  ┌─ features/two_contracts.fe:6:20
-  │
-6 │         return Bar(address(0)).bar()
-  │                    ^^^^^^^ TypeConstructor(Base(Address))
-
-note: 
-  ┌─ features/two_contracts.fe:6:16
-  │
-6 │         return Bar(address(0)).bar()
-  │                ^^^ TypeConstructor(Contract(Contract { name: "Bar", id: ContractId(1) }))
-
-note: 
-  ┌─ features/two_contracts.fe:6:16
-  │
-6 │         return Bar(address(0)).bar()
-  │                ^^^^^^^^^^^^^^^^^^^ ValueMethod { is_self: false, class: Contract(ContractId(1)), method: FunctionId(3) }
-
-note: 
-  ┌─ features/two_contracts.fe:8:5
-  │  
-8 │ ╭     pub fn foo() -> u256:
-9 │ │         return 42
-  │ ╰─────────────────^ attributes hash: 17979516652885443340
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        params: [],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
+8 │         self.other.set_foo_addr(self.address)
+  │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (): Value
+9 │         return self.other.answer()
+  │                ^^^^ Foo: Value
 
 note: 
   ┌─ features/two_contracts.fe:9:16
   │
-9 │         return 42
-  │                ^^ u256: Value
+9 │         return self.other.answer()
+  │                ^^^^^^^^^^ Bar: Storage { nonce: Some(0) } => Value
 
 note: 
-   ┌─ features/two_contracts.fe:13:5
+  ┌─ features/two_contracts.fe:9:16
+  │
+9 │         return self.other.answer()
+  │                ^^^^^^^^^^^^^^^^^^^ u256: Value
+
+note: 
+  ┌─ features/two_contracts.fe:8:9
+  │
+8 │         self.other.set_foo_addr(self.address)
+  │         ^^^^^^^^^^^^^^^^^^^^^^^ External { contract: ContractId(1), function: FunctionId(3) }
+9 │         return self.other.answer()
+  │                ^^^^^^^^^^^^^^^^^ External { contract: ContractId(1), function: FunctionId(4) }
+
+note: 
+   ┌─ features/two_contracts.fe:11:5
+   │  
+11 │ ╭     pub fn add(x: u256, y: u256) -> u256:
+12 │ │         return x + y
+   │ ╰────────────────────^ attributes hash: 4022593831796629401
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         params: [
+             FunctionParam {
+                 name: "x",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 ),
+             },
+             FunctionParam {
+                 name: "y",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/two_contracts.fe:12:16
    │
-13 │     other: Foo
-   │     ^^^^^^^^^^ Foo
+12 │         return x + y
+   │                ^   ^ u256: Value
+   │                │    
+   │                u256: Value
+
+note: 
+   ┌─ features/two_contracts.fe:12:16
+   │
+12 │         return x + y
+   │                ^^^^^ u256: Value
 
 note: 
    ┌─ features/two_contracts.fe:15:5
+   │
+15 │     other: Foo
+   │     ^^^^^^^^^^ Foo
+
+note: 
+   ┌─ features/two_contracts.fe:17:5
    │  
-15 │ ╭     pub fn external_foo() -> u256:
-16 │ │         return Foo(address(0)).foo()
-   │ ╰────────────────────────────────────^ attributes hash: 17979516652885443340
+17 │ ╭     pub fn set_foo_addr(self, addr: address):
+18 │ │         self.other = Foo(addr)
+   │ ╰──────────────────────────────^ attributes hash: 13016862792707996445
    │  
    = FunctionSignature {
-         self_decl: None,
+         self_decl: Some(
+             Mutable,
+         ),
+         params: [
+             FunctionParam {
+                 name: "addr",
+                 typ: Ok(
+                     Base(
+                         Address,
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Unit,
+             ),
+         ),
+     }
+
+note: 
+   ┌─ features/two_contracts.fe:18:9
+   │
+18 │         self.other = Foo(addr)
+   │         ^^^^ Bar: Value
+
+note: 
+   ┌─ features/two_contracts.fe:18:9
+   │
+18 │         self.other = Foo(addr)
+   │         ^^^^^^^^^^       ^^^^ address: Value
+   │         │                 
+   │         Foo: Storage { nonce: Some(0) }
+
+note: 
+   ┌─ features/two_contracts.fe:18:22
+   │
+18 │         self.other = Foo(addr)
+   │                      ^^^^^^^^^ Foo: Value
+
+note: 
+   ┌─ features/two_contracts.fe:18:22
+   │
+18 │         self.other = Foo(addr)
+   │                      ^^^ TypeConstructor(Contract(Contract { name: "Foo", id: ContractId(0) }))
+
+note: 
+   ┌─ features/two_contracts.fe:20:5
+   │  
+20 │ ╭     pub fn answer(self) -> u256:
+21 │ │         return self.other.add(20, 22)
+   │ ╰─────────────────────────────────────^ attributes hash: 2875164910451995213
+   │  
+   = FunctionSignature {
+         self_decl: Some(
+             Mutable,
+         ),
          params: [],
          return_type: Ok(
              Base(
@@ -121,70 +215,30 @@ note:
      }
 
 note: 
-   ┌─ features/two_contracts.fe:16:28
+   ┌─ features/two_contracts.fe:21:16
    │
-16 │         return Foo(address(0)).foo()
-   │                            ^ u256: Value
+21 │         return self.other.add(20, 22)
+   │                ^^^^ Bar: Value
 
 note: 
-   ┌─ features/two_contracts.fe:16:20
+   ┌─ features/two_contracts.fe:21:16
    │
-16 │         return Foo(address(0)).foo()
-   │                    ^^^^^^^^^^ address: Value
+21 │         return self.other.add(20, 22)
+   │                ^^^^^^^^^^     ^^  ^^ u256: Value
+   │                │              │    
+   │                │              u256: Value
+   │                Foo: Storage { nonce: Some(0) } => Value
 
 note: 
-   ┌─ features/two_contracts.fe:16:16
+   ┌─ features/two_contracts.fe:21:16
    │
-16 │         return Foo(address(0)).foo()
-   │                ^^^^^^^^^^^^^^^ Foo: Value
+21 │         return self.other.add(20, 22)
+   │                ^^^^^^^^^^^^^^^^^^^^^^ u256: Value
 
 note: 
-   ┌─ features/two_contracts.fe:16:16
+   ┌─ features/two_contracts.fe:21:16
    │
-16 │         return Foo(address(0)).foo()
-   │                ^^^^^^^^^^^^^^^^^^^^^ u256: Value
-
-note: 
-   ┌─ features/two_contracts.fe:16:20
-   │
-16 │         return Foo(address(0)).foo()
-   │                    ^^^^^^^ TypeConstructor(Base(Address))
-
-note: 
-   ┌─ features/two_contracts.fe:16:16
-   │
-16 │         return Foo(address(0)).foo()
-   │                ^^^ TypeConstructor(Contract(Contract { name: "Foo", id: ContractId(0) }))
-
-note: 
-   ┌─ features/two_contracts.fe:16:16
-   │
-16 │         return Foo(address(0)).foo()
-   │                ^^^^^^^^^^^^^^^^^^^ ValueMethod { is_self: false, class: Contract(ContractId(0)), method: FunctionId(1) }
-
-note: 
-   ┌─ features/two_contracts.fe:18:5
-   │  
-18 │ ╭     pub fn bar() -> u256:
-19 │ │         return 26
-   │ ╰─────────────────^ attributes hash: 17979516652885443340
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         params: [],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
-
-note: 
-   ┌─ features/two_contracts.fe:19:16
-   │
-19 │         return 26
-   │                ^^ u256: Value
+21 │         return self.other.add(20, 22)
+   │                ^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(2) }
 
 

@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/revert.fe\", &src, module, &db)"
+expression: "build_snapshot(&files, module_id, &db)"
 
 ---
 note: 
@@ -179,6 +179,6 @@ note:
 22 │         self.my_other_error = OtherError(msg=1, val=true)
    │                               ^^^^^^^^^^ TypeConstructor(Struct(Struct { name: "OtherError", id: StructId(1), field_count: 2 }))
 23 │         revert self.my_other_error.to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │                ^^^^^^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Struct(Struct { name: "OtherError", id: StructId(1), field_count: 2 }) }
 
 

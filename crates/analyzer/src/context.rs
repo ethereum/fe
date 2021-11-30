@@ -8,7 +8,7 @@ pub use fe_common::diagnostics::Label;
 use fe_common::Span;
 use fe_parser::ast;
 use fe_parser::node::NodeId;
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::{Debug, Display};
@@ -195,6 +195,7 @@ impl Location {
 pub struct FunctionBody {
     pub expressions: IndexMap<NodeId, ExpressionAttributes>,
     pub emits: IndexMap<NodeId, EventId>,
+    pub string_literals: IndexSet<String>, // for yulgen
 
     // This is the id of the VarDecl TypeDesc node
     pub var_decl_types: IndexMap<NodeId, FixedSize>,
@@ -262,7 +263,10 @@ impl fmt::Display for ExpressionAttributes {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CallType {
     BuiltinFunction(GlobalFunction),
-    BuiltinValueMethod(ValueMethod),
+    BuiltinValueMethod {
+        method: ValueMethod,
+        typ: Type,
+    },
 
     // create, create2 (will be methods of the context struct soon)
     BuiltinAssociatedFunction {
@@ -280,6 +284,10 @@ pub enum CallType {
         class: Class,
         method: FunctionId,
     },
+    External {
+        contract: ContractId,
+        function: FunctionId,
+    },
     Pure(FunctionId),
     TypeConstructor(Type),
 }
@@ -289,23 +297,25 @@ impl CallType {
         use CallType::*;
         match self {
             BuiltinFunction(_)
-            | BuiltinValueMethod(_)
+            | BuiltinValueMethod { .. }
             | TypeConstructor(_)
             | BuiltinAssociatedFunction { .. } => None,
-            AssociatedFunction { function: id, .. } | ValueMethod { method: id, .. } | Pure(id) => {
-                Some(*id)
-            }
+            AssociatedFunction { function: id, .. }
+            | ValueMethod { method: id, .. }
+            | External { function: id, .. }
+            | Pure(id) => Some(*id),
         }
     }
 
     pub fn function_name(&self, db: &dyn AnalyzerDb) -> String {
         match self {
             CallType::BuiltinFunction(f) => f.as_ref().to_string(),
-            CallType::BuiltinValueMethod(f) => f.as_ref().to_string(),
+            CallType::BuiltinValueMethod { method, .. } => method.as_ref().to_string(),
             CallType::BuiltinAssociatedFunction { function, .. } => function.as_ref().to_string(),
 
             CallType::AssociatedFunction { function: id, .. }
             | CallType::ValueMethod { method: id, .. }
+            | CallType::External { function: id, .. }
             | CallType::Pure(id) => id.name(db),
             CallType::TypeConstructor(typ) => typ.to_string(),
         }

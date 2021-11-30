@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(&files, module, &db)"
+expression: "build_snapshot(&files, module_id, &db)"
 
 ---
 note: 
@@ -193,7 +193,7 @@ note:
    ┌─ features/sized_vals_in_sto.fe:21:16
    │
 21 │         return self.nums.to_mem()
-   │                ^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │                ^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 42, inner: Numeric(U256) }) }
 
 note: 
    ┌─ features/sized_vals_in_sto.fe:23:5
@@ -282,7 +282,7 @@ note:
    ┌─ features/sized_vals_in_sto.fe:27:16
    │
 27 │         return self.str.to_mem()
-   │                ^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │                ^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 26 }) }
 
 note: 
    ┌─ features/sized_vals_in_sto.fe:29:5
@@ -403,8 +403,8 @@ note:
    ┌─ features/sized_vals_in_sto.fe:32:18
    │
 32 │             nums=self.nums.to_mem(),
-   │                  ^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │                  ^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 42, inner: Numeric(U256) }) }
 33 │             str=self.str.to_mem()
-   │                 ^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │                 ^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 26 }) }
 
 

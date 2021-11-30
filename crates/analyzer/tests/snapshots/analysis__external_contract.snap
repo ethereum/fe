@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(&files, module, &db)"
+expression: "build_snapshot(&files, module_id, &db)"
 
 ---
 note: 
@@ -317,7 +317,7 @@ note:
 24 │         let foo: Foo = Foo(foo_address)
    │                        ^^^ TypeConstructor(Contract(Contract { name: "Foo", id: ContractId(0) }))
 25 │         foo.emit_event(my_num, my_addrs, my_string)
-   │         ^^^^^^^^^^^^^^ ValueMethod { is_self: false, class: Contract(ContractId(0)), method: FunctionId(0) }
+   │         ^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(0) }
 
 note: 
    ┌─ features/external_contract.fe:27:5
@@ -410,6 +410,6 @@ note:
 32 │         let foo: Foo = Foo(foo_address)
    │                        ^^^ TypeConstructor(Contract(Contract { name: "Foo", id: ContractId(0) }))
 33 │         return foo.build_array(a, b)
-   │                ^^^^^^^^^^^^^^^ ValueMethod { is_self: false, class: Contract(ContractId(0)), method: FunctionId(1) }
+   │                ^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(1) }
 
 

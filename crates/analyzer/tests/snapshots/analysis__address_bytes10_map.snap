@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(&files, module, &db)"
+expression: "build_snapshot(&files, module_id, &db)"
 
 ---
 note: 
@@ -72,7 +72,7 @@ note:
   ┌─ features/address_bytes10_map.fe:5:16
   │
 5 │         return self.bar[key].to_mem()
-  │                ^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+  │                ^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: Array(Array { size: 10, inner: Numeric(U8) }) }
 
 note: 
   ┌─ features/address_bytes10_map.fe:7:5

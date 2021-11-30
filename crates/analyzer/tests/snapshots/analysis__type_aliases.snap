@@ -1,6 +1,6 @@
 ---
 source: crates/analyzer/tests/analysis.rs
-expression: "build_snapshot(\"features/type_aliases.fe\", &src, module, &db)"
+expression: "build_snapshot(&files, module_id, &db)"
 
 ---
 note: 
@@ -303,6 +303,6 @@ note:
    ┌─ features/type_aliases.fe:28:16
    │
 28 │         return self.posts[id].to_mem()
-   │                ^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod(ToMem)
+   │                ^^^^^^^^^^^^^^^^^^^^^ BuiltinValueMethod { method: ToMem, typ: String(FeString { max_size: 32 }) }
 
 

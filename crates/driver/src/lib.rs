@@ -54,7 +54,7 @@ pub fn compile_module(
 
     let module = Module {
         name: Path::new(&file.name)
-            .file_name()
+            .file_stem()
             .expect("missing file name")
             .to_string_lossy()
             .to_string(),
@@ -107,7 +107,6 @@ pub fn compile_module(
                             .replace("\\\n", "\n")
                     )
                 }
-
                 panic!("Yul compilation failed with the above errors")
             }
             Ok(contracts) => contracts,

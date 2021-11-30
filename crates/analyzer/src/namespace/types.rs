@@ -57,7 +57,7 @@ pub enum FixedSize {
     Struct(Struct),
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Base {
     Numeric(Integer),
     Bool,
@@ -65,7 +65,9 @@ pub enum Base {
     Unit,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, AsRefStr, EnumString, EnumIter)]
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, AsRefStr, EnumString, EnumIter,
+)]
 #[strum(serialize_all = "snake_case")]
 pub enum Integer {
     U256,
@@ -131,7 +133,7 @@ impl Contract {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct FeString {
     pub max_size: usize,
 }
@@ -154,7 +156,9 @@ pub struct FunctionParam {
     pub typ: Result<FixedSize, TypeError>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, EnumString, AsRefStr, EnumIter)]
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, EnumString, AsRefStr, EnumIter,
+)]
 pub enum GenericType {
     Array,
     String,

@@ -89,13 +89,20 @@ macro_rules! test_analysis_ingot {
                     .values()
                     .into_iter()
                     .map(|file| {
-                        (
-                            file.id,
-                            (
-                                file.clone(),
-                                fe_parser::parse_file(file.id, &file.content).unwrap().0,
-                            ),
-                        )
+                        let ast = match fe_parser::parse_file(file.id, &file.content) {
+                            Ok((ast, diags)) => {
+                                if !diags.is_empty() {
+                                    print_diagnostics(&diags, &files);
+                                    panic!("non-fatal parsing error");
+                                }
+                                ast
+                            }
+                            Err(diags) => {
+                                print_diagnostics(&diags, &files);
+                                panic!("parsing failed");
+                            }
+                        };
+                        (file.id, (file.clone(), ast))
                     })
                     .collect(),
             };
