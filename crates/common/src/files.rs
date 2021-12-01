@@ -2,6 +2,10 @@ use crate::utils::keccak;
 use crate::Span;
 use codespan_reporting as cs;
 use cs::files::Error as CsError;
+use include_dir::Dir;
+use indexmap::indexmap;
+use indexmap::IndexMap;
+use smol_str::SmolStr;
 use std::collections::HashMap;
 use std::ops::Range;
 use std::path::Path;
@@ -83,6 +87,37 @@ impl FileStore {
         let id = file.id;
         self.files.insert(id, file);
         id
+    }
+
+    /// Adds an included dir to the file store.
+    pub fn add_included_dir(&mut self, dir: &Dir) -> Vec<SourceFileId> {
+        let mut file_ids = vec![];
+
+        for file in dir.files() {
+            file_ids.push(
+                self.add_file(
+                    file.path()
+                        .to_str()
+                        .expect("cannot convert file path to string"),
+                    file.contents_utf8()
+                        .expect("could not get utf8 encoded file content"),
+                ),
+            );
+        }
+
+        for sub_dir in dir.dirs() {
+            file_ids.extend(self.add_included_dir(sub_dir))
+        }
+
+        file_ids
+    }
+
+    /// Adds the included libraries to the file store and returns a mapping of
+    /// library names to file ids.
+    pub fn add_included_libraries(&mut self) -> IndexMap<SmolStr, Vec<SourceFileId>> {
+        indexmap! {
+            "std".into() => self.add_included_dir(&fe_library::STD)
+        }
     }
 
     pub fn load_file(&mut self, path: &str) -> io::Result<(String, SourceFileId)> {

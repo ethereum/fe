@@ -1,42 +1,23 @@
 //! Tests for contracts that should cause compile errors
 
-use fe_analyzer::namespace::items;
-use fe_analyzer::namespace::items::{Global, ModuleFileContent};
-use fe_analyzer::AnalyzerDb;
+use fe_analyzer::namespace::items::{IngotId, ModuleId};
 use fe_analyzer::TestDb;
-use fe_common::diagnostics::{diagnostics_string, print_diagnostics};
+use fe_common::diagnostics::diagnostics_string;
 use fe_common::files::FileStore;
-use fe_parser::parse_file;
 use insta::assert_snapshot;
-use std::rc::Rc;
 use test_files::build_filestore;
 use wasm_bindgen_test::wasm_bindgen_test;
 
 fn error_string(path: &str, src: &str) -> String {
     let mut files = FileStore::new();
     let id = files.add_file(path, src);
-
-    let ast = match fe_parser::parse_file(id, src) {
-        Ok((module, _)) => module,
-        Err(diags) => {
-            print_diagnostics(&diags, &files);
-            panic!("parsing failed");
-        }
-    };
+    let deps = files.add_included_libraries();
 
     let db = TestDb::default();
 
-    let global = Global::default();
-    let global_id = db.intern_global(Rc::new(global));
-
-    let module = items::Module {
-        name: path.into(),
-        context: items::ModuleContext::Global(global_id),
-        file_content: ModuleFileContent::File { file: id },
-        ast,
-    };
-
-    let module_id = db.intern_module(Rc::new(module));
+    let module_id = ModuleId::try_new(&db, &files, id, &deps)
+        .expect("failed to create new module")
+        .value;
 
     match fe_analyzer::analyze_module(&db, module_id) {
         Ok(_) => panic!("expected analysis to fail with an error"),
@@ -45,30 +26,15 @@ fn error_string(path: &str, src: &str) -> String {
 }
 
 fn error_string_ingot(path: &str) -> String {
-    let files = build_filestore(path);
+    let mut files = build_filestore(path);
+    let file_ids = files.all_files();
+    let deps = files.add_included_libraries();
 
     let db = TestDb::default();
 
-    let global = Global::default();
-    let global_id = db.intern_global(Rc::new(global));
-
-    let ingot = items::Ingot {
-        name: path.into(),
-        global: global_id,
-        fe_files: files
-            .files
-            .values()
-            .into_iter()
-            .map(|file| {
-                (
-                    file.id,
-                    (file.clone(), parse_file(file.id, &file.content).unwrap().0),
-                )
-            })
-            .collect(),
-    };
-
-    let ingot_id = db.intern_ingot(Rc::new(ingot));
+    let ingot_id = IngotId::try_new(&db, &files, path, &file_ids, &deps)
+        .expect("failed to create new ingot")
+        .value;
 
     match fe_analyzer::analyze_ingot(&db, ingot_id) {
         Ok(_) => panic!("expected analysis to fail with an error"),

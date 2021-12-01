@@ -2,7 +2,7 @@
 
 use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, FunctionBody, NamedThing};
 use crate::errors::{AlreadyDefined, TypeError};
-use crate::namespace::items::{Class, EventId, FunctionId, Item, ModuleId};
+use crate::namespace::items::{Class, EventId, FunctionId, ModuleId};
 use crate::namespace::types::FixedSize;
 use crate::AnalyzerDb;
 use fe_common::diagnostics::Diagnostic;
@@ -40,7 +40,7 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
         self.diagnostics.push(diag)
     }
     fn resolve_path(&mut self, path: &ast::Path) -> Option<NamedThing> {
-        let item = Item::Module(self.module).resolve_path(self.db(), path);
+        let item = self.module.resolve_path_internal(self.db(), path);
 
         for diagnostic in item.diagnostics.iter() {
             self.add_diagnostic(diagnostic.to_owned())
@@ -194,7 +194,10 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
     }
 
     fn resolve_path(&mut self, path: &ast::Path) -> Option<NamedThing> {
-        let item = Item::Module(self.function.module(self.db())).resolve_path(self.db(), path);
+        let item = self
+            .function
+            .module(self.db())
+            .resolve_path_internal(self.db(), path);
 
         for diagnostic in item.diagnostics.iter() {
             self.add_diagnostic(diagnostic.to_owned())
@@ -240,7 +243,11 @@ impl AnalyzerContext for BlockScope<'_, '_> {
             })
     }
     fn resolve_path(&mut self, path: &ast::Path) -> Option<NamedThing> {
-        let item = Item::Module(self.root.function.module(self.db())).resolve_path(self.db(), path);
+        let item = self
+            .root
+            .function
+            .module(self.db())
+            .resolve_path_internal(self.db(), path);
 
         for diagnostic in item.diagnostics.iter() {
             self.add_diagnostic(diagnostic.to_owned())

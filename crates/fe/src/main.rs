@@ -88,6 +88,7 @@ pub fn main() {
 
     let (content, compiled_module) = if Path::new(input_path).is_file() {
         let mut files = FileStore::new();
+        let deps = files.add_included_libraries();
         let file = files.load_file(input_path).map_err(ioerr_to_string);
 
         let (content, id) = match file {
@@ -98,17 +99,20 @@ pub fn main() {
             Ok(file) => file,
         };
 
-        let compiled_module = match fe_driver::compile_module(&files, id, with_bytecode, optimize) {
-            Ok(module) => module,
-            Err(error) => {
-                eprintln!("Unable to compile {}.", input_path);
-                print_diagnostics(&error.0, &files);
-                std::process::exit(1)
-            }
-        };
+        let compiled_module =
+            match fe_driver::compile_module(&files, id, &deps, with_bytecode, optimize) {
+                Ok(module) => module,
+                Err(error) => {
+                    eprintln!("Unable to compile {}.", input_path);
+                    print_diagnostics(&error.0, &files);
+                    std::process::exit(1)
+                }
+            };
         (content, compiled_module)
     } else {
-        let files = build_ingot_filestore_for_dir(input_path);
+        let mut files = build_ingot_filestore_for_dir(input_path);
+        let ingot_files = files.all_files();
+        let deps = files.add_included_libraries();
 
         if !Path::new(input_path).exists() {
             eprintln!("Input directory does not exist: `{}`.", input_path);
@@ -118,7 +122,8 @@ pub fn main() {
         let compiled_module = match fe_driver::compile_ingot(
             input_path,
             &files,
-            &files.all_files(),
+            &ingot_files,
+            &deps,
             with_bytecode,
             optimize,
         ) {

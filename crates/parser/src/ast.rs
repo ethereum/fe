@@ -163,6 +163,7 @@ pub struct RegularFunctionArg {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum FunctionArg {
     Regular(RegularFunctionArg),
     Zelf,

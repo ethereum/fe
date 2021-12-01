@@ -4,16 +4,17 @@ use fe_parser::node::{Node, NodeId};
 
 use crate::names;
 use crate::utils::ZeroSpanNode;
+use std::ops::Deref;
 
 #[derive(Debug)]
 pub enum StmtOrExpr {
-    Stmt(Node<FuncStmt>),
+    Stmt(Box<Node<FuncStmt>>),
     Expr(Node<Expr>),
 }
 
 impl From<Node<FuncStmt>> for StmtOrExpr {
     fn from(stmt: Node<FuncStmt>) -> Self {
-        StmtOrExpr::Stmt(stmt)
+        StmtOrExpr::Stmt(Box::new(stmt))
     }
 }
 
@@ -26,7 +27,7 @@ impl From<Node<Expr>> for StmtOrExpr {
 impl StmtOrExpr {
     pub fn as_stmt(&self) -> Node<FuncStmt> {
         match self {
-            StmtOrExpr::Stmt(stmt) => stmt.clone(),
+            StmtOrExpr::Stmt(stmt) => stmt.deref().clone(),
             _ => panic!("not a statement"),
         }
     }

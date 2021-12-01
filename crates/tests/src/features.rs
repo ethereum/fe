@@ -313,6 +313,7 @@ fn test_arrays() {
     case("pure_fn.fe", &[uint_token(42), uint_token(26)], uint_token(68)),
     case("pure_fn_internal_call.fe", &[uint_token(42), uint_token(26)], uint_token(68)),
     case("pure_fn_standalone.fe", &[uint_token(5)], uint_token(210)),
+    case("dummy_std.fe", &[], uint_token(1092)),
     // unary invert
     case("return_invert_i256.fe", &[int_token(1)], int_token(-2)),
     case("return_invert_i128.fe", &[int_token(1)], int_token(-2)),
