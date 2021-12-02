@@ -10,7 +10,111 @@ Fe is moving fast. Read up on all the latest improvements.
 **WARNING: All Fe releases are alpha releases and only meant to share the development progress with developers and enthusiasts. It is NOT yet ready for production usage.**
 
 [//]: # (towncrier release notes start)
-## 0.10.0-alpha (2021-10-31)## 0.10.0-alpha (2021-10-31)
+## 0.11.0-alpha "Karlite" (2021-12-02)
+
+
+### Features
+
+
+- Added support for multi-file inputs.
+
+  **Implementation details:**
+
+  Mostly copied Rust's crate system, but use the the term *ingot* instead of crate.
+
+  Below is an example of an ingot's file tree, as supported by the current implementation.
+
+  ```
+  `-- basic_ingot
+      `-- src
+          |-- bar
+          |   `-- baz.fe
+          |-- bing.fe
+          |-- ding
+          |   |-- dang.fe
+          |   `-- dong.fe
+          `-- main.fe
+  ```
+
+  There are still a few features that will be worked on over the coming months:
+
+  - source files accompanying each directory module (e.g. `my_mod.fe`)
+  - configuration files and the ability to create library ingots
+  - test directories
+  - module-level `pub` modifier (all items in a module are public)
+  - `mod` statements (all fe files in the input tree are public modules)
+
+  These things will be implemented in order of importance over the next few months. ([#562](https://github.com/ethereum/fe/issues/562))
+- The syntax for array types has changed to match other generic types.
+  For example, `u8[4]` is now written `Array<u8, 4>`. ([#571](https://github.com/ethereum/fe/issues/571))
+- Functions can now be defined on struct types. Example:
+
+  ```
+  struct Point:
+    x: u64
+    y: u64
+
+    # Doesn't take `self`. Callable as `Point.origin()`.
+    # Note that the syntax for this will soon be changed to `Point::origin()`.
+    pub fn origin() -> Point:
+      return Point(x=0, y=0)
+
+    # Takes `self`. Callable on a value of type `Point`.
+    pub fn translate(self, x: u64, y: u64):
+      self.x += x
+      self.y += y
+
+    pub fn add(self, other: Point) -> Point:
+      let x: u64 = self.x + other.x
+      let y: u64 = self.y + other.y
+      return Point(x, y)
+
+    pub fn hash(self) -> u256:
+      return keccak256(self.abi_encode())
+
+  pub fn do_pointy_things():
+    let p1: Point = Point.origin()
+    p1.translate(5, 10)
+
+    let p2: Point = Point(x=1, y=2)
+    let p3: Point = p1.add(p2)
+
+    assert p3.x == 6 and p3.y == 12
+  ``` ([#577](https://github.com/ethereum/fe/issues/577))
+
+
+### Bugfixes
+
+
+- Fixed a rare compiler crash.
+
+  Example:
+
+  ```
+  let my_array: i256[1] = [-1 << 1] 
+  ```
+
+  Previous to this fix, the given example would lead to an ICE. ([#550](https://github.com/ethereum/fe/issues/550))
+- Contracts can now `create` an instance of a contract defined later in a file.
+  This issue was caused by a weakness in the way we generated yul. ([#596](https://github.com/ethereum/fe/issues/596))
+
+
+### Internal Changes - for Fe Contributors
+
+
+- File IDs are now attached to `Span`s. ([#587](https://github.com/ethereum/fe/issues/587))
+- The fe analyzer now builds a dependency graph of source code "items" (functions, contracts, structs, etc).
+  This is used in the yulgen phase to determine which items are needed in the yul (intermediate representation)
+  output. Note that the yul output is still cluttered with utility functions that may or may not be needed by
+  a given contract. These utility functions are defined in the yulgen phase and aren't tracked in the dependency
+  graph, so it's not yet possible to filter out the unused functions. We plan to move the definition of many
+  of these utility functions into fe; when this happens they'll become part of the dependency graph and will only
+  be included in the yul output when needed.
+
+  The dependency graph will also enable future analyzer warnings about unused code. ([#596](https://github.com/ethereum/fe/issues/596))
+
+
+## 0.10.0-alpha (2021-10-31)
 
 
 ### Features
@@ -178,7 +282,7 @@ Fe is moving fast. Read up on all the latest improvements.
   and hence are expected to discover unknown bugs. ([#578](https://github.com/ethereum/fe/issues/578))
 
 
-## 0.9.0-alpha (2021-09-29)## 0.9.0-alpha (2021-09-29)
+## 0.9.0-alpha (2021-09-29)
 
 
 ### Features
