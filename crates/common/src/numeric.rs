@@ -26,8 +26,6 @@ pub struct Literal<'a> {
     num: &'a str,
     /// The radix of the literal.
     radix: Radix,
-    /// The radix part of the string.
-    prefix: Option<&'a str>,
 }
 
 impl<'a> Literal<'a> {
@@ -48,7 +46,6 @@ impl<'a> Literal<'a> {
         Self {
             num: &src[prefix.map_or(0, |pref| pref.len())..],
             radix,
-            prefix,
         }
     }
 
