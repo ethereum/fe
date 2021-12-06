@@ -71,7 +71,7 @@ pub fn func_def(context: &mut ModuleContext, function: FunctionId) -> Node<fe::F
             if let fe::FunctionArg::Regular(regular) = &pnode.kind {
                 fe::FunctionArg::Regular(RegularFunctionArg {
                     name: regular.name.clone(),
-                    typ: types::type_desc(&mut fn_ctx.module, regular.typ.clone(), &ptype),
+                    typ: types::type_desc(fn_ctx.module, regular.typ.clone(), &ptype),
                 })
                 .into_node()
             } else {
@@ -84,9 +84,7 @@ pub fn func_def(context: &mut ModuleContext, function: FunctionId) -> Node<fe::F
     // The return type is lowered if it exists. If there is no return type, we set it to the unit type.
     let lowered_return_type = return_type_node
         .clone()
-        .map(|type_desc| {
-            types::type_desc(&mut fn_ctx.module, type_desc, &return_type.clone().into())
-        })
+        .map(|type_desc| types::type_desc(fn_ctx.module, type_desc, &return_type.clone().into()))
         .unwrap_or_else(|| fe::TypeDesc::Unit.into_node());
 
     let lowered_function = fe::Function {
@@ -255,7 +253,7 @@ fn lower_tuple_destructuring(
     let tmp_tuple = context.make_unique_name("tmp_tuple");
     stmts.push(fe::FuncStmt::VarDecl {
         target: Node::new(fe::VarDeclTarget::Name(tmp_tuple.clone()), span),
-        typ: types::type_desc(&mut context.module, type_desc.clone(), typ),
+        typ: types::type_desc(context.module, type_desc.clone(), typ),
         value: expressions::optional_expr(context, value),
     });
 
@@ -293,7 +291,7 @@ fn declare_tuple_items(
 
             stmts.push(fe::FuncStmt::VarDecl {
                 target,
-                typ: types::type_desc(&mut context.module, type_desc, typ),
+                typ: types::type_desc(context.module, type_desc, typ),
                 value: expressions::optional_expr(context, Some(value)),
             });
         }

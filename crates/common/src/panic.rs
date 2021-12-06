@@ -5,7 +5,7 @@ const BUG_REPORT_URL: &str = "https://github.com/ethereum/fe/issues/new";
 static DEFAULT_PANIC_HOOK: Lazy<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> =
     Lazy::new(|| {
         let hook = panic::take_hook();
-        panic::set_hook(Box::new(|info| report_ice(info)));
+        panic::set_hook(Box::new(report_ice));
         hook
     });
 
