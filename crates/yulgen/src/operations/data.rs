@@ -139,5 +139,6 @@ pub fn indexed_array(
     index: yul::Expression,
 ) -> yul::Expression {
     let inner_size = literal_expression! { (typ.inner.size()) };
-    expression! { add([array], (mul([index], [inner_size]))) }
+    let array_length = literal_expression! { (typ.size) };
+    expression! { get_array_item([array], [array_length], [index], [inner_size] ) }
 }

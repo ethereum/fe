@@ -230,6 +230,10 @@ pub fn encoded_over_or_underflow() -> Vec<u8> {
     encode_revert("Panic(uint256)", &[uint_token(0x11)])
 }
 
+pub fn encoded_panic_out_of_bounds() -> Vec<u8> {
+    encode_revert("Panic(uint256)", &[uint_token(0x32)])
+}
+
 pub fn encoded_div_or_mod_by_zero() -> Vec<u8> {
     encode_revert("Panic(uint256)", &[uint_token(0x12)])
 }

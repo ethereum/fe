@@ -64,6 +64,7 @@ pub fn numeric_min_max() -> HashMap<Integer, (yul::Expression, yul::Expression)>
 pub const PANIC_FAILED_ASSERTION: usize = 0x01;
 pub const PANIC_OVER_OR_UNDERFLOW: usize = 0x11;
 pub const PANIC_DIV_OR_MOD_BY_ZERO: usize = 0x12;
+pub const PANIC_OUT_OF_BOUNDS: usize = 0x32;
 
 pub const ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE: usize = 0x100;
 pub const ERROR_FAILED_SEND_VALUE: usize = 0x101;
