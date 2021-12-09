@@ -17,7 +17,7 @@ fn lower(src: &str, id: SourceFileId, files: &FileStore) -> fe::Module {
     let global_id = db.intern_global(Rc::new(global));
 
     let module = Module {
-        name: "test_module".to_string(),
+        name: "test_module".into(),
         context: ModuleContext::Global(global_id),
         file_content: ModuleFileContent::File { file: id },
         ast,

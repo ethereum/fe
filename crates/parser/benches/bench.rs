@@ -8,10 +8,10 @@ fn uniswap(c: &mut Criterion) {
     let id = files.add_file(path, src);
 
     c.bench_function("parse_uniswap", |b| {
-        b.iter(|| fe_parser::parse_file(id, &src))
+        b.iter(|| fe_parser::parse_file(id, src))
     });
     c.bench_function("clone_ast", |b| {
-        let ast = fe_parser::parse_file(id, &src).unwrap();
+        let ast = fe_parser::parse_file(id, src).unwrap();
         b.iter(|| ast.clone())
     });
 }

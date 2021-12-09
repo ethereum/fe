@@ -641,6 +641,7 @@ dependencies = [
  "salsa",
  "semver 1.0.0",
  "smallvec",
+ "smol_str",
  "strum",
  "vec1",
  "wasm-bindgen-test",

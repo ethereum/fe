@@ -15,12 +15,6 @@ pub struct Span {
     pub end: usize,
 }
 
-impl Debug for Span {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", Range::from(*self))
-    }
-}
-
 impl Span {
     pub fn new(file_id: SourceFileId, start: usize, end: usize) -> Self {
         Span {
@@ -57,6 +51,12 @@ impl Span {
             start: start_span.start,
             end: end_span.end,
         }
+    }
+}
+
+impl Debug for Span {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", Range::from(*self))
     }
 }
 

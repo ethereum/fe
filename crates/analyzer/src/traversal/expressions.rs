@@ -14,13 +14,12 @@ use crate::traversal::call_args::{validate_arg_count, validate_named_args, Label
 use crate::traversal::types::apply_generic_type_args;
 use crate::traversal::utils::{add_bin_operations_errors, types_to_fixed_sizes};
 use fe_common::diagnostics::Label;
-use fe_common::numeric;
-use fe_common::Span;
+use fe_common::{numeric, Span};
 use fe_parser::ast as fe;
-use fe_parser::ast;
 use fe_parser::ast::UnaryOperator;
 use fe_parser::node::Node;
 use num_bigint::BigInt;
+use smol_str::SmolStr;
 use std::convert::TryInto;
 use std::ops::RangeInclusive;
 use std::str::FromStr;
@@ -888,7 +887,7 @@ fn expr_call_name<T: std::fmt::Display>(
 
 fn expr_call_path<T: std::fmt::Display>(
     scope: &mut BlockScope,
-    path: &ast::Path,
+    path: &fe::Path,
     func: &Node<T>,
     generic_args: &Option<Node<Vec<fe::GenericArg>>>,
     args: &Node<Vec<Node<fe::CallArg>>>,
@@ -1304,7 +1303,7 @@ fn expr_call_struct_constructor(
 fn expr_call_method(
     scope: &mut BlockScope,
     target: &Node<fe::Expr>,
-    field: &Node<String>,
+    field: &Node<SmolStr>,
     generic_args: &Option<Node<Vec<fe::GenericArg>>>,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<(ExpressionAttributes, CallType), FatalError> {
@@ -1467,7 +1466,7 @@ fn expr_call_builtin_value_method(
     value_attrs: ExpressionAttributes,
     value: &Node<fe::Expr>,
     method: ValueMethod,
-    method_name: &Node<String>,
+    method_name: &Node<SmolStr>,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<(ExpressionAttributes, CallType), FatalError> {
     // for now all of these functions expect 0 arguments
@@ -1610,7 +1609,7 @@ fn expr_call_type_attribute(
     scope: &mut BlockScope,
     typ: Type,
     target_span: Span,
-    field: &Node<String>,
+    field: &Node<SmolStr>,
     generic_args: &Option<Node<Vec<fe::GenericArg>>>,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<(ExpressionAttributes, CallType), FatalError> {

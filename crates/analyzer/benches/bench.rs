@@ -11,7 +11,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     let path = "demos/uniswap.fe";
     let src = test_files::fixture(path);
     let id = files.add_file(path, src);
-    let ast = match fe_parser::parse_file(id, &src) {
+    let ast = match fe_parser::parse_file(id, src) {
         Ok((module, _)) => module,
         Err(diags) => {
             print_diagnostics(&diags, &files);

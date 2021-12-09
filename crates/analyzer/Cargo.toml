@@ -21,6 +21,7 @@ indexmap = "1.6.2"
 if_chain = "1.0.1"
 smallvec = { version = "1.6.1", features = ["union"] }
 petgraph = "0.6.0"
+smol_str = "0.1.21"
 
 [dev-dependencies]
 insta = "1.7.1"

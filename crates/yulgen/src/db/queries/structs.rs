@@ -128,7 +128,7 @@ pub fn struct_api_fns(db: &dyn YulgenDb, struct_: StructId) -> Vec<yul::Statemen
         struct_
             .fields(db.upcast())
             .keys()
-            .map(|name| db.struct_getter_fn(struct_, name.into()))
+            .map(|name| db.struct_getter_fn(struct_, name.clone()))
             .collect(),
     ]
     .concat()

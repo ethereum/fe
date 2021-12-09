@@ -40,7 +40,7 @@ macro_rules! test_analysis {
             let global_id = db.intern_global(Rc::new(global));
 
             let module = Module {
-                name: "test_module".to_string(),
+                name: "test_module".into(),
                 context: ModuleContext::Global(global_id),
                 file_content: ModuleFileContent::File { file: id },
                 ast,
@@ -82,7 +82,7 @@ macro_rules! test_analysis_ingot {
             let global_id = db.intern_global(Rc::new(global));
 
             let ingot = Ingot {
-                name: "test_ingot".to_string(),
+                name: "test_ingot".into(),
                 global: global_id,
                 fe_files: files
                     .files

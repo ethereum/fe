@@ -9,8 +9,8 @@ use fe_common::Span;
 use fe_parser::ast;
 use fe_parser::node::Node;
 use indexmap::map::IndexMap;
+use smol_str::SmolStr;
 use std::rc::Rc;
-
 mod queries;
 
 // from rust-analyzer {
@@ -64,7 +64,7 @@ pub trait AnalyzerDb {
     #[salsa::invoke(queries::module::module_all_items)]
     fn module_all_items(&self, module: ModuleId) -> Rc<Vec<Item>>;
     #[salsa::invoke(queries::module::module_item_map)]
-    fn module_item_map(&self, module: ModuleId) -> Analysis<Rc<IndexMap<String, Item>>>;
+    fn module_item_map(&self, module: ModuleId) -> Analysis<Rc<IndexMap<SmolStr, Item>>>;
     #[salsa::invoke(queries::module::module_contracts)]
     fn module_contracts(&self, module: ModuleId) -> Rc<Vec<ContractId>>;
     #[salsa::invoke(queries::module::module_structs)]
@@ -73,19 +73,19 @@ pub trait AnalyzerDb {
     fn module_used_item_map(
         &self,
         module: ModuleId,
-    ) -> Analysis<Rc<IndexMap<String, (Span, Item)>>>;
+    ) -> Analysis<Rc<IndexMap<SmolStr, (Span, Item)>>>;
     #[salsa::invoke(queries::module::module_resolve_use_tree)]
     fn module_resolve_use_tree(
         &self,
         module: ModuleId,
         tree: Node<ast::UseTree>,
-    ) -> Analysis<Rc<IndexMap<String, (Span, Item)>>>;
+    ) -> Analysis<Rc<IndexMap<SmolStr, (Span, Item)>>>;
     #[salsa::invoke(queries::module::module_parent_module)]
     fn module_parent_module(&self, module: ModuleId) -> Option<ModuleId>;
     #[salsa::invoke(queries::module::module_adjacent_modules)]
-    fn module_adjacent_modules(&self, module: ModuleId) -> Rc<IndexMap<String, ModuleId>>;
+    fn module_adjacent_modules(&self, module: ModuleId) -> Rc<IndexMap<SmolStr, ModuleId>>;
     #[salsa::invoke(queries::module::module_sub_modules)]
-    fn module_sub_modules(&self, module: ModuleId) -> Rc<IndexMap<String, ModuleId>>;
+    fn module_sub_modules(&self, module: ModuleId) -> Rc<IndexMap<SmolStr, ModuleId>>;
 
     // Module Constant
     #[salsa::invoke(queries::module::module_constant_type)]
@@ -98,22 +98,24 @@ pub trait AnalyzerDb {
     #[salsa::invoke(queries::contracts::contract_all_functions)]
     fn contract_all_functions(&self, id: ContractId) -> Rc<Vec<FunctionId>>;
     #[salsa::invoke(queries::contracts::contract_function_map)]
-    fn contract_function_map(&self, id: ContractId) -> Analysis<Rc<IndexMap<String, FunctionId>>>;
+    fn contract_function_map(&self, id: ContractId) -> Analysis<Rc<IndexMap<SmolStr, FunctionId>>>;
     #[salsa::invoke(queries::contracts::contract_public_function_map)]
-    fn contract_public_function_map(&self, id: ContractId) -> Rc<IndexMap<String, FunctionId>>;
+    fn contract_public_function_map(&self, id: ContractId) -> Rc<IndexMap<SmolStr, FunctionId>>;
     #[salsa::invoke(queries::contracts::contract_init_function)]
     fn contract_init_function(&self, id: ContractId) -> Analysis<Option<FunctionId>>;
 
     #[salsa::invoke(queries::contracts::contract_all_events)]
     fn contract_all_events(&self, id: ContractId) -> Rc<Vec<EventId>>;
     #[salsa::invoke(queries::contracts::contract_event_map)]
-    fn contract_event_map(&self, id: ContractId) -> Analysis<Rc<IndexMap<String, EventId>>>;
+    fn contract_event_map(&self, id: ContractId) -> Analysis<Rc<IndexMap<SmolStr, EventId>>>;
 
     #[salsa::invoke(queries::contracts::contract_all_fields)]
     fn contract_all_fields(&self, id: ContractId) -> Rc<Vec<ContractFieldId>>;
     #[salsa::invoke(queries::contracts::contract_field_map)]
-    fn contract_field_map(&self, id: ContractId)
-        -> Analysis<Rc<IndexMap<String, ContractFieldId>>>;
+    fn contract_field_map(
+        &self,
+        id: ContractId,
+    ) -> Analysis<Rc<IndexMap<SmolStr, ContractFieldId>>>;
     #[salsa::invoke(queries::contracts::contract_field_type)]
     fn contract_field_type(
         &self,
@@ -141,7 +143,7 @@ pub trait AnalyzerDb {
     #[salsa::invoke(queries::structs::struct_all_fields)]
     fn struct_all_fields(&self, id: StructId) -> Rc<Vec<StructFieldId>>;
     #[salsa::invoke(queries::structs::struct_field_map)]
-    fn struct_field_map(&self, id: StructId) -> Analysis<Rc<IndexMap<String, StructFieldId>>>;
+    fn struct_field_map(&self, id: StructId) -> Analysis<Rc<IndexMap<SmolStr, StructFieldId>>>;
     #[salsa::invoke(queries::structs::struct_field_type)]
     fn struct_field_type(
         &self,
@@ -150,7 +152,7 @@ pub trait AnalyzerDb {
     #[salsa::invoke(queries::structs::struct_all_functions)]
     fn struct_all_functions(&self, id: StructId) -> Rc<Vec<FunctionId>>;
     #[salsa::invoke(queries::structs::struct_function_map)]
-    fn struct_function_map(&self, id: StructId) -> Analysis<Rc<IndexMap<String, FunctionId>>>;
+    fn struct_function_map(&self, id: StructId) -> Analysis<Rc<IndexMap<SmolStr, FunctionId>>>;
     #[salsa::invoke(queries::structs::struct_dependency_graph)]
     fn struct_dependency_graph(&self, id: StructId) -> DepGraphWrapper;
 

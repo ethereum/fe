@@ -1,6 +1,5 @@
 use crate::errors;
-use fe_common::diagnostics::Diagnostic;
-use fe_common::diagnostics::Label;
+use fe_common::diagnostics::{Diagnostic, Label};
 use fe_parser::ast;
 use fe_parser::node::Node;
 use semver::{Version, VersionReq};

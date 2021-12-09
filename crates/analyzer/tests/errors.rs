@@ -30,7 +30,7 @@ fn error_string(path: &str, src: &str) -> String {
     let global_id = db.intern_global(Rc::new(global));
 
     let module = items::Module {
-        name: path.to_string(),
+        name: path.into(),
         context: items::ModuleContext::Global(global_id),
         file_content: ModuleFileContent::File { file: id },
         ast,
@@ -53,7 +53,7 @@ fn error_string_ingot(path: &str) -> String {
     let global_id = db.intern_global(Rc::new(global));
 
     let ingot = items::Ingot {
-        name: path.to_string(),
+        name: path.into(),
         global: global_id,
         fe_files: files
             .files

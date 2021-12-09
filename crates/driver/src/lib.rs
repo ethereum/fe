@@ -57,7 +57,7 @@ pub fn compile_module(
             .file_stem()
             .expect("missing file name")
             .to_string_lossy()
-            .to_string(),
+            .into(),
         context: ModuleContext::Global(global_id),
         file_content: ModuleFileContent::File { file: file_id },
         ast,
@@ -161,7 +161,7 @@ pub fn compile_ingot(
     let global_id = db.intern_global(Rc::new(global));
 
     let ingot = Ingot {
-        name: name.to_string(),
+        name: name.into(),
         global: global_id,
         fe_files: file_ids
             .iter()

@@ -1,5 +1,7 @@
-use crate::node::{Node, Span};
+use crate::node::Node;
+use crate::node::Span;
 use logos::Logos;
+use smol_str::SmolStr;
 use std::ops::Add;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -9,8 +11,8 @@ pub struct Token<'a> {
     pub span: Span,
 }
 
-impl<'a> From<Token<'a>> for Node<String> {
-    fn from(tok: Token<'a>) -> Node<String> {
+impl<'a> From<Token<'a>> for Node<SmolStr> {
+    fn from(tok: Token<'a>) -> Node<SmolStr> {
         Node::new(tok.text.into(), tok.span)
     }
 }

@@ -5,6 +5,7 @@ use fe_yulgen::runtime::abi_dispatcher;
 use fe_yulgen::runtime::functions::{abi as abi_functions, revert as revert_functions};
 use fe_yulgen::types::{AbiDecodeLocation, AbiType};
 use insta::assert_display_snapshot;
+use smol_str::SmolStr;
 use wasm_bindgen_test::wasm_bindgen_test;
 use yultsur::*;
 
@@ -28,17 +29,17 @@ macro_rules! test_yulgen {
 // constructor
 test_yulgen! { constructor_no_init,  constructor::build() }
 
-fn functions() -> Vec<(String, String, Vec<AbiType>, Option<AbiType>)> {
+fn functions() -> Vec<(SmolStr, SmolStr, Vec<AbiType>, Option<AbiType>)> {
     vec![
         (
-            "hello_world".to_string(),
-            "$$somemod$hello_world".to_string(),
+            "hello_world".into(),
+            "$$somemod$hello_world".into(),
             vec![],
             Some(AbiType::String { max_size: 42 }),
         ),
         (
-            "add".to_string(),
-            "$$somemod$add".to_string(),
+            "add".into(),
+            "$$somemod$add".into(),
             vec![AbiType::Uint { size: 32 }, AbiType::Uint { size: 32 }],
             Some(AbiType::Uint { size: 32 }),
         ),

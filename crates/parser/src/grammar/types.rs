@@ -6,6 +6,7 @@ use crate::Token;
 use crate::{ParseFailed, ParseResult, Parser, TokenKind};
 use fe_common::diagnostics::Label;
 use if_chain::if_chain;
+use smol_str::SmolStr;
 use vec1::Vec1;
 
 /// Parse a [`ModuleStmt::Struct`].
@@ -148,7 +149,7 @@ pub fn parse_event_field(par: &mut Parser) -> ParseResult<Node<EventField>> {
     Ok(Node::new(
         EventField {
             is_idx: idx_qual.is_some(),
-            name: Node::new(name.text.into(), name.span),
+            name: name.into(),
             typ,
         },
         span,
@@ -202,7 +203,7 @@ pub fn parse_field(
         Field {
             is_pub: pub_qual.is_some(),
             is_const: const_qual.is_some(),
-            name: Node::new(name.text.into(), name.span),
+            name: name.into(),
             typ,
             value,
         },
@@ -299,7 +300,7 @@ pub fn parse_generic_args(par: &mut Parser) -> ParseResult<Node<Vec<GenericArg>>
 /// Returns path and trailing `::` token, if present.
 pub fn parse_path_tail<'a>(
     par: &mut Parser<'a>,
-    head: Node<String>,
+    head: Node<SmolStr>,
 ) -> (Path, Span, Option<Token<'a>>) {
     let mut span = head.span;
     let mut segments = vec![head];
@@ -436,7 +437,7 @@ pub fn parse_type_desc(par: &mut Parser) -> ParseResult<Node<TypeDesc>> {
                 );
                 typ = Node::new(
                     TypeDesc::Generic {
-                        base: Node::new("Array".to_string(), typ.span),
+                        base: Node::new("Array".into(), typ.span),
                         args: Node::new(vec![
                             GenericArg::TypeDesc(
                                 Node::new(typ.kind, typ.span)

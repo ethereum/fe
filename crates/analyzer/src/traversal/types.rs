@@ -40,7 +40,7 @@ pub fn apply_generic_type_args(
 
     if let Some(diag) = validate_arg_count(
         context,
-        generic.name(),
+        &generic.name(),
         name_span,
         args,
         params.len(),

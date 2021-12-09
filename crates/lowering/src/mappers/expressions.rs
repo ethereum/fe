@@ -149,7 +149,7 @@ fn expr_tuple(context: &mut FnContext, exp: Node<fe::Expr>) -> fe::Expr {
                 let span = elt.span;
                 Node::new(
                     fe::CallArg {
-                        label: Some(Node::new(format!("item{}", index), span)),
+                        label: Some(Node::new(format!("item{}", index).into(), span)),
                         value: expr(context, elt),
                     },
                     span,

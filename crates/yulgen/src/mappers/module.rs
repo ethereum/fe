@@ -13,7 +13,7 @@ pub fn module(db: &dyn YulgenDb, module: ModuleId) -> YulContracts {
             let yul_contract = db.contract_object(*id);
 
             if contracts
-                .insert(id.name(db.upcast()), yul_contract)
+                .insert(id.name(db.upcast()).to_string(), yul_contract)
                 .is_some()
             {
                 panic!("duplicate contract definition");

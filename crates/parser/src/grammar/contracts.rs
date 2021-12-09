@@ -106,7 +106,7 @@ pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<Contract>> {
     let span = header_span + fields.last() + defs.last();
     Ok(Node::new(
         Contract {
-            name: Node::new(contract_name.text.to_string(), contract_name.span),
+            name: Node::new(contract_name.text.into(), contract_name.span),
             fields,
             body: defs,
         },

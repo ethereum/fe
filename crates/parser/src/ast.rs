@@ -2,6 +2,7 @@ use crate::node::Node;
 use fe_common::{Span, Spanned};
 use indenter::indented;
 use serde::{Deserialize, Serialize};
+pub use smol_str::SmolStr;
 use std::fmt;
 use std::fmt::Formatter;
 use std::fmt::Write;
@@ -25,12 +26,12 @@ pub enum ModuleStmt {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Pragma {
-    pub version_requirement: Node<String>,
+    pub version_requirement: Node<SmolStr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Path {
-    pub segments: Vec<Node<String>>,
+    pub segments: Vec<Node<SmolStr>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -49,33 +50,33 @@ pub enum UseTree {
     },
     Simple {
         path: Path,
-        rename: Option<Node<String>>,
+        rename: Option<Node<SmolStr>>,
     },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct ConstantDecl {
-    pub name: Node<String>,
+    pub name: Node<SmolStr>,
     pub typ: Node<TypeDesc>,
     pub value: Node<Expr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct TypeAlias {
-    pub name: Node<String>,
+    pub name: Node<SmolStr>,
     pub typ: Node<TypeDesc>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Contract {
-    pub name: Node<String>,
+    pub name: Node<SmolStr>,
     pub fields: Vec<Node<Field>>,
     pub body: Vec<ContractStmt>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Struct {
-    pub name: Node<String>,
+    pub name: Node<SmolStr>,
     pub fields: Vec<Node<Field>>,
     pub functions: Vec<Node<Function>>,
 }
@@ -83,9 +84,9 @@ pub struct Struct {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub enum TypeDesc {
     Unit,
-    // TODO: replace with `Name(String)`, or eliminate in favor of `Path`?
+    // TODO: replace with `Name(SmolStr)`, or eliminate in favor of `Path`?
     Base {
-        base: String,
+        base: SmolStr,
     },
     Path(Path),
     Tuple {
@@ -94,7 +95,7 @@ pub enum TypeDesc {
     Generic {
         // TODO: when we support user-defined generic types,
         // this will have to be a `Path`
-        base: Node<String>,
+        base: Node<SmolStr>,
         args: Node<Vec<GenericArg>>,
     },
 }
@@ -119,7 +120,7 @@ impl Spanned for GenericArg {
 pub struct Field {
     pub is_pub: bool,
     pub is_const: bool,
-    pub name: Node<String>,
+    pub name: Node<SmolStr>,
     pub typ: Node<TypeDesc>,
     pub value: Option<Node<Expr>>,
 }
@@ -133,7 +134,7 @@ pub enum ContractStmt {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Event {
-    pub name: Node<String>,
+    pub name: Node<SmolStr>,
     pub fields: Vec<Node<EventField>>,
 }
 
@@ -142,7 +143,7 @@ pub struct Function {
     // qualifier order: `pub unsafe fn`
     pub pub_: Option<Span>,
     pub unsafe_: Option<Span>,
-    pub name: Node<String>,
+    pub name: Node<SmolStr>,
     pub args: Vec<Node<FunctionArg>>,
     pub return_type: Option<Node<TypeDesc>>,
     pub body: Vec<Node<FuncStmt>>,
@@ -151,13 +152,13 @@ pub struct Function {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct EventField {
     pub is_idx: bool,
-    pub name: Node<String>,
+    pub name: Node<SmolStr>,
     pub typ: Node<TypeDesc>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct RegularFunctionArg {
-    pub name: Node<String>,
+    pub name: Node<SmolStr>,
     pub typ: Node<TypeDesc>,
 }
 
@@ -188,7 +189,7 @@ pub enum FuncStmt {
         value: Node<Expr>,
     },
     For {
-        target: Node<String>,
+        target: Node<SmolStr>,
         iter: Node<Expr>,
         body: Vec<Node<FuncStmt>>,
     },
@@ -206,7 +207,7 @@ pub enum FuncStmt {
         msg: Option<Node<Expr>>,
     },
     Emit {
-        name: Node<String>,
+        name: Node<SmolStr>,
         args: Node<Vec<Node<CallArg>>>,
     },
     Expr {
@@ -223,7 +224,7 @@ pub enum FuncStmt {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub enum VarDeclTarget {
-    Name(String),
+    Name(SmolStr),
     Tuple(Vec<Node<VarDeclTarget>>),
 }
 
@@ -255,7 +256,7 @@ pub enum Expr {
     },
     Attribute {
         value: Box<Node<Expr>>,
-        attr: Node<String>,
+        attr: Node<SmolStr>,
     },
     Subscript {
         value: Box<Node<Expr>>,
@@ -273,16 +274,16 @@ pub enum Expr {
         elts: Vec<Node<Expr>>,
     },
     Bool(bool),
-    Name(String),
+    Name(SmolStr),
     Path(Path),
-    Num(String),
-    Str(String),
+    Num(SmolStr),
+    Str(SmolStr),
     Unit,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct CallArg {
-    pub label: Option<Node<String>>,
+    pub label: Option<Node<SmolStr>>,
     pub value: Node<Expr>,
 }
 
@@ -463,7 +464,7 @@ impl fmt::Display for Path {
         let joined_names = self
             .segments
             .iter()
-            .map(|name| name.kind.to_string())
+            .map(|name| name.kind.as_ref())
             .collect::<Vec<_>>()
             .join("::");
         write!(f, "{}", joined_names)?;
