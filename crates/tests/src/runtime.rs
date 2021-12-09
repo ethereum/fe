@@ -217,22 +217,6 @@ fn test_runtime_ceil32() {
 }
 
 #[test]
-fn test_runtime_ternary() {
-    with_executor(&|mut executor| {
-        Runtime::default()
-            .with_test_statements(statements! {
-                (let a := ternary(0, 42, 26))
-                (let b := ternary(1, 42, 26))
-
-                [assert_eq!(a, 26)]
-                [assert_eq!(b, 42)]
-            })
-            .execute(&mut executor)
-            .expect_success();
-    })
-}
-
-#[test]
 fn test_runtime_abi_unpack() {
     with_executor(&|mut executor| {
         Runtime::default()
