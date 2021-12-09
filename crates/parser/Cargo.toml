@@ -15,7 +15,6 @@ fe-common = {path = "../common", version = "^0.11.0-alpha"}
 logos = { version = "0.11.4", default-features = false, features = ["export_derive"] }
 serde = { version = "1", features = ["derive"] }
 unescape = "0.1.0"
-uuid = { version = "0.8", features = ["v4", "stdweb"] }
 vec1 = { version = "1.8.0", features = ["serde"] }
 if_chain = "1.0.1"
 semver = "1.0.0"
