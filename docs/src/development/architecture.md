@@ -1,48 +1,32 @@
 # Fe compiler architecture
 
-The Fe project is split into multiple crates.
+The Fe project is split into multiple crates:
 
-fe
-- The command-line interface. Mostly calls out to the "driver" crate to compile the given fe code.
+- `fe`: The command-line interface. Mostly calls out to the "driver" crate to compile the given fe code.
 
-driver
-- Contains the main `compile` function that takes in a file path, and returns a compiled program.
-  This calls code from the parser, analyzer, lowering, yulgen, and yulc crates to do the actual work.
+- `driver`: Contains the main `compile` function that takes in a file path, and returns a compiled program.
+This calls code from the parser, analyzer, lowering, yulgen, and yulc crates to do the actual work.
 
-parser
-- The lexer splits the program text into discrete tokens.
-- The parser checks whether the stream of tokens compose a syntactically correct program,
-and build an abstract syntax tree (AST)
+- `parser`: The lexer splits the program text into discrete tokens. The parser checks whether the stream of tokens compose a syntactically correct program, and build an abstract syntax tree (AST)
 
-analyzer
-- Checks whether the AST is semantically correct, and collects the types and attribute information
-  needed by later stages.
+- `analyzer`: Checks whether the AST is semantically correct, and collects the types and attribute information
+needed by later stages.
 
-lowering
-- Replaces some high level fe code (syntactic sugar) with its lower-level equivalent.
+- `lowering`: Replaces some high level fe code (syntactic sugar) with its lower-level equivalent.
 For example, tuples are replaced with equivalent structs.
 
-yulgen
-- Generates yul code from the lowered fe AST, using types and attributes gathered by the analyzer.
-  Yul is an intermediate representation language defined by the solidity project, designed to be easy
-  to read, and easy to compile to EVM bytecode.
+- `yulgen`: Generates yul code from the lowered fe AST, using types and attributes gathered by the analyzer.
+Yul is an intermediate representation language defined by the solidity project, designed to be easy
+to read, and easy to compile to EVM bytecode.
 
-yulc
-- Compiles yul code down to EVM bytecode (using the solidity compiler)
+- `yulc`: Compiles yul code down to EVM bytecode (using the solidity compiler)
 
-common
-- Contains some code that's shared by the other crates, like code for generating and printing diagnostics
-(errors and warnings for problems in the user's fe code).
+- `common`: Contains some code that's shared by the other crates, like code for generating and printing diagnostics (errors and warnings for problems in the user's fe code).
 
-test-files
-- Contains example fe source code files that are used in tests.
-
-test-utils
-- Code for executing fe (and solidity) on the evm, for testing purposes.
-
-tests
-- High-level tests of fe functionality, tested by running fe code on the evm.
-  Tests of specific parser, analyzer, etc functionality are in the individual crates.
+- `test-files`: Contains example fe source code files that are used in tests.
+- `test-utils`: Code for executing fe (and solidity) on the evm, for testing purposes.
+- `ests`: High-level tests of fe functionality, tested by running fe code on the evm.
+Tests of specific parser, analyzer, etc functionality are in the individual crates.
 
 
 ## Lexer/tokenizer
