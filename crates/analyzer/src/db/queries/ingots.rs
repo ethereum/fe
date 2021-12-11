@@ -21,7 +21,7 @@ pub fn ingot_all_modules(db: &dyn AnalyzerDb, ingot_id: IngotId) -> Rc<Vec<Modul
                     .expect("file does not have stem")
                     .to_str()
                     .expect("could not convert file stem to string")
-                    .to_string(),
+                    .into(),
                 ast: ast.clone(),
                 file_content: ModuleFileContent::File { file: file.id },
                 context: ModuleContext::Ingot(ingot_id),
@@ -49,14 +49,14 @@ pub fn ingot_all_modules(db: &dyn AnalyzerDb, ingot_id: IngotId) -> Rc<Vec<Modul
                     .expect("missing file name")
                     .to_str()
                     .expect("could not convert dir name to string")
-                    .to_string(),
+                    .into(),
                 ast: ast::Module { body: vec![] },
                 context: ModuleContext::Ingot(ingot_id),
                 file_content: ModuleFileContent::Dir {
                     dir_path: dir
                         .to_str()
                         .expect("could not convert dir path to string")
-                        .to_string(),
+                        .into(),
                 },
             };
 

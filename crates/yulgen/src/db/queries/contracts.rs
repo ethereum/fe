@@ -8,6 +8,7 @@ use fe_analyzer::namespace::items::{walk_local_dependencies, ContractId, DepGrap
 use fe_analyzer::namespace::types::FixedSize;
 use fe_common::utils::keccak;
 use indexmap::IndexSet;
+use smol_str::SmolStr;
 use std::convert::TryInto;
 use yultsur::*;
 
@@ -79,12 +80,7 @@ pub fn contract_abi_dispatcher(db: &dyn YulgenDb, contract: ContractId) -> Vec<y
             let bare_name = id.name(adb);
             let qualified_name = db.function_yul_name(*id);
             let (param_types, return_type) = db.function_sig_abi_types(*id);
-            (
-                bare_name,
-                qualified_name.to_string(),
-                param_types,
-                return_type,
-            )
+            (bare_name, qualified_name, param_types, return_type)
         })
         .collect::<Vec<_>>();
 
@@ -114,7 +110,7 @@ fn build_dependency_graph(
 ) -> (Vec<yul::Statement>, Vec<yul::Data>, Vec<yul::Object>) {
     let adb = db.upcast(); // AnalyzerDb
 
-    let mut string_literals = IndexSet::<String>::new();
+    let mut string_literals = IndexSet::<SmolStr>::new();
     let mut created_contracts = IndexSet::<ContractId>::new();
 
     // We need all of the "std" yul functions,
@@ -181,7 +177,7 @@ fn build_dependency_graph(
         .into_iter()
         .map(|string| yul::Data {
             name: keccak::full(string.as_bytes()),
-            value: string,
+            value: string.to_string(),
         })
         .collect();
 

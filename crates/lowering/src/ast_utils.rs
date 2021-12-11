@@ -455,14 +455,14 @@ pub fn ternary_to_if(
     } = &expr.kind
     {
         let mut stmts = vec![FuncStmt::VarDecl {
-            target: VarDeclTarget::Name(result_name.to_string()).into_node(),
+            target: VarDeclTarget::Name(result_name.into()).into_node(),
             typ: names::fixed_size_type_desc(&ternary_type).into_node(),
             value: None,
         }
         .into_node()];
 
         let if_branch = FuncStmt::Assign {
-            target: Expr::Name(result_name.to_string()).into_node(),
+            target: Expr::Name(result_name.into()).into_node(),
             value: if_expr
                 .kind
                 .clone()
@@ -471,7 +471,7 @@ pub fn ternary_to_if(
         .into_node();
 
         let else_branch = FuncStmt::Assign {
-            target: Expr::Name(result_name.to_string()).into_node(),
+            target: Expr::Name(result_name.into()).into_node(),
             value: else_expr
                 .kind
                 .clone()
@@ -512,13 +512,13 @@ pub fn boolean_expr_to_if(
                 //     res = right
 
                 let mut stmts = vec![FuncStmt::VarDecl {
-                    target: VarDeclTarget::Name(result_name.to_string()).into_node(),
+                    target: VarDeclTarget::Name(result_name.into()).into_node(),
                     typ: names::fixed_size_type_desc(&expr_type).into_node(),
                     value: Some(Expr::Bool(false).into_node()),
                 }
                 .into_node()];
                 let if_branch = FuncStmt::Assign {
-                    target: Expr::Name(result_name.to_string()).into_node(),
+                    target: Expr::Name(result_name.into()).into_node(),
                     value: right.kind.clone().into_traceable_node(right.original_id),
                 }
                 .into_node();
@@ -540,13 +540,13 @@ pub fn boolean_expr_to_if(
                 // if not left:
                 //     res = right
                 let mut stmts = vec![FuncStmt::VarDecl {
-                    target: VarDeclTarget::Name(result_name.to_string()).into_node(),
+                    target: VarDeclTarget::Name(result_name.into()).into_node(),
                     typ: names::fixed_size_type_desc(&expr_type).into_node(),
                     value: Some(Expr::Bool(true).into_node()),
                 }
                 .into_node()];
                 let if_branch = FuncStmt::Assign {
-                    target: Expr::Name(result_name.to_string()).into_node(),
+                    target: Expr::Name(result_name.into()).into_node(),
                     value: right.kind.clone().into_traceable_node(right.original_id),
                 }
                 .into_node();
@@ -644,7 +644,7 @@ pub fn replace_node_with_name_expression(
         .map(|node| {
             map_ast_node(node.clone().into(), &mut |val| match val {
                 StmtOrExpr::Expr(expr) if expr.original_id == node_id => {
-                    Expr::Name(name.to_string()).into_node().into()
+                    Expr::Name(name.into()).into_node().into()
                 }
                 _ => val,
             })
@@ -677,7 +677,7 @@ mod tests {
             source.push_str(&stmt.kind.to_string());
             source.push('\n');
         }
-        source.trim().to_string()
+        source.trim().into()
     }
 
     #[test]
@@ -689,7 +689,7 @@ mod tests {
             if let StmtOrExpr::Stmt(stmt) = stmt {
                 let node = match stmt.kind {
                     FuncStmt::Return { .. } => FuncStmt::Return {
-                        value: Some(Expr::Name("foo".to_string()).into_node()),
+                        value: Some(Expr::Name("foo".into()).into_node()),
                     },
                     _ => stmt.kind,
                 }
@@ -706,7 +706,7 @@ mod tests {
     #[test]
     fn transform_expr() {
         let stmt = FuncStmt::Return {
-            value: Some(Expr::Name("foo".to_string()).into_node()),
+            value: Some(Expr::Name("foo".into()).into_node()),
         }
         .into_node();
         assert_eq!(to_code(&[stmt.clone()]), "return foo");
@@ -714,7 +714,7 @@ mod tests {
         let mut transform_expr = |expr| {
             if let StmtOrExpr::Expr(expr) = expr {
                 let node = match expr.kind {
-                    Expr::Name(_) => Expr::Name("bar".to_string()),
+                    Expr::Name(_) => Expr::Name("bar".into()),
                     _ => expr.kind,
                 }
                 .into_node();
@@ -731,8 +731,8 @@ mod tests {
     #[test]
     fn count_expr() {
         let add_expr = Expr::BinOperation {
-            left: Expr::Num("1".to_string()).into_boxed_node(),
-            right: Expr::Num("2".to_string()).into_boxed_node(),
+            left: Expr::Num("1".into()).into_boxed_node(),
+            right: Expr::Num("2".into()).into_boxed_node(),
             op: BinOperator::Add.into_node(),
         };
         let stmt = FuncStmt::Return {
@@ -767,14 +767,14 @@ mod tests {
     fn inject_expression() {
         let nested_ternary = Expr::Ternary {
             test: Expr::Bool(true).into_boxed_node(),
-            if_expr: Expr::Num("1".to_string()).into_boxed_node(),
-            else_expr: Expr::Num("2".to_string()).into_boxed_node(),
+            if_expr: Expr::Num("1".into()).into_boxed_node(),
+            else_expr: Expr::Num("2".into()).into_boxed_node(),
         }
         .into_boxed_node();
 
         let ternary = Expr::Ternary {
             test: Expr::Bool(true).into_boxed_node(),
-            if_expr: Expr::Num("1".to_string()).into_boxed_node(),
+            if_expr: Expr::Num("1".into()).into_boxed_node(),
             else_expr: nested_ternary,
         }
         .into_node();
@@ -801,14 +801,14 @@ mod tests {
     fn inject_expression_nested() {
         let nested_ternary = Expr::Ternary {
             test: Expr::Bool(true).into_boxed_node(),
-            if_expr: Expr::Num("1".to_string()).into_boxed_node(),
-            else_expr: Expr::Num("2".to_string()).into_boxed_node(),
+            if_expr: Expr::Num("1".into()).into_boxed_node(),
+            else_expr: Expr::Num("2".into()).into_boxed_node(),
         }
         .into_boxed_node();
 
         let ternary = Expr::Ternary {
             test: Expr::Bool(true).into_boxed_node(),
-            if_expr: Expr::Num("1".to_string()).into_boxed_node(),
+            if_expr: Expr::Num("1".into()).into_boxed_node(),
             else_expr: nested_ternary,
         }
         .into_node();
@@ -850,20 +850,20 @@ else:
     fn lower_nested_ternary() {
         let nested_ternary = Expr::Ternary {
             test: Expr::Bool(true).into_boxed_node(),
-            if_expr: Expr::Num("1".to_string()).into_boxed_node(),
-            else_expr: Expr::Num("2".to_string()).into_boxed_node(),
+            if_expr: Expr::Num("1".into()).into_boxed_node(),
+            else_expr: Expr::Num("2".into()).into_boxed_node(),
         }
         .into_boxed_node();
 
         let ternary = Expr::Ternary {
             test: Expr::Bool(true).into_boxed_node(),
-            if_expr: Expr::Num("1".to_string()).into_boxed_node(),
+            if_expr: Expr::Num("1".into()).into_boxed_node(),
             else_expr: nested_ternary.clone(),
         }
         .into_node();
 
         let call = Expr::Call {
-            func: Expr::Name("foo".to_string()).into_boxed_node(),
+            func: Expr::Name("foo".into()).into_boxed_node(),
             args: vec![CallArg {
                 value: ternary.clone(),
                 label: None,

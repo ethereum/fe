@@ -11,6 +11,7 @@ use crate::traversal::types::type_desc;
 use fe_common::diagnostics::Label;
 use fe_parser::ast;
 use indexmap::map::{Entry, IndexMap};
+use smol_str::SmolStr;
 use std::rc::Rc;
 
 /// A `Vec` of every function defined in the contract, including duplicates and the init function.
@@ -36,9 +37,9 @@ pub fn contract_all_functions(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<V
 pub fn contract_function_map(
     db: &dyn AnalyzerDb,
     contract: ContractId,
-) -> Analysis<Rc<IndexMap<String, FunctionId>>> {
+) -> Analysis<Rc<IndexMap<SmolStr, FunctionId>>> {
     let mut scope = ItemScope::new(db, contract.module(db));
-    let mut map = IndexMap::<String, FunctionId>::new();
+    let mut map = IndexMap::<SmolStr, FunctionId>::new();
 
     for func in db.contract_all_functions(contract).iter() {
         let def = &func.data(db).ast;
@@ -69,7 +70,7 @@ pub fn contract_function_map(
             continue;
         }
 
-        match map.entry(def.name().to_string()) {
+        match map.entry(def.name().into()) {
             Entry::Occupied(entry) => {
                 scope.duplicate_name_error(
                     &format!(
@@ -95,7 +96,7 @@ pub fn contract_function_map(
 pub fn contract_public_function_map(
     db: &dyn AnalyzerDb,
     contract: ContractId,
-) -> Rc<IndexMap<String, FunctionId>> {
+) -> Rc<IndexMap<SmolStr, FunctionId>> {
     Rc::new(
         contract
             .functions(db)
@@ -176,15 +177,15 @@ pub fn contract_all_events(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<Vec<
 pub fn contract_event_map(
     db: &dyn AnalyzerDb,
     contract: ContractId,
-) -> Analysis<Rc<IndexMap<String, EventId>>> {
+) -> Analysis<Rc<IndexMap<SmolStr, EventId>>> {
     let mut scope = ItemScope::new(db, contract.module(db));
-    let mut map = IndexMap::<String, EventId>::new();
+    let mut map = IndexMap::<SmolStr, EventId>::new();
 
     let contract_name = contract.name(db);
     for event in db.contract_all_events(contract).iter() {
         let node = &event.data(db).ast;
 
-        match map.entry(node.name().to_string()) {
+        match map.entry(node.name().into()) {
             Entry::Occupied(entry) => {
                 scope.duplicate_name_error(
                     &format!("duplicate event names in `contract {}`", contract_name,),
@@ -226,15 +227,15 @@ pub fn contract_all_fields(db: &dyn AnalyzerDb, contract: ContractId) -> Rc<Vec<
 pub fn contract_field_map(
     db: &dyn AnalyzerDb,
     contract: ContractId,
-) -> Analysis<Rc<IndexMap<String, ContractFieldId>>> {
+) -> Analysis<Rc<IndexMap<SmolStr, ContractFieldId>>> {
     let mut scope = ItemScope::new(db, contract.module(db));
-    let mut map = IndexMap::<String, ContractFieldId>::new();
+    let mut map = IndexMap::<SmolStr, ContractFieldId>::new();
 
     let contract_name = contract.name(db);
     for field in db.contract_all_fields(contract).iter() {
         let node = &field.data(db).ast;
 
-        match map.entry(node.name().to_string()) {
+        match map.entry(node.name().into()) {
             Entry::Occupied(entry) => {
                 scope.duplicate_name_error(
                     &format!("duplicate field names in `contract {}`", contract_name,),

@@ -12,6 +12,7 @@ use crate::traversal::types::type_desc;
 use crate::AnalyzerDb;
 use fe_parser::ast;
 use indexmap::map::{Entry, IndexMap};
+use smol_str::SmolStr;
 use std::rc::Rc;
 use std::str::FromStr;
 
@@ -43,15 +44,15 @@ pub fn struct_all_fields(db: &dyn AnalyzerDb, struct_: StructId) -> Rc<Vec<Struc
 pub fn struct_field_map(
     db: &dyn AnalyzerDb,
     struct_: StructId,
-) -> Analysis<Rc<IndexMap<String, StructFieldId>>> {
+) -> Analysis<Rc<IndexMap<SmolStr, StructFieldId>>> {
     let mut scope = ItemScope::new(db, struct_.module(db));
-    let mut fields = IndexMap::<String, StructFieldId>::new();
+    let mut fields = IndexMap::<SmolStr, StructFieldId>::new();
 
     let struct_name = struct_.name(db);
     for field in db.struct_all_fields(struct_).iter() {
         let node = &field.data(db).ast;
 
-        match fields.entry(node.name().to_string()) {
+        match fields.entry(node.name().into()) {
             Entry::Occupied(entry) => {
                 scope.duplicate_name_error(
                     &format!("duplicate field names in `struct {}`", struct_name,),
@@ -133,9 +134,9 @@ pub fn struct_all_functions(db: &dyn AnalyzerDb, struct_: StructId) -> Rc<Vec<Fu
 pub fn struct_function_map(
     db: &dyn AnalyzerDb,
     struct_: StructId,
-) -> Analysis<Rc<IndexMap<String, FunctionId>>> {
+) -> Analysis<Rc<IndexMap<SmolStr, FunctionId>>> {
     let mut scope = ItemScope::new(db, struct_.module(db));
-    let mut map = IndexMap::<String, FunctionId>::new();
+    let mut map = IndexMap::<SmolStr, FunctionId>::new();
 
     for func in db.struct_all_functions(struct_).iter() {
         let def = &func.data(db).ast;
@@ -167,7 +168,7 @@ pub fn struct_function_map(
             continue;
         }
 
-        match map.entry(def_name.to_string()) {
+        match map.entry(def_name.into()) {
             Entry::Occupied(entry) => {
                 scope.duplicate_name_error(
                     &format!("duplicate function names in `struct {}`", struct_.name(db)),

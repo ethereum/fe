@@ -355,12 +355,12 @@ fn atom(par: &mut Parser, tok: &Token) -> Node<Expr> {
     use TokenKind::*;
 
     let expr = match tok.kind {
-        Name | SelfValue => Expr::Name(tok.text.to_owned()),
-        Int | Hex | Octal | Binary => Expr::Num(tok.text.to_owned()),
+        Name | SelfValue => Expr::Name(tok.text.into()),
+        Int | Hex | Octal | Binary => Expr::Num(tok.text.into()),
         True | False => Expr::Bool(tok.kind == True),
         Text => {
             if let Some(string) = unescape_string(tok.text) {
-                Expr::Str(string)
+                Expr::Str(string.into())
             } else {
                 par.error(tok.span, "String contains an invalid escape sequence");
                 Expr::Str(tok.text.into())

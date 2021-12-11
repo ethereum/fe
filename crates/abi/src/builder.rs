@@ -14,10 +14,12 @@ pub fn module(db: &dyn AnalyzerDb, module: ModuleId) -> Result<ModuleAbis, AbiEr
         .iter()
         .try_fold(ModuleAbis::new(), |mut abis, contract| {
             if abis
-                .insert(contract.name(db), contract_def(db, *contract))
+                .insert(contract.name(db).into(), contract_def(db, *contract))
                 .is_some()
             {
-                return Err(AbiError::DuplicateContractDefinition(contract.name(db)));
+                return Err(AbiError::DuplicateContractDefinition(
+                    contract.name(db).into(),
+                ));
             }
             Ok(abis)
         })
@@ -30,7 +32,7 @@ fn contract_def(db: &dyn AnalyzerDb, contract: ContractId) -> Contract {
         .map(|(name, eventid)| {
             let attributes = eventid.typ(db);
             Event {
-                name: name.to_owned(),
+                name: name.to_string(),
                 typ: "event".to_string(),
                 fields: attributes
                     .fields
@@ -38,7 +40,7 @@ fn contract_def(db: &dyn AnalyzerDb, contract: ContractId) -> Contract {
                     .map(|field| {
                         let typ = field.typ.clone().expect("event field type error");
                         EventField {
-                            name: field.name.to_owned(),
+                            name: field.name.to_string(),
                             typ: typ.abi_json_name(),
                             indexed: field.is_indexed,
                             components: components(db, &typ),
@@ -72,7 +74,7 @@ fn function_def(db: &dyn AnalyzerDb, name: &str, fn_id: FunctionId, typ: FuncTyp
             let typ = param.typ.clone().expect("function parameter type error");
 
             FuncInput {
-                name: param.name.to_owned(),
+                name: param.name.to_string(),
                 typ: typ.abi_json_name(),
                 components: components(db, &typ),
             }
@@ -104,7 +106,7 @@ fn components(db: &dyn AnalyzerDb, typ: &types::FixedSize) -> Vec<Component> {
             .fields(db)
             .iter()
             .map(|(name, field_id)| Component {
-                name: name.to_owned(),
+                name: name.to_string(),
                 typ: field_id
                     .typ(db)
                     .expect("struct field type error")
@@ -158,7 +160,7 @@ contract Foo:
         let global_id = db.intern_global(Rc::new(global));
 
         let module = Module {
-            name: "test_module".to_string(),
+            name: "test_module".into(),
             context: ModuleContext::Global(global_id),
             file_content: ModuleFileContent::File {
                 file: SourceFileId(0),

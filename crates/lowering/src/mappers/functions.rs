@@ -13,7 +13,7 @@ use crate::utils::ZeroSpanNode;
 use fe_analyzer::namespace::items::FunctionId;
 use fe_analyzer::namespace::types::{Base, Type};
 use fe_analyzer::namespace::types::{FixedSize, TypeDowncast};
-use fe_parser::ast::{self as fe, Expr, FuncStmt, RegularFunctionArg};
+use fe_parser::ast::{self as fe, Expr, FuncStmt, RegularFunctionArg, SmolStr};
 use fe_parser::node::Node;
 
 /// Lowers a function definition.
@@ -167,7 +167,7 @@ fn func_stmt(context: &mut FnContext, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::
         fe::FuncStmt::Return { value } => stmt_return(context, value),
         fe::FuncStmt::VarDecl { target, typ, value } => {
             let var_type = context
-                .var_decl_type(&typ)
+                .var_decl_type(typ.id)
                 .expect("missing var decl type")
                 .clone()
                 .into();
@@ -313,7 +313,7 @@ fn lower_tuple_destructuring(
     span: fe_common::Span,
 ) -> Vec<fe::FuncStmt> {
     let mut stmts = vec![];
-    let tmp_tuple = context.make_unique_name("tmp_tuple");
+    let tmp_tuple: SmolStr = context.make_unique_name("tmp_tuple").into();
     stmts.push(fe::FuncStmt::VarDecl {
         target: Node::new(fe::VarDeclTarget::Name(tmp_tuple.clone()), span),
         typ: types::type_desc(context.module, type_desc.clone(), typ),
@@ -343,11 +343,11 @@ fn declare_tuple_items(
 ) {
     match target.kind {
         fe::VarDeclTarget::Name(_) => {
-            let mut value = fe::Expr::Name(tmp_tuple.to_string()).into_node();
+            let mut value = fe::Expr::Name(tmp_tuple.into()).into_node();
             for index in indices.iter() {
                 value = fe::Expr::Attribute {
                     value: value.into(),
-                    attr: format!("item{}", index).into_node(),
+                    attr: SmolStr::new(format!("item{}", index)).into_node(),
                 }
                 .into_node();
             }

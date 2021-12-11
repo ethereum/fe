@@ -4,6 +4,7 @@ use crate::AnalyzerDb;
 
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
+use smol_str::SmolStr;
 use std::convert::TryFrom;
 use std::fmt;
 use std::str::FromStr;
@@ -65,6 +66,17 @@ pub enum Base {
     Unit,
 }
 
+impl Base {
+    pub fn name(&self) -> SmolStr {
+        match self {
+            Base::Numeric(num) => num.as_ref().into(),
+            Base::Bool => "bool".into(),
+            Base::Address => "address".into(),
+            Base::Unit => "()".into(),
+        }
+    }
+}
+
 #[derive(
     Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, AsRefStr, EnumString, EnumIter,
 )]
@@ -105,7 +117,7 @@ pub struct Tuple {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Struct {
-    pub name: String,
+    pub name: SmolStr,
     pub id: StructId,
     pub field_count: usize,
 }
@@ -121,7 +133,7 @@ impl Struct {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Contract {
-    pub name: String,
+    pub name: SmolStr,
     pub id: ContractId,
 }
 impl Contract {
@@ -152,7 +164,7 @@ pub enum SelfDecl {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FunctionParam {
-    pub name: String,
+    pub name: SmolStr,
     pub typ: Result<FixedSize, TypeError>,
 }
 
@@ -166,8 +178,8 @@ pub enum GenericType {
 }
 
 impl GenericType {
-    pub fn name(&self) -> &str {
-        self.as_ref()
+    pub fn name(&self) -> SmolStr {
+        self.as_ref().into()
     }
     pub fn params(&self) -> Vec<GenericParam> {
         match self {
@@ -226,7 +238,7 @@ impl GenericType {
 }
 
 pub struct GenericParam {
-    pub name: String,
+    pub name: SmolStr,
     pub kind: GenericParamKind,
 }
 
@@ -304,13 +316,13 @@ impl Integer {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Event {
-    pub name: String,
+    pub name: SmolStr,
     pub fields: Vec<EventField>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct EventField {
-    pub name: String,
+    pub name: SmolStr,
     pub typ: Result<FixedSize, TypeError>,
     pub is_indexed: bool,
 }
@@ -333,6 +345,19 @@ impl FunctionSignature {
 }
 
 impl Type {
+    pub fn name(&self) -> SmolStr {
+        match self {
+            Type::Base(inner) => inner.name(),
+            Type::Array(inner) => inner.to_string().into(),
+            Type::Map(inner) => inner.to_string().into(),
+            Type::Tuple(inner) => inner.to_string().into(),
+            Type::String(inner) => inner.to_string().into(),
+            Type::Contract(inner) => inner.name.clone(),
+            Type::SelfContract(inner) => inner.name.clone(),
+            Type::Struct(inner) => inner.name.clone(),
+        }
+    }
+
     pub fn is_signed_integer(&self) -> bool {
         if let Type::Base(Base::Numeric(integer)) = &self {
             return integer.is_signed();

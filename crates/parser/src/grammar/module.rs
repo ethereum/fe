@@ -199,12 +199,10 @@ pub fn parse_use_tree(par: &mut Parser) -> ParseResult<Node<UseTree>> {
         par.next()?;
 
         let rename_tok = par.expect(TokenKind::Name, "failed to parse `use` tree")?;
-        let rename = Some(Node::new(rename_tok.text.to_string(), rename_tok.span));
+        let span = path_span + rename_tok.span;
+        let rename = Some(rename_tok.into());
 
-        Ok(Node::new(
-            UseTree::Simple { path, rename },
-            path_span + rename_tok.span,
-        ))
+        Ok(Node::new(UseTree::Simple { path, rename }, span))
     } else {
         Ok(Node::new(UseTree::Simple { path, rename: None }, path_span))
     }
@@ -243,7 +241,7 @@ pub fn parse_pragma(par: &mut Parser) -> ParseResult<Node<Pragma>> {
     match VersionReq::parse(&version_string) {
         Ok(_) => Ok(Node::new(
             Pragma {
-                version_requirement: Node::new(version_string, version_requirement_span),
+                version_requirement: Node::new(version_string.into(), version_requirement_span),
             },
             tok.span + version_requirement_span,
         )),

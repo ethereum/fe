@@ -480,8 +480,13 @@ pub fn parse_emit_statement(par: &mut Parser) -> ParseResult<Node<FuncStmt>> {
         let args = parse_call_args(par)?;
         par.expect_newline("emit statement")?;
         let span = emit_tok.span + args.span;
-        let name = Node::new(event_name.text.to_string(), event_name.span);
-        return Ok(Node::new(FuncStmt::Emit { name, args }, span));
+        return Ok(Node::new(
+            FuncStmt::Emit {
+                name: event_name.into(),
+                args,
+            },
+            span,
+        ));
     } else {
         par.expect(
             TokenKind::ParenOpen,

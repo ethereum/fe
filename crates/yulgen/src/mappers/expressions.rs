@@ -17,6 +17,7 @@ use fe_common::utils::keccak;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use num_bigint::BigInt;
+use smol_str::SmolStr;
 use std::convert::TryFrom;
 use std::str::FromStr;
 use yultsur::*;
@@ -354,7 +355,7 @@ pub fn expr_unary_operation(context: &mut FnContext, exp: &Node<fe::Expr>) -> yu
 }
 
 /// Retrieves the String value of a name expression.
-pub fn expr_name_string(exp: &Node<fe::Expr>) -> String {
+pub fn expr_name_string(exp: &Node<fe::Expr>) -> SmolStr {
     if let fe::Expr::Name(name) = &exp.kind {
         return name.to_owned();
     }

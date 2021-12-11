@@ -1,13 +1,14 @@
 pub use fe_common::{Span, Spanned};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 #[derive(Debug, PartialEq, Copy, Clone, Hash, Eq, Default, PartialOrd, Ord)]
-pub struct NodeId(Uuid);
+pub struct NodeId(u32);
 
 impl NodeId {
     pub fn create() -> Self {
-        Self(Uuid::new_v4())
+        static NEXT_ID: AtomicU32 = AtomicU32::new(0);
+        Self(NEXT_ID.fetch_add(1, Ordering::Relaxed))
     }
 }
 

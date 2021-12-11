@@ -7,6 +7,7 @@ use fe_common::{diagnostics::Label, utils::humanize::pluralize_conditionally};
 use fe_common::{Span, Spanned};
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
+use smol_str::SmolStr;
 
 pub trait LabeledParameter {
     fn label(&self) -> Option<&str>;
@@ -40,7 +41,7 @@ impl LabeledParameter for EventField {
 //     }
 // }
 
-impl LabeledParameter for (String, Result<FixedSize, TypeError>) {
+impl LabeledParameter for (SmolStr, Result<FixedSize, TypeError>) {
     fn label(&self) -> Option<&str> {
         Some(&self.0)
     }

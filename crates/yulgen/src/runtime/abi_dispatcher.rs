@@ -2,11 +2,12 @@ use crate::names::abi as abi_names;
 use crate::operations::abi as abi_operations;
 use crate::types::{to_abi_selector_names, AbiDecodeLocation, AbiType};
 use fe_abi::utils as abi_utils;
+use smol_str::SmolStr;
 use yultsur::*;
 
 /// Builds a switch statement that dispatches calls to the contract.
 pub fn dispatcher(
-    functions: &[(String, String, impl AsRef<[AbiType]>, Option<AbiType>)],
+    functions: &[(SmolStr, SmolStr, impl AsRef<[AbiType]>, Option<AbiType>)],
 ) -> yul::Statement {
     let arms = functions
         .iter()

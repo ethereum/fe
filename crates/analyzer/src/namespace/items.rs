@@ -13,6 +13,7 @@ use fe_parser::ast::Expr;
 use fe_parser::node::{Node, Span};
 use indexmap::indexmap;
 use indexmap::IndexMap;
+use smol_str::SmolStr;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
@@ -42,14 +43,14 @@ pub enum Item {
 }
 
 impl Item {
-    pub fn name(&self, db: &dyn AnalyzerDb) -> String {
+    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
         match self {
             Item::Type(id) => id.name(db),
-            Item::GenericType(id) => id.name().to_string(),
+            Item::GenericType(id) => id.name(),
             Item::Event(id) => id.name(db),
             Item::Function(id) => id.name(db),
-            Item::BuiltinFunction(id) => id.as_ref().to_string(),
-            Item::Object(id) => id.as_ref().to_string(),
+            Item::BuiltinFunction(id) => id.as_ref().into(),
+            Item::Object(id) => id.as_ref().into(),
             Item::Constant(id) => id.name(db),
             Item::Ingot(id) => id.name(db),
             Item::Module(id) => id.name(db),
@@ -99,7 +100,7 @@ impl Item {
         }
     }
 
-    pub fn items(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, Item>> {
+    pub fn items(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, Item>> {
         match self {
             Item::Ingot(_) => todo!("cannot access items in ingots yet"),
             Item::Module(module) => module.items(db),
@@ -153,7 +154,7 @@ impl Item {
         }
     }
 
-    pub fn path(&self, db: &dyn AnalyzerDb) -> Rc<Vec<String>> {
+    pub fn path(&self, db: &dyn AnalyzerDb) -> Rc<Vec<SmolStr>> {
         // The path is used to generate a yul identifier,
         // eg `foo::Bar::new` becomes `$$foo$Bar$new`.
         // Right now, the ingot name is the os path, so it could
@@ -204,7 +205,7 @@ impl Item {
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Default)]
 pub struct Global {
-    ingots: BTreeMap<String, IngotId>,
+    ingots: BTreeMap<SmolStr, IngotId>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
@@ -214,7 +215,7 @@ impl GlobalId {}
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Ingot {
-    pub name: String,
+    pub name: SmolStr,
     // pub version: String,
     pub global: GlobalId,
     // `BTreeMap` implements `Hash`, which is required for an ID.
@@ -229,7 +230,7 @@ impl IngotId {
         db.lookup_intern_ingot(*self)
     }
 
-    pub fn name(&self, db: &dyn AnalyzerDb) -> String {
+    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
         self.data(db).name.clone()
     }
 
@@ -264,7 +265,7 @@ pub enum ModuleFileContent {
         // directories will have a corresponding source file. we can remove
         // the `dir_path` attribute when this is added.
         // file: SourceFileId,
-        dir_path: String,
+        dir_path: SmolStr,
     },
     File {
         file: SourceFileId,
@@ -279,7 +280,7 @@ pub enum ModuleContext {
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Module {
-    pub name: String,
+    pub name: SmolStr,
     pub context: ModuleContext,
     pub file_content: ModuleFileContent,
     pub ast: ast::Module,
@@ -293,7 +294,7 @@ impl ModuleId {
         db.lookup_intern_module(*self)
     }
 
-    pub fn name(&self, db: &dyn AnalyzerDb) -> String {
+    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
         self.data(db).name.clone()
     }
 
@@ -301,11 +302,13 @@ impl ModuleId {
         self.data(db).file_content.clone()
     }
 
-    pub fn ingot_path(&self, db: &dyn AnalyzerDb) -> String {
+    pub fn ingot_path(&self, db: &dyn AnalyzerDb) -> SmolStr {
         match self.context(db) {
             ModuleContext::Ingot(ingot) => match self.file_content(db) {
                 ModuleFileContent::Dir { dir_path } => dir_path,
-                ModuleFileContent::File { file } => ingot.data(db).fe_files[&file].0.name.clone(),
+                ModuleFileContent::File { file } => {
+                    ingot.data(db).fe_files[&file].0.name.as_str().into()
+                }
             },
             ModuleContext::Global(_) => panic!("cannot get path"),
         }
@@ -320,7 +323,7 @@ impl ModuleId {
     }
 
     /// Returns a map of the named items in the module
-    pub fn items(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, Item>> {
+    pub fn items(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, Item>> {
         db.module_item_map(*self).value
     }
 
@@ -330,7 +333,7 @@ impl ModuleId {
     }
 
     /// Returns a `name -> (name_span, external_item)` map for all `use` statements in a module.
-    pub fn used_items(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, (Span, Item)>> {
+    pub fn used_items(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, (Span, Item)>> {
         db.module_used_item_map(*self).value
     }
 
@@ -339,7 +342,7 @@ impl ModuleId {
         &self,
         db: &dyn AnalyzerDb,
         tree: &Node<ast::UseTree>,
-    ) -> Rc<IndexMap<String, (Span, Item)>> {
+    ) -> Rc<IndexMap<SmolStr, (Span, Item)>> {
         db.module_resolve_use_tree(*self, tree.to_owned()).value
     }
 
@@ -347,11 +350,11 @@ impl ModuleId {
         self.items(db).get(name).copied()
     }
 
-    pub fn sub_modules(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, ModuleId>> {
+    pub fn sub_modules(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, ModuleId>> {
         db.module_sub_modules(*self)
     }
 
-    pub fn adjacent_modules(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, ModuleId>> {
+    pub fn adjacent_modules(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, ModuleId>> {
         db.module_adjacent_modules(*self)
     }
 
@@ -430,7 +433,7 @@ impl ModuleConstantId {
         matches!(self.typ(db), Ok(types::Type::Base(_)))
     }
 
-    pub fn name(&self, db: &dyn AnalyzerDb) -> String {
+    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
         self.data(db).ast.kind.name.kind.clone()
     }
 
@@ -473,12 +476,12 @@ pub enum TypeDef {
     Primitive(types::Base),
 }
 impl TypeDef {
-    pub fn name(&self, db: &dyn AnalyzerDb) -> String {
+    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
         match self {
             TypeDef::Alias(id) => id.name(db),
             TypeDef::Struct(id) => id.name(db),
             TypeDef::Contract(id) => id.name(db),
-            TypeDef::Primitive(typ) => typ.to_string(),
+            TypeDef::Primitive(typ) => typ.name(),
         }
     }
 
@@ -543,8 +546,8 @@ impl TypeAliasId {
     pub fn span(&self, db: &dyn AnalyzerDb) -> Span {
         self.data(db).ast.span
     }
-    pub fn name(&self, db: &dyn AnalyzerDb) -> String {
-        self.data(db).ast.name().to_string()
+    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
+        self.data(db).ast.name().into()
     }
     pub fn name_span(&self, db: &dyn AnalyzerDb) -> Span {
         self.data(db).ast.kind.name.span
@@ -565,7 +568,7 @@ impl TypeAliasId {
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Contract {
-    pub name: String,
+    pub name: SmolStr,
     pub ast: Node<ast::Contract>,
     pub module: ModuleId,
 }
@@ -580,8 +583,8 @@ impl ContractId {
     pub fn span(&self, db: &dyn AnalyzerDb) -> Span {
         self.data(db).ast.span
     }
-    pub fn name(&self, db: &dyn AnalyzerDb) -> String {
-        self.data(db).ast.name().to_string()
+    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
+        self.data(db).ast.name().into()
     }
     pub fn name_span(&self, db: &dyn AnalyzerDb) -> Span {
         self.data(db).ast.kind.name.span
@@ -591,7 +594,7 @@ impl ContractId {
         self.data(db).module
     }
 
-    pub fn fields(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, ContractFieldId>> {
+    pub fn fields(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, ContractFieldId>> {
         db.contract_field_map(*self).value
     }
 
@@ -618,7 +621,7 @@ impl ContractId {
     }
 
     /// User functions, public and not. Excludes `__init__`.
-    pub fn functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, FunctionId>> {
+    pub fn functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, FunctionId>> {
         db.contract_function_map(*self).value
     }
 
@@ -628,7 +631,7 @@ impl ContractId {
     }
 
     /// Excludes `__init__`.
-    pub fn public_functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, FunctionId>> {
+    pub fn public_functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, FunctionId>> {
         db.contract_public_function_map(*self)
     }
 
@@ -643,7 +646,7 @@ impl ContractId {
     }
 
     /// A map of events defined within the contract.
-    pub fn events(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, EventId>> {
+    pub fn events(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, EventId>> {
         db.contract_event_map(*self).value
     }
 
@@ -697,8 +700,8 @@ pub struct ContractField {
 pub struct ContractFieldId(pub(crate) u32);
 impl_intern_key!(ContractFieldId);
 impl ContractFieldId {
-    pub fn name(&self, db: &dyn AnalyzerDb) -> String {
-        self.data(db).ast.name().to_string()
+    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
+        self.data(db).ast.name().into()
     }
     pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<ContractField> {
         db.lookup_intern_contract_field(*self)
@@ -728,8 +731,8 @@ impl FunctionId {
     pub fn span(&self, db: &dyn AnalyzerDb) -> Span {
         self.data(db).ast.span
     }
-    pub fn name(&self, db: &dyn AnalyzerDb) -> String {
-        self.data(db).ast.name().to_string()
+    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
+        self.data(db).ast.name().into()
     }
     pub fn name_span(&self, db: &dyn AnalyzerDb) -> Span {
         self.data(db).ast.kind.name.span
@@ -811,7 +814,7 @@ impl Class {
         fun.takes_self(db).then(|| fun)
     }
 
-    pub fn name(&self, db: &dyn AnalyzerDb) -> String {
+    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
         match self {
             Class::Contract(inner) => inner.name(db),
             Class::Struct(inner) => inner.name(db),
@@ -853,8 +856,8 @@ impl StructId {
     pub fn span(&self, db: &dyn AnalyzerDb) -> Span {
         self.data(db).ast.span
     }
-    pub fn name(&self, db: &dyn AnalyzerDb) -> String {
-        self.data(db).ast.name().to_string()
+    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
+        self.data(db).ast.name().into()
     }
     pub fn name_span(&self, db: &dyn AnalyzerDb) -> Span {
         self.data(db).ast.kind.name.span
@@ -877,10 +880,10 @@ impl StructId {
         Some(self.field(db, name)?.typ(db))
     }
 
-    pub fn fields(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, StructFieldId>> {
+    pub fn fields(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, StructFieldId>> {
         db.struct_field_map(*self).value
     }
-    pub fn functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<String, FunctionId>> {
+    pub fn functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, FunctionId>> {
         db.struct_function_map(*self).value
     }
     pub fn function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
@@ -917,8 +920,8 @@ pub struct StructField {
 pub struct StructFieldId(pub(crate) u32);
 impl_intern_key!(StructFieldId);
 impl StructFieldId {
-    pub fn name(&self, db: &dyn AnalyzerDb) -> String {
-        self.data(db).ast.name().to_string()
+    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
+        self.data(db).ast.name().into()
     }
     pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<StructField> {
         db.lookup_intern_struct_field(*self)
@@ -942,8 +945,8 @@ pub struct EventId(pub(crate) u32);
 impl_intern_key!(EventId);
 
 impl EventId {
-    pub fn name(&self, db: &dyn AnalyzerDb) -> String {
-        self.data(db).ast.name().to_string()
+    pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
+        self.data(db).ast.name().into()
     }
     pub fn name_span(&self, db: &dyn AnalyzerDb) -> Span {
         self.data(db).ast.kind.name.span

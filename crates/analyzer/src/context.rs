@@ -8,10 +8,11 @@ pub use fe_common::diagnostics::Label;
 use fe_common::Span;
 use fe_parser::ast;
 use fe_parser::node::NodeId;
+
 use indexmap::{IndexMap, IndexSet};
+use smol_str::SmolStr;
 use std::collections::HashMap;
-use std::fmt;
-use std::fmt::{Debug, Display};
+use std::fmt::{self, Debug, Display};
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::rc::Rc;
@@ -195,7 +196,7 @@ impl Location {
 pub struct FunctionBody {
     pub expressions: IndexMap<NodeId, ExpressionAttributes>,
     pub emits: IndexMap<NodeId, EventId>,
-    pub string_literals: IndexSet<String>, // for yulgen
+    pub string_literals: IndexSet<SmolStr>, // for yulgen
 
     // This is the id of the VarDecl TypeDesc node
     pub var_decl_types: IndexMap<NodeId, FixedSize>,
@@ -307,17 +308,17 @@ impl CallType {
         }
     }
 
-    pub fn function_name(&self, db: &dyn AnalyzerDb) -> String {
+    pub fn function_name(&self, db: &dyn AnalyzerDb) -> SmolStr {
         match self {
-            CallType::BuiltinFunction(f) => f.as_ref().to_string(),
-            CallType::BuiltinValueMethod { method, .. } => method.as_ref().to_string(),
-            CallType::BuiltinAssociatedFunction { function, .. } => function.as_ref().to_string(),
+            CallType::BuiltinFunction(f) => f.as_ref().into(),
+            CallType::BuiltinValueMethod { method, .. } => method.as_ref().into(),
+            CallType::BuiltinAssociatedFunction { function, .. } => function.as_ref().into(),
 
             CallType::AssociatedFunction { function: id, .. }
             | CallType::ValueMethod { method: id, .. }
             | CallType::External { function: id, .. }
             | CallType::Pure(id) => id.name(db),
-            CallType::TypeConstructor(typ) => typ.to_string(),
+            CallType::TypeConstructor(typ) => typ.name(),
         }
     }
 
