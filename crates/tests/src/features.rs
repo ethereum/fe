@@ -221,6 +221,37 @@ fn test_assert() {
     })
 }
 
+#[test]
+fn test_arrays() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "arrays.fe", "Foo", &[]);
+
+        harness.test_function(
+            &mut executor,
+            "get_from_memory",
+            &[uint_token(9)],
+            Some(&uint_token(10)),
+        );
+
+        validate_revert(
+            harness.capture_call(&mut executor, "get_from_memory", &[uint_token(10)]),
+            &encoded_panic_out_of_bounds(),
+        );
+
+        harness.test_function(
+            &mut executor,
+            "get_from_storage",
+            &[uint_token(9)],
+            Some(&uint_token(0)),
+        );
+
+        validate_revert(
+            harness.capture_call(&mut executor, "get_from_storage", &[uint_token(10)]),
+            &encoded_panic_out_of_bounds(),
+        );
+    })
+}
+
 #[rstest(fixture_file, input, expected,
     case("for_loop_with_static_array.fe", &[], uint_token(30)),
     case("for_loop_with_static_array_from_sto.fe", &[], uint_token(6)),

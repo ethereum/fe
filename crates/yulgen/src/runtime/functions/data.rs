@@ -1,3 +1,6 @@
+use crate::constants::PANIC_OUT_OF_BOUNDS;
+use crate::operations::revert as revert_operations;
+
 use yultsur::*;
 
 /// Return all data runtime functions
@@ -15,6 +18,7 @@ pub fn all() -> Vec<yul::Statement> {
         ceil32(),
         cloadn(),
         free(),
+        get_array_item(),
         load_data_string(),
         map_value_ptr(),
         mcopym(),
@@ -363,6 +367,19 @@ pub fn load_data_string() -> yul::Statement {
             (mstore(mptr, size))
             (let content_ptr := alloc(size))
             (datacopy(content_ptr, code_ptr, size))
+        }
+    }
+}
+
+/// Returns a pointer to the array item at the requested index.
+/// Reverts with a panic if the index is out of bounds.
+pub fn get_array_item() -> yul::Statement {
+    function_definition! {
+        function get_array_item(array_ptr, array_length, index, inner_size) -> ptr {
+            (if (iszero((lt(index, array_length)))) {
+                [revert_operations::panic_revert(PANIC_OUT_OF_BOUNDS)]
+            } )
+            (ptr := add(array_ptr, (mul(index, inner_size))))
         }
     }
 }
