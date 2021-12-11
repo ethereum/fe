@@ -167,7 +167,7 @@ pub fn value_expr(
 
 /// Gather context information for expressions and check for type errors.
 ///
-/// Also ensures that the expression is in the type's assigment location.
+/// Also ensures that the expression is in the type's assignment location.
 pub fn assignable_expr(
     scope: &mut BlockScope,
     exp: &Node<fe::Expr>,
