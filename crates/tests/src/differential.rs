@@ -183,22 +183,22 @@ proptest! {
 
             let harness = DualHarness::from_fixture(&mut executor, "math_u8", "Foo", &[]);
 
-            harness.capture_call(&mut executor, "add", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal();
-            harness.capture_call(&mut executor, "subtract", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal();
-            harness.capture_call(&mut executor, "divide", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal();
-            harness.capture_call(&mut executor, "multiply", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal();
-            harness.capture_call(&mut executor, "pow", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal();
-            harness.capture_call(&mut executor, "modulo", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal();
-            harness.capture_call(&mut executor, "leftshift", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal();
-            harness.capture_call(&mut executor, "rightshift", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal();
-            harness.capture_call(&mut executor, "order_of_operation", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal();
-            harness.capture_call(&mut executor, "invert", &[uint_token(val.into())]).assert_perfomed_equal();
-            harness.capture_call(&mut executor, "bit_and", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal();
-            harness.capture_call(&mut executor, "bit_or", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal();
-            harness.capture_call(&mut executor, "bit_xor", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal();
-            harness.capture_call(&mut executor, "cast1", &[uint_token(val.into())]).assert_perfomed_equal();
-            harness.capture_call(&mut executor, "cast2", &[uint_token(val.into())]).assert_perfomed_equal();
-            harness.capture_call(&mut executor, "cast3", &[uint_token(val.into())]).assert_perfomed_equal();
+            harness.capture_call(&mut executor, "add", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal().assert_fe_max_percentage_more_gas(5);
+            harness.capture_call(&mut executor, "subtract", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal().assert_fe_max_percentage_more_gas(5);
+            harness.capture_call(&mut executor, "divide", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal().assert_fe_max_percentage_more_gas(100);
+            harness.capture_call(&mut executor, "multiply", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal().assert_fe_max_percentage_more_gas(5);
+            harness.capture_call(&mut executor, "pow", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal().assert_fe_max_percentage_more_gas(15);
+            harness.capture_call(&mut executor, "modulo", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal().assert_fe_max_percentage_more_gas(25);
+            harness.capture_call(&mut executor, "leftshift", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal().assert_fe_max_percentage_more_gas(25);
+            harness.capture_call(&mut executor, "rightshift", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal().assert_fe_max_percentage_more_gas(25);
+            harness.capture_call(&mut executor, "order_of_operation", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal().assert_fe_max_percentage_more_gas(50);
+            harness.capture_call(&mut executor, "invert", &[uint_token(val.into())]).assert_perfomed_equal().assert_fe_max_percentage_more_gas(60);
+            harness.capture_call(&mut executor, "bit_and", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal().assert_fe_max_percentage_more_gas(15);
+            harness.capture_call(&mut executor, "bit_or", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal().assert_fe_max_percentage_more_gas(50);
+            harness.capture_call(&mut executor, "bit_xor", &[uint_token(val.into()), uint_token(val2.into())]).assert_perfomed_equal().assert_fe_max_percentage_more_gas(30);
+            harness.capture_call(&mut executor, "cast1", &[uint_token(val.into())]).assert_perfomed_equal().assert_fe_max_percentage_more_gas(50);
+            harness.capture_call(&mut executor, "cast2", &[uint_token(val.into())]).assert_perfomed_equal().assert_fe_max_percentage_more_gas(60);
+            harness.capture_call(&mut executor, "cast3", &[uint_token(val.into())]).assert_perfomed_equal().assert_fe_max_percentage_more_gas(70);
             harness.capture_call(&mut executor, "sqrt", &[uint_token(val.into())]).assert_perfomed_equal().assert_fe_max_percentage_more_gas(120);
         });
     }
