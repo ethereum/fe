@@ -12,22 +12,46 @@ struct DualHarness {
 
 struct CaptureResult<'a> {
     fe_capture: evm::Capture<(evm::ExitReason, Vec<u8>), std::convert::Infallible>,
+    fe_used_gas: u64,
     solidity_capture: evm::Capture<(evm::ExitReason, Vec<u8>), std::convert::Infallible>,
+    solidity_used_gas: u64,
     name: &'a str,
     input: &'a [ethabi::Token],
 }
 
 impl<'a> CaptureResult<'a> {
-    pub fn assert_perfomed_equal(&self) {
+    pub fn assert_fe_max_percentage_more_gas(&self, max_percentage: i64) -> &Self {
+        let fe_percentage: i64 = (self.fe_used_gas as i64 - self.solidity_used_gas as i64) * 100
+            / self.solidity_used_gas as i64;
+
+        assert!(fe_percentage <= max_percentage, "Fe used gas: {}, Solidity used gas: {}, Fe used {}% more gas. Called {} with input: {:?}", self.fe_used_gas, self.solidity_used_gas, fe_percentage, self.name, self.input);
+        self
+    }
+
+    pub fn assert_perfomed_equal(&self) -> &Self {
         assert_eq!(
             self.fe_capture, self.solidity_capture,
             "Called {} with input: {:?}",
             self.name, self.input
-        )
+        );
+        self
+    }
+
+    pub fn assert_return_data_equal(&self) -> &Self {
+        if let (evm::Capture::Exit((_, fe_data)), evm::Capture::Exit((_, sol_data))) =
+            (&self.fe_capture, &self.solidity_capture)
+        {
+            assert_eq!(
+                fe_data, sol_data,
+                "Called {} with input: {:?}",
+                self.name, self.input
+            )
+        }
+        self
     }
 
     #[allow(dead_code)]
-    pub fn assert_reverted(&self) {
+    pub fn assert_reverted(&self) -> &Self {
         if !matches!(
             (self.fe_capture.clone(), self.solidity_capture.clone()),
             (
@@ -40,6 +64,59 @@ impl<'a> CaptureResult<'a> {
                 self.fe_capture, self.solidity_capture
             )
         }
+        self
+    }
+
+    pub fn assert_any_success_with_equal_return_data(&self) -> &Self {
+        self.assert_any_success().assert_return_data_equal();
+        self
+    }
+
+    pub fn assert_any_success_or_revert_with_equal_return_data(&self) -> &Self {
+        if !(self.both_succeeded() || self.both_reverted()) {
+            panic!(
+                "Asserted both succeeded or reverted but was: Fe: {:?} Solidity: {:?}",
+                self.fe_capture, self.solidity_capture
+            )
+        } else {
+            self.assert_return_data_equal()
+        }
+    }
+
+    pub fn assert_any_success(&self) -> &Self {
+        if !matches!(
+            (self.fe_capture.clone(), self.solidity_capture.clone()),
+            (
+                evm::Capture::Exit((evm::ExitReason::Succeed(_), _)),
+                evm::Capture::Exit((evm::ExitReason::Succeed(_), _))
+            )
+        ) {
+            panic!(
+                "Asserted both succeeded but was: Fe: {:?} Solidity: {:?}",
+                self.fe_capture, self.solidity_capture
+            )
+        }
+        self
+    }
+
+    pub fn both_succeeded(&self) -> bool {
+        matches!(
+            (self.fe_capture.clone(), self.solidity_capture.clone()),
+            (
+                evm::Capture::Exit((evm::ExitReason::Succeed(_), _)),
+                evm::Capture::Exit((evm::ExitReason::Succeed(_), _))
+            )
+        )
+    }
+
+    pub fn both_reverted(&self) -> bool {
+        matches!(
+            (self.fe_capture.clone(), self.solidity_capture.clone()),
+            (
+                evm::Capture::Exit((evm::ExitReason::Revert(_), _)),
+                evm::Capture::Exit((evm::ExitReason::Revert(_), _))
+            )
+        )
     }
 
     #[allow(dead_code)]
@@ -66,6 +143,7 @@ impl<'a> DualHarness {
             &format!("differential/{}.sol", fixture),
             contract_name,
             init_params,
+            true,
         );
         DualHarness {
             fe_harness,
@@ -79,12 +157,17 @@ impl<'a> DualHarness {
         name: &'a str,
         input: &'a [ethabi::Token],
     ) -> CaptureResult<'a> {
+        let initially_used = executor.used_gas();
         let fe_capture = self.fe_harness.capture_call(executor, name, input);
+        let fe_used_gas = executor.used_gas() - initially_used;
         let solidity_capture = self.solidity_harness.capture_call(executor, name, input);
+        let solidity_used_gas = executor.used_gas() - fe_used_gas - initially_used;
 
         CaptureResult {
             fe_capture,
+            fe_used_gas,
             solidity_capture,
+            solidity_used_gas,
             name,
             input,
         }

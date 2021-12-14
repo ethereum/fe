@@ -66,7 +66,7 @@ use fe_compiler_test_utils::*;
 fn test_revert_errors(method: &str, params: &[ethabi::Token], reason: &[u8]) {
     with_executor(&|mut executor| {
         let harness =
-            deploy_solidity_contract(&mut executor, "solidity/revert_test.sol", "Foo", &[]);
+            deploy_solidity_contract(&mut executor, "solidity/revert_test.sol", "Foo", &[], false);
 
         let exit = harness.capture_call(&mut executor, method, params);
 

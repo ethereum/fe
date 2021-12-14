@@ -314,13 +314,14 @@ pub fn deploy_solidity_contract(
     fixture: &str,
     contract_name: &str,
     init_params: &[ethabi::Token],
+    optimized: bool,
 ) -> ContractHarness {
     let src = test_files::fixture(fixture)
         .replace("\n", "")
         .replace("\"", "\\\"");
 
-    let (bytecode, abi) =
-        compile_solidity_contract(contract_name, &src).expect("Could not compile contract");
+    let (bytecode, abi) = compile_solidity_contract(contract_name, &src, optimized)
+        .expect("Could not compile contract");
 
     _deploy_contract(executor, &bytecode, &abi, init_params)
 }
@@ -413,17 +414,21 @@ impl std::error::Error for SolidityCompileError {}
 pub fn compile_solidity_contract(
     name: &str,
     solidity_src: &str,
+    optimized: bool,
 ) -> Result<(String, String), SolidityCompileError> {
     let solc_config = r#"
     {
         "language": "Solidity",
         "sources": { "input.sol": { "content": "{src}" } },
         "settings": {
+          "optimizer": { "enabled": {optimizer_enabled} },
           "outputSelection": { "*": { "*": ["*"], "": [ "*" ] } }
         }
       }
     "#;
-    let solc_config = solc_config.replace("{src}", solidity_src);
+    let solc_config = solc_config
+        .replace("{src}", solidity_src)
+        .replace("{optimizer_enabled}", &optimized.to_string());
 
     let raw_output = solc::compile(&solc_config);
 
