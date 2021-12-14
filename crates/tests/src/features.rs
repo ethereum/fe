@@ -84,8 +84,13 @@ fn test_send_value() {
         assert_eq!(executor.balance(address(bob)), U256::from(1));
 
         // Let's deploy a contract that reverts when it receives ether
-        let fail_contract =
-            deploy_solidity_contract(&mut executor, "solidity/always_revert.sol", "Foo", &[]);
+        let fail_contract = deploy_solidity_contract(
+            &mut executor,
+            "solidity/always_revert.sol",
+            "Foo",
+            &[],
+            false,
+        );
         executor.state_mut().deposit(fail_contract.address, ten);
         assert_eq!(executor.balance(fail_contract.address), ten);
 
