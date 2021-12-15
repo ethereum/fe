@@ -26,7 +26,7 @@ primitive-types = {version = "0.9", default-features = false, features = ["rlp"]
 rand = "0.7.3"
 rstest = "0.6.4"
 # This fork contains the shorthand macros and some other necessary updates.
-yultsur = {git = "https://github.com/g-r-a-n-t/yultsur"}
+yultsur = {git = "https://github.com/g-r-a-n-t/yultsur", rev = "ae85470"}
 insta = "1.7.1"
 pretty_assertions = "0.7.2"
 wasm-bindgen-test = "0.3.24"
