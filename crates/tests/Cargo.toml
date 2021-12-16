@@ -32,7 +32,7 @@ pretty_assertions = "0.7.2"
 wasm-bindgen-test = "0.3.24"
 
 [features]
-solc-backend = ["fe-yulc/solc-backend"]
+solc-backend = ["fe-yulc/solc-backend", "fe-compiler-test-utils/solc-backend"]
 
 [dev-dependencies.proptest]
 version = "1.0.0"

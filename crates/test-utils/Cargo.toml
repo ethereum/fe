@@ -26,4 +26,4 @@ yultsur = {git = "https://github.com/g-r-a-n-t/yultsur", rev = "ae85470"}
 getrandom = { version = "0.2.3", features = ["js"] }
 
 [features]
-solc-backend = ["fe-yulc", "solc"]
+solc-backend = ["fe-yulc", "solc", "fe-driver/solc-backend"]
