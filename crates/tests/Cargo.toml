@@ -28,7 +28,7 @@ rstest = "0.6.4"
 # This fork contains the shorthand macros and some other necessary updates.
 yultsur = {git = "https://github.com/g-r-a-n-t/yultsur", rev = "ae85470"}
 insta = "1.7.1"
-pretty_assertions = "0.7.2"
+pretty_assertions = "1.0.0"
 wasm-bindgen-test = "0.3.24"
 
 [features]

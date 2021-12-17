@@ -14,7 +14,7 @@ fe-common = {path = "../common", version = "^0.11.0-alpha"}
 fe-parser = {path = "../parser", version = "^0.11.0-alpha"}
 indexmap = "1.6.2"
 maplit = "1.0.2"
-num-bigint = "0.4.0"
+num-bigint = "0.4.3"
 salsa = "0.16.1"
 
 # This fork contains the shorthand macros and some other necessary updates.
@@ -25,4 +25,4 @@ smol_str = "0.1.21"
 insta = "1.7.1"
 test-files = {path = "../test-files", package = "fe-test-files" }
 wasm-bindgen-test = "0.3"
-pretty_assertions = "0.7.2"
+pretty_assertions = "1.0.0"
