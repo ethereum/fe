@@ -72,5 +72,7 @@ fn test_solc_sanity() {
         .to_string()
         .replace("\"", "");
 
-    assert_eq!(bytecode, "6000600055", "incorrect bytecode",);
+    // solc 0.8.4: push1 0; push1 0; sstore  "6000600055"
+    // solc 0.8.7: push1 0; dup1;    sstore  "60008055"
+    assert_eq!(bytecode, "60008055", "incorrect bytecode",);
 }
