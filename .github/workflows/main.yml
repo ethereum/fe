@@ -10,6 +10,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  RUSTFLAGS: "-D warnings"
 
 jobs:
   coverage:
@@ -20,20 +22,14 @@ jobs:
       - name: Install system dependencies
         run: |
           "${GITHUB_WORKSPACE}/.github/install_deps.sh"
-      - name: Cache Rust dependencies
-        uses: actions/cache@v1.1.2
-        with:
-          # There's a problem with caching serde, hence we exclude it here
-          path: |
-            target
-            !target/**/*serde*
-          key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
       - name: Install rust
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           override: true
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v1
       - name: coverage with tarpaulin
         run: |
           cargo install cargo-tarpaulin
@@ -62,6 +58,8 @@ jobs:
           toolchain: stable
           override: true
           components: rustfmt, clippy
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v1
       - name: Validate doc examples
         run: ./docs/validate_doc_examples.py
       - name: Validate release notes entry
@@ -87,14 +85,6 @@ jobs:
           - os: macOS-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Cache Rust dependencies
-        uses: actions/cache@v1.1.2
-        with:
-          # There's a problem with caching serde, hence we exclude it here
-          path: |
-            target
-            !target/**/*serde*
-          key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
       - name: Install Mac System dependencies
         if: startsWith(matrix.os,'macOS')
         run: |
@@ -109,10 +99,12 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v1
       - name: Build
-        run: cargo build --all-features --verbose
+        run: cargo test --workspace --all-features --no-run --locked
       - name: Run tests
-        run: cargo test --workspace --features solc-backend --verbose
+        run: cargo test --workspace --all-features --verbose
 
   wasm-test:
       runs-on: ubuntu-latest
