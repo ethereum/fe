@@ -8,7 +8,6 @@ use fe_common::utils::humanize::pluralize_conditionally;
 use fe_common::Spanned;
 use fe_parser::ast;
 use fe_parser::node::{Node, Span};
-use std::convert::TryFrom;
 use vec1::Vec1;
 
 pub fn apply_generic_type_args(

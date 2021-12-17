@@ -20,7 +20,6 @@ use fe_parser::ast::UnaryOperator;
 use fe_parser::node::Node;
 use num_bigint::BigInt;
 use smol_str::SmolStr;
-use std::convert::TryInto;
 use std::ops::RangeInclusive;
 use std::str::FromStr;
 use vec1::Vec1;

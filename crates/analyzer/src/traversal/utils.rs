@@ -4,7 +4,6 @@ use fe_common::Span;
 use crate::context::{AnalyzerContext, DiagnosticVoucher};
 use crate::errors::{BinaryOperationError, NotFixedSize};
 use crate::namespace::types::{FixedSize, Type};
-use std::convert::TryInto;
 use std::fmt::Display;
 
 pub fn types_to_fixed_sizes(sizes: &[Type]) -> Result<Vec<FixedSize>, NotFixedSize> {

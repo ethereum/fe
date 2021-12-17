@@ -2,7 +2,7 @@
 authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 categories = ["cryptography::cryptocurrencies", "command-line-utilities", "development-tools"]
 description = "An implementation of the Fe smart contract language"
-edition = "2018"
+edition = "2021"
 keywords = ["ethereum", "fe", "yul", "smart", "contract", "compiler"]
 license = "GPL-3.0-or-later"
 name = "fe"

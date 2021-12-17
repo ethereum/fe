@@ -12,7 +12,6 @@ use fe_common::utils::humanize::pluralize_conditionally;
 use fe_parser::ast;
 use fe_parser::node::Node;
 use std::collections::HashMap;
-use std::convert::TryInto;
 use std::rc::Rc;
 
 // Event fields aren't interned for now, but they probably should be. If/when events are handled as

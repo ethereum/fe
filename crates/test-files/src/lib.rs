@@ -2,7 +2,7 @@ use fe_common::files::{FileLoader, FileStore};
 use include_dir::{include_dir, Dir};
 use std::path::Path;
 
-const FIXTURES: Dir = include_dir!("fixtures");
+const FIXTURES: Dir = include_dir!("$CARGO_MANIFEST_DIR/fixtures");
 
 pub fn fixture(path: &str) -> &'static str {
     FIXTURES
