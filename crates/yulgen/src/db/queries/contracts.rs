@@ -9,7 +9,6 @@ use fe_analyzer::namespace::types::FixedSize;
 use fe_common::utils::keccak;
 use indexmap::IndexSet;
 use smol_str::SmolStr;
-use std::convert::TryInto;
 use yultsur::*;
 
 pub fn contract_object(db: &dyn YulgenDb, contract: ContractId) -> yul::Object {

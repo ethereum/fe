@@ -5,7 +5,6 @@ use fe_analyzer::context::Location;
 use fe_analyzer::namespace::types::FixedSize;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
-use std::convert::TryFrom;
 use yultsur::*;
 
 /// Builds a Yul statement from a Fe assignment.

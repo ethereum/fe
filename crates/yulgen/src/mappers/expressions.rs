@@ -18,7 +18,6 @@ use fe_parser::ast as fe;
 use fe_parser::node::Node;
 use num_bigint::BigInt;
 use smol_str::SmolStr;
-use std::convert::TryFrom;
 use std::str::FromStr;
 use yultsur::*;
 

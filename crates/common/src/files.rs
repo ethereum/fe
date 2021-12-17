@@ -3,7 +3,6 @@ use crate::Span;
 use codespan_reporting as cs;
 use cs::files::Error as CsError;
 use std::collections::HashMap;
-use std::convert::TryInto;
 use std::ops::Range;
 use std::path::Path;
 use std::{fs, io};

@@ -1,6 +1,6 @@
 [package]
 authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
-edition = "2018"
+edition = "2021"
 name = "fe-fuzzer"
 publish = false
 version = "0.4.0-alpha"
