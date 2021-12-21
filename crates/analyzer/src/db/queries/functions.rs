@@ -13,7 +13,6 @@ use fe_parser::ast;
 use fe_parser::node::Node;
 use if_chain::if_chain;
 use std::collections::HashMap;
-use std::convert::TryInto;
 use std::rc::Rc;
 
 /// Gather context information for a function definition and check for type

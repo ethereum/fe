@@ -7,7 +7,6 @@ use fe_common::diagnostics::Label;
 use fe_common::utils::humanize::pluralize_conditionally;
 use fe_parser::ast as fe;
 use fe_parser::node::Node;
-use std::convert::TryFrom;
 
 /// Gather context information for var declarations and check for type errors.
 pub fn var_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {

@@ -5,7 +5,6 @@ use crate::AnalyzerDb;
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 use smol_str::SmolStr;
-use std::convert::TryFrom;
 use std::fmt;
 use std::str::FromStr;
 use strum::{AsRefStr, EnumIter, EnumString};

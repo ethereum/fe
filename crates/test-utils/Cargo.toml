@@ -1,6 +1,6 @@
 [package]
 authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
-edition = "2018"
+edition = "2021"
 name = "fe-compiler-test-utils"
 version = "0.11.0-alpha"
 license = "GPL-3.0-or-later"
@@ -19,7 +19,7 @@ test-files = {path = "../test-files", package = "fe-test-files" }
 hex = "0.4"
 primitive-types = {version = "0.9", default-features = false, features = ["rlp"]}
 serde_json = "1.0.64"
-solc = {git = "https://github.com/g-r-a-n-t/solc-rust", rev = "fcb9105", optional = true}
+solc = {git = "https://github.com/g-r-a-n-t/solc-rust", rev = "da554b3", optional = true}
 yultsur = {git = "https://github.com/g-r-a-n-t/yultsur", rev = "ae85470"}
 
 # used by ethabi, we need to force the js feature for wasm support

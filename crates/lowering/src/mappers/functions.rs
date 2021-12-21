@@ -4,8 +4,6 @@ use crate::ast_utils::{
 use crate::ast_utils::{
     inject_before_expression, replace_node_with_name_expression, ternary_to_if,
 };
-use std::convert::TryFrom;
-
 use crate::context::{FnContext, ModuleContext};
 use crate::mappers::expressions;
 use crate::mappers::types;

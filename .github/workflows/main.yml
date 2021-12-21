@@ -10,6 +10,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  RUSTFLAGS: "-D warnings"
 
 jobs:
   coverage:
@@ -19,24 +21,21 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install system dependencies
         run: |
-          "${GITHUB_WORKSPACE}/.github/install_deps.sh"
-      - name: Cache Rust dependencies
-        uses: actions/cache@v1.1.2
-        with:
-          # There's a problem with caching serde, hence we exclude it here
-          path: |
-            target
-            !target/**/*serde*
-          key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
+          sudo apt-get install -y libboost-all-dev
       - name: Install rust
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           override: true
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v1
+      - name: install cargo-tarpaulin
+        run: |
+          cargo install cargo-quickinstall
+          cargo quickinstall cargo-tarpaulin
       - name: coverage with tarpaulin
         run: |
-          cargo install cargo-tarpaulin
           make coverage
           bash <(curl -s https://codecov.io/bash)
 
@@ -46,15 +45,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install system dependencies
         run: |
-          "${GITHUB_WORKSPACE}/.github/install_deps.sh"
-      - name: Cache Rust dependencies
-        uses: actions/cache@v1.1.2
-        with:
-          # There's a problem with caching serde, hence we exclude it here
-          path: |
-            target
-            !target/**/*serde*
-          key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
+          sudo apt-get install -y libboost-all-dev
       - name: Install rust
         uses: actions-rs/toolchain@v1
         with:
@@ -62,6 +53,8 @@ jobs:
           toolchain: stable
           override: true
           components: rustfmt, clippy
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v1
       - name: Validate doc examples
         run: ./docs/validate_doc_examples.py
       - name: Validate release notes entry
@@ -87,14 +80,6 @@ jobs:
           - os: macOS-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Cache Rust dependencies
-        uses: actions/cache@v1.1.2
-        with:
-          # There's a problem with caching serde, hence we exclude it here
-          path: |
-            target
-            !target/**/*serde*
-          key: ${{ runner.OS }}-build-v2-${{ hashFiles('**/Cargo.lock') }}
       - name: Install Mac System dependencies
         if: startsWith(matrix.os,'macOS')
         run: |
@@ -102,17 +87,19 @@ jobs:
       - name: Install Linux dependencies
         if: startsWith(matrix.os,'ubuntu')
         run: |
-          "${GITHUB_WORKSPACE}/.github/install_deps.sh"
+          sudo apt-get install -y libboost-all-dev
       - name: Install rust
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           override: true
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v1
       - name: Build
-        run: cargo build --all-features --verbose
+        run: cargo test --workspace --all-features --no-run --locked
       - name: Run tests
-        run: cargo test --workspace --features solc-backend --verbose
+        run: cargo test --workspace --all-features --verbose
 
   wasm-test:
       runs-on: ubuntu-latest
@@ -125,6 +112,10 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v1
+      - name: Build WASM tests
+        run: wasm-pack test --node crates/fe -- --workspace --no-run
       - name: Run WASM tests
         # wasm-pack needs a Cargo.toml with a 'package' field.
         # (see https://github.com/rustwasm/wasm-pack/issues/642)
@@ -150,7 +141,7 @@ jobs:
       - name: Install Linux dependencies
         if: startsWith(matrix.os,'ubuntu')
         run: |
-          "${GITHUB_WORKSPACE}/.github/install_deps.sh"
+          sudo apt-get install -y libboost-all-dev
       - name: Install Mac System dependencies
         if: startsWith(matrix.os,'macOS')
         run: |
