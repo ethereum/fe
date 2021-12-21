@@ -73,7 +73,7 @@ def create_fe_file(snippet: CodeSnippet) -> pathlib.Path:
     return fe_snippet_path
 
 def run_snippet(path: pathlib.Path) -> 'subprocess.CompletedProcess[bytes]':
-    return subprocess.run(["cargo", "run", "--features", "solc-backend", str(path), '--overwrite'])
+    return subprocess.run(["cargo", "run", str(path), '--overwrite'])
 
 def validate_code_examples() -> None:
     TMP_SNIPPET_DIR.mkdir(exist_ok=True)
