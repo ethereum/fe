@@ -1,0 +1,5 @@
+pub struct Foo:
+    my_address: address
+
+struct Bar:
+    my_u256: u256

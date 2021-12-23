@@ -11,7 +11,7 @@ use vec1::Vec1;
 /// Parse a [`ModuleStmt::Struct`].
 /// # Panics
 /// Panics if the next token isn't `struct`.
-pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ast::Struct>> {
+pub fn parse_struct_def(par: &mut Parser, mut pub_qual: Option<Span>) -> ParseResult<Node<ast::Struct>> {
     let struct_tok = par.assert(TokenKind::Struct);
     let name = par.expect_with_notes(TokenKind::Name, "failed to parse struct definition", |_| {
         vec!["Note: a struct name must start with a letter or underscore, and contain letters, numbers, or underscores".into()]
@@ -51,12 +51,13 @@ pub fn parse_struct_def(par: &mut Parser) -> ParseResult<Node<ast::Struct>> {
             }
         }
     }
-    let span = struct_tok.span + name.span + fields.last();
+    let span = struct_tok.span + pub_qual + name.span + fields.last();
     Ok(Node::new(
         ast::Struct {
             name: name.into(),
             fields,
             functions,
+            pub_qual
         },
         span,
     ))

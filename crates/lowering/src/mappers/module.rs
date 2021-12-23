@@ -103,6 +103,7 @@ fn build_tuple_struct(tuple: &Tuple) -> ast::Struct {
         name: names::tuple_struct_name(tuple).into_node(),
         fields,
         functions: vec![],
+        pub_qual: None,
     }
 }
 

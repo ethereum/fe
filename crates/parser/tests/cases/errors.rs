@@ -94,7 +94,7 @@ test_parse_err! { if_no_body, functions::parse_stmt, true, "if x:\nelse:\n x" }
 test_parse_err! { use_bad_name, module::parse_use, true, "use x as 123" }
 test_parse_err! { module_bad_stmt, module::parse_module, true, "if x:\n y" }
 test_parse_err! { module_nonsense, module::parse_module, true, "))" }
-test_parse_err! { struct_bad_field_name, types::parse_struct_def, true, "struct f:\n pub event" }
+test_parse_err! { struct_bad_field_name, module::parse_module, true, "struct f:\n pub event" }
 test_parse_err! { stmt_vardecl_attr, functions::parse_stmt, true, "f.s : u" }
 test_parse_err! { stmt_vardecl_tuple, functions::parse_stmt, true, "(a, x+1) : u256" }
 test_parse_err! { stmt_vardecl_tuple_empty, functions::parse_stmt, true, "(a, ()) : u256" }

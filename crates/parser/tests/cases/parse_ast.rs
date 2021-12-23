@@ -153,7 +153,7 @@ test_parse! { use_nested2, module::parse_use, r#"use std::bar::{
     evm as mve
 }"#
 }
-test_parse! { struct_def, types::parse_struct_def, r#"struct S:
+test_parse! { struct_def, module::parse_module, r#"struct S:
   x: address
   pub y: u8
   z: u8
@@ -164,7 +164,7 @@ test_parse! { struct_def, types::parse_struct_def, r#"struct S:
   unsafe fn bar():
     pass
 "# }
-test_parse! { empty_struct_def, types::parse_struct_def, r#"struct S:
+test_parse! { empty_struct_def, module::parse_module, r#"struct S:
   pass
 "# }
 

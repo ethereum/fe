@@ -35,7 +35,7 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
         TokenKind::Pragma => ModuleStmt::Pragma(parse_pragma(par)?),
         TokenKind::Use => ModuleStmt::Use(parse_use(par)?),
         TokenKind::Contract => ModuleStmt::Contract(parse_contract_def(par)?),
-        TokenKind::Struct => ModuleStmt::Struct(parse_struct_def(par)?),
+        TokenKind::Struct => ModuleStmt::Struct(parse_struct_def(par, None)?),
         TokenKind::Type => ModuleStmt::TypeAlias(parse_type_alias(par)?),
         TokenKind::Const => ModuleStmt::Constant(Box::new(parse_constant(par)?)),
 
@@ -47,6 +47,9 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
             match par.peek_or_err()? {
                 TokenKind::Fn | TokenKind::Unsafe => {
                     ModuleStmt::Function(parse_fn_def(par, Some(pub_span))?)
+                },
+                TokenKind::Struct => {
+                    ModuleStmt::Struct(parse_struct_def(par, Some(pub_span))?)
                 }
                 _ => {
                     let tok = par.next()?;

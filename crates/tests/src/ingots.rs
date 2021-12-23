@@ -17,6 +17,14 @@ pub fn deploy_ingot(
 }
 
 #[test]
+fn test_ingot_with_visibility() {
+    with_executor(&|mut executor| {
+        let harness = deploy_ingot(&mut executor, "private_ingot", "FooBar", &[]);
+        
+    })
+}
+
+#[test]
 fn test_basic_ingot() {
     with_executor(&|mut executor| {
         let harness = deploy_ingot(&mut executor, "basic_ingot", "Foo", &[]);

@@ -78,6 +78,7 @@ pub struct Struct {
     pub name: Node<String>,
     pub fields: Vec<Node<Field>>,
     pub functions: Vec<Node<Function>>,
+    pub pub_qual: Option<Span>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
