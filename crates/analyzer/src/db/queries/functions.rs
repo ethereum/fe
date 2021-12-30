@@ -176,7 +176,7 @@ pub fn function_body(db: &dyn AnalyzerDb, function: FunctionId) -> Analysis<Rc<F
 
     let mut block_scope = BlockScope::new(
         &scope,
-        if function.unsafe_span(db).is_some() {
+        if function.is_unsafe(db) {
             BlockScopeType::Unsafe
         } else {
             BlockScopeType::Function
@@ -207,6 +207,11 @@ fn all_paths_return_or_revert(block: &[Node<ast::FuncStmt>]) -> bool {
                 let body_returns = all_paths_return_or_revert(body);
                 let or_else_returns = all_paths_return_or_revert(or_else);
                 if body_returns && or_else_returns {
+                    return true;
+                }
+            }
+            ast::FuncStmt::Unsafe(body) => {
+                if all_paths_return_or_revert(body) {
                     return true;
                 }
             }
@@ -293,7 +298,9 @@ pub fn function_dependency_graph(db: &dyn AnalyzerDb, function: FunctionId) -> D
                 ));
             }
             // Builtin functions aren't part of the dependency graph yet.
-            CallType::BuiltinFunction(_) | CallType::BuiltinValueMethod { .. } => {}
+            CallType::BuiltinFunction(_)
+            | CallType::Intrinsic(_)
+            | CallType::BuiltinValueMethod { .. } => {}
         }
     }
 

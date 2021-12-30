@@ -282,6 +282,7 @@ fn build_snapshot(file_store: &FileStore, module: items::ModuleId, db: &dyn Anal
             | Item::Type(TypeDef::Primitive(_))
             | Item::GenericType(_)
             | Item::BuiltinFunction(_)
+            | Item::Intrinsic(_)
             | Item::Ingot(_)
             | Item::Module(_)
             | Item::Object(_) => vec![],

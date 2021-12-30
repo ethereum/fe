@@ -1731,3 +1731,40 @@ fn abi_decode_checks() {
         }
     });
 }
+
+#[test]
+fn intrinsics() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "intrinsics.fe", "Intrinsics", &[]);
+
+        executor
+            .state_mut()
+            .deposit(harness.address, U256::from(123));
+
+        harness.test_function(
+            &mut executor,
+            "add",
+            &[uint_token(10), uint_token(100)],
+            Some(&uint_token(110)),
+        );
+        harness.test_function(&mut executor, "self_balance", &[], Some(&uint_token(123)));
+        harness.test_function(&mut executor, "calldatasize", &[], Some(&uint_token(4)));
+        harness.test_function(
+            &mut executor,
+            "calldatacopy",
+            &[uint_token(36), uint_token(32)],
+            Some(&uint_token(32)),
+        );
+        harness.test_function(&mut executor, "callvalue", &[], Some(&uint_token(0)));
+
+        // TODO: need an evm update for the basefee opcode
+        // harness.test_function(&mut executor, "basefee", &[], Some(&uint_token(0)));
+
+        harness.test_function(
+            &mut executor,
+            "caller",
+            &[],
+            Some(&ethabi::Token::Address(harness.caller)),
+        );
+    });
+}

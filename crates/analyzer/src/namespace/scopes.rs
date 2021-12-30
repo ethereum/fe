@@ -123,11 +123,14 @@ impl<'a> FunctionScope<'a> {
             .expect_none("declaration attributes already exist");
     }
     /// Attribute contextual information to a call expression node.
+    /// NOTE: `node` here is actually the `func` node of the `Expr::Call`.
     ///
     /// # Panics
     ///
     /// Panics if an entry already exists for the node id.
     pub fn add_call(&self, node: &Node<ast::Expr>, call_type: CallType) {
+        // TODO: should probably take the Expr::Call node, rather than the function node
+
         self.add_node(node);
         self.body
             .borrow_mut()
