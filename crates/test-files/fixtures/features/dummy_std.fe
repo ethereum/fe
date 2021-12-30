@@ -1,0 +1,6 @@
+use std::get_42
+use std::foo
+
+contract Foo:
+    pub fn bar() -> u256:
+        return get_42() * std::bar::bar::get_26()

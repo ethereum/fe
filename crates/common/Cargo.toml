@@ -7,6 +7,7 @@ license = "Apache-2.0"
 repository = "https://github.com/ethereum/fe"
 
 [dependencies]
+fe-library = {path = "../library", version = "^0.11.0-alpha"}
 tiny-keccak = { version = "2.0", features = ["keccak"] }
 hex = "0.4"
 codespan-reporting = "0.11.1"
@@ -15,3 +16,6 @@ ron = "0.5.1"
 difference = "2.0"
 num-traits = "0.2.14"
 once_cell = "1.8.0"
+include_dir = "0.6.0"
+indexmap = "1.6.2"
+smol_str = "0.1.21"

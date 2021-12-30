@@ -1,0 +1,10 @@
+[package]
+name = "fe-library"
+version = "0.11.0-alpha"
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
+edition = "2018"
+license = "Apache-2.0"
+repository = "https://github.com/ethereum/fe"
+
+[dependencies]
+include_dir = "0.6.0"

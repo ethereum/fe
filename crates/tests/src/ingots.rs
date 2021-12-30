@@ -29,6 +29,7 @@ fn test_basic_ingot() {
         );
 
         harness.test_function(&mut executor, "get_42", &[], Some(&uint_token(42)));
+        harness.test_function(&mut executor, "get_26", &[], Some(&uint_token(26)));
         harness.test_function(
             &mut executor,
             "get_my_dyng",

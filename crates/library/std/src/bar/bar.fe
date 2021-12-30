@@ -1,0 +1,5 @@
+struct Bar:
+    pass
+
+fn get_26() -> u256:
+    return 26

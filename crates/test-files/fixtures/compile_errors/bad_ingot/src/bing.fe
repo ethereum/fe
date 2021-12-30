@@ -1,2 +1,4 @@
+use std
+
 struct Bong:
     pass

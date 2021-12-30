@@ -253,8 +253,9 @@ pub fn deploy_contract(
     let src = test_files::fixture(fixture);
     let mut files = FileStore::new();
     let id = files.add_file(fixture, src);
+    let deps = files.add_included_libraries();
 
-    let compiled_module = match driver::compile_module(&files, id, true, true) {
+    let compiled_module = match driver::compile_module(&files, id, &deps, true, true) {
         Ok(module) => module,
         Err(error) => {
             fe_common::diagnostics::print_diagnostics(&error.0, &files);
@@ -283,9 +284,11 @@ pub fn deploy_contract_from_ingot(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    let files = test_files::build_filestore(path);
+    let mut files = test_files::build_filestore(path);
+    let ingot_files = files.all_files();
+    let deps = files.add_included_libraries();
 
-    let compiled_module = match driver::compile_ingot(path, &files, &files.all_files(), true, true)
+    let compiled_module = match driver::compile_ingot(path, &files, &ingot_files, &deps, true, true)
     {
         Ok(module) => module,
         Err(error) => {
@@ -492,9 +495,10 @@ pub fn compile_solidity_contract(
 #[allow(dead_code)]
 pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
     let mut files = FileStore::new();
+    let deps = files.add_included_libraries();
     let src = test_files::fixture(fixture);
     let id = files.add_file(fixture, src);
-    let compiled_module = match driver::compile_module(&files, id, true, true) {
+    let compiled_module = match driver::compile_module(&files, id, &deps, true, true) {
         Ok(module) => module,
         Err(err) => {
             print_diagnostics(&err.0, &files);

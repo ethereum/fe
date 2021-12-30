@@ -6,8 +6,6 @@ use crate::namespace::items::{
 };
 use crate::namespace::types;
 use fe_common::Span;
-use fe_parser::ast;
-use fe_parser::node::Node;
 use indexmap::map::IndexMap;
 use smol_str::SmolStr;
 use std::rc::Rc;
@@ -59,6 +57,12 @@ pub trait AnalyzerDb {
     fn ingot_all_modules(&self, ingot: IngotId) -> Rc<Vec<ModuleId>>;
     #[salsa::invoke(queries::ingots::ingot_main_module)]
     fn ingot_main_module(&self, ingot: IngotId) -> Analysis<Option<ModuleId>>;
+    #[salsa::invoke(queries::ingots::ingot_lib_module)]
+    fn ingot_lib_module(&self, ingot: IngotId) -> Analysis<Option<ModuleId>>;
+    #[salsa::invoke(queries::ingots::ingot_root_module)]
+    fn ingot_root_module(&self, ingot: IngotId) -> Option<ModuleId>;
+    #[salsa::invoke(queries::ingots::ingot_root_sub_modules)]
+    fn ingot_root_sub_modules(&self, ingot: IngotId) -> Rc<IndexMap<SmolStr, ModuleId>>;
 
     // Module
     #[salsa::invoke(queries::module::module_all_items)]
@@ -74,16 +78,8 @@ pub trait AnalyzerDb {
         &self,
         module: ModuleId,
     ) -> Analysis<Rc<IndexMap<SmolStr, (Span, Item)>>>;
-    #[salsa::invoke(queries::module::module_resolve_use_tree)]
-    fn module_resolve_use_tree(
-        &self,
-        module: ModuleId,
-        tree: Node<ast::UseTree>,
-    ) -> Analysis<Rc<IndexMap<SmolStr, (Span, Item)>>>;
     #[salsa::invoke(queries::module::module_parent_module)]
     fn module_parent_module(&self, module: ModuleId) -> Option<ModuleId>;
-    #[salsa::invoke(queries::module::module_adjacent_modules)]
-    fn module_adjacent_modules(&self, module: ModuleId) -> Rc<IndexMap<SmolStr, ModuleId>>;
     #[salsa::invoke(queries::module::module_sub_modules)]
     fn module_sub_modules(&self, module: ModuleId) -> Rc<IndexMap<SmolStr, ModuleId>>;
 
