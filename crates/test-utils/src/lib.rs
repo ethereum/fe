@@ -133,6 +133,20 @@ impl ContractHarness {
         validate_revert(self.capture_call_raw_bytes(executor, input), revert_data)
     }
 
+    pub fn test_function_returns(
+        &self,
+        executor: &mut Executor,
+        name: &str,
+        input: &[ethabi::Token],
+        return_data: &[u8],
+    ) {
+        validate_return(self.capture_call(executor, name, input), return_data)
+    }
+
+    pub fn test_call_returns(&self, executor: &mut Executor, input: Vec<u8>, return_data: &[u8]) {
+        validate_return(self.capture_call_raw_bytes(executor, input), return_data)
+    }
+
     // Executor must be passed by value to get emitted events.
     pub fn events_emitted(&self, executor: Executor, events: &[(&str, &[ethabi::Token])]) {
         let raw_logs = executor
@@ -219,6 +233,20 @@ pub fn validate_revert(
         );
     } else {
         panic!("Method was expected to revert but didn't")
+    };
+}
+
+pub fn validate_return(
+    capture: evm::Capture<(evm::ExitReason, Vec<u8>), std::convert::Infallible>,
+    expected_data: &[u8],
+) {
+    if let evm::Capture::Exit((evm::ExitReason::Succeed(_), output)) = capture {
+        assert_eq!(
+            format!("0x{}", hex::encode(&output)),
+            format!("0x{}", hex::encode(expected_data))
+        );
+    } else {
+        panic!("Method was expected to return but didn't")
     };
 }
 

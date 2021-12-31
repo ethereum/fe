@@ -110,15 +110,16 @@ pub fn function_signature(
         .return_type
         .as_ref()
         .map(|type_node| {
-            if def.name.kind == "__init__" {
-                // `__init__` must not return any type other than `()`.
+            let fn_name = &def.name.kind;
+            if fn_name == "__init__" || fn_name == "__call__" {
+                // `__init__` and `__call__` must not return any type other than `()`.
                 if type_node.kind != ast::TypeDesc::Unit {
                     scope.fancy_error(
-                        "`__init__` function has incorrect return type",
+                        &format!("`{}` function has incorrect return type", fn_name),
                         vec![Label::primary(type_node.span, "return type should be `()`")],
                         vec![
                             "Hint: Remove the return type specification.".to_string(),
-                            "Example: `pub fn __init__():`".to_string(),
+                            format!("Example: `pub fn {}():`", fn_name),
                         ],
                     );
                 }

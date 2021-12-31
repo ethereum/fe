@@ -44,7 +44,7 @@ pub fn contract_function_map(
     for func in db.contract_all_functions(contract).iter() {
         let def = &func.data(db).ast;
         let def_name = def.name();
-        if def_name == "__init__" {
+        if def_name == "__init__" || def_name == "__call__" {
             continue;
         }
 
@@ -125,7 +125,7 @@ pub fn contract_init_function(
             Label::secondary(dupe_span, "`init` redefined here"),
         ];
         for (_, dupe_span) in init_fns {
-            labels.push(Label::secondary(dupe_span, "`init` redefined here"));
+            labels.push(Label::secondary(dupe_span, "`__init__` redefined here"));
         }
         diagnostics.push(errors::fancy_error(
             &format!(
@@ -149,6 +149,77 @@ pub fn contract_init_function(
                     "Example: `pub fn __init__():`".to_string(),
                 ],
             ));
+        }
+    }
+
+    Analysis {
+        value: first_def.map(|(id, _span)| *id),
+        diagnostics: Rc::new(diagnostics),
+    }
+}
+
+pub fn contract_call_function(
+    db: &dyn AnalyzerDb,
+    contract: ContractId,
+) -> Analysis<Option<FunctionId>> {
+    let all_fns = db.contract_all_functions(contract);
+    let mut call_fns = all_fns.iter().filter_map(|func| {
+        let def = &func.data(db).ast;
+        (def.name() == "__call__").then(|| (func, def.span))
+    });
+
+    let mut diagnostics = vec![];
+
+    let first_def = call_fns.next();
+    if let Some((_, dupe_span)) = call_fns.next() {
+        let mut labels = vec![
+            Label::primary(first_def.unwrap().1, "`__call__` first defined here"),
+            Label::secondary(dupe_span, "`__call__` redefined here"),
+        ];
+        for (_, dupe_span) in call_fns {
+            labels.push(Label::secondary(dupe_span, "`__call__` redefined here"));
+        }
+        diagnostics.push(errors::fancy_error(
+            &format!(
+                "`fn __call__()` is defined multiple times in `contract {}`",
+                contract.name(db),
+            ),
+            labels,
+            vec![],
+        ));
+    }
+
+    if let Some((id, span)) = first_def {
+        // `__call__` must be `pub`.
+        // Return type is checked in `queries::functions::function_signature`.
+        if !id.is_public(db) {
+            diagnostics.push(errors::fancy_error(
+                "`__call__` function is not public",
+                vec![Label::primary(span, "`__call__` function must be public")],
+                vec![
+                    "Hint: Add the `pub` modifier.".to_string(),
+                    "Example: `pub fn __call__():`".to_string(),
+                ],
+            ));
+        }
+    }
+
+    if let Some((_id, init_span)) = first_def {
+        for func in all_fns.iter() {
+            let name = func.name(db);
+            if func.is_public(db) && name != "__init__" && name != "__call__" {
+                diagnostics.push(errors::fancy_error(
+                    "`pub` not allowed if `__call__` is defined",
+                    vec![
+                        Label::primary(func.name_span(db), &format!("`{}` can't be public", name)),
+                        Label::secondary(init_span, "`__call__` defined here"),
+                    ],
+                    vec![
+                        "The `__call__` function replaces the default function dispatcher, which makes `pub` modifiers obsolete.".to_string(),
+                        "Hint: Remove the `pub` modifier or `__call__` function.".to_string(),
+                    ],
+                ));
+            }
         }
     }
 

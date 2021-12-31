@@ -3,15 +3,6 @@ source: crates/analyzer/tests/errors.rs
 expression: "error_string(&path, &src)"
 
 ---
-error: `self` is not defined
-  ┌─ compile_errors/init_call_on_self.fe:6:5
-  │
-6 │     self.__init__()
-  │     ^^^^ undefined value
-  │
-  = add `self` to the scope by including it in the function signature
-  = Example: `fn bar(self, foo: bool)`
-
 error: `__init__()` is not directly callable
   ┌─ compile_errors/init_call_on_self.fe:6:10
   │

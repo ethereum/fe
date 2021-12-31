@@ -844,7 +844,7 @@ fn expr_call_name<T: std::fmt::Display>(
     generic_args: &Option<Node<Vec<fe::GenericArg>>>,
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<(ExpressionAttributes, CallType), FatalError> {
-    check_for_call_to_init_fn(scope, name, func.span)?;
+    check_for_call_to_special_fns(scope, name, func.span)?;
 
     let named_thing = scope.resolve_name(name).ok_or_else(|| {
         // Check for call to a fn in the current class that takes self.
@@ -1411,7 +1411,7 @@ fn expr_call_method(
     // If the target is a "class" type (contract or struct), check for a member function
     if let Some(class) = target_attributes.typ.as_class() {
         if matches!(class, Class::Contract(_)) {
-            check_for_call_to_init_fn(scope, &field.kind, field.span)?;
+            check_for_call_to_special_fns(scope, &field.kind, field.span)?;
         }
         if let Some(method) = class.function(scope.db(), &field.kind) {
             let is_self = is_self_value(target);
@@ -1816,19 +1816,23 @@ fn expect_no_label_on_arg(
     }
 }
 
-fn check_for_call_to_init_fn(
+fn check_for_call_to_special_fns(
     scope: &mut BlockScope,
     name: &str,
     span: Span,
 ) -> Result<(), FatalError> {
-    if name == "__init__" {
+    if name == "__init__" || name == "__call__" {
+        let label = if name == "__init__" {
+            "Note: `__init__` is the constructor function, and can't be called at runtime."
+        } else {
+            // TODO: add a hint label explaining how to call contracts directly
+            // with `Context` (not yet supported).
+            "Note: `__call__` is not part of the contract's interface, and can't be called."
+        };
         Err(FatalError::new(scope.fancy_error(
-            "`__init__()` is not directly callable",
+            &format!("`{}()` is not directly callable", name),
             vec![Label::primary(span, "")],
-            vec![
-                "Note: `__init__` is the constructor function, and can't be called at runtime."
-                    .into(),
-            ],
+            vec![label.into()],
         )))
     } else {
         Ok(())
