@@ -55,11 +55,7 @@ pub fn function_sig_abi_types(
     let return_type = sig.return_type.clone().expect("return type error");
     (
         to_abi_types(adb, &sig.param_types()).into(),
-        if !return_type.is_unit() {
-            Some(return_type.as_abi_type(adb))
-        } else {
-            None
-        },
+        (!return_type.is_unit()).then(|| return_type.as_abi_type(adb)),
     )
 }
 
@@ -153,30 +149,31 @@ pub fn function_external_call_fn(db: &dyn YulgenDb, function: FunctionId) -> Vec
         fns.push(function_definition! {
             function [call_fn_name](addr, [param_idents...]) -> return_val {
                 (let instart := alloc_mstoren([selector], 4))
-                    (let insize := add(4, [encoding_size]))
-                    (pop([encoding_operation]))
-                    (let success := call((gas()), addr, 0, instart, insize, 0, 0))
-                    (let outsize := returndatasize())
-                    (let outstart := alloc(outsize))
-                    (returndatacopy(outstart, 0, outsize))
-                    (if (iszero(success)) { (revert(outstart, outsize)) })
-                    (return_val := [decoding_operation])
+                (let insize := add(4, [encoding_size]))
+                (pop([encoding_operation]))
+                (let success := call((gas()), addr, 0, instart, insize, 0, 0))
+                (let outsize := returndatasize())
+                (let outstart := alloc(outsize))
+                (returndatacopy(outstart, 0, outsize))
+                (if (iszero(success)) { (revert(outstart, outsize)) })
+                (return_val := [decoding_operation])
             }
         })
     } else {
         // unit type; there is no return data to handle
+        // XXX return_val isn't assigned
         fns.push(function_definition! {
             function [call_fn_name](addr, [param_idents...]) -> return_val {
                 (let instart := alloc_mstoren([selector], 4))
-                    (let insize := add(4, [encoding_size]))
-                    (pop([encoding_operation]))
-                    (let success := call((gas()), addr, 0, instart, insize, 0, 0))
-                    (if (iszero(success)) {
-                        (let outsize := returndatasize())
-                            (let outstart := alloc(outsize))
-                            (returndatacopy(outstart, 0, outsize))
-                            (revert(outstart, outsize))
-                    })
+                (let insize := add(4, [encoding_size]))
+                (pop([encoding_operation]))
+                (let success := call((gas()), addr, 0, instart, insize, 0, 0))
+                (if (iszero(success)) {
+                    (let outsize := returndatasize())
+                    (let outstart := alloc(outsize))
+                    (returndatacopy(outstart, 0, outsize))
+                    (revert(outstart, outsize))
+                })
             }
         })
     }

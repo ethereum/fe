@@ -732,6 +732,7 @@ dependencies = [
  "fe-lowering",
  "fe-parser",
  "fe-test-files",
+ "if_chain",
  "indexmap",
  "insta",
  "maplit",

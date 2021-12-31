@@ -21,25 +21,36 @@ impl<'a> FnContext<'a> {
     }
 
     /// Get information that has been attributed to an expression node.
-    pub fn expression_attributes(&self, expr: &Node<ast::Expr>) -> Option<&ExpressionAttributes> {
-        self.fn_body.expressions.get(&expr.id)
+    pub fn expression_attributes(&self, expr: &Node<ast::Expr>) -> &ExpressionAttributes {
+        self.fn_body
+            .expressions
+            .get(&expr.id)
+            .expect("missing expression attributes")
     }
 
     /// Get the type of a variable declaration.
-    pub fn declaration_type(&self, typ: &Node<ast::TypeDesc>) -> Option<&FixedSize> {
-        self.fn_body.var_decl_types.get(&typ.id)
+    pub fn declaration_type(&self, typ: &Node<ast::TypeDesc>) -> &FixedSize {
+        self.fn_body
+            .var_decl_types
+            .get(&typ.id)
+            .expect("missing declaration type")
     }
 
     /// Get information that has been attributed to a call expression node.
-    pub fn call_type(&self, expr: &Node<ast::Expr>) -> Option<CallType> {
-        self.fn_body.calls.get(&expr.id).cloned()
+    pub fn call_type(&self, expr: &Node<ast::Expr>) -> CallType {
+        self.fn_body
+            .calls
+            .get(&expr.id)
+            .cloned()
+            .expect("missing call type")
     }
 
     /// Get information that has been attributed to an emit statement node.
-    pub fn emitted_event(&self, emit_stmt: &Node<ast::FuncStmt>) -> Option<Rc<Event>> {
+    pub fn emitted_event(&self, emit_stmt: &Node<ast::FuncStmt>) -> Rc<Event> {
         self.fn_body
             .emits
             .get(&emit_stmt.id)
-            .map(|event| event.typ(self.adb))
+            .expect("missing emit event type")
+            .typ(self.adb)
     }
 }

@@ -39,7 +39,7 @@ pub enum Item {
     // Needed until we can represent keccak256 as a FunctionId.
     // We can't represent keccak256's arg type yet.
     BuiltinFunction(builtins::GlobalFunction),
-
+    Intrinsic(builtins::Intrinsic),
     // This should go away soon. The globals (block, msg, etc) will be replaced
     // with a context struct that'll appear in the fn parameter list.
     Object(builtins::GlobalObject),
@@ -53,6 +53,7 @@ impl Item {
             Item::Event(id) => id.name(db),
             Item::Function(id) => id.name(db),
             Item::BuiltinFunction(id) => id.as_ref().into(),
+            Item::Intrinsic(id) => id.as_ref().into(),
             Item::Object(id) => id.as_ref().into(),
             Item::Constant(id) => id.name(db),
             Item::Ingot(id) => id.name(db),
@@ -67,6 +68,7 @@ impl Item {
             Item::Event(id) => Some(id.name_span(db)),
             Item::Function(id) => Some(id.name_span(db)),
             Item::BuiltinFunction(_) => None,
+            Item::Intrinsic(_) => None,
             Item::Object(_) => None,
             Item::Constant(id) => Some(id.name_span(db)),
             Item::Ingot(_) => None,
@@ -82,6 +84,7 @@ impl Item {
             Item::Event(_) => false,
             Item::Function(_) => false,
             Item::BuiltinFunction(_) => true,
+            Item::Intrinsic(_) => true,
             Item::Object(_) => true,
             Item::Constant(_) => false,
             Item::Ingot(_) => false,
@@ -96,6 +99,7 @@ impl Item {
             Item::Event(_) => "event",
             Item::Function(_) => "function",
             Item::BuiltinFunction(_) => "function",
+            Item::Intrinsic(_) => "intrinsic function",
             Item::Object(_) => "object",
             Item::Constant(_) => "constant",
             Item::Ingot(_) => "ingot",
@@ -113,18 +117,19 @@ impl Item {
             | Item::Function(_)
             | Item::Constant(_)
             | Item::BuiltinFunction(_)
+            | Item::Intrinsic(_)
             | Item::Object(_) => Rc::new(indexmap! {}),
         }
     }
 
     pub fn parent(&self, db: &dyn AnalyzerDb) -> Option<Item> {
-        // Only ingots *should* be parentless, but built-in items currently don't
         match self {
             Item::Type(id) => id.parent(db),
             Item::GenericType(_) => None,
             Item::Event(id) => Some(id.parent(db)),
             Item::Function(id) => Some(id.parent(db)),
             Item::BuiltinFunction(_) => None,
+            Item::Intrinsic(_) => None,
             Item::Object(_) => None,
             Item::Constant(id) => Some(id.parent(db)),
             Item::Ingot(_) => None,
@@ -201,8 +206,7 @@ impl Item {
             Item::GenericType(_) => {}
             Item::Event(id) => id.sink_diagnostics(db, sink),
             Item::Function(id) => id.sink_diagnostics(db, sink),
-            Item::BuiltinFunction(_) => {}
-            Item::Object(_) => {}
+            Item::BuiltinFunction(_) | Item::Intrinsic(_) | Item::Object(_) => {}
             Item::Constant(id) => id.sink_diagnostics(db, sink),
             Item::Ingot(id) => id.sink_diagnostics(db, sink),
             Item::Module(id) => id.sink_diagnostics(db, sink),
@@ -227,6 +231,8 @@ pub fn std_prelude_items() -> IndexMap<SmolStr, Item> {
         builtins::GlobalFunction::iter()
             .map(|fun| (fun.as_ref().into(), Item::BuiltinFunction(fun))),
     );
+    items
+        .extend(builtins::Intrinsic::iter().map(|fun| (fun.as_ref().into(), Item::Intrinsic(fun))));
     items
         .extend(builtins::GlobalObject::iter().map(|obj| (obj.as_ref().into(), Item::Object(obj))));
     items
@@ -1211,6 +1217,9 @@ impl FunctionId {
     }
     pub fn pub_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
         self.data(db).ast.kind.pub_
+    }
+    pub fn is_unsafe(&self, db: &dyn AnalyzerDb) -> bool {
+        self.unsafe_span(db).is_some()
     }
     pub fn unsafe_span(&self, db: &dyn AnalyzerDb) -> Option<Span> {
         self.data(db).ast.kind.unsafe_

@@ -10,9 +10,7 @@ use yultsur::*;
 /// Builds a Yul statement from a Fe variable declaration
 pub fn var_decl(context: &mut FnContext, stmt: &Node<fe::FuncStmt>) -> yul::Statement {
     if let fe::FuncStmt::VarDecl { target, typ, value } = &stmt.kind {
-        let decl_type = context
-            .declaration_type(typ)
-            .expect("missing declaration type");
+        let decl_type = context.declaration_type(typ);
 
         let target = names::var_name(var_decl_name(&target.kind));
 

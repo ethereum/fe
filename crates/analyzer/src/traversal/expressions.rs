@@ -1,6 +1,6 @@
 use crate::builtins::{
     BlockField, ChainField, ContractSelfField, ContractTypeMethod, GlobalFunction, GlobalObject,
-    MsgField, TxField, ValueMethod,
+    Intrinsic, MsgField, TxField, ValueMethod,
 };
 use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, Location, NamedThing};
 use crate::errors::{FatalError, IndexingError, NotFixedSize};
@@ -913,6 +913,9 @@ fn expr_call_named_thing<T: std::fmt::Display>(
         NamedThing::Item(Item::BuiltinFunction(function)) => {
             expr_call_builtin_function(scope, function, func.span, generic_args, args)
         }
+        NamedThing::Item(Item::Intrinsic(function)) => {
+            expr_call_intrinsic(scope, function, func.span, generic_args, args)
+        }
         NamedThing::Item(Item::Function(function)) => {
             expr_call_pure(scope, function, generic_args, args)
         }
@@ -1127,6 +1130,51 @@ fn expr_call_builtin_function(
         }
     };
     Ok((attrs, CallType::BuiltinFunction(function)))
+}
+
+fn expr_call_intrinsic(
+    scope: &mut BlockScope,
+    function: Intrinsic,
+    name_span: Span,
+    generic_args: &Option<Node<Vec<fe::GenericArg>>>,
+    args: &Node<Vec<Node<fe::CallArg>>>,
+) -> Result<(ExpressionAttributes, CallType), FatalError> {
+    if let Some(args) = generic_args {
+        scope.error(
+            &format!(
+                "`{}` function does not expect generic arguments",
+                function.as_ref()
+            ),
+            args.span,
+            "unexpected generic argument list",
+        );
+    }
+
+    let argument_attributes = expr_call_args(scope, args)?;
+
+    validate_arg_count(
+        scope,
+        function.as_ref(),
+        name_span,
+        args,
+        function.arg_count(),
+        "arguments",
+    );
+    for (idx, arg_attr) in argument_attributes.iter().enumerate() {
+        if arg_attr.typ != Type::Base(Base::Numeric(Integer::U256)) {
+            scope.type_error(
+                "arguments to intrinsic functions must be u256",
+                args.kind[idx].kind.value.span,
+                &Integer::U256,
+                &arg_attr.typ,
+            );
+        }
+    }
+
+    Ok((
+        ExpressionAttributes::new(Type::Base(function.return_type()), Location::Value),
+        CallType::Intrinsic(function),
+    ))
 }
 
 fn expr_call_pure(

@@ -1,4 +1,4 @@
-use crate::builtins::{ContractTypeMethod, GlobalFunction, ValueMethod};
+use crate::builtins::{ContractTypeMethod, GlobalFunction, Intrinsic, ValueMethod};
 use crate::errors::{self, CannotMove, TypeError};
 use crate::namespace::items::{Class, ContractId, DiagnosticSink, EventId, FunctionId, Item};
 use crate::namespace::types::{FixedSize, SelfDecl, Type};
@@ -264,6 +264,7 @@ impl fmt::Display for ExpressionAttributes {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CallType {
     BuiltinFunction(GlobalFunction),
+    Intrinsic(Intrinsic),
     BuiltinValueMethod {
         method: ValueMethod,
         typ: Type,
@@ -300,6 +301,7 @@ impl CallType {
             BuiltinFunction(_)
             | BuiltinValueMethod { .. }
             | TypeConstructor(_)
+            | Intrinsic(_)
             | BuiltinAssociatedFunction { .. } => None,
             AssociatedFunction { function: id, .. }
             | ValueMethod { method: id, .. }
@@ -311,9 +313,9 @@ impl CallType {
     pub fn function_name(&self, db: &dyn AnalyzerDb) -> SmolStr {
         match self {
             CallType::BuiltinFunction(f) => f.as_ref().into(),
+            CallType::Intrinsic(f) => f.as_ref().into(),
             CallType::BuiltinValueMethod { method, .. } => method.as_ref().into(),
             CallType::BuiltinAssociatedFunction { function, .. } => function.as_ref().into(),
-
             CallType::AssociatedFunction { function: id, .. }
             | CallType::ValueMethod { method: id, .. }
             | CallType::External { function: id, .. }
@@ -323,10 +325,11 @@ impl CallType {
     }
 
     pub fn is_unsafe(&self, db: &dyn AnalyzerDb) -> bool {
-        // There are no built-in unsafe fns yet
-        self.function()
-            .map(|id| id.unsafe_span(db).is_some())
-            .unwrap_or(false)
+        if let CallType::Intrinsic(_) = self {
+            true
+        } else {
+            self.function().map(|id| id.is_unsafe(db)).unwrap_or(false)
+        }
     }
 }
 

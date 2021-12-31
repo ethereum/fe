@@ -58,7 +58,9 @@ pub fn module(db: &dyn AnalyzerDb, module: ModuleId) -> ast::Module {
 
         Item::GenericType(_) => todo!("generic types can't be defined in fe yet"),
         Item::Event(_) => todo!("events can't be defined at the module level yet"),
-        Item::BuiltinFunction(_) | Item::Object(_) => unreachable!("special built-in stuff"),
+        Item::BuiltinFunction(_) | Item::Intrinsic(_) | Item::Object(_) => {
+            unreachable!("special built-in stuff")
+        }
 
         // All name expressions referring to constants are handled at the time of lowering,
         // which causes the constants to no longer serve a purpose.

@@ -42,9 +42,7 @@ pub fn expr(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
         fe::Expr::Unit => expression! { 0x0 },
     };
 
-    let attributes = context
-        .expression_attributes(exp)
-        .expect("missing expression attributes");
+    let attributes = context.expression_attributes(exp);
     match (
         attributes.location.to_owned(),
         attributes.move_location.to_owned(),
@@ -94,7 +92,7 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
         fe::Expr::Call { args, func, .. } => (args, func),
         _ => unreachable!(),
     };
-    let call_type = context.call_type(func).expect("missing call type");
+    let call_type = context.call_type(func);
     let yul_args: Vec<yul::Expression> = args
         .kind
         .iter()
@@ -105,9 +103,7 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
         CallType::BuiltinFunction(func) => match func {
             GlobalFunction::Keccak256 => {
                 let first_arg = &args.kind.first().expect("Missing argument").kind.value;
-                let attributes = context
-                    .expression_attributes(first_arg)
-                    .expect("missing attributes");
+                let attributes = context.expression_attributes(first_arg);
                 let size = FixedSize::try_from(attributes.typ.clone()).expect("Invalid type");
                 let func_name = identifier! { (func.as_ref()) };
                 let size = identifier_expression! { (size.size()) };
@@ -123,6 +119,10 @@ fn expr_call(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Expression {
                 expression! { balance([yul_args[0].to_owned()]) }
             }
         },
+        CallType::Intrinsic(func) => {
+            let yul_name = identifier! { (func.as_ref().strip_prefix("__").unwrap()) };
+            expression! { [yul_name]([yul_args...]) }
+        }
         CallType::BuiltinValueMethod { method, typ } => {
             let target = match &func.kind {
                 fe::Expr::Attribute { value, .. } => value,
@@ -218,10 +218,7 @@ pub fn expr_comp_operation(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul
         let yul_left = expr(context, left);
         let yul_right = expr(context, right);
 
-        let typ = &context
-            .expression_attributes(left)
-            .expect("Missing `left` expression in context")
-            .typ;
+        let typ = &context.expression_attributes(left).typ;
 
         return match op.kind {
             fe::CompOperator::Eq => expression! { eq([yul_left], [yul_right]) },
@@ -253,10 +250,7 @@ pub fn expr_bin_operation(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul:
         let yul_left = expr(context, left);
         let yul_right = expr(context, right);
 
-        let typ = &context
-            .expression_attributes(left)
-            .expect("Missing `left` expression in context")
-            .typ;
+        let typ = &context.expression_attributes(left).typ;
 
         return match op.kind {
             fe::BinOperator::Add => match typ {
@@ -319,10 +313,7 @@ pub fn expr_unary_operation(context: &mut FnContext, exp: &Node<fe::Expr>) -> yu
     if let fe::Expr::UnaryOperation { op, operand } = &exp.kind {
         let yul_operand = expr(context, operand);
 
-        let typ = &context
-            .expression_attributes(operand)
-            .expect("Missing `operand` expression in context")
-            .typ;
+        let typ = &context.expression_attributes(operand).typ;
 
         return match &op.kind {
             fe::UnaryOperator::USub => {
@@ -414,9 +405,7 @@ fn expr_subscript(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Express
         let value = expr(context, value_node);
         let index = expr(context, index_node);
 
-        let value_attributes = context
-            .expression_attributes(value_node)
-            .expect("missing expr attributes");
+        let value_attributes = context.expression_attributes(value_node);
 
         return match &value_attributes.typ {
             Type::Map(_) => data_operations::keyed_map(value, index),
@@ -463,10 +452,7 @@ fn expr_attribute(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Express
         }
     }
 
-    let target_attrs = context
-        .expression_attributes(target)
-        .unwrap_or_else(|| panic!("missing attributes for expr: {:?}", target))
-        .clone();
+    let target_attrs = context.expression_attributes(target).clone();
 
     match &target_attrs.typ {
         Type::Contract(_) => {
@@ -477,9 +463,7 @@ fn expr_attribute(context: &mut FnContext, exp: &Node<fe::Expr>) -> yul::Express
             if let Ok(ContractSelfField::Address) = ContractSelfField::from_str(&field.kind) {
                 return expression! { address() };
             }
-            let exp_attrs = context
-                .expression_attributes(exp)
-                .expect("missing expr attributes");
+            let exp_attrs = context.expression_attributes(exp);
             let nonce = match exp_attrs.location {
                 Location::Storage { nonce: Some(nonce) } => nonce,
                 _ => unreachable!("expected contract `self` field to be in storage and have nonce"),
