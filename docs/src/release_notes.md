@@ -10,6 +10,73 @@ Fe is moving fast. Read up on all the latest improvements.
 **WARNING: All Fe releases are alpha releases and only meant to share the development progress with developers and enthusiasts. It is NOT yet ready for production usage.**
 
 [//]: # (towncrier release notes start)
+## 0.12.0-alpha (2021-12-31)## 0.12.0-alpha (2021-12-31)
+
+
+### Features
+
+
+- Added unsafe low-level "intrinsic" functions, that perform raw evm operations.
+  For example:
+
+  ```
+  fn foo():
+    unsafe:
+      __mtore(0, 5000)
+      assert __mload(0) == 5000
+  ```
+
+  The functions available are exactly those defined in yul's "evm dialect":
+  https://docs.soliditylang.org/en/v0.8.11/yul.html#evm-dialect
+  but with a double-underscore prefix. Eg `selfdestruct` -> `__selfdestruct`.
+
+  These are intended to be used for implementing basic standard library functionality,
+  and shouldn't typically be needed in normal contract code.
+
+  Note: some intrinsic functions don't return a value (eg `__log0`); using these
+  functions in a context that assumes a return value of unit type (eg `let x: () = __log0(a, b)`)
+  will currently result in a compiler panic in the yul compilation phase. ([#603](https://github.com/ethereum/fe/issues/603))
+- Added an out of bounds check for accessing array items.
+  If an array index is retrieved at an index that is not within
+  the bounds of the array it now reverts with `Panic(0x32)`. ([#606](https://github.com/ethereum/fe/issues/606))
+
+
+### Bugfixes
+
+
+- Ensure ternary expression short circuit.
+
+  Example:
+
+  ```
+  contract Foo:
+
+      pub fn bar(input: u256) -> u256:
+          return 1 if input > 5 else revert_me()
+
+      fn revert_me() -> u256:
+          revert
+          return 0
+  ```
+
+  Previous to this change, the code above would **always** revert no matter
+  which branch of the ternary expressions it would resolve to. That is because
+  both sides were evaluated and then one side was discarded. With this change,
+  only the branch that doesn't get picked won't get evaluated at all.
+
+  The same is true for the boolean operations `and` and `or`. ([#488](https://github.com/ethereum/fe/issues/488))
+
+
+### Internal Changes - for Fe Contributors
+
+
+- Added a globally available *dummy* std lib.
+
+  This library contains a single `get_42` function, which can be called using `std::get_42()`. Once 
+  low-level intrinsics have been added to the language, we can delete `get_42` and start adding 
+  useful code. ([#601](https://github.com/ethereum/fe/issues/601))
+
+
 ## 0.11.0-alpha "Karlite" (2021-12-02)
 
 
