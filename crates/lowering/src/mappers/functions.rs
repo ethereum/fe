@@ -221,7 +221,9 @@ fn func_stmt(context: &mut FnContext, stmt: Node<fe::FuncStmt>) -> Vec<Node<fe::
         fe::FuncStmt::Pass => vec![stmt.kind],
         fe::FuncStmt::Break => vec![stmt.kind],
         fe::FuncStmt::Continue => vec![stmt.kind],
-        fe::FuncStmt::Revert { .. } => vec![stmt.kind],
+        fe::FuncStmt::Revert { error } => vec![fe::FuncStmt::Revert {
+            error: error.map(|expr| expressions::expr(context, expr)),
+        }],
     };
     let span = stmt.span;
 
