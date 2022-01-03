@@ -110,7 +110,7 @@ fn build_tuple_struct(tuple: &Tuple) -> ast::Struct {
 
 fn build_struct_field(name: String, type_desc: ast::TypeDesc) -> ast::Field {
     ast::Field {
-        is_pub: false,
+        is_pub: true,
         is_const: false,
         name: SmolStr::new(name).into_node(),
         typ: type_desc.into_node(),

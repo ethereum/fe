@@ -1,5 +1,5 @@
 struct Something:
-  val: u8
+  pub val: u8
 
 contract Bar:
   pub fn test():

@@ -1,8 +1,15 @@
+struct Mixed:
+    pub foo: u256
+    bar: bool
+
+    pub fn new(val: u256) -> Mixed:
+        return Mixed(foo=val, bar=false)
+
 struct House:
-    price: u256
-    size: u256
-    rooms: u8
-    vacant: bool
+    pub price: u256
+    pub size: u256
+    pub rooms: u8
+    pub vacant: bool
 
     pub fn encode(self) -> Array<u8, 128>:
         return self.abi_encode()
@@ -19,6 +26,10 @@ struct House:
 
 contract Foo:
     my_house: House
+
+    pub fn create_mixed(self) -> u256:
+        let mixed: Mixed = Mixed.new(1)
+        return mixed.foo
 
     pub fn set_house(self, data: House):
         self.my_house = data

@@ -3,7 +3,7 @@ use std::bar::bar::Bar
 #
 # simply defining an item causes a cycle
 struct Bing:
-    my_address: address
+    pub my_address: address
 
 fn get_42_backend() -> u256:
     return std::get_42()

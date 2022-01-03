@@ -1,10 +1,10 @@
 struct Error:
-    msg: u256
-    val: bool
+    pub msg: u256
+    pub val: bool
 
 struct OtherError:
-    msg: u256
-    val: bool
+    pub msg: u256
+    pub val: bool
 
 contract Foo:
     my_other_error: OtherError

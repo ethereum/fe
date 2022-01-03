@@ -1,5 +1,5 @@
 struct SomeError:
-    code: u256
+    pub code: u256
 
 contract Foo:
     my_tuple: (u256, address)

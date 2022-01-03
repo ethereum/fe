@@ -2,6 +2,7 @@
 
 use crate::context::{AnalyzerContext, CallType, ExpressionAttributes, FunctionBody, NamedThing};
 use crate::errors::{AlreadyDefined, TypeError};
+use crate::namespace::items::Item;
 use crate::namespace::items::{Class, EventId, FunctionId, ModuleId};
 use crate::namespace::types::FixedSize;
 use crate::AnalyzerDb;
@@ -338,6 +339,11 @@ impl<'a, 'b> BlockScope<'a, 'b> {
     /// Return true if the scope or any of its parents is of the given type
     pub fn inherits_type(&self, typ: BlockScopeType) -> bool {
         self.typ == typ || self.parent.map_or(false, |scope| scope.inherits_type(typ))
+    }
+
+    /// Return the root item of the block scope
+    pub fn root_item(&self) -> Item {
+        self.root.function.parent(self.db())
     }
 }
 

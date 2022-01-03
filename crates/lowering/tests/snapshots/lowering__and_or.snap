@@ -4,8 +4,8 @@ expression: lowered_code
 
 ---
 struct $tuple_bool_bool_:
-    item0: bool
-    item1: bool
+    pub item0: bool
+    pub item1: bool
 
 contract Foo:
     pub fn bar() -> ():

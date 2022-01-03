@@ -1,8 +1,8 @@
 struct MyStruct:
-    my_num: u256
-    my_num2: u8
-    my_bool: bool
-    my_addr: address
+    pub my_num: u256
+    pub my_num2: u8
+    pub my_bool: bool
+    pub my_addr: address
 
 contract Foo:
     my_addrs: Array<address, 5>
