@@ -42,7 +42,7 @@ contract Foo:
                 return 3 * 10
             else:
                 if true:
-                    revert Bar(val=THREE)
+                    revert Bar(val=3)
 
 
 
