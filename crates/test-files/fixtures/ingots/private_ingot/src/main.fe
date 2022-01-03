@@ -1,8 +1,0 @@
-use foo::Foo
-use foo::Bar
-
-contract FooBar:
-    pub fn get_bar() -> Bar:
-        return Bar(
-            my_u256=24
-        )

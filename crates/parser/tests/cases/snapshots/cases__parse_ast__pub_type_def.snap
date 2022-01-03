@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(type_def), module::parse_module,\n           \"type X = Map<address, u256>\")"
+expression: "ast_string(stringify!(pub_type_def), module::parse_module,\n           \"pub type X = Map<address, u256>\")"
 
 ---
 Node(
@@ -11,8 +11,8 @@ Node(
           name: Node(
             kind: "X",
             span: Span(
-              start: 5,
-              end: 6,
+              start: 9,
+              end: 10,
             ),
           ),
           typ: Node(
@@ -20,8 +20,8 @@ Node(
               base: Node(
                 kind: "Map",
                 span: Span(
-                  start: 9,
-                  end: 12,
+                  start: 13,
+                  end: 16,
                 ),
               ),
               args: Node(
@@ -31,8 +31,8 @@ Node(
                       base: "address",
                     ),
                     span: Span(
-                      start: 13,
-                      end: 20,
+                      start: 17,
+                      end: 24,
                     ),
                   )),
                   TypeDesc(Node(
@@ -40,33 +40,33 @@ Node(
                       base: "u256",
                     ),
                     span: Span(
-                      start: 22,
-                      end: 26,
+                      start: 26,
+                      end: 30,
                     ),
                   )),
                 ],
                 span: Span(
-                  start: 12,
-                  end: 27,
+                  start: 16,
+                  end: 31,
                 ),
               ),
             ),
             span: Span(
-              start: 9,
-              end: 27,
+              start: 13,
+              end: 31,
             ),
           ),
           pub_qual: None,
         ),
         span: Span(
-          start: 0,
-          end: 27,
+          start: 4,
+          end: 31,
         ),
       )),
     ],
   ),
   span: Span(
     start: 0,
-    end: 27,
+    end: 31,
   ),
 )

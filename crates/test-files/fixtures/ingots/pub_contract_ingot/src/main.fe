@@ -1,0 +1,11 @@
+use foo::{Foo, Bar, FooBar}
+
+contract FooBarBing:
+    pub fn get_bar() -> Bar:
+        return Bar(
+            my_u256=24
+        )
+
+    pub fn create_foobar_contract() -> u256:
+        let foo_bar: FooBar = FooBar.create(0)
+        return foo_bar.add(40, 50)

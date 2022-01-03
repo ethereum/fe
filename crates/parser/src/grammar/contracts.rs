@@ -16,6 +16,7 @@ use crate::{ParseFailed, ParseResult, Parser, TokenKind};
 /// # Panics
 /// Panics if the next token isn't `contract`.
 pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<Contract>> {
+    let pub_qual = par.optional(TokenKind::Pub).map(|tok| tok.span);
     let contract_tok = par.assert(TokenKind::Contract);
 
     // contract Foo:
@@ -103,12 +104,13 @@ pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<Contract>> {
         };
     }
 
-    let span = header_span + fields.last() + defs.last();
+    let span = header_span + pub_qual + fields.last() + defs.last();
     Ok(Node::new(
         Contract {
             name: Node::new(contract_name.text.to_string(), contract_name.span),
             fields,
             body: defs,
+            pub_qual,
         },
         span,
     ))

@@ -67,6 +67,7 @@ pub fn parse_struct_def(par: &mut Parser, mut pub_qual: Option<Span>) -> ParseRe
 /// # Panics
 /// Panics if the next token isn't `type`.
 pub fn parse_type_alias(par: &mut Parser) -> ParseResult<Node<TypeAlias>> {
+    let pub_qual = par.optional(TokenKind::Pub).map(|tok| tok.span);
     let type_tok = par.assert(TokenKind::Type);
     let name = par.expect(TokenKind::Name, "failed to parse type declaration")?;
     par.expect_with_notes(TokenKind::Eq, "failed to parse type declaration", |_| {
@@ -77,11 +78,12 @@ pub fn parse_type_alias(par: &mut Parser) -> ParseResult<Node<TypeAlias>> {
         ]
     })?;
     let typ = parse_type_desc(par)?;
-    let span = type_tok.span + typ.span;
+    let span = type_tok.span + pub_qual + typ.span;
     Ok(Node::new(
         TypeAlias {
             name: name.into(),
             typ,
+            pub_qual,
         },
         span,
     ))

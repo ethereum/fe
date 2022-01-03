@@ -117,8 +117,8 @@ test_parse! { stmt_for, functions::parse_stmt, "for a in b[0]:\n pass" }
 test_parse! { stmt_var_decl_name, functions::parse_stmt, "let foo: u256 = 1" }
 test_parse! { stmt_var_decl_tuple, functions::parse_stmt, "let (foo, bar): (u256, u256) = (10, 10)" }
 test_parse! { stmt_var_decl_tuples, functions::parse_stmt, "let (a, (b, (c, d))): x" }
-
-test_parse! { type_def, types::parse_type_alias, "type X = Map<address, u256>" }
+test_parse! { type_def, module::parse_module, "type X = Map<address, u256>" }
+test_parse! { pub_type_def, module::parse_module, "pub type X = Map<address, u256>" }
 test_parse! { type_name, types::parse_type_desc, "MyType" }
 test_parse! { type_array, types::parse_type_desc, "Array<address, 25>" }
 test_parse! { type_3d, types::parse_type_desc, "Array<Array<Array<u256, 4>, 4>, 4>" }
@@ -180,6 +180,11 @@ test_parse! { contract_def, contracts::parse_contract_def, r#"contract Foo:
 
 test_parse! { empty_contract_def, contracts::parse_contract_def, r#"contract Foo:
     pass
+"# }
+
+test_parse! { pub_contract_def, contracts::parse_contract_def, r#"pub contract Foo:
+    pub fn foo() -> u8:
+      return 10
 "# }
 
 test_parse! { module_stmts, module::parse_module, r#"

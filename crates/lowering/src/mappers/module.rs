@@ -37,6 +37,7 @@ pub fn module(db: &dyn AnalyzerDb, module: ModuleId) -> ast::Module {
                             node.kind.typ.clone(),
                             &id.typ(db).expect("type alias error"),
                         ),
+                        pub_qual: None,
                     },
                     id.span(db),
                 )))

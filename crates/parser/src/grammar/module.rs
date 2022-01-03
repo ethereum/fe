@@ -50,7 +50,13 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
                 },
                 TokenKind::Struct => {
                     ModuleStmt::Struct(parse_struct_def(par, Some(pub_span))?)
-                }
+                },
+                TokenKind::Type => {
+                    ModuleStmt::TypeAlias(parse_type_alias(par)?)
+                },
+                TokenKind::Contract => {
+                    ModuleStmt::Contract(parse_contract_def(par)?)
+                },
                 _ => {
                     let tok = par.next()?;
                     par.unexpected_token_error(

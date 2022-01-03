@@ -64,6 +64,7 @@ pub struct ConstantDecl {
 pub struct TypeAlias {
     pub name: Node<String>,
     pub typ: Node<TypeDesc>,
+    pub pub_qual: Option<Span>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -71,6 +72,7 @@ pub struct Contract {
     pub name: Node<String>,
     pub fields: Vec<Node<Field>>,
     pub body: Vec<ContractStmt>,
+    pub pub_qual: Option<Span>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
