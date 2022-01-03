@@ -1227,6 +1227,8 @@ fn structs() {
                 "46276961562062403346660092841258592376337652487249021183958956662511039738107",
             )),
         );
+
+        harness.test_function(&mut executor, "create_mixed", &[], Some(&uint_token(1)))
     });
 }
 

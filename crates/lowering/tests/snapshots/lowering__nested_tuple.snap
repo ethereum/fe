@@ -4,21 +4,21 @@ expression: lowered_code
 
 ---
 struct $tuple_u8_bool_:
-    item0: u8
-    item1: bool
+    pub item0: u8
+    pub item1: bool
 
 struct $tuple_u8_u8_:
-    item0: u8
-    item1: u8
+    pub item0: u8
+    pub item1: u8
 
 struct $tuple_address_tuple_u8_u8__:
-    item0: address
-    item1: $tuple_u8_u8_
+    pub item0: address
+    pub item1: $tuple_u8_u8_
 
 struct $tuple_u256_tuple_u8_bool__tuple_address_tuple_u8_u8___:
-    item0: u256
-    item1: $tuple_u8_bool_
-    item2: $tuple_address_tuple_u8_u8__
+    pub item0: u256
+    pub item1: $tuple_u8_bool_
+    pub item2: $tuple_address_tuple_u8_u8__
 
 contract Foo:
     tup: $tuple_u256_tuple_u8_bool__tuple_address_tuple_u8_u8___

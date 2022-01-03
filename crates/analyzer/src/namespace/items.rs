@@ -92,6 +92,10 @@ impl Item {
         }
     }
 
+    pub fn is_struct(&self, val: &StructId) -> bool {
+        matches!(self, Item::Type(TypeDef::Struct(current)) if current == val)
+    }
+
     pub fn item_kind_display_name(&self) -> &'static str {
         match self {
             Item::Type(_) => "type",
@@ -1312,6 +1316,10 @@ impl StructId {
         db.struct_type(*self)
     }
 
+    pub fn has_private_field(&self, db: &dyn AnalyzerDb) -> bool {
+        self.private_fields(db).iter().count() > 0
+    }
+
     pub fn field(&self, db: &dyn AnalyzerDb, name: &str) -> Option<StructFieldId> {
         self.fields(db).get(name).copied()
     }
@@ -1337,6 +1345,20 @@ impl StructId {
     }
     pub fn parent(&self, db: &dyn AnalyzerDb) -> Item {
         Item::Module(self.data(db).module)
+    }
+    pub fn private_fields(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, StructFieldId>> {
+        Rc::new(
+            self.fields(db)
+                .iter()
+                .filter_map(|(name, field)| {
+                    if field.is_public(db) {
+                        None
+                    } else {
+                        Some((name.clone(), *field))
+                    }
+                })
+                .collect(),
+        )
     }
     pub fn dependency_graph(&self, db: &dyn AnalyzerDb) -> Rc<DepGraph> {
         db.struct_dependency_graph(*self).0
@@ -1366,12 +1388,19 @@ impl StructFieldId {
     pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
         self.data(db).ast.name().into()
     }
+    pub fn span(&self, db: &dyn AnalyzerDb) -> Span {
+        self.data(db).ast.span
+    }
     pub fn data(&self, db: &dyn AnalyzerDb) -> Rc<StructField> {
         db.lookup_intern_struct_field(*self)
     }
     pub fn typ(&self, db: &dyn AnalyzerDb) -> Result<types::FixedSize, TypeError> {
         db.struct_field_type(*self).value
     }
+    pub fn is_public(&self, db: &dyn AnalyzerDb) -> bool {
+        self.data(db).ast.kind.is_pub
+    }
+
     pub fn sink_diagnostics(&self, db: &dyn AnalyzerDb, sink: &mut impl DiagnosticSink) {
         db.struct_field_type(*self).sink_diagnostics(sink)
     }

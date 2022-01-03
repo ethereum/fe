@@ -82,16 +82,13 @@ pub fn struct_field_type(
     let mut scope = ItemScope::new(db, field_data.parent.module(db));
 
     let ast::Field {
-        is_pub,
+        is_pub: _,
         is_const,
         name: _,
         typ,
         value,
     } = &field_data.ast.kind;
 
-    if *is_pub {
-        scope.not_yet_implemented("struct `pub` fields", field_data.ast.span);
-    }
     if *is_const {
         scope.not_yet_implemented("struct `const` fields", field_data.ast.span);
     }

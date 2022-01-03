@@ -6,14 +6,14 @@ expression: "build_snapshot(&files, module_id, &db)"
 note: 
   ┌─ stress/abi_encoding_stress.fe:2:5
   │
-2 │     my_num: u256
-  │     ^^^^^^^^^^^^ u256
-3 │     my_num2: u8
-  │     ^^^^^^^^^^^ u8
-4 │     my_bool: bool
-  │     ^^^^^^^^^^^^^ bool
-5 │     my_addr: address
-  │     ^^^^^^^^^^^^^^^^ address
+2 │     pub my_num: u256
+  │     ^^^^^^^^^^^^^^^^ u256
+3 │     pub my_num2: u8
+  │     ^^^^^^^^^^^^^^^ u8
+4 │     pub my_bool: bool
+  │     ^^^^^^^^^^^^^^^^^ bool
+5 │     pub my_addr: address
+  │     ^^^^^^^^^^^^^^^^^^^^ address
 
 note: 
    ┌─ stress/abi_encoding_stress.fe:8:5

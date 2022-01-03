@@ -4,14 +4,21 @@ expression: snapshot
 
 ---
 note: 
+  ┌─ ingots/basic_ingot/src/ding/dang.fe:1:1
+  │
+1 │ type Dang = Array<u256, 42>
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<u256, 42>
+
+
+note: 
   ┌─ ingots/basic_ingot/src/ding/dong.fe:4:3
   │
-4 │   my_address: address
-  │   ^^^^^^^^^^^^^^^^^^^ address
-5 │   my_u256: u256
-  │   ^^^^^^^^^^^^^ u256
-6 │   my_i8: i8
-  │   ^^^^^^^^^ i8
+4 │   pub my_address: address
+  │   ^^^^^^^^^^^^^^^^^^^^^^^ address
+5 │   pub my_u256: u256
+  │   ^^^^^^^^^^^^^^^^^ u256
+6 │   pub my_i8: i8
+  │   ^^^^^^^^^^^^^ i8
 
 note: 
   ┌─ ingots/basic_ingot/src/ding/dong.fe:8:1
@@ -65,105 +72,6 @@ note:
   │
 9 │     return Bing(my_address=address(0))
   │            ^^^^ TypeConstructor(Struct(Struct { name: "Bing", id: StructId(4), field_count: 1 }))
-
-
-note: 
-  ┌─ ingots/basic_ingot/src/ding/dang.fe:1:1
-  │
-1 │ type Dang = Array<u256, 42>
-  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Array<u256, 42>
-
-
-note: 
-  ┌─ ingots/basic_ingot/src/bing.fe:6:5
-  │
-6 │     my_address: address
-  │     ^^^^^^^^^^^^^^^^^^^ address
-
-note: 
-  ┌─ ingots/basic_ingot/src/bing.fe:8:1
-  │  
-8 │ ╭ fn get_42_backend() -> u256:
-9 │ │     return std::get_42()
-  │ ╰────────────────────────^ attributes hash: 17979516652885443340
-  │  
-  = FunctionSignature {
-        self_decl: None,
-        params: [],
-        return_type: Ok(
-            Base(
-                Numeric(
-                    U256,
-                ),
-            ),
-        ),
-    }
-
-note: 
-  ┌─ ingots/basic_ingot/src/bing.fe:9:12
-  │
-9 │     return std::get_42()
-  │            ^^^^^^^^^^^^^ u256: Value
-
-note: 
-  ┌─ ingots/basic_ingot/src/bing.fe:9:12
-  │
-9 │     return std::get_42()
-  │            ^^^^^^^^^^^ Pure(FunctionId(1))
-
-note: 
-   ┌─ ingots/basic_ingot/src/bing.fe:12:4
-   │  
-12 │ ╭    pub fn add(x: u256, y: u256) -> u256:
-13 │ │        return x + y
-   │ ╰───────────────────^ attributes hash: 4022593831796629401
-   │  
-   = FunctionSignature {
-         self_decl: None,
-         params: [
-             FunctionParam {
-                 name: "x",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-             FunctionParam {
-                 name: "y",
-                 typ: Ok(
-                     Base(
-                         Numeric(
-                             U256,
-                         ),
-                     ),
-                 ),
-             },
-         ],
-         return_type: Ok(
-             Base(
-                 Numeric(
-                     U256,
-                 ),
-             ),
-         ),
-     }
-
-note: 
-   ┌─ ingots/basic_ingot/src/bing.fe:13:15
-   │
-13 │        return x + y
-   │               ^   ^ u256: Value
-   │               │    
-   │               u256: Value
-
-note: 
-   ┌─ ingots/basic_ingot/src/bing.fe:13:15
-   │
-13 │        return x + y
-   │               ^^^^^ u256: Value
 
 
 note: 
@@ -451,16 +359,108 @@ note:
 28 │         let bing_contract: BingContract = BingContract.create(0)
    │                                           ^^^^^^^^^^^^^^^^^^^ BuiltinAssociatedFunction { contract: ContractId(0), function: Create }
 29 │         return bing_contract.add(40, 50)
-   │                ^^^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(4) }
+   │                ^^^^^^^^^^^^^^^^^ External { contract: ContractId(0), function: FunctionId(10) }
 
 
 note: 
   ┌─ ingots/basic_ingot/src/bar/baz.fe:2:5
   │
-2 │     my_bool: bool
-  │     ^^^^^^^^^^^^^ bool
-3 │     my_u256: u256
-  │     ^^^^^^^^^^^^^ u256
+2 │     pub my_bool: bool
+  │     ^^^^^^^^^^^^^^^^^ bool
+3 │     pub my_u256: u256
+  │     ^^^^^^^^^^^^^^^^^ u256
+
+
+note: 
+  ┌─ ingots/basic_ingot/src/bing.fe:6:5
+  │
+6 │     pub my_address: address
+  │     ^^^^^^^^^^^^^^^^^^^^^^^ address
+
+note: 
+  ┌─ ingots/basic_ingot/src/bing.fe:8:1
+  │  
+8 │ ╭ fn get_42_backend() -> u256:
+9 │ │     return std::get_42()
+  │ ╰────────────────────────^ attributes hash: 17979516652885443340
+  │  
+  = FunctionSignature {
+        self_decl: None,
+        params: [],
+        return_type: Ok(
+            Base(
+                Numeric(
+                    U256,
+                ),
+            ),
+        ),
+    }
+
+note: 
+  ┌─ ingots/basic_ingot/src/bing.fe:9:12
+  │
+9 │     return std::get_42()
+  │            ^^^^^^^^^^^^^ u256: Value
+
+note: 
+  ┌─ ingots/basic_ingot/src/bing.fe:9:12
+  │
+9 │     return std::get_42()
+  │            ^^^^^^^^^^^ Pure(FunctionId(1))
+
+note: 
+   ┌─ ingots/basic_ingot/src/bing.fe:12:4
+   │  
+12 │ ╭    pub fn add(x: u256, y: u256) -> u256:
+13 │ │        return x + y
+   │ ╰───────────────────^ attributes hash: 4022593831796629401
+   │  
+   = FunctionSignature {
+         self_decl: None,
+         params: [
+             FunctionParam {
+                 name: "x",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 ),
+             },
+             FunctionParam {
+                 name: "y",
+                 typ: Ok(
+                     Base(
+                         Numeric(
+                             U256,
+                         ),
+                     ),
+                 ),
+             },
+         ],
+         return_type: Ok(
+             Base(
+                 Numeric(
+                     U256,
+                 ),
+             ),
+         ),
+     }
+
+note: 
+   ┌─ ingots/basic_ingot/src/bing.fe:13:15
+   │
+13 │        return x + y
+   │               ^   ^ u256: Value
+   │               │    
+   │               u256: Value
+
+note: 
+   ┌─ ingots/basic_ingot/src/bing.fe:13:15
+   │
+13 │        return x + y
+   │               ^^^^^ u256: Value
 
 
 

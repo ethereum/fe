@@ -280,6 +280,7 @@ test_file! { needs_mem_copy }
 test_file! { not_callable }
 test_file! { not_in_scope }
 test_file! { not_in_scope_2 }
+test_file! { private_struct_field }
 test_file! { return_addition_with_mixed_types }
 test_file! { return_call_to_fn_with_param_type_mismatch }
 test_file! { return_call_to_fn_without_return }
@@ -290,6 +291,7 @@ test_file! { return_type_not_fixedsize }
 test_file! { undefined_type_param }
 
 test_file! { strict_boolean_if_else }
+test_file! { struct_private_constructor }
 test_file! { struct_call_bad_args }
 test_file! { struct_call_without_kw_args }
 test_file! { non_pub_init }

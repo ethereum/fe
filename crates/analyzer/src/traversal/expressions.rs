@@ -619,9 +619,20 @@ fn expr_attribute(
         // If the value is a struct, we return the type of the struct field. The location stays the
         // same and can be memory or storage.
         Type::Struct(struct_) => {
-            if let Some(field) = struct_.id.field(scope.db(), &field.kind) {
+            if let Some(struct_field) = struct_.id.field(scope.db(), &field.kind) {
+                if !scope.root_item().is_struct(&struct_.id) && !struct_field.is_public(scope.db())
+                {
+                    scope.fancy_error(
+                        &format!(
+                            "Can not access private field `{}` on struct `{}`",
+                            &field.kind, struct_.name
+                        ),
+                        vec![Label::primary(field.span, "private field")],
+                        vec![],
+                    );
+                }
                 Ok(ExpressionAttributes::new(
-                    field.typ(scope.db())?.into(),
+                    struct_field.typ(scope.db())?.into(),
                     attrs.location,
                 ))
             } else {
@@ -1335,6 +1346,28 @@ fn expr_call_struct_constructor(
     args: &Node<Vec<Node<fe::CallArg>>>,
 ) -> Result<(ExpressionAttributes, CallType), FatalError> {
     let db = scope.root.db;
+
+    if struct_.id.has_private_field(db) && !scope.root_item().is_struct(&struct_.id) {
+        scope.fancy_error(
+            &format!(
+                "Can not call private constructor of struct `{}` ",
+                struct_.name
+            ),
+            struct_
+                .id
+                .private_fields(db)
+                .iter()
+                .map(|(name, field)| {
+                    Label::primary(field.span(db), format!("Field `{}` is private", name))
+                })
+                .collect(),
+            vec![format!(
+                "Suggestion: implement a method `new(...)` on struct `{}` to call the constructor and return the struct",
+                struct_.name
+            )],
+        );
+    }
+
     let fields = struct_
         .id
         .fields(db)
