@@ -1,71 +1,81 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(pub_contract_def), contracts::parse_contract_def,\n           r#\"pub contract Foo:\n    pub fn foo() -> u8:\n      return 10\n\"#)"
+expression: "ast_string(stringify!(pub_contract_def), module::parse_module,\n           r#\"pub contract Foo:\n    pub fn foo() -> u8:\n      return 10\n\"#)"
 
 ---
 Node(
-  kind: Contract(
-    name: Node(
-      kind: "Foo",
-      span: Span(
-        start: 13,
-        end: 16,
-      ),
-    ),
-    fields: [],
+  kind: Module(
     body: [
-      Function(Node(
-        kind: Function(
-          pub_: Some(Span(
-            start: 22,
-            end: 25,
-          )),
-          unsafe_: None,
+      Contract(Node(
+        kind: Contract(
           name: Node(
-            kind: "foo",
+            kind: "Foo",
             span: Span(
-              start: 29,
-              end: 32,
+              start: 13,
+              end: 16,
             ),
           ),
-          args: [],
-          return_type: Some(Node(
-            kind: Base(
-              base: "u8",
-            ),
-            span: Span(
-              start: 38,
-              end: 40,
-            ),
-          )),
+          fields: [],
           body: [
-            Node(
-              kind: Return(
-                value: Some(Node(
-                  kind: Num("10"),
+            Function(Node(
+              kind: Function(
+                pub_: Some(Span(
+                  start: 22,
+                  end: 25,
+                )),
+                unsafe_: None,
+                name: Node(
+                  kind: "foo",
                   span: Span(
-                    start: 55,
-                    end: 57,
+                    start: 29,
+                    end: 32,
+                  ),
+                ),
+                args: [],
+                return_type: Some(Node(
+                  kind: Base(
+                    base: "u8",
+                  ),
+                  span: Span(
+                    start: 38,
+                    end: 40,
                   ),
                 )),
+                body: [
+                  Node(
+                    kind: Return(
+                      value: Some(Node(
+                        kind: Num("10"),
+                        span: Span(
+                          start: 55,
+                          end: 57,
+                        ),
+                      )),
+                    ),
+                    span: Span(
+                      start: 48,
+                      end: 57,
+                    ),
+                  ),
+                ],
               ),
               span: Span(
-                start: 48,
+                start: 22,
                 end: 57,
               ),
-            ),
+            )),
           ],
+          pub_qual: Some(Span(
+            start: 0,
+            end: 3,
+          )),
         ),
         span: Span(
-          start: 22,
+          start: 0,
           end: 57,
         ),
       )),
     ],
-    pub_qual: Some(Span(
-      start: 0,
-      end: 3,
-    )),
   ),
   span: Span(
     start: 0,

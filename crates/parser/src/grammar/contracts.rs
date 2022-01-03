@@ -3,7 +3,7 @@ use super::types::{parse_event_def, parse_field, parse_opt_qualifier};
 
 use crate::ast::{Contract, ContractStmt};
 use crate::grammar::functions::parse_single_word_stmt;
-use crate::node::Node;
+use crate::node::{Node, Span};
 use crate::{ParseFailed, ParseResult, Parser, TokenKind};
 
 // Rule: all "statement" level parse functions consume their trailing
@@ -15,8 +15,7 @@ use crate::{ParseFailed, ParseResult, Parser, TokenKind};
 /// Parse a contract definition.
 /// # Panics
 /// Panics if the next token isn't `contract`.
-pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<Contract>> {
-    let pub_qual = par.optional(TokenKind::Pub).map(|tok| tok.span);
+pub fn parse_contract_def(par: &mut Parser, contract_pub_qual: Option<Span>) -> ParseResult<Node<Contract>> {
     let contract_tok = par.assert(TokenKind::Contract);
 
     // contract Foo:
@@ -104,13 +103,13 @@ pub fn parse_contract_def(par: &mut Parser) -> ParseResult<Node<Contract>> {
         };
     }
 
-    let span = header_span + pub_qual + fields.last() + defs.last();
+    let span = header_span + contract_pub_qual + fields.last() + defs.last();
     Ok(Node::new(
         Contract {
             name: Node::new(contract_name.text.to_string(), contract_name.span),
             fields,
             body: defs,
-            pub_qual,
+            pub_qual: contract_pub_qual,
         },
         span,
     ))

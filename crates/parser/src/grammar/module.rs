@@ -34,9 +34,9 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
     let stmt = match par.peek_or_err()? {
         TokenKind::Pragma => ModuleStmt::Pragma(parse_pragma(par)?),
         TokenKind::Use => ModuleStmt::Use(parse_use(par)?),
-        TokenKind::Contract => ModuleStmt::Contract(parse_contract_def(par)?),
+        TokenKind::Contract => ModuleStmt::Contract(parse_contract_def(par, None)?),
         TokenKind::Struct => ModuleStmt::Struct(parse_struct_def(par, None)?),
-        TokenKind::Type => ModuleStmt::TypeAlias(parse_type_alias(par)?),
+        TokenKind::Type => ModuleStmt::TypeAlias(parse_type_alias(par, None)?),
         TokenKind::Const => ModuleStmt::Constant(Box::new(parse_constant(par)?)),
 
         // Let these be parse errors for now:
@@ -52,10 +52,10 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
                     ModuleStmt::Struct(parse_struct_def(par, Some(pub_span))?)
                 },
                 TokenKind::Type => {
-                    ModuleStmt::TypeAlias(parse_type_alias(par)?)
+                    ModuleStmt::TypeAlias(parse_type_alias(par, Some(pub_span))?)
                 },
                 TokenKind::Contract => {
-                    ModuleStmt::Contract(parse_contract_def(par)?)
+                    ModuleStmt::Contract(parse_contract_def(par, Some(pub_span))?)
                 },
                 _ => {
                     let tok = par.next()?;

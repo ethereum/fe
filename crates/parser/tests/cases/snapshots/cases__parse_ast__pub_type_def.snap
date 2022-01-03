@@ -56,10 +56,13 @@ Node(
               end: 31,
             ),
           ),
-          pub_qual: None,
+          pub_qual: Some(Span(
+            start: 0,
+            end: 3,
+          )),
         ),
         span: Span(
-          start: 4,
+          start: 0,
           end: 31,
         ),
       )),

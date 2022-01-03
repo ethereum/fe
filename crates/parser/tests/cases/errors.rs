@@ -65,7 +65,7 @@ contract C:
 "#
 }
 
-test_parse_err! { contract_bad_name, contracts::parse_contract_def, true, "contract 1X:\n x: u8" }
+test_parse_err! { contract_bad_name, module::parse_module, true, "contract 1X:\n x: u8" }
 test_parse_err! { contract_empty_body, module::parse_module, true, "contract X:\n \n \ncontract Y:\n x: u8" }
 test_parse_err! { contract_field_after_def, module::parse_module, false, r#"
 contract C:
@@ -76,9 +76,9 @@ contract C:
 }
 
 test_parse_err! { type_desc_path_number, module::parse_module, true, "type Foo = some::mod::Foo::5000" }
-test_parse_err! { contract_pub_event, contracts::parse_contract_def, false, "contract C:\n pub event E:\n  x: u8" }
-test_parse_err! { contract_const_pub, contracts::parse_contract_def, false, "contract C:\n const pub x: u8" }
-test_parse_err! { contract_const_fn, contracts::parse_contract_def, false, "contract C:\n const fn f():\n  pass" }
+test_parse_err! { contract_pub_event, module::parse_module, false, "contract C:\n pub event E:\n  x: u8" }
+test_parse_err! { contract_const_pub, module::parse_module, false, "contract C:\n const pub x: u8" }
+test_parse_err! { contract_const_fn, module::parse_module, false, "contract C:\n const fn f():\n  pass" }
 test_parse_err! { emit_no_args, functions::parse_stmt, true, "emit x" }
 test_parse_err! { emit_expr, functions::parse_stmt, true, "emit x + 1" }
 test_parse_err! { emit_bad_call, functions::parse_stmt, true, "emit MyEvent(1)()" }
@@ -89,7 +89,7 @@ test_parse_err! { expr_dotted_number, expressions::parse_expr, true, "3.14" }
 test_parse_err! { for_no_in, functions::parse_stmt, true, "for x:\n pass" }
 test_parse_err! { fn_no_args, module::parse_module, false, "fn f:\n  return 5" }
 test_parse_err! { fn_unsafe_pub, module::parse_module, false, "unsafe pub fn f():\n  return 5" }
-test_parse_err! { fn_def_kw, contracts::parse_contract_def, true, "contract C:\n pub def f(x: u8):\n  return x" }
+test_parse_err! { fn_def_kw, module::parse_module, true, "contract C:\n pub def f(x: u8):\n  return x" }
 test_parse_err! { if_no_body, functions::parse_stmt, true, "if x:\nelse:\n x" }
 test_parse_err! { use_bad_name, module::parse_use, true, "use x as 123" }
 test_parse_err! { module_bad_stmt, module::parse_module, true, "if x:\n y" }

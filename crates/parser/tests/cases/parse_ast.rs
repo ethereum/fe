@@ -168,7 +168,7 @@ test_parse! { empty_struct_def, module::parse_module, r#"struct S:
   pass
 "# }
 
-test_parse! { contract_def, contracts::parse_contract_def, r#"contract Foo:
+test_parse! { contract_def, module::parse_module, r#"contract Foo:
   x: address
   pub y: u8
   pub const z: Map<u8, address>
@@ -178,11 +178,11 @@ test_parse! { contract_def, contracts::parse_contract_def, r#"contract Foo:
     idx from: address
 "# }
 
-test_parse! { empty_contract_def, contracts::parse_contract_def, r#"contract Foo:
+test_parse! { empty_contract_def, module::parse_module, r#"contract Foo:
     pass
 "# }
 
-test_parse! { pub_contract_def, contracts::parse_contract_def, r#"pub contract Foo:
+test_parse! { pub_contract_def, module::parse_module, r#"pub contract Foo:
     pub fn foo() -> u8:
       return 10
 "# }
