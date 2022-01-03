@@ -1281,6 +1281,15 @@ fn expr_call_type_constructor(
                             scope.error("Casting between numeric values can change the sign or size but not both at once", arg.span, &format!("can not cast from `{}` to `{}` in a single step", arg_exp.typ, typ));
                         }
                     }
+                    Type::Base(Base::Address) => {
+                        if *integer != Integer::U256 {
+                            scope.error(
+                                &format!("can't cast `address` to `{}`", integer),
+                                name_span,
+                                "try `u256` here",
+                            );
+                        }
+                    }
                     _ => {
                         scope.error(
                             "type mismatch",
