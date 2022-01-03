@@ -127,6 +127,7 @@ test_stmt! { call_keccak_without_parameter, "keccak256()" }
 test_stmt! { call_keccak_with_wrong_type, "keccak256(true)" }
 test_stmt! { call_keccak_with_2_args, "keccak256(1, 2)" }
 test_stmt! { call_keccak_with_generic_args, "keccak256<10>(1)" }
+test_stmt! { cast_address_to_u64, "u64(address(0))" }
 
 test_stmt! { call_balance_of_without_parameter, "balance_of()" }
 test_stmt! { call_balance_of_with_wrong_type, "balance_of(true)" }

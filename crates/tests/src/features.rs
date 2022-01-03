@@ -10,6 +10,8 @@ use fe_common::utils::keccak;
 use fe_compiler_test_utils::*;
 use fe_compiler_test_utils::{self as test_utils};
 
+const SOME_ADDRESS: &str = "2012301230123012301230123012301230123002";
+
 pub fn deploy_contract(
     executor: &mut Executor,
     fixture: &str,
@@ -428,6 +430,7 @@ fn test_arrays() {
     case::int_literal_coercion("int_literal_coercion.fe", &[], uint_token(300)),
     case::associated_fns("associated_fns.fe", &[uint_token(12)], uint_token(144)),
     case::struct_fns("struct_fns.fe", &[uint_token(10), uint_token(20)], uint_token(100)),
+    case::cast_address_to_u256("cast_address_to_u256.fe", &[address_token(SOME_ADDRESS)], address_token(SOME_ADDRESS)),
 )]
 fn test_method_return(fixture_file: &str, input: &[ethabi::Token], expected: ethabi::Token) {
     with_executor(&|mut executor| {
