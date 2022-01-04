@@ -76,6 +76,7 @@ contract C:
 }
 
 test_parse_err! { type_desc_path_number, module::parse_module, true, "type Foo = some::mod::Foo::5000" }
+test_parse_err! { module_pub_event, module::parse_module, false, "pub event E:\n  x: u8" }
 test_parse_err! { contract_pub_event, module::parse_module, false, "contract C:\n pub event E:\n  x: u8" }
 test_parse_err! { contract_const_pub, module::parse_module, false, "contract C:\n const pub x: u8" }
 test_parse_err! { contract_const_fn, module::parse_module, false, "contract C:\n const fn f():\n  pass" }

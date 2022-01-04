@@ -21,6 +21,7 @@ pub enum ModuleStmt {
     Constant(Box<Node<ConstantDecl>>),
     Struct(Node<Struct>),
     Function(Node<Function>),
+    Event(Node<Event>),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -138,6 +139,7 @@ pub enum ContractStmt {
 pub struct Event {
     pub name: Node<String>,
     pub fields: Vec<Node<EventField>>,
+    pub pub_qual: Option<Span>
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
@@ -398,6 +400,7 @@ impl Spanned for ModuleStmt {
             ModuleStmt::Constant(inner) => inner.span,
             ModuleStmt::Struct(inner) => inner.span,
             ModuleStmt::Function(inner) => inner.span,
+            ModuleStmt::Event(inner) => inner.span,
         }
     }
 }
@@ -427,6 +430,7 @@ impl fmt::Display for ModuleStmt {
             ModuleStmt::Constant(node) => write!(f, "{}", node.kind),
             ModuleStmt::Struct(node) => write!(f, "{}", node.kind),
             ModuleStmt::Function(node) => write!(f, "{}", node.kind),
+            ModuleStmt::Event(node) => write!(f, "{}", node.kind),
         }
     }
 }

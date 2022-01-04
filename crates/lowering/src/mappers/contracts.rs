@@ -90,6 +90,7 @@ fn event_def(context: &mut ModuleContext, event: EventId) -> Node<ast::Event> {
         ast::Event {
             name: node.kind.name.clone(),
             fields,
+            pub_qual: None,
         },
         node.span,
     )

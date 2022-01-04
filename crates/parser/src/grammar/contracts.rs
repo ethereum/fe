@@ -73,7 +73,7 @@ pub fn parse_contract_def(par: &mut Parser, contract_pub_qual: Option<Span>) -> 
             }
             Some(TokenKind::Event) => {
                 if let Some(span) = pub_qual {
-                    par.error(span, "`pub` qualifier can't be used with event definitions");
+                    par.error(span, "`pub` qualifier can't be used with contract-level event definitions");
                 }
                 if let Some(span) = const_qual {
                     par.error(
@@ -81,7 +81,7 @@ pub fn parse_contract_def(par: &mut Parser, contract_pub_qual: Option<Span>) -> 
                         "`const` qualifier can't be used with event definitions",
                     );
                 }
-                defs.push(ContractStmt::Event(parse_event_def(par)?));
+                defs.push(ContractStmt::Event(parse_event_def(par, None)?));
             }
             Some(TokenKind::Pass) => {
                 parse_single_word_stmt(par)?;

@@ -86,6 +86,7 @@ pub fn module_all_items(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<Vec<Item>> 
             }
             ast::ModuleStmt::Pragma(_) => None,
             ast::ModuleStmt::Use(_) => None,
+            ast::ModuleStmt::Event(_) => todo!(),
         })
         .collect();
     Rc::new(items)

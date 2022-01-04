@@ -25,6 +25,7 @@ pub fn event_type(db: &dyn AnalyzerDb, event: EventId) -> Analysis<Rc<types::Eve
     let ast::Event {
         name: event_name,
         fields: field_nodes,
+        pub_qual: pub_qual
     } = &event.data(db).ast.kind;
 
     let mut names = HashMap::new();

@@ -92,7 +92,7 @@ pub fn parse_type_alias(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult
 /// Parse an event definition.
 /// # Panics
 /// Panics if the next token isn't `event`.
-pub fn parse_event_def(par: &mut Parser) -> ParseResult<Node<ast::Event>> {
+pub fn parse_event_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Node<ast::Event>> {
     use TokenKind::*;
 
     let event_tok = par.assert(Event);
@@ -120,11 +120,12 @@ pub fn parse_event_def(par: &mut Parser) -> ParseResult<Node<ast::Event>> {
             }
         }
     }
-    let span = event_tok.span + name.span + fields.last();
+    let span = event_tok.span + pub_qual + name.span + fields.last();
     Ok(Node::new(
         ast::Event {
             name: name.into(),
             fields,
+            pub_qual
         },
         span,
     ))

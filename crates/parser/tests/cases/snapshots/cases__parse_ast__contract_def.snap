@@ -214,6 +214,7 @@ Node(
                     ),
                   ),
                 ],
+                pub_qual: None,
               ),
               span: Span(
                 start: 109,

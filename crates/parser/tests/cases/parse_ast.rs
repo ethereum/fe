@@ -136,9 +136,9 @@ test_parse! { fn_def, module::parse_module, "fn foo21(x: bool, y: address,) -> b
 test_parse! { fn_def_pub, module::parse_module, "pub fn foo21(x: bool, y: address,) -> bool:\n x"}
 test_parse! { fn_def_unsafe, module::parse_module, "unsafe fn foo21(x: bool, y: address,) -> bool:\n x"}
 test_parse! { fn_def_pub_unsafe, module::parse_module, "pub unsafe fn foo21(x: bool, y: address,) -> bool:\n x"}
-test_parse! { event_def, types::parse_event_def, "event Foo:\n  x: address\n  idx y: u8" }
-test_parse! { empty_event_def, types::parse_event_def, "event Foo:\n  pass" }
-
+test_parse! { event_def, module::parse_module, "event Foo:\n  x: address\n  idx y: u8" }
+test_parse! { empty_event_def, module::parse_module, "event Foo:\n  pass" }
+test_parse! { pub_event_def, module::parse_module, "event Foo:\n  x: address\n  idx y: u8" }
 test_parse! { pragma1, module::parse_pragma, "pragma 0.1.0" }
 test_parse! { pragma2, module::parse_pragma, "pragma 0.1.0-alpha" }
 test_parse! { pragma3, module::parse_pragma, "pragma >= 1.2, < 1.5" }

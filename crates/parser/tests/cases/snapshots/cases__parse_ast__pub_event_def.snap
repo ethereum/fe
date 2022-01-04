@@ -1,6 +1,6 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(event_def), module::parse_module,\n           \"event Foo:\\n  x: address\\n  idx y: u8\")"
+expression: "ast_string(stringify!(pub_event_def), module::parse_module,\n           \"event Foo:\\n  x: address\\n  idx y: u8\")"
 
 ---
 Node(
