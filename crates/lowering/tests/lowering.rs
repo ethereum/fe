@@ -24,7 +24,9 @@ fn lower(src: &str, id: SourceFileId, files: &FileStore) -> fe::Module {
     };
     let module_id = db.intern_module(Rc::new(module));
 
-    fe_lowering::lower_module(&db, module_id).ast(&db)
+    let lowered_module = fe_lowering::lower_module(&db, module_id);
+    fe_analyzer::analyze_module(&db, lowered_module).expect("failed to analyze lowered AST");
+    lowered_module.ast(&db)
 }
 
 fn parse_file(src: &str, id: SourceFileId, files: &FileStore) -> fe::Module {
