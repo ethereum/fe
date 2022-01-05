@@ -1,5 +1,5 @@
 use fe_common::diagnostics::diagnostics_string;
-use fe_parser::grammar::{contracts, expressions, functions, module, types};
+use fe_parser::grammar::{expressions, functions, module};
 use fe_parser::{ParseResult, Parser};
 use insta::assert_snapshot;
 

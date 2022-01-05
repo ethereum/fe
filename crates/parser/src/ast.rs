@@ -139,7 +139,7 @@ pub enum ContractStmt {
 pub struct Event {
     pub name: Node<String>,
     pub fields: Vec<Node<EventField>>,
-    pub pub_qual: Option<Span>
+    pub pub_qual: Option<Span>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]

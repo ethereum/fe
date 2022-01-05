@@ -11,7 +11,10 @@ use vec1::Vec1;
 /// Parse a [`ModuleStmt::Struct`].
 /// # Panics
 /// Panics if the next token isn't `struct`.
-pub fn parse_struct_def(par: &mut Parser, struct_pub_qual: Option<Span>) -> ParseResult<Node<ast::Struct>> {
+pub fn parse_struct_def(
+    par: &mut Parser,
+    struct_pub_qual: Option<Span>,
+) -> ParseResult<Node<ast::Struct>> {
     let struct_tok = par.assert(TokenKind::Struct);
     let name = par.expect_with_notes(TokenKind::Name, "failed to parse struct definition", |_| {
         vec!["Note: a struct name must start with a letter or underscore, and contain letters, numbers, or underscores".into()]
@@ -57,7 +60,7 @@ pub fn parse_struct_def(par: &mut Parser, struct_pub_qual: Option<Span>) -> Pars
             name: name.into(),
             fields,
             functions,
-            pub_qual: struct_pub_qual
+            pub_qual: struct_pub_qual,
         },
         span,
     ))
@@ -67,7 +70,6 @@ pub fn parse_struct_def(par: &mut Parser, struct_pub_qual: Option<Span>) -> Pars
 /// # Panics
 /// Panics if the next token isn't `type`.
 pub fn parse_type_alias(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<Node<TypeAlias>> {
-    
     let type_tok = par.assert(TokenKind::Type);
     let name = par.expect(TokenKind::Name, "failed to parse type declaration")?;
     par.expect_with_notes(TokenKind::Eq, "failed to parse type declaration", |_| {
@@ -125,7 +127,7 @@ pub fn parse_event_def(par: &mut Parser, pub_qual: Option<Span>) -> ParseResult<
         ast::Event {
             name: name.into(),
             fields,
-            pub_qual
+            pub_qual,
         },
         span,
     ))

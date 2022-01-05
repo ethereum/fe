@@ -1,6 +1,6 @@
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::utils::ron::to_ron_string_pretty;
-use fe_parser::grammar::{contracts, expressions, functions, module, types};
+use fe_parser::grammar::{expressions, functions, module, types};
 use fe_parser::{ParseResult, Parser};
 use insta::assert_snapshot;
 use serde::Serialize;

@@ -1,7 +1,9 @@
 use super::contracts::parse_contract_def;
 use super::expressions::parse_expr;
 use super::functions::parse_fn_def;
-use super::types::{parse_path_tail, parse_struct_def, parse_type_alias, parse_type_desc, parse_event_def};
+use super::types::{
+    parse_event_def, parse_path_tail, parse_struct_def, parse_type_alias, parse_type_desc,
+};
 use crate::ast::{ConstantDecl, Module, ModuleStmt, Pragma, Use, UseTree};
 use crate::node::{Node, Span};
 use crate::{Label, ParseFailed, ParseResult, Parser, TokenKind};
@@ -40,26 +42,20 @@ pub fn parse_module_stmt(par: &mut Parser) -> ParseResult<ModuleStmt> {
         TokenKind::Const => ModuleStmt::Constant(Box::new(parse_constant(par)?)),
 
         // Let these be parse errors for now:
-         TokenKind::Event => ModuleStmt::Event(parse_event_def(par, None)?),
+        TokenKind::Event => ModuleStmt::Event(parse_event_def(par, None)?),
         // TokenKind::Name if par.peeked_text() == "from" => parse_from_import(par),
         TokenKind::Pub => {
             let pub_span = par.next()?.span;
             match par.peek_or_err()? {
-                TokenKind::Event => {
-                    ModuleStmt::Event(parse_event_def(par, Some(pub_span))?)
-                },
+                TokenKind::Event => ModuleStmt::Event(parse_event_def(par, Some(pub_span))?),
                 TokenKind::Fn | TokenKind::Unsafe => {
                     ModuleStmt::Function(parse_fn_def(par, Some(pub_span))?)
-                },
-                TokenKind::Struct => {
-                    ModuleStmt::Struct(parse_struct_def(par, Some(pub_span))?)
-                },
-                TokenKind::Type => {
-                    ModuleStmt::TypeAlias(parse_type_alias(par, Some(pub_span))?)
-                },
+                }
+                TokenKind::Struct => ModuleStmt::Struct(parse_struct_def(par, Some(pub_span))?),
+                TokenKind::Type => ModuleStmt::TypeAlias(parse_type_alias(par, Some(pub_span))?),
                 TokenKind::Contract => {
                     ModuleStmt::Contract(parse_contract_def(par, Some(pub_span))?)
-                },
+                }
                 _ => {
                     let tok = par.next()?;
                     par.unexpected_token_error(

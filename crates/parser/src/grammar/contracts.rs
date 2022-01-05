@@ -15,7 +15,10 @@ use crate::{ParseFailed, ParseResult, Parser, TokenKind};
 /// Parse a contract definition.
 /// # Panics
 /// Panics if the next token isn't `contract`.
-pub fn parse_contract_def(par: &mut Parser, contract_pub_qual: Option<Span>) -> ParseResult<Node<Contract>> {
+pub fn parse_contract_def(
+    par: &mut Parser,
+    contract_pub_qual: Option<Span>,
+) -> ParseResult<Node<Contract>> {
     let contract_tok = par.assert(TokenKind::Contract);
 
     // contract Foo:
@@ -73,7 +76,10 @@ pub fn parse_contract_def(par: &mut Parser, contract_pub_qual: Option<Span>) -> 
             }
             Some(TokenKind::Event) => {
                 if let Some(span) = pub_qual {
-                    par.error(span, "`pub` qualifier can't be used with contract-level event definitions");
+                    par.error(
+                        span,
+                        "`pub` qualifier can't be used with contract-level event definitions",
+                    );
                 }
                 if let Some(span) = const_qual {
                     par.error(
