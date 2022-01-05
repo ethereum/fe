@@ -18,15 +18,15 @@ pub fn deploy_ingot(
 
 #[test]
 fn test_ingot_with_visibility() {
-    _with_executor(&|mut executor| {
-        let harness = deploy_ingot(&mut executor, "pub_contract_ingot", "FooBarBing", &[]);
+    with_executor(&|mut executor| {
+        let _harness = deploy_ingot(&mut executor, "pub_contract_ingot", "FooBarBing", &[]);
     })
 }
 
 #[test]
 fn test_ingot_pub_contract() {
-    _with_executor(&|mut executor| {
-        let harness = deploy_ingot(&mut executor, "visibility_ingot", "Foo", &[]);
+    with_executor(&|mut executor| {
+        let _harness = deploy_ingot(&mut executor, "visibility_ingot", "Foo", &[]);
     })
 }
 #[test]
