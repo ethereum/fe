@@ -1773,3 +1773,18 @@ fn intrinsics() {
         );
     });
 }
+
+#[test]
+fn call_fn() {
+    with_executor(&|mut executor| {
+        let harness = deploy_contract(&mut executor, "call_fn.fe", "Foo", &[]);
+
+        let mut calldata = vec![0; 32];
+
+        calldata[31] = 1;
+        harness.test_call_reverts(&mut executor, calldata.clone(), &[]);
+
+        calldata[31] = 0;
+        harness.test_call_returns(&mut executor, calldata, &[])
+    });
+}

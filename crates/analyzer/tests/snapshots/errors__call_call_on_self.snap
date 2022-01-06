@@ -1,0 +1,14 @@
+---
+source: crates/analyzer/tests/errors.rs
+expression: "error_string(&path, &src)"
+
+---
+error: `__call__()` is not directly callable
+  ┌─ compile_errors/call_call_on_self.fe:6:10
+  │
+6 │     self.__call__()
+  │          ^^^^^^^^
+  │
+  = Note: `__call__` is not part of the contract's interface, and can't be called.
+
+

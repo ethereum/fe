@@ -99,6 +99,8 @@ pub trait AnalyzerDb {
     fn contract_public_function_map(&self, id: ContractId) -> Rc<IndexMap<SmolStr, FunctionId>>;
     #[salsa::invoke(queries::contracts::contract_init_function)]
     fn contract_init_function(&self, id: ContractId) -> Analysis<Option<FunctionId>>;
+    #[salsa::invoke(queries::contracts::contract_call_function)]
+    fn contract_call_function(&self, id: ContractId) -> Analysis<Option<FunctionId>>;
 
     #[salsa::invoke(queries::contracts::contract_all_events)]
     fn contract_all_events(&self, id: ContractId) -> Rc<Vec<EventId>>;

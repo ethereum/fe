@@ -1,6 +1,6 @@
 contract Foo:
-  pub fn __init__():
+  pub fn __call__():
     pass
 
   fn bar(self):
-    self.__init__()
+    self.__call__()

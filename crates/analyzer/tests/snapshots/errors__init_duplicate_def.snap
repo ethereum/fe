@@ -16,6 +16,6 @@ error: `fn __init__()` is defined multiple times in `contract Foo`
 10 │       
 11 │     ╭     pub fn __init__():
 12 │     │         3 + 4
-   │     ╰─────────────' `init` redefined here
+   │     ╰─────────────' `__init__` redefined here
 
 

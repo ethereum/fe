@@ -1064,17 +1064,22 @@ impl ContractId {
         db.contract_init_function(*self).value
     }
 
-    /// User functions, public and not. Excludes `__init__`.
+    pub fn call_function(&self, db: &dyn AnalyzerDb) -> Option<FunctionId> {
+        db.contract_call_function(*self).value
+    }
+
+    /// User functions, public and not. Excludes `__init__` and `__call__`.
     pub fn functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, FunctionId>> {
         db.contract_function_map(*self).value
     }
 
-    /// Lookup a function by name. Searches all user functions, private or not. Excludes init function.
+    /// Lookup a function by name. Searches all user functions, private or not.
+    /// Excludes `__init__` and `__call__`.
     pub fn function(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionId> {
         self.functions(db).get(name).copied()
     }
 
-    /// Excludes `__init__`.
+    /// Excludes `__init__` and `__call__`.
     pub fn public_functions(&self, db: &dyn AnalyzerDb) -> Rc<IndexMap<SmolStr, FunctionId>> {
         db.contract_public_function_map(*self)
     }
@@ -1127,6 +1132,7 @@ impl ContractId {
 
         // functions
         db.contract_init_function(*self).sink_diagnostics(sink);
+        db.contract_call_function(*self).sink_diagnostics(sink);
         db.contract_function_map(*self).sink_diagnostics(sink);
         db.contract_all_functions(*self)
             .iter()
