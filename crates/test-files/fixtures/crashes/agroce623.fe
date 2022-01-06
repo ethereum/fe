@@ -1,0 +1,3 @@
+contract r:
+ pub fn t():
+  []
