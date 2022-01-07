@@ -10,7 +10,12 @@ fn list_expr_array_u256_3(val0: u256, val1: u256, val2: u256) -> Array<u256, 3>:
     generated_array[2] = val2
     return generated_array
 
+fn list_expr_array_unit_0() -> Array<(), 0>:
+    let generated_array: Array<(), 0>
+    return generated_array
+
 contract Foo:
     pub fn foo() -> ():
         let x: Array<u256, 3> = list_expr_array_u256_3(10, 20, 30)
+        list_expr_array_unit_0()
         return ()
