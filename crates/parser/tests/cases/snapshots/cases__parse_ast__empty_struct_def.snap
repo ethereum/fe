@@ -1,19 +1,30 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(empty_struct_def), types::parse_struct_def,\n           r#\"struct S:\n  pass\n\"#)"
+expression: "ast_string(stringify!(empty_struct_def), module::parse_module,\n           r#\"struct S:\n  pass\n\"#)"
 
 ---
 Node(
-  kind: Struct(
-    name: Node(
-      kind: "S",
-      span: Span(
-        start: 7,
-        end: 8,
-      ),
-    ),
-    fields: [],
-    functions: [],
+  kind: Module(
+    body: [
+      Struct(Node(
+        kind: Struct(
+          name: Node(
+            kind: "S",
+            span: Span(
+              start: 7,
+              end: 8,
+            ),
+          ),
+          fields: [],
+          functions: [],
+          pub_qual: None,
+        ),
+        span: Span(
+          start: 0,
+          end: 8,
+        ),
+      )),
+    ],
   ),
   span: Span(
     start: 0,

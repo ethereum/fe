@@ -1,198 +1,30 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
-expression: "ast_string(stringify!(contract_def), contracts::parse_contract_def,\n           r#\"contract Foo:\n  x: address\n  pub y: u8\n  pub const z: Map<u8, address>\n  pub fn foo() -> u8:\n    return 10\n  event Bar:\n    idx from: address\n\"#)"
+expression: "ast_string(stringify!(contract_def), module::parse_module,\n           r#\"contract Foo:\n  x: address\n  pub y: u8\n  pub const z: Map<u8, address>\n  pub fn foo() -> u8:\n    return 10\n  event Bar:\n    idx from: address\n\"#)"
 
 ---
 Node(
-  kind: Contract(
-    name: Node(
-      kind: "Foo",
-      span: Span(
-        start: 9,
-        end: 12,
-      ),
-    ),
-    fields: [
-      Node(
-        kind: Field(
-          is_pub: false,
-          is_const: false,
-          name: Node(
-            kind: "x",
-            span: Span(
-              start: 16,
-              end: 17,
-            ),
-          ),
-          typ: Node(
-            kind: Base(
-              base: "address",
-            ),
-            span: Span(
-              start: 19,
-              end: 26,
-            ),
-          ),
-          value: None,
-        ),
-        span: Span(
-          start: 16,
-          end: 26,
-        ),
-      ),
-      Node(
-        kind: Field(
-          is_pub: true,
-          is_const: false,
-          name: Node(
-            kind: "y",
-            span: Span(
-              start: 33,
-              end: 34,
-            ),
-          ),
-          typ: Node(
-            kind: Base(
-              base: "u8",
-            ),
-            span: Span(
-              start: 36,
-              end: 38,
-            ),
-          ),
-          value: None,
-        ),
-        span: Span(
-          start: 29,
-          end: 38,
-        ),
-      ),
-      Node(
-        kind: Field(
-          is_pub: true,
-          is_const: true,
-          name: Node(
-            kind: "z",
-            span: Span(
-              start: 51,
-              end: 52,
-            ),
-          ),
-          typ: Node(
-            kind: Generic(
-              base: Node(
-                kind: "Map",
-                span: Span(
-                  start: 54,
-                  end: 57,
-                ),
-              ),
-              args: Node(
-                kind: [
-                  TypeDesc(Node(
-                    kind: Base(
-                      base: "u8",
-                    ),
-                    span: Span(
-                      start: 58,
-                      end: 60,
-                    ),
-                  )),
-                  TypeDesc(Node(
-                    kind: Base(
-                      base: "address",
-                    ),
-                    span: Span(
-                      start: 62,
-                      end: 69,
-                    ),
-                  )),
-                ],
-                span: Span(
-                  start: 57,
-                  end: 70,
-                ),
-              ),
-            ),
-            span: Span(
-              start: 54,
-              end: 70,
-            ),
-          ),
-          value: None,
-        ),
-        span: Span(
-          start: 41,
-          end: 70,
-        ),
-      ),
-    ],
+  kind: Module(
     body: [
-      Function(Node(
-        kind: Function(
-          pub_: Some(Span(
-            start: 73,
-            end: 76,
-          )),
-          unsafe_: None,
+      Contract(Node(
+        kind: Contract(
           name: Node(
-            kind: "foo",
+            kind: "Foo",
             span: Span(
-              start: 80,
-              end: 83,
-            ),
-          ),
-          args: [],
-          return_type: Some(Node(
-            kind: Base(
-              base: "u8",
-            ),
-            span: Span(
-              start: 89,
-              end: 91,
-            ),
-          )),
-          body: [
-            Node(
-              kind: Return(
-                value: Some(Node(
-                  kind: Num("10"),
-                  span: Span(
-                    start: 104,
-                    end: 106,
-                  ),
-                )),
-              ),
-              span: Span(
-                start: 97,
-                end: 106,
-              ),
-            ),
-          ],
-        ),
-        span: Span(
-          start: 73,
-          end: 106,
-        ),
-      )),
-      Event(Node(
-        kind: Event(
-          name: Node(
-            kind: "Bar",
-            span: Span(
-              start: 115,
-              end: 118,
+              start: 9,
+              end: 12,
             ),
           ),
           fields: [
             Node(
-              kind: EventField(
-                is_idx: true,
+              kind: Field(
+                is_pub: false,
+                is_const: false,
                 name: Node(
-                  kind: "from",
+                  kind: "x",
                   span: Span(
-                    start: 128,
-                    end: 132,
+                    start: 16,
+                    end: 17,
                   ),
                 ),
                 typ: Node(
@@ -200,20 +32,200 @@ Node(
                     base: "address",
                   ),
                   span: Span(
-                    start: 134,
-                    end: 141,
+                    start: 19,
+                    end: 26,
                   ),
                 ),
+                value: None,
               ),
               span: Span(
-                start: 124,
-                end: 141,
+                start: 16,
+                end: 26,
+              ),
+            ),
+            Node(
+              kind: Field(
+                is_pub: true,
+                is_const: false,
+                name: Node(
+                  kind: "y",
+                  span: Span(
+                    start: 33,
+                    end: 34,
+                  ),
+                ),
+                typ: Node(
+                  kind: Base(
+                    base: "u8",
+                  ),
+                  span: Span(
+                    start: 36,
+                    end: 38,
+                  ),
+                ),
+                value: None,
+              ),
+              span: Span(
+                start: 29,
+                end: 38,
+              ),
+            ),
+            Node(
+              kind: Field(
+                is_pub: true,
+                is_const: true,
+                name: Node(
+                  kind: "z",
+                  span: Span(
+                    start: 51,
+                    end: 52,
+                  ),
+                ),
+                typ: Node(
+                  kind: Generic(
+                    base: Node(
+                      kind: "Map",
+                      span: Span(
+                        start: 54,
+                        end: 57,
+                      ),
+                    ),
+                    args: Node(
+                      kind: [
+                        TypeDesc(Node(
+                          kind: Base(
+                            base: "u8",
+                          ),
+                          span: Span(
+                            start: 58,
+                            end: 60,
+                          ),
+                        )),
+                        TypeDesc(Node(
+                          kind: Base(
+                            base: "address",
+                          ),
+                          span: Span(
+                            start: 62,
+                            end: 69,
+                          ),
+                        )),
+                      ],
+                      span: Span(
+                        start: 57,
+                        end: 70,
+                      ),
+                    ),
+                  ),
+                  span: Span(
+                    start: 54,
+                    end: 70,
+                  ),
+                ),
+                value: None,
+              ),
+              span: Span(
+                start: 41,
+                end: 70,
               ),
             ),
           ],
+          body: [
+            Function(Node(
+              kind: Function(
+                pub_: Some(Span(
+                  start: 73,
+                  end: 76,
+                )),
+                unsafe_: None,
+                name: Node(
+                  kind: "foo",
+                  span: Span(
+                    start: 80,
+                    end: 83,
+                  ),
+                ),
+                args: [],
+                return_type: Some(Node(
+                  kind: Base(
+                    base: "u8",
+                  ),
+                  span: Span(
+                    start: 89,
+                    end: 91,
+                  ),
+                )),
+                body: [
+                  Node(
+                    kind: Return(
+                      value: Some(Node(
+                        kind: Num("10"),
+                        span: Span(
+                          start: 104,
+                          end: 106,
+                        ),
+                      )),
+                    ),
+                    span: Span(
+                      start: 97,
+                      end: 106,
+                    ),
+                  ),
+                ],
+              ),
+              span: Span(
+                start: 73,
+                end: 106,
+              ),
+            )),
+            Event(Node(
+              kind: Event(
+                name: Node(
+                  kind: "Bar",
+                  span: Span(
+                    start: 115,
+                    end: 118,
+                  ),
+                ),
+                fields: [
+                  Node(
+                    kind: EventField(
+                      is_idx: true,
+                      name: Node(
+                        kind: "from",
+                        span: Span(
+                          start: 128,
+                          end: 132,
+                        ),
+                      ),
+                      typ: Node(
+                        kind: Base(
+                          base: "address",
+                        ),
+                        span: Span(
+                          start: 134,
+                          end: 141,
+                        ),
+                      ),
+                    ),
+                    span: Span(
+                      start: 124,
+                      end: 141,
+                    ),
+                  ),
+                ],
+                pub_qual: None,
+              ),
+              span: Span(
+                start: 109,
+                end: 141,
+              ),
+            )),
+          ],
+          pub_qual: None,
         ),
         span: Span(
-          start: 109,
+          start: 0,
           end: 141,
         ),
       )),

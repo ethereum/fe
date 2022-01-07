@@ -1,9 +1,9 @@
 ---
 source: crates/parser/tests/cases/errors.rs
-expression: "err_string(stringify!(contract_pub_event), contracts::parse_contract_def,\n           false, \"contract C:\\n pub event E:\\n  x: u8\")"
+expression: "err_string(stringify!(contract_pub_event), module::parse_module, false,\n           \"contract C:\\n pub event E:\\n  x: u8\")"
 
 ---
-error: `pub` qualifier can't be used with event definitions
+error: `pub` qualifier can't be used with contract-level event definitions
   ┌─ contract_pub_event:2:2
   │
 2 │  pub event E:

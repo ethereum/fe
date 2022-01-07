@@ -25,6 +25,7 @@ pub fn struct_def(context: &mut ModuleContext, struct_: StructId) -> Node<ast::S
             name: node.kind.name.clone(),
             fields,
             functions,
+            pub_qual: None,
         },
         node.span,
     )

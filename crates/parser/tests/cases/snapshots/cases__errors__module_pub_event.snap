@@ -1,0 +1,6 @@
+---
+source: crates/parser/tests/cases/errors.rs
+expression: "err_string(stringify!(module_pub_event), module::parse_module, false,\n           \"pub event E:\\n  x: u8\")"
+
+---
+

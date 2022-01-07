@@ -37,6 +37,7 @@ pub fn module(db: &dyn AnalyzerDb, module: ModuleId) -> ast::Module {
                             node.kind.typ.clone(),
                             &id.typ(db).expect("type alias error"),
                         ),
+                        pub_qual: None,
                     },
                     id.span(db),
                 )))
@@ -105,6 +106,7 @@ fn build_tuple_struct(tuple: &Tuple) -> ast::Struct {
         name: names::tuple_struct_name(tuple).into_node(),
         fields,
         functions: vec![],
+        pub_qual: None,
     }
 }
 
