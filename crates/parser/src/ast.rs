@@ -513,7 +513,7 @@ impl fmt::Display for Contract {
 
 impl fmt::Display for Struct {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(f, "struct {}:", self.name.kind)?;
+        writeln!(f, "struct {} {{", self.name.kind)?;
         if self.fields.is_empty() && self.functions.is_empty() {
             write!(indented(f), "pass")
         } else {
@@ -523,6 +523,7 @@ impl fmt::Display for Struct {
             }
             write!(indented(f), "{}", double_line_joined(&self.functions))
         }
+        writeln!(f, "}}")
     }
 }
 

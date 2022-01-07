@@ -660,6 +660,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "fe-fmt"
+version = "0.12.0-alpha"
+dependencies = [
+ "fe-parser",
+]
+
+[[package]]
 name = "fe-library"
 version = "0.12.0-alpha"
 dependencies = [

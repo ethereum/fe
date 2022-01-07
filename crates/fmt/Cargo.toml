@@ -1,0 +1,10 @@
+[package]
+name = "fe-fmt"
+version = "0.12.0-alpha"
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
+edition = "2021"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/ethereum/fe"
+
+[dependencies]
+fe-parser = {path = "../parser", version = "^0.12.0-alpha"}
